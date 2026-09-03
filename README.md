@@ -12,11 +12,19 @@ El dominio personalizado lo fija el archivo [`CNAME`](CNAME) — no lo borres.
 ## Archivos
 | Archivo | Para qué sirve |
 |---|---|
-| `index.html` | La portada provisional. Autocontenida: CSS inline y el isotipo como SVG embebido. |
+| `index.html` | La portada provisional. Fondo oscuro, CSS inline, sin fuentes externas ni dependencias. |
 | `404.html` | Copia de la portada. En una SPA con rutas de cliente, este archivo es además el fallback de routing. |
-| `favicon.svg` | Isotipo en SVG. |
+| `logo.png` | Logo blanco sobre transparencia, 800 px, paleta de 32 colores (17 KB). |
+| `favicon.png` | Isotipo en el teal de marca, 128 px — legible en pestañas claras y oscuras. |
 | `CNAME` | Dominio personalizado de GitHub Pages. |
 | `.nojekyll` | Desactiva Jekyll (necesario si el build genera carpetas con `_`). |
+
+## Sobre el logo
+
+La portada usa el logo en blanco sobre transparencia, por eso el fondo es oscuro.
+Los originales están fuera del repo, en `Images/` del proyecto: hay también una
+versión negra sin fondo (`ExtendiendoServicios_logo_sinfondo.png`) si alguna vez
+se quiere una portada clara.
 
 ## DNS (Cloudflare)
 | Tipo | Nombre | Contenido | Proxy |
@@ -28,5 +36,5 @@ El dominio personalizado lo fija el archivo [`CNAME`](CNAME) — no lo borres.
 
 ## Cuando llegue la app
 Si el front se compila (Vite, etc.), el flujo habitual es publicar `dist/` con una
-GitHub Action y mover `CNAME`, `.nojekyll` y `favicon.svg` a la carpeta `public/`
+GitHub Action y mover `CNAME`, `.nojekyll`, `logo.png` y `favicon.png` a la carpeta `public/`
 para que el build los copie a la salida.
