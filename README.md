@@ -21,7 +21,7 @@ El dominio personalizado lo fija el archivo [`CNAME`](CNAME) — no lo borres.
 ## DNS (Cloudflare)
 | Tipo | Nombre | Contenido | Proxy |
 |---|---|---|---|
-| CNAME | `app` | `ad-agrodesign.github.io` | DNS only |
+| CNAME | `app` | `extendiendoservicios.github.io` | DNS only |
 
 > El proxy de Cloudflare (nube naranja) debe quedar **desactivado**: bloquea la emisión
 > del certificado de GitHub Pages.
