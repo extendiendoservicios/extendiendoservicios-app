@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Extendiendo Servicios - Plataforma</title>
+<meta name="description" content="Plataforma de gestión de servicios de Extendiendo Servicios - en construcción.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#569EA4">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Extendiendo Servicios - Plataforma">
+<meta property="og:description" content="Plataforma de gestión de servicios de Extendiendo Servicios - en construcción.">
+<meta property="og:url" content="https://app.extendiendoservicios.com/">
+<meta property="og:locale" content="es_AR">
+<link rel="canonical" href="https://app.extendiendoservicios.com/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --primary:#569EA4;
+    --ink:#13151E;
+    --muted:#4A5061;
+    --bg:#F6F7F9;
+    --glow:rgba(86,158,164,.16);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --ink:#F2F5F7;
+      --muted:#98A1B2;
+      --bg:#0E1017;
+      --glow:rgba(86,158,164,.20);
+    }
+  }
+
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    display:grid;
+    place-items:center;
+    padding:32px 24px;
+    background:var(--bg);
+    background-image:radial-gradient(60% 55% at 50% 34%, var(--glow) 0%, rgba(0,0,0,0) 70%);
+    color:var(--ink);
+    font-family:"Inter","Segoe UI",-apple-system,system-ui,"Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  main{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    max-width:640px;
+    width:100%;
+    animation:rise .7s cubic-bezier(.22,.61,.36,1) both;
+  }
+
+  .mark{
+    width:clamp(122px,26vw,188px);
+    height:auto;
+    fill:currentColor;
+    display:block;
+  }
+
+  h1{
+    margin:clamp(22px,4.4vw,34px) 0 0;
+    font-family:"Oswald","Archivo Narrow","Segoe UI",sans-serif;
+    font-weight:600;
+    font-size:clamp(1.3rem,5.4vw,2.7rem);
+    line-height:1.05;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    /* la ultima letra arrastra el tracking: se compensa desplazando el bloque */
+    text-indent:.16em;
+  }
+
+  .lockup{
+    display:inline-flex;
+    flex-direction:column;
+    align-items:center;
+    max-width:100%;
+  }
+
+  .rule{
+    width:100%;
+    height:4px;
+    margin:clamp(12px,2.2vw,17px) 0 0;
+    border-radius:999px;
+    background:var(--primary);
+    transform-origin:center;
+    animation:grow .8s .18s cubic-bezier(.22,.61,.36,1) both;
+  }
+
+  .status{
+    margin:clamp(26px,5vw,38px) 0 0;
+    font-size:clamp(.95rem,2.6vw,1.075rem);
+    font-weight:500;
+    letter-spacing:.02em;
+    color:var(--muted);
+    display:inline-flex;
+    align-items:center;
+    gap:10px;
+  }
+
+  .dot{
+    width:7px;height:7px;flex:0 0 7px;
+    border-radius:50%;
+    background:var(--primary);
+    animation:pulse 2.4s ease-in-out infinite;
+  }
+
+  .note{
+    margin:10px 0 0;
+    font-size:clamp(.8rem,2.2vw,.875rem);
+    color:var(--muted);
+    opacity:.75;
+  }
+
+  @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  @keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  @keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none !important;transition:none !important}
+  }
+</style>
+</head>
+<body>
+  <main>
+    <svg class="mark" viewBox="0 0 120 101" role="img" aria-label="Extendiendo Servicios">
+      <rect x="-5.90" y="-5.90" width="11.80" height="11.80" rx="4.01" opacity="1.0" transform="translate(60.00 10.00) rotate(-0.0)"/>
+      <rect x="-5.55" y="-5.50" width="11.09" height="10.99" rx="3.74" opacity="1.0" transform="translate(44.13 22.60) rotate(4.5)"/>
+      <rect x="-5.55" y="-5.50" width="11.09" height="10.99" rx="3.74" opacity="1.0" transform="translate(75.87 22.60) rotate(-4.5)"/>
+      <rect x="-5.08" y="-4.96" width="10.17" height="9.92" rx="3.37" opacity="1.0" transform="translate(36.28 34.60) rotate(6.7)"/>
+      <rect x="-5.67" y="-5.65" width="11.35" height="11.30" rx="3.84" opacity="1.0" transform="translate(60.00 34.60) rotate(-0.0)"/>
+      <rect x="-5.08" y="-4.96" width="10.17" height="9.92" rx="3.37" opacity="1.0" transform="translate(83.72 34.60) rotate(-6.7)"/>
+      <rect x="-4.54" y="-4.28" width="9.07" height="8.56" rx="2.91" opacity="1.0" transform="translate(29.99 45.99) rotate(8.5)"/>
+      <rect x="-5.27" y="-5.13" width="10.55" height="10.26" rx="3.49" opacity="1.0" transform="translate(50.00 45.99) rotate(2.8)"/>
+      <rect x="-5.27" y="-5.13" width="10.55" height="10.26" rx="3.49" opacity="1.0" transform="translate(70.00 45.99) rotate(-2.8)"/>
+      <rect x="-4.54" y="-4.28" width="9.07" height="8.56" rx="2.91" opacity="1.0" transform="translate(90.01 45.99) rotate(-8.5)"/>
+      <rect x="-3.95" y="-3.53" width="7.89" height="7.07" rx="2.40" opacity="1.0" transform="translate(24.54 56.77) rotate(10.0)"/>
+      <rect x="-4.74" y="-4.41" width="9.48" height="8.82" rx="3.00" opacity="1.0" transform="translate(42.27 56.77) rotate(5.0)"/>
+      <rect x="-5.26" y="-4.95" width="10.51" height="9.91" rx="3.37" opacity="1.0" transform="translate(60.00 56.77) rotate(-0.0)"/>
+      <rect x="-4.74" y="-4.41" width="9.48" height="8.82" rx="3.00" opacity="1.0" transform="translate(77.73 56.77) rotate(-5.0)"/>
+      <rect x="-3.95" y="-3.53" width="7.89" height="7.07" rx="2.40" opacity="1.0" transform="translate(95.46 56.77) rotate(-10.0)"/>
+      <rect x="-3.35" y="-2.79" width="6.70" height="5.57" rx="1.90" opacity="1.0" transform="translate(19.65 66.95) rotate(11.4)"/>
+      <rect x="-4.16" y="-3.63" width="8.31" height="7.26" rx="2.47" opacity="1.0" transform="translate(35.79 66.95) rotate(6.9)"/>
+      <rect x="-4.80" y="-4.28" width="9.59" height="8.57" rx="2.91" opacity="1.0" transform="translate(51.93 66.95) rotate(2.3)"/>
+      <rect x="-4.80" y="-4.28" width="9.59" height="8.57" rx="2.91" opacity="1.0" transform="translate(68.07 66.95) rotate(-2.3)"/>
+      <rect x="-4.16" y="-3.63" width="8.31" height="7.26" rx="2.47" opacity="1.0" transform="translate(84.21 66.95) rotate(-6.9)"/>
+      <rect x="-3.35" y="-2.79" width="6.70" height="5.57" rx="1.90" opacity="1.0" transform="translate(100.35 66.95) rotate(-11.4)"/>
+      <rect x="-2.77" y="-2.09" width="5.53" height="4.18" rx="1.42" opacity="1.0" transform="translate(15.14 76.53) rotate(12.7)"/>
+      <rect x="-3.56" y="-2.86" width="7.13" height="5.71" rx="1.94" opacity="1.0" transform="translate(30.10 76.53) rotate(8.5)"/>
+      <rect x="-4.25" y="-3.52" width="8.50" height="7.04" rx="2.39" opacity="1.0" transform="translate(45.05 76.53) rotate(4.2)"/>
+      <rect x="-4.70" y="-3.94" width="9.40" height="7.88" rx="2.68" opacity="1.0" transform="translate(60.00 76.53) rotate(-0.0)"/>
+      <rect x="-4.25" y="-3.52" width="8.50" height="7.04" rx="2.39" opacity="1.0" transform="translate(74.95 76.53) rotate(-4.2)"/>
+      <rect x="-3.56" y="-2.86" width="7.13" height="5.71" rx="1.94" opacity="1.0" transform="translate(89.90 76.53) rotate(-8.5)"/>
+      <rect x="-2.77" y="-2.09" width="5.53" height="4.18" rx="1.42" opacity="1.0" transform="translate(104.86 76.53) rotate(-12.7)"/>
+      <rect x="-2.22" y="-1.47" width="4.44" height="2.95" rx="1.00" opacity="0.874" transform="translate(10.95 85.50) rotate(13.9)"/>
+      <rect x="-2.99" y="-2.14" width="5.98" height="4.28" rx="1.46" opacity="1.0" transform="translate(24.96 85.50) rotate(9.9)"/>
+      <rect x="-3.68" y="-2.76" width="7.37" height="5.53" rx="1.88" opacity="1.0" transform="translate(38.98 85.50) rotate(6.0)"/>
+      <rect x="-4.24" y="-3.25" width="8.47" height="6.50" rx="2.21" opacity="1.0" transform="translate(52.99 85.50) rotate(2.0)"/>
+      <rect x="-4.24" y="-3.25" width="8.47" height="6.50" rx="2.21" opacity="1.0" transform="translate(67.01 85.50) rotate(-2.0)"/>
+      <rect x="-3.68" y="-2.76" width="7.37" height="5.53" rx="1.88" opacity="1.0" transform="translate(81.02 85.50) rotate(-6.0)"/>
+      <rect x="-2.99" y="-2.14" width="5.98" height="4.28" rx="1.46" opacity="1.0" transform="translate(95.04 85.50) rotate(-9.9)"/>
+      <rect x="-2.22" y="-1.47" width="4.44" height="2.95" rx="1.00" opacity="0.874" transform="translate(109.05 85.50) rotate(-13.9)"/>
+      <rect x="-1.71" y="-0.96" width="3.43" height="1.93" rx="0.65" opacity="0.7" transform="translate(7.00 93.87) rotate(15.0)"/>
+      <rect x="-2.45" y="-1.52" width="4.89" height="3.03" rx="1.03" opacity="0.882" transform="translate(20.25 93.87) rotate(11.3)"/>
+      <rect x="-3.13" y="-2.07" width="6.26" height="4.13" rx="1.40" opacity="1.0" transform="translate(33.50 93.87) rotate(7.5)"/>
+      <rect x="-3.72" y="-2.54" width="7.44" height="5.08" rx="1.73" opacity="1.0" transform="translate(46.75 93.87) rotate(3.8)"/>
+      <rect x="-4.11" y="-2.84" width="8.22" height="5.68" rx="1.93" opacity="1.0" transform="translate(60.00 93.87) rotate(-0.0)"/>
+      <rect x="-3.72" y="-2.54" width="7.44" height="5.08" rx="1.73" opacity="1.0" transform="translate(73.25 93.87) rotate(-3.8)"/>
+      <rect x="-3.13" y="-2.07" width="6.26" height="4.13" rx="1.40" opacity="1.0" transform="translate(86.50 93.87) rotate(-7.5)"/>
+      <rect x="-2.45" y="-1.52" width="4.89" height="3.03" rx="1.03" opacity="0.882" transform="translate(99.75 93.87) rotate(-11.3)"/>
+      <rect x="-1.71" y="-0.96" width="3.43" height="1.93" rx="0.65" opacity="0.7" transform="translate(113.00 93.87) rotate(-15.0)"/>
+    </svg>
+
+    <div class="lockup">
+      <h1>Extendiendo Servicios</h1>
+      <span class="rule" aria-hidden="true"></span>
+    </div>
+
+    <p class="status"><span class="dot" aria-hidden="true"></span>Plataforma en construcción</p>
+    <p class="note">El acceso a la plataforma estará disponible próximamente.</p>
+  </main>
+</body>
+</html>
