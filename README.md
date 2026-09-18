@@ -36,8 +36,31 @@ pnpm dev
 ```
 
 Abre `http://localhost:5173`. Contra un backend real (`App_dev`), copiá
-`.env.example` a `.env.local` y completá las variables (disponible desde la
-Fase 3).
+`.env.example` a `.env.local` y completá las variables.
+
+## Cómo vincular Supabase
+
+El proyecto remoto de desarrollo es `App_dev` (staging y desarrollo, ver
+`docs/environments.md`). Cada desarrollador vincula su copia local una sola
+vez, con sesión ya iniciada (`pnpm exec supabase login`, la hace Mike):
+
+```bash
+pnpm exec supabase link --project-ref anesttvrnpsaaaxaquce
+```
+
+No pide la contraseña de la base de datos (usa la API de gestión). El estado
+del link vive en `supabase/.temp/` (gitignorado), no se comitea.
+
+**`App` (producción) nunca se vincula ni se toca desde una máquina de
+desarrollo.** Se usa solo desde el workflow de despliegue a producción, con
+secretos de GitHub y aprobación de Mike -- ver `docs/environments.md`.
+
+## Cloudflare (wrangler)
+
+`wrangler` es dependencia de desarrollo del repositorio, no una instalación
+global: se usa como `pnpm exec wrangler <comando>`. Este repositorio todavía
+no crea nada en Cloudflare (Pages y R2 llegan en una fase posterior, ver
+`docs/environments.md`).
 
 ## Cómo probar
 
@@ -73,19 +96,19 @@ problema sin depender de la configuración de cada máquina.
 
 ## Scripts disponibles
 
-| Script                              | Qué hace                                                                        |
-| ----------------------------------- | ------------------------------------------------------------------------------- |
-| `pnpm dev`                          | Servidor de desarrollo (Vite).                                                  |
-| `pnpm build`                        | Build de producción (`tsc -b && vite build`) a `dist/`.                         |
-| `pnpm preview`                      | Sirve el build de `dist/` localmente.                                           |
-| `pnpm lint`                         | ESLint sobre todo el proyecto.                                                  |
-| `pnpm typecheck`                    | `tsc -b --noEmit`.                                                              |
-| `pnpm test`                         | Vitest (unitarios y de componentes).                                            |
-| `pnpm test:e2e`                     | Playwright (requiere `pnpm exec playwright install` una vez).                   |
-| `pnpm format` / `pnpm format:check` | Prettier, escribir o solo verificar.                                            |
-| `pnpm db:push`                      | Aplica migraciones a Supabase. Se habilita en la Fase 3 (proyecto vinculado).   |
-| `pnpm db:types`                     | Genera `src/lib/database.types.ts`. Se habilita en la Fase 3.                   |
-| `pnpm db:test`                      | Corre los tests pgTAP. Se habilita en la Fase 4 (primeras migraciones y tests). |
+| Script                              | Qué hace                                                                                          |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `pnpm dev`                          | Servidor de desarrollo (Vite).                                                                    |
+| `pnpm build`                        | Build de producción (`tsc -b && vite build`) a `dist/`.                                           |
+| `pnpm preview`                      | Sirve el build de `dist/` localmente.                                                             |
+| `pnpm lint`                         | ESLint sobre todo el proyecto.                                                                    |
+| `pnpm typecheck`                    | `tsc -b --noEmit`.                                                                                |
+| `pnpm test`                         | Vitest (unitarios y de componentes).                                                              |
+| `pnpm test:e2e`                     | Playwright (requiere `pnpm exec playwright install` una vez).                                     |
+| `pnpm format` / `pnpm format:check` | Prettier, escribir o solo verificar.                                                              |
+| `pnpm db:push`                      | Aplica migraciones a `App_dev` (una vez vinculado, ver arriba). Sin migraciones todavía (Fase 4). |
+| `pnpm db:types`                     | Genera `src/lib/database.types.ts` desde `App_dev` (una vez vinculado).                           |
+| `pnpm db:test`                      | Corre los tests pgTAP. Se habilita en la Fase 4 (primeras migraciones y tests).                   |
 
 ## Flujo de ramas
 

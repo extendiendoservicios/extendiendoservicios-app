@@ -1,0 +1,46 @@
+name: keepalive
+
+# INFRA-019 (03_Plan_Maestro_Tecnico.md sección 3.7): consulta trivial semanal a App_dev para
+# evitar que el plan sin cargo de Supabase pause el proyecto por inactividad (ADR-014).
+#
+# Importante sobre el secreto: los runners hospedados de GitHub Actions no tienen salida IPv6
+# (https://docs.github.com/actions/using-github-hosted-runners/about-github-hosted-runners),
+# y la conexión directa de Supabase ("Direct connection", puerto 5432) es IPv6 en proyectos
+# nuevos. Por eso SUPABASE_DB_URL_DEV (y, cuando exista, SUPABASE_DB_URL_PROD) tienen que ser la
+# cadena del "Session pooler" (Supavisor, puerto 5432 vía IPv4, modo session) que se ve en el
+# panel de Supabase → Project Settings → Database → Connection string → "Session pooler", nunca
+# la de "Direct connection". Detalle y comandos para cargar el secreto en docs/environments.md.
+#
+# Si la consulta falla, el job falla: eso es lo que dispara el correo de alerta de GitHub Actions
+# a quien tenga notificaciones activadas (no hay reintento ni "continue-on-error" a propósito).
+
+on:
+  schedule:
+    # Todos los lunes 12:00 UTC (09:00 Argentina, UTC-3). GitHub Actions puede demorar la
+    # ejecución de cron unos minutos en horas de mucha carga; no es crítico para este job.
+    - cron: '0 12 * * 1'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  ping-app-dev:
+    name: Ping a App_dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Instalar cliente de PostgreSQL
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Consulta trivial (select 1) a App_dev
+        env:
+          SUPABASE_DB_URL_DEV: ${{ secrets.SUPABASE_DB_URL_DEV }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL_DEV" ]; then
+            echo "Falta el secreto SUPABASE_DB_URL_DEV (cadena del Session pooler de App_dev). Ver docs/environments.md." >&2
+            exit 1
+          fi
+          psql "$SUPABASE_DB_URL_DEV" -v ON_ERROR_STOP=1 -c "select 1;"
