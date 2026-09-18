@@ -1,0 +1,50 @@
+/*
+ * Base global mínima de esta fase (INFRA-002). El design system completo
+ * (tokens, Tailwind 4, componentes) llega en F5 y va a reemplazar buena
+ * parte de este archivo.
+ */
+
+:root {
+  --color-primary: #569ea4;
+  --color-bg: #0e1017;
+  --color-text: #eef2f5;
+  --color-muted: #8d97a8;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family:
+    'Inter',
+    'Segoe UI',
+    -apple-system,
+    system-ui,
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Respeta la preferencia de movimiento reducido en toda la app. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

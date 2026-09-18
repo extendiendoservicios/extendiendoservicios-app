@@ -1,0 +1,11 @@
+# Solo `supabase` puede correr scripts de instalación (INFRA-007): pnpm 12
+# bloquea por defecto los scripts de las dependencias y lee este permiso acá
+# (ya no en el campo "pnpm" de package.json). En la práctica supabase@2.117.0
+# no tiene scripts de instalación -- baja el binario por plataforma como
+# optionalDependency -- pero se deja declarado por si una versión futura los
+# necesita.
+onlyBuiltDependencies:
+  - supabase
+
+minimumReleaseAgeExclude:
+  - prettier@3.9.8
