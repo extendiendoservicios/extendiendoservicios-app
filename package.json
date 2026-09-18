@@ -14,9 +14,21 @@
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky",
     "db:push": "supabase db push",
     "db:types": "supabase gen types --linked > src/lib/database.types.ts",
     "db:test": "node -e \"console.error('db:test se define en DB-022 (F4): todavia no hay proyecto vinculado ni tests pgTAP que ejecutar.'); process.exit(1)\""
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,css,yml,yaml,html}": [
+      "prettier --write"
+    ]
   },
   "dependencies": {
     "react": "19.3.0",
@@ -37,8 +49,10 @@
     "eslint-plugin-jsx-a11y": "6.10.2",
     "eslint-plugin-react-hooks": "7.1.1",
     "globals": "17.12.0",
+    "husky": "9.1.7",
     "jsdom": "30.1.0",
-    "prettier": "3.9.8",
+    "lint-staged": "17.5.1",
+    "prettier": "3.9.6",
     "supabase": "2.117.0",
     "typescript": "6.0.3",
     "typescript-eslint": "8.70.0",
