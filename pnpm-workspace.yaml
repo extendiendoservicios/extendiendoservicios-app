@@ -1,8 +1,19 @@
-# Solo `supabase` puede correr scripts de instalación (INFRA-007): pnpm 12
-# bloquea por defecto los scripts de las dependencias y lee este permiso acá
-# (ya no en el campo "pnpm" de package.json). En la práctica supabase@2.117.0
-# no tiene scripts de instalación -- baja el binario por plataforma como
-# optionalDependency -- pero se deja declarado por si una versión futura los
-# necesita.
-onlyBuiltDependencies:
-  - supabase
+# pnpm bloquea por defecto los scripts de instalación de las dependencias; hay que habilitarlos
+# paquete por paquete acá (`pnpm approve-builds`). En pnpm 11+ este es el único mecanismo:
+# reemplaza a `onlyBuiltDependencies` (usado en INFRA-007 para `supabase`, que en la práctica no
+# tiene scripts de instalación -- baja el binario por plataforma como optionalDependency -- así
+# que nunca llegó a necesitar esta habilitación).
+#
+# wrangler (INFRA, dependencia de desarrollo, sin instalación global: se usa como
+# `pnpm exec wrangler`) trae tres dependencias con scripts de instalación bloqueados por defecto;
+# se habilitan solo las dos que hacen falta para que el binario funcione:
+#   - esbuild: bundlea el Worker antes de subirlo o previsualizarlo; sin su script de instalación
+#     (que resuelve el binario nativo de la plataforma) `wrangler dev`/`deploy` fallan.
+#   - workerd: motor de ejecución de Cloudflare Workers que usa `wrangler dev`/`pages dev` en
+#     local; su script de instalación baja el binario para esta plataforma.
+#   - sharp (transformación de imágenes de Cloudflare Images/Pages) queda deshabilitado a
+#     propósito: nada de este proyecto la usa todavía.
+allowBuilds:
+  esbuild: true
+  sharp: false
+  workerd: true

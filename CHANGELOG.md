@@ -5,6 +5,31 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-020).
 
+## [Sin publicar]
+
+Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023).
+
+### Agregado
+
+- `App_dev` vinculado (`supabase link --project-ref anesttvrnpsaaaxaquce`);
+  `supabase/config.toml` con `project_id` significativo y `major_version = 17`
+  verificado contra los proyectos remotos (INFRA-010).
+- Configuración de Auth versionada en `supabase/config.toml`: sin registro
+  público, contraseña mínima de 8 caracteres, JWT de 1 hora, sesión
+  persistente sin expiración por tiempo ni por inactividad, `site_url` y
+  URLs de redirección de `App_dev`, y un bloque `[remotes.produccion.auth]`
+  con los valores de `App` listo para cuando Mike decida aplicarlo
+  (INFRA-011). Aplicado hoy solo en `App_dev` con `supabase config push`.
+- `.github/workflows/keepalive.yml`: consulta semanal (`select 1`, más
+  `workflow_dispatch`) a `App_dev` por el Session pooler, para evitar la
+  pausa por inactividad del plan sin cargo (INFRA-019).
+- `docs/environments.md`: entornos, cuentas con sus refs de proyecto, tabla
+  de variables y secretos, cómo vincula cada desarrollador y los comandos
+  preparados para que Mike cargue los secretos de GitHub (INFRA-023).
+- `wrangler` como dependencia de desarrollo (`pnpm exec wrangler`), con los
+  scripts de instalación de `esbuild` y `workerd` habilitados en
+  `pnpm-workspace.yaml` (los únicos que necesita para funcionar).
+
 ## [0.1.0] - 2026-09-18
 
 Repositorio base: scaffold del proyecto, herramientas de calidad y documentación
