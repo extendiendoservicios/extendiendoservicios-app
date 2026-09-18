@@ -4,8 +4,11 @@ Fuente: `07_Design_System.md` del Plan Maestro. Este documento explica cómo
 está implementado en el repositorio, no repite los valores de diseño (para
 eso está `07`).
 
-Estado: F5 · DS-001, DS-002, DS-017. Todavía sin componentes propios, sin
-shells y sin `/dev/design` (llegan en el resto de F5 y en P05.2/P05.3).
+Estado: F5 · DS-001 a DS-007, DS-017. Acciones, entradas, selectores,
+tarjetas y `StatusBadge` con un adelanto parcial de `/dev/design`
+(DS-003 a DS-007, P05.2). Todavía sin `DataTable`/`RowCard`, `PersonCell`,
+`Alert`/`Toast`/`Dialog`, `Timeline`/`Tabs`/etc., `TaskList` (P05.3), sin
+shells ni router con `RequireRole` (P05.4), sin íconos PWA (P05.5).
 
 ## Tokens (`src/styles/tokens.css`)
 
@@ -187,3 +190,170 @@ dispositivo (o la de la máquina donde corre un test).
 timestamp. Los tests (`format.test.ts`) fijan la zona de la máquina a una
 bien distinta de Argentina (`vi.stubEnv('TZ', ...)`) para probar que el
 resultado no cambia.
+
+## Componentes de DS-003 a DS-007 (P05.2)
+
+Estado: F5 · acciones, entradas, selectores, tarjetas y `StatusBadge`. Se
+suman a los tokens y a los 22 componentes shadcn de P05.1. Todos están en
+`/dev/design` (ver más abajo).
+
+De este paquete, algunos son **componentes shadcn restyleados en el lugar**
+(`src/components/ui/*.tsx`: `button`, `input`, `textarea`, `select`,
+`switch`, `checkbox`, `radio-group`, `card`, `badge`) y otros son
+**propios**, en `src/components/*.tsx` porque no tienen equivalente en el
+catálogo de shadcn. La API de cada uno (para que `front-admin` y
+`front-movil` los usen):
+
+### Acciones (DS-003)
+
+- **`Button`** (`ui/button.tsx`): `variant` — `primary | ghost | dark |
+destructive | link` (default `primary`). `size` — `sm | md | mobile`
+  (default `md`; `icon`/`icon-sm` existen pero son uso interno de
+  `calendar`/`dialog`/`sheet`, no forman parte de la API pública). `icon`
+  (componente de ícono, se muestra a la izquierda). `loading` (booleano:
+  deshabilita el botón, cambia el ícono por un spinner y agrega un texto
+  `sr-only` "Cargando" + `aria-busy`). Resto de props de `<button>`.
+- **`IconButton`** (`src/components/IconButton.tsx`): sobre `Button`, fijo
+  en tamaño `icon` (34×34). Requiere `icon` y `aria-label` (no lleva texto
+  visible). `variant` default `ghost`.
+- **`Fab`** (`src/components/Fab.tsx`): círculo de 46 px, `icon` (default
+  `Fingerprint` de lucide-react — no está en el mapeo de íconos de `07`
+  sección 1.4, se sumó porque representa "fichar" y ya viene con la
+  librería), `aria-label` (default `"Fichar"`). Ya incluye el desplazamiento
+  de `-14px` hacia arriba (`margin-top`): el shell que lo ubica en la
+  tabbar (P05.4) no tiene que recalcularlo.
+
+### Entrada (DS-004)
+
+- **`Input`** / **`Textarea`** (`ui/input.tsx`, `ui/textarea.tsx`): `icon`
+  (solo `Input`, a la izquierda), `error` (string: pinta el borde de
+  `--danger` y muestra el mensaje en 11 px debajo, con `aria-invalid` y
+  `aria-describedby`), `mobile` (booleano: variante de 12×13 con 14 px de
+  fuente). Resto de props nativas.
+- **`Select`** (`ui/select.tsx`): sin cambios de API sobre shadcn/Radix,
+  solo restyleado (borde `--border-strong`, radio 8, 13 px).
+- **`Combobox`** (`src/components/Combobox.tsx`): `options`
+  (`{ value, label }[]`), `value`, `onValueChange`, `placeholder`,
+  `searchPlaceholder`, `emptyText`, `aria-label`. Sobre `command` +
+  `popover`.
+- **`Switch`** (`ui/switch.tsx`): sin props nuevas, restyleado a 38×22.
+- **`ToggleRow`** (`src/components/ToggleRow.tsx`): `title`, `description`
+  y el resto de las props de `Switch` (incluye `checked`/`defaultChecked`/
+  `onCheckedChange`).
+- **`Checkbox`** (`ui/checkbox.tsx`) y **`RadioGroup`/`RadioGroupItem`**
+  (`ui/radio-group.tsx`): sin props nuevas, restyleados (17×17, radio del
+  checkbox en un token nuevo `--r-xs` de 5 px — ver "Decisiones" abajo).
+
+### Selección y fecha/hora (DS-005)
+
+- **`SegmentedControl`** (`src/components/SegmentedControl.tsx`): `options`
+  (`{ value, label, critical? }[]`), `value`, `onValueChange`, `mobile`
+  (booleano, ancho completo), `aria-label`. Patrón ARIA `radiogroup`/`radio`
+  con foco itinerante (flechas, Home, End). `critical` pinta la etiqueta en
+  `--danger` cuando esa opción está seleccionada (p. ej. "Ausencia").
+- **`OptionCard`** (`src/components/OptionCard.tsx`): `value`, `title`,
+  `description`, y el resto de props de `RadioGroupItem`. Se usa dentro de
+  un `RadioGroup`.
+- **`Stepper`** (`src/components/Stepper.tsx`): `value`, `onValueChange`,
+  `min`, `max`, `step` (default 1), `aria-label` (del grupo),
+  `decrementLabel`/`incrementLabel` (de cada botón, default "Restar"/
+  "Sumar"), `formatValue`. Deshabilita cada botón en su límite.
+- **`WeekdayPicker`** (`src/components/WeekdayPicker.tsx`): `value:
+number[]` y `onValueChange`, con `0` = domingo (igual que
+  `services.weekdays`, `04_Modelo_de_Datos.md`). Muestra L M M J V S D (la
+  semana empieza en lunes) pero el valor no asume ningún orden.
+- **`TimeInput`** (`src/components/TimeInput.tsx`): `input type="time"`
+  nativo en las dos variantes (`mobile`, `error`) — ver "Decisiones".
+- **`DatePicker`** / **`MonthPicker`** (`src/components/DatePicker.tsx`,
+  `MonthPicker.tsx`): `value`, `onValueChange`, `placeholder`,
+  `aria-label`. Español, semana desde el lunes. `MonthPicker` arma su
+  propia grilla de 12 meses (`react-day-picker` trabaja por día).
+
+### Presentación (DS-006 y DS-007)
+
+- **`Card`** (`ui/card.tsx`): `variant` — `default | flush | hero` (default
+  `default`). `flush` le saca el padding a `CardContent` (para una tabla a
+  ancho completo); `hero` es la variante móvil con borde y sombra teal.
+  Subcomponentes: `CardHeader`, `CardTitle`, `CardDescription`,
+  `CardAction`, `CardContent`, `CardFooter`.
+- **`KpiCard`** (`src/components/KpiCard.tsx`): `label`, `value`, `detail`,
+  `icon`, `variant` — `default | accent | ok | warn | crit`.
+- **`EmptyState`** (`src/components/EmptyState.tsx`): `icon`, `title`,
+  `description`, `action`.
+- **`ProgressBar`** (`src/components/ProgressBar.tsx`): `value` (0-100),
+  `variant` — `default | ok | warn`, `label` (accesible, `role="progressbar"`).
+- **`StatusBadge`** (`src/components/status/`): `domain` +`status` (unión
+  discriminada — TypeScript exige el `status` correcto para cada
+  `domain`), y `minutes` opcional para `domain: 'assignment'` con
+  `delay_notified`/`early_leave` (agrega el sufijo "· n min"). Dominios:
+  `shift`, `assignment`, `task`, `supervision`, `employee`, `client`,
+  `site`, `user`. El mapa completo (la única fuente de verdad de estados de
+  toda la app, `07` sección 3) vive en `statusMap.ts`; también exporta
+  `getStatusMeta` y el helper de filas de tabla `getTableRowVariant` +
+  `TABLE_ROW_CLASS_NAME` (`crit`/`warn`, `07` sección 3 in fine).
+
+### `/dev/design` (adelanto parcial de DS-016)
+
+`src/pages/dev/Design.tsx` muestra todos los componentes de este paquete con
+sus variantes y estados (normal, con error, deshabilitado, cargando), a
+ancho completo y — para las variantes explícitamente móviles del mockup —
+dentro de un contenedor de 390 px. Se registra en `src/app/router.tsx` bajo
+`if (import.meta.env.DEV)`: Vite resuelve esa constante en build time y
+elimina la rama completa (y el `import()` que arma el chunk de la página)
+del bundle de producción — verificado en este encargo revisando `dist/`. La
+portada de `/` no cambia. P05.5 va a completar esta página con el resto de
+los componentes (`DataTable`, `PersonCell`, `Alert`/`Toast`/`Dialog`,
+`Timeline`/`Tabs`/etc., `StarRating`, `MapPicker`/`MapView`).
+
+### Decisiones de esta entrega (DS-003 a DS-007)
+
+- **Contradicción de radios en `07`**: la sección 2.2 dice "radio 10" para
+  la variante móvil de `Input`, pero la sección 4 (normalización) lista
+  explícitamente los inputs entre los elementos cuyos radios sueltos
+  (7/9/10) se llevan a 8/12/14. Se resolvió a favor de la normalización:
+  8 px en las dos variantes.
+- **Tamaños de fuente en medios píxeles sin resolver en `07`**: donde la
+  sección 2 de `07` no fija un entero final (a diferencia de `Button`, que
+  sí lo hace explícitamente con "12.5 px" para `md`), se aplicó la regla de
+  la sección 4 ("12.5 → 13 en formularios"): `Input`/`Select`/`ToggleRow`
+  en 13 px de escritorio, `Input` móvil en 14 px (extendiendo la misma
+  lógica a su 13.5 px, que la sección 4 no cubre con un caso explícito).
+- **`destructive` en `Button`**: no existe un `.btn-destructive` en el
+  mockup; se construyó con el mismo patrón sólido + texto blanco que
+  `primary`/`dark`, sobre `--danger`/`--danger-800` (hover).
+- **Bug de `data-checked`/`data-open` heredado de DS-002**: los componentes
+  shadcn escritos en P05.1 (`checkbox`, `switch`, `radio-group`, y también
+  `dialog`/`sheet`/`popover` para sus animaciones) usaban clases Tailwind
+  `data-checked:`/`data-open:`/`data-closed:`, asumiendo que Radix
+  agregaba esos atributos booleanos. La versión de `radix-ui` instalada
+  (1.6.7) en realidad usa `data-state="checked"/"open"/"closed"`: esas
+  clases nunca coincidían (no hay ningún `@custom-variant` en el repo que
+  las traduzca). Se corrigió a `data-[state=checked]:` en `checkbox.tsx`,
+  `switch.tsx`, `radio-group.tsx` y `OptionCard.tsx` (que ahora sí muestran
+  el estado marcado/seleccionado). **No se tocó** `dialog.tsx`/`sheet.tsx`/
+  `popover.tsx` más que lo mínimo para que compilaran (están fuera de
+  alcance de este paquete): sus animaciones de apertura/cierre siguen sin
+  aplicarse — abren y cierran igual (los controla React, no la clase CSS),
+  solo sin transición. Vale la pena una tarea chica en P05.3 para
+  corregirlas también.
+- **Nuevos tokens en `tokens.css`**: `--r-xs` (5 px, radio del `Checkbox`,
+  fuera de la escala de tres radios de `07` sección 1.3 porque esa escala
+  es para botones/inputs/sidebar, no para controles compactos);
+  `--primary-200` (`#CFE2E4`, reutilizado en `Card` "hero", `KpiCard`
+  "accent" y el futuro `Alert` "info"); `--sh-hero` (sombra teal de `Card`
+  "hero"); `--ring-soft` (anillo de selección de `OptionCard`). Todos evitan
+  repetir un color/sombra suelto en más de un componente (regla de
+  `tokens.css`).
+- **`TimeInput` nativo en las dos variantes**: `07` permite "dos campos o
+  `input type='time'` nativo en móvil"; se usó el nativo en las dos para no
+  mantener dos implementaciones del mismo campo.
+- **`Usuario` en `StatusBadge`**: `07` sección 3 escribe sus estados en
+  español (`activo`/`desactivado`) a diferencia de todos los demás
+  dominios, que son los enums reales de `04_Modelo_de_Datos.md`. Se
+  mantuvieron tal cual literalmente (no hay un enum `user_status` en el
+  modelo: es un concepto de Auth).
+
+## Cómo ver los componentes
+
+`pnpm dev` y abrir `http://localhost:5173/dev/design`. La página no existe
+en el build de producción.

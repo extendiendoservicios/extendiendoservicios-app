@@ -7,9 +7,51 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
-Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022) y base del design system (F5 · DS-001, DS-002, DS-017).
+Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), base del design system (F5 · DS-001, DS-002, DS-017) y acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007).
 
 ### Agregado
+
+- Acciones (DS-003): `Button` restyleado (`variant`: `primary`/`ghost`/
+  `dark`/`destructive`/`link`; `size`: `sm`/`md`/`mobile`; ícono a la
+  izquierda; estado `loading` con spinner, deshabilita y lo informa a
+  lectores de pantalla), `IconButton` (34×34) y `Fab` ("Fichar", 46 px,
+  elevado -14 px sobre la tabbar).
+- Entrada (DS-004): `Input`/`Textarea` restyleados (ícono, `error`,
+  variante `mobile`), `Select` restyleado, `Combobox` con búsqueda (sobre
+  `command` + `popover`), `Switch`/`Checkbox`/`RadioGroup` restyleados y
+  `ToggleRow` (fila de toggle con título y ayuda).
+- Selección y fecha/hora (DS-005): `SegmentedControl` (con variante móvil y
+  opción crítica en rojo, patrón ARIA `radiogroup`/`radio` con teclado),
+  `OptionCard`, `Stepper`, `WeekdayPicker` (`0` = domingo), `TimeInput` y
+  `DatePicker`/`MonthPicker` en español con la semana desde el lunes.
+- Presentación (DS-006): `Card` restyleado (`CardHeader`, variantes
+  `flush` y `hero`), `KpiCard` (`accent`/`ok`/`warn`/`crit`), `EmptyState`
+  y `ProgressBar` (`ok`/`warn`).
+- Estados (DS-007): `StatusBadge` y el mapa único de estados en
+  `src/components/status/` (`07` sección 3 completa, con los derivados
+  `uncovered`/`upcoming`/`no_record`/`early_leave` y el sufijo "· n min"),
+  más el helper de filas de tabla `crit`/`warn`.
+- `/dev/design` (adelanto parcial de DS-016): vidriera de los componentes
+  de este paquete con sus variantes y estados, solo en desarrollo
+  (`import.meta.env.DEV`, no queda en el build de producción).
+- Tests de Testing Library para `Button` (loading), `StatusBadge` (mapeo
+  completo y sufijo de minutos), `SegmentedControl` (teclado y ARIA),
+  `Stepper` (límites) y `WeekdayPicker` (valor y orden).
+- `afterEach(cleanup)` en `src/test/setup.ts`: sin `test.globals` en
+  Vitest, `@testing-library/react` no encontraba un `afterEach` global del
+  que colgar su limpieza automática entre tests, y el DOM de cada
+  `render()` se acumulaba dentro del mismo archivo. No afectaba a los
+  tests existentes (uno por archivo) pero rompía cualquier suite con más
+  de un `it()`, como las de este paquete.
+- Corrección de un bug heredado de DS-002: los componentes shadcn
+  (`checkbox`, `switch`, `radio-group`) usaban clases `data-checked:`
+  asumiendo un atributo booleano que Radix nunca agrega (la versión
+  instalada usa `data-state="checked"`), así que el estado marcado nunca
+  se veía. Se corrigió a `data-[state=checked]:` en los tres, más
+  `OptionCard`.
+- Tokens nuevos en `tokens.css`: `--r-xs` (radio de `Checkbox`),
+  `--primary-200`, `--sh-hero` y `--ring-soft` (ver `docs/design-system.md`
+  para el detalle de cada uno).
 
 - `.github/workflows/ci.yml`: un solo job (`CI`, nombre estable para la
   futura protección de ramas) en cada Pull Request a `develop` o `main` con
