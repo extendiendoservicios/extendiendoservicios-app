@@ -7,9 +7,60 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
-Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023) y base del design system (F5 · DS-001, DS-002, DS-017).
+Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022) y base del design system (F5 · DS-001, DS-002, DS-017).
 
 ### Agregado
+
+- `.github/workflows/ci.yml`: un solo job (`CI`, nombre estable para la
+  futura protección de ramas) en cada Pull Request a `develop` o `main` con
+  `pnpm install --frozen-lockfile`, lint, typecheck, `format:check`, test,
+  build y Playwright (solo `chromium`, contra el build local; navegadores
+  instalados en el runner en cada corrida). Los pasos de `db:types --check`
+  y pgTAP quedan escritos pero condicionados a que exista al menos una
+  migración o un test de base (`supabase/migrations/`, `supabase/tests/`):
+  se saltean con un mensaje explícito mientras F4 no los agregue (INFRA-015).
+- `.github/workflows/deploy-staging.yml` (push a `develop`) y
+  `.github/workflows/deploy-production.yml` (push a `main`, con el
+  environment `production` y revisor Mike): `db push` y `functions deploy`
+  de `admin-users` condicionados igual que en CI; build con las variables
+  del entorno correspondiente; despliegue a Cloudflare Pages con
+  `pnpm exec wrangler pages deploy`; smoke test de Playwright contra la URL
+  publicada. Producción exige además un volcado previo de `App` a R2
+  (ADR-015) que falla a propósito si `scripts/backup-to-r2.sh` no existe
+  todavía (pendiente de P03.4), y no crea la etiqueta de versión (la crea
+  el orquestador). Ninguno de los dos hace nada remoto todavía: ambos
+  workflows completos quedan detrás de las variables de repositorio
+  `STAGING_DEPLOY_ENABLED`/`PRODUCTION_DEPLOY_ENABLED` (INFRA-016,
+  INFRA-017).
+- `@sentry/react` inicializado en `src/lib/sentry.ts`, llamado desde
+  `main.tsx`: no hace nada sin `VITE_SENTRY_DSN` (test en
+  `src/lib/sentry.test.ts`); con DSN, `environment` = `VITE_APP_ENV`,
+  `release` = la versión de `package.json`, `sendDefaultPii: false`, sin
+  Session Replay ni tracing. `vite.config.ts` agrega `@sentry/vite-plugin`
+  solo si hay `SENTRY_AUTH_TOKEN`: sube los source maps a la región UE de
+  Sentry (`url: 'https://de.sentry.io/'`, organización
+  `extendiendo-servicios`) y los borra de `dist/` en el mismo paso del
+  build (`sourcemaps.filesToDeleteAfterUpload`, verificado incluso cuando
+  la subida falla); una falla al subir no bloquea el build
+  (`errorHandler`). Sin el token, no se generan `.map` en absoluto
+  (INFRA-021).
+- `public/robots.txt` con `Disallow: /` en los tres entornos: la
+  aplicación es una herramienta interna con login, no un sitio público
+  (recomendación justificada en el reporte del encargo, no una decisión
+  cerrada). `deploy-staging.yml` además agrega la cabecera
+  `X-Robots-Tag: noindex` generando `dist/_headers` en el propio build
+  (INFRA-022).
+- `packageManager` fijado en `package.json` (`pnpm@12.4.2`) para que
+  `corepack enable` resuelva la misma versión de pnpm en cualquier
+  máquina y en los tres workflows nuevos, sin repetirla a mano.
+- `docs/deployment.md` (primera versión, DOC-003): los cinco workflows,
+  qué dispara cada uno, los interruptores de despliegue, la aprobación
+  manual de producción, el rollback (`03` sección 16) y los secretos que
+  usa cada workflow.
+- `docs/environments.md`: nota sobre `VITE_SUPABASE_URL`,
+  `VITE_SUPABASE_ANON_KEY` y `VITE_SENTRY_DSN` como secretos de GitHub
+  (no solo variables de Pages), porque el build lo hace GitHub Actions y
+  no el build integrado de Cloudflare Pages.
 
 - `App_dev` vinculado (`supabase link --project-ref anesttvrnpsaaaxaquce`);
   `supabase/config.toml` con `project_id` significativo y `major_version = 17`

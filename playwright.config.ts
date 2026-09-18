@@ -1,8 +1,14 @@
 import { defineConfig, devices } from '@playwright/test'
 
 // Proyectos chromium, webkit y mobile (viewport 390 px) sobre `pnpm preview`.
-// `test:e2e` queda definido pero no se ejecuta en este encargo (INFRA-005):
-// los navegadores de Playwright no están descargados todavía.
+//
+// INFRA-015/INFRA-016/INFRA-017: `ci.yml` corre esta suite con `--project=chromium` contra el
+// build local (sin PLAYWRIGHT_SMOKE_URL, usa `pnpm preview` de acá abajo). `deploy-staging.yml`
+// y `deploy-production.yml` la reutilizan como smoke test contra la URL ya publicada, pasando
+// `PLAYWRIGHT_SMOKE_URL`: en ese caso no hay que levantar ni esperar un `pnpm preview` local
+// (por eso `webServer` se omite cuando la variable está presente).
+const smokeUrl = process.env.PLAYWRIGHT_SMOKE_URL
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
@@ -10,14 +16,18 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:4173',
+    baseURL: smokeUrl ?? 'http://localhost:4173',
     trace: 'on-first-retry',
   },
-  webServer: {
-    command: 'pnpm preview',
-    url: 'http://localhost:4173',
-    reuseExistingServer: !process.env.CI,
-  },
+  ...(smokeUrl
+    ? {}
+    : {
+        webServer: {
+          command: 'pnpm preview',
+          url: 'http://localhost:4173',
+          reuseExistingServer: !process.env.CI,
+        },
+      }),
   projects: [
     {
       name: 'chromium',

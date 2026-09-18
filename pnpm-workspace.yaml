@@ -13,7 +13,12 @@
 #     local; su script de instalación baja el binario para esta plataforma.
 #   - sharp (transformación de imágenes de Cloudflare Images/Pages) queda deshabilitado a
 #     propósito: nada de este proyecto la usa todavía.
+#
+# @sentry/vite-plugin (INFRA-021, dependencia de desarrollo: sube los source maps del build a
+# Sentry en CI) trae @sentry/cli como dependencia transitiva; su script de instalación baja el
+# binario nativo de sentry-cli para esta plataforma -- sin él, la subida de source maps falla.
 allowBuilds:
+  '@sentry/cli': true
   esbuild: true
   sharp: false
   workerd: true
