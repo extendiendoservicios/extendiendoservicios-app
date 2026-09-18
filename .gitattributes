@@ -1,0 +1,17 @@
+# Normaliza los finales de línea a LF en el repo, sin depender de la
+# configuración de git de cada máquina (Git para Windows trae
+# core.autocrlf=true a nivel sistema, que deja el working tree en CRLF
+# después de cualquier checkout y rompe `pnpm format:check`, que exige LF).
+* text=auto eol=lf
+
+# Binarios: nunca se les toca el final de línea.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+*.xlsx binary

@@ -6,6 +6,3 @@
 # necesita.
 onlyBuiltDependencies:
   - supabase
-
-minimumReleaseAgeExclude:
-  - prettier@3.9.8
