@@ -21,7 +21,7 @@ INFRA-022, F3; ampliado en P03.4: INFRA-012, INFRA-018, INFRA-020,
 | `keepalive.yml`         | Cron semanal (lunes 12:00 UTC)          | Consulta trivial a `App_dev` para evitar la pausa por inactividad (ADR-014)           | Activo desde P03.2 (INFRA-019)                                                   |
 
 Ninguno de los workflows que publican o corren contra recursos remotos hizo
-nada remoto todavía (ver sección 11): "escrito y validado" significa
+nada remoto todavía (ver sección 12): "escrito y validado" significa
 lint/typecheck/build/YAML verificados localmente, no ejecutado en GitHub.
 
 ## 2. `ci.yml` (INFRA-015)
@@ -29,7 +29,7 @@ lint/typecheck/build/YAML verificados localmente, no ejecutado en GitHub.
 Un solo job, nombrado **`CI`** (así aparece en la pestaña Checks de un Pull
 Request) para que el orquestador lo marque más adelante como verificación
 obligatoria en la protección de ramas de `develop` y `main` (P03.6, fuera de
-este encargo — ver sección 11).
+este encargo — ver sección 12).
 
 Pasos, en orden: instalar dependencias (`pnpm install --frozen-lockfile`),
 `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm test` (Vitest),
@@ -75,7 +75,7 @@ minutos de runner ni intentar nada.
 El proyecto de Cloudflare Pages `extendiendoservicios-app` y el bucket R2
 `es-backups` **ya existen** (INFRA-012, INFRA-020, P03.4 — sección 7), así
 que lo único que falta para poder activar los tres interruptores es que Mike
-cargue los secretos (P03.5, sección 10) y, para producción, que exista el
+cargue los secretos (P03.5, sección 11) y, para producción, que exista el
 `environment` con su revisor (sección 4).
 
 **Acción para Mike, cuando corresponda activarlos** (P03.6, después de P03.5):
@@ -105,7 +105,7 @@ antes de crear el environment con su regla de revisor**.
 `backup.yml` corre diariamente por cron y **no** usa `environment:
 production` (correr bajo ese environment exigiría que Mike apruebe a mano
 cada corrida diaria del respaldo, lo que rompería la automatización) — sus
-secretos son de repositorio, no de `environment` (sección 10).
+secretos son de repositorio, no de `environment` (sección 11).
 
 **Acción para Mike:** Settings → Environments → New environment →
 `production` → Required reviewers → agregar a Mike → Save protection
@@ -230,7 +230,7 @@ Creados con `wrangler` en la cuenta de Cloudflare `extserviciosapp@gmail.com`
 
 - **Pages** `extendiendoservicios-app` (`wrangler pages project
 create extendiendoservicios-app --production-branch=main`): sin proyecto
-  de Git conectado a propósito (el build lo hace GitHub Actions, sección 9
+  de Git conectado a propósito (el build lo hace GitHub Actions, sección 11
   de este documento explica por qué), sin dominios personalizados todavía
   (INFRA-013, `dev.`/`app.` vía Cloudflare DNS, pendiente) y sin ningún
   despliegue hecho — `wrangler pages deploy` recién publica algo cuando
@@ -310,7 +310,7 @@ diferencia de esto, solo apunta a `App_dev` — sección 6.3).
      publicar en Pages. Es idempotente: si ya no hay ningún `.map`, no hace
      nada.
 - El host de ingesta EU de Sentry ya está en el `connect-src` de
-  `public/_headers` (`https://*.ingest.de.sentry.io`, sección 10.2): sin
+  `public/_headers` (`https://*.ingest.de.sentry.io`, sección 10.3): sin
   esto el navegador bloquea las llamadas del SDK y los errores no llegan a
   Sentry en ningún entorno. El comodín cubre cualquier `o<org>` sin conocer
   todavía el número exacto de organización (Sentry no está creado aún,

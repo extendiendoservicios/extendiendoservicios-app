@@ -104,7 +104,7 @@ jobs:
         # matcheen el mismo path (documentado, "an incoming request which matches multiple
         # rules' URL patterns will inherit all rules' headers"), pero esa combinación entre
         # bloques no se pudo verificar en local con `wrangler pages dev` (ver docs/deployment.md
-        # sección 8) -- insertar en el mismo bloque no depende de eso y se verificó igual.
+        # sección 10.4) -- insertar en el mismo bloque no depende de eso y se verificó igual.
         run: |
           sed -i '/^\/\*$/a\  X-Robots-Tag: noindex' dist/_headers
 
