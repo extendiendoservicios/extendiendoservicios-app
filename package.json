@@ -15,7 +15,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "db:push": "supabase db push",
-    "db:types": "supabase gen types typescript --linked > src/lib/database.types.ts",
+    "db:types": "supabase gen types --linked > src/lib/database.types.ts",
     "db:test": "node -e \"console.error('db:test se define en DB-022 (F4): todavia no hay proyecto vinculado ni tests pgTAP que ejecutar.'); process.exit(1)\""
   },
   "dependencies": {
