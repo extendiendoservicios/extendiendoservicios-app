@@ -6,11 +6,12 @@ cambio que documenta (`03_Plan_Maestro_Tecnico.md` sección 17).
 
 ## Qué existe hoy
 
-| Archivo                              | Contenido                                                                                                                                |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| [`architecture.md`](architecture.md) | Arquitectura en una frase, diagrama, principios, fronteras con los módulos y stack con versiones (ADR-021).                              |
-| [`environments.md`](environments.md) | Entornos, cuentas con sus refs de proyecto, variables y secretos, cómo se vincula cada uno (INFRA-010, INFRA-011, INFRA-019, INFRA-023). |
-| [`adr/`](adr/README.md)              | Copia de los ADR del Plan Maestro (`ADR-001` a `ADR-021`). Los ADR nuevos que surjan durante la implementación se agregan acá.           |
+| Archivo                                | Contenido                                                                                                                                |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| [`architecture.md`](architecture.md)   | Arquitectura en una frase, diagrama, principios, fronteras con los módulos y stack con versiones (ADR-021).                              |
+| [`environments.md`](environments.md)   | Entornos, cuentas con sus refs de proyecto, variables y secretos, cómo se vincula cada uno (INFRA-010, INFRA-011, INFRA-019, INFRA-023). |
+| [`design-system.md`](design-system.md) | Tokens, Tailwind, Inter, cómo agregar componentes de shadcn/ui, utilidades de formato (DS-001, DS-002, DS-017; en curso, F5).            |
+| [`adr/`](adr/README.md)                | Copia de los ADR del Plan Maestro (`ADR-001` a `ADR-021`). Los ADR nuevos que surjan durante la implementación se agregan acá.           |
 
 ## Qué llega en cada fase
 
@@ -18,7 +19,6 @@ cambio que documenta (`03_Plan_Maestro_Tecnico.md` sección 17).
 | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | -------------- |
 | `deployment.md`                                           | Workflows, aprobación, rollback                                                                 | F3             |
 | `database.md`                                             | Diagrama, diccionario, convenciones, cómo escribir migraciones y tests                          | F4             |
-| `design-system.md`                                        | Tokens, componentes, `/dev/design`                                                              | F5             |
 | `security.md`                                             | RLS por tabla, Edge Function                                                                    | F6             |
 | `api.md`                                                  | Resumen de la API con ejemplos de llamada                                                       | F7 en adelante |
 | `features/*.md`                                           | Una página por dominio: reglas, pantallas, RPC, casos borde (clientes, empleados, turnos, etc.) | F7 a F17       |

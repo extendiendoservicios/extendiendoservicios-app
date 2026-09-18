@@ -7,7 +7,7 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
-Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023).
+Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023) y base del design system (F5 · DS-001, DS-002, DS-017).
 
 ### Agregado
 
@@ -29,6 +29,23 @@ Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023).
 - `wrangler` como dependencia de desarrollo (`pnpm exec wrangler`), con los
   scripts de instalación de `esbuild` y `workerd` habilitados en
   `pnpm-workspace.yaml` (los únicos que necesita para funcionar).
+- Tokens del design system en `src/styles/tokens.css` (color, foco, radios,
+  sombras y contenedores de `07_Design_System.md` sección 1), mapeados a las
+  variables que espera shadcn/ui y a la paleta de Tailwind CSS 4 (`@theme`,
+  ADR-021), con breakpoints `sm` 480, `md` 768, `lg` 1024, `xl` 1280
+  (DS-001).
+- Tailwind CSS 4 con `@tailwindcss/vite`, y Inter self-hosted en
+  `public/fonts/` (pesos 400/500/600/700, subset latin,
+  `font-display: swap`, sin Google Fonts en runtime) (DS-001).
+- shadcn/ui sobre Radix, con `components.json` y los componentes base
+  (button, input, select, dialog, sheet, table, tabs, badge, alert, field
+  —reemplazo de `form`—, calendar, popover, command, avatar, skeleton,
+  sonner, tooltip, switch, checkbox, radio-group) en `src/components/ui/`,
+  conectados a los tokens (DS-002).
+- Utilidades de formato de fecha, hora y duración en español de Argentina,
+  con zona fija `America/Argentina/Buenos_Aires` (`src/lib/format.ts`,
+  ADR-019, DS-017).
+- `docs/design-system.md` (DOC-005, en curso).
 
 ## [0.1.0] - 2026-09-18
 
