@@ -65,6 +65,12 @@ pnpm format:check   # Prettier --check (lo que corre en CI)
 Estos mismos controles (lint, format, typecheck) corren también en cada commit
 vía Husky + lint-staged: no hace falta acordarse de correrlos a mano.
 
+El repo fija los finales de línea en LF con `.gitattributes`: Git para
+Windows suele traer `core.autocrlf=true` a nivel sistema, que deja el
+working tree en CRLF después de cualquier `clone` o `checkout` y hace fallar
+a `pnpm format:check` (Prettier exige LF); `.gitattributes` evita ese
+problema sin depender de la configuración de cada máquina.
+
 ## Scripts disponibles
 
 | Script                              | Qué hace                                                                        |

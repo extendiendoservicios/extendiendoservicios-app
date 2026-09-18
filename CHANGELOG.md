@@ -37,6 +37,9 @@ inicial (F2 · INFRA-001 a INFRA-009, DOC-001, DOC-002).
 - `docs/architecture.md` con la arquitectura y el stack del Plan Maestro
   (sección 1 y 2), y copia de los ADR (`ADR-001` a `ADR-021`) en `docs/adr/`
   (DOC-002).
+- `.gitattributes` que fija los finales de línea en LF (`text=auto eol=lf`),
+  para que `pnpm format:check` no falle en Windows después de un `clone` o un
+  `checkout` (INFRA-006).
 
 ### Corregido
 
