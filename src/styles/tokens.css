@@ -26,6 +26,12 @@
   --primary-800: #356a70; /* texto sobre fondos claros de marca, enlaces */
   --primary-100: #e4f0f1; /* fondo de badges "programado", chips de calendario */
   --primary-050: #f2f8f9; /* fondo de filas y tarjetas destacadas, día de hoy */
+  --primary-200: #cfe2e4; /* borde de acentos: KpiCard "accent", Card "hero",
+                              alerta "info" (mismo valor reutilizado en los
+                              tres lugares de ds.css/ds2.css; no está en la
+                              tabla de tokens de 07 sección 1.1 como color con
+                              nombre propio, así que se agrega acá en vez de
+                              repetir el hex suelto en cada componente) */
   --dark: #13151e; /* texto principal, botón oscuro, tooltips */
 
   /* ---------- Neutros ---------- */
@@ -53,8 +59,19 @@
 
   /* ---------- Foco ---------- */
   --ring: rgba(86, 158, 164, 0.35);
+  --ring-soft: rgba(
+    86,
+    158,
+    164,
+    0.14
+  ); /* anillo de selección de OptionCard (.opt.sel) */
 
   /* ---------- Forma: radios ---------- */
+  --r-xs: 5px; /* controles compactos: casilla de verificación (07 sección 4
+                  solo normaliza los radios de botones/inputs/sidebar; el
+                  checkbox del mockup usa un radio menor, fuera de esa
+                  escala, así que queda como su propio token en vez de un
+                  valor suelto en el componente) */
   --r-sm: 8px; /* inputs, botones pequeños */
   --r: 12px; /* botones, alertas, drawers internos */
   --r-lg: 14px; /* tarjetas */
@@ -65,6 +82,8 @@
   --sh-pop:
     0 4px 12px rgba(19, 21, 30, 0.08), 0 12px 32px rgba(19, 21, 30, 0.1);
   --sh-fab: 0 4px 12px rgba(86, 158, 164, 0.38);
+  --sh-hero:
+    0 2px 6px rgba(86, 158, 164, 0.1), 0 8px 22px rgba(86, 158, 164, 0.08); /* Card "hero" móvil */
 
   /* ---------- Contenedores (07 sección 1.3) ---------- */
   --sidebar-w: 236px;
@@ -125,6 +144,7 @@
   --color-primary-700: var(--primary-700);
   --color-primary-800: var(--primary-800);
   --color-primary-100: var(--primary-100);
+  --color-primary-200: var(--primary-200);
   --color-primary-50: var(--primary-050);
   --color-dark: var(--dark);
   --color-bg: var(--bg);
@@ -172,6 +192,7 @@
      nada de 7, 9 ni 10). La píldora no se mapea acá: `rounded-full` de
      Tailwind ya usa un radio infinito (visualmente idéntico a 999px en
      cualquier tamaño de control); para CSS a medida está `--r-pill`. */
+  --radius-xs: var(--r-xs);
   --radius-sm: var(--r-sm);
   --radius-md: var(--r-sm);
   --radius-lg: var(--r);
@@ -182,4 +203,5 @@
   --shadow-card: var(--sh-card);
   --shadow-pop: var(--sh-pop);
   --shadow-fab: var(--sh-fab);
+  --shadow-hero: var(--sh-hero);
 }
