@@ -4,10 +4,6 @@
 # después de cualquier checkout y rompe `pnpm format:check`, que exige LF).
 * text=auto eol=lf
 
-# docs/adr/ es una copia tal cual de Docs/Plan_Maestro/adr/ (DOC-002): no se
-# le toca el final de línea aunque el original tenga CRLF en algún archivo.
-docs/adr/* -text
-
 # Binarios: nunca se les toca el final de línea.
 *.png binary
 *.jpg binary
