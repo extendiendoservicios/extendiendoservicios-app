@@ -1,0 +1,147 @@
+name: Deploy Production
+
+# INFRA-017 (03_Plan_Maestro_Tecnico.md secciones 3.7 y 16): despliegue a producción en cada
+# push a `main`, detrás del environment `production` con aprobación manual de Mike. Creación del
+# environment y de su regla de revisor obligatorio: fuera de este encargo (acción remota en
+# GitHub, ver "Acciones para Mike" en el reporte) -- la referencia `environment: production` de
+# acá abajo no crea nada por sí sola, solo la usa cuando exista.
+#
+# INTERRUPTOR (P03.3 → P03.6): el job entero no corre si la variable de repositorio
+# `PRODUCTION_DEPLOY_ENABLED` no vale exactamente "true" (mismo mecanismo que
+# deploy-staging.yml). Ver docs/deployment.md.
+#
+# El volcado previo a R2 es obligatorio (ADR-015: nunca migrar `App` sin un respaldo fresco) y
+# depende del script de `scripts/backup-to-r2.sh` que entrega P03.4 (INFRA-018/INFRA-020): si no
+# existe todavía, este workflow falla ahí a propósito en vez de seguir con `db push` sin
+# respaldo -- ver el paso "Volcado previo..." más abajo.
+#
+# No crea la etiqueta de versión: la crea el orquestador (ver 08_Fases_y_Backlog.md sección 5).
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-production:
+    name: Deploy Production
+    if: vars.PRODUCTION_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v7
+
+      - name: Habilitar corepack (resuelve la versión de pnpm de package.json → packageManager)
+        run: corepack enable
+
+      - name: Node (.node-version) y caché de pnpm
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.node-version'
+          cache: 'pnpm'
+
+      - name: Instalar dependencias (lockfile congelado)
+        run: pnpm install --frozen-lockfile
+
+      - name: Detectar si ya hay migraciones o la función admin-users
+        id: supabase-estado
+        run: |
+          if find supabase/migrations -maxdepth 1 -name '*.sql' 2>/dev/null | grep -q .; then
+            echo "hay_migraciones=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "hay_migraciones=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -f supabase/functions/admin-users/index.ts ]; then
+            echo "hay_function=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "hay_function=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Volcado previo de App a R2 (ADR-015) — pendiente de P03.4
+        if: steps.supabase-estado.outputs.hay_migraciones == 'true'
+        env:
+          SUPABASE_DB_URL_PROD: ${{ secrets.SUPABASE_DB_URL_PROD }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          if [ -x scripts/backup-to-r2.sh ]; then
+            scripts/backup-to-r2.sh
+          else
+            echo "::error::scripts/backup-to-r2.sh todavía no existe (P03.4, INFRA-018/INFRA-020/ADR-015)."
+            echo "ADR-015 exige un volcado fresco antes de cualquier migración en producción: sin el" \
+                 "script de respaldo, este workflow no continúa con db push. No es un paso opcional."
+            exit 1
+          fi
+
+      - name: 'Sin migraciones todavía: no hace falta volcado previo (F4)'
+        if: steps.supabase-estado.outputs.hay_migraciones != 'true'
+        run: |
+          echo "supabase/migrations todavía no tiene archivos .sql (F4): nada que respaldar antes de migrar."
+
+      - name: supabase db push a App — INFRA-017
+        if: steps.supabase-estado.outputs.hay_migraciones == 'true'
+        env:
+          SUPABASE_DB_URL_PROD: ${{ secrets.SUPABASE_DB_URL_PROD }}
+        run: pnpm exec supabase db push --db-url "$SUPABASE_DB_URL_PROD" --yes
+
+      - name: db push condicionado — todavía no hay migraciones (F4)
+        if: steps.supabase-estado.outputs.hay_migraciones != 'true'
+        run: echo "supabase/migrations todavía no tiene archivos .sql (F4). Paso preparado, sin ejecutar."
+
+      - name: supabase functions deploy admin-users — INFRA-017
+        if: steps.supabase-estado.outputs.hay_function == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          pnpm exec supabase functions deploy admin-users \
+            --project-ref "${{ secrets.SUPABASE_PROJECT_REF_PROD }}"
+
+      - name: functions deploy condicionado — todavía no existe admin-users (F7)
+        if: steps.supabase-estado.outputs.hay_function != 'true'
+        run: echo "supabase/functions/admin-users todavía no existe (F7). Paso preparado, sin ejecutar."
+
+      - name: Build con variables de producción
+        env:
+          VITE_APP_ENV: production
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: pnpm build
+
+      - name: Borrar cualquier source map remanente (INFRA-021 — respaldo)
+        # El plugin de Sentry ya borra los .map que sube (ver vite.config.ts,
+        # sourcemaps.filesToDeleteAfterUpload); este paso es un respaldo idempotente por si esto
+        # no llegara a ejecutarse. Los .map nunca se publican, en ningún entorno.
+        run: find dist -name '*.map' -delete
+
+      - name: Publicar en Cloudflare Pages (rama main)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          pnpm exec wrangler pages deploy dist \
+            --project-name=extendiendoservicios-app \
+            --branch=main
+
+      - name: Instalar navegadores de Playwright (solo chromium)
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Smoke test contra app.extendiendoservicios.com
+        env:
+          PLAYWRIGHT_SMOKE_URL: https://app.extendiendoservicios.com
+        run: pnpm test:e2e --project=chromium
+
+      - name: Subir el reporte de Playwright si algo falló
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-production
+          path: playwright-report/
+          retention-days: 7

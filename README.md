@@ -110,6 +110,17 @@ problema sin depender de la configuración de cada máquina.
 | `pnpm db:types`                     | Genera `src/lib/database.types.ts` desde `App_dev` (una vez vinculado).                           |
 | `pnpm db:test`                      | Corre los tests pgTAP. Se habilita en la Fase 4 (primeras migraciones y tests).                   |
 
+## Integración continua y despliegue
+
+Cada Pull Request a `develop` o `main` corre el workflow `CI`
+(`.github/workflows/ci.yml`): instala, lintea, tipa, formatea, testea,
+construye y corre Playwright (`chromium`) contra ese build. Fusionar en
+`develop`/`main` dispara `deploy-staging.yml`/`deploy-production.yml`, pero
+ninguno de los dos publica nada todavía: están detrás de un interruptor
+hasta que existan el proyecto de Cloudflare Pages y los secretos (Fase 3).
+Detalle completo, interruptores, aprobación de producción y rollback:
+[`docs/deployment.md`](docs/deployment.md).
+
 ## Flujo de ramas
 
 - `main` = producción. No recibe merges hasta que Cloudflare Pages reemplace a

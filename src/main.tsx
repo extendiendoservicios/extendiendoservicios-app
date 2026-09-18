@@ -2,7 +2,11 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router'
 import { router } from '@/app/router'
+import { initSentry } from '@/lib/sentry'
 import '@/styles/globals.css'
+
+// INFRA-021: no hace nada si falta VITE_SENTRY_DSN (ver src/lib/sentry.ts).
+initSentry()
 
 const rootElement = document.getElementById('root')
 if (!rootElement) {
