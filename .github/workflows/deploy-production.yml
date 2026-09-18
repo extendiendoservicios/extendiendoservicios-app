@@ -11,9 +11,11 @@ name: Deploy Production
 # deploy-staging.yml). Ver docs/deployment.md.
 #
 # El volcado previo a R2 es obligatorio (ADR-015: nunca migrar `App` sin un respaldo fresco) y
-# depende del script de `scripts/backup-to-r2.sh` que entrega P03.4 (INFRA-018/INFRA-020): si no
-# existe todavía, este workflow falla ahí a propósito en vez de seguir con `db push` sin
-# respaldo -- ver el paso "Volcado previo..." más abajo.
+# depende de `scripts/backup-to-r2.sh` (INFRA-018/INFRA-020, P03.4), el mismo script que usa
+# `backup.yml` para el respaldo diario. El paso comprueba igual que el script exista y tenga el
+# bit ejecutable antes de correrlo: si por lo que sea no está, este workflow falla ahí a
+# propósito en vez de seguir con `db push` sin respaldo -- ver el paso "Volcado previo..." más
+# abajo.
 #
 # No crea la etiqueta de versión: la crea el orquestador (ver 08_Fases_y_Backlog.md sección 5).
 
@@ -61,19 +63,20 @@ jobs:
             echo "hay_function=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Volcado previo de App a R2 (ADR-015) — pendiente de P03.4
+      - name: Volcado previo de App a R2 (ADR-015) — INFRA-018/INFRA-020, P03.4
         if: steps.supabase-estado.outputs.hay_migraciones == 'true'
         env:
           SUPABASE_DB_URL_PROD: ${{ secrets.SUPABASE_DB_URL_PROD }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
         run: |
           if [ -x scripts/backup-to-r2.sh ]; then
             scripts/backup-to-r2.sh
           else
-            echo "::error::scripts/backup-to-r2.sh todavía no existe (P03.4, INFRA-018/INFRA-020/ADR-015)."
+            echo "::error::scripts/backup-to-r2.sh no existe o perdió el bit ejecutable (INFRA-018/INFRA-020/ADR-015)."
             echo "ADR-015 exige un volcado fresco antes de cualquier migración en producción: sin el" \
                  "script de respaldo, este workflow no continúa con db push. No es un paso opcional."
             exit 1

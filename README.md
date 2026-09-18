@@ -58,9 +58,12 @@ secretos de GitHub y aprobación de Mike -- ver `docs/environments.md`.
 ## Cloudflare (wrangler)
 
 `wrangler` es dependencia de desarrollo del repositorio, no una instalación
-global: se usa como `pnpm exec wrangler <comando>`. Este repositorio todavía
-no crea nada en Cloudflare (Pages y R2 llegan en una fase posterior, ver
-`docs/environments.md`).
+global: se usa como `pnpm exec wrangler <comando>`. El proyecto de Pages
+(`extendiendoservicios-app`) y el bucket R2 de respaldos (`es-backups`) ya
+existen, pero sin dominios ni despliegues todavía: la migración de
+`app.extendiendoservicios.com` (arriba) sigue pendiente de la carga de
+secretos y del cambio de DNS. Ver `docs/environments.md` y
+`docs/deployment.md`.
 
 ## Cómo probar
 
@@ -115,11 +118,12 @@ problema sin depender de la configuración de cada máquina.
 Cada Pull Request a `develop` o `main` corre el workflow `CI`
 (`.github/workflows/ci.yml`): instala, lintea, tipa, formatea, testea,
 construye y corre Playwright (`chromium`) contra ese build. Fusionar en
-`develop`/`main` dispara `deploy-staging.yml`/`deploy-production.yml`, pero
-ninguno de los dos publica nada todavía: están detrás de un interruptor
-hasta que existan el proyecto de Cloudflare Pages y los secretos (Fase 3).
-Detalle completo, interruptores, aprobación de producción y rollback:
-[`docs/deployment.md`](docs/deployment.md).
+`develop`/`main` dispara `deploy-staging.yml`/`deploy-production.yml`; un
+cron diario dispara `backup.yml`. Ninguno de los tres publica ni respalda
+nada todavía: el proyecto de Cloudflare Pages y el bucket R2 ya existen,
+pero los tres workflows siguen detrás de un interruptor hasta que Mike
+cargue los secretos (Fase 3). Detalle completo, interruptores, aprobación de
+producción y rollback: [`docs/deployment.md`](docs/deployment.md).
 
 ## Flujo de ramas
 

@@ -7,7 +7,7 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
-Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), base del design system (F5 · DS-001, DS-002, DS-017) y acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007).
+Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017) y acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007).
 
 ### Agregado
 
@@ -52,7 +52,44 @@ Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/C
 - Tokens nuevos en `tokens.css`: `--r-xs` (radio de `Checkbox`),
   `--primary-200`, `--sh-hero` y `--ring-soft` (ver `docs/design-system.md`
   para el detalle de cada uno).
-
+- Proyecto de Cloudflare Pages `extendiendoservicios-app` (cuenta
+  `extserviciosapp@gmail.com`, sin proyecto de Git conectado: el build lo
+  hace GitHub Actions) y bucket R2 privado `es-backups` (clase Standard, sin
+  acceso público, con las reglas de ciclo de vida `retencion-diaria` —30
+  días, prefijo `diarios/`— y `retencion-mensual` —370 días, prefijo
+  `mensuales/`—), creados con `wrangler` (INFRA-012, INFRA-020).
+- `scripts/backup-to-r2.sh`: `pg_dump --format=custom` de `App` → cifrado
+  simétrico con `gpg` (AES256, `BACKUP_PASSPHRASE`) → subida a R2 por su API
+  S3, con el prefijo de retención (`diarios/`/`mensuales/`) según el día.
+  Instala un cliente de PostgreSQL 17 desde el repositorio oficial (PGDG) si
+  el runner no lo trae, porque los proyectos de Supabase corren Postgres
+  17.6. El volcado sin cifrar nunca se sube ni queda en disco más que en un
+  directorio temporal que se borra siempre (`trap`). Lo reutilizan
+  `.github/workflows/backup.yml` (cron diario 03:00 Argentina, más
+  `workflow_dispatch`, detrás del interruptor `BACKUP_ENABLED`) y el volcado
+  previo obligatorio de `deploy-production.yml` antes de cualquier
+  migración en producción (ADR-015), al que se le agregó el secreto
+  `CLOUDFLARE_ACCOUNT_ID` que le faltaba para poder armar el endpoint de R2
+  (INFRA-018).
+- `scripts/restore-from-r2.sh`: baja un respaldo de R2, lo descifra y lo
+  restaura con `pg_restore --clean --if-exists` **solo en `App_dev`** (nunca
+  lee ninguna variable de producción); exige el argumento de confirmación
+  `restaurar-app-dev` y, si la terminal es interactiva, una segunda
+  confirmación escrita. Paso a paso y advertencias en `docs/deployment.md`;
+  la restauración real sobre un proyecto remoto queda para P03.7 (TEST-024).
+- `public/_headers`: `Strict-Transport-Security`, `X-Content-Type-Options`,
+  `Referrer-Policy`, `X-Frame-Options`, `Permissions-Policy` (solo
+  geolocalización propia, el resto de las funciones sensibles en cero) y
+  `Content-Security-Policy` con `connect-src`/`img-src` acotados a los dos
+  proyectos de Supabase, la ingesta de Sentry (región UE), Nominatim y los
+  tiles de OpenStreetMap (`03` sección 3.6, ADR-016, ADR-017). `style-src
+'self' 'unsafe-inline'`: comprobado con Playwright contra un build real
+  que sonner (`Toaster`) necesita `'unsafe-inline'` para su hoja de estilos
+  inyectada por `document.createElement('style')`, mientras que el
+  posicionamiento de Radix/Floating UI no lo necesita (usa CSSOM, no el
+  atributo `style`). `deploy-staging.yml` ahora inserta
+  `X-Robots-Tag: noindex` dentro del mismo bloque `/*` de `dist/_headers` en
+  vez de sobrescribirlo (INFRA-018, INFRA-022).
 - `.github/workflows/ci.yml`: un solo job (`CI`, nombre estable para la
   futura protección de ramas) en cada Pull Request a `develop` o `main` con
   `pnpm install --frozen-lockfile`, lint, typecheck, `format:check`, test,
