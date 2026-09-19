@@ -1,0 +1,15 @@
+# INFRA-018 / `03_Plan_Maestro_Tecnico.md` sección 3.6 · ADR-013, ADR-016, ADR-017, ADR-021.
+# Cabeceras de seguridad para los tres entornos servidos por Cloudflare Pages (local vía
+# `wrangler pages dev`, staging y producción). Detalle completo, incluida la verificación de
+# `style-src 'unsafe-inline'`, en docs/deployment.md.
+#
+# Staging (rama `develop`) suma además `X-Robots-Tag: noindex` en su propio paso de
+# `deploy-staging.yml`, combinándola con este archivo en vez de pisarlo (docs/deployment.md
+# sección 8).
+/*
+  Strict-Transport-Security: max-age=63072000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: geolocation=(self), camera=(), microphone=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), midi=(), sync-xhr=()
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://anesttvrnpsaaaxaquce.supabase.co https://fysuppdadwvabrjpnnoh.supabase.co https://tile.openstreetmap.org https://*.tile.openstreetmap.org; connect-src 'self' https://anesttvrnpsaaaxaquce.supabase.co https://fysuppdadwvabrjpnnoh.supabase.co https://*.ingest.de.sentry.io https://nominatim.openstreetmap.org; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'

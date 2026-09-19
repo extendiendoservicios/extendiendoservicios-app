@@ -2,17 +2,18 @@
 
 Fuente: `03_Plan_Maestro_Tecnico.md` sección 3 (`Docs/Plan_Maestro/`, fuera de
 este repo), `02_Decisiones.md` P-010 a P-015, P-106, P-107, P-109 a P-115;
-ADR-008, ADR-013, ADR-014, ADR-021. Este archivo se actualiza en el mismo PR
-que cambie algo de lo que describe.
+ADR-008, ADR-013, ADR-014, ADR-015, ADR-021. Este archivo se actualiza en el
+mismo PR que cambie algo de lo que describe (ampliado en P03.4: proyecto de
+Pages y bucket R2 creados, tokens con permisos mínimos para P03.5).
 
 ## 1. Entornos
 
-| Entorno    | Frontend                                                                 | Base de datos      | Datos                                        | Quién lo usa                      | Notas                                                                                                                        |
-| ---------- | ------------------------------------------------------------------------ | ------------------ | -------------------------------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Local      | `pnpm dev` en la máquina de cada desarrollador (`http://localhost:5173`) | `App_dev` (remoto) | Seed ficticio (desde F4)                     | Mike, quien desarrolle            | `.env.local` con la URL y la anon key de `App_dev`. Sin Supabase local / Docker (ADR-014).                                   |
-| Testing    | Playwright contra `localhost` o staging; pgTAP contra `App_dev`          | `App_dev`          | Seed ficticio recreado por corrida           | CI y quien desarrolle             | Los tests no dependen del estado previo.                                                                                     |
-| Staging    | `dev.extendiendoservicios.com` (rama `develop`)                          | `App_dev`          | Seed ficticio; datos reales solo durante F19 | Mike, referente del cliente (UAT) | Público con `noindex` y banner "Entorno de prueba" (INFRA-022, pendiente el banner en front). Keepalive semanal (INFRA-019). |
-| Producción | `app.extendiendoservicios.com` (rama `main`)                             | `App`              | Reales                                       | Todos                             | Despliegue con aprobación manual (F20). Respaldo diario (INFRA-018, pendiente).                                              |
+| Entorno    | Frontend                                                                 | Base de datos      | Datos                                        | Quién lo usa                      | Notas                                                                                                                                          |
+| ---------- | ------------------------------------------------------------------------ | ------------------ | -------------------------------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Local      | `pnpm dev` en la máquina de cada desarrollador (`http://localhost:5173`) | `App_dev` (remoto) | Seed ficticio (desde F4)                     | Mike, quien desarrolle            | `.env.local` con la URL y la anon key de `App_dev`. Sin Supabase local / Docker (ADR-014).                                                     |
+| Testing    | Playwright contra `localhost` o staging; pgTAP contra `App_dev`          | `App_dev`          | Seed ficticio recreado por corrida           | CI y quien desarrolle             | Los tests no dependen del estado previo.                                                                                                       |
+| Staging    | `dev.extendiendoservicios.com` (rama `develop`)                          | `App_dev`          | Seed ficticio; datos reales solo durante F19 | Mike, referente del cliente (UAT) | Público con `noindex` y banner "Entorno de prueba" (INFRA-022, pendiente el banner en front). Keepalive semanal (INFRA-019).                   |
+| Producción | `app.extendiendoservicios.com` (rama `main`)                             | `App`              | Reales                                       | Todos                             | Despliegue con aprobación manual (F20). Respaldo diario a R2 (INFRA-018, escrito y validado; falta activarlo, `docs/deployment.md` sección 3). |
 
 `App_dev` hace doble función -- staging y desarrollo -- porque no hay
 Supabase local (ADR-014, P-112). Es el único proyecto que este repositorio
@@ -20,13 +21,13 @@ vincula localmente.
 
 ## 2. Cuentas y proyectos (V3 punto 6)
 
-| Servicio   | Cuenta                                                        | Recurso                                                                                                                    |
-| ---------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Supabase   | Organización `bpcfjqvpdfmepiohltbz` ("Extendiendo Servicios") | Proyecto **`App`** (producción): ref `fysuppdadwvabrjpnnoh`, región `sa-east-1`, Postgres 17.6.                            |
-| Supabase   | ídem                                                          | Proyecto **`App_dev`** (desarrollo y staging): ref `anesttvrnpsaaaxaquce`, región `sa-east-1`, Postgres 17.6.              |
-| Cloudflare | `extserviciosapp@gmail.com`                                   | Zona `extendiendoservicios.com`, Pages `extendiendoservicios-app` (desde F3/INFRA-012), R2 `es-backups` (desde INFRA-020). |
-| GitHub     | Organización `extendiendoservicios`                           | Repositorio `extendiendoservicios/extendiendoservicios-app`; secretos y environments.                                      |
-| Sentry     | `extserviciosapp@gmail.com` (a crear, P03.1)                  | Proyecto `extendiendoservicios-app` (desde INFRA-021).                                                                     |
+| Servicio   | Cuenta                                                        | Recurso                                                                                                                                                                                        |
+| ---------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Supabase   | Organización `bpcfjqvpdfmepiohltbz` ("Extendiendo Servicios") | Proyecto **`App`** (producción): ref `fysuppdadwvabrjpnnoh`, región `sa-east-1`, Postgres 17.6.                                                                                                |
+| Supabase   | ídem                                                          | Proyecto **`App_dev`** (desarrollo y staging): ref `anesttvrnpsaaaxaquce`, región `sa-east-1`, Postgres 17.6.                                                                                  |
+| Cloudflare | `extserviciosapp@gmail.com`                                   | Zona `extendiendoservicios.com`; Pages `extendiendoservicios-app` (creado en P03.4, sin dominios ni despliegues todavía); R2 `es-backups` (creado en P03.4, privado, con reglas de retención). |
+| GitHub     | Organización `extendiendoservicios`                           | Repositorio `extendiendoservicios/extendiendoservicios-app`; secretos y environments.                                                                                                          |
+| Sentry     | `extserviciosapp@gmail.com` (a crear, P03.1)                  | Proyecto `extendiendoservicios-app` (desde INFRA-021).                                                                                                                                         |
 
 Regla permanente (memoria del proyecto): antes de crear o tocar cualquier
 recurso remoto, verificar que la cuenta activa de la CLI o el navegador sea la
@@ -156,7 +157,7 @@ F7) es la única vía utilizable en la práctica.
 | `SUPABASE_DB_URL_PROD`                                                       | Secreto de GitHub                                                                                                                                              | Mike                                                     | `backup.yml` (`pg_dump`) y `deploy-production.yml`. Cadena del **Session pooler** (IPv4), mismo motivo que arriba.                                                                                                                | P03.4 (respaldo) / P03.3 (deploy)                                       |
 | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`                              | Secreto de GitHub                                                                                                                                              | Mike                                                     | Crear el proyecto de Pages y el bucket R2 con `wrangler` (P03.4); publicar builds desde `deploy-staging.yml` / `deploy-production.yml` (P03.3).                                                                                   | P03.4 y P03.3                                                           |
 | `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `BACKUP_PASSPHRASE` | Secreto de GitHub                                                                                                                                              | Mike                                                     | Subida cifrada del volcado diario a R2 (`backup.yml`).                                                                                                                                                                            | P03.4                                                                   |
-| `SENTRY_AUTH_TOKEN`                                                          | Secreto de GitHub (de repositorio)                                                                                                                             | Mike                                                     | Subir source maps a Sentry desde `deploy-staging.yml`/`deploy-production.yml` (`vite.config.ts`, INFRA-021). Sin este secreto, esos workflows construyen igual pero sin generar ni subir `.map` (`docs/deployment.md` sección 7). | P03.3 (workflow, ya en este encargo) / P03.5 (Mike carga el valor real) |
+| `SENTRY_AUTH_TOKEN`                                                          | Secreto de GitHub (de repositorio)                                                                                                                             | Mike                                                     | Subir source maps a Sentry desde `deploy-staging.yml`/`deploy-production.yml` (`vite.config.ts`, INFRA-021). Sin este secreto, esos workflows construyen igual pero sin generar ni subir `.map` (`docs/deployment.md` sección 9). | P03.3 (workflow, ya en este encargo) / P03.5 (Mike carga el valor real) |
 | `SUPABASE_SERVICE_ROLE_KEY`                                                  | Ninguno (la inyecta Supabase automáticamente dentro de la Edge Function)                                                                                       | Nadie manualmente                                        | Únicamente dentro de `supabase/functions/admin-users`. Nunca en el repo, nunca en el frontend, nunca en un secreto de GitHub.                                                                                                     | F7 (la Edge Function)                                                   |
 
 Ningún secreto vive en el repositorio; `.env.example` documenta los nombres
@@ -172,7 +173,7 @@ sin valores. Rotación anual y ante cualquier sospecha (`03` sección 3.3).
     `dist/` ya construido, sin que Cloudflare ejecute ningún build propio
     -- así que estas variables tienen que existir también como secretos de
     GitHub para que el build de Actions las vea. Detalle completo:
-    `docs/deployment.md` sección 9.
+    `docs/deployment.md` sección 11.
 
 ### Comandos para cargar los secretos de GitHub
 
@@ -196,9 +197,12 @@ gh secret set SENTRY_AUTH_TOKEN --repo extendiendoservicios/extendiendoservicios
 ```
 
 `SUPABASE_DB_URL_DEV` es el único de esta lista que hace falta **ya**, para
-que `keepalive.yml` funcione (sección 5). Los demás corresponden a workflows
-que todavía no existen en este repositorio (P03.3, P03.4 -- fuera de este
-encargo).
+que `keepalive.yml` funcione (sección 5). Los demás los carga Mike en P03.5,
+una vez creados los tokens correspondientes (`CLOUDFLARE_API_TOKEN`, R2 y
+Sentry: ver más abajo) -- los workflows que los usan (`deploy-staging.yml`,
+`deploy-production.yml`, `backup.yml`) ya existen (P03.3, P03.4) pero están
+detrás de sus interruptores (`docs/deployment.md` sección 3) y no corren
+hasta P03.6.
 
 ### Dónde obtener cada valor en el panel de Supabase
 
@@ -219,13 +223,76 @@ encargo).
 
 ### Cloudflare, R2 y Sentry
 
-Los tokens de Cloudflare (`CLOUDFLARE_API_TOKEN`), R2
-(`R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY`) y Sentry (`SENTRY_AUTH_TOKEN`,
-`VITE_SENTRY_DSN`) se documentan con sus permisos mínimos en el paquete
-P03.4 (creación del proyecto de Pages, el bucket R2 y el workflow de
-respaldo), fuera de este encargo. Este documento no los detalla todavía para
-no adelantar decisiones de alcance de permisos que no corresponden a
-INFRA-010/011/019/023.
+El proyecto de Pages y el bucket R2 ya existen (P03.4, `wrangler pages
+project create` / `wrangler r2 bucket create`, sección 6); lo que falta es
+que Mike cree los tokens con permisos mínimos y cargue los secretos (P03.5).
+Paso a paso en el panel:
+
+**`CLOUDFLARE_API_TOKEN`** (publica builds en Pages desde
+`deploy-staging.yml`/`deploy-production.yml`, `pnpm exec wrangler pages
+deploy`):
+
+1. Panel de Cloudflare (cuenta `extserviciosapp@gmail.com`) → ícono de
+   perfil → **My Profile** → **API Tokens** → **Create Token**.
+2. Plantilla **Edit Cloudflare Pages** (o **Custom token** con el mismo
+   permiso): **Account** → **Cloudflare Pages** → **Edit**. Es el permiso
+   mínimo disponible: la API de tokens de Cloudflare no permite acotarlo a
+   un único proyecto de Pages, solo a nivel cuenta.
+3. **Account Resources**: **Include** → la cuenta `extserviciosapp@gmail.com`
+   (ninguna otra). Sin **Zone Resources** (no hace falta tocar DNS con este
+   token; eso es un cambio manual en el panel, `docs/deployment.md`).
+4. **Continue to summary** → **Create Token** → copiar el valor (se muestra
+   una sola vez).
+5. `gh secret set CLOUDFLARE_API_TOKEN --repo extendiendoservicios/extendiendoservicios-app`
+   (pega el valor cuando lo pida; nunca en la línea de comando).
+
+**`CLOUDFLARE_ACCOUNT_ID`**: no es secreto por naturaleza (es un
+identificador, no una credencial) pero se carga igual como secreto de
+GitHub por prolijidad y para no repetirlo en cada workflow. Panel de
+Cloudflare → cualquier dominio de la cuenta, o **Workers & Pages** →
+**Overview** → columna derecha, **Account ID**.
+
+**`R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY`** (suben el respaldo cifrado a
+R2 por su API S3, `backup.yml` y el volcado previo de `deploy-production.yml`):
+
+1. Panel de Cloudflare → **R2** → **Overview** → **Manage API Tokens** (o,
+   dentro del bucket `es-backups` → **Settings** → **API Tokens**).
+2. **Create API Token** → nombre descriptivo (por ejemplo
+   `backup-ci-es-backups`) → **Permissions**: **Object Read & Write** →
+   **Specify bucket(s)** → elegir únicamente `es-backups` (nunca "Apply to
+   all buckets"): con esto el token no puede leer ni escribir en ningún
+   otro bucket que se cree más adelante.
+3. **TTL**: sin vencimiento, sujeto a la rotación anual de `03` sección 3.3
+   (o una fecha de vencimiento si Mike prefiere rotarlo antes a mano).
+4. **Create API Token** → copiar **Access Key ID** y **Secret Access Key**
+   (se muestran una sola vez).
+5. ```bash
+   gh secret set R2_ACCESS_KEY_ID --repo extendiendoservicios/extendiendoservicios-app
+   gh secret set R2_SECRET_ACCESS_KEY --repo extendiendoservicios/extendiendoservicios-app
+   gh secret set R2_BUCKET --body es-backups --repo extendiendoservicios/extendiendoservicios-app
+   ```
+
+**`BACKUP_PASSPHRASE`** (cifra/descifra los volcados, `scripts/backup-to-r2.sh`
+/ `scripts/restore-from-r2.sh`, `docs/deployment.md` sección 6): una frase
+generada por Mike, larga y aleatoria (por ejemplo `openssl rand -base64 32`
+en cualquier terminal, o el generador de un gestor de contraseñas), que no
+se deriva de ninguna otra contraseña existente.
+
+```bash
+gh secret set BACKUP_PASSPHRASE --repo extendiendoservicios/extendiendoservicios-app
+```
+
+**Advertencia:** GitHub no permite leer de nuevo un secreto ya cargado (solo
+sobrescribirlo), y el cifrado es simétrico sin puerta trasera: **si esta
+frase se pierde, todos los respaldos ya subidos a R2 quedan inservibles para
+siempre**, sin forma de recuperarlos. Guardarla también en un gestor de
+contraseñas u otro lugar seguro fuera de GitHub (nunca en el repositorio, un
+chat o un archivo sin cifrar) es indispensable, no opcional.
+
+**Sentry (`SENTRY_AUTH_TOKEN`, `VITE_SENTRY_DSN`)**: la cuenta de Sentry
+todavía no existe (`03` sección 3.2 la marca "a crear"); su creación y los
+tokens correspondientes quedan para cuando Mike la cree (P03.5). El uso de
+cada uno ya está documentado en `docs/deployment.md` sección 9.
 
 ## 5. Keepalive (INFRA-019)
 
@@ -239,7 +306,7 @@ Evita que el plan sin cargo de Supabase pause el proyecto por inactividad
   IPv6, y la conexión directa de Supabase es IPv6 en proyectos nuevos; si se
   carga la conexión directa, el workflow falla por timeout de red, no por un
   problema de la base. Mismo criterio para `SUPABASE_DB_URL_PROD` cuando se
-  cargue (`backup.yml`, P03.4).
+  cargue (`backup.yml`, `docs/deployment.md` sección 6).
 - Si la consulta falla, el job falla (sin reintento): eso es lo que dispara
   el correo de alerta de GitHub Actions a quien tenga notificaciones
   activadas para el repositorio.
@@ -250,14 +317,24 @@ Evita que el plan sin cargo de Supabase pause el proyecto por inactividad
 
 `wrangler` es dependencia de desarrollo del proyecto (no una instalación
 global): `pnpm exec wrangler <comando>`. Mike y CI la ejecutan siempre así,
-igual que con `supabase`. Este encargo (P03.2) no autorizó crear nada en
-Cloudflare todavía (eso es P03.4); `wrangler` quedó instalada y lista para
-cuando ese paquete la necesitara (`login`, verificado por Mike en P03.1).
+igual que con `supabase` (`login`, verificado por Mike en P03.1).
 
-Ya en uso, sin ejecutarse todavía: `deploy-staging.yml` y
-`deploy-production.yml` (P03.3, INFRA-016/INFRA-017) publican con
+En P03.4, con la sesión de `wrangler` ya iniciada por Mike, se crearon (cuenta
+verificada primero con `wrangler whoami`):
+
+```bash
+pnpm exec wrangler pages project create extendiendoservicios-app --production-branch=main
+pnpm exec wrangler r2 bucket create es-backups
+```
+
+Detalle de ambos recursos, sus reglas de retención y lo que falta (tokens,
+dominios, primer despliegue): `docs/deployment.md` sección 7.
+
+Ya en uso, sin ejecutarse todavía (proyecto creado, pero sin token de API
+cargado ni interruptor activado): `deploy-staging.yml` y
+`deploy-production.yml` (INFRA-016/INFRA-017) publican con
 `pnpm exec wrangler pages deploy dist --project-name=extendiendoservicios-app --branch=<develop|main>`,
 autenticado con los secretos `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID`.
 Ambos workflows están detrás de sus interruptores (`docs/deployment.md`
-sección 3) y del proyecto de Pages, que todavía no existe (P03.4): no
-publican nada hasta que se den las dos condiciones.
+sección 3): no publican nada hasta que Mike cargue los secretos (P03.5) y
+active los interruptores (P03.6).

@@ -96,11 +96,17 @@ jobs:
         run: find dist -name '*.map' -delete
 
       - name: Cabecera noindex para staging (INFRA-022 — nunca indexable)
-        # `_headers` completo (CSP, HSTS, etc.) es de P03.4; hasta entonces, este paso genera acá
-        # el único que necesita staging hoy. Cuando P03.4 agregue public/_headers con las demás
-        # cabeceras, este paso tiene que combinarse con ese archivo en vez de pisarlo.
+        # `public/_headers` (P03.4, INFRA-018) trae HSTS, CSP y el resto de las cabeceras de
+        # `03` sección 3.6 para los tres entornos, en un único bloque `/*`; `vite build` ya lo
+        # copió tal cual a `dist/_headers` (Vite copia `public/` sin tocarlo). Acá insertamos una
+        # línea más DENTRO de ese mismo bloque (`X-Robots-Tag: noindex`) en vez de agregar un
+        # bloque `/*` separado: Cloudflare Pages combina cabeceras de reglas distintas que
+        # matcheen el mismo path (documentado, "an incoming request which matches multiple
+        # rules' URL patterns will inherit all rules' headers"), pero esa combinación entre
+        # bloques no se pudo verificar en local con `wrangler pages dev` (ver docs/deployment.md
+        # sección 10.4) -- insertar en el mismo bloque no depende de eso y se verificó igual.
         run: |
-          printf '/*\n  X-Robots-Tag: noindex\n' > dist/_headers
+          sed -i '/^\/\*$/a\  X-Robots-Tag: noindex' dist/_headers
 
       - name: Publicar en Cloudflare Pages (rama develop)
         env:
