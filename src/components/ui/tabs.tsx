@@ -1,8 +1,14 @@
 import * as React from 'react'
-import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from 'cn'
 import { Tabs as TabsPrimitive } from 'radix-ui'
 
+/**
+ * Tabs (DS-011): `07` sección 2.3 — "subrayado teal 2 px, texto 12.5 px"
+ * (`.tabs`/`.tab`/`.tab.on`, `Mockup/assets/ds2.css`). El mockup solo tiene
+ * esta variante con subrayado (la variante "píldora" de shadcn no hace
+ * falta: ese lugar ya lo cubre `SegmentedControl`, DS-005), así que se
+ * simplifica el componente a una sola apariencia.
+ */
 function Tabs({
   className,
   orientation = 'horizontal',
@@ -11,9 +17,9 @@ function Tabs({
   return (
     <TabsPrimitive.Root
       data-slot="tabs"
-      data-orientation={orientation}
+      orientation={orientation}
       className={cn(
-        'group/tabs flex gap-2 data-horizontal:flex-col',
+        'group/tabs flex gap-2 data-[orientation=horizontal]:flex-col',
         className,
       )}
       {...props}
@@ -21,32 +27,17 @@ function Tabs({
   )
 }
 
-const tabsListVariants = cva(
-  'group/tabs-list inline-flex w-fit items-center justify-center rounded-2xl p-[3px] text-muted-foreground group-data-horizontal/tabs:h-8 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col group-data-vertical/tabs:p-1 data-[variant=line]:rounded-none',
-  {
-    variants: {
-      variant: {
-        default: 'bg-muted',
-        line: 'gap-1 bg-transparent',
-      },
-    },
-    defaultVariants: {
-      variant: 'default',
-    },
-  },
-)
-
 function TabsList({
   className,
-  variant = 'default',
   ...props
-}: React.ComponentProps<typeof TabsPrimitive.List> &
-  VariantProps<typeof tabsListVariants>) {
+}: React.ComponentProps<typeof TabsPrimitive.List>) {
   return (
     <TabsPrimitive.List
       data-slot="tabs-list"
-      data-variant={variant}
-      className={cn(tabsListVariants({ variant }), className)}
+      className={cn(
+        'flex items-center gap-[2px] border-b border-border group-data-[orientation=vertical]/tabs:flex-col group-data-[orientation=vertical]/tabs:items-start group-data-[orientation=vertical]/tabs:border-b-0',
+        className,
+      )}
       {...props}
     />
   )
@@ -60,10 +51,7 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        "relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-2xl border border-transparent! px-1.5 py-0.5 text-sm font-medium whitespace-nowrap text-foreground/60 transition-all group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start group-data-vertical/tabs:px-3 group-data-vertical/tabs:py-0.5 hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 dark:text-muted-foreground dark:hover:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        'group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent dark:group-data-[variant=line]/tabs-list:data-active:border-transparent dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent',
-        'data-active:bg-background data-active:text-foreground dark:data-active:border-input dark:data-active:bg-input/30 dark:data-active:text-foreground',
-        'after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100',
+        '-mb-px border-b-2 border-transparent px-[14px] py-[11px] text-[12.5px] font-semibold whitespace-nowrap text-text-3 transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border-primary data-[state=active]:text-primary-800',
         className,
       )}
       {...props}
@@ -78,10 +66,10 @@ function TabsContent({
   return (
     <TabsPrimitive.Content
       data-slot="tabs-content"
-      className={cn('flex-1 text-sm outline-none', className)}
+      className={cn('outline-none', className)}
       {...props}
     />
   )
 }
 
-export { Tabs, TabsList, TabsTrigger, TabsContent, tabsListVariants }
+export { Tabs, TabsList, TabsTrigger, TabsContent }
