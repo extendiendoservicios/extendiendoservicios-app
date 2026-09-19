@@ -7,10 +7,32 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
-Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022), y el cierre de F5: marca de la sidebar e íconos PWA desde un PNG temporal, `vite-plugin-pwa` y `/dev/design` completo (F5 · DS-016, DS-018 a DS-020, RESP-001, DOC-005), el cierre de F3 (F3 · DOC-003, INFRA-024, TEST-024) y la revisión visual de cierre de F5 (P05.6).
+Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022), y el cierre de F5: marca de la sidebar e íconos PWA desde un PNG temporal, `vite-plugin-pwa` y `/dev/design` completo (F5 · DS-016, DS-018 a DS-020, RESP-001, DOC-005), el cierre de F3 (F3 · DOC-003, INFRA-024, TEST-024), la revisión visual de cierre de F5 (P05.6) y el inicio de F4: extensiones, esquema `app` y enumeraciones, con su runner de pgTAP (F4 · DB-001, DB-002, DB-022, TEST-001).
 
 ### Agregado
 
+- Inicio de F4 (P04.1): migración `0001_extensions_and_schema_app.sql`
+  (DB-001) con la extensión `btree_gist`, el esquema `app` y sus primeras
+  tres funciones —`app.set_updated_at()` (trigger de trazabilidad),
+  `app.local_ts(date, time)` (fecha y hora de Argentina a instante UTC,
+  `immutable`, ADR-019) y `app.valid_weekdays(smallint[])`— y migración
+  `0002_enums.sql` (DB-002) con las 15 enumeraciones de
+  `04_Modelo_de_Datos.md` sección 3. Las dos aplicadas en `App_dev`
+  (`pnpm db:push`) y con tipos regenerados sin diferencia
+  (`src/lib/database.types.ts`). Runner de pgTAP (DB-022, TEST-001):
+  `pnpm db:test` (`scripts/db-test.sh`) corre `supabase test db --linked`
+  en una máquina de desarrollo o `--db-url "$SUPABASE_DB_URL_DEV"` en CI;
+  convención de test por archivo (transacción con `rollback`, extensión
+  `pgtap` creada dentro de esa misma transacción, no en una migración)
+  documentada en `supabase/tests/README.md`, con los primeros dos tests
+  (`0001_extensions_and_schema_app.test.sql`,
+  `0002_enums.test.sql`). `docs/database.md` nuevo (convenciones, esquema
+  `app`, enumeraciones, cómo escribir una migración y correr pgTAP).
+  Docker Desktop no respondió (`docker version` sin salida ni con el
+  servidor prendido) durante esta entrega: los pgTAP quedaron escritos y
+  revisados a mano contra `App_dev` con `supabase db query`, pero sin
+  poder correr `pg_prove` (ADR-023); quedan para correr en cuanto Docker
+  responda o en el primer PR contra CI.
 - Cierre de F3 (P03.7): `.github/workflows/restore-test.yml`
   (`workflow_dispatch` con confirmación `restaurar-app-dev`, sin correr
   todavía — se dispara recién con las tablas de F4, TEST-024).
