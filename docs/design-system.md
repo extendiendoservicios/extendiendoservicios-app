@@ -4,11 +4,12 @@ Fuente: `07_Design_System.md` del Plan Maestro. Este documento explica cómo
 está implementado en el repositorio, no repite los valores de diseño (para
 eso está `07`).
 
-Estado: F5 · DS-001 a DS-012, DS-017. Tokens, shadcn/ui, acciones,
+Estado: F5 · DS-001 a DS-015, DS-017. Tokens, shadcn/ui, acciones,
 entradas, selectores, tarjetas, `StatusBadge`, tablas, avatares, avisos,
-diálogos, timeline y lista de tareas, con `/dev/design` completo para todo
-este paquete (P05.1 a P05.3). Todavía sin shells ni router con
-`RequireRole` (P05.4), sin íconos PWA (P05.5).
+diálogos, timeline y lista de tareas (P05.1 a P05.3); `AdminShell`,
+`MobileShell` y el router con `RequireRole` sobre una sesión provisoria
+(P05.4). Todavía sin íconos PWA (P05.5); `/dev/design` sigue sin
+`StarRating`/`MapPicker`/`MapView` (llegan con sus fases de dominio).
 
 ## Tokens (`src/styles/tokens.css`)
 
@@ -557,7 +558,253 @@ DataTableColumnMeta }`), sin tocar el tipo de la librería: como
   `--table-header-bg` (`#FAFBFC`, encabezado de `DataTable`), `--r-task-box`
   (radio de la casilla de `TaskItem`, ver arriba).
 
+## Shells, router y sesión provisoria (DS-013 a DS-015, P05.4)
+
+Estado: `AdminShell`, `MobileShell` y el router con `RequireRole` sobre
+todas las rutas de `05_Pantallas_y_Navegacion.md` sección 5, como
+placeholders. Sin autenticación real todavía (llega en F6, AUTH-001 a
+AUTH-012): hasta entonces, cualquier ruta protegida se recorre con el
+simulador de rol de `/dev/rol` (más abajo).
+
+### `AdminShell` (`src/app/shells/AdminShell.tsx`, DS-013)
+
+Se monta como `element` de la ruta `admin` en `router.tsx` (dentro de
+`RequireRole`), con las 27 rutas de administración de `05` sección 5 como
+`children` — cada pantalla llega por `<Outlet />`.
+
+- **Sidebar** teal de 236 px (`--sidebar-w`): dos secciones, "Operación"
+  (Resumen, Planificación, Asistencia, Supervisiones, Empleados, Clientes y
+  sedes, Tareas) y "Configuración" (un solo ítem, a
+  `/admin/configuracion/usuarios`) — las ocho secciones de P-121
+  (`src/app/shells/adminNav.ts`, `ADMIN_NAV_OPERATION`/
+  `ADMIN_NAV_CONFIGURATION`). Ítem activo con fondo blanco al 20 %
+  (`bg-white/20`), calculado por prefijo de ruta (`isAdminNavItemActive`,
+  con `matchPrefixes` por ítem para los casos donde varias rutas cuelgan de
+  una sección — p. ej. "Clientes y sedes" también se resalta en
+  `/admin/sedes/...` y `/admin/servicios/...`). Usuario al pie (avatar +
+  nombre + rol, de `useSession()`).
+- Entre 1024 y 1279 px (`useMediaQuery('(min-width: 1024px)')` sin llegar a
+  `1280px`) la sidebar **colapsa a íconos de 60 px** con `Tooltip` (nuevo
+  `aria-label` en el link para que el nombre siga siendo accesible aunque
+  no se vea el texto). Por debajo de 1024 px la sidebar no se monta: en su
+  lugar, **tabbar inferior** de 66 px con Hoy, Planificar, Asistencia,
+  Supervisiones (`src/app/shells/adminNav.ts`,
+  `ADMIN_TABBAR_ITEMS`) y un botón "Más" que abre un `Sheet` (`side="bottom"`)
+  con el resto de las secciones (Empleados, Clientes y sedes, Tareas,
+  Configuración) — "Más (resto)" de `05` sección 7 no es una pantalla
+  propia, así que no tiene ruta ni `screenId`, solo ese menú.
+- **Topbar**: título y subtítulo del `handle` de la ruta activa
+  (`useRouteHandle`, ver más abajo) y menú de usuario (`DropdownMenu`, DS-013
+  agrega el componente que faltaba de `07` sección 2.1) con "Mi perfil"
+  (`/perfil`) y "Cerrar sesión" (en esta etapa, limpia el rol simulado y
+  manda a `/ingresar` — ver "Sesión provisoria" abajo).
+- **Buscador global**: no implementado (P09.0, EMP-012). El único punto de
+  extensión es la prop `topbarEnd?: ReactNode` de `AdminShell` — vacía hoy,
+  sin ningún input que no funcione.
+- **Capacidades del administrador** (`admin_capabilities`, F7): esta
+  entrega no filtra ítems por capacidad todavía. El punto de extensión es
+  `ADMIN_NAV_ITEMS`/`ADMIN_MORE_ITEMS` (`adminNav.ts`): agregar un campo
+  opcional `capability?: AdminCapability` a `AdminNavItem` y filtrar el
+  arreglo antes de mapearlo alcanza, sin tocar `AdminShell` en sí.
+
+### `MobileShell` (`src/app/shells/MobileShell.tsx`, DS-014)
+
+Un único componente para empleado y supervisor (`variant: 'employee' |
+'supervisor'`), montado como `element` de `app`/`sup` en `router.tsx`. En
+escritorio se centra a 480 px con sombra (`05` sección 0: "las pantallas
+móviles funcionan también en escritorio, centradas a 480 px").
+
+- **Cabecera**: dos variantes, elegidas solas según la ruta activa (sin que
+  cada pantalla lo declare): la raíz exacta (`/app`, `/sup`) muestra el
+  saludo teal ("Hola, {nombre}", fecha con `formatShortDate` de
+  `src/lib/format.ts` — zona fija de ADR-019, ver DS-017 — y avatar con
+  link a `/perfil`, M02); cualquier otra ruta muestra la navbar de
+  subpágina (teal, con o sin flecha de "volver"). La flecha aparece salvo
+  en los otros ítems del propio tabbar (`/app/mas`,
+  `/sup/supervisiones`, `/sup/historial`): siguen siendo una pestaña, no
+  una subpágina, y ahí el tabbar sigue visible.
+- **Tabbar** de 66 px (`src/app/shells/mobileNav.ts`,
+  `EMPLOYEE_TABBAR_ITEMS`/`SUPERVISOR_TABBAR_ITEMS`): empleado "Hoy · Fichar
+  · Más" con el `Fab` de DS-003 integrado entre los otros dos (navega a
+  `/app/fichar`, el punto de entrada de EMP-14); supervisor "Hoy ·
+  Supervisiones · Historial · Más". Ítem activo en `--primary`. Visible solo
+  en la raíz y en los otros ítems del propio tabbar — las subpáginas no
+  llevan tabbar (M04/M09/M16 del mockup tampoco lo muestran).
+- **`ActionBar`** (`src/app/shells/ActionBar.tsx`): franja de botones
+  apilados para subpáginas (`.m-actions` de `ds.css`, ej. M16 "Volver al
+  servicio" / "Registrar salida"). `MobileShell` no la monta: la pantalla
+  que la necesite la agrega como su propio último elemento, **hijo directo
+  de `<main>`** (devolver un fragmento, no envolverla en otro `div`) —
+  `position: sticky; bottom: 0` alcanza para que quede pegada al pie de la
+  ventana sin necesitar un slot ni contexto compartido entre la página y
+  el shell (ver "Decisiones" abajo). Ocupa todo el ancho (márgenes
+  negativos sobre el `p-4` de `<main>`) y respeta
+  `env(safe-area-inset-bottom)`.
+
+**Scroll en los dos shells** (corregido en la revisión de P05.4): scrollea
+el documento, nunca un contenedor interno. La topbar de `AdminShell`, la
+navbar de subpágina de `MobileShell` y los dos tabbar son `sticky`; la
+sidebar es `sticky` con `h-dvh` y scroll propio. `<main>` no lleva
+`overflow`: si lo llevara, sería el contenedor de referencia de cualquier
+`sticky` de una pantalla (como `ActionBar`) y dejaría de anclarse a la
+ventana. El saludo de la raíz de `MobileShell` sí se va con el scroll.
+Ninguna pantalla debería agregar su propio contenedor de scroll vertical a
+página completa.
+
+### Router (`src/app/router.tsx`, `src/app/routes/*`, DS-015)
+
+- **Todas las rutas de `05` sección 5** (27 de administración, 11 de
+  empleado, 8 de supervisor, más las 5 comunes) como placeholders
+  (`src/app/routes/placeholder.tsx`, `placeholderRoute()`): cada una
+  muestra su `screenId`, título, subtítulo opcional y "Pantalla en
+  construcción.", dentro del shell que corresponda. Faltan a propósito
+  ADM-08, ADM-11 y ADM-24 (drawers/pestañas de otra pantalla, sin fila
+  propia en la tabla de rutas de `05`) y EMP-05 (comparte `/app/fichar` con
+  EMP-14). Los parámetros de consulta que cambian de pantalla sin cambiar
+  de ruta (`?vista=`, `?pestana=`, `?fecha=`, `?cliente=`, `?sede=`) quedan
+  documentados en el subtítulo de cada placeholder; la lectura real la hace
+  la pantalla cuando exista.
+- **`RouteHandle`** (`{ screenId, title, subtitle? }`,
+  `src/app/routes/placeholder.tsx`): cada ruta placeholder lo declara una
+  sola vez (`placeholderRoute` arma el `element` y el `handle` con los
+  mismos valores). `useRouteHandle()` lo lee del último `match` con
+  `handle` (`useMatches()`) — lo usan la topbar de `AdminShell` y la
+  cabecera de `MobileShell`. **Cuando front-admin/front-movil reemplacen un
+  placeholder por la pantalla real, tienen que seguir declarando el mismo
+  `handle`** (`screenId`, `title`, `subtitle` opcional) en su ruta para que
+  la topbar/cabecera no se quede vacía — es la única obligación que les deja
+  esta entrega.
+- **`RequireRole`** (`src/features/auth/RequireRole.tsx`): un wrapper por
+  grupo — `admin` (`allow={['owner', 'admin']}`), `app`
+  (`allow={['employee']}`), `sup` (`allow={['supervisor']}`), y `perfil`
+  (los cuatro roles, el shell lo elige `ProfileLayout` según
+  `useSession()`). Sin sesión → `/ingresar`; con sesión pero ningún rol de
+  `allow` → la vía propia de sus roles (`homePathForRoles` en
+  `session.ts`: un empleado que abre `/admin` termina en `/app`), o
+  `/sin-acceso` si no tiene ningún rol; si no, renderiza. AUTH-004 usa la
+  misma `homePathForRoles` para el redirect de `/`. Es solo experiencia (`07`
+  sección 5): la protección real de los datos es RLS, `RequireRole` nunca
+  la reemplaza.
+- **`/`** sigue siendo `ConstructionPage` (sin cambios): es lo que hoy sirve
+  `app.extendiendoservicios.com`, verificado por
+  `tests/e2e/construction-page.spec.ts`. El redirect según sesión y rol de
+  `05` sección 5 ("/ → redirige según sesión y rol") es AUTH-004 (F6); hasta
+  entonces `/` no llama a `useSession` ni pasa por `RequireRole`.
+- **404** (`src/pages/common/NotFoundPage.tsx`): cualquier ruta que no
+  matchea ninguna de las anteriores (`path: '*'`), con la marca
+  (`favicon.png`, ver "Decisiones" abajo).
+- **Banner de staging** (`src/components/StagingBanner.tsx`, INFRA-022):
+  un único punto de montaje, `RootLayout` (la raíz sin `path` de todo el
+  árbol de rutas, en `router.tsx`) — así "todos los layouts, incluida la
+  portada" lo muestran sin que cada uno se acuerde de agregarlo. Franja
+  `role="status"` con "Entorno de prueba…", visible solo con
+  `VITE_APP_ENV=staging` (nunca en `production` ni en `local`); en flujo
+  normal del documento (no `sticky`/`fixed`), nunca tapa contenido.
+- **Carga diferida por vía** (`React.lazy`, `src/app/shells/lazyShells.tsx`):
+  `AdminShell` y `MobileShell` están detrás de `lazy()` + `Suspense`
+  (`RouteFallback`, spinner centrado sobre `--bg`) — un mismo módulo
+  (`lazyShells.tsx`) para que `router.tsx` **y** `commonRoutes.tsx`
+  (`/perfil`, que puede necesitar cualquiera de los dos shells) usen la
+  misma referencia lazy, y así el chunk de `AdminShell` nunca viaje al
+  bundle de quien nunca lo va a usar. Tamaños del build (`pnpm build`,
+  ver el reporte del encargo para la comparación completa): `AdminShell`
+  ~107 kB (~35 kB gzip) y `MobileShell` ~35 kB (~10 kB gzip) quedan en
+  chunks separados del bundle principal.
+
+### Sesión provisoria (`src/features/auth/session.ts`, `devRole.ts`)
+
+**Contrato que P06.2 (AUTH-002/AUTH-008) tiene que respetar** para
+reemplazar esto sin tocar `router.tsx` ni los shells:
+
+- `useSession(): SessionState` es el único punto que leen `RequireRole`,
+  `AdminShell` y `MobileShell`. `SessionState` ya tiene la forma final
+  (`{ status: 'loading' }`, `{ status: 'unauthenticated' }` o
+  `{ status: 'authenticated', roles: Role[], displayName: string }`) aunque
+  la implementación provisoria nunca produce `'loading'` (no hay ninguna
+  llamada asíncrona todavía).
+- `Role` es literalmente `app_role` (`04_Modelo_de_Datos.md`: `'owner' |
+'admin' | 'employee' | 'supervisor'`) y `roles` es un arreglo porque una
+  persona puede tener más de uno (acceso cruzado, `05` sección 3).
+- **Para reemplazarlo**: `AuthProvider`/`useAuth` de F6 pueden vivir en
+  `src/features/auth/` junto a este archivo; lo mínimo es que
+  `session.ts` siga exportando un `useSession` con esta misma forma (puede
+  ser un `re-export` de `useAuth`, o esta función puede pasar a leer el
+  `AuthProvider` por dentro) — ni `RequireRole` ni `AdminShell`/
+  `MobileShell` necesitan cambiar una línea más allá de eso.
+- **`/dev/rol`** (`src/pages/dev/DevRole.tsx`, solo en desarrollo, mismo
+  patrón que `/dev/design`: `lazy()` + `if (import.meta.env.DEV)` en
+  `router.tsx`) simula un rol para recorrer los shells sin backend: guarda
+  la elección en `localStorage` (`src/features/auth/devRole.ts`,
+  `getDevRoleSelection`/`setDevRoleSelection`/`subscribeDevRoleSelection`,
+  con `useSyncExternalStore`, mismo patrón que `useMediaQuery`). Ninguna de
+  estas funciones hace nada fuera de `import.meta.env.DEV` (devuelven
+  `'none'`/no escriben nada): verificado que ni la página ni la clave de
+  `localStorage` (`es-dev-role`) quedan en `dist/` (`pnpm build` +
+  `grep` sobre `dist/assets/*.js`, ver el reporte del encargo). En
+  producción y en staging, sin sesión, toda ruta protegida redirige a
+  `/ingresar` — no hay ninguna forma de "simular" nada fuera de desarrollo.
+- Seis opciones en `/dev/rol`: sin sesión, dueño, administrador, empleado,
+  supervisor, y empleado+supervisor a la vez (para probar el acceso
+  cruzado en "Más"). Nombres de ejemplo, iguales a los del mockup (Andrea
+  Ríos, María Gómez, Paula Lemos).
+
+### Decisiones de esta entrega (DS-013 a DS-015)
+
+- **Marca de la sidebar sin el vectorial (IF-08)**: `07` sección 1.5 separa
+  un isotipo de 34 px (blanco) del lockup de texto, con su propia
+  tipografía CSS. Los tres PNG de `Images/` (color, negro, blanco) tienen
+  el isotipo y el texto **ya compuestos en un solo bitmap** — no hay forma
+  de aislar el isotipo sin redibujar el logo (prohibido, memoria del
+  proyecto). Se usa el lockup completo (`public/logo.png`, la versión
+  blanca, ya recortada a 800×670 desde `Images/…_blancosinfondo.png` en
+  INFRA-001) como una imagen única en la sidebar, en vez del patrón
+  isotipo+texto del mockup. Deuda hacia DS-018/DS-020 (cuando llegue el
+  vectorial, separar isotipo y lockup como pide `07`).
+- **`favicon.png` para el 404, no `logo.png`**: `favicon.png` (128×128) ya
+  es el isotipo **en color** (recortado del logo original en INFRA-001),
+  apto para fondos claros; `logo.png` es la versión blanca, pensada para
+  fondos oscuros/teal (sidebar, portada) — sobre `--bg` sería invisible.
+- **Bug de `asChild` en `Button` (`ui/button.tsx`), corregido acá**: nunca
+  se había usado `<Button asChild>` en el repo hasta `/dev/rol` (DS-015).
+  `Slot.Root` (Radix, lo que arma `asChild`) exige exactamente un elemento
+  hijo; el `return` original de `Button` le pasaba tres nodos sueltos
+  (ícono/spinner, `children`, texto de carga), y con `asChild` eso
+  reventaba con "Slot failed to slot onto its children" apenas se probó en
+  el navegador (no lo agarra ningún test que no monte de verdad el
+  componente). Se corrigió armando un único nodo `content` — con `asChild`
+  es directamente `children` (ícono y `loading` dejan de tener efecto ahí,
+  igual que en el patrón estándar de shadcn); sin `asChild`, un solo `<>`
+  con lo de antes, que a un `<button>` real no le importa recibir envuelto
+  en un Fragment. Test de regresión en `button.test.tsx`.
+- **`DropdownMenu` instalado en este paquete**: `07` sección 2.1 ya lo
+  documenta como parte de "Acciones" (origen shadcn), pero no se había
+  agregado en DS-003. Hacía falta para el menú de usuario de `AdminShell`
+  (Mi perfil / Cerrar sesión). Mismo bug de `data-open:`/`data-closed:` que
+  el resto de los componentes shadcn de este repo (ver el "Corregido" de
+  P05.2/P05.3 en el `CHANGELOG`): corregido a `data-[state=open]:`/
+  `data-[state=closed]:` en los mismos tres lugares (`Content`,
+  `SubTrigger`, `SubContent`).
+- **"Más" del tabbar de administración es un `Sheet`, no una ruta**: `05`
+  sección 7 lo describe como "Más (resto)", sin ID de pantalla propio (a
+  diferencia de EMP-13/SUP-09, que sí son pantallas con su `screenId`). Se
+  implementó como un menú (`Sheet` inferior) con enlaces a las secciones
+  que no entran en el tabbar, en vez de inventarle una ruta que `05` no
+  pide.
+- **`ActionBar` sin slot/contexto**: en vez de que `MobileShell` reserve un
+  hueco fijo y las páginas le "manden" su contenido (patrón de contexto de
+  layout, más plumbing), `ActionBar` se apoya en `position: sticky` sobre
+  el scroll del documento — mientras sea el último hijo de `<main>`, se
+  comporta como el pie fijo del mockup sin acoplar el shell a lo que cada
+  pantalla necesite mostrar ahí.
+- **Botón "Volver" de la navbar de subpágina usa `navigate(-1)`**: la forma
+  estándar y más simple de "volver" en una SPA. No calcula una ruta
+  "padre" a partir del path (no hay ninguna tabla que la declare por
+  pantalla): si alguien entra directo a una subpágina por URL, sin
+  historial previo dentro de la app, "volver" puede no tener a dónde ir —
+  limitación conocida, aceptable para esta entrega.
+
 ## Cómo ver los componentes
 
-`pnpm dev` y abrir `http://localhost:5173/dev/design`. La página no existe
-en el build de producción.
+`pnpm dev` y abrir `http://localhost:5173/dev/design`. Para recorrer
+`AdminShell`/`MobileShell` con un rol simulado, `http://localhost:5173/dev/rol`
+(DS-015). Ninguna de las dos existe en el build de producción.

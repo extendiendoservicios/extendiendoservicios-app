@@ -84,6 +84,29 @@ function Button({
   const Comp = asChild ? Slot.Root : 'button'
   const isDisabled = disabled ?? loading
 
+  // `Slot.Root` (Radix, vía `asChild`) exige exactamente un elemento hijo
+  // ("Expected a single React element child or `Slottable`"): no admite el
+  // ícono/spinner intercalados como hijos sueltos igual que un `<button>`
+  // normal sí. Se arma un único nodo (`content`) para los dos casos — con
+  // `asChild` es directamente `children` (quien lo usa controla todo el
+  // contenido, como en `<Button asChild><Link>…</Link></Button>`); sin
+  // `asChild`, un solo `<>` con ícono/spinner + `children` + texto para
+  // lectores de pantalla, que a un `<button>` de verdad no le importa
+  // recibir envuelto en un Fragment.
+  const content = asChild ? (
+    children
+  ) : (
+    <>
+      {loading ? (
+        <Loader2 aria-hidden="true" className="animate-spin" />
+      ) : (
+        Icon && <Icon aria-hidden="true" />
+      )}
+      {children}
+      {loading && <span className="sr-only">Cargando</span>}
+    </>
+  )
+
   return (
     <Comp
       data-slot="button"
@@ -95,13 +118,7 @@ function Button({
       aria-busy={loading || undefined}
       {...props}
     >
-      {loading ? (
-        <Loader2 aria-hidden="true" className="animate-spin" />
-      ) : (
-        Icon && <Icon aria-hidden="true" />
-      )}
-      {children}
-      {loading && <span className="sr-only">Cargando</span>}
+      {content}
     </Comp>
   )
 }
