@@ -13,3 +13,17 @@
   X-Frame-Options: DENY
   Permissions-Policy: geolocation=(self), camera=(), microphone=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), midi=(), sync-xhr=()
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://anesttvrnpsaaaxaquce.supabase.co https://fysuppdadwvabrjpnnoh.supabase.co https://tile.openstreetmap.org https://*.tile.openstreetmap.org; connect-src 'self' https://anesttvrnpsaaaxaquce.supabase.co https://fysuppdadwvabrjpnnoh.supabase.co https://*.ingest.de.sentry.io https://nominatim.openstreetmap.org; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'
+
+# RESP-001 (P05.5, front-plataforma): el service worker y el manifest de la PWA (`07`/`02`
+# P-089) no llevan nombre de archivo con hash de contenido (a diferencia de `dist/assets/*`), así
+# que sin una cabecera propia podrían quedar cacheados por un CDN o un navegador el tiempo
+# suficiente como para que una versión nueva del build no llegue nunca a una app ya instalada.
+# Bloques aparte (no dentro del `/*` de arriba, que ya cubre estos dos archivos con las cabeceras
+# de seguridad): Cloudflare Pages combina las cabeceras de todos los bloques que matchean un
+# mismo path (`docs/deployment.md` sección 10.4), así que `/sw.js` y `/manifest.webmanifest`
+# reciben además `Cache-Control` sin caché larga, sin pisar nada del bloque `/*`.
+/sw.js
+  Cache-Control: no-cache
+
+/manifest.webmanifest
+  Cache-Control: no-cache

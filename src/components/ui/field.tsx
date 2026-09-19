@@ -5,6 +5,20 @@ import { cn } from 'cn'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 
+/**
+ * `Field`/`FormField` (`07` sección 2.2, reemplazo de `form` — ver
+ * `docs/design-system.md`): instalado sin restylear en DS-002 (P05.1),
+ * pendiente hasta que este paquete (P05.5, DS-016) lo mostró en
+ * `/dev/design` y encontró el hueco. Solo se tocó la tipografía de
+ * `FieldLabel`/`FieldDescription`/`FieldError` (`.lbl`/`.hint` de
+ * `Mockup/assets/ds2.css`) y el espaciado de `FieldGroup`/`Field`
+ * (13 px entre campos, 5 px entre etiqueta/control/ayuda dentro de uno) —
+ * nada de la lógica ni de las variantes que trae la CLI. Las grillas
+ * `row2`/`row3` de `07` no son un subcomponente propio: son un
+ * `className="grid grid-cols-2 gap-3"`/`grid-cols-3` puesto donde haga
+ * falta (ver el ejemplo en `/dev/design`), como cualquier otro layout de
+ * Tailwind.
+ */
 function FieldSet({ className, ...props }: React.ComponentProps<'fieldset'>) {
   return (
     <fieldset
@@ -41,7 +55,8 @@ function FieldGroup({ className, ...props }: React.ComponentProps<'div'>) {
     <div
       data-slot="field-group"
       className={cn(
-        'group/field-group @container/field-group flex w-full flex-col gap-6 data-[slot=checkbox-group]:gap-3 *:data-[slot=field-group]:gap-4',
+        // 13 px entre campos apilados (`.field`, `ds2.css` — 07 sección 2.2).
+        'group/field-group @container/field-group flex w-full flex-col gap-[13px] data-[slot=checkbox-group]:gap-3 *:data-[slot=field-group]:gap-4',
         className,
       )}
       {...props}
@@ -50,7 +65,9 @@ function FieldGroup({ className, ...props }: React.ComponentProps<'div'>) {
 }
 
 const fieldVariants = cva(
-  'group/field flex w-full gap-3 data-[invalid=true]:text-destructive',
+  // 5 px entre etiqueta/control/ayuda dentro de un mismo campo (`.lbl`
+  // margin-bottom 5, `.hint` margin-top 5 de `ds2.css`).
+  'group/field flex w-full gap-[5px] data-[invalid=true]:text-destructive',
   {
     variants: {
       orientation: {
@@ -106,6 +123,10 @@ function FieldLabel({
       className={cn(
         'group/field-label peer/field-label flex w-fit gap-2 leading-snug group-data-[disabled=true]/field:opacity-50 has-data-[state=checked]:bg-input/30 has-[>[data-slot=field]]:rounded-2xl has-[>[data-slot=field]]:border has-[>[data-slot=field]]:not-has-[:disabled,[data-disabled]]:hover:bg-input/40 has-[>[data-slot=field]]:has-[:focus-visible]:border-ring has-[>[data-slot=field]]:has-[:focus-visible]:ring-3 has-[>[data-slot=field]]:has-[:focus-visible]:ring-ring/50 *:data-[slot=field]:p-4',
         'has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col',
+        // `.lbl` (`ds2.css`, 07 sección 2.2): 11 px, peso 650 → 600 (07
+        // sección 4, mismo criterio que el "Motivo" de `ConfirmDialog`),
+        // `--text-2`. Pisa el `text-sm font-medium` por omisión de `Label`.
+        'text-[11px] font-semibold text-text-2',
         className,
       )}
       {...props}
@@ -131,7 +152,8 @@ function FieldDescription({ className, ...props }: React.ComponentProps<'p'>) {
     <p
       data-slot="field-description"
       className={cn(
-        'text-left text-sm leading-normal font-normal text-muted-foreground group-has-data-horizontal/field:text-balance [[data-variant=legend]+&]:-mt-1.5',
+        // `.hint` (`ds2.css`, 07 sección 2.2): 11 px, `--text-3`, interlineado 1.4.
+        'text-left text-[11px] leading-[1.4] font-normal text-text-3 group-has-data-horizontal/field:text-balance [[data-variant=legend]+&]:-mt-1.5',
         'last:mt-0 nth-last-2:-mt-1',
         '[&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary',
         className,
@@ -214,7 +236,7 @@ function FieldError({
     <div
       role="alert"
       data-slot="field-error"
-      className={cn('text-sm font-normal text-destructive', className)}
+      className={cn('text-[11px] font-normal text-destructive', className)}
       {...props}
     >
       {content}

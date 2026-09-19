@@ -199,20 +199,34 @@ function AdminSidebar({
             'mb-5 flex items-center rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring',
             collapsed ? 'justify-center px-0' : 'gap-[11px] px-2',
           )}
-          aria-label="Ir al resumen"
         >
-          {/* Logo blanco (Images/ExtendiendoServicios_logo_blancosinfondo.png,
-              ya copiado a public/logo.png por INFRA-001). El mockup separa un
-              isotipo de 34 px de la marca de texto con su propia tipografía
-              (mark.svg, placeholder que no se usa); sin el vectorial (IF-08,
-              DS-018) no hay forma de aislar ese isotipo del logo original sin
-              redibujarlo, así que acá se usa el lockup completo como imagen
-              única — deuda hacia DS-018/DS-020, igual que los íconos PWA. */}
+          {/* Isotipo recortado del PNG original (DS-018, PNG temporal —
+              deuda DS-020 hacia el vectorial IF-08): 34 px de alto fijo en
+              los dos estados de la sidebar (`.sb-mark`, `ds.css`), con
+              `srcSet` a @3x para pantallas de alta densidad. Sin nombre
+              accesible propio cuando el lockup de texto está visible (el
+              nombre lo aporta ese texto, no hay que duplicarlo); cuando la
+              sidebar está colapsada es el único contenido del link, así que
+              ahí sí lleva `alt`. */}
           <img
-            src="/logo.png"
-            alt="Extendiendo Servicios"
-            className={collapsed ? 'h-[30px] w-auto' : 'h-[34px] w-auto'}
+            src="/icons/isotipo_blanco_34px@2x.png"
+            srcSet="/icons/isotipo_blanco_34px@2x.png 2x, /icons/isotipo_blanco_34px@3x.png 3x"
+            alt={collapsed ? 'Extendiendo Servicios' : ''}
+            className="h-[34px] w-auto shrink-0"
           />
+          {!collapsed && (
+            <span className="flex flex-col">
+              <span className="text-[12.5px] leading-[1.18] font-bold tracking-[1.3px] uppercase">
+                Extendiendo
+                <br />
+                Servicios
+              </span>
+              <span
+                aria-hidden="true"
+                className="mt-1 h-[2px] w-[26px] rounded-full bg-white/55"
+              />
+            </span>
+          )}
         </Link>
 
         <NavSection

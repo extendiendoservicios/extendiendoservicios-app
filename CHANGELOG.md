@@ -7,9 +7,72 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
-Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), y `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022).
+Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022), y el cierre de F5: marca de la sidebar e íconos PWA desde un PNG temporal, `vite-plugin-pwa` y `/dev/design` completo (F5 · DS-016, DS-018 a DS-020, RESP-001, DOC-005).
 
 ### Agregado
+
+- Marca de la sidebar e íconos PWA (DS-018, PNG temporal — decisión de
+  Mike del 19 sep 2026 de recortar el isotipo del PNG original en vez de
+  esperar el vectorial IF-08; deuda **DS-020** registrada en
+  `docs/design-system.md` para cuando llegue): `public/icons/` con los
+  recortes que preparó el orquestador desde `Images/` (isotipo blanco a
+  34 px con `@2x`/`@3x`, a resolución completa en blanco y negro, íconos
+  PWA 192/512/512 maskable y `apple-touch-icon` 180, todos copiados tal
+  cual, sin redibujar ni recolorear). Sidebar de `AdminShell`
+  (`AdminSidebar`) reemplaza el lockup completo de P05.4 por el patrón de
+  `07` sección 1.5/`Mockup/png/D01.png`: isotipo de 34 px + lockup de
+  texto "EXTENDIENDO / SERVICIOS" (dos líneas, 12.5 px/700/mayúsculas/
+  tracking 1.3 px) con una regla de 26×2 px debajo, colapsada a solo el
+  isotipo, y sin nombres accesibles duplicados (`alt=""` en la imagen
+  cuando el texto es visible, `alt="Extendiendo Servicios"` cuando no).
+  `index.html`: `apple-touch-icon` al ícono de 180 y `theme-color` al teal
+  de marca `#569EA4`, igual que el manifest (antes, `#0E1017` de la
+  portada oscura).
+  `public/logo.png`/`favicon.png` no se tocan (los sigue usando la
+  portada, el 404 y el `og:image`).
+- `vite-plugin-pwa` 1.3.0 (RESP-001, P-089): manifest (`name`/`short_name`/
+  `description`/`lang: 'es-AR'`/`start_url`/`scope: '/'`/
+  `display: 'standalone'` — "pantalla completa" sin la barra del
+  navegador, no `fullscreen`, que ocultaría además la barra de estado del
+  celular — `theme_color`/`background_color: '#569EA4'`, íconos 192/512
+  `purpose: 'any'` + 512 `purpose: 'maskable'`), service worker
+  (`strategies: 'generateSW'`) con precache exclusivo del build
+  (`globPatterns` de JS/CSS/HTML/fuentes/íconos, sin `runtimeCaching`:
+  ninguna llamada a Supabase, Nominatim ni OpenStreetMap se cachea) y
+  `navigateFallback: '/index.html'` para la SPA.
+  `registerType: 'prompt'` sin ninguna interfaz todavía (decisión del
+  orquestador: el service worker nuevo queda esperando —
+  `skipWaiting`/`clientsClaim` nunca se llaman solos, verificado en
+  `dist/sw.js` — y se activa recién cuando se cierran todas las pestañas,
+  para no interrumpir a un empleado fichando; el aviso "hay una versión
+  nueva" es RESP-009, F17). `devOptions.enabled: false`: sin service
+  worker en `pnpm dev`. Verificado que `/dev/*` no queda en el precache
+  (`pnpm build` + `grep` sobre `dist/sw.js`), y con Playwright contra
+  `pnpm preview` que el service worker se registra (`state: 'activating'`
+  en la primera instalación) y el manifest se lee
+  (`content-type: application/manifest+json`) sin errores de consola.
+- `public/_headers` (INFRA-018, de infra-devops — este paquete solo
+  agregó las reglas de caché, sin tocar el resto): dos bloques nuevos,
+  `/sw.js` y `/manifest.webmanifest`, con `Cache-Control: no-cache` (sin
+  hash de contenido en el nombre de archivo, a diferencia de
+  `dist/assets/*`, así que sin esto un CDN o el navegador podrían
+  quedarse con una copia vieja y una actualización del build no llegaría
+  nunca a una app ya instalada). Verificado con `wrangler pages dev` que
+  las dos rutas combinan este `Cache-Control` con las cabeceras de
+  seguridad del bloque `/*` existente (CSP, HSTS, etc.), sin perder
+  ninguna.
+- `/dev/design` completo (DS-016): `DropdownMenu` ("más acciones" de una
+  fila y menú de usuario de la sidebar), `Drawer`/`Sheet` (452 px a la
+  derecha, cabecera/cuerpo con scroll/pie a ancho completo — hasta ahora
+  solo se veía el `Sheet side="bottom"` del menú "Más"), `ActionBar`
+  (ejemplo de M16 dentro del contenedor móvil de 390 px) y
+  `StagingBanner` (con una réplica estática al lado, porque el componente
+  real solo se ve con `VITE_APP_ENV=staging`). Inventario completo contra
+  `07` sección 2 en el reporte del encargo.
+- `docs/design-system.md` (DS-019/DOC-005): documento cerrado de F5 —
+  secciones nuevas de marca (DS-018/DS-020) y PWA (RESP-001) con el
+  detalle de cada decisión, inventario de `/dev/design` (DS-016) y ajuste
+  de las notas de P05.4 que quedaban desactualizadas.
 
 - Shells y router (DS-013 a DS-015, P05.4): `AdminShell`
   (`src/app/shells/AdminShell.tsx`) con sidebar teal de 236 px (las ocho
