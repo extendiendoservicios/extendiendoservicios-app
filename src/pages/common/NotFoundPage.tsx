@@ -28,7 +28,7 @@ export function NotFoundPage() {
         </div>
         <Link
           to="/"
-          className="text-[12.5px] font-semibold text-primary-800 underline-offset-4 hover:underline"
+          className="relative text-[12.5px] font-semibold text-primary-800 underline-offset-4 after:absolute after:-inset-x-2 after:-inset-y-[13px] hover:underline"
         >
           Volver al inicio
         </Link>

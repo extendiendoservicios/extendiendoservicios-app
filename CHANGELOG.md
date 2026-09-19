@@ -7,7 +7,7 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
-Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022), y el cierre de F5: marca de la sidebar e íconos PWA desde un PNG temporal, `vite-plugin-pwa` y `/dev/design` completo (F5 · DS-016, DS-018 a DS-020, RESP-001, DOC-005), y el cierre de F3 (F3 · DOC-003, INFRA-024, TEST-024).
+Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022), y el cierre de F5: marca de la sidebar e íconos PWA desde un PNG temporal, `vite-plugin-pwa` y `/dev/design` completo (F5 · DS-016, DS-018 a DS-020, RESP-001, DOC-005), el cierre de F3 (F3 · DOC-003, INFRA-024, TEST-024) y la revisión visual de cierre de F5 (P05.6).
 
 ### Agregado
 
@@ -447,6 +447,31 @@ Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/C
   Se reemplazaron por los KPIs reales de la Base (`05_Pantallas_y_Navegacion.md`
   ADM-02): turnos hoy, presentes, próximos (2 h), sin registro, avisos de
   ausencia y demora.
+- Revisión visual de cierre de F5 (P05.6, orquestador), a 1440, 1024, 768
+  y 390 px:
+  - Sidebar colapsada (1024 a 1279 px): cada link medía 16 px de ancho,
+    lo mismo que el ícono, y el resaltado del activo era una franja
+    angosta. Ahora es un cuadrado de 44 px.
+  - Color de borde por defecto en `globals.css`. En Tailwind 4, `border`
+    sin color usa el color del texto: el borde de `Sheet` (el menú "Más" y
+    el drawer) salía casi negro.
+  - `Sheet` a los costados: 452 px desde 768 px y toda la pantalla por
+    debajo, como pide `07` sección 2.4 (antes, tres cuartos del ancho y
+    como máximo 384 px).
+  - Objetivos táctiles de 44 px en móvil (`07`): avatar y "Volver" de
+    `MobileShell`, menú de usuario de `AdminShell`, la X de `Sheet` y
+    `Dialog` y "Volver al inicio" del 404. Se agranda el área con un
+    `::after`, sin cambiar cómo se ven.
+  - Textos de shadcn que habían quedado en inglés: "Close" pasa a
+    "Cerrar" (`Sheet`, `Dialog`) y `CommandDialog` pasa a "Buscar".
+  - `/dev/design`: el ejemplo de tres columnas de `Field` volvía a usar
+    "Tolerancia (min)", un término de módulos futuros (P-068). Ahora
+    muestra "Inicio / Fin / Dotación", los campos de ADM-07.
+  - `/dev/rol`: la opción elegida usaba `bg-primary-050`, una clase que
+    no existe; pasa a `bg-primary-50`.
+- `vite.config.ts`: los source maps se generan con `sourcemap: 'hidden'`.
+  El JS publicado ya no apunta a un `.map` que se borra después de
+  subirlo a Sentry (Sentry los asocia por debug ID).
 
 ### Quitado
 

@@ -102,7 +102,7 @@ function DevRolePage() {
                 className={cn(
                   'flex flex-col gap-[2px] rounded-md border px-4 py-3 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring',
                   active
-                    ? 'border-primary bg-primary-050'
+                    ? 'border-primary bg-primary-50'
                     : 'border-border-strong bg-surface hover:bg-bg',
                 )}
               >

@@ -1007,6 +1007,36 @@ solo las decisiones de este paquete.
   y el manifest se lee con `content-type: application/manifest+json` y
   cero errores de consola.
 
+## Revisión visual de cierre de F5 (P05.6)
+
+El orquestador recorrió `/dev/design`, los tres shells, sus menús y
+overlays, y las pantallas comunes a 1440, 1024, 768 y 390 px. En los
+cuatro anchos no hay desborde horizontal, imágenes rotas ni texto cortado.
+Correcciones (detalle en `CHANGELOG.md`):
+
+- **Sidebar colapsada**: los links son cuadrados de 44 px (`size-11`). Con
+  la sidebar en `items-center`, un link sin ancho propio mide lo que su
+  ícono.
+- **Borde por defecto**: `globals.css` fija `border-color: var(--border)`
+  en la capa base. Cualquier `border` sin color explícito toma ese gris,
+  no el color del texto (comportamiento de Tailwind 4).
+- **`Sheet` a los costados**: 452 px desde 768 px (`md`), toda la pantalla
+  por debajo. Ya no hace falta pasarle el ancho por `className`.
+- **Objetivos táctiles** (`07`: ≥ 44 px en móvil): cuando el control es
+  más chico a propósito (avatar de 28 px, X de 28 px, "Volver" de 36 px),
+  el área se agranda con `after:absolute after:-inset-*` y el control se
+  ve igual. Ojo con `Button`: tiene borde de 1 px y el `::after` se
+  posiciona desde el borde interno, así que la X usa `-inset-[9px]`
+  (26 + 18 = 44), no `-inset-2`.
+- **Textos**: ningún componente muestra textos en inglés, tampoco los
+  `sr-only`. Al agregar un componente de shadcn, traducir "Close",
+  "Search…" y similares.
+
+Queda para F17 (RESP): el `index.html` no tiene `viewport-fit=cover`, así
+que hoy `env(safe-area-inset-bottom)` vale 0. Si se agrega, el tabbar de
+66 px de alto fijo tiene que crecer con el área segura; si no, los ítems
+quedan apretados en los iPhone con barra de inicio.
+
 ## Cómo ver los componentes
 
 `pnpm dev` y abrir `http://localhost:5173/dev/design`. Para recorrer

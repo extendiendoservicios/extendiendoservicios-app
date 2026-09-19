@@ -116,7 +116,9 @@ export function AdminShell({
           <div className="ml-auto flex items-center gap-[10px]">
             {topbarEnd}
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center gap-2 rounded-full p-1 outline-none focus-visible:ring-3 focus-visible:ring-ring">
+              {/* `after:-inset-1`: área táctil de 44 px por debajo de 1024,
+                  donde este shell se usa en el celular (`07`: ≥ 44 px). */}
+              <DropdownMenuTrigger className="relative flex items-center gap-2 rounded-full p-1 outline-none after:absolute after:-inset-1 focus-visible:ring-3 focus-visible:ring-ring">
                 <Avatar id="admin-session-user" name={displayName} />
                 <span className="sr-only">Menú de usuario</span>
               </DropdownMenuTrigger>
@@ -297,7 +299,9 @@ function NavSection({
                 className={cn(
                   'flex items-center gap-[11px] rounded-md px-[11px] py-[9px] text-[13px] text-white/82 outline-none focus-visible:ring-3 focus-visible:ring-ring',
                   active && 'bg-white/20 font-semibold text-white',
-                  collapsed && 'justify-center px-0',
+                  // Cuadrado de 44 px: con la sidebar en `items-center`, sin
+                  // un ancho propio el link medía lo que el ícono, 16 px (P05.6).
+                  collapsed && 'size-11 justify-center p-0',
                 )}
               >
                 <item.icon aria-hidden="true" className="size-4 shrink-0" />
