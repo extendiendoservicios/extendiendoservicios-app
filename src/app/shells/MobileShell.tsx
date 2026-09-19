@@ -108,10 +108,11 @@ function MobileGreetingHeader({ displayName }: { displayName: string }) {
             {formatShortDate(new Date())}
           </p>
         </div>
+        {/* Avatar de 28 px; el `::after` lleva el área táctil a 44 px (`07`). */}
         <Link
           to="/perfil"
           aria-label="Ir a mi perfil"
-          className="ml-auto shrink-0 rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring"
+          className="relative ml-auto shrink-0 rounded-full outline-none after:absolute after:-inset-2 focus-visible:ring-3 focus-visible:ring-ring"
         >
           <Avatar id="mobile-session-user" name={displayName} />
         </Link>
@@ -138,7 +139,7 @@ function MobileNavbarHeader({
           type="button"
           onClick={onBack}
           aria-label="Volver"
-          className="flex size-9 shrink-0 items-center justify-center rounded-full outline-none hover:bg-white/10 focus-visible:ring-3 focus-visible:ring-ring"
+          className="relative flex size-9 shrink-0 items-center justify-center rounded-full outline-none after:absolute after:-inset-1 hover:bg-white/10 focus-visible:ring-3 focus-visible:ring-ring"
         >
           <ArrowLeft aria-hidden="true" className="size-5" />
         </button>

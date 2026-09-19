@@ -85,6 +85,20 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Color de borde por defecto. En Tailwind 4, `border` sin color usa
+   `currentColor` (el color del texto): el borde de `Sheet` salía casi negro
+   (P05.6). Es la regla base que agrega shadcn; una clase de color explícita
+   la sigue pisando, porque las utilidades van en una capa posterior. */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--border);
+  }
+}
+
 /* Respeta la preferencia de movimiento reducido en toda la app. */
 @media (prefers-reduced-motion: reduce) {
   *,

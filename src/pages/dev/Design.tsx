@@ -687,18 +687,18 @@ function DesignPage() {
         <Row label="row3 — tres columnas">
           <FieldGroup className="grid w-full max-w-xl grid-cols-3 gap-3">
             <Field>
-              <FieldLabel htmlFor="field-demo-row3-desde">Desde</FieldLabel>
-              <Input id="field-demo-row3-desde" defaultValue="08:00" />
+              <FieldLabel htmlFor="field-demo-row3-inicio">Inicio</FieldLabel>
+              <Input id="field-demo-row3-inicio" defaultValue="08:00" />
             </Field>
             <Field>
-              <FieldLabel htmlFor="field-demo-row3-hasta">Hasta</FieldLabel>
-              <Input id="field-demo-row3-hasta" defaultValue="12:00" />
+              <FieldLabel htmlFor="field-demo-row3-fin">Fin</FieldLabel>
+              <Input id="field-demo-row3-fin" defaultValue="12:00" />
             </Field>
             <Field>
-              <FieldLabel htmlFor="field-demo-row3-tolerancia">
-                Tolerancia (min)
+              <FieldLabel htmlFor="field-demo-row3-dotacion">
+                Dotación
               </FieldLabel>
-              <Input id="field-demo-row3-tolerancia" defaultValue="10" />
+              <Input id="field-demo-row3-dotacion" defaultValue="2" />
             </Field>
           </FieldGroup>
         </Row>
@@ -1180,10 +1180,7 @@ function DesignPage() {
             <SheetTrigger asChild>
               <Button variant="ghost">Abrir detalle del turno</Button>
             </SheetTrigger>
-            <SheetContent
-              side="right"
-              className="data-[side=right]:sm:max-w-[452px]"
-            >
+            <SheetContent side="right">
               <SheetHeader>
                 <SheetTitle>Grupo Norte — San Isidro</SheetTitle>
               </SheetHeader>

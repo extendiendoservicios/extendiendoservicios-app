@@ -136,6 +136,8 @@ export default defineConfig({
   build: {
     // Solo se generan si se van a subir a Sentry (arriba). Sin SENTRY_AUTH_TOKEN no hace falta
     // pagar el costo de generarlos, y no queda ningún `.map` que pueda terminar publicado.
-    sourcemap: Boolean(sentryAuthToken),
+    // 'hidden': el JS publicado no lleva el comentario `sourceMappingURL` hacia un `.map` que
+    // se borra después de subirlo. Sentry no lo necesita: asocia cada archivo por debug ID.
+    sourcemap: sentryAuthToken ? 'hidden' : false,
   },
 })
