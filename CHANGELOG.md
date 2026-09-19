@@ -49,7 +49,7 @@ Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/C
   esperar el vectorial IF-08; deuda **DS-020** registrada en
   `docs/design-system.md` para cuando llegue): `public/icons/` con los
   recortes que preparó el orquestador desde `Images/` (isotipo blanco a
-  34 px con `@2x`/`@3x`, a resolución completa en blanco y negro, íconos
+  34 px con `@2x`/`@3x`, íconos
   PWA 192/512/512 maskable y `apple-touch-icon` 180, todos copiados tal
   cual, sin redibujar ni recolorear). Sidebar de `AdminShell`
   (`AdminSidebar`) reemplaza el lockup completo de P05.4 por el patrón de
