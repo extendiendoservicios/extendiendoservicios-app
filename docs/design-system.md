@@ -4,12 +4,14 @@ Fuente: `07_Design_System.md` del Plan Maestro. Este documento explica cómo
 está implementado en el repositorio, no repite los valores de diseño (para
 eso está `07`).
 
-Estado: F5 · DS-001 a DS-015, DS-017. Tokens, shadcn/ui, acciones,
-entradas, selectores, tarjetas, `StatusBadge`, tablas, avatares, avisos,
-diálogos, timeline y lista de tareas (P05.1 a P05.3); `AdminShell`,
+Estado: F5 completa · DS-001 a DS-020, RESP-001. Tokens, shadcn/ui,
+acciones, entradas, selectores, tarjetas, `StatusBadge`, tablas, avatares,
+avisos, diálogos, timeline y lista de tareas (P05.1 a P05.3); `AdminShell`,
 `MobileShell` y el router con `RequireRole` sobre una sesión provisoria
-(P05.4). Todavía sin íconos PWA (P05.5); `/dev/design` sigue sin
-`StarRating`/`MapPicker`/`MapView` (llegan con sus fases de dominio).
+(P05.4); marca de la sidebar e íconos PWA desde un PNG temporal (deuda
+`DS-020`), `vite-plugin-pwa` y `/dev/design` completo (P05.5). `/dev/design`
+sigue sin `StarRating` (F15), `MapPicker`/`MapView` (F8) y `Calendar`/
+`WeekGrid` (F11) — llegan con sus fases de dominio.
 
 ## Tokens (`src/styles/tokens.css`)
 
@@ -297,7 +299,7 @@ number[]` y `onValueChange`, con `0` = domingo (igual que
   `getStatusMeta` y el helper de filas de tabla `getTableRowVariant` +
   `TABLE_ROW_CLASS_NAME` (`crit`/`warn`, `07` sección 3 in fine).
 
-### `/dev/design` (adelanto parcial de DS-016)
+### `/dev/design` (adelanto parcial de DS-016 en este paquete)
 
 `src/pages/dev/Design.tsx` muestra todos los componentes de este paquete con
 sus variantes y estados (normal, con error, deshabilitado, cargando), a
@@ -306,9 +308,11 @@ dentro de un contenedor de 390 px. Se registra en `src/app/router.tsx` bajo
 `if (import.meta.env.DEV)`: Vite resuelve esa constante en build time y
 elimina la rama completa (y el `import()` que arma el chunk de la página)
 del bundle de producción — verificado en este encargo revisando `dist/`. La
-portada de `/` no cambia. P05.5 va a completar esta página con el resto de
-los componentes (`DataTable`, `PersonCell`, `Alert`/`Toast`/`Dialog`,
-`Timeline`/`Tabs`/etc., `StarRating`, `MapPicker`/`MapView`).
+portada de `/` no cambia. **DS-016 se completa en P05.5** (ver más abajo)
+con el resto de los componentes (`DataTable`, `PersonCell`, `Alert`/`Toast`/
+`Dialog`, `Timeline`/`Tabs`/etc., `DropdownMenu`, `Drawer`/`Sheet`,
+`ActionBar`, `StagingBanner`); quedan afuera `StarRating` (F15) y
+`MapPicker`/`MapView` (F8).
 
 ### Decisiones de esta entrega (DS-003 a DS-007)
 
@@ -750,16 +754,12 @@ reemplazar esto sin tocar `router.tsx` ni los shells:
 
 ### Decisiones de esta entrega (DS-013 a DS-015)
 
-- **Marca de la sidebar sin el vectorial (IF-08)**: `07` sección 1.5 separa
-  un isotipo de 34 px (blanco) del lockup de texto, con su propia
-  tipografía CSS. Los tres PNG de `Images/` (color, negro, blanco) tienen
-  el isotipo y el texto **ya compuestos en un solo bitmap** — no hay forma
-  de aislar el isotipo sin redibujar el logo (prohibido, memoria del
-  proyecto). Se usa el lockup completo (`public/logo.png`, la versión
-  blanca, ya recortada a 800×670 desde `Images/…_blancosinfondo.png` en
-  INFRA-001) como una imagen única en la sidebar, en vez del patrón
-  isotipo+texto del mockup. Deuda hacia DS-018/DS-020 (cuando llegue el
-  vectorial, separar isotipo y lockup como pide `07`).
+- **Marca de la sidebar sin el vectorial (IF-08)**: en esta entrega (P05.4)
+  se usó el lockup completo (`public/logo.png`) como imagen única, porque
+  los PNG de `Images/` tienen el isotipo y el texto ya compuestos en un
+  solo bitmap. **Resuelto en P05.5 (DS-018) con un PNG temporal**: ver
+  "Marca de la sidebar (DS-018, PNG temporal)" más abajo — deuda `DS-020`
+  hacia el vectorial.
 - **`favicon.png` para el 404, no `logo.png`**: `favicon.png` (128×128) ya
   es el isotipo **en color** (recortado del logo original en INFRA-001),
   apto para fondos claros; `logo.png` es la versión blanca, pensada para
@@ -802,6 +802,183 @@ reemplazar esto sin tocar `router.tsx` ni los shells:
   pantalla): si alguien entra directo a una subpágina por URL, sin
   historial previo dentro de la app, "volver" puede no tener a dónde ir —
   limitación conocida, aceptable para esta entrega.
+
+## `/dev/design` completo (DS-016)
+
+Contra el inventario de `07` sección 2 (detalle completo, tabla por tabla,
+en el reporte del encargo), lo que faltaba y se agregó en este paquete:
+
+- **`DropdownMenu`** (sección "IconButton, FAB y DropdownMenu"): dos
+  ejemplos reales de la Base — "más acciones" de una fila (`IconButton` +
+  `MoreHorizontal`) y el menú de usuario de la sidebar (avatar + "Mi
+  perfil"/"Cerrar sesión", el mismo marcado que `AdminShell`).
+- **`Drawer`/`Sheet`** (sección propia): el drawer de 452 px a la derecha
+  de `07` sección 2.4 (cabecera, cuerpo con scroll propio, pie con dos
+  botones a ancho completo) — hasta ahora el único uso en el repo era el
+  `Sheet side="bottom"` del menú "Más" de `AdminShell`, que no mostraba
+  esta variante.
+- **`ActionBar`** (sección propia): el ejemplo de M16 ("Volver al
+  servicio" / "Registrar salida", nota debajo) dentro del contenedor
+  móvil de 390 px.
+- **`StagingBanner`** (sección propia): como el componente real solo se
+  ve con `VITE_APP_ENV=staging` (no el valor de `pnpm dev` normal), la
+  fila "Componente real" queda vacía a propósito en desarrollo — se
+  explica en el propio texto — y se agrega una réplica estática con el
+  mismo marcado para que la vidriera muestre su aspecto sin cambiar de
+  entorno.
+
+`AdminShell`/`MobileShell` completos, `Calendar`/`WeekGrid` (F11),
+`StarRating` (F15) y `MapPicker`/`MapView` (F8) quedan fuera de
+`/dev/design` a propósito — motivos en el docstring de
+`src/pages/dev/Design.tsx` y en la sección "Cómo ver los componentes" de
+más abajo.
+
+## Marca de la sidebar (DS-018, PNG temporal), íconos PWA y deuda DS-020
+
+**Sin el vectorial (IF-08)** — Mike decidió (19 sep 2026) recortar el
+isotipo directamente de los PNG originales en vez de esperarlo. El
+orquestador generó los recortes (`Images/recortes/README.md`: columnas 347
+a 1023 y filas 72 a 825 de los tres PNG de 1371×1147, sin redibujar ni
+recolorear) y este paquete los copió tal cual a `public/icons/`:
+
+```text
+public/icons/isotipo_blanco_34px@2x.png    61×68,  sidebar expandida y colapsada
+public/icons/isotipo_blanco_34px@3x.png    92×102, srcSet de alta densidad
+public/icons/isotipo_blanco_original.png   677×754, isotipo blanco a resolución completa
+public/icons/isotipo_negro_original.png    677×754, ídem en negro (sin uso todavía)
+public/icons/pwa-192x192.png               isotipo blanco sobre #569EA4
+public/icons/pwa-512x512.png               ídem, 512
+public/icons/pwa-maskable-512x512.png      ídem, con margen de seguridad (80 %) para maskable
+public/icons/apple-touch-icon-180x180.png  ídem, 180×180
+```
+
+- **Sidebar de `AdminShell`** (`AdminSidebar`, dentro de
+  `src/app/shells/AdminShell.tsx`): ahora sigue el patrón de `07` sección
+  1.5 y `.sb-brand`/`.sb-mark`/`.brand-name` de `Mockup/assets/ds.css`
+  (verificado contra `Mockup/png/D01.png`) en vez del lockup completo como
+  imagen única de P05.4:
+  - isotipo blanco de 34 px de alto fijo en los dos estados de la sidebar
+    (`src="…@2x.png"`, `srcSet="…@2x.png 2x, …@3x.png 3x"`);
+  - lockup de texto "EXTENDIENDO / SERVICIOS" en dos líneas (`<br />`
+    dentro de un único `<span>`, no dos elementos separados: son la misma
+    frase, no dos líneas con semántica propia), 12.5 px, peso 700,
+    mayúsculas, tracking 1.3 px, con una regla de 26×2 px
+    (`bg-white/55`) debajo;
+  - colapsada (60 px): el bloque de texto no se monta (`{!collapsed && …}`),
+    solo el isotipo, centrado;
+  - **sin nombres duplicados**: el `<Link to="/admin">` ya no lleva
+    `aria-label="Ir al resumen"` — antes esa etiqueta fija tapaba
+    cualquier contenido interno, así que daba lo mismo qué `alt` llevara
+    la imagen. Ahora el nombre accesible del link lo computa el navegador
+    a partir de su contenido: con el lockup de texto visible, `alt=""` en
+    la imagen (decorativa, el texto visible ya lo dice — evita que un
+    lector de pantalla anuncie "Extendiendo Servicios" dos veces);
+    colapsada, sin texto visible, la imagen lleva
+    `alt="Extendiendo Servicios"` (única fuente del nombre accesible ahí).
+- **`index.html`**: `apple-touch-icon` apunta a
+  `/icons/apple-touch-icon-180x180.png` (antes `favicon.png`, 128 px). El
+  `<meta name="theme-color">` **se mantiene en `#0E1017`**: es el color de
+  la portada oscura (`ConstructionPage`, sin cambios en este paquete), no
+  el de la PWA instalada — `manifest.webmanifest` usa el teal de marca
+  `#569EA4` a propósito (ver la sección de PWA más abajo). Son dos cosas
+  distintas (la barra del navegador mientras se ve la portada todavía sin
+  reemplazar vs. la barra/splash de la app ya instalada) que van a
+  converger cuando AUTH-004 (F6) reemplace la portada por el login real;
+  queda un comentario en el propio `index.html` explicándolo.
+- **`public/logo.png` no se toca**: lo sigue usando la portada
+  (`ConstructionPage`), el 404 (`NotFoundPage`) y el `og:image` de
+  `index.html` — ninguno de los tres es parte de este paquete.
+- **Deuda `DS-020`**: cuando llegue el vectorial (IF-08), hay que
+  regenerar los seis archivos de `public/icons/` desde ahí (mismos
+  recortes/composiciones, sin el paso intermedio por PNG) y, si el
+  vectorial permite separar el isotipo del logo compuesto con más
+  fidelidad, revisar si el recorte actual (columnas/filas fijas del PNG)
+  sigue siendo el más prolijo. No hace falta tocar ningún componente: los
+  nombres de archivo en `public/icons/` y las referencias en
+  `AdminShell.tsx`/`vite.config.ts`/`index.html` quedarían iguales.
+- **Sin tocar `favicon.png`**: sigue siendo el que generó INFRA-001 (128 px,
+  isotipo en color); no forma parte de este paquete.
+
+## PWA (`vite-plugin-pwa`, RESP-001)
+
+`vite.config.ts` agrega `VitePWA(...)` (`vite-plugin-pwa` 1.3.0 — peer
+`vite: "^3 || ^4 || ^5 || ^6 || ^7 || ^8"`, compatible con Vite 8 sin forzar
+nada; publicada el 5 may 2026, muy por delante de cualquier
+`minimumReleaseAge` de pnpm). Documentación completa de responsive/PWA
+(prompt de actualización con interfaz, Lighthouse, dispositivos reales)
+llega con RESP-012/DOC-017 en F17 (`docs/pwa.md`, todavía no existe); acá
+solo las decisiones de este paquete.
+
+- **`strategies: 'generateSW'`**: Workbox arma el service worker desde el
+  build, sin escribir uno a mano (`injectManifest` no hacía falta: no hay
+  lógica de cacheo a medida).
+- **`display: 'standalone'`, no `'fullscreen'`**: P-089 dice "pantalla
+  completa"; se interpretó como "sin la barra del navegador"
+  (`standalone`), no como ocultar también la barra de estado del celular
+  (`fullscreen`, que además suele pedir gestos propios para salir).
+- **`theme_color`/`background_color`: `#569EA4`** (el teal de marca,
+  `--primary`): el splash de instalación se arma con este fondo y el
+  isotipo blanco de los íconos encima, coherente con
+  `pwa-*.png`/`apple-touch-icon-180x180.png` (que ya vienen compuestos
+  así, `Images/recortes/README.md`).
+- **Íconos**: 192 y 512 `purpose: 'any'`, más 512 `purpose: 'maskable'`
+  (el isotipo ocupa el 56 % del alto ahí, dentro de la zona segura del
+  80 %, ya resuelto en el PNG que llegó del orquestador — nada que hacer
+  del lado del plugin). Sin maskable de 192: `07`/RESP-001 solo piden
+  "192, 512 y maskable 512".
+- **`short_name: 'Ext. Servicios'`**: no está en el plan; se agregó porque
+  el campo existe en el manifest y varios launchers lo usan para el
+  nombre debajo del ícono si `name` no entra. Decisión menor, sin impacto
+  en ningún otro archivo.
+- **`registerType: 'prompt'`, sin interfaz todavía** (decisión del
+  orquestador para este paquete): el service worker nuevo instala y queda
+  esperando — nunca llama `self.skipWaiting()`/`clientsClaim()` por su
+  cuenta (verificado leyendo `dist/sw.js`: el único disparador de
+  `skipWaiting()` es un listener de `message` con
+  `{ type: 'SKIP_WAITING' }`, que nadie envía todavía). Se activa recién
+  cuando se cierran todas las pestañas o la app instalada — nunca solo,
+  para no interrumpir a un empleado que puede estar fichando. El aviso
+  "hay una versión nueva" con botón para actualizar es RESP-009 (F17):
+  ese código va a llamar `postMessage({ type: 'SKIP_WAITING' })` al
+  service worker en espera; este paquete no agrega ninguna interfaz.
+- **`devOptions: { enabled: false }`** (el valor por omisión, dejado
+  explícito): sin service worker en `pnpm dev`. Si estuviera habilitado,
+  el navegador podría servir un `index.html` de un build viejo por encima
+  del servidor de Vite.
+- **`workbox.globPatterns`**: `js`, `css`, `html`, `woff2`, `png`, `svg`,
+  `ico` — exactamente lo que emite `dist/` (código, estilos, fuentes,
+  íconos). **Sin `runtimeCaching`**: ninguna llamada a Supabase, Nominatim
+  ni a los tiles de OpenStreetMap pasa por el service worker; los datos
+  nunca se cachean (P-089, `02` sección 21). `navigateFallback:
+'/index.html'` para que cualquier ruta de React Router abra sin
+  conexión.
+- **Nada de `/dev/*` en el precache**: `/dev/design` y `/dev/rol` ya
+  estaban afuera de `dist/` desde P05.4 (`import.meta.env.DEV`); este
+  paquete lo volvió a verificar (`pnpm build` + `grep` sobre
+  `dist/assets/*.js` y sobre la lista de `precacheAndRoute` de
+  `dist/sw.js`) después de agregar el plugin.
+- **`public/_headers` (INFRA-018, de infra-devops — este paquete solo
+  tocó las reglas de caché, no el resto)**: se agregaron dos bloques
+  nuevos, `/sw.js` y `/manifest.webmanifest`, con
+  `Cache-Control: no-cache` — sin esto, un CDN o el navegador podrían
+  quedarse con una copia vieja de cualquiera de los dos y una versión
+  nueva del build nunca llegaría a una app ya instalada (`sw.js` y
+  `manifest.webmanifest` no llevan hash de contenido en el nombre, a
+  diferencia de `dist/assets/*`). Verificado con `wrangler pages dev`
+  (`docs/deployment.md` sección 10.4: Cloudflare Pages combina las
+  cabeceras de todos los bloques que matchean un mismo path) que las dos
+  rutas siguen recibiendo intactas las cabeceras de seguridad del bloque
+  `/*` (CSP, HSTS, etc.) más el `Cache-Control` nuevo. La CSP existente
+  (`default-src 'self'`) ya dejaba cargar el service worker y el manifest
+  sin ningún cambio — `worker-src`/`manifest-src` sin declarar caen al
+  `default-src`, y las dos rutas son del mismo origen — verificado sin
+  errores de consola con Playwright contra `pnpm preview`.
+- **Verificación de punta a punta** (ver el reporte del encargo para el
+  detalle): `pnpm build` deja `dist/manifest.webmanifest` y `dist/sw.js`
+  con los íconos correctos; contra `pnpm preview` + Playwright, el
+  service worker llega a `state: 'activating'` en la primera instalación
+  y el manifest se lee con `content-type: application/manifest+json` y
+  cero errores de consola.
 
 ## Cómo ver los componentes
 

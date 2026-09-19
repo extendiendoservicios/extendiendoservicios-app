@@ -10,9 +10,19 @@
     />
     <meta name="robots" content="noindex, nofollow" />
     <meta name="color-scheme" content="light" />
+    <!-- Color de la portada oscura (ConstructionPage), no el de la PWA instalada:
+         `manifest.webmanifest` (RESP-001, DS-018) usa el teal de marca `#569EA4`
+         a propósito -- son dos cosas distintas (la barra del navegador mientras
+         se ve esta portada vs. la barra/splash de la app instalada) y van a
+         converger cuando AUTH-004 (F6) reemplace esta portada por el login real.
+         Ver docs/design-system.md, sección "PWA". -->
     <meta name="theme-color" content="#0E1017" />
     <link rel="icon" href="/favicon.png" type="image/png" />
-    <link rel="apple-touch-icon" href="/favicon.png" />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/icons/apple-touch-icon-180x180.png"
+    />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Extendiendo Servicios — Plataforma" />
     <meta

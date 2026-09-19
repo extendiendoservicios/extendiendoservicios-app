@@ -67,6 +67,19 @@ describe('AdminShell — 1280 px o más', () => {
       screen.queryByRole('navigation', { name: 'Navegación principal' }),
     ).not.toBeInTheDocument()
   })
+
+  it('muestra el lockup de marca sin nombre accesible duplicado (DS-018)', () => {
+    mockViewportWidth(1440)
+    renderAdminShell()
+
+    // El texto visible "Extendiendo Servicios" es el único que aporta el
+    // nombre accesible del link a /admin: la imagen del isotipo va con
+    // `alt=""` (decorativa) para no anunciarse dos veces.
+    expect(
+      screen.getByRole('link', { name: /Extendiendo\s*Servicios/i }),
+    ).toHaveAttribute('href', '/admin')
+    expect(screen.queryByRole('img', { name: /./ })).not.toBeInTheDocument()
+  })
 })
 
 describe('AdminShell — entre 1024 y 1279 px', () => {
@@ -81,6 +94,18 @@ describe('AdminShell — entre 1024 y 1279 px', () => {
     expect(
       screen.queryByRole('navigation', { name: 'Navegación principal' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('colapsada, el isotipo lleva el nombre accesible de la marca (DS-018)', () => {
+    mockViewportWidth(1100)
+    renderAdminShell()
+
+    // Sin el lockup de texto visible, la imagen es el único contenido del
+    // link: ahí sí necesita un `alt` no vacío.
+    expect(screen.queryByText(/Extendiendo Servicios/i)).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'Extendiendo Servicios' }),
+    ).toHaveAttribute('href', '/admin')
   })
 })
 
