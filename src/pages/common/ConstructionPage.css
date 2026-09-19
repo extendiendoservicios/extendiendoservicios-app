@@ -1,0 +1,99 @@
+.construction-page {
+  /*
+   * Portada aislada del design system (DS-001): F5 trajo Tailwind, los
+   * tokens del tema claro y la fuente Inter self-hosted para el resto de la
+   * app, pero esta pantalla se sigue publicando tal cual hasta que F6 la
+   * reemplace por el login real. Define sus propios colores y fuente en vez
+   * de heredar `body`/`:root`, para no cambiar ni un píxel mientras tanto.
+   */
+  --construction-bg: #0e1017;
+  --construction-text: #eef2f5;
+  --construction-muted: #8d97a8;
+  --construction-primary: #569ea4;
+
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 40px 24px;
+  background-color: var(--construction-bg);
+  color: var(--construction-text);
+  /* El preflight de Tailwind fija `line-height: 1.5` en `html`; sin este
+     `normal` explícito, el texto que no define su propio interlineado
+     (el de abajo) hereda ese 1.5 y crece unos píxeles de alto. */
+  line-height: normal;
+  font-family:
+    'Segoe UI',
+    -apple-system,
+    system-ui,
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
+  background-image: radial-gradient(
+    62% 52% at 50% 38%,
+    rgba(86, 158, 164, 0.15) 0%,
+    rgba(14, 16, 23, 0) 72%
+  );
+}
+
+.construction-page__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 560px;
+  width: 100%;
+  animation: construction-page-rise 0.75s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.construction-page__logo {
+  width: clamp(230px, 58vw, 420px);
+  height: auto;
+  display: block;
+}
+
+.construction-page__status {
+  margin: clamp(30px, 5.5vw, 44px) 0 0;
+  font-size: clamp(1rem, 2.8vw, 1.15rem);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.construction-page__dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: var(--construction-primary);
+  animation: construction-page-pulse 2.4s ease-in-out infinite;
+}
+
+.construction-page__note {
+  margin: 12px 0 0;
+  font-size: clamp(0.85rem, 2.3vw, 0.925rem);
+  line-height: 1.5;
+  color: var(--construction-muted);
+}
+
+@keyframes construction-page-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes construction-page-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}

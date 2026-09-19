@@ -1,0 +1,17 @@
+# INFRA-022 (03_Plan_Maestro_Tecnico.md sección 3.6/3.7): la aplicación es una herramienta
+# interna con login (administración, empleados, supervisores) para el personal de Extendiendo
+# Servicios, no un sitio público. No hay contenido para indexar en ningún entorno: ni la
+# pantalla de ingreso aporta valor de búsqueda, ni conviene que un buscador recorra o liste sus
+# rutas. El sitio público de la empresa es aparte (extendiendoservicios.com, repositorio
+# extendiendoservicios-web) y ese sí quiere indexarse normalmente.
+#
+# Por eso este mismo archivo se usa sin cambios en los tres entornos (local, staging,
+# producción): siempre "no indexable". En staging (dev.extendiendoservicios.com) además se suma
+# la cabecera `X-Robots-Tag: noindex` en el despliegue (deploy-staging.yml), redundante a
+# propósito -- ver docs/deployment.md.
+#
+# Recomendación abierta, no una decisión cerrada (el plan solo dice "robots por entorno" para
+# producción): si en el futuro se agrega alguna página pública (por ejemplo una de estado del
+# servicio), este archivo tiene que dejar de bloquear esa ruta puntual.
+User-agent: *
+Disallow: /

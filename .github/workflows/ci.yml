@@ -1,0 +1,109 @@
+name: CI
+
+# INFRA-015 (03_Plan_Maestro_Tecnico.md sección 3.7): instalación, calidad y build en cada Pull
+# Request a `develop` o `main`. Un solo job con nombre estable ("CI") para que el orquestador lo
+# marque como verificación obligatoria en la protección de ramas (P03.6, fuera de este encargo) --
+# ver docs/deployment.md.
+#
+# db:types (con verificación de diff) y pgTAP quedan preparados pero condicionados a que existan
+# migraciones y tests de base en supabase/migrations/ y supabase/tests/: hoy no hay ninguno
+# (llegan en F4 -- DB-021 y DB-022), así que esos dos pasos se saltean. Cuando F4 agregue el
+# primer archivo .sql en cada carpeta, se activan solos, sin tocar este workflow.
+
+on:
+  pull_request:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v7
+
+      - name: Habilitar corepack (resuelve la versión de pnpm de package.json → packageManager)
+        run: corepack enable
+
+      - name: Node (.node-version) y caché de pnpm
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.node-version'
+          cache: 'pnpm'
+
+      - name: Instalar dependencias (lockfile congelado)
+        run: pnpm install --frozen-lockfile
+
+      - name: Detectar si ya hay migraciones o tests de base (DB-021, DB-022)
+        id: supabase-estado
+        run: |
+          if find supabase/migrations -maxdepth 1 -name '*.sql' 2>/dev/null | grep -q .; then
+            echo "hay_migraciones=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "hay_migraciones=false" >> "$GITHUB_OUTPUT"
+          fi
+          if find supabase/tests -maxdepth 1 -name '*.sql' 2>/dev/null | grep -q .; then
+            echo "hay_tests_db=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "hay_tests_db=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Lint (ESLint)
+        run: pnpm lint
+
+      - name: Typecheck (tsc -b --noEmit)
+        run: pnpm typecheck
+
+      - name: Formato (Prettier --check)
+        run: pnpm format:check
+
+      - name: Tests unitarios (Vitest + Testing Library)
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Generar tipos y verificar diff (db:types) — DB-021
+        if: steps.supabase-estado.outputs.hay_migraciones == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          pnpm exec supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_REF_DEV }}"
+          pnpm db:types
+          git diff --exit-code -- src/lib/database.types.ts
+
+      - name: db:types condicionado — todavía no hay migraciones (F4)
+        if: steps.supabase-estado.outputs.hay_migraciones != 'true'
+        run: |
+          echo "supabase/migrations todavía no tiene archivos .sql (llegan en F4, DB-001 en adelante)."
+          echo "Este paso queda preparado en ci.yml y se activa solo apenas exista el primero."
+
+      - name: pgTAP contra App_dev (esquema de prueba recreado) — DB-022
+        if: steps.supabase-estado.outputs.hay_tests_db == 'true'
+        env:
+          SUPABASE_DB_URL_DEV: ${{ secrets.SUPABASE_DB_URL_DEV }}
+        run: pnpm db:test
+
+      - name: pgTAP condicionado — todavía no hay tests de base (F4)
+        if: steps.supabase-estado.outputs.hay_tests_db != 'true'
+        run: |
+          echo "supabase/tests todavía no tiene archivos .sql (llegan en F4, DB-022)."
+          echo "Este paso queda preparado en ci.yml y se activa solo apenas exista el primero."
+
+      - name: Instalar navegadores de Playwright (solo chromium)
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: e2e (Playwright, chromium, contra el build local)
+        run: pnpm test:e2e --project=chromium
+
+      - name: Subir el reporte de Playwright si algo falló
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

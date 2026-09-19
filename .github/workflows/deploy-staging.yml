@@ -1,0 +1,134 @@
+name: Deploy Staging
+
+# INFRA-016 (03_Plan_Maestro_Tecnico.md sección 3.7): despliegue a staging en cada push a
+# `develop`. docs/deployment.md documenta el flujo completo y el interruptor.
+#
+# INTERRUPTOR (P03.3 → P03.6): el job entero no corre si la variable de repositorio
+# `STAGING_DEPLOY_ENABLED` no vale exactamente "true". Por eso fusionar en `develop` hoy no falla
+# por falta de secretos (Cloudflare, R2, Sentry todavía no existen -- P03.4) ni publica nada antes
+# de tiempo. Mike prende el interruptor recién en P03.6, cuando esos recursos y secretos existan.
+# Ver docs/deployment.md sección "Interruptores de despliegue" para el comando exacto.
+#
+# `supabase db push` y `supabase functions deploy admin-users` quedan condicionados a que ya
+# existan migraciones (F4) o la función (F7): hoy no hay ninguna de las dos, así que se saltean.
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-staging:
+    name: Deploy Staging
+    if: vars.STAGING_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: staging
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v7
+
+      - name: Habilitar corepack (resuelve la versión de pnpm de package.json → packageManager)
+        run: corepack enable
+
+      - name: Node (.node-version) y caché de pnpm
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.node-version'
+          cache: 'pnpm'
+
+      - name: Instalar dependencias (lockfile congelado)
+        run: pnpm install --frozen-lockfile
+
+      - name: Detectar si ya hay migraciones o la función admin-users
+        id: supabase-estado
+        run: |
+          if find supabase/migrations -maxdepth 1 -name '*.sql' 2>/dev/null | grep -q .; then
+            echo "hay_migraciones=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "hay_migraciones=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -f supabase/functions/admin-users/index.ts ]; then
+            echo "hay_function=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "hay_function=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: supabase db push a App_dev — INFRA-016
+        if: steps.supabase-estado.outputs.hay_migraciones == 'true'
+        env:
+          SUPABASE_DB_URL_DEV: ${{ secrets.SUPABASE_DB_URL_DEV }}
+        run: pnpm exec supabase db push --db-url "$SUPABASE_DB_URL_DEV" --yes
+
+      - name: db push condicionado — todavía no hay migraciones (F4)
+        if: steps.supabase-estado.outputs.hay_migraciones != 'true'
+        run: echo "supabase/migrations todavía no tiene archivos .sql (F4). Paso preparado, sin ejecutar."
+
+      - name: supabase functions deploy admin-users — INFRA-016
+        if: steps.supabase-estado.outputs.hay_function == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          pnpm exec supabase functions deploy admin-users \
+            --project-ref "${{ secrets.SUPABASE_PROJECT_REF_DEV }}"
+
+      - name: functions deploy condicionado — todavía no existe admin-users (F7)
+        if: steps.supabase-estado.outputs.hay_function != 'true'
+        run: echo "supabase/functions/admin-users todavía no existe (F7). Paso preparado, sin ejecutar."
+
+      - name: Build con variables de staging
+        env:
+          VITE_APP_ENV: staging
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: pnpm build
+
+      - name: Borrar cualquier source map remanente (INFRA-021 — respaldo)
+        # El plugin de Sentry ya borra los .map que sube (ver vite.config.ts,
+        # sourcemaps.filesToDeleteAfterUpload); este paso es un respaldo idempotente por si esto
+        # no llegara a ejecutarse (por ejemplo, sin SENTRY_AUTH_TOKEN cargado todavía). Los .map
+        # nunca se publican.
+        run: find dist -name '*.map' -delete
+
+      - name: Cabecera noindex para staging (INFRA-022 — nunca indexable)
+        # `public/_headers` (P03.4, INFRA-018) trae HSTS, CSP y el resto de las cabeceras de
+        # `03` sección 3.6 para los tres entornos, en un único bloque `/*`; `vite build` ya lo
+        # copió tal cual a `dist/_headers` (Vite copia `public/` sin tocarlo). Acá insertamos una
+        # línea más DENTRO de ese mismo bloque (`X-Robots-Tag: noindex`) en vez de agregar un
+        # bloque `/*` separado: Cloudflare Pages combina cabeceras de reglas distintas que
+        # matcheen el mismo path (documentado, "an incoming request which matches multiple
+        # rules' URL patterns will inherit all rules' headers"), pero esa combinación entre
+        # bloques no se pudo verificar en local con `wrangler pages dev` (ver docs/deployment.md
+        # sección 10.4) -- insertar en el mismo bloque no depende de eso y se verificó igual.
+        run: |
+          sed -i '/^\/\*$/a\  X-Robots-Tag: noindex' dist/_headers
+
+      - name: Publicar en Cloudflare Pages (rama develop)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          pnpm exec wrangler pages deploy dist \
+            --project-name=extendiendoservicios-app \
+            --branch=develop
+
+      - name: Instalar navegadores de Playwright (solo chromium)
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Smoke test contra dev.extendiendoservicios.com
+        env:
+          PLAYWRIGHT_SMOKE_URL: https://dev.extendiendoservicios.com
+        run: pnpm test:e2e --project=chromium
+
+      - name: Subir el reporte de Playwright si algo falló
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-staging
+          path: playwright-report/
+          retention-days: 7

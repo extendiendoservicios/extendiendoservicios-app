@@ -1,0 +1,22 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ],
+  "compilerOptions": {
+    // Duplicado del alias real de tsconfig.app.json (única fuente de verdad
+    // para `tsc -b`). Este archivo no compila nada (`files: []`), pero
+    // algunas herramientas (p. ej. la CLI de shadcn/ui) leen únicamente
+    // `tsconfig.json` y no resuelven `references`, así que sin esto no
+    // encuentran el alias `@/*` y escriben los componentes en una carpeta
+    // literal `@/` en la raíz del repo. Sin `baseUrl` (P05.3, TypeScript 6 lo
+    // marca obsoleto): `paths` solo no lo necesita con `moduleResolution`
+    // `bundler` (se resuelve relativo a este archivo), y la CLI de shadcn
+    // sigue encontrando el alias igual (probado en este mismo paquete
+    // agregando y descartando `breadcrumb`).
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}

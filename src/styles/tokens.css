@@ -1,0 +1,223 @@
+/**
+ * Tokens del Design System — Extendiendo Servicios (DS-001)
+ *
+ * Fuente: 07_Design_System.md sección 1 (valores exactos de
+ * Mockup/assets/ds.css). Solo modo claro (P-118, ADR-003).
+ *
+ * Organización en dos bloques:
+ *   1) `:root`     — los tokens "crudos" con los mismos nombres que usa el
+ *      mockup (marca, neutros, semánticos, forma, contenedores) más los
+ *      alias con los nombres que espera shadcn/ui (`--background`,
+ *      `--foreground`, etc.), que simplemente apuntan a los crudos.
+ *   2) `@theme inline` — el mapeo de esos mismos tokens a la paleta y a la
+ *      escala de Tailwind CSS 4 (reemplaza a `tailwind.config.ts`, ADR-021),
+ *      para poder usarlos como utilidades (`bg-primary`, `text-text-2`,
+ *      `rounded-lg`, `shadow-card`, `sm:`, `md:`, etc.).
+ *
+ * Tema oscuro futuro (07 sección 1): se agrega redefiniendo el bloque 1 bajo
+ * `:root[data-theme="dark"]` (o `.dark`) con los mismos nombres de variable;
+ * el bloque 2 no cambia porque ya apunta a esos nombres con `var()`.
+ */
+
+:root {
+  /* ---------- Marca ---------- */
+  --primary: #569ea4;
+  --primary-700: #43848a; /* hover de primario */
+  --primary-800: #356a70; /* texto sobre fondos claros de marca, enlaces */
+  --primary-100: #e4f0f1; /* fondo de badges "programado", chips de calendario */
+  --primary-050: #f2f8f9; /* fondo de filas y tarjetas destacadas, día de hoy */
+  --primary-200: #cfe2e4; /* borde de acentos: KpiCard "accent", Card "hero",
+                              alerta "info" (mismo valor reutilizado en los
+                              tres lugares de ds.css/ds2.css; no está en la
+                              tabla de tokens de 07 sección 1.1 como color con
+                              nombre propio, así que se agrega acá en vez de
+                              repetir el hex suelto en cada componente) */
+  --dark: #13151e; /* texto principal, botón oscuro, tooltips */
+
+  /* ---------- Neutros ---------- */
+  --bg: #f6f7f9; /* fondo de la aplicación */
+  --surface: #ffffff; /* tarjetas, tablas, drawers */
+  --border: #e6e9ef; /* bordes suaves */
+  --border-strong: #d5dae3; /* bordes de controles */
+  --text: #13151e;
+  --text-2: #4a5061; /* texto secundario, celdas */
+  --text-3: #838b9c; /* etiquetas, ayudas, encabezados de tabla */
+
+  /* ---------- Semánticos (uso restringido: ver 07 sección 1) ---------- */
+  --success: #2f9e6b;
+  --success-bg: #e7f5ee;
+  --success-800: #1f7a50; /* texto de badge sobre success-bg, ≥4.5:1 */
+  --warning: #c8820c;
+  --warning-bg: #fdf3e0;
+  --warning-800: #9a6408;
+  --warning-border: #f2dfba; /* borde de Alert "warn" (.a-warn, ds.css) */
+  --danger: #ce4b52;
+  --danger-bg: #fbebec;
+  --danger-800: #a93a40;
+  --danger-border: #f0cdcf; /* borde de Alert "crit" (.a-crit, ds.css) */
+  --info: #3b72c4;
+  --info-bg: #eaf1fb;
+  --info-800: #2c579b;
+
+  /* ---------- Avatar: seis colores fijos (.av.a‥f, ds.css), asignados por
+     hash determinístico del id (DS-009) ---------- */
+  --avatar-a: var(--primary); /* #569EA4, mismo valor que --primary */
+  --avatar-b: #6b7fa8;
+  --avatar-c: #8a7ba6;
+  --avatar-d: #a88060;
+  --avatar-e: #5f927a;
+  --avatar-f: #a0708a;
+
+  /* ---------- Foco ---------- */
+  --ring: rgba(86, 158, 164, 0.35);
+  --ring-soft: rgba(
+    86,
+    158,
+    164,
+    0.14
+  ); /* anillo de selección de OptionCard (.opt.sel) */
+
+  /* ---------- Forma: radios ---------- */
+  --r-xs: 5px; /* controles compactos: casilla de verificación (07 sección 4
+                  solo normaliza los radios de botones/inputs/sidebar; el
+                  checkbox del mockup usa un radio menor, fuera de esa
+                  escala, así que queda como su propio token en vez de un
+                  valor suelto en el componente) */
+  --r-sm: 8px; /* inputs, botones pequeños */
+  --r: 12px; /* botones, alertas, drawers internos */
+  --r-lg: 14px; /* tarjetas */
+  --r-pill: 999px; /* badges, avatares */
+  --r-task-box: 6px; /* casilla de TaskItem (.tbox, ds2.css), fuera de la
+                         escala de 8/12/14 igual que --r-xs */
+
+  /* ---------- Forma: sombras ---------- */
+  --sh-card: 0 1px 2px rgba(19, 21, 30, 0.04), 0 1px 3px rgba(19, 21, 30, 0.06);
+  --sh-pop:
+    0 4px 12px rgba(19, 21, 30, 0.08), 0 12px 32px rgba(19, 21, 30, 0.1);
+  --sh-fab: 0 4px 12px rgba(86, 158, 164, 0.38);
+  --sh-hero:
+    0 2px 6px rgba(86, 158, 164, 0.1), 0 8px 22px rgba(86, 158, 164, 0.08); /* Card "hero" móvil */
+
+  /* ---------- Contenedores (07 sección 1.3) ---------- */
+  --table-header-bg: #fafbfc; /* encabezado de DataTable (.tbl thead th, ds.css) */
+  --sidebar-w: 236px;
+  --topbar-h: 64px;
+  --content-py: 22px;
+  --content-px: 26px;
+  --drawer-w: 452px;
+  --mobile-w: 390px;
+  --mobile-px: 16px;
+  --tabbar-h: 66px;
+
+  /* ---------- Tipografía ---------- */
+  --font-sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
+
+  /* ---------- Alias para shadcn/ui (07 sección 1, columna "shadcn") ----------
+   * shadcn/ui espera estos nombres exactos; acá solo apuntan a los tokens
+   * crudos de arriba para no duplicar valores.
+   */
+  --background: var(--bg);
+  --foreground: var(--dark);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary-foreground: #ffffff;
+  --secondary: #eff1f5; /* fondo de SegmentedControl y badges neutros (.b-neut) */
+  --secondary-foreground: var(--text-2);
+  --muted: #eff1f5;
+  --muted-foreground: var(--text-3);
+  --accent: var(--primary-050);
+  --accent-foreground: var(--primary-800);
+  --destructive: var(--danger);
+  --destructive-foreground: #ffffff;
+  --input: var(--border-strong);
+  /* --border y --ring ya están declarados arriba con el nombre que espera shadcn. */
+  --radius: 12px; /* = --r; base de la escala de radios de shadcn */
+}
+
+/*
+ * Mapeo a Tailwind CSS 4 (ADR-021: reemplaza a `tailwind.config.ts`).
+ * `inline` porque los valores son `var()` que apuntan a los tokens de arriba
+ * (no literales): así, cuando exista el tema oscuro, las utilidades de
+ * Tailwind (bg-primary, text-muted-foreground, etc.) siguen funcionando sin
+ * tocar este bloque.
+ */
+@theme inline {
+  /* Breakpoints del plan (07 sección 6). Los de Tailwind por defecto son
+     640/768/1024/1280/1536; acá solo cambia `sm` a 480. */
+  --breakpoint-sm: 480px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+
+  --font-sans: var(--font-sans);
+
+  /* Colores de marca y neutros */
+  --color-primary: var(--primary);
+  --color-primary-700: var(--primary-700);
+  --color-primary-800: var(--primary-800);
+  --color-primary-100: var(--primary-100);
+  --color-primary-200: var(--primary-200);
+  --color-primary-50: var(--primary-050);
+  --color-dark: var(--dark);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+
+  /* Semánticos */
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-success-800: var(--success-800);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-800: var(--warning-800);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-800: var(--danger-800);
+  --color-danger-border: var(--danger-border);
+  --color-warning-border: var(--warning-border);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
+  --color-info-800: var(--info-800);
+
+  /* Alias shadcn (para bg-background, text-foreground, border-border, etc.) */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Radios: escala de Tailwind acotada a 8 / 12 / 14 (07 sección 1.3 y 4:
+     nada de 7, 9 ni 10). La píldora no se mapea acá: `rounded-full` de
+     Tailwind ya usa un radio infinito (visualmente idéntico a 999px en
+     cualquier tamaño de control); para CSS a medida está `--r-pill`. */
+  --radius-xs: var(--r-xs);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-sm);
+  --radius-lg: var(--r);
+  --radius-xl: var(--r-lg);
+  --radius-2xl: var(--r-lg);
+
+  /* Sombras */
+  --shadow-card: var(--sh-card);
+  --shadow-pop: var(--sh-pop);
+  --shadow-fab: var(--sh-fab);
+  --shadow-hero: var(--sh-hero);
+}

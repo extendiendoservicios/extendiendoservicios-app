@@ -1,0 +1,24 @@
+# pnpm bloquea por defecto los scripts de instalación de las dependencias; hay que habilitarlos
+# paquete por paquete acá (`pnpm approve-builds`). En pnpm 11+ este es el único mecanismo:
+# reemplaza a `onlyBuiltDependencies` (usado en INFRA-007 para `supabase`, que en la práctica no
+# tiene scripts de instalación -- baja el binario por plataforma como optionalDependency -- así
+# que nunca llegó a necesitar esta habilitación).
+#
+# wrangler (INFRA, dependencia de desarrollo, sin instalación global: se usa como
+# `pnpm exec wrangler`) trae tres dependencias con scripts de instalación bloqueados por defecto;
+# se habilitan solo las dos que hacen falta para que el binario funcione:
+#   - esbuild: bundlea el Worker antes de subirlo o previsualizarlo; sin su script de instalación
+#     (que resuelve el binario nativo de la plataforma) `wrangler dev`/`deploy` fallan.
+#   - workerd: motor de ejecución de Cloudflare Workers que usa `wrangler dev`/`pages dev` en
+#     local; su script de instalación baja el binario para esta plataforma.
+#   - sharp (transformación de imágenes de Cloudflare Images/Pages) queda deshabilitado a
+#     propósito: nada de este proyecto la usa todavía.
+#
+# @sentry/vite-plugin (INFRA-021, dependencia de desarrollo: sube los source maps del build a
+# Sentry en CI) trae @sentry/cli como dependencia transitiva; su script de instalación baja el
+# binario nativo de sentry-cli para esta plataforma -- sin él, la subida de source maps falla.
+allowBuilds:
+  '@sentry/cli': true
+  esbuild: true
+  sharp: false
+  workerd: true

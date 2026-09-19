@@ -1,0 +1,10 @@
+dist
+coverage
+playwright-report
+test-results
+pnpm-lock.yaml
+src/lib/database.types.ts
+
+# Copia tal cual de los ADR del Plan Maestro (DOC-002): no se reformatean,
+# tienen que quedar idénticos al original en Docs/Plan_Maestro/adr/.
+docs/adr

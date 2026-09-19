@@ -1,0 +1,42 @@
+# Dependencias y build
+node_modules
+dist
+dist-ssr
+*.local
+
+# Estado local de `wrangler pages dev` (INFRA-012/INFRA-018, P03.4)
+.wrangler
+
+# Entorno
+.env
+.env*.local
+
+# Vitest / cobertura
+coverage
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# Supabase (temporales locales; config.toml y migrations sí se versionan)
+supabase/.branches
+supabase/.temp
+
+# Editor / SO
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*

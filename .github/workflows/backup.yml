@@ -1,0 +1,50 @@
+name: Backup
+
+# INFRA-018 (03_Plan_Maestro_Tecnico.md sección 3.7; ADR-015): respaldo diario cifrado de `App`
+# (producción) a Cloudflare R2 (`es-backups`), vía `scripts/backup-to-r2.sh` -- ese script
+# también lo reutiliza `deploy-production.yml` para el volcado previo a cualquier migración.
+#
+# Retención: la maneja el propio bucket con sus reglas de ciclo de vida (INFRA-020, ya creadas
+# en R2: `retencion-diaria` expira los objetos con prefijo `diarios/` a los 30 días,
+# `retencion-mensual` expira los de `mensuales/` a los 370 días). Este workflow no borra nada.
+#
+# INTERRUPTOR (mismo mecanismo que deploy-staging.yml/deploy-production.yml, docs/deployment.md
+# sección 3): el job entero no corre si la variable de repositorio `BACKUP_ENABLED` no vale
+# exactamente "true". Así, fusionar este workflow no falla antes de que Mike cargue los secretos
+# de R2/Supabase (P03.5) ni antes de que decida activarlo (P03.6).
+#
+# Si el volcado, el cifrado o la subida fallan, el job falla sin reintento: eso es lo que dispara
+# el correo de alerta de GitHub Actions a quien tenga notificaciones activadas para el
+# repositorio (mismo criterio que keepalive.yml). Alertas más elaboradas (INFRA-024) son un
+# encargo aparte.
+
+on:
+  schedule:
+    # Todos los días 06:00 UTC (03:00 Argentina, UTC-3 todo el año: no hay horario de verano,
+    # ADR-019). GitHub Actions puede demorar la ejecución de cron unos minutos en horas de mucha
+    # carga; no es crítico para este job.
+    - cron: '0 6 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    name: Volcado diario de App a R2
+    if: vars.BACKUP_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Descargar el código (scripts/backup-to-r2.sh y scripts/lib/)
+        uses: actions/checkout@v7
+
+      - name: pg_dump --format=custom -> cifrar (gpg, AES256) -> subir a R2
+        env:
+          SUPABASE_DB_URL_PROD: ${{ secrets.SUPABASE_DB_URL_PROD }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: scripts/backup-to-r2.sh
