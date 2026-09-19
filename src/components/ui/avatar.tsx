@@ -7,14 +7,15 @@ function Avatar({
   size = 'default',
   ...props
 }: React.ComponentProps<typeof AvatarPrimitive.Root> & {
-  size?: 'default' | 'sm' | 'lg'
+  /** 28 px (`07` sección 2.3) o 26 px para `DataTable` "compact" (ds.css `.tbl.compact .av`). */
+  size?: 'default' | 'compact'
 }) {
   return (
     <AvatarPrimitive.Root
       data-slot="avatar"
       data-size={size}
       className={cn(
-        'group/avatar relative flex size-8 shrink-0 rounded-full select-none after:absolute after:inset-0 after:rounded-full after:border after:border-border after:mix-blend-darken data-[size=lg]:size-10 data-[size=sm]:size-6 dark:after:mix-blend-lighten',
+        'group/avatar relative flex size-[28px] shrink-0 rounded-full select-none after:absolute after:inset-0 after:rounded-full after:border after:border-border after:mix-blend-darken data-[size=compact]:size-[26px] dark:after:mix-blend-lighten',
         className,
       )}
       {...props}
@@ -46,7 +47,9 @@ function AvatarFallback({
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
       className={cn(
-        'flex size-full items-center justify-center rounded-full bg-muted text-sm text-muted-foreground group-data-[size=sm]/avatar:text-xs',
+        // Iniciales 11 px (redondeado de los 10.5 px de ds.css `.av`, `07`
+        // sección 4), 10 px en la variante "compact" (redondeado de 9.5 px).
+        'flex size-full items-center justify-center rounded-full text-[11px] font-semibold tracking-[0.2px] text-white group-data-[size=compact]/avatar:text-[10px]',
         className,
       )}
       {...props}

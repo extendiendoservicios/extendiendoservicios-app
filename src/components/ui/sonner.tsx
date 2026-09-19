@@ -1,6 +1,5 @@
 'use client'
 
-import { useTheme } from 'next-themes'
 import { Toaster as Sonner, type ToasterProps } from 'sonner'
 import {
   CircleCheckIcon,
@@ -10,12 +9,16 @@ import {
   Loader2Icon,
 } from 'lucide-react'
 
+/**
+ * Toaster (DS-010): la Base es solo modo claro (P-118) — a diferencia de la
+ * plantilla de shadcn/ui, acá no hay que leer el tema del sistema
+ * operativo/navegador. Se saca `next-themes` (quedó sin otro uso en el
+ * repo, ver CHANGELOG) y se fija `theme="light"` siempre.
+ */
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = 'system' } = useTheme()
-
   return (
     <Sonner
-      theme={theme as ToasterProps['theme']}
+      theme="light"
       className="toaster group"
       icons={{
         success: <CircleCheckIcon className="size-4" />,

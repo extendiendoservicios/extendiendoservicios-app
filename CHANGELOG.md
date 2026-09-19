@@ -7,7 +7,7 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
-Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017) y acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007).
+Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007) y tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012).
 
 ### Agregado
 
@@ -176,6 +176,122 @@ Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/C
   con zona fija `America/Argentina/Buenos_Aires` (`src/lib/format.ts`,
   ADR-019, DS-017).
 - `docs/design-system.md` (DOC-005, en curso).
+- `DataTable` sobre TanStack Table 8 (`src/components/DataTable.tsx`,
+  DS-008): encabezado y celdas de `07` sección 2.3, variante `compact`,
+  ordenamiento por columna, paginación por rango controlada desde afuera
+  (`pagination`/`onPaginationChange`/`pageCount`/`rowCount`), filas
+  `crit`/`warn` con el helper de `src/components/status`, estado de carga
+  con `Skeleton` y estado vacío con `EmptyState`. Por debajo de 1024 px
+  (`05` sección 7) se renderiza como una lista de `RowCard`, con
+  `meta.card`/`meta.cardLabel` por columna definiendo qué muestra la
+  tarjeta — ver `useMediaQuery` (`src/hooks/useMediaQuery.ts`), nuevo.
+  `ui/table.tsx` restyleado (encabezado `#FAFBFC`, mayúsculas 10 px,
+  celdas 12 px).
+- `Avatar` (`src/components/Avatar.tsx`) de 28 px con foto o iniciales,
+  sobre los seis colores fijos del mockup asignados por hash
+  determinístico del id (DJB2), y `PersonCell` (nombre 600 + subtítulo
+  11 px) (DS-009). `ui/avatar.tsx` restyleado a un único tamaño real
+  (`default` 28 px / `compact` 26 px, en vez de los `default`/`sm`/`lg`
+  genéricos de shadcn).
+- `Alert` restyleado con las variantes `crit`/`warn`/`info` de `07`
+  sección 2.3, colores exactos de `.a-crit`/`.a-warn`/`.a-info`
+  (`ds.css`); `ConfirmDialog` (`src/components/ConfirmDialog.tsx`),
+  diálogo de confirmación con motivo obligatorio (botón de confirmar
+  deshabilitado mientras el motivo esté vacío, motivo devuelto recortado
+  en `onConfirm`) — reutilizable para cancelar turno, quitar asignación y
+  cerrar asignación (SHIFT-011) (DS-010).
+- `Timeline` (puntos `pending`/`on`/`ok`/`crit`), `Tabs` restyleado
+  (subrayado teal de 2 px, se simplifica a esa única variante — la
+  variante "píldora" ya la cubre `SegmentedControl`), `Breadcrumb`
+  restyleado (agregado con la CLI de shadcn), `Tooltip` restyleado (fondo
+  `--dark`, 11 px, con los tres estados reales de Radix:
+  `delayed-open`/`instant-open`/`closed`) (DS-011).
+- `TaskList`/`TaskItem` (`src/components/TaskList.tsx`,
+  `TaskItem.tsx`, DS-012): casilla de 22 px con los cuatro estados de
+  `shift_tasks.status`, variante `done` atenuada, variante "next"
+  resaltada (calculada por `TaskList`: la tarea `in_progress`, o si
+  ninguna lo está, la primera `pending`), "no realizada" con motivo
+  obligatorio (reutiliza `ConfirmDialog`), etiqueta "Opcional" cuando
+  `is_required` es falso (P-059), modo solo lectura (sin acciones, sin
+  callbacks), objetivo táctil de 44 px en la casilla sin cambiar su
+  tamaño visual. No llama a ninguna API: solo avisa por callback.
+- `/dev/design` completado con ejemplos realistas de la Base: una
+  `DataTable` de "Servicios de hoy" con estados mezclados (incluida una
+  fila `crit` — sin registro — y una `warn` — salida anticipada), una
+  `TaskList` interactiva y otra solo lectura (checklist de M10), una
+  `Timeline` de una asignación, los seis colores de `Avatar`, `Alert` con
+  las tres variantes, disparadores de `Toast` y de `ConfirmDialog`, y
+  `Tabs`/`Breadcrumb`/`Tooltip`/`Skeleton`. `<Toaster />` montado una sola
+  vez en `main.tsx`.
+- Tests de Testing Library para `DataTable` (ordenamiento, paginación por
+  rango y el cambio a `RowCard` por debajo de 1024 px, simulando
+  `window.matchMedia`), `Avatar` (hash estable, fallback a iniciales),
+  `ConfirmDialog` (confirmar deshabilitado sin motivo, motivo devuelto
+  recortado) y `TaskItem` ("no realizada" exige motivo, solo lectura no
+  dispara callbacks, etiqueta "Opcional", atenuado con hora de
+  finalización).
+
+### Corregido
+
+- Bug heredado de DS-001/DS-002 (P05.1): `dialog.tsx`, `sheet.tsx`,
+  `popover.tsx`, `select.tsx`, `tooltip.tsx`, `tabs.tsx`, `separator.tsx`
+  y `command.tsx` usaban clases como `data-open:`, `data-closed:`,
+  `data-horizontal:`, `data-active:` o `data-selected:`, asumiendo
+  atributos booleanos (`data-open`, presencia) que Radix/cmdk nunca
+  agregan: Radix escribe `data-state="open"/"closed"/"active"` y
+  `data-orientation="horizontal"/"vertical"` (verificado leyendo el
+  código fuente de cada paquete en `node_modules`), y cmdk escribe
+  literalmente `data-selected="true"/"false"` (verificado con un test:
+  React nunca omite un `data-*` en `false`, lo serializa como texto) —
+  en los dos casos la clase nunca podía coincidir. Se corrigió a
+  `data-[state=open]:`, `data-[orientation=horizontal]:`,
+  `data-[selected=true]:`, etc. en los ocho archivos. `field.tsx` tenía
+  el mismo bug en `has-data-checked:`, corregido a
+  `has-data-[state=checked]:`.
+- Ninguna de esas animaciones de apertura/cierre funcionaba por una
+  segunda razón, independiente de la anterior: las clases que las
+  implementan (`animate-in`, `fade-in-0`, `zoom-in-95`,
+  `slide-in-from-*`, etc.) no existen en Tailwind CSS 4 puro — las trae
+  el paquete `tw-animate-css`, no instalado acá (no está en la lista de
+  librerías aprobadas del plan, y es una utilidad CSS, no una pieza de
+  UI). Se reimplementó el subconjunto que usan esos componentes a mano
+  con `@utility` de Tailwind 4 en `src/styles/animations.css` (nuevo),
+  leyendo `--tw-duration` (la misma variable que fija la utilidad núcleo
+  `duration-*`) con un techo de 150 ms (`07` sección 5) si no se indica
+  ninguna. `sheet.tsx` además bajó su `duration-200` a `duration-150`
+  para no superar ese máximo. `prefers-reduced-motion` ya estaba cubierto
+  de forma global en `globals.css` (P05.1); no hizo falta repetirlo acá.
+- `tsconfig.json`: se sacó `compilerOptions.baseUrl` (P05.1 lo había
+  agregado; TypeScript 6 lo marca obsoleto). El alias `@/*` lo sigue
+  resolviendo `paths` solo (sin `baseUrl`, válido con `moduleResolution`
+  `bundler`), y la CLI de shadcn lo sigue encontrando igual — probado en
+  este paquete agregando y descartando `breadcrumb` (ahora sí lo
+  necesitábamos, para DS-011).
+- `/dev/design`: los textos de ejemplo de `KpiCard` usaban términos de
+  módulos futuros ("tolerancia", "reemplazo pendiente", "Sin fichar").
+  Se reemplazaron por los KPIs reales de la Base (`05_Pantallas_y_Navegacion.md`
+  ADM-02): turnos hoy, presentes, próximos (2 h), sin registro, avisos de
+  ausencia y demora.
+
+### Quitado
+
+- `next-themes`: solo lo usaba `sonner.tsx` para leer el tema del
+  sistema operativo/navegador. La Base es solo modo claro (P-118): se
+  saca la dependencia y se fija `theme="light"` en el `Toaster`.
+
+### Dependencias
+
+- Agregado `@tanstack/react-table` `8.21.3` (publicado el 14 de abril de 2025) para `DataTable` (DS-008). ADR-021 pedía probar primero la mayor
+  estable (9): se instaló `9.2.4` (28 de agosto de 2026) y se descartó —
+  su API pública principal (`useTable` + `tableFeatures`, por _slots_) es
+  incompatible con el patrón `useReactTable`/`ColumnDef`/`flexRender` que
+  usan shadcn/ui y prácticamente todo el ecosistema; la única forma de
+  recuperar esa API en la 9 es `@tanstack/react-table/legacy`, una capa
+  de compatibilidad que la propia librería marca `@deprecated` en cada
+  export ("compatibility layer for migrating from v8", no pensada para
+  código nuevo). Se usó la cláusula de excepción de ADR-021 ("si resulta
+  incompatible con los componentes de shadcn/ui, 8") y se instaló la 8.
+- Quitado `next-themes` `0.4.6` (ver "Quitado" arriba).
 
 ## [0.1.0] - 2026-09-18
 

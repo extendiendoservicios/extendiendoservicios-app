@@ -4,11 +4,11 @@ Fuente: `07_Design_System.md` del Plan Maestro. Este documento explica cómo
 está implementado en el repositorio, no repite los valores de diseño (para
 eso está `07`).
 
-Estado: F5 · DS-001 a DS-007, DS-017. Acciones, entradas, selectores,
-tarjetas y `StatusBadge` con un adelanto parcial de `/dev/design`
-(DS-003 a DS-007, P05.2). Todavía sin `DataTable`/`RowCard`, `PersonCell`,
-`Alert`/`Toast`/`Dialog`, `Timeline`/`Tabs`/etc., `TaskList` (P05.3), sin
-shells ni router con `RequireRole` (P05.4), sin íconos PWA (P05.5).
+Estado: F5 · DS-001 a DS-012, DS-017. Tokens, shadcn/ui, acciones,
+entradas, selectores, tarjetas, `StatusBadge`, tablas, avatares, avisos,
+diálogos, timeline y lista de tareas, con `/dev/design` completo para todo
+este paquete (P05.1 a P05.3). Todavía sin shells ni router con
+`RequireRole` (P05.4), sin íconos PWA (P05.5).
 
 ## Tokens (`src/styles/tokens.css`)
 
@@ -145,10 +145,14 @@ Puntos a tener en cuenta en este repo:
   `tsconfig.app.json` (vía project references). La CLI de shadcn en Windows
   no resuelve `references` y, sin el alias en el `tsconfig.json` raíz,
   escribía los componentes en una carpeta literal `@/` en la raíz del repo
-  en lugar de `src/`. Se agregó `compilerOptions.baseUrl`/`paths` también en
+  en lugar de `src/`. Se agregó `compilerOptions.paths` también en
   `tsconfig.json` (con un comentario explicando por qué): no compila nada
   (`files: []`), es solo para que herramientas que leen únicamente ese
-  archivo encuentren el alias.
+  archivo encuentren el alias. **Sin `baseUrl`** (P05.3, TypeScript 6 lo
+  marca obsoleto): con `moduleResolution` `bundler`, `paths` solo alcanza
+  (se resuelve relativo al propio `tsconfig.json`), y la CLI de shadcn
+  sigue encontrando el alias igual — probado agregando y descartando
+  `breadcrumb` (DS-011).
 - **`shadcn init` no se pudo usar**: en este entorno (Windows, Git Bash,
   pnpm) el comando `init` falla siempre con
   `Could not load the workspace config` al escribir `components.json`
@@ -334,8 +338,12 @@ los componentes (`DataTable`, `PersonCell`, `Alert`/`Toast`/`Dialog`,
   `popover.tsx` más que lo mínimo para que compilaran (están fuera de
   alcance de este paquete): sus animaciones de apertura/cierre siguen sin
   aplicarse — abren y cierran igual (los controla React, no la clase CSS),
-  solo sin transición. Vale la pena una tarea chica en P05.3 para
-  corregirlas también.
+  solo sin transición. **Corregido en P05.3** (ajuste pendiente, ver el
+  "Corregido" de esa entrega en el CHANGELOG): además del mismo bug en
+  `select.tsx`/`tooltip.tsx`/`tabs.tsx`/`separator.tsx`/`command.tsx`/
+  `field.tsx`, hacía falta agregar las utilidades de animación (`.
+animate-in`, `fade-in-0`, etc.), que tampoco existían — ver
+  `src/styles/animations.css`.
 - **Nuevos tokens en `tokens.css`**: `--r-xs` (5 px, radio del `Checkbox`,
   fuera de la escala de tres radios de `07` sección 1.3 porque esa escala
   es para botones/inputs/sidebar, no para controles compactos);
@@ -352,6 +360,202 @@ los componentes (`DataTable`, `PersonCell`, `Alert`/`Toast`/`Dialog`,
   dominios, que son los enums reales de `04_Modelo_de_Datos.md`. Se
   mantuvieron tal cual literalmente (no hay un enum `user_status` en el
   modelo: es un concepto de Auth).
+
+## Componentes de DS-008 a DS-012 (P05.3)
+
+Estado: F5 · tablas, avatares, avisos, diálogos, timeline y lista de
+tareas. Todos están en `/dev/design` (ver más abajo), con datos de ejemplo
+realistas de la Base (mismos nombres y horarios que D01/D06/D10/M10 del
+mockup, con estados de la Base, no los recortados).
+
+### `DataTable` y `RowCard` (DS-008)
+
+`src/components/DataTable.tsx`, sobre `@tanstack/react-table` 8 (ver
+"Decisiones" abajo por qué 8 y no 9) y `ui/table.tsx` restyleado.
+
+- **`DataTable<TData>`**: `columns` (`DataTableColumnDef<TData>[]` — un
+  `ColumnDef` de TanStack Table con `meta` tipado, ver abajo), `data`,
+  `caption` (nombre accesible de la tabla, va a un `<caption
+class="sr-only">` — **obligatorio**), `getRowId?`, `compact?`
+  (booleano: menos padding, `PersonCell`/`Avatar` a 26 px si los usás
+  dentro de las celdas), `isLoading?` + `skeletonRows?` (default 5),
+  `emptyState?` (`{ icon?, title, description? }`, default genérico),
+  `rowVariant?: (row: TData) => 'crit' | 'warn' | undefined` (pintá la
+  fila completa con el helper de `src/components/status`), `sorting?` /
+  `onSortingChange?` (controlado; sin ellos, estado interno), `className?`.
+  - **Paginación, siempre controlada desde afuera** (`07`: "paginación por
+    rango... preparada para datos del servidor"): `pagination?:
+{ pageIndex, pageSize }`, `onPaginationChange?`, `pageCount?` (total
+    de páginas, si se conoce — sin él, "Siguiente" solo se deshabilita si
+    además pasás `rowCount` y ya mostraste todo), `rowCount?` (total de
+    filas, para el texto "Mostrando 1–10 de 42"). `data` es **siempre**
+    exactamente lo que hay que mostrar en la página actual: `DataTable`
+    nunca la recorta sola, ni siquiera con paginación "solo cliente" —
+    quien lo usa le pasa el slice correspondiente (con un array en
+    memoria alcanza `data.slice(pageIndex * pageSize, ...)`, como hace
+    `/dev/design`).
+  - **Ordenamiento**, siempre local sobre el array `data` que recibe
+    (columna por columna, clic en el encabezado). Si además pasás
+    `sorting`/`onSortingChange` controlados (por ejemplo para pedirle el
+    orden al servidor), es responsabilidad de quien lo usa volver a pedir
+    `data` ya ordenada — `DataTable` no tiene forma de distinguir "ordená
+    vos esto" de "ya te lo mandé ordenado".
+  - **Por debajo de 1024 px** (`05_Pantallas_y_Navegacion.md` sección 7)
+    se renderiza sola como una lista de `RowCard` en vez de tabla, sin
+    scroll horizontal. Cada columna dice, con `meta.card`, qué lugar
+    ocupa en la tarjeta: `'title'` (una sola columna; típicamente un
+    `PersonCell`), `'subtitle'` (debajo del título), `'trailing'`
+    (arriba a la derecha; típicamente un `StatusBadge`), `'meta'` (pares
+    etiqueta/valor en una grilla de dos columnas debajo — la etiqueta
+    sale de `meta.cardLabel`) o sin indicar/`'hidden'` (no aparece en la
+    tarjeta). `meta.align` (`'start'` default, `'end'`, `'center'`) solo
+    afecta la tabla de escritorio.
+  - El quiebre lo decide `useMediaQuery('(min-width: 1024px)')`
+    (`src/hooks/useMediaQuery.ts`, nuevo: hook mínimo sobre
+    `window.matchMedia` con `useSyncExternalStore`, reutilizable para
+    cualquier otro componente que necesite reaccionar a un breakpoint).
+  - `DataTableColumnDef<TData>`/`DataTableColumnMeta` se exportan del
+    mismo archivo para tipar `columns` en otras vías.
+
+### `Avatar` y `PersonCell` (DS-009)
+
+- **`Avatar`** (`src/components/Avatar.tsx`): `id` (define el color —
+  hash DJB2 determinístico, siempre el mismo resultado para el mismo id),
+  `name` (de acá salen las iniciales del fallback: primera letra del
+  primer y el último nombre), `src?` (si falta o no carga, se ve el
+  fallback), `size` — `default` (28 px) | `compact` (26 px, para
+  `DataTable` "compact"). También exporta `getAvatarColorKey`/
+  `getInitials` (los usa el test, y sirven si alguna pantalla necesita el
+  mismo color en otro lado sin repetir el `Avatar` entero).
+- **`PersonCell`** (`src/components/PersonCell.tsx`): `id`, `name`,
+  `subtitle?`, `avatarSrc?`, `size?` (mismo que `Avatar`), `className?`.
+  Nombre en peso 600, subtítulo 11 px `--text-3`.
+
+### `Alert`, `Toaster` y `ConfirmDialog` (DS-010)
+
+- **`Alert`** (`ui/alert.tsx`): `variant` — `crit | warn | info` (sin
+  default: elegilo siempre). Primer hijo directo = ícono (17 px, como en
+  `ds.css`, no un slot separado); `AlertTitle`, `AlertDescription`,
+  `AlertActions` (opcional, botones debajo de la descripción).
+- **`Toaster`** (`ui/sonner.tsx`), montado una vez en `main.tsx`: llamá a
+  `toast(...)`/`toast.success(...)`/`toast.error(...)` (de `sonner`,
+  reexportado tal cual — no hay wrapper propio) desde cualquier pantalla.
+  Siempre `theme="light"` (P-118).
+- **`ConfirmDialog`** (`src/components/ConfirmDialog.tsx`): `open`,
+  `onOpenChange`, `title`, `description?`, `reasonLabel?` (default
+  "Motivo"), `reasonPlaceholder?`, `cancelLabel?` (default "Cancelar"),
+  `confirmLabel?` (default "Confirmar"), `variant?` — `primary |
+destructive` (default `primary`), `isLoading?` (deshabilita el
+  formulario y muestra el spinner del botón mientras se resuelve la
+  RPC — vos cerrás el diálogo cuando termine bien), `onConfirm: (reason:
+string) => void`. El motivo es obligatorio: el botón de confirmar
+  queda deshabilitado mientras esté vacío (o sean solo espacios), y se
+  devuelve ya recortado (`trim()`). No llama a ninguna API. Reutilizado
+  por `TaskItem` para "no realizada".
+
+### `Timeline`, `Tabs`, `Breadcrumb`, `Tooltip`, `Skeleton` (DS-011)
+
+- **`Timeline`** (`src/components/Timeline.tsx`): `items:
+{ id, title, description?, variant? }[]`. `variant` —
+  `'pending' | 'on' | 'ok' | 'crit'` (default `'pending'`, el punto hueco
+  sin marcar de `ds2.css`; los otros tres son los que pide `07`).
+- **`Tabs`/`TabsList`/`TabsTrigger`/`TabsContent`** (`ui/tabs.tsx`):
+  misma API de Radix, restyleados a la única variante del mockup
+  (subrayado teal de 2 px) — se sacó la variante "píldora" de shadcn
+  porque ese lugar ya lo cubre `SegmentedControl` (DS-005).
+- **`Breadcrumb`/`BreadcrumbList`/`BreadcrumbItem`/`BreadcrumbLink`/
+  `BreadcrumbPage`/`BreadcrumbSeparator`/`BreadcrumbEllipsis`**
+  (`ui/breadcrumb.tsx`, agregado con la CLI en este paquete): API
+  estándar de shadcn, restyleada (11 px, `--text-3` los eslabones,
+  `--text` el actual).
+- **`Tooltip`/`TooltipContent`/`TooltipTrigger`/`TooltipProvider`**
+  (`ui/tooltip.tsx`): sin cambios de API, restyleado (fondo `--dark`,
+  11 px).
+- **`Skeleton`** (`ui/skeleton.tsx`): sin cambios (ya estaba bien desde
+  DS-002; `animate-pulse` es una utilidad núcleo de Tailwind, no
+  necesitaba el arreglo de animaciones de abajo).
+
+### `TaskList` y `TaskItem` (DS-012)
+
+- **`TaskList`** (`src/components/TaskList.tsx`): `tasks:
+{ id, title, description?, status, isRequired?, notDoneReason?,
+completedAt? }[]` (`status`: `TaskStatus` de `@/components/status`),
+  `readOnly?`, `onComplete?`, `onMarkNotDone?`, `onUndo?`. Calcula sola
+  cuál tarea es "next" (resaltada): la que está `in_progress`, o si
+  ninguna lo está, la primera `pending` en el orden de `tasks` — como
+  mucho una a la vez.
+- **`TaskItem`** (`src/components/TaskItem.tsx`, usable suelto si
+  hiciera falta): mismas props que un elemento de `tasks` más `isNext?`,
+  `readOnly?` y los tres callbacks. Casilla de 22 px con área táctil de
+  44 px (`after` invisible, no cambia el tamaño visual); `done`
+  atenuada (texto `--text-3`); `isNext` resaltada (fondo
+  `--primary-050`); "No realizada" abre un `ConfirmDialog` (motivo
+  obligatorio) y al confirmar llama a `onMarkNotDone(id, reason)`;
+  clic en la casilla de una tarea `done`/`not_done` llama a `onUndo`, si
+  lo pasaste. Etiqueta "Opcional" cuando `isRequired` es `false`
+  (P-059). En modo `readOnly` no se ve ninguna acción y ningún callback
+  se dispara (ni siquiera al clickear la casilla, deshabilitada). No
+  llama a ninguna API.
+
+### Decisiones de esta entrega (DS-008 a DS-012)
+
+- **TanStack Table 8, no 9** (ADR-021 pedía probar la 9 primero): se
+  instaló, la API pública principal cambió por completo a un modelo "por
+  slots" (`tableFeatures`/`useTable`) que ni shadcn/ui ni prácticamente
+  ningún ejemplo del ecosistema usan todavía; la única forma de recuperar
+  la API clásica (`useReactTable`/`ColumnDef`/`flexRender`) es
+  `@tanstack/react-table/legacy`, marcada `@deprecated` en cada export de
+  su propio `.d.ts` ("compatibility layer for migrating from v8"). Se
+  consideró que construir el `DataTable` de todo el design system sobre
+  una capa de compatibilidad pensada solo para migrar, no para código
+  nuevo, calificaba como el "incompatible con los componentes de
+  shadcn/ui" que prevé ADR-021, así que se usó la excepción y se instaló
+  la 8 (ver CHANGELOG para las fechas de publicación de las dos).
+- **`meta.align`/`meta.card`/`meta.cardLabel` sin ampliar `ColumnMeta` de
+  la librería**: TanStack Table permite declarar estos campos
+  "oficialmente" con fusión de declaraciones (`declare module
+'@tanstack/react-table' { interface ColumnMeta<...> {...} }`, el
+  patrón documentado por la librería). Se probó (en `DataTable.tsx` y
+  también en un `.d.ts` aparte) y en los dos casos el linteo con
+  información de tipos (`projectService` de typescript-eslint) no
+  resolvía el tipo ampliado y marcaba cada lectura como insegura
+  (`no-unsafe-member-access`), aunque `tsc -b` sí lo aceptaba — una
+  discrepancia entre el compilador real y el programa que arma
+  typescript-eslint para lintear, no algo que dependiera de dónde vivía
+  la ampliación. En vez de silenciar la regla, `DataTableColumnDef<TData>`
+  define el `meta` propio por intersección (`ColumnDef<TData> & { meta?:
+DataTableColumnMeta }`), sin tocar el tipo de la librería: como
+  `ColumnMeta` de la librería hoy no declara ningún campo propio, es
+  estructuralmente compatible con cualquier forma de `meta` (todos los
+  campos son opcionales), así que no hace falta ningún casteo ni al
+  definir `columns` ni al leer `meta` de vuelta.
+- **`RowCard` sin el "sangrado" de márgenes negativos de `.task.next`**:
+  ver la nota de `TaskItem` en "Decisiones" más abajo — mismo criterio
+  para el fondo resaltado de una fila en `RowCard`, aunque acá no aplica
+  (`RowCard` no tiene una variante "next", solo `crit`/`warn`).
+- **`TaskItem` "next" sin el sangrado de `.task.next`**: `ds2.css` logra
+  el fondo resaltado con `margin: 0 -15px; padding: 0 15px`, asumiendo
+  que el contenedor tiene exactamente 15 px de padding (el de la pantalla
+  móvil del mockup). Un componente reutilizable no puede asumir el
+  padding de cualquier contenedor donde se lo use, así que el fondo y el
+  radio quedan autocontenidos (`rounded-sm`, sin márgenes negativos) —
+  visualmente equivalente, sin el supuesto frágil.
+- **Radio de 6 px de la casilla de `TaskItem`**: `.tbox` de `ds2.css` usa
+  6 px, fuera de la escala de 8/12/14 de `07` sección 1.3 (igual que el
+  `Checkbox` de DS-004, que ya tiene su propio `--r-xs` de 5 px para el
+  mismo motivo). Se agregó `--r-task-box` en `tokens.css` en vez de
+  reusar `--r-xs` (son valores distintos, 6 px y 5 px).
+- **Checklist de `not_done` con ícono propio**: el mockup no define un
+  estado visual para la casilla cuando la tarea es "no realizada" (solo
+  tiene "marcada"/"vacía"). Se agregó una tercera apariencia (casilla
+  roja con un ícono de X) para que se distinga de "pendiente" a simple
+  vista, coherente con el rojo que ya usa `StatusBadge` para `not_done`.
+- **Colores nuevos en `tokens.css`**: `--danger-border`/`--warning-border`
+  (bordes de `Alert` `crit`/`warn`, `.a-crit`/`.a-warn` de `ds.css`),
+  `--avatar-a`…`--avatar-f` (los seis colores fijos de `Avatar`; `a` es
+  literalmente `var(--primary)`, mismo valor que ya usaba `ds.css`),
+  `--table-header-bg` (`#FAFBFC`, encabezado de `DataTable`), `--r-task-box`
+  (radio de la casilla de `TaskItem`, ver arriba).
 
 ## Cómo ver los componentes
 
