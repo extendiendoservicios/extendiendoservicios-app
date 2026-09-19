@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router'
 import { router } from '@/app/router'
 import { initSentry } from '@/lib/sentry'
+import { Toaster } from '@/components/ui/sonner'
 import '@/styles/globals.css'
 
 // INFRA-021: no hace nada si falta VITE_SENTRY_DSN (ver src/lib/sentry.ts).
@@ -16,5 +17,8 @@ if (!rootElement) {
 createRoot(rootElement).render(
   <StrictMode>
     <RouterProvider router={router} />
+    {/* Montado una sola vez en la raíz (DS-010): cualquier pantalla puede
+        llamar a `toast(...)` de "sonner" sin volver a montar el Toaster. */}
+    <Toaster />
   </StrictMode>,
 )
