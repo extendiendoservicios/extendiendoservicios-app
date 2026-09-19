@@ -44,8 +44,8 @@ Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/C
   montada una sola vez en `RootLayout` (`router.tsx`) para que la vean
   todos los layouts, portada incluida, sin tocar cada uno por separado.
   Nunca en `production` ni en `local`.
-- Tests de Testing Library para `RequireRole` (sin sesión, rol
-  incorrecto, rol correcto, más de un rol a la vez), `AdminShell`
+- Tests de Testing Library para `RequireRole` (sin sesión, rol de otra
+  vía, sin ningún rol, rol correcto, más de un rol a la vez), `AdminShell`
   (colapso de la sidebar y aparición del tabbar según el ancho, mismo
   criterio de `matchMedia` simulado que P05.3) y `StagingBanner` (los tres
   entornos). E2e nuevo
@@ -274,6 +274,30 @@ Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/C
 
 ### Corregido
 
+- Revisión de P05.4 (orquestador):
+  - Con contenido más alto que la ventana, la cabecera y el tabbar de los
+    dos shells se iban con el scroll. En el celular, el botón "Fichar"
+    quedaba fuera de la pantalla hasta llegar al final. Ahora scrollea el
+    documento: la topbar, la navbar de subpágina y los tabbar son
+    `sticky`, y la sidebar es `sticky` con el alto de la ventana y scroll
+    propio. `<main>` dejó de ser contenedor de scroll, así que `ActionBar`
+    se ancla a la ventana; además ocupa todo el ancho (márgenes negativos
+    sobre el `p-4` de `<main>`). El saludo de la raíz sí se va con el
+    scroll.
+  - `RequireRole`: con un rol que no corresponde a la vía, redirige a la
+    vía propia (`homePathForRoles` en `session.ts`) y no a `/sin-acceso`,
+    como pide `05` sección 5. `/sin-acceso` queda para quien no tiene
+    ningún rol.
+  - Sidebar: los `<li>` de cada sección estaban directo dentro de `<nav>`;
+    ahora van en un `<ul>`, y cada `<nav>` lleva su nombre ("Operación",
+    "Configuración") también expandida.
+  - Los nombres de ejemplo del simulador de rol (`devRole.ts`) llegaban a
+    `dist/`. Ahora quedan como código muerto en el build.
+  - `index.html` declaraba `color-scheme: dark`, heredado de la portada
+    provisoria, y `body` no tenía color propio: el texto sin clase salía
+    blanco sobre el fondo claro de los shells. Ahora es `light` y `body`
+    usa `--text` y `--bg`. La portada define sus propios colores y no
+    cambia.
 - `ui/button.tsx`: `<Button asChild>` (usado por primera vez en este
   paquete, en `/dev/rol`) rompía siempre con "Slot failed to slot onto its
   children" — `Slot.Root` (Radix) exige exactamente un elemento hijo, y el

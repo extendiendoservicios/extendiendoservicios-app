@@ -43,6 +43,21 @@ export const ROLE_LABELS: Record<Role, string> = {
 }
 
 /**
+ * Vía de inicio de quien tiene estos roles (`05_Pantallas_y_Navegacion.md`
+ * sección 5): `RequireRole` redirige ahí a quien entra a una vía que no le
+ * corresponde, y AUTH-004 la va a usar para el redirect de `/`. Con empleado
+ * y supervisor a la vez gana `/app`, igual que en `ProfileLayout`: el
+ * acceso a la supervisión está en EMP-13 ("Más"). Sin ningún rol, `null`
+ * (COM-05, `/sin-acceso`).
+ */
+export function homePathForRoles(roles: Role[]): string | null {
+  if (roles.includes('owner') || roles.includes('admin')) return '/admin'
+  if (roles.includes('employee')) return '/app'
+  if (roles.includes('supervisor')) return '/sup'
+  return null
+}
+
+/**
  * `useSession` (DS-015): punto único que leen `RequireRole` y los shells
  * (`AdminShell`, `MobileShell`) para saber si hay sesión, qué rol tiene y
  * qué nombre mostrar. Ver `docs/design-system.md` ("Router y sesión

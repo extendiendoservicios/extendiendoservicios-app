@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router'
-import { useSession, type Role } from './session'
+import { homePathForRoles, useSession, type Role } from './session'
 
 /**
  * `RequireRole` (DS-015/AUTH-008): protección de experiencia por grupo de
@@ -18,7 +18,10 @@ import { useSession, type Role } from './session'
  *   en staging es siempre este caso mientras no exista AUTH-002: no hay
  *   ninguna forma de autenticarse todavía. En desarrollo depende del rol
  *   simulado en `/dev/rol` (`devRole.ts`).
- * - Con sesión pero ningún rol de `allow` → `/sin-acceso` (COM-05).
+ * - Con sesión pero ningún rol de `allow` → la vía propia de sus roles
+ *   (`homePathForRoles`: un empleado que abre `/admin` termina en `/app`),
+ *   o `/sin-acceso` (COM-05) si no tiene ningún rol. La vía propia siempre
+ *   admite al menos uno de sus roles, así que no hay redirecciones en bucle.
  * - Con un rol permitido → `children`.
  */
 export function RequireRole({
@@ -44,7 +47,9 @@ export function RequireRole({
 
   const hasAllowedRole = session.roles.some((role) => allow.includes(role))
   if (!hasAllowedRole) {
-    return <Navigate to="/sin-acceso" replace />
+    return (
+      <Navigate to={homePathForRoles(session.roles) ?? '/sin-acceso'} replace />
+    )
   }
 
   return <>{children}</>

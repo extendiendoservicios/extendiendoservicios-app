@@ -82,7 +82,9 @@ const DEV_ROLE_SESSIONS: Record<
 export function sessionFromDevRoleSelection(
   selection: DevRoleSelection,
 ): SessionState {
-  if (selection === 'none') {
+  // Con `!import.meta.env.DEV` constante en el build, lo que sigue es código
+  // muerto y `DEV_ROLE_SESSIONS` (nombres de ejemplo) no llega a `dist/`.
+  if (!import.meta.env.DEV || selection === 'none') {
     return { status: 'unauthenticated' }
   }
   const { roles, displayName } = DEV_ROLE_SESSIONS[selection]

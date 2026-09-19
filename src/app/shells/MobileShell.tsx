@@ -72,7 +72,10 @@ export function MobileShell({ variant }: { variant: MobileShellVariant }) {
           />
         )}
 
-        <main className="flex flex-1 flex-col gap-3 overflow-y-auto bg-bg p-4">
+        {/* Scroll del documento, no de `<main>`: la navbar y el tabbar quedan
+            fijas con `sticky`, y `ActionBar` (también `sticky`) se ancla a la
+            ventana. El saludo de la raíz sí se va con el scroll. */}
+        <main className="flex flex-1 flex-col gap-3 bg-bg p-4">
           <Outlet />
         </main>
 
@@ -129,7 +132,7 @@ function MobileNavbarHeader({
   onBack: () => void
 }) {
   return (
-    <header className="flex min-h-[56px] shrink-0 items-center gap-3 bg-primary px-4 py-[9px] text-white">
+    <header className="sticky top-0 z-20 flex min-h-[56px] shrink-0 items-center gap-3 bg-primary px-4 py-[9px] text-white">
       {showBack && (
         <button
           type="button"
@@ -168,7 +171,7 @@ function MobileTabbar({
 
   return (
     <nav
-      className="flex h-[66px] shrink-0 items-center border-t border-border bg-surface px-1"
+      className="sticky bottom-0 z-20 flex h-[66px] shrink-0 items-center border-t border-border bg-surface px-1"
       style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}
       aria-label="Navegación principal"
     >

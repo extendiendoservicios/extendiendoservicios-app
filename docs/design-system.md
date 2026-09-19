@@ -633,11 +633,23 @@ móviles funcionan también en escritorio, centradas a 480 px").
 - **`ActionBar`** (`src/app/shells/ActionBar.tsx`): franja de botones
   apilados para subpáginas (`.m-actions` de `ds.css`, ej. M16 "Volver al
   servicio" / "Registrar salida"). `MobileShell` no la monta: la pantalla
-  que la necesite la agrega como su propio último elemento —
-  `position: sticky; bottom: 0` alcanza para que quede pegada al fondo del
-  área de scroll del shell sin necesitar un slot ni contexto compartido
-  entre la página y el shell (ver "Decisiones" abajo). Respeta
+  que la necesite la agrega como su propio último elemento, **hijo directo
+  de `<main>`** (devolver un fragmento, no envolverla en otro `div`) —
+  `position: sticky; bottom: 0` alcanza para que quede pegada al pie de la
+  ventana sin necesitar un slot ni contexto compartido entre la página y
+  el shell (ver "Decisiones" abajo). Ocupa todo el ancho (márgenes
+  negativos sobre el `p-4` de `<main>`) y respeta
   `env(safe-area-inset-bottom)`.
+
+**Scroll en los dos shells** (corregido en la revisión de P05.4): scrollea
+el documento, nunca un contenedor interno. La topbar de `AdminShell`, la
+navbar de subpágina de `MobileShell` y los dos tabbar son `sticky`; la
+sidebar es `sticky` con `h-dvh` y scroll propio. `<main>` no lleva
+`overflow`: si lo llevara, sería el contenedor de referencia de cualquier
+`sticky` de una pantalla (como `ActionBar`) y dejaría de anclarse a la
+ventana. El saludo de la raíz de `MobileShell` sí se va con el scroll.
+Ninguna pantalla debería agregar su propio contenedor de scroll vertical a
+página completa.
 
 ### Router (`src/app/router.tsx`, `src/app/routes/*`, DS-015)
 
@@ -667,7 +679,10 @@ móviles funcionan también en escritorio, centradas a 480 px").
   (`allow={['employee']}`), `sup` (`allow={['supervisor']}`), y `perfil`
   (los cuatro roles, el shell lo elige `ProfileLayout` según
   `useSession()`). Sin sesión → `/ingresar`; con sesión pero ningún rol de
-  `allow` → `/sin-acceso`; si no, renderiza. Es solo experiencia (`07`
+  `allow` → la vía propia de sus roles (`homePathForRoles` en
+  `session.ts`: un empleado que abre `/admin` termina en `/app`), o
+  `/sin-acceso` si no tiene ningún rol; si no, renderiza. AUTH-004 usa la
+  misma `homePathForRoles` para el redirect de `/`. Es solo experiencia (`07`
   sección 5): la protección real de los datos es RLS, `RequireRole` nunca
   la reemplaza.
 - **`/`** sigue siendo `ConstructionPage` (sin cambios): es lo que hoy sirve
@@ -777,10 +792,10 @@ reemplazar esto sin tocar `router.tsx` ni los shells:
   pide.
 - **`ActionBar` sin slot/contexto**: en vez de que `MobileShell` reserve un
   hueco fijo y las páginas le "manden" su contenido (patrón de contexto de
-  layout, más plumbing), `ActionBar` se apoya en `position: sticky` dentro
-  del `<main>` con scroll del shell — mientras sea el último elemento que
-  devuelve la página, se comporta como el pie fijo del mockup sin acoplar
-  el shell a lo que cada pantalla necesite mostrar ahí.
+  layout, más plumbing), `ActionBar` se apoya en `position: sticky` sobre
+  el scroll del documento — mientras sea el último hijo de `<main>`, se
+  comporta como el pie fijo del mockup sin acoplar el shell a lo que cada
+  pantalla necesite mostrar ahí.
 - **Botón "Volver" de la navbar de subpágina usa `navigate(-1)`**: la forma
   estándar y más simple de "volver" en una SPA. No calcula una ruta
   "padre" a partir del path (no hay ninguna tabla que la declare por

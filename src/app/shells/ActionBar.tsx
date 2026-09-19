@@ -10,11 +10,11 @@ import { cn } from 'cn'
  *
  * `MobileShell` no la monta: la pintan las pantallas de `front-movil` que
  * la necesiten (ninguna todavía — son placeholders), como el último
- * elemento de lo que devuelven. `position: sticky; bottom: 0` alcanza para
- * que quede pegada al fondo del área de scroll de `MobileShell`
- * (`<main>`), sin necesidad de un slot separado ni de contexto entre la
- * página y el shell: mientras sea el último hijo de un contenedor con
- * scroll, se comporta como el pie fijo del mockup.
+ * elemento de lo que devuelven. `MobileShell` deja scrollear al documento
+ * (su `<main>` no es contenedor de scroll), así que `position: sticky;
+ * bottom: 0` la pega al pie de la ventana sin un slot separado ni contexto
+ * entre la página y el shell. Los márgenes negativos compensan el `p-4` del
+ * `<main>` para que ocupe todo el ancho, como el pie del mockup.
  *
  * Respeta el área segura del celular (`env(safe-area-inset-bottom)`, `07`
  * sección 1.3).
@@ -32,7 +32,7 @@ export function ActionBar({
   return (
     <div
       className={cn(
-        'sticky bottom-0 flex shrink-0 flex-col gap-[9px] border-t border-border bg-surface px-4 pt-3',
+        'sticky bottom-0 z-10 -mx-4 mt-auto -mb-4 flex shrink-0 flex-col gap-[9px] border-t border-border bg-surface px-4 pt-3',
         className,
       )}
       style={{

@@ -13,6 +13,8 @@ function renderProtectedRoute(session: SessionState, allow: Role[]) {
       <Routes>
         <Route path="/ingresar" element={<p>Pantalla de ingreso</p>} />
         <Route path="/sin-acceso" element={<p>Sin acceso</p>} />
+        <Route path="/app" element={<p>Inicio del empleado</p>} />
+        <Route path="/sup" element={<p>Inicio del supervisor</p>} />
         <Route
           path="/admin"
           element={
@@ -34,9 +36,28 @@ describe('RequireRole', () => {
     expect(screen.queryByText('Contenido protegido')).not.toBeInTheDocument()
   })
 
-  it('con un rol que no corresponde redirige a /sin-acceso', () => {
+  it('con un rol que no corresponde redirige a su propia vía', () => {
     renderProtectedRoute(
       { status: 'authenticated', roles: ['employee'], displayName: 'María' },
+      ['owner', 'admin'],
+    )
+
+    expect(screen.getByText('Inicio del empleado')).toBeInTheDocument()
+    expect(screen.queryByText('Contenido protegido')).not.toBeInTheDocument()
+  })
+
+  it('un supervisor que no es empleado va a /sup', () => {
+    renderProtectedRoute(
+      { status: 'authenticated', roles: ['supervisor'], displayName: 'Paula' },
+      ['owner', 'admin'],
+    )
+
+    expect(screen.getByText('Inicio del supervisor')).toBeInTheDocument()
+  })
+
+  it('con sesión pero sin ningún rol redirige a /sin-acceso', () => {
+    renderProtectedRoute(
+      { status: 'authenticated', roles: [], displayName: 'María' },
       ['owner', 'admin'],
     )
 

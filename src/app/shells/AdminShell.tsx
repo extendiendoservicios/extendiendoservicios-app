@@ -96,8 +96,12 @@ export function AdminShell({
         />
       )}
 
-      <div className="flex min-h-dvh flex-1 flex-col">
-        <header className="flex h-[64px] shrink-0 items-center gap-[18px] border-b border-border bg-surface px-4 lg:px-[26px]">
+      {/* Scroll del documento, no de un contenedor interno: topbar y tabbar
+          quedan fijas con `sticky` y la sidebar con `sticky` + `h-dvh`. Así
+          `<main>` no es un contenedor de scroll y cualquier `sticky` de una
+          pantalla se ancla a la ventana. */}
+      <div className="flex min-h-dvh min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-20 flex h-[64px] shrink-0 items-center gap-[18px] border-b border-border bg-surface px-4 lg:px-[26px]">
           <div className="min-w-0">
             <h1 className="truncate text-[17px] font-semibold tracking-[-0.25px] text-text">
               {handle?.title ?? 'Extendiendo Servicios'}
@@ -131,7 +135,7 @@ export function AdminShell({
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto px-4 py-4 lg:px-[26px] lg:py-[22px]">
+        <main className="flex-1 px-4 py-4 lg:px-[26px] lg:py-[22px]">
           <Outlet />
         </main>
 
@@ -185,7 +189,7 @@ function AdminSidebar({
     <TooltipProvider delayDuration={200}>
       <aside
         className={cn(
-          'flex shrink-0 flex-col bg-primary px-[14px] py-[22px] text-white transition-[width] duration-150',
+          'sticky top-0 flex h-dvh shrink-0 flex-col overflow-y-auto bg-primary px-[14px] py-[22px] text-white transition-[width] duration-150',
           collapsed ? 'w-[60px] items-center px-[8px]' : 'w-[236px]',
         )}
       >
@@ -267,45 +271,44 @@ function NavSection({
           {label}
         </p>
       )}
-      <nav
-        className="flex flex-col gap-px"
-        aria-label={collapsed ? label : undefined}
-      >
-        {items.map((item) => {
-          const active = isAdminNavItemActive(pathname, item)
-          const link = (
-            <Link
-              to={item.path}
-              aria-current={active ? 'page' : undefined}
-              aria-label={collapsed ? item.label : undefined}
-              className={cn(
-                'flex items-center gap-[11px] rounded-md px-[11px] py-[9px] text-[13px] text-white/82 outline-none focus-visible:ring-3 focus-visible:ring-ring',
-                active && 'bg-white/20 font-semibold text-white',
-                collapsed && 'justify-center px-0',
-              )}
-            >
-              <item.icon aria-hidden="true" className="size-4 shrink-0" />
-              {!collapsed && <span className="truncate">{item.label}</span>}
-            </Link>
-          )
+      <nav aria-label={label}>
+        <ul className="flex flex-col gap-px">
+          {items.map((item) => {
+            const active = isAdminNavItemActive(pathname, item)
+            const link = (
+              <Link
+                to={item.path}
+                aria-current={active ? 'page' : undefined}
+                aria-label={collapsed ? item.label : undefined}
+                className={cn(
+                  'flex items-center gap-[11px] rounded-md px-[11px] py-[9px] text-[13px] text-white/82 outline-none focus-visible:ring-3 focus-visible:ring-ring',
+                  active && 'bg-white/20 font-semibold text-white',
+                  collapsed && 'justify-center px-0',
+                )}
+              >
+                <item.icon aria-hidden="true" className="size-4 shrink-0" />
+                {!collapsed && <span className="truncate">{item.label}</span>}
+              </Link>
+            )
 
-          if (!collapsed) {
+            if (!collapsed) {
+              return (
+                <li key={item.path} className="list-none">
+                  {link}
+                </li>
+              )
+            }
+
             return (
               <li key={item.path} className="list-none">
-                {link}
+                <Tooltip>
+                  <TooltipTrigger asChild>{link}</TooltipTrigger>
+                  <TooltipContent side="right">{item.label}</TooltipContent>
+                </Tooltip>
               </li>
             )
-          }
-
-          return (
-            <li key={item.path} className="list-none">
-              <Tooltip>
-                <TooltipTrigger asChild>{link}</TooltipTrigger>
-                <TooltipContent side="right">{item.label}</TooltipContent>
-              </Tooltip>
-            </li>
-          )
-        })}
+          })}
+        </ul>
       </nav>
     </div>
   )
@@ -320,7 +323,7 @@ function AdminTabbar({
 }) {
   return (
     <nav
-      className="flex h-[66px] shrink-0 items-center border-t border-border bg-surface px-1 pb-[6px]"
+      className="sticky bottom-0 z-20 flex h-[66px] shrink-0 items-center border-t border-border bg-surface px-1 pb-[6px]"
       style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}
       aria-label="Navegación principal"
     >
