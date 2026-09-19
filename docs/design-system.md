@@ -872,8 +872,6 @@ recolorear) y este paquete los copió tal cual a `public/icons/`:
 ```text
 public/icons/isotipo_blanco_34px@2x.png    61×68,  sidebar expandida y colapsada
 public/icons/isotipo_blanco_34px@3x.png    92×102, srcSet de alta densidad
-public/icons/isotipo_blanco_original.png   677×754, isotipo blanco a resolución completa
-public/icons/isotipo_negro_original.png    677×754, ídem en negro (sin uso todavía)
 public/icons/pwa-192x192.png               isotipo blanco sobre #569EA4
 public/icons/pwa-512x512.png               ídem, 512
 public/icons/pwa-maskable-512x512.png      ídem, con margen de seguridad (80 %) para maskable
@@ -905,14 +903,15 @@ public/icons/apple-touch-icon-180x180.png  ídem, 180×180
     `alt="Extendiendo Servicios"` (única fuente del nombre accesible ahí).
 - **`index.html`**: `apple-touch-icon` apunta a
   `/icons/apple-touch-icon-180x180.png` (antes `favicon.png`, 128 px). El
-  `<meta name="theme-color">` **se mantiene en `#0E1017`**: es el color de
-  la portada oscura (`ConstructionPage`, sin cambios en este paquete), no
-  el de la PWA instalada — `manifest.webmanifest` usa el teal de marca
-  `#569EA4` a propósito (ver la sección de PWA más abajo). Son dos cosas
-  distintas (la barra del navegador mientras se ve la portada todavía sin
-  reemplazar vs. la barra/splash de la app ya instalada) que van a
-  converger cuando AUTH-004 (F6) reemplace la portada por el login real;
-  queda un comentario en el propio `index.html` explicándolo.
+  `<meta name="theme-color">` pasa de `#0E1017` (el de la portada oscura) al
+  teal de marca `#569EA4`, igual que el `theme_color` del manifest:
+  `index.html` lo sirven todas las rutas, y en el navegador del celular una
+  barra oscura sobre la cabecera teal de los shells desentonaba. La portada
+  es temporal y solo vive en `/` (corrección del orquestador en la revisión
+  de P05.5).
+- Los isotipos a resolución completa (677×754) quedan solo en
+  `Images/recortes/`, fuera del repo: nada los usa, y el patrón `png` de
+  Workbox los metía en la precarga (unos 176 KB por instalación).
 - **`public/logo.png` no se toca**: lo sigue usando la portada
   (`ConstructionPage`), el 404 (`NotFoundPage`) y el `og:image` de
   `index.html` — ninguno de los tres es parte de este paquete.
@@ -954,10 +953,10 @@ solo las decisiones de este paquete.
   80 %, ya resuelto en el PNG que llegó del orquestador — nada que hacer
   del lado del plugin). Sin maskable de 192: `07`/RESP-001 solo piden
   "192, 512 y maskable 512".
-- **`short_name: 'Ext. Servicios'`**: no está en el plan; se agregó porque
-  el campo existe en el manifest y varios launchers lo usan para el
-  nombre debajo del ícono si `name` no entra. Decisión menor, sin impacto
-  en ningún otro archivo.
+- **`short_name: 'Ext. Servicios'`**: es el nombre debajo del ícono de la
+  app instalada, porque `name` no entra. Lo confirmó Mike el 19 sep 2026,
+  sabiendo que algunos launchers de Android lo cortan a unos 12
+  caracteres.
 - **`registerType: 'prompt'`, sin interfaz todavía** (decisión del
   orquestador para este paquete): el service worker nuevo instala y queda
   esperando — nunca llama `self.skipWaiting()`/`clientsClaim()` por su

@@ -25,9 +25,9 @@ Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/C
   tracking 1.3 px) con una regla de 26×2 px debajo, colapsada a solo el
   isotipo, y sin nombres accesibles duplicados (`alt=""` en la imagen
   cuando el texto es visible, `alt="Extendiendo Servicios"` cuando no).
-  `index.html`: `apple-touch-icon` al ícono de 180; `theme-color` se
-  mantiene en `#0E1017` (portada oscura, sin cambios) con un comentario
-  explicando por qué difiere a propósito del `theme_color` del manifest.
+  `index.html`: `apple-touch-icon` al ícono de 180 y `theme-color` al teal
+  de marca `#569EA4`, igual que el manifest (antes, `#0E1017` de la
+  portada oscura).
   `public/logo.png`/`favicon.png` no se tocan (los sigue usando la
   portada, el 404 y el `og:image`).
 - `vite-plugin-pwa` 1.3.0 (RESP-001, P-089): manifest (`name`/`short_name`/
