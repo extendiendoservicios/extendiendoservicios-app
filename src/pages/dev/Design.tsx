@@ -342,8 +342,8 @@ const ASSIGNMENT_TIMELINE: TimelineItem[] = [
     variant: 'crit',
   },
   {
-    id: 'replacement',
-    title: 'Reemplazo asignado a María Gómez',
+    id: 'admin-check-in',
+    title: 'Ingreso registrado por la administración',
     description: '09:10',
     variant: 'on',
   },
@@ -541,7 +541,10 @@ function DesignPage() {
           <Input disabled placeholder="No editable" className="w-72" />
         </Row>
         <Row label="Textarea">
-          <Textarea placeholder="Observaciones del turno…" className="w-96" />
+          <Textarea
+            placeholder="Observaciones del turno…"
+            className="w-full max-w-96"
+          />
         </Row>
         <Row label="Select">
           <Select defaultValue="norte">
@@ -751,7 +754,7 @@ function DesignPage() {
           <KpiCard
             label="Sin registro"
             value={1}
-            detail="supera la tolerancia"
+            detail="pasada la hora de inicio"
             variant="crit"
           />
           <KpiCard

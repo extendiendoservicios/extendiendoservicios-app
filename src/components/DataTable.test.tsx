@@ -49,6 +49,9 @@ describe('DataTable — 1024 px o más (tabla)', () => {
     mockDesktopViewport(true)
     render(<DataTable columns={COLUMNS} data={DATA} caption="Demo" />)
 
+    const nameHeader = screen.getByRole('columnheader', { name: /Nombre/ })
+    expect(nameHeader).toHaveAttribute('aria-sort', 'none')
+
     const bodyRowsBefore = screen.getAllByRole('row').slice(1)
     expect(
       within(bodyRowsBefore[0]!).getAllByRole('cell')[0],
@@ -56,6 +59,7 @@ describe('DataTable — 1024 px o más (tabla)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Nombre/ }))
 
+    expect(nameHeader).toHaveAttribute('aria-sort', 'ascending')
     const bodyRowsAscending = screen.getAllByRole('row').slice(1)
     expect(
       within(bodyRowsAscending[0]!).getAllByRole('cell')[0],
@@ -63,6 +67,7 @@ describe('DataTable — 1024 px o más (tabla)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Nombre/ }))
 
+    expect(nameHeader).toHaveAttribute('aria-sort', 'descending')
     const bodyRowsDescending = screen.getAllByRole('row').slice(1)
     expect(
       within(bodyRowsDescending[0]!).getAllByRole('cell')[0],

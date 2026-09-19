@@ -226,6 +226,15 @@ function DataTable<TData>({
                 return (
                   <TableHead
                     key={header.id}
+                    aria-sort={
+                      !canSort
+                        ? undefined
+                        : sortDirection === 'asc'
+                          ? 'ascending'
+                          : sortDirection === 'desc'
+                            ? 'descending'
+                            : 'none'
+                    }
                     className={cn(
                       compact && 'px-[10px] py-[8px]',
                       getAlignClassName(align),
