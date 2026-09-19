@@ -55,6 +55,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from '@/components/ui/field'
+import {
   Sheet,
   SheetContent,
   SheetFooter,
@@ -637,6 +644,63 @@ function DesignPage() {
             <Input mobile placeholder="Buscar…" icon={Search} />
             <Textarea mobile placeholder="Observación del servicio…" />
           </MobileFrame>
+        </Row>
+      </Section>
+
+      <Section title="Field / FormField">
+        <p className="text-[11.5px] text-text-3">
+          Reemplazo de <code>form</code> (react-hook-form + zod, `07` sección
+          2.2): etiqueta 11 px/650/<code>--text-2</code>, ayuda 11 px/
+          <code>--text-3</code>. Las grillas <code>row2</code>/<code>row3</code>{' '}
+          del mockup son un <code>className</code> de Tailwind (
+          <code>grid grid-cols-2</code>/<code>grid-cols-3</code>), no un
+          subcomponente propio.
+        </p>
+        <Row label="Campo con ayuda">
+          <Field className="w-72">
+            <FieldLabel htmlFor="field-demo-nombre">Nombre completo</FieldLabel>
+            <Input id="field-demo-nombre" placeholder="María Gómez" />
+            <FieldDescription>Como figura en el documento.</FieldDescription>
+          </Field>
+        </Row>
+        <Row label="Campo con error (FieldError, sin el error propio de Input)">
+          <Field data-invalid="true" className="w-72">
+            <FieldLabel htmlFor="field-demo-cuit">CUIT</FieldLabel>
+            <Input id="field-demo-cuit" defaultValue="12345678" aria-invalid />
+            <FieldError>El CUIT tiene que tener 11 dígitos.</FieldError>
+          </Field>
+        </Row>
+        <Row label="row2 — dos columnas">
+          <FieldGroup className="grid w-full max-w-xl grid-cols-2 gap-3">
+            <Field>
+              <FieldLabel htmlFor="field-demo-row2-nombre">Nombre</FieldLabel>
+              <Input id="field-demo-row2-nombre" placeholder="María" />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="field-demo-row2-apellido">
+                Apellido
+              </FieldLabel>
+              <Input id="field-demo-row2-apellido" placeholder="Gómez" />
+            </Field>
+          </FieldGroup>
+        </Row>
+        <Row label="row3 — tres columnas">
+          <FieldGroup className="grid w-full max-w-xl grid-cols-3 gap-3">
+            <Field>
+              <FieldLabel htmlFor="field-demo-row3-desde">Desde</FieldLabel>
+              <Input id="field-demo-row3-desde" defaultValue="08:00" />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="field-demo-row3-hasta">Hasta</FieldLabel>
+              <Input id="field-demo-row3-hasta" defaultValue="12:00" />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="field-demo-row3-tolerancia">
+                Tolerancia (min)
+              </FieldLabel>
+              <Input id="field-demo-row3-tolerancia" defaultValue="10" />
+            </Field>
+          </FieldGroup>
         </Row>
       </Section>
 

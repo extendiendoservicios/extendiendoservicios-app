@@ -134,7 +134,14 @@ Puntos a tener en cuenta en este repo:
   `FieldDescription`, `FieldError`, `FieldGroup`, etc.), la pieza de
   presentación pensada para usarse junto con `react-hook-form` (ya
   instalado) y `zod` de la misma forma que antes envolvía `<Form>`. Se
-  instaló `field` en su lugar.
+  instaló `field` en su lugar. **Restyleado recién en P05.5 (DS-016)**: se
+  instaló tal cual de la CLI en este paquete y quedó sin tocar (sin
+  ningún consumidor todavía) hasta que la vidriera de `/dev/design`
+  expuso el hueco — `FieldLabel`/`FieldDescription`/`FieldError` ahora
+  siguen `.lbl`/`.hint` de `ds2.css` (11 px, `--text-2`/`--text-3`) y
+  `FieldGroup`/`Field` el espaciado de `.field` (13 px entre campos, 5 px
+  entre etiqueta/control/ayuda). Detalle en la sección "Field / FormField"
+  de más abajo.
 - **`cn` en vez de `clsx` + `tailwind-merge`**: los componentes de este
   preajuste importan la función `cn` desde el paquete `cn` (de la propia
   organización de shadcn/ui), que reemplaza a la combinación clásica
@@ -250,6 +257,17 @@ destructive | link` (default `primary`). `size` — `sm | md | mobile`
 - **`Checkbox`** (`ui/checkbox.tsx`) y **`RadioGroup`/`RadioGroupItem`**
   (`ui/radio-group.tsx`): sin props nuevas, restyleados (17×17, radio del
   checkbox en un token nuevo `--r-xs` de 5 px — ver "Decisiones" abajo).
+- **`Field`/`FieldLabel`/`FieldDescription`/`FieldError`/`FieldGroup`**
+  (`ui/field.tsx`, restyleado en P05.5 — ver "Decisiones de esta entrega
+  (DS-001/DS-002)" arriba): API sin cambios sobre la CLI de shadcn
+  (`Field` es un `<div role="group">`, `FieldLabel` envuelve `Label`,
+  `FieldError` acepta `children` o `errors: Array<{ message?: string }>`
+  para mostrarlos como lista si hay más de uno — pensado para el array de
+  errores de un campo de react-hook-form). Un `Field` es una etiqueta +
+  control + ayuda/error; un `FieldGroup` agrupa varios `Field` con 13 px
+  entre ellos. Las grillas `row2`/`row3` del mockup no son una prop: se
+  logran con `className="grid grid-cols-2 gap-3"` (o `grid-cols-3`) en el
+  `FieldGroup` — ver el ejemplo en `/dev/design`.
 
 ### Selección y fecha/hora (DS-005)
 
@@ -826,6 +844,16 @@ en el reporte del encargo), lo que faltaba y se agregó en este paquete:
   explica en el propio texto — y se agrega una réplica estática con el
   mismo marcado para que la vidriera muestre su aspecto sin cambiar de
   entorno.
+- **`Field`/`FormField`** (sección propia, "Field / FormField"): estaba
+  instalado desde DS-002 (P05.1) pero nunca restyleado ni mostrado — al
+  agregarlo a la vidriera se encontró que su tipografía no seguía `07`
+  (`text-sm`/`font-medium` de la CLI en vez de 11 px/`--text-2`/
+  `--text-3`). Se corrigió `ui/field.tsx` (`FieldLabel`/
+  `FieldDescription`/`FieldError`, más el espaciado de `FieldGroup`/
+  `Field`) y se agregaron cuatro ejemplos: campo con ayuda, campo con
+  error, y las grillas `row2`/`row3` de `07` (un `className` de Tailwind
+  sobre `FieldGroup`, no una prop). Detalle en "Entrada (DS-004)" más
+  arriba.
 
 `AdminShell`/`MobileShell` completos, `Calendar`/`WeekGrid` (F11),
 `StarRating` (F15) y `MapPicker`/`MapView` (F8) quedan fuera de
