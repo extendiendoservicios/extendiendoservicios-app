@@ -6,30 +6,39 @@ este repo); ADR-013, ADR-014, ADR-015, ADR-016, ADR-017, ADR-018, ADR-020,
 ADR-021. Este archivo se actualiza en el mismo PR que cambie algo de lo que
 describe (primera versión: INFRA-015, INFRA-016, INFRA-017, INFRA-021,
 INFRA-022, F3; ampliado en P03.4: INFRA-012, INFRA-018, INFRA-020,
-`public/_headers`).
+`public/_headers`; puesto al día en P03.7 tras P03.5/P03.6: los tres
+interruptores activos, `dev.`/`app.` publicando de verdad, primer respaldo
+real, GitHub Pages desactivado, y `restore-test.yml`, INFRA-024).
 
-## 1. Los cinco workflows
+## 1. Los seis workflows
 
-`.github/workflows/` tiene los cinco workflows de `03` sección 3.7.
+`.github/workflows/` tiene los cinco workflows de `03` sección 3.7 más
+`restore-test.yml` (TEST-024, agregado en P03.7, ver sección 6.3).
 
-| Workflow                | Dispara                                 | Qué hace                                                                              | Estado                                                                           |
-| ----------------------- | --------------------------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `ci.yml`                | Pull Request a `develop` o `main`       | Instala, lintea, tipa, formatea, testea, construye y corre e2e (chromium)             | Activo desde P03.3                                                               |
-| `deploy-staging.yml`    | Push a `develop`                        | Migra `App_dev`, construye con variables de staging, publica en Pages, smoke test     | Escrito y validado, detrás del interruptor (sección 3)                           |
-| `deploy-production.yml` | Push a `main`                           | Volcado a R2, migra `App`, construye con variables de producción, publica, smoke test | Escrito y validado, detrás del interruptor y del `environment` (secciones 3 y 4) |
-| `backup.yml`            | Cron diario 03:00 Argentina (06:00 UTC) | `pg_dump` cifrado de `App` a R2, retención 30 diarios / 12 mensuales (ADR-015)        | Escrito y validado, detrás del interruptor (secciones 3 y 6)                     |
-| `keepalive.yml`         | Cron semanal (lunes 12:00 UTC)          | Consulta trivial a `App_dev` para evitar la pausa por inactividad (ADR-014)           | Activo desde P03.2 (INFRA-019)                                                   |
+| Workflow                | Dispara                                                        | Qué hace                                                                                                                    | Estado                                                                                         |
+| ----------------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `ci.yml`                | Pull Request a `develop` o `main`                              | Instala, lintea, tipa, formatea, testea, construye y corre e2e (chromium)                                                   | Activo desde P03.3; verificación obligatoria de `develop` y `main` desde P03.6                 |
+| `deploy-staging.yml`    | Push a `develop`, o `workflow_dispatch`                        | Migra `App_dev`, construye con variables de staging, publica en Pages, smoke test                                           | Activo desde P03.6 (`STAGING_DEPLOY_ENABLED=true`); primera corrida real verificada            |
+| `deploy-production.yml` | Push a `main`                                                  | Volcado a R2, migra `App`, construye con variables de producción, publica, smoke test                                       | Activo desde P03.6 (`PRODUCTION_DEPLOY_ENABLED=true`), con aprobación de Mike en `production`  |
+| `backup.yml`            | Cron diario 03:00 Argentina (06:00 UTC), o `workflow_dispatch` | `pg_dump` cifrado de `App` a R2, retención 30 diarios / 12 mensuales (ADR-015)                                              | Activo desde P03.7 (`BACKUP_ENABLED=true`); primer respaldo real verificado (sección 6.2)      |
+| `keepalive.yml`         | Cron semanal (lunes 12:00 UTC), o `workflow_dispatch`          | Consulta trivial a `App_dev` para evitar la pausa por inactividad (ADR-014)                                                 | Activo desde P03.2 (INFRA-019); disparado a mano y verificado en P03.6                         |
+| `restore-test.yml`      | Solo `workflow_dispatch`, con confirmación explícita           | Restaura un respaldo de R2 en `App_dev` (`public` + usuarios de `auth`), verifica y borra todo antes de terminar (TEST-024) | Escrito en P03.7, sin correr todavía: recién cuando `App` tenga las tablas de F4 (sección 6.3) |
 
-Ninguno de los workflows que publican o corren contra recursos remotos hizo
-nada remoto todavía (ver sección 12): "escrito y validado" significa
-lint/typecheck/build/YAML verificados localmente, no ejecutado en GitHub.
+Los primeros cinco ya corrieron de verdad contra recursos remotos (staging,
+producción, R2 y `App_dev`): detalle y números de corrida en
+`12_Registro_de_Progreso.md`. Solo `restore-test.yml` sigue "escrito y
+validado, sin ejecutar" (sección 6.3): además de la razón operativa (recién
+tiene sentido correrlo cuando exista algo real que restaurar, F4),
+`workflow_dispatch` solo aparece como opción en la pestaña **Actions** de
+GitHub para workflows que ya existen en la rama por defecto (`main`) -- así
+que ni siquiera se podría disparar desde la interfaz hasta que este archivo
+llegue ahí con un pase futuro (sección 13).
 
 ## 2. `ci.yml` (INFRA-015)
 
 Un solo job, nombrado **`CI`** (así aparece en la pestaña Checks de un Pull
-Request) para que el orquestador lo marque más adelante como verificación
-obligatoria en la protección de ramas de `develop` y `main` (P03.6, fuera de
-este encargo — ver sección 12).
+Request), para que se lo pueda marcar como verificación obligatoria en la
+protección de ramas de `develop` y `main` — hecho en P03.6, ver sección 12.
 
 Pasos, en orden: instalar dependencias (`pnpm install --frozen-lockfile`),
 `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm test` (Vitest),
@@ -54,13 +63,12 @@ primer archivo: se activan solos.
 ## 3. Interruptores de despliegue (INFRA-016, INFRA-017, INFRA-018)
 
 `deploy-staging.yml`, `deploy-production.yml` y `backup.yml` dependen de
-secretos que todavía no se cargaron (P03.5) y, los dos primeros, de la
-protección de ramas y el `environment` de producción (P03.6). Para que
-fusionar en `develop` hoy no falle por falta de secretos ni publique nada
-antes de tiempo, cada workflow entero queda apagado detrás de una
-**variable de repositorio** de GitHub (`vars`, no `secrets`: no es
-información sensible, así se puede leer en el `if:` del job sin gastar un
-secreto):
+secretos y, los dos primeros, de la protección de ramas y el `environment`
+de producción. Para que fusionar en `develop` no fallara por falta de
+secretos ni publicara nada antes de tiempo mientras eso no estaba listo,
+cada workflow entero queda detrás de una **variable de repositorio** de
+GitHub (`vars`, no `secrets`: no es información sensible, así se puede leer
+en el `if:` del job sin gastar un secreto):
 
 - `STAGING_DEPLOY_ENABLED` para `deploy-staging.yml`.
 - `PRODUCTION_DEPLOY_ENABLED` para `deploy-production.yml`.
@@ -72,13 +80,11 @@ la variable no existe o vale cualquier cosa distinta de la cadena exacta
 activando el workflow, pero el run queda marcado como "skipped", sin gastar
 minutos de runner ni intentar nada.
 
-El proyecto de Cloudflare Pages `extendiendoservicios-app` y el bucket R2
-`es-backups` **ya existen** (INFRA-012, INFRA-020, P03.4 — sección 7), así
-que lo único que falta para poder activar los tres interruptores es que Mike
-cargue los secretos (P03.5, sección 11) y, para producción, que exista el
-`environment` con su revisor (sección 4).
-
-**Acción para Mike, cuando corresponda activarlos** (P03.6, después de P03.5):
+**Estado actual: los tres en `true`.** Mike cargó los secretos en P03.5 y
+activó `STAGING_DEPLOY_ENABLED`/`PRODUCTION_DEPLOY_ENABLED` en P03.6 (primer
+despliegue verificado en `dev.`/`app.`) y `BACKUP_ENABLED` en P03.7 (primer
+respaldo verificado, sección 6.2). El comando que los activó, como
+referencia:
 
 ```bash
 gh variable set STAGING_DEPLOY_ENABLED --body true --repo extendiendoservicios/extendiendoservicios-app
@@ -92,24 +98,18 @@ la variable con `gh variable delete`.
 ## 4. Aprobación manual de producción
 
 `deploy-production.yml` corre bajo `environment: production` (declarado en
-el YAML, como pide INFRA-017). Esa referencia no crea nada por sí sola: para
-que efectivamente bloquee el job hasta que alguien lo apruebe, el
-environment "production" tiene que existir en GitHub con una regla de
-**revisores obligatorios** (Mike) configurada — eso es una acción remota en
-la configuración del repositorio, fuera de este encargo (crear
-environments no es infraestructura de archivos). Hasta que exista, un push
-a `main` con `PRODUCTION_DEPLOY_ENABLED=true` correría sin pedir
-aprobación, así que **no conviene activar el interruptor de producción
-antes de crear el environment con su regla de revisor**.
+el YAML, como pide INFRA-017). **Ya existe** en GitHub con
+`extendiendoservicios` como revisor obligatorio (creado por el orquestador
+con OK de Mike antes de P03.5, verificado por API): un push a `main` con
+`PRODUCTION_DEPLOY_ENABLED=true` queda esperando esa aprobación antes de
+tocar nada. Se verificó en la práctica en P03.6 (PR #10 `develop → main`):
+el job quedó en espera hasta que Mike aprobó, y recién ahí migró, construyó,
+publicó y corrió el smoke test.
 
 `backup.yml` corre diariamente por cron y **no** usa `environment:
 production` (correr bajo ese environment exigiría que Mike apruebe a mano
 cada corrida diaria del respaldo, lo que rompería la automatización) — sus
 secretos son de repositorio, no de `environment` (sección 11).
-
-**Acción para Mike:** Settings → Environments → New environment →
-`production` → Required reviewers → agregar a Mike → Save protection
-rules.
 
 ## 5. Migraciones, Edge Function y el volcado previo a producción
 
@@ -173,32 +173,193 @@ horario de verano — ADR-019) más `workflow_dispatch` para correrlo a mano.
 Detrás de `vars.BACKUP_ENABLED == 'true'` (sección 3). Si el volcado, el
 cifrado o la subida fallan, el job falla sin reintento: eso es lo que
 dispara el correo de alerta de GitHub Actions a quien tenga notificaciones
-activadas para el repositorio (mismo criterio que `keepalive.yml`). Alertas
-más elaboradas (uso de Supabase, resumen de fallos) son INFRA-024, un
-encargo aparte (P03.7).
+activadas para el repositorio (mismo criterio que `keepalive.yml`; a quién
+le llega exactamente ese correo cuando el workflow es por `schedule`, y la
+guía clic por clic para activarlo: `docs/environments.md` sección 7,
+INFRA-024).
 
-### 6.3 Restauración (`scripts/restore-from-r2.sh`)
+**Primer respaldo real (P03.7, 19 sep 2026):** con `BACKUP_ENABLED=true`, el
+orquestador disparó `backup.yml` a mano desde `main` (`workflow_dispatch`,
+run `35424708501`) con el OK de Mike. Resultado: éxito, objeto
+`diarios/App_20260919_024332.dump.gpg` en `es-backups`, 46.702 bytes,
+verificado por el orquestador con `wrangler` (existencia y tamaño del
+objeto, cuenta `extserviciosapp@gmail.com`). Desde entonces corre solo,
+todos los días a las 06:00 UTC.
 
-**Prueba de restauración documentada (ADR-015, TEST-024):** este script deja
-el procedimiento listo y probado en sus partes no destructivas (validación
-de argumentos, variables de entorno, ciclo de cifrado/descifrado). La
-restauración real sobre `App_dev` con un volcado de verdad es un encargo
-aparte (P03.7 según `11_Desglose_de_Tareas.md`: "respaldo en R2 y
-restauración de prueba en `App_dev`") — acá no se ejecutó contra ningún
-proyecto remoto.
+### 6.3 Restauración de prueba (`scripts/restore-from-r2.sh`, `restore-test.yml`, TEST-024)
 
-**Solo `App_dev`.** El script no lee `SUPABASE_DB_URL_PROD` en ningún lado:
-estructuralmente no puede apuntar a `App` (producción) ni por accidente ni
-por una variable mal cargada. Restaurar producción es un procedimiento
-manual y excepcional aparte, para `docs/runbook-produccion.md` (F20,
-todavía no existe).
+> **Defectos conocidos: el workflow está trabado** (revisión del orquestador, P03.7). El job
+> `traba` de `restore-test.yml` aborta antes de tocar nada. Hay que corregir y validar dos
+> cosas antes de la primera corrida real, después de F4:
+>
+> 1. **Paso 1** (`--section=pre-data --clean`): `--clean` solo borra los objetos de la sección
+>    elegida. Las claves foráneas entre tablas de `public` son de post-data y siguen existiendo
+>    cuando se hace el `DROP TABLE`. PostgreSQL no borra una tabla referenciada por otra sin
+>    `CASCADE`, y el orden de borrado depende de los nombres, así que el paso puede fallar.
+>    Solución probable: borrar primero las claves foráneas de `public`.
+> 2. **`--no-privileges`**: las tablas recreadas reciben los permisos por defecto de Supabase
+>    (`GRANT ALL` a `anon`, `authenticated` y `service_role`), no los del volcado. Pero
+>    `04_Modelo_de_Datos.md` exige `revoke all on all tables from anon` y permisos acotados para
+>    `authenticated`: después de una prueba, `App_dev` quedaría más abierto que el diseño.
+>    Solución probable: restaurar los permisos del volcado o volver a aplicar los de las
+>    migraciones.
+>
+> La validación se hace sobre una base de prueba local con Docker (según se decida en D-02) o
+> sobre `App_dev` vacío. Recién después se quita la traba, en el mismo PR que corrige la
+> secuencia.
 
-**Es destructivo:** corre `pg_restore --clean --if-exists`, que borra y
-recrea todo lo que ya exista en `App_dev` antes de restaurar el contenido
-del volcado. Por eso exige una confirmación explícita además de bajar y
-descifrar el archivo.
+**Decisión de Mike:** la restauración de prueba es un workflow de GitHub
+(así los secretos de R2/Supabase nunca salen de Actions) y se ejecuta
+cuando `App` (producción) ya tenga las tablas de F4 — hoy `supabase/migrations`
+no tiene ninguna, así que no habría nada real que restaurar. `restore-test.yml`
+queda escrito, validado y listo en P03.7, pero **no corre todavía**: pasa a
+`main` con un pase futuro y se dispara a mano recién entonces (además,
+`workflow_dispatch` solo aparece en la pestaña **Actions** de GitHub para
+workflows que ya existen en la rama por defecto — sección 13).
 
-Uso:
+**Solo `App_dev`.** Ni el workflow ni el script leen `SUPABASE_DB_URL_PROD`
+en ningún lado: estructuralmente no pueden apuntar a `App` (producción) ni
+por accidente ni por una variable mal cargada. Restaurar producción es un
+procedimiento manual y excepcional aparte, para `docs/runbook-produccion.md`
+(F20, todavía no existe).
+
+**Decisiones de Mike (19 sep 2026, corrección de P03.7):**
+
+1. **Se restaura `App_dev` con usuarios reales de producción.** No solo el
+   esquema `public`: también `auth.users` y `auth.identities` (lo mínimo
+   para que las referencias de `public` hacia `auth.users` cierren, por
+   ejemplo si `public.profiles.id` termina con una clave foránea hacia
+   `auth.users(id)` — el patrón habitual de Supabase,
+   `04_Modelo_de_Datos.md` sección 2.1: "= `auth.users.id`"). Motivo: sin
+   los usuarios reales, esas filas de `public` quedarían huérfanas y la
+   prueba no sería representativa. Mike aceptó que datos personales y
+   hashes de contraseña de producción pasen por `App_dev` durante la
+   prueba.
+2. **La prueba limpia lo que restauró antes de terminar, siempre.**
+   `App_dev` tiene que quedar sin los datos reales apenas termina la
+   prueba, corra lo que corra durante la restauración: `dev.` sirve desde
+   `App_dev`, así que mientras los usuarios restaurados sigan ahí,
+   cualquier empleado real podría iniciar sesión en staging con su
+   contraseña de producción, y los emails de Auth de `App_dev` podrían
+   llegarle a gente real. **Mientras dura la prueba (unos minutos),
+   `dev.` no es un entorno seguro.**
+
+**Alcance en `public`:** todas las tablas, vistas, funciones, índices y
+datos que crean las migraciones propias. **No se toca la estructura de
+`auth`** (ni `storage` ni `extensions`): nunca se hace `DROP` ni `ALTER`
+sobre `auth.users`/`auth.identities`, tablas que administra Supabase
+(`supabase_auth_admin` es su dueño, no el rol de conexión) — solo se
+reemplazan sus filas (`DELETE` + `INSERT` vía `pg_restore --data-only`). El
+`pg_dump` de `backup.yml` sigue siendo completo (todos los esquemas): el
+recorte es solo al restaurar.
+
+**Secuencia**, pensada para que no falle por claves foráneas ni por claves
+primarias duplicadas (`scripts/restore-from-r2.sh` tiene el detalle
+completo en comentarios):
+
+0. Verifica que `App_dev` tenga las mismas migraciones aplicadas que el
+   volcado (`supabase_migrations.schema_migrations`, la tabla de control
+   de la CLI de Supabase) — si no coinciden, **aborta antes de tocar
+   nada**, con un mensaje claro. Sin este chequeo, restaurar un volcado de
+   una versión distinta de las migraciones podría fallar a mitad de camino
+   por una restricción que una de las dos bases no tiene, o dejar el
+   `DROP` de `public` sin poder recrearse igual.
+1. Recrea `public` vacío: solo estructura (`pg_restore --section=pre-data
+--clean --if-exists`), sin restricciones ni datos todavía. PostgreSQL
+   pone las claves foráneas, primarias, `UNIQUE` e índices en la sección
+   _post-data_ del volcado a propósito (documentación de PostgreSQL 17:
+   "Post-data items consist of definitions of indexes, triggers, rules and
+   constraints"): en este punto ninguna tabla de `public` tiene todavía la
+   clave foránea hacia `auth.users`, así que no hace falta ningún orden
+   especial para la carga de datos que sigue.
+2. Reemplaza `auth.users`/`auth.identities`: borra lo que haya (primero
+   `identities`, después `users`, por la clave foránea entre ellas) y
+   restaura los datos del volcado (`pg_restore --data-only`, primero
+   `users`, después `identities`).
+3. Si el trigger que F4 agrega sobre `auth.users` (crea la fila de
+   `profiles`, según `04_Modelo_de_Datos.md`) disparó al insertar los
+   usuarios del paso 2, vacía de nuevo **todo** `public`
+   (`TRUNCATE ... CASCADE`) para borrar cualquier fila que haya creado ese
+   efecto secundario, antes de cargar los datos reales.
+4. Carga los datos de `public` (`--section=data`): en este punto ninguna
+   restricción está activa todavía, así que el orden entre tablas no
+   importa.
+5. Agrega de nuevo las restricciones, índices y triggers de `public`
+   (`--section=post-data`): acá se valida cada clave foránea, incluida la
+   de `auth.users` — ya tiene con qué cerrar, porque el paso 2 ya insertó
+   esos usuarios.
+6. Verifica (cantidad de tablas del volcado contra las de `App_dev`, más
+   filas por tabla) — nunca contenido.
+7. **Limpieza, siempre** (por un `trap` de bash: corre aunque cualquiera de
+   los pasos de arriba falle): vacía `public` y borra los usuarios de auth
+   restaurados, y confirma que quedaron vacíos. El workflow además corre un
+   paso `if: always()` aparte (`scripts/restore-from-r2.sh
+--confirmar-vacio`) como segunda confirmación independiente, visible en
+   el log de la corrida.
+
+Cada `pg_restore` de la secuencia usa `--single-transaction` (implica
+`--exit-on-error`, documentación de PostgreSQL 17): si algo falla a mitad
+de un paso, ese paso se revierte solo. No hay una única transacción global
+para toda la secuencia (el paso 5 necesita ver ya confirmados los datos del
+paso 2, restaurados en una conexión distinta) — la garantía de "nunca dejar
+nada a medias" la da la limpieza del paso 7, que corre siempre.
+
+**Ningún dato personal se imprime en ningún log.** La verificación (paso 6)
+y la limpieza (paso 7) solo cuentan filas (números); nunca hacen `SELECT *`
+ni imprimen contenido de ninguna tabla ni de `auth.users`/`auth.identities`.
+
+**Permisos del rol `postgres` sobre `auth`, sin confirmar.** La
+documentación pública de Supabase describe a `postgres` (el rol que usa
+este script, vía el Session pooler) como _"the default Postgres role. This
+has admin privileges"_, pero no confirma ni niega privilegios de
+`INSERT`/`DELETE` sobre `auth.users`/`auth.identities` — y en otra página
+recomienda explícitamente no escribir en `auth.users` a mano ("may change
+at any time", usar la Auth Admin API en su lugar). No se pudo confirmar
+esto en vivo (esta capa no inicia sesión en ningún servicio). El diseño de
+arriba está pensado para fallar rápido y sin dejar nada a medias si el
+permiso no está (cada paso en su propia transacción, limpieza que corre
+siempre). **Antes de la primera corrida real** (después de F4), Mike puede
+confirmarlo sin arriesgar nada, desde el SQL Editor de `App_dev`:
+
+```sql
+select has_table_privilege('postgres', 'auth.users', 'INSERT, DELETE') as auth_users,
+       has_table_privilege('postgres', 'auth.identities', 'INSERT, DELETE') as auth_identities;
+```
+
+Si alguno de los dos da `false`, el paso 2 de la secuencia va a fallar con
+un error de permisos claro (y la limpieza igual va a dejar `App_dev`
+vacío) — en ese caso, la alternativa (no construida en este encargo) es
+recrear los usuarios con la Auth Admin API en vez de SQL directo, que
+exige un script bastante más grande.
+
+**Después de la prueba: `App_dev` queda vacío, a propósito.** Ni el seed de
+prueba que tuviera antes ni los datos restaurados sobreviven a una corrida
+de `restore-test.yml`. Volver a cargar datos de prueba es un paso aparte:
+correr de nuevo el seed de `App_dev` contra ese proyecto (desde F4,
+`scripts/seed-dev.ts` según `README.md`/`scripts/README.md`; hasta que F4
+exista, no hay seed que restaurar). No lo hace este workflow ni este
+script: mezclar "restaurar un respaldo real" con "volver a poner datos
+ficticios" en el mismo mecanismo sería confuso y más difícil de auditar.
+
+**Verificación con resultado claro:** después de restaurar (antes de
+limpiar), el script compara la cantidad de tablas que lista `pg_restore -l
+--schema=public` contra la cantidad de tablas que efectivamente quedaron en
+`information_schema.tables` de `App_dev` (esquema `public`) — si no
+coinciden, el script termina en error. Además imprime, tabla por tabla, un
+`SELECT count(*)` real (no una estimación de `pg_stat_user_tables`), más el
+conteo de `auth.users`/`auth.identities` — siempre números, nunca
+contenido.
+
+Uso (workflow, cuando corresponda dispararlo):
+
+```bash
+gh workflow run restore-test.yml --repo extendiendoservicios/extendiendoservicios-app \
+  -f confirmacion=restaurar-app-dev
+# Opcional: -f objeto_r2=diarios/App_20260101_030000.dump.gpg (si no se indica, usa el más
+# reciente de diarios/)
+```
+
+Uso (a mano, para una restauración manual fuera del workflow):
 
 ```bash
 # 1. Listar los respaldos disponibles en el bucket (más recientes primero)
@@ -211,6 +372,15 @@ R2_ACCESS_KEY_ID=<...> R2_SECRET_ACCESS_KEY=<...> R2_BUCKET=es-backups \
 SUPABASE_DB_URL_DEV=<...> R2_ACCESS_KEY_ID=<...> R2_SECRET_ACCESS_KEY=<...> \
   R2_BUCKET=es-backups CLOUDFLARE_ACCOUNT_ID=<...> BACKUP_PASSPHRASE=<...> \
   scripts/restore-from-r2.sh diarios/App_20260101_030000.dump.gpg restaurar-app-dev
+
+# 2b. O, para no elegir la clave a mano, restaurar el más reciente de diarios/
+SUPABASE_DB_URL_DEV=<...> R2_ACCESS_KEY_ID=<...> R2_SECRET_ACCESS_KEY=<...> \
+  R2_BUCKET=es-backups CLOUDFLARE_ACCOUNT_ID=<...> BACKUP_PASSPHRASE=<...> \
+  scripts/restore-from-r2.sh --ultimo restaurar-app-dev
+
+# 3. Confirmar que App_dev quedó vacío (la corrida de arriba ya limpia sola; esto es una
+#    segunda confirmación independiente, por ejemplo si algo se cortó antes de la limpieza)
+SUPABASE_DB_URL_DEV=<...> scripts/restore-from-r2.sh --confirmar-vacio
 ```
 
 Las variables son las mismas que documenta `docs/environments.md` sección 4
@@ -231,20 +401,28 @@ Creados con `wrangler` en la cuenta de Cloudflare `extserviciosapp@gmail.com`
 - **Pages** `extendiendoservicios-app` (`wrangler pages project
 create extendiendoservicios-app --production-branch=main`): sin proyecto
   de Git conectado a propósito (el build lo hace GitHub Actions, sección 11
-  de este documento explica por qué), sin dominios personalizados todavía
-  (INFRA-013, `dev.`/`app.` vía Cloudflare DNS, pendiente) y sin ningún
-  despliegue hecho — `wrangler pages deploy` recién publica algo cuando
-  `deploy-staging.yml`/`deploy-production.yml` corran de verdad (sección 3).
+  de este documento explica por qué). Dominios personalizados conectados en
+  P03.6 (INFRA-013): `dev.extendiendoservicios.com` → rama `develop`
+  (`dev` es un `CNAME` a `develop.extendiendoservicios-app.pages.dev`, con
+  proxy de Cloudflare) y `app.extendiendoservicios.com` → rama `main`
+  (conectado como dominio propio de Pages, con proxy). Los dos migraron
+  desde GitHub Pages **sin corte**: se creó el proyecto, se verificó en
+  `*.pages.dev`, se cambió el CNAME/dominio y recién después se desactivó
+  GitHub Pages (`README.md` conserva el detalle histórico de esa migración
+  mientras estuvo vigente, en el control de versiones). GitHub Pages quedó
+  desactivado y la rama `gh-pages-legacy` que lo servía, borrada.
 - **R2** `es-backups` (`wrangler r2 bucket create es-backups`, clase
   Standard): sin acceso público (`r2 bucket dev-url get` confirma que el
   acceso `r2.dev` está deshabilitado) y sin dominios personalizados. Reglas
   de ciclo de vida ya creadas: `Default Multipart Abort Rule` (aborta cargas
   multiparte incompletas a los 7 días), `retencion-diaria` (expira
   `diarios/` a los 30 días) y `retencion-mensual` (expira `mensuales/` a los
-  370 días) — sección 6.1.
+  370 días) — sección 6.1. Primer objeto real desde P03.7 (sección 6.2).
 
-Ninguno de los dos recibió todavía un token de API: los crea Mike con
-permisos mínimos en P03.5 (`docs/environments.md` sección 4).
+Los dos tienen su token de API cargado desde P03.5 (`docs/environments.md`
+sección 4), con permisos mínimos (Pages: solo **Cloudflare Pages · Edit**
+sobre la cuenta; R2: **Object Read & Write** acotado al bucket
+`es-backups`).
 
 ## 8. Rollback (`03` sección 16)
 
@@ -456,6 +634,7 @@ sección 4. Resumen de qué usa cada workflow:
 | `deploy-production.yml` | `vars.PRODUCTION_DEPLOY_ENABLED`; `SUPABASE_DB_URL_PROD`, `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF_PROD`; `R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY`/`R2_BUCKET`/`CLOUDFLARE_ACCOUNT_ID`/`BACKUP_PASSPHRASE` (volcado previo, sección 6.1); `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` (secretos del `environment: production`); `VITE_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`; `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`. |
 | `backup.yml`            | `vars.BACKUP_ENABLED`; `SUPABASE_DB_URL_PROD`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `CLOUDFLARE_ACCOUNT_ID`, `BACKUP_PASSPHRASE` — todos secretos de **repositorio**, no de `environment` (sección 4): un cron diario no puede depender de una aprobación manual.                                                                                                                                            |
 | `keepalive.yml`         | `SUPABASE_DB_URL_DEV`.                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `restore-test.yml`      | `SUPABASE_DB_URL_DEV`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `CLOUDFLARE_ACCOUNT_ID`, `BACKUP_PASSPHRASE` — nunca `SUPABASE_DB_URL_PROD` (sección 6.3).                                                                                                                                                                                                                                                       |
 
 **Nota sobre `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` / `VITE_SENTRY_DSN`:**
 `docs/environments.md` (P03.2) las documentó como "variable de Pages por
@@ -477,26 +656,65 @@ anotado también en `docs/environments.md`.
 
 ## 12. Qué falta para que esto corra de verdad
 
-Todo lo de arriba está escrito, validado localmente (build, lint,
-typecheck, test) y con la sintaxis de los cinco workflows verificada contra
-el esquema de GitHub Actions, pero **nada se ejecutó contra un proyecto
-remoto salvo la creación de Pages y R2** (P03.4, sección 7 — el único
-alcance remoto que este encargo autorizó). Antes de que
-`deploy-staging.yml`/`deploy-production.yml`/`backup.yml` puedan hacer algo
-real, falta:
+**Estado al cierre de F3 (P03.7).** Todo lo de la sección 1 corrió de verdad
+contra un proyecto remoto salvo `restore-test.yml` (sección 6.3, pendiente
+de F4 a propósito). En orden:
 
-- P03.5 (Mike): crear los tokens con permisos mínimos (Cloudflare, R2,
-  Sentry) y cargar todos los secretos de GitHub y de cada `environment`
+- P03.5 (Mike): tokens con permisos mínimos (Cloudflare, R2, Sentry) y todos
+  los secretos de GitHub y de cada `environment` cargados
   (`docs/environments.md` sección 4), incluida `BACKUP_PASSPHRASE` guardada
-  también fuera de GitHub (sección 6.3).
+  también fuera de GitHub (sección 6.3). Hecho.
 - P03.6 (infra-devops + Orq, con OK explícito de Mike): primer despliegue a
   Pages y verificación en `*.pages.dev`, alta de `dev.`, cambio del CNAME de
-  `app.` y desactivación de GitHub Pages (INFRA-013, INFRA-014 — sin corte,
-  `app.extendiendoservicios.com` sigue sirviendo GitHub Pages hasta que se
-  verifique el nuevo destino); crear el `environment` `production` con
-  revisor obligatorio (sección 4); configurar la protección de ramas usando
-  `CI` como verificación obligatoria (sección 2); y recién ahí activar los
-  tres interruptores (sección 3).
+  `app.` y desactivación de GitHub Pages (INFRA-013, INFRA-014, sin corte —
+  sección 7); `environment` `production` con revisor obligatorio (sección
+  4); protección de ramas con `CI` como verificación obligatoria (sección
+  2); interruptores de staging y producción activados (sección 3). Hecho.
 - P03.7 (infra-devops): INFRA-024 (alertas de uso de Supabase y de fallos de
-  workflows) y las pruebas de cierre de F3 — incluida la restauración real
-  de un respaldo en `App_dev` con `scripts/restore-from-r2.sh` (sección 6.3).
+  workflows, `docs/environments.md` sección 7), interruptor de respaldo
+  activado y primer respaldo real verificado (sección 6.2), y
+  `restore-test.yml` escrito y listo, sin ejecutar todavía (sección 6.3).
+  Hecho, con esa única restauración real pendiente de F4.
+
+Lo único que queda pendiente del alcance de F3 es disparar `restore-test.yml`
+por primera vez, y eso es a propósito (sección 6.3): recién tiene sentido
+cuando `App` tenga datos reales de F4 para restaurar en `App_dev`.
+
+## 13. Pase de `develop` a `main` y `workflow_dispatch` desde `main`
+
+**El pase a producción es un PR de `develop` a `main`, fusionado con merge
+commit** (decisión de Mike, 19 sep 2026) — no squash. Motivo: las ramas de
+tarea siguen yendo a `develop` con squash merge (`README.md`, "Flujo de
+ramas"); si el pase de `develop` a `main` también fuera squash, el segundo
+pase quedaría bloqueado porque GitHub ve historiales distintos entre las dos
+ramas y no encuentra un ancestro común limpio para el siguiente PR. Con
+merge commit, `main` conserva el historial real de `develop` y cada pase
+siguiente es un fast-forward o un merge sin conflictos de historial. En
+`main`, la protección de rama exige solo "por PR" y `CI` en verde (sin
+"historial lineal" ni "al día con el destino": esas dos reglas son las que
+un merge commit no puede cumplir a la vez que un squash en `develop`).
+
+Cada pase corre así:
+
+1. PR de `develop` a `main` (lo abre el orquestador).
+2. `ci.yml` corre igual que en cualquier PR (verificación obligatoria).
+3. Al fusionar (merge commit), `deploy-production.yml` se dispara por el
+   push a `main`: volcado previo a R2 (sección 5), migraciones a `App` si
+   las hay, build, publicación en Pages y smoke test — todo eso **esperando
+   la aprobación de Mike** en el `environment` `production` (sección 4).
+4. Una vez en `main`, el orquestador crea la etiqueta de versión que
+   corresponda (`08_Fases_y_Backlog.md` sección 5).
+
+**`workflow_dispatch` solo funciona con workflows que ya estén en `main`.**
+GitHub solo ofrece el botón "Run workflow" en la pestaña **Actions**, y solo
+acepta `gh workflow run`, para un workflow cuyo archivo `.yml` ya existe en
+la **rama por defecto del repositorio** (`main`), aunque después se elija
+correr ese workflow apuntando a otra rama. Un workflow con `workflow_dispatch`
+que solo existe en `develop` no aparece como opción para disparar a mano
+hasta que llegue a `main`. Esto ya se comprobó en la práctica en P03.6:
+`keepalive.yml` se había fusionado en `develop` en P03.2, pero recién pudo
+dispararse a mano una vez que el primer pase `develop → main` lo llevó
+también a la rama por defecto — el orquestador lo disparó desde `main`
+apenas se pudo (la consulta a `App_dev` anduvo). Es exactamente lo que le
+pasa hoy a `restore-test.yml` (sección 6.3): existe en `develop` desde
+P03.7, pero no se puede disparar hasta que un pase futuro lo lleve a `main`.

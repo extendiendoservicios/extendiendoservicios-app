@@ -6,17 +6,19 @@ supervisor— sobre Supabase.
 
 ## Estado actual
 
-El repositorio tiene el scaffold base (Fase 2 del Plan Maestro): herramientas,
-estructura de carpetas y una portada mínima ("Plataforma en construcción").
-Todavía no hay backend propio vinculado ni pantallas reales.
+Fases F2 y F3 del Plan Maestro cerradas (repositorio base, entornos,
+CI/CD, respaldos) y F5 en curso (design system y shells). Todavía no hay
+modelo de datos (F4) ni pantallas reales de cada dominio: el router expone
+placeholders detrás de `RequireRole`.
 
-`app.extendiendoservicios.com` sigue publicado hoy por **GitHub Pages desde
-`main`** con la portada estática anterior. Eso no cambia hasta la Fase 3, que
-migra el dominio a Cloudflare Pages sin cortar el servicio (crear el proyecto
-de Pages, verificarlo en `*.pages.dev`, cambiar el CNAME y recién después
-desactivar GitHub Pages — ver `docs/architecture.md` y ADR-013). **Por eso no
-se fusiona nada en `main` hasta esa migración**: todo el trabajo de esta fase
-vive en `develop` y en ramas de feature.
+`app.extendiendoservicios.com` (producción, rama `main`) y
+`dev.extendiendoservicios.com` (staging, rama `develop`) los sirve
+**Cloudflare Pages**, publicados por `deploy-production.yml`/
+`deploy-staging.yml` en cada pase a esas ramas. La migración desde GitHub
+Pages (Fase 3) ya se hizo sin cortar el servicio: se creó el proyecto de
+Pages, se verificó en `*.pages.dev`, se cambiaron los dominios y recién
+después se desactivó GitHub Pages — detalle en `docs/deployment.md` sección
+7 y ADR-013.
 
 ## Requisitos
 
@@ -59,10 +61,9 @@ secretos de GitHub y aprobación de Mike -- ver `docs/environments.md`.
 
 `wrangler` es dependencia de desarrollo del repositorio, no una instalación
 global: se usa como `pnpm exec wrangler <comando>`. El proyecto de Pages
-(`extendiendoservicios-app`) y el bucket R2 de respaldos (`es-backups`) ya
-existen, pero sin dominios ni despliegues todavía: la migración de
-`app.extendiendoservicios.com` (arriba) sigue pendiente de la carga de
-secretos y del cambio de DNS. Ver `docs/environments.md` y
+(`extendiendoservicios-app`) publica `app.`/`dev.` en cada pase a
+`main`/`develop`, y el bucket R2 de respaldos (`es-backups`) recibe el
+volcado diario cifrado de `App`. Ver `docs/environments.md` y
 `docs/deployment.md`.
 
 ## Cómo probar
@@ -117,22 +118,27 @@ problema sin depender de la configuración de cada máquina.
 
 Cada Pull Request a `develop` o `main` corre el workflow `CI`
 (`.github/workflows/ci.yml`): instala, lintea, tipa, formatea, testea,
-construye y corre Playwright (`chromium`) contra ese build. Fusionar en
-`develop`/`main` dispara `deploy-staging.yml`/`deploy-production.yml`; un
-cron diario dispara `backup.yml`. Ninguno de los tres publica ni respalda
-nada todavía: el proyecto de Cloudflare Pages y el bucket R2 ya existen,
-pero los tres workflows siguen detrás de un interruptor hasta que Mike
-cargue los secretos (Fase 3). Detalle completo, interruptores, aprobación de
+construye y corre Playwright (`chromium`) contra ese build; es verificación
+obligatoria en ambas ramas. Fusionar en `develop` dispara
+`deploy-staging.yml` (publica en `dev.`); el pase de `develop` a `main`
+(merge commit, con aprobación de Mike en el `environment` `production`)
+dispara `deploy-production.yml` (publica en `app.`, con volcado previo a
+R2). Un cron diario dispara `backup.yml` (respaldo cifrado de `App` a R2);
+uno semanal, `keepalive.yml` (evita la pausa de `App_dev` por inactividad).
+Detalle completo, interruptores, aprobación de producción, el pase a
 producción y rollback: [`docs/deployment.md`](docs/deployment.md).
 
 ## Flujo de ramas
 
-- `main` = producción. No recibe merges hasta que Cloudflare Pages reemplace a
-  GitHub Pages (Fase 3).
-- `develop` = staging.
+- `main` = producción, publicada en `app.extendiendoservicios.com`.
+- `develop` = staging, publicada en `dev.extendiendoservicios.com`.
 - Trabajo día a día en ramas `feat/<TASK-ID>-descripción-corta`, con Pull
   Request a `develop` (plantilla en `.github/PULL_REQUEST_TEMPLATE.md`) y
   **squash merge**.
+- El pase de `develop` a `main` es un Pull Request fusionado con **merge
+  commit** (no squash, para que el historial de ambas ramas no diverja) y
+  requiere la aprobación de Mike en el `environment` `production`. Detalle:
+  [`docs/deployment.md`](docs/deployment.md) sección 13.
 - Versionado semántico desde `0.1.0` (ver `CHANGELOG.md` y ADR-020).
 
 ## Estructura de carpetas
@@ -162,18 +168,3 @@ Todo lo específico del repositorio vive en [`docs/`](docs/README.md):
 arquitectura y stack, entornos, despliegue, base de datos, seguridad, etc., a
 medida que cada fase los agrega. Las decisiones de arquitectura del Plan
 Maestro están copiadas en [`docs/adr/`](docs/adr/README.md).
-
-## Sobre la portada actual y el dominio (información operativa, no vigente para el futuro)
-
-Mientras `app.extendiendoservicios.com` siga en GitHub Pages, valen estos
-datos (dejan de aplicar en cuanto se complete la migración de la Fase 3):
-
-- DNS en Cloudflare: registro `CNAME` `app` → `extendiendoservicios.github.io`,
-  con el proxy (nube naranja) **desactivado** — el proxy de Cloudflare bloquea
-  la emisión del certificado de GitHub Pages.
-- Ese despliegue estático sale de `main`, que conserva sus propios
-  `CNAME` y `.nojekyll`. En `develop` se quitaron en P03.6 porque Cloudflare
-  Pages no los usa; `public/logo.png` y `public/favicon.png` siguen. El logo real de marca vive en `Images/` del
-  proyecto (fuera de este repo); no se reconstruye a mano.
-- `public/_redirects` (fallback SPA `/* /index.html 200`) es para Cloudflare
-  Pages: no lo usa GitHub Pages, queda listo para la migración de la Fase 3.
