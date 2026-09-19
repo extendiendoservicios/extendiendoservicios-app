@@ -5,6 +5,7 @@
  */
 @import 'tailwindcss';
 @import './tokens.css';
+@import './animations.css';
 
 /*
  * Inter self-hosted (public/fonts/), subset "latin" (cubre español de

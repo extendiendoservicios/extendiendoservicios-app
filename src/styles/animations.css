@@ -1,0 +1,132 @@
+/**
+ * Animaciones de apertura y cierre (ajuste pendiente de P05.1/P05.2, P05.3).
+ *
+ * Los componentes que copió `shadcn add` (`dialog.tsx`, `sheet.tsx`,
+ * `popover.tsx`, `select.tsx`, `tooltip.tsx`) traen clases como `animate-in`,
+ * `fade-in-0`, `zoom-in-95` o `slide-in-from-top-2`. En el proyecto de
+ * referencia de shadcn/ui esas clases las define el paquete `tw-animate-css`
+ * (sucesor de `tailwindcss-animate` para Tailwind CSS 4). Acá no se agregó
+ * ese paquete (no está en la lista de librerías aprobadas del plan — "no
+ * agregues librerías fuera de esta lista sin preguntar" — y esto son quince
+ * clases utilitarias, no una pieza de UI): se reimplementa el subconjunto que
+ * usan esos cinco componentes, a mano, con `@utility` de Tailwind CSS 4.
+ *
+ * Además de agregar las utilidades, hacía falta corregir el nombre de la
+ * variante: Radix pone `data-state="open"` / `data-state="closed"` en el
+ * elemento, no un atributo booleano `data-open` / `data-closed`. Tailwind
+ * interpreta `data-open:` como "el atributo `data-open` está presente"
+ * (`&[data-open]`), que Radix nunca escribe — por eso ninguna transición se
+ * disparaba. La clase correcta es `data-[state=open]:` / `data-[state=closed]:`
+ * (ya corregido en cada componente; ver `docs/design-system.md`).
+ *
+ * Duración: como en `tailwindcss-animate`, `.animate-in`/`.animate-out` leen
+ * la variable `--tw-duration` (la misma que fija la utilidad núcleo
+ * `duration-*` de Tailwind) y caen a 150 ms si no hay ninguna — el máximo de
+ * `07_Design_System.md` sección 5. Cada componente ya trae su propio
+ * `duration-100` (o, en `sheet.tsx`, se bajó de `duration-200` a
+ * `duration-150` en este mismo paquete para no superar ese máximo).
+ *
+ * Accesibilidad: no hace falta repetir acá `prefers-reduced-motion` — la
+ * regla global de `globals.css` ya apaga toda animación y transición del
+ * documento cuando el sistema lo pide, y estas utilidades son `animation`/
+ * `transform` comunes, alcanzadas por esa regla.
+ */
+
+@keyframes es-enter {
+  from {
+    opacity: var(--tw-enter-opacity, 1);
+    transform: translate3d(
+        var(--tw-enter-translate-x, 0),
+        var(--tw-enter-translate-y, 0),
+        0
+      )
+      scale3d(
+        var(--tw-enter-scale, 1),
+        var(--tw-enter-scale, 1),
+        var(--tw-enter-scale, 1)
+      );
+  }
+}
+
+@keyframes es-exit {
+  to {
+    opacity: var(--tw-exit-opacity, 1);
+    transform: translate3d(
+        var(--tw-exit-translate-x, 0),
+        var(--tw-exit-translate-y, 0),
+        0
+      )
+      scale3d(
+        var(--tw-exit-scale, 1),
+        var(--tw-exit-scale, 1),
+        var(--tw-exit-scale, 1)
+      );
+  }
+}
+
+@utility animate-in {
+  animation-name: es-enter;
+  animation-duration: var(--tw-duration, 150ms);
+  animation-fill-mode: both;
+}
+
+@utility animate-out {
+  animation-name: es-exit;
+  animation-duration: var(--tw-duration, 150ms);
+  animation-fill-mode: both;
+}
+
+@utility fade-in-0 {
+  --tw-enter-opacity: 0;
+}
+
+@utility fade-out-0 {
+  --tw-exit-opacity: 0;
+}
+
+@utility zoom-in-95 {
+  --tw-enter-scale: 0.95;
+}
+
+@utility zoom-out-95 {
+  --tw-exit-scale: 0.95;
+}
+
+@utility slide-in-from-top-2 {
+  --tw-enter-translate-y: -0.5rem;
+}
+@utility slide-in-from-bottom-2 {
+  --tw-enter-translate-y: 0.5rem;
+}
+@utility slide-in-from-left-2 {
+  --tw-enter-translate-x: -0.5rem;
+}
+@utility slide-in-from-right-2 {
+  --tw-enter-translate-x: 0.5rem;
+}
+
+@utility slide-in-from-top-10 {
+  --tw-enter-translate-y: -2.5rem;
+}
+@utility slide-in-from-bottom-10 {
+  --tw-enter-translate-y: 2.5rem;
+}
+@utility slide-in-from-left-10 {
+  --tw-enter-translate-x: -2.5rem;
+}
+@utility slide-in-from-right-10 {
+  --tw-enter-translate-x: 2.5rem;
+}
+
+@utility slide-out-to-top-10 {
+  --tw-exit-translate-y: -2.5rem;
+}
+@utility slide-out-to-bottom-10 {
+  --tw-exit-translate-y: 2.5rem;
+}
+@utility slide-out-to-left-10 {
+  --tw-exit-translate-x: -2.5rem;
+}
+@utility slide-out-to-right-10 {
+  --tw-exit-translate-x: 2.5rem;
+}
