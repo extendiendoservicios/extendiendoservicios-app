@@ -15,14 +15,14 @@ real, GitHub Pages desactivado, y `restore-test.yml`, INFRA-024).
 `.github/workflows/` tiene los cinco workflows de `03` sección 3.7 más
 `restore-test.yml` (TEST-024, agregado en P03.7, ver sección 6.3).
 
-| Workflow                | Dispara                                                        | Qué hace                                                                                      | Estado                                                                                         |
-| ----------------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `ci.yml`                | Pull Request a `develop` o `main`                              | Instala, lintea, tipa, formatea, testea, construye y corre e2e (chromium)                     | Activo desde P03.3; verificación obligatoria de `develop` y `main` desde P03.6                 |
-| `deploy-staging.yml`    | Push a `develop`, o `workflow_dispatch`                        | Migra `App_dev`, construye con variables de staging, publica en Pages, smoke test             | Activo desde P03.6 (`STAGING_DEPLOY_ENABLED=true`); primera corrida real verificada            |
-| `deploy-production.yml` | Push a `main`                                                  | Volcado a R2, migra `App`, construye con variables de producción, publica, smoke test         | Activo desde P03.6 (`PRODUCTION_DEPLOY_ENABLED=true`), con aprobación de Mike en `production`  |
-| `backup.yml`            | Cron diario 03:00 Argentina (06:00 UTC), o `workflow_dispatch` | `pg_dump` cifrado de `App` a R2, retención 30 diarios / 12 mensuales (ADR-015)                | Activo desde P03.7 (`BACKUP_ENABLED=true`); primer respaldo real verificado (sección 6.2)      |
-| `keepalive.yml`         | Cron semanal (lunes 12:00 UTC), o `workflow_dispatch`          | Consulta trivial a `App_dev` para evitar la pausa por inactividad (ADR-014)                   | Activo desde P03.2 (INFRA-019); disparado a mano y verificado en P03.6                         |
-| `restore-test.yml`      | Solo `workflow_dispatch`, con confirmación explícita           | Restaura un respaldo de R2 en `App_dev` (esquema `public`) y verifica el resultado (TEST-024) | Escrito en P03.7, sin correr todavía: recién cuando `App` tenga las tablas de F4 (sección 6.3) |
+| Workflow                | Dispara                                                        | Qué hace                                                                                                                    | Estado                                                                                         |
+| ----------------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `ci.yml`                | Pull Request a `develop` o `main`                              | Instala, lintea, tipa, formatea, testea, construye y corre e2e (chromium)                                                   | Activo desde P03.3; verificación obligatoria de `develop` y `main` desde P03.6                 |
+| `deploy-staging.yml`    | Push a `develop`, o `workflow_dispatch`                        | Migra `App_dev`, construye con variables de staging, publica en Pages, smoke test                                           | Activo desde P03.6 (`STAGING_DEPLOY_ENABLED=true`); primera corrida real verificada            |
+| `deploy-production.yml` | Push a `main`                                                  | Volcado a R2, migra `App`, construye con variables de producción, publica, smoke test                                       | Activo desde P03.6 (`PRODUCTION_DEPLOY_ENABLED=true`), con aprobación de Mike en `production`  |
+| `backup.yml`            | Cron diario 03:00 Argentina (06:00 UTC), o `workflow_dispatch` | `pg_dump` cifrado de `App` a R2, retención 30 diarios / 12 mensuales (ADR-015)                                              | Activo desde P03.7 (`BACKUP_ENABLED=true`); primer respaldo real verificado (sección 6.2)      |
+| `keepalive.yml`         | Cron semanal (lunes 12:00 UTC), o `workflow_dispatch`          | Consulta trivial a `App_dev` para evitar la pausa por inactividad (ADR-014)                                                 | Activo desde P03.2 (INFRA-019); disparado a mano y verificado en P03.6                         |
+| `restore-test.yml`      | Solo `workflow_dispatch`, con confirmación explícita           | Restaura un respaldo de R2 en `App_dev` (`public` + usuarios de `auth`), verifica y borra todo antes de terminar (TEST-024) | Escrito en P03.7, sin correr todavía: recién cuando `App` tenga las tablas de F4 (sección 6.3) |
 
 Los primeros cinco ya corrieron de verdad contra recursos remotos (staging,
 producción, R2 y `App_dev`): detalle y números de corrida en
@@ -203,62 +203,132 @@ por accidente ni por una variable mal cargada. Restaurar producción es un
 procedimiento manual y excepcional aparte, para `docs/runbook-produccion.md`
 (F20, todavía no existe).
 
-**Alcance: solo el esquema `public`.** `pg_restore` corre con
-`--schema=public --clean --if-exists`, así que borra y recrea únicamente lo
-que ya exista en ese esquema de `App_dev` (las tablas, vistas, funciones y
-datos que crean las migraciones propias) antes de restaurar el contenido
-del volcado. **No toca** `auth`, `storage`, `extensions` ni ningún otro
-esquema administrado por Supabase: el rol de conexión no es su dueño, y
-`--clean` fallaría ahí (nota que dejó P03.4 en `12_Registro_de_Progreso.md`,
-sección "Pendiente"). El `pg_dump` de `backup.yml` sigue siendo completo
-(todos los esquemas): el recorte es solo al restaurar, no al respaldar.
+**Decisiones de Mike (19 sep 2026, corrección de P03.7):**
 
-**Pregunta abierta para Mike, no decidida acá — ver el reporte de P03.7:**
-si el modelo de datos de F4 termina con una clave foránea de
-`public.profiles.id` hacia `auth.users(id)` (el patrón habitual de
-Supabase, `04_Modelo_de_Datos.md` sección 2.1: "= `auth.users.id`"), esta
-restauración puede fallar en el paso de datos por violación de esa
-restricción, porque `App_dev.auth.users` no tiene los mismos usuarios que
-produjo `App` (producción). No se restaura `auth.users` por defecto
-(`--disable-triggers` para sortear esto exige superusuario, privilegio que
-el rol de conexión de Supabase no tiene). Opciones:
+1. **Se restaura `App_dev` con usuarios reales de producción.** No solo el
+   esquema `public`: también `auth.users` y `auth.identities` (lo mínimo
+   para que las referencias de `public` hacia `auth.users` cierren, por
+   ejemplo si `public.profiles.id` termina con una clave foránea hacia
+   `auth.users(id)` — el patrón habitual de Supabase,
+   `04_Modelo_de_Datos.md` sección 2.1: "= `auth.users.id`"). Motivo: sin
+   los usuarios reales, esas filas de `public` quedarían huérfanas y la
+   prueba no sería representativa. Mike aceptó que datos personales y
+   hashes de contraseña de producción pasen por `App_dev` durante la
+   prueba.
+2. **La prueba limpia lo que restauró antes de terminar, siempre.**
+   `App_dev` tiene que quedar sin los datos reales apenas termina la
+   prueba, corra lo que corra durante la restauración: `dev.` sirve desde
+   `App_dev`, así que mientras los usuarios restaurados sigan ahí,
+   cualquier empleado real podría iniciar sesión en staging con su
+   contraseña de producción, y los emails de Auth de `App_dev` podrían
+   llegarle a gente real. **Mientras dura la prueba (unos minutos),
+   `dev.` no es un entorno seguro.**
 
-1. **No restaurar `auth.users`** (lo que hace el script hoy): las filas de
-   `public` que referencien usuarios de producción quedan "huérfanas" en
-   `App_dev` si esa clave foránea existe — no sirve para iniciar sesión con
-   esas cuentas, pero valida que el resto de los datos (turnos,
-   asignaciones, tareas) restaura íntegro. Menor riesgo de privacidad: no
-   trae datos personales de producción a un entorno con controles de acceso
-   más laxos.
-2. **Restaurar también los datos de `auth.users`** de producción (agregar
-   al script un paso `pg_restore --schema=auth --data-only -t auth.users`
-   antes de restaurar `public`): las referencias cierran y hasta se podría
-   iniciar sesión con cuentas reales en `App_dev`, pero expone en staging
-   datos personales de personas reales — incluido el hash de la contraseña,
-   que sigue siendo sensible aunque esté hasheado.
-3. **Punto intermedio:** restaurar `auth.users` pero saneado (sin
-   `encrypted_password` ni metadatos, solo lo que las FK necesitan) —
-   requiere un script de saneamiento aparte y ya no sería "restaurar el
-   respaldo tal cual", sino una restauración modificada.
+**Alcance en `public`:** todas las tablas, vistas, funciones, índices y
+datos que crean las migraciones propias. **No se toca la estructura de
+`auth`** (ni `storage` ni `extensions`): nunca se hace `DROP` ni `ALTER`
+sobre `auth.users`/`auth.identities`, tablas que administra Supabase
+(`supabase_auth_admin` es su dueño, no el rol de conexión) — solo se
+reemplazan sus filas (`DELETE` + `INSERT` vía `pg_restore --data-only`). El
+`pg_dump` de `backup.yml` sigue siendo completo (todos los esquemas): el
+recorte es solo al restaurar.
 
-Recomendación de esta capa: opción 1 para la corrida automática/rutinaria de
-`restore-test.yml` (mínimo riesgo de privacidad, igual valida que el
-mecanismo de respaldo y restauración funciona); si algún día hace falta
-reproducir un incidente con datos reales, hacerlo a mano y de forma
-consciente (opción 2), nunca por defecto. Mientras esta pregunta no se
-resuelva y F4 no exista, no se sabe si el problema de la FK va a darse
-siquiera: puede que backend-supabase decida no poner esa restricción como
-clave foránea real (por ejemplo, para justamente no acoplar `public` a
-`auth`) — en ese caso la opción 1 restaura sin errores.
+**Secuencia**, pensada para que no falle por claves foráneas ni por claves
+primarias duplicadas (`scripts/restore-from-r2.sh` tiene el detalle
+completo en comentarios):
 
-**Verificación con resultado claro (agregada en P03.7):** después de
-restaurar, el script compara la cantidad de tablas que lista `pg_restore -l
+0. Verifica que `App_dev` tenga las mismas migraciones aplicadas que el
+   volcado (`supabase_migrations.schema_migrations`, la tabla de control
+   de la CLI de Supabase) — si no coinciden, **aborta antes de tocar
+   nada**, con un mensaje claro. Sin este chequeo, restaurar un volcado de
+   una versión distinta de las migraciones podría fallar a mitad de camino
+   por una restricción que una de las dos bases no tiene, o dejar el
+   `DROP` de `public` sin poder recrearse igual.
+1. Recrea `public` vacío: solo estructura (`pg_restore --section=pre-data
+--clean --if-exists`), sin restricciones ni datos todavía. PostgreSQL
+   pone las claves foráneas, primarias, `UNIQUE` e índices en la sección
+   _post-data_ del volcado a propósito (documentación de PostgreSQL 17:
+   "Post-data items consist of definitions of indexes, triggers, rules and
+   constraints"): en este punto ninguna tabla de `public` tiene todavía la
+   clave foránea hacia `auth.users`, así que no hace falta ningún orden
+   especial para la carga de datos que sigue.
+2. Reemplaza `auth.users`/`auth.identities`: borra lo que haya (primero
+   `identities`, después `users`, por la clave foránea entre ellas) y
+   restaura los datos del volcado (`pg_restore --data-only`, primero
+   `users`, después `identities`).
+3. Si el trigger que F4 agrega sobre `auth.users` (crea la fila de
+   `profiles`, según `04_Modelo_de_Datos.md`) disparó al insertar los
+   usuarios del paso 2, vacía de nuevo **todo** `public`
+   (`TRUNCATE ... CASCADE`) para borrar cualquier fila que haya creado ese
+   efecto secundario, antes de cargar los datos reales.
+4. Carga los datos de `public` (`--section=data`): en este punto ninguna
+   restricción está activa todavía, así que el orden entre tablas no
+   importa.
+5. Agrega de nuevo las restricciones, índices y triggers de `public`
+   (`--section=post-data`): acá se valida cada clave foránea, incluida la
+   de `auth.users` — ya tiene con qué cerrar, porque el paso 2 ya insertó
+   esos usuarios.
+6. Verifica (cantidad de tablas del volcado contra las de `App_dev`, más
+   filas por tabla) — nunca contenido.
+7. **Limpieza, siempre** (por un `trap` de bash: corre aunque cualquiera de
+   los pasos de arriba falle): vacía `public` y borra los usuarios de auth
+   restaurados, y confirma que quedaron vacíos. El workflow además corre un
+   paso `if: always()` aparte (`scripts/restore-from-r2.sh
+--confirmar-vacio`) como segunda confirmación independiente, visible en
+   el log de la corrida.
+
+Cada `pg_restore` de la secuencia usa `--single-transaction` (implica
+`--exit-on-error`, documentación de PostgreSQL 17): si algo falla a mitad
+de un paso, ese paso se revierte solo. No hay una única transacción global
+para toda la secuencia (el paso 5 necesita ver ya confirmados los datos del
+paso 2, restaurados en una conexión distinta) — la garantía de "nunca dejar
+nada a medias" la da la limpieza del paso 7, que corre siempre.
+
+**Ningún dato personal se imprime en ningún log.** La verificación (paso 6)
+y la limpieza (paso 7) solo cuentan filas (números); nunca hacen `SELECT *`
+ni imprimen contenido de ninguna tabla ni de `auth.users`/`auth.identities`.
+
+**Permisos del rol `postgres` sobre `auth`, sin confirmar.** La
+documentación pública de Supabase describe a `postgres` (el rol que usa
+este script, vía el Session pooler) como _"the default Postgres role. This
+has admin privileges"_, pero no confirma ni niega privilegios de
+`INSERT`/`DELETE` sobre `auth.users`/`auth.identities` — y en otra página
+recomienda explícitamente no escribir en `auth.users` a mano ("may change
+at any time", usar la Auth Admin API en su lugar). No se pudo confirmar
+esto en vivo (esta capa no inicia sesión en ningún servicio). El diseño de
+arriba está pensado para fallar rápido y sin dejar nada a medias si el
+permiso no está (cada paso en su propia transacción, limpieza que corre
+siempre). **Antes de la primera corrida real** (después de F4), Mike puede
+confirmarlo sin arriesgar nada, desde el SQL Editor de `App_dev`:
+
+```sql
+select has_table_privilege('postgres', 'auth.users', 'INSERT, DELETE') as auth_users,
+       has_table_privilege('postgres', 'auth.identities', 'INSERT, DELETE') as auth_identities;
+```
+
+Si alguno de los dos da `false`, el paso 2 de la secuencia va a fallar con
+un error de permisos claro (y la limpieza igual va a dejar `App_dev`
+vacío) — en ese caso, la alternativa (no construida en este encargo) es
+recrear los usuarios con la Auth Admin API en vez de SQL directo, que
+exige un script bastante más grande.
+
+**Después de la prueba: `App_dev` queda vacío, a propósito.** Ni el seed de
+prueba que tuviera antes ni los datos restaurados sobreviven a una corrida
+de `restore-test.yml`. Volver a cargar datos de prueba es un paso aparte:
+correr de nuevo el seed de `App_dev` contra ese proyecto (desde F4,
+`scripts/seed-dev.ts` según `README.md`/`scripts/README.md`; hasta que F4
+exista, no hay seed que restaurar). No lo hace este workflow ni este
+script: mezclar "restaurar un respaldo real" con "volver a poner datos
+ficticios" en el mismo mecanismo sería confuso y más difícil de auditar.
+
+**Verificación con resultado claro:** después de restaurar (antes de
+limpiar), el script compara la cantidad de tablas que lista `pg_restore -l
 --schema=public` contra la cantidad de tablas que efectivamente quedaron en
 `information_schema.tables` de `App_dev` (esquema `public`) — si no
 coinciden, el script termina en error. Además imprime, tabla por tabla, un
-`SELECT count(*)` real (no una estimación de `pg_stat_user_tables`) para que
-quien revise el log de la corrida vea de un vistazo cuántas filas quedaron
-en cada una.
+`SELECT count(*)` real (no una estimación de `pg_stat_user_tables`), más el
+conteo de `auth.users`/`auth.identities` — siempre números, nunca
+contenido.
 
 Uso (workflow, cuando corresponda dispararlo):
 
@@ -287,6 +357,10 @@ SUPABASE_DB_URL_DEV=<...> R2_ACCESS_KEY_ID=<...> R2_SECRET_ACCESS_KEY=<...> \
 SUPABASE_DB_URL_DEV=<...> R2_ACCESS_KEY_ID=<...> R2_SECRET_ACCESS_KEY=<...> \
   R2_BUCKET=es-backups CLOUDFLARE_ACCOUNT_ID=<...> BACKUP_PASSPHRASE=<...> \
   scripts/restore-from-r2.sh --ultimo restaurar-app-dev
+
+# 3. Confirmar que App_dev quedó vacío (la corrida de arriba ya limpia sola; esto es una
+#    segunda confirmación independiente, por ejemplo si algo se cortó antes de la limpieza)
+SUPABASE_DB_URL_DEV=<...> scripts/restore-from-r2.sh --confirmar-vacio
 ```
 
 Las variables son las mismas que documenta `docs/environments.md` sección 4

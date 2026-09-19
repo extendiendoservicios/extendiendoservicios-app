@@ -14,18 +14,36 @@ Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/C
 - Cierre de F3 (P03.7): `.github/workflows/restore-test.yml`
   (`workflow_dispatch` con confirmación `restaurar-app-dev`, sin correr
   todavía — se dispara recién con las tablas de F4, TEST-024).
-  `scripts/restore-from-r2.sh` ahora restaura solo el esquema `public`
-  (`--schema=public`, para no chocar con los esquemas que administra
-  Supabase), suma el modo `--ultimo` (elige el respaldo más reciente de
-  `diarios/` sin indicar la clave) y verifica el resultado comparando la
-  cantidad de tablas del volcado contra las que quedan en `App_dev`, más un
-  conteo de filas por tabla. `docs/environments.md`/`docs/deployment.md`/
-  `README.md` puestos al día: se activaron los tres interruptores de
-  despliegue, primer respaldo real verificado, `dev.`/`app.` sirviendo desde
-  Cloudflare Pages con GitHub Pages desactivado, el pase `develop → main`
-  con merge commit, el límite de `workflow_dispatch` a la rama por defecto,
-  la cuenta de Sentry ya creada, y la guía clic por clic de INFRA-024
-  (avisos de uso de Supabase y de fallos de workflows).
+  `docs/environments.md`/`docs/deployment.md`/`README.md` puestos al día:
+  se activaron los tres interruptores de despliegue, primer respaldo real
+  verificado, `dev.`/`app.` sirviendo desde Cloudflare Pages con GitHub
+  Pages desactivado, el pase `develop → main` con merge commit, el límite
+  de `workflow_dispatch` a la rama por defecto, la cuenta de Sentry ya
+  creada, y la guía clic por clic de INFRA-024 (avisos de uso de Supabase y
+  de fallos de workflows).
+- Corrección de P03.7 (decisión de Mike, 19 sep 2026): la restauración de
+  prueba ahora repone en `App_dev` el esquema `public` **más los usuarios
+  de auth** (`auth.users`, `auth.identities`, lo mínimo para que las
+  referencias de `public` hacia `auth.users` cierren) y **borra todo lo
+  restaurado antes de terminar** (siempre, incluso si algo falla a mitad de
+  camino), porque `dev.` sirve desde `App_dev` y no es un entorno seguro
+  mientras esos usuarios sigan ahí. `scripts/restore-from-r2.sh` reescrito:
+  verifica que `App_dev` tenga las mismas migraciones que el volcado antes
+  de tocar nada (`supabase_migrations.schema_migrations`); restaura `public`
+  en tres secciones (`pre-data`/`data`/`post-data`, aprovechando que
+  PostgreSQL deja las claves foráneas para `post-data`) para no depender de
+  ningún orden entre tablas; agrega el modo `--confirmar-vacio`; nunca
+  imprime contenido de ninguna tabla, solo conteos. `restore-test.yml` suma
+  un paso `if: always()` que corre ese modo como segunda confirmación,
+  independiente de la limpieza del propio script. `docs/deployment.md`
+  sección 6.3 registra las dos decisiones con su motivo (en vez de la
+  pregunta pendiente de la entrega anterior) y cómo volver a cargar datos
+  de prueba después. Sin confirmar: si el rol `postgres` (Session pooler)
+  tiene privilegios reales de `INSERT`/`DELETE` sobre `auth.users`/
+  `auth.identities` — la documentación pública de Supabase no lo dice
+  (dice que `postgres` "has admin privileges" pero recomienda no escribir
+  en `auth.users` a mano); queda una consulta de solo lectura para que
+  Mike lo confirme antes de la primera corrida real.
 - Marca de la sidebar e íconos PWA (DS-018, PNG temporal — decisión de
   Mike del 19 sep 2026 de recortar el isotipo del PNG original en vez de
   esperar el vectorial IF-08; deuda **DS-020** registrada en

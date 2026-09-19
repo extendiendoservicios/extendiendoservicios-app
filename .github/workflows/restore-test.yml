@@ -16,18 +16,25 @@ name: Restore test
 # encabezado de ese script). Restaurar App (producción) es un procedimiento manual y excepcional
 # aparte, nunca este workflow ni ese script.
 #
-# ALCANCE de la restauración: solo el esquema "public" (tablas, vistas, funciones y datos que
-# crean las migraciones propias), no los esquemas que administra Supabase (auth, storage,
-# extensions...). Detalle y la pregunta pendiente sobre auth.users: docs/deployment.md
-# sección 6.3 y el reporte de P03.7.
+# ALCANCE y decisiones de Mike (19 sep 2026, corrección de P03.7 -- docs/deployment.md
+# sección 6.3 tiene el detalle completo): se restaura el esquema "public" MÁS los usuarios de
+# auth (auth.users, auth.identities) -- no la estructura de "auth", solo esas filas -- porque
+# public puede tener una clave foránea real hacia auth.users. Van a pasar datos personales y
+# hashes de contraseña reales de producción por App_dev mientras dura la prueba: "dev." NO es un
+# entorno seguro en esos minutos. Por eso el propio script borra todo lo que restauró antes de
+# terminar (paso "Bajar, descifrar, restaurar y verificar" de más abajo), y este workflow además
+# corre un paso `if: always()` que confirma que quedó vacío, corra lo que corra en el paso
+# anterior.
 
 on:
   workflow_dispatch:
     inputs:
       confirmacion:
         description: >-
-          Escribí exactamente restaurar-app-dev para confirmar. Este workflow BORRA y reemplaza
-          el esquema public de App_dev con el contenido del respaldo elegido.
+          Escribí exactamente restaurar-app-dev para confirmar. Durante unos minutos, este
+          workflow reemplaza el esquema public y los usuarios de auth de App_dev con el
+          contenido del respaldo elegido (datos personales y hashes reales incluidos) y los
+          borra de nuevo al terminar.
         required: true
         type: string
       objeto_r2:
@@ -47,10 +54,16 @@ concurrency:
 
 jobs:
   restore-test:
-    name: Restaurar un respaldo en App_dev (esquema public) y verificar
+    name: Restaurar un respaldo en App_dev (public + usuarios de auth), verificar y limpiar
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
+      # El checkout va primero (antes de validar la confirmación) para que
+      # scripts/restore-from-r2.sh exista en el runner pase lo que pase, y el paso final
+      # `if: always()` pueda correr incluso si la confirmación no coincidió.
+      - name: Descargar el código (scripts/restore-from-r2.sh y scripts/lib/)
+        uses: actions/checkout@v7
+
       - name: Verificar la confirmación
         env:
           CONFIRMACION: ${{ inputs.confirmacion }}
@@ -60,10 +73,7 @@ jobs:
             exit 1
           fi
 
-      - name: Descargar el código (scripts/restore-from-r2.sh y scripts/lib/)
-        uses: actions/checkout@v7
-
-      - name: Bajar, descifrar, restaurar (esquema public) y verificar
+      - name: Bajar, descifrar, restaurar (public + auth.users/auth.identities), verificar y limpiar
         env:
           OBJETO_R2: ${{ inputs.objeto_r2 }}
           SUPABASE_DB_URL_DEV: ${{ secrets.SUPABASE_DB_URL_DEV }}
@@ -78,3 +88,9 @@ jobs:
           else
             scripts/restore-from-r2.sh "$OBJETO_R2" restaurar-app-dev
           fi
+
+      - name: Confirmar que App_dev quedó vacío (corre siempre, haya salido bien o mal el paso anterior)
+        if: always()
+        env:
+          SUPABASE_DB_URL_DEV: ${{ secrets.SUPABASE_DB_URL_DEV }}
+        run: scripts/restore-from-r2.sh --confirmar-vacio
