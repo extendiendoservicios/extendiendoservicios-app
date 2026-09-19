@@ -1,0 +1,80 @@
+name: Restore test
+
+# INFRA-018/INFRA-024 (ADR-015, TEST-024): restauración de prueba de un respaldo de R2 en
+# App_dev. Solo workflow_dispatch, con una confirmación explícita: no corre nunca por cron ni por
+# push. Ver docs/deployment.md sección 6.3 para el detalle completo y el estado de esta prueba.
+#
+# NO SE CORRE TODAVÍA. Este workflow se agrega ahora (P03.7) pero se ejecuta recién cuando App
+# (producción) tenga las tablas de F4 -- hoy no hay ninguna migración, así que no habría nada
+# real que restaurar. Además, GitHub solo ofrece el botón "Run workflow" (workflow_dispatch) en
+# la pestaña Actions para workflows que ya existen en la rama por defecto (`main`): hace falta un
+# pase futuro de `develop` a `main` antes de poder dispararlo desde la interfaz o con
+# `gh workflow run`, aunque el archivo ya esté fusionado en `develop`.
+#
+# SOLO App_dev. Este workflow no referencia SUPABASE_DB_URL_PROD en ningún paso ni en ningún
+# `env:`: la restauración la ejecuta scripts/restore-from-r2.sh, que tampoco la lee (ver el
+# encabezado de ese script). Restaurar App (producción) es un procedimiento manual y excepcional
+# aparte, nunca este workflow ni ese script.
+#
+# ALCANCE de la restauración: solo el esquema "public" (tablas, vistas, funciones y datos que
+# crean las migraciones propias), no los esquemas que administra Supabase (auth, storage,
+# extensions...). Detalle y la pregunta pendiente sobre auth.users: docs/deployment.md
+# sección 6.3 y el reporte de P03.7.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmacion:
+        description: >-
+          Escribí exactamente restaurar-app-dev para confirmar. Este workflow BORRA y reemplaza
+          el esquema public de App_dev con el contenido del respaldo elegido.
+        required: true
+        type: string
+      objeto_r2:
+        description: >-
+          Clave del objeto en R2 (por ejemplo diarios/App_20260101_030000.dump.gpg). Si lo dejás
+          vacío, se usa el respaldo más reciente con prefijo diarios/.
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: restore-test-app-dev
+  cancel-in-progress: false
+
+jobs:
+  restore-test:
+    name: Restaurar un respaldo en App_dev (esquema public) y verificar
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Verificar la confirmación
+        env:
+          CONFIRMACION: ${{ inputs.confirmacion }}
+        run: |
+          if [ "$CONFIRMACION" != "restaurar-app-dev" ]; then
+            echo "::error::La confirmación no es exactamente 'restaurar-app-dev': se aborta sin tocar nada."
+            exit 1
+          fi
+
+      - name: Descargar el código (scripts/restore-from-r2.sh y scripts/lib/)
+        uses: actions/checkout@v7
+
+      - name: Bajar, descifrar, restaurar (esquema public) y verificar
+        env:
+          OBJETO_R2: ${{ inputs.objeto_r2 }}
+          SUPABASE_DB_URL_DEV: ${{ secrets.SUPABASE_DB_URL_DEV }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          if [ -z "$OBJETO_R2" ]; then
+            scripts/restore-from-r2.sh --ultimo restaurar-app-dev
+          else
+            scripts/restore-from-r2.sh "$OBJETO_R2" restaurar-app-dev
+          fi

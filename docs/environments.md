@@ -4,16 +4,19 @@ Fuente: `03_Plan_Maestro_Tecnico.md` sección 3 (`Docs/Plan_Maestro/`, fuera de
 este repo), `02_Decisiones.md` P-010 a P-015, P-106, P-107, P-109 a P-115;
 ADR-008, ADR-013, ADR-014, ADR-015, ADR-021. Este archivo se actualiza en el
 mismo PR que cambie algo de lo que describe (ampliado en P03.4: proyecto de
-Pages y bucket R2 creados, tokens con permisos mínimos para P03.5).
+Pages y bucket R2 creados, tokens con permisos mínimos para P03.5; puesto al
+día en P03.7 tras P03.5 y P03.6: secretos cargados, `dev.`/`app.` sirviendo
+desde Cloudflare Pages, GitHub Pages desactivado, cuenta de Sentry creada y
+primer respaldo verificado).
 
 ## 1. Entornos
 
-| Entorno    | Frontend                                                                 | Base de datos      | Datos                                        | Quién lo usa                      | Notas                                                                                                                                          |
-| ---------- | ------------------------------------------------------------------------ | ------------------ | -------------------------------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Local      | `pnpm dev` en la máquina de cada desarrollador (`http://localhost:5173`) | `App_dev` (remoto) | Seed ficticio (desde F4)                     | Mike, quien desarrolle            | `.env.local` con la URL y la anon key de `App_dev`. Sin Supabase local / Docker (ADR-014).                                                     |
-| Testing    | Playwright contra `localhost` o staging; pgTAP contra `App_dev`          | `App_dev`          | Seed ficticio recreado por corrida           | CI y quien desarrolle             | Los tests no dependen del estado previo.                                                                                                       |
-| Staging    | `dev.extendiendoservicios.com` (rama `develop`)                          | `App_dev`          | Seed ficticio; datos reales solo durante F19 | Mike, referente del cliente (UAT) | Público con `noindex` y banner "Entorno de prueba" (INFRA-022, pendiente el banner en front). Keepalive semanal (INFRA-019).                   |
-| Producción | `app.extendiendoservicios.com` (rama `main`)                             | `App`              | Reales                                       | Todos                             | Despliegue con aprobación manual (F20). Respaldo diario a R2 (INFRA-018, escrito y validado; falta activarlo, `docs/deployment.md` sección 3). |
+| Entorno    | Frontend                                                                      | Base de datos      | Datos                                        | Quién lo usa                      | Notas                                                                                                                                                                                                                                                           |
+| ---------- | ----------------------------------------------------------------------------- | ------------------ | -------------------------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Local      | `pnpm dev` en la máquina de cada desarrollador (`http://localhost:5173`)      | `App_dev` (remoto) | Seed ficticio (desde F4)                     | Mike, quien desarrolle            | `.env.local` con la URL y la anon key de `App_dev`. Sin Supabase local / Docker (ADR-014).                                                                                                                                                                      |
+| Testing    | Playwright contra `localhost` o staging; pgTAP contra `App_dev`               | `App_dev`          | Seed ficticio recreado por corrida           | CI y quien desarrolle             | Los tests no dependen del estado previo.                                                                                                                                                                                                                        |
+| Staging    | `dev.extendiendoservicios.com` (rama `develop`), servido por Cloudflare Pages | `App_dev`          | Seed ficticio; datos reales solo durante F19 | Mike, referente del cliente (UAT) | Público con `noindex` y banner "Entorno de prueba" (INFRA-022, banner agregado en P05.4). Keepalive semanal (INFRA-019).                                                                                                                                        |
+| Producción | `app.extendiendoservicios.com` (rama `main`), servido por Cloudflare Pages    | `App`              | Reales                                       | Todos                             | Despliegue con aprobación manual de Mike en el `environment` `production` (`docs/deployment.md` sección 4). Respaldo diario a R2 activo (INFRA-018, `BACKUP_ENABLED=true` desde el 19 sep 2026, primer respaldo verificado — `docs/deployment.md` sección 6.2). |
 
 `App_dev` hace doble función -- staging y desarrollo -- porque no hay
 Supabase local (ADR-014, P-112). Es el único proyecto que este repositorio
@@ -21,13 +24,13 @@ vincula localmente.
 
 ## 2. Cuentas y proyectos (V3 punto 6)
 
-| Servicio   | Cuenta                                                        | Recurso                                                                                                                                                                                        |
-| ---------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Supabase   | Organización `bpcfjqvpdfmepiohltbz` ("Extendiendo Servicios") | Proyecto **`App`** (producción): ref `fysuppdadwvabrjpnnoh`, región `sa-east-1`, Postgres 17.6.                                                                                                |
-| Supabase   | ídem                                                          | Proyecto **`App_dev`** (desarrollo y staging): ref `anesttvrnpsaaaxaquce`, región `sa-east-1`, Postgres 17.6.                                                                                  |
-| Cloudflare | `extserviciosapp@gmail.com`                                   | Zona `extendiendoservicios.com`; Pages `extendiendoservicios-app` (creado en P03.4, sin dominios ni despliegues todavía); R2 `es-backups` (creado en P03.4, privado, con reglas de retención). |
-| GitHub     | Organización `extendiendoservicios`                           | Repositorio `extendiendoservicios/extendiendoservicios-app`; secretos y environments.                                                                                                          |
-| Sentry     | `extserviciosapp@gmail.com` (a crear, P03.1)                  | Proyecto `extendiendoservicios-app` (desde INFRA-021).                                                                                                                                         |
+| Servicio   | Cuenta                                                        | Recurso                                                                                                                                                                                                                                                                                                                                    |
+| ---------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Supabase   | Organización `bpcfjqvpdfmepiohltbz` ("Extendiendo Servicios") | Proyecto **`App`** (producción): ref `fysuppdadwvabrjpnnoh`, región `sa-east-1`, Postgres 17.6.                                                                                                                                                                                                                                            |
+| Supabase   | ídem                                                          | Proyecto **`App_dev`** (desarrollo y staging): ref `anesttvrnpsaaaxaquce`, región `sa-east-1`, Postgres 17.6.                                                                                                                                                                                                                              |
+| Cloudflare | `extserviciosapp@gmail.com`                                   | Zona `extendiendoservicios.com`; Pages `extendiendoservicios-app` (creado en P03.4; desde P03.6 sirve `dev.extendiendoservicios.com` desde la rama `develop` y `app.extendiendoservicios.com` desde `main`, los dos con proxy); R2 `es-backups` (creado en P03.4, privado, con reglas de retención; primer respaldo real subido en P03.7). |
+| GitHub     | Organización `extendiendoservicios`                           | Repositorio `extendiendoservicios/extendiendoservicios-app`; secretos y environments (`staging`, `production`, cargados en P03.5).                                                                                                                                                                                                         |
+| Sentry     | `extserviciosapp@gmail.com`                                   | Organización `extendiendo-servicios`, proyecto `extendiendoservicios-app`, región de datos Unión Europea (creada por Mike antes de P03.5; en uso desde P03.6, sección 4 más abajo).                                                                                                                                                        |
 
 Regla permanente (memoria del proyecto): antes de crear o tocar cualquier
 recurso remoto, verificar que la cuenta activa de la CLI o el navegador sea la
@@ -177,9 +180,14 @@ sin valores. Rotación anual y ante cualquier sospecha (`03` sección 3.3).
 
 ### Comandos para cargar los secretos de GitHub
 
-El valor **nunca** va en la línea de comando, en un archivo ni en el chat:
-`gh secret set` sin `--body` lo pide por teclado (entrada oculta). Correr
-uno por uno, desde una terminal de Mike:
+**Ya cargados por Mike (P03.5).** Los 13 secretos de repositorio de esta
+lista, más `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` en los `environment`
+`staging` y `production`, están en GitHub desde el 19 sep 2026 (verificado
+por el orquestador solo por nombre, nunca por valor — sección "Comandos" más
+abajo queda como referencia para rotarlos, no como pendiente). El valor
+**nunca** va en la línea de comando, en un archivo ni en el chat: `gh secret
+set` sin `--body` lo pide por teclado (entrada oculta). Para rotar uno,
+correrlo de nuevo desde una terminal de Mike (sobrescribe el anterior):
 
 ```bash
 gh secret set SUPABASE_ACCESS_TOKEN --repo extendiendoservicios/extendiendoservicios-app
@@ -196,13 +204,13 @@ gh secret set BACKUP_PASSPHRASE --repo extendiendoservicios/extendiendoservicios
 gh secret set SENTRY_AUTH_TOKEN --repo extendiendoservicios/extendiendoservicios-app
 ```
 
-`SUPABASE_DB_URL_DEV` es el único de esta lista que hace falta **ya**, para
-que `keepalive.yml` funcione (sección 5). Los demás los carga Mike en P03.5,
-una vez creados los tokens correspondientes (`CLOUDFLARE_API_TOKEN`, R2 y
-Sentry: ver más abajo) -- los workflows que los usan (`deploy-staging.yml`,
-`deploy-production.yml`, `backup.yml`) ya existen (P03.3, P03.4) pero están
-detrás de sus interruptores (`docs/deployment.md` sección 3) y no corren
-hasta P03.6.
+`SUPABASE_DB_URL_DEV` fue el primero en cargarse (hacía falta ya para
+`keepalive.yml`, sección 5). Los demás los cargó Mike en P03.5, con los
+tokens correspondientes (`CLOUDFLARE_API_TOKEN`, R2 y Sentry: ver más abajo)
+ya creados -- los workflows que los usan (`deploy-staging.yml`,
+`deploy-production.yml`, `backup.yml`) corren de verdad desde P03.6, detrás
+de sus interruptores (`docs/deployment.md` sección 3), hoy los tres en
+`true`.
 
 ### Dónde obtener cada valor en el panel de Supabase
 
@@ -224,9 +232,10 @@ hasta P03.6.
 ### Cloudflare, R2 y Sentry
 
 El proyecto de Pages y el bucket R2 ya existen (P03.4, `wrangler pages
-project create` / `wrangler r2 bucket create`, sección 6); lo que falta es
-que Mike cree los tokens con permisos mínimos y cargue los secretos (P03.5).
-Paso a paso en el panel:
+project create` / `wrangler r2 bucket create`, sección 6) y ya tienen sus
+tokens cargados (P03.5); `dev.`/`app.` publican desde Pages desde P03.6. Paso
+a paso en el panel (queda como referencia para rotar un token, no como
+pendiente):
 
 **`CLOUDFLARE_API_TOKEN`** (publica builds en Pages desde
 `deploy-staging.yml`/`deploy-production.yml`, `pnpm exec wrangler pages
@@ -289,10 +298,12 @@ siempre**, sin forma de recuperarlos. Guardarla también en un gestor de
 contraseñas u otro lugar seguro fuera de GitHub (nunca en el repositorio, un
 chat o un archivo sin cifrar) es indispensable, no opcional.
 
-**Sentry (`SENTRY_AUTH_TOKEN`, `VITE_SENTRY_DSN`)**: la cuenta de Sentry
-todavía no existe (`03` sección 3.2 la marca "a crear"); su creación y los
-tokens correspondientes quedan para cuando Mike la cree (P03.5). El uso de
-cada uno ya está documentado en `docs/deployment.md` sección 9.
+**Sentry (`SENTRY_AUTH_TOKEN`, `VITE_SENTRY_DSN`)**: la cuenta de Sentry ya
+existe (organización `extendiendo-servicios`, proyecto
+`extendiendoservicios-app`, región de datos Unión Europea) y sus dos
+secretos ya están cargados (P03.5); están en uso real desde el primer
+despliegue a staging y a producción (P03.6). El uso de cada uno ya está
+documentado en `docs/deployment.md` sección 9.
 
 ## 5. Keepalive (INFRA-019)
 
@@ -327,14 +338,131 @@ pnpm exec wrangler pages project create extendiendoservicios-app --production-br
 pnpm exec wrangler r2 bucket create es-backups
 ```
 
-Detalle de ambos recursos, sus reglas de retención y lo que falta (tokens,
-dominios, primer despliegue): `docs/deployment.md` sección 7.
+Detalle de ambos recursos, sus reglas de retención y los dominios conectados:
+`docs/deployment.md` sección 7.
 
-Ya en uso, sin ejecutarse todavía (proyecto creado, pero sin token de API
-cargado ni interruptor activado): `deploy-staging.yml` y
-`deploy-production.yml` (INFRA-016/INFRA-017) publican con
+**En uso real desde P03.6.** `deploy-staging.yml` y `deploy-production.yml`
+(INFRA-016/INFRA-017) publican con
 `pnpm exec wrangler pages deploy dist --project-name=extendiendoservicios-app --branch=<develop|main>`,
 autenticado con los secretos `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID`.
-Ambos workflows están detrás de sus interruptores (`docs/deployment.md`
-sección 3): no publican nada hasta que Mike cargue los secretos (P03.5) y
-active los interruptores (P03.6).
+Los tres interruptores (`docs/deployment.md` sección 3) están en `true`:
+`dev.extendiendoservicios.com` sirve el build de `develop` y
+`app.extendiendoservicios.com` el de `main`, los dos por Cloudflare Pages.
+GitHub Pages quedó desactivado (ver `docs/deployment.md` sección 7 y
+`README.md`).
+
+## 7. Alertas por email (INFRA-024)
+
+INFRA-024 pide alertas de dos cosas distintas: uso de Supabase (base, auth,
+storage) y fallos de los workflows. Cada plataforma resuelve esto de forma
+distinta en su plan sin cargo, y ninguna de las dos se puede configurar
+desde este repositorio (son ajustes de cuenta, no de código): quedan como
+guía para Mike, clic por clic. **No se construyó nada nuevo para esto**
+(ningún workflow ni script): INFRA-024 solo pide la alerta, no un tablero, y
+armar una alternativa a mano cuando la plataforma ya avisa sola sería
+duplicar esfuerzo sin necesidad (ver la sección 7.1 para el único punto
+donde eso no está garantizado).
+
+### 7.1 Uso de Supabase (base, auth, storage)
+
+**Lo que confirma la documentación pública de Supabase:** el plan sin cargo
+("Free Plan") incluye un aviso automático al superar la cuota -- la propia
+documentación de facturación dice literalmente _"You will be notified when
+you exceed the Free Plan quota"_ -- pero no detalla ahí mismo a qué
+dirección llega ni si hace falta activar algo. **Lo que no pude confirmar
+sin iniciar sesión** (esta capa no iniciar sesión en ningún servicio, regla
+común 7): si existe un umbral configurable (por ejemplo "avisame al 80 %")
+o si el aviso es fijo (por ejemplo al superar el 100 %), y el nombre exacto
+de la pantalla donde eso se ve hoy en el panel. Por eso el paso a paso de
+abajo es "andá, mirá y contame qué ves", no una lista de casillas que no
+pude verificar.
+
+**Guía para Mike:**
+
+1. Entrar a
+   `https://supabase.com/dashboard/org/bpcfjqvpdfmepiohltbz/billing` (la
+   organización de Extendiendo Servicios) con la cuenta
+   `extserviciosapp@gmail.com`.
+2. Revisar la pestaña **Usage** (o **Uso**) de esa misma página: muestra una
+   barra de progreso por cada recurso medido (tamaño de base de datos,
+   usuarios activos de Auth, tamaño de Storage, egreso, etc.) contra el
+   límite del plan `Free`. Si alguna barra ya está en amarillo o rojo, hay
+   uso real cerca del límite: ese es el disparador de los avisos
+   automáticos de Supabase, no hace falta ninguna acción para que existan.
+3. Buscar, dentro de esa misma sección o en **Organization Settings** →
+   **General**, algo llamado "Notification preferences", "Email
+   preferences" o similar. Si existe una opción para alertas de uso o de
+   facturación, dejarla activada (suele venir activada por defecto; lo que
+   sí conviene revisar y, si aparece, desactivar, es únicamente correo de
+   marketing/novedades de producto, nunca los de facturación o seguridad).
+4. Confirmar que el email de la cuenta (`extserviciosapp@gmail.com`) es el
+   que recibe esos avisos, en **Organization Settings** → **General** →
+   **Billing email** (o el campo equivalente) si el panel lo distingue del
+   email de inicio de sesión.
+5. Si en el panel no aparece ningún umbral configurable y el único aviso es
+   automático al superar la cuota (sin margen de reacción): opciones, con
+   costo, para tener margen antes de llegar al límite:
+   - **Revisión manual periódica** (sin costo): agendar una revisión mensual
+     de la pestaña Usage de la organización. Es lo más simple y no depende
+     de ninguna herramienta nueva.
+   - **Plan Pro de Supabase** (usd 25/mes por organización, más el consumo
+     que exceda lo incluido): no cambia el mecanismo de alertas en sí, pero
+     saca el proyecto de la pausa automática por inactividad (ADR-014) y
+     sube los límites, lo que da más margen antes de que cualquier aviso
+     importe.
+   - **Monitoreo propio** (con costo de tiempo, no de dinero): un workflow
+     de GitHub Actions que consulte la API de administración de Supabase
+     periódicamente y avise si el uso supera un umbral. No se construyó en
+     este encargo porque el plan sin cargo ya avisa solo (punto 1) y esto
+     sería una segunda capa de alertas sobre un problema que la plataforma
+     ya cubre; se deja como opción si en el futuro hiciera falta un umbral
+     más temprano que el de Supabase.
+
+### 7.2 Fallos de workflows de GitHub Actions
+
+**Esto sí está documentado con precisión.** GitHub manda una notificación
+cuando falla una ejecución de un workflow. Para los tres workflows de este
+repositorio que corren por `schedule` (`backup.yml`, `keepalive.yml`, y
+`restore-test.yml` cuando tenga uno en el futuro -- hoy no tiene cron,
+sección 6.3 de `docs/deployment.md`), la notificación de un fallo **no le
+llega a todo el equipo ni al dueño del repositorio**: le llega a la persona
+cuya cuenta de GitHub modificó por última vez la línea del `cron` de ese
+workflow (o, si el workflow estuvo deshabilitado y se reactivó, a quien lo
+reactivó). En este repositorio, quien hace el `push`/merge final a `develop`
+o `main` es el orquestador con la cuenta verificada por `gh auth status`
+(organización `extendiendoservicios`) -- conviene que Mike confirme con ese
+comando de qué cuenta se trata exactamente, porque las notificaciones de
+`backup.yml` y `keepalive.yml` le llegan a esa cuenta, no necesariamente a
+la personal de Mike si son distintas.
+
+**Guía para Mike, clic por clic:**
+
+1. Entrar a `https://github.com/settings/notifications` (con la cuenta que
+   `gh auth status` marca como activa para este repositorio -- ver el
+   párrafo anterior).
+2. Arriba de la página, en **"Default notification email"** (o "Email
+   predeterminado de notificaciones"), confirmar que hay una dirección
+   verificada. Si no hay ninguna, agregarla primero en
+   `https://github.com/settings/emails`.
+3. Bajar hasta la sección con encabezado **"Actions"** (aparece separada de
+   "Watching" y "Participating"). Ahí hay una casilla **"Email"**: tiene que
+   estar tildada -- así los avisos de Actions llegan por correo y no solo a
+   la campanita de `github.com/notifications`.
+4. En esa misma sección, elegir la opción para **notificar solo cuando
+   falla una ejecución** (no en cada corrida exitosa) -- el nombre exacto
+   puede variar según la versión de la interfaz, pero la idea es "solo
+   fallidas" en vez de "todas las ejecuciones". Con `backup.yml` corriendo
+   todos los días y `keepalive.yml` una vez por semana, la opción "todas"
+   generaría un correo diario sin valor.
+5. Esta página no tiene un botón "Guardar": cada casilla se aplica al
+   tildarla.
+6. Repetir esta configuración en cualquier otra cuenta de GitHub que también
+   pueda terminar modificando la línea del `cron` de `backup.yml` o
+   `keepalive.yml` (por ejemplo, si en el futuro alguien además de Mike hace
+   merges a `main`/`develop`).
+
+Esto ya funciona hoy para `deploy-staging.yml`/`deploy-production.yml`/
+`ci.yml` (no son por `schedule`: la notificación de un fallo le llega a
+quien disparó esa ejecución en particular -- quien hizo el push o el
+merge), y para `backup.yml`/`keepalive.yml` en cuanto Mike complete el paso
+a paso de arriba.

@@ -7,10 +7,25 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
-Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022), y el cierre de F5: marca de la sidebar e íconos PWA desde un PNG temporal, `vite-plugin-pwa` y `/dev/design` completo (F5 · DS-016, DS-018 a DS-020, RESP-001, DOC-005).
+Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022), y el cierre de F5: marca de la sidebar e íconos PWA desde un PNG temporal, `vite-plugin-pwa` y `/dev/design` completo (F5 · DS-016, DS-018 a DS-020, RESP-001, DOC-005), y el cierre de F3 (F3 · DOC-003, INFRA-024, TEST-024).
 
 ### Agregado
 
+- Cierre de F3 (P03.7): `.github/workflows/restore-test.yml`
+  (`workflow_dispatch` con confirmación `restaurar-app-dev`, sin correr
+  todavía — se dispara recién con las tablas de F4, TEST-024).
+  `scripts/restore-from-r2.sh` ahora restaura solo el esquema `public`
+  (`--schema=public`, para no chocar con los esquemas que administra
+  Supabase), suma el modo `--ultimo` (elige el respaldo más reciente de
+  `diarios/` sin indicar la clave) y verifica el resultado comparando la
+  cantidad de tablas del volcado contra las que quedan en `App_dev`, más un
+  conteo de filas por tabla. `docs/environments.md`/`docs/deployment.md`/
+  `README.md` puestos al día: se activaron los tres interruptores de
+  despliegue, primer respaldo real verificado, `dev.`/`app.` sirviendo desde
+  Cloudflare Pages con GitHub Pages desactivado, el pase `develop → main`
+  con merge commit, el límite de `workflow_dispatch` a la rama por defecto,
+  la cuenta de Sentry ya creada, y la guía clic por clic de INFRA-024
+  (avisos de uso de Supabase y de fallos de workflows).
 - Marca de la sidebar e íconos PWA (DS-018, PNG temporal — decisión de
   Mike del 19 sep 2026 de recortar el isotipo del PNG original en vez de
   esperar el vectorial IF-08; deuda **DS-020** registrada en
