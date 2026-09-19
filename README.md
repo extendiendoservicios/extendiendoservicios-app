@@ -171,9 +171,9 @@ datos (dejan de aplicar en cuanto se complete la migración de la Fase 3):
 - DNS en Cloudflare: registro `CNAME` `app` → `extendiendoservicios.github.io`,
   con el proxy (nube naranja) **desactivado** — el proxy de Cloudflare bloquea
   la emisión del certificado de GitHub Pages.
-- `public/CNAME`, `public/.nojekyll`, `public/logo.png` y `public/favicon.png`
-  son los archivos que ese despliegue estático necesita; Vite los copia tal
-  cual a `dist/` en el build. El logo real de marca vive en `Images/` del
+- Ese despliegue estático sale de `main`, que conserva sus propios
+  `CNAME` y `.nojekyll`. En `develop` se quitaron en P03.6 porque Cloudflare
+  Pages no los usa; `public/logo.png` y `public/favicon.png` siguen. El logo real de marca vive en `Images/` del
   proyecto (fuera de este repo); no se reconstruye a mano.
 - `public/_redirects` (fallback SPA `/* /index.html 200`) es para Cloudflare
   Pages: no lo usa GitHub Pages, queda listo para la migración de la Fase 3.
