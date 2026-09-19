@@ -50,12 +50,23 @@
   --warning: #c8820c;
   --warning-bg: #fdf3e0;
   --warning-800: #9a6408;
+  --warning-border: #f2dfba; /* borde de Alert "warn" (.a-warn, ds.css) */
   --danger: #ce4b52;
   --danger-bg: #fbebec;
   --danger-800: #a93a40;
+  --danger-border: #f0cdcf; /* borde de Alert "crit" (.a-crit, ds.css) */
   --info: #3b72c4;
   --info-bg: #eaf1fb;
   --info-800: #2c579b;
+
+  /* ---------- Avatar: seis colores fijos (.av.a‥f, ds.css), asignados por
+     hash determinístico del id (DS-009) ---------- */
+  --avatar-a: var(--primary); /* #569EA4, mismo valor que --primary */
+  --avatar-b: #6b7fa8;
+  --avatar-c: #8a7ba6;
+  --avatar-d: #a88060;
+  --avatar-e: #5f927a;
+  --avatar-f: #a0708a;
 
   /* ---------- Foco ---------- */
   --ring: rgba(86, 158, 164, 0.35);
@@ -76,6 +87,8 @@
   --r: 12px; /* botones, alertas, drawers internos */
   --r-lg: 14px; /* tarjetas */
   --r-pill: 999px; /* badges, avatares */
+  --r-task-box: 6px; /* casilla de TaskItem (.tbox, ds2.css), fuera de la
+                         escala de 8/12/14 igual que --r-xs */
 
   /* ---------- Forma: sombras ---------- */
   --sh-card: 0 1px 2px rgba(19, 21, 30, 0.04), 0 1px 3px rgba(19, 21, 30, 0.06);
@@ -86,6 +99,7 @@
     0 2px 6px rgba(86, 158, 164, 0.1), 0 8px 22px rgba(86, 158, 164, 0.08); /* Card "hero" móvil */
 
   /* ---------- Contenedores (07 sección 1.3) ---------- */
+  --table-header-bg: #fafbfc; /* encabezado de DataTable (.tbl thead th, ds.css) */
   --sidebar-w: 236px;
   --topbar-h: 64px;
   --content-py: 22px;
@@ -164,6 +178,8 @@
   --color-danger: var(--danger);
   --color-danger-bg: var(--danger-bg);
   --color-danger-800: var(--danger-800);
+  --color-danger-border: var(--danger-border);
+  --color-warning-border: var(--warning-border);
   --color-info: var(--info);
   --color-info-bg: var(--info-bg);
   --color-info-800: var(--info-800);
