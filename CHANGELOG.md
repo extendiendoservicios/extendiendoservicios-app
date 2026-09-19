@@ -278,6 +278,9 @@ Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/C
 - `next-themes`: solo lo usaba `sonner.tsx` para leer el tema del
   sistema operativo/navegador. La Base es solo modo claro (P-118): se
   saca la dependencia y se fija `theme="light"` en el `Toaster`.
+- `public/CNAME` y `public/.nojekyll`: restos del despliegue estático de
+  GitHub Pages, que Vite copiaba a `dist/`. Cloudflare Pages no los usa
+  (INFRA-013, P03.6).
 
 ### Dependencias
 
