@@ -7,9 +7,50 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
-Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007) y tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012).
+Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), y `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022).
 
 ### Agregado
+
+- Shells y router (DS-013 a DS-015, P05.4): `AdminShell`
+  (`src/app/shells/AdminShell.tsx`) con sidebar teal de 236 px (las ocho
+  secciones de P-121, colapsa a íconos de 60 px entre 1024 y 1279 px con
+  `Tooltip`, tabbar inferior por debajo de 1024 con un menú "Más" en
+  `Sheet` para el resto de las secciones), topbar con menú de usuario
+  (`DropdownMenu`, agregado en este paquete) y punto de extensión para el
+  buscador global (P09.0, sin ningún input real todavía); `MobileShell`
+  (`src/app/shells/MobileShell.tsx`) para empleado y supervisor, con
+  cabecera de saludo o navbar de subpágina según la ruta, tabbar propio de
+  cada rol (con el `Fab` "Fichar" integrado en el de empleado) y
+  `ActionBar` (`src/app/shells/ActionBar.tsx`) para las acciones al pie de
+  una subpágina. Router (`src/app/router.tsx`, `src/app/routes/*`) con las
+  51 rutas de `05_Pantallas_y_Navegacion.md` sección 5 como placeholders
+  (título, `screenId` y "Pantalla en construcción."), un `RequireRole`
+  (`src/features/auth/RequireRole.tsx`) por grupo (`/admin`, `/app`,
+  `/sup`, y `/perfil` con el shell según el rol) sobre una sesión
+  provisoria (`src/features/auth/session.ts`) que P06.2 reemplaza sin
+  tocar rutas ni shells (ver `docs/design-system.md`), 404 con la marca
+  (`src/pages/common/NotFoundPage.tsx`) y `AdminShell`/`MobileShell`
+  detrás de `React.lazy` para que el celular no baje el código de
+  administración (ni viceversa).
+- `/dev/rol` (solo en desarrollo, mismo patrón que `/dev/design`): simula
+  un rol (dueño, administrador, empleado, supervisor, o empleado y
+  supervisor a la vez) para recorrer los shells antes de que exista
+  AUTH-002; se guarda en `localStorage`
+  (`src/features/auth/devRole.ts`). Ni la página ni la clave de
+  `localStorage` quedan en `dist/` (verificado con `pnpm build` + `grep`
+  sobre el bundle).
+- `StagingBanner` (`src/components/StagingBanner.tsx`, INFRA-022): franja
+  "Entorno de prueba…" (`role="status"`) cuando `VITE_APP_ENV=staging`,
+  montada una sola vez en `RootLayout` (`router.tsx`) para que la vean
+  todos los layouts, portada incluida, sin tocar cada uno por separado.
+  Nunca en `production` ni en `local`.
+- Tests de Testing Library para `RequireRole` (sin sesión, rol
+  incorrecto, rol correcto, más de un rol a la vez), `AdminShell`
+  (colapso de la sidebar y aparición del tabbar según el ancho, mismo
+  criterio de `matchMedia` simulado que P05.3) y `StagingBanner` (los tres
+  entornos). E2e nuevo
+  (`tests/e2e/protected-route-redirect.spec.ts`): una ruta protegida sin
+  sesión termina en `/ingresar` para `/admin`, `/app` y `/sup`.
 
 - Acciones (DS-003): `Button` restyleado (`variant`: `primary`/`ghost`/
   `dark`/`destructive`/`link`; `size`: `sm`/`md`/`mobile`; ícono a la
@@ -233,6 +274,20 @@ Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/C
 
 ### Corregido
 
+- `ui/button.tsx`: `<Button asChild>` (usado por primera vez en este
+  paquete, en `/dev/rol`) rompía siempre con "Slot failed to slot onto its
+  children" — `Slot.Root` (Radix) exige exactamente un elemento hijo, y el
+  `return` de `Button` le pasaba tres nodos sueltos (ícono/spinner,
+  `children`, texto de carga para lectores de pantalla). Se corrigió
+  armando un único nodo: con `asChild` es directamente `children`; sin
+  `asChild`, los tres de antes dentro de un solo `<>` (a un `<button>` real
+  no le importa recibir un Fragment). Test de regresión en
+  `button.test.tsx`.
+- `ui/dropdown-menu.tsx` (agregado en este paquete): mismo bug de
+  `data-open:`/`data-closed:` que el resto de los componentes shadcn del
+  repo (ver más abajo) — corregido a `data-[state=open]:`/
+  `data-[state=closed]:` en `DropdownMenuContent`, `DropdownMenuSubTrigger`
+  y `DropdownMenuSubContent`, antes de que este paquete llegara a usarlo.
 - Bug heredado de DS-001/DS-002 (P05.1): `dialog.tsx`, `sheet.tsx`,
   `popover.tsx`, `select.tsx`, `tooltip.tsx`, `tabs.tsx`, `separator.tsx`
   y `command.tsx` usaban clases como `data-open:`, `data-closed:`,
