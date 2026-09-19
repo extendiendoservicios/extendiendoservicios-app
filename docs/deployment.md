@@ -188,6 +188,26 @@ todos los días a las 06:00 UTC.
 
 ### 6.3 Restauración de prueba (`scripts/restore-from-r2.sh`, `restore-test.yml`, TEST-024)
 
+> **Defectos conocidos: el workflow está trabado** (revisión del orquestador, P03.7). El job
+> `traba` de `restore-test.yml` aborta antes de tocar nada. Hay que corregir y validar dos
+> cosas antes de la primera corrida real, después de F4:
+>
+> 1. **Paso 1** (`--section=pre-data --clean`): `--clean` solo borra los objetos de la sección
+>    elegida. Las claves foráneas entre tablas de `public` son de post-data y siguen existiendo
+>    cuando se hace el `DROP TABLE`. PostgreSQL no borra una tabla referenciada por otra sin
+>    `CASCADE`, y el orden de borrado depende de los nombres, así que el paso puede fallar.
+>    Solución probable: borrar primero las claves foráneas de `public`.
+> 2. **`--no-privileges`**: las tablas recreadas reciben los permisos por defecto de Supabase
+>    (`GRANT ALL` a `anon`, `authenticated` y `service_role`), no los del volcado. Pero
+>    `04_Modelo_de_Datos.md` exige `revoke all on all tables from anon` y permisos acotados para
+>    `authenticated`: después de una prueba, `App_dev` quedaría más abierto que el diseño.
+>    Solución probable: restaurar los permisos del volcado o volver a aplicar los de las
+>    migraciones.
+>
+> La validación se hace sobre una base de prueba local con Docker (según se decida en D-02) o
+> sobre `App_dev` vacío. Recién después se quita la traba, en el mismo PR que corrige la
+> secuencia.
+
 **Decisión de Mike:** la restauración de prueba es un workflow de GitHub
 (así los secretos de R2/Supabase nunca salen de Actions) y se ejecuta
 cuando `App` (producción) ya tenga las tablas de F4 — hoy `supabase/migrations`
