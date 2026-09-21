@@ -36,6 +36,55 @@
 begin;
 
 -- =================================================================================================
+-- 0 bis. Salvaguarda de entorno (revisión del orquestador, P04.6).
+--
+-- El `truncate ... cascade` de abajo es destructivo, y `scripts/seed-dev.ts` no puede protegerlo:
+-- el script mira la URL del proyecto, pero este archivo se puede correr por cualquier vía
+-- (`supabase db query`, el editor SQL del panel, psql) contra cualquier base. La verificación de
+-- los 14 usuarios que está más abajo ya alcanzaría para que todo revierta, porque el archivo es
+-- una sola transacción, pero llega DESPUÉS del truncate y depende de que nadie parta el archivo
+-- en pedazos. Así que se verifica antes y de forma explícita.
+--
+-- Criterio: este seed es para una base que solo tiene sus propias cuentas ficticias. Si aparece
+-- un usuario de Auth que no está en la lista de 14, es una base con gente de verdad -- `App`
+-- (producción) o `App_dev` con datos que alguien cargó a mano -- y no se toca nada.
+-- =================================================================================================
+
+do $$
+declare
+  v_ajenos int;
+  v_ejemplo text;
+begin
+  select count(*), min(u.email) into v_ajenos, v_ejemplo
+  from auth.users u
+  where lower(u.email) not in (
+    'extserviciosapp@gmail.com',
+    'andrea.rios@extendiendoservicios.com',
+    'paula.lemos@extendiendoservicios.com',
+    'noelia.vera@extendiendoservicios.com',
+    'maria.gomez@extendiendoservicios.com',
+    'juan.perez@extendiendoservicios.com',
+    'sofia.ruiz@extendiendoservicios.com',
+    'carlos.medina@extendiendoservicios.com',
+    'lucia.torres@extendiendoservicios.com',
+    'rocio.aguirre@extendiendoservicios.com',
+    'valeria.paz@extendiendoservicios.com',
+    'diego.fabbri@extendiendoservicios.com',
+    'martin.sosa@extendiendoservicios.com',
+    'patricia.nunez@extendiendoservicios.com'
+  );
+
+  if v_ajenos > 0 then
+    raise exception using
+      errcode = 'P0001',
+      message = format(
+        'Esta base tiene %s usuario(s) que no son del seed ficticio (por ejemplo %s). Este archivo trunca clientes, empleados, feriados y configuración de la empresa: no se corre acá. Para producción está supabase/seed-prod.sql (DB-020), que no borra nada.',
+        v_ajenos, v_ejemplo
+      );
+  end if;
+end $$;
+
+-- =================================================================================================
 -- 0. Reinicio idempotente de los datos de negocio que este archivo vuelve a poblar.
 -- =================================================================================================
 

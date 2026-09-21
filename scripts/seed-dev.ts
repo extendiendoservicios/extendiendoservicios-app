@@ -22,12 +22,15 @@
 //   SUPABASE_SERVICE_ROLE_KEY    Clave de servicio, SOLO local, nunca en el frontend ni en un
 //                                 secreto de CI (el nombre exacto de la variable ya lo dice: no
 //                                 se imprime ni se commitea acá abajo).
-//   SEED_DEV_PASSWORD            Opcional. Contraseña inicial para los usuarios ficticios de
-//                                 staging (mínimo 8 caracteres, P-106). Si no está, usa un valor
-//                                 por defecto documentado en docs/database.md -- no es un secreto
-//                                 real: estas cuentas son ficticias, viven solo en `App_dev`
-//                                 (entorno de prueba, banner "Entorno de prueba" en staging) y
-//                                 nunca en `App` (producción, seed-prod.sql aparte, DB-020).
+//   SEED_DEV_PASSWORD            Obligatoria. Contraseña inicial para los usuarios ficticios de
+//                                 staging (mínimo 8 caracteres, P-106). La elegís vos y vive
+//                                 solo en `.env.local`, que git ignora. NO tiene valor por
+//                                 defecto a propósito: este repositorio es público y `App_dev`
+//                                 es el backend de `dev.extendiendoservicios.com`, accesible
+//                                 desde internet. Una contraseña escrita acá sería la de una
+//                                 cuenta con rol `owner` de un proyecto vivo, publicada para
+//                                 siempre en el historial de git. Los datos son ficticios; el
+//                                 acceso al proyecto, no.
 //
 // Sin dependencia de un framework de línea de comandos ni de `dotenv`: `@supabase/supabase-js`
 // ya estaba faltando como dependencia del proyecto (el frontend todavía no tiene cliente propio,
@@ -44,13 +47,26 @@ import { createClient } from '@supabase/supabase-js'
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-const PASSWORD = process.env.SEED_DEV_PASSWORD ?? 'ExtendiendoServicios2026!'
+const PASSWORD = process.env.SEED_DEV_PASSWORD
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   console.error(
     'Faltan variables de entorno. Corré este script con `node --env-file=.env.local ' +
       'scripts/seed-dev.ts` desde la raíz de `app/`, con VITE_SUPABASE_URL y ' +
       'SUPABASE_SERVICE_ROLE_KEY cargadas en .env.local (docs/environments.md sección 4).',
+  )
+  process.exit(1)
+}
+
+// Sin valor por defecto: ver el comentario de la cabecera. Preferimos que el script no corra
+// antes que publicar la contraseña de una cuenta `owner` de `App_dev` en un repo público.
+if (!PASSWORD || PASSWORD.length < 8) {
+  console.error(
+    'Falta SEED_DEV_PASSWORD en .env.local, o tiene menos de 8 caracteres (P-106).\n' +
+      'Elegí una contraseña para las cuentas ficticias de staging y agregala así:\n' +
+      '  SEED_DEV_PASSWORD=<la que elijas>\n' +
+      'No tiene valor por defecto a propósito: este repositorio es público y esas cuentas ' +
+      'entran a App_dev, que está publicado en dev.extendiendoservicios.com.',
   )
   process.exit(1)
 }

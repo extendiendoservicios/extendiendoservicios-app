@@ -751,10 +751,13 @@ Más dos supervisiones `completed` en días pasados, cada una con su calificaci�
   alcance de este seed, sin efecto real porque todos los servicios nacen con
   `works_on_holidays = true`.
 - **Emails ficticios** bajo `@extendiendoservicios.com` (P-010: login por email real, "real o
-  provisto por la empresa"; sin mapeo por DNI). Contraseña inicial compartida
-  (`SEED_DEV_PASSWORD`, por defecto `ExtendiendoServicios2026!` si la variable no está definida):
-  no es un secreto real, son cuentas ficticias que viven solo en `App_dev` (banner "Entorno de
-  prueba").
+  provisto por la empresa"; sin mapeo por DNI). Contraseña inicial compartida, obligatoria en
+  `SEED_DEV_PASSWORD` (`.env.local`, que git ignora) y **sin valor por defecto a propósito**: los
+  datos de estas cuentas son ficticios, pero el acceso a `App_dev` no lo es. Este repositorio es
+  público y `App_dev` es el backend de `dev.extendiendoservicios.com`, así que una contraseña
+  escrita acá quedaría publicada de forma permanente en el historial de git, y es la de una
+  cuenta con rol `owner` de un proyecto vivo. Si la variable falta, `scripts/seed-dev.ts` corta
+  y explica cómo cargarla.
 - **CUIT/CUIL/DNI ficticios**, sin relación con documentos reales.
 
 **DB-021 (generación de tipos y verificación de diff en CI):** el paso ya estaba escrito en
