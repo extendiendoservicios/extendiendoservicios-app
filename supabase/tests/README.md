@@ -64,20 +64,76 @@ rollback;
 
 ## Fixtures de rol (`tests.as_user`, TEST-002, desde P04.2)
 
-Para probar RLS por rol (owner, admin, supervisor, employee) sobre las filas del seed, cada
-archivo que lo necesite crea, dentro de su propia transacción, un esquema `tests` (si no existe)
-con la función `tests.as_user(email)` que fija los claims de sesión (`request.jwt.claims`, rol
-`authenticated`) como si esa persona del seed hubiese iniciado sesión, para que las políticas RLS
-se evalúen igual que en producción. Ese esquema y esa función:
+Para probar RLS por rol (owner, admin, supervisor, employee) sobre filas conocidas, cada archivo
+que lo necesite crea, dentro de su propia transacción, un esquema `tests` (si no existe) con la
+función `tests.as_user(p_email text)` que fija los claims de sesión (`request.jwt.claims`, rol
+`authenticated`) como si esa persona hubiese iniciado sesión, para que las políticas RLS y las
+funciones de permisos (`app.has_role`, `app.is_admin`, `app.has_capability`, ...) se evalúen
+igual que en producción. Patrón (`select tests.as_user('email@ejemplo.com');` antes de las
+aserciones que necesiten esa sesión):
+
+```sql
+create schema if not exists tests;
+
+-- authenticated/anon necesitan USAGE para poder invocarla de nuevo después de que una llamada
+-- previa haya cambiado el rol activo (si no se va a encadenar más de una llamada en el mismo
+-- archivo, alcanza con dársela a authenticated).
+grant usage on schema tests to authenticated, anon;
+
+create or replace function tests.as_user(p_email text)
+returns void
+language plpgsql
+as $$
+declare
+  v_user_id uuid;
+  v_claims jsonb;
+begin
+  -- Vuelve a postgres primero: si se llama de nuevo después de una simulación previa (rol
+  -- activo != postgres), authenticated/anon no tienen SELECT sobre auth.users.
+  perform set_config('role', 'postgres', true);
+
+  select id into v_user_id from auth.users where email = p_email;
+
+  if v_user_id is null then
+    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+  end if;
+
+  -- Arma los claims con el mismo hook que usa producción (app.custom_access_token_hook, DB-004):
+  -- así el fixture no duplica la lógica de roles/capacidades y cualquier cambio futuro al hook
+  -- se refleja acá solo.
+  v_claims := (
+    app.custom_access_token_hook(
+      jsonb_build_object(
+        'user_id', v_user_id::text,
+        'claims', jsonb_build_object('sub', v_user_id::text, 'email', p_email, 'role', 'authenticated')
+      )
+    )
+  ) -> 'claims';
+
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims', v_claims::text, true);
+end;
+$$;
+
+grant execute on function tests.as_user(text) to authenticated, anon;
+```
+
+Ese esquema y esa función:
 
 - **no** se crean en una migración (no son de negocio ni llegan a producción);
 - se definen dentro de la transacción de cada archivo que los use, igual que la extensión
   `pgtap`, así el `rollback` los deja sin rastro en `App_dev`;
-- se apoyan en el seed (`supabase/seed.sql`, DB-019) para resolver el `profile_id` de cada
-  email de referencia.
-
-La función se escribe en TEST-002 (P04.2); hasta entonces, los tests de estructura y
-restricciones (los que no requieren un rol autenticado) no la usan.
+- hasta que exista el seed (`supabase/seed.sql`, DB-019), cada test crea sus propias filas de
+  `auth.users` (con `raw_user_meta_data` para nombre y apellido) y de `user_roles`/
+  `admin_capabilities` según el rol que necesite, y recién ahí llama a `tests.as_user` con el
+  email que acaba de insertar -- ver
+  `0003_profiles_roles_capabilities_permissions.test.sql` (TEST-002) para un ejemplo completo.
+  **Cuando exista el seed**, los tests de dominio (RLS por tabla) van a poder saltarse ese paso y
+  llamar directo a `tests.as_user('email-del-seed@...')`, porque las filas de `auth.users` y de
+  roles ya van a estar puestas por `seed.sql`/`scripts/seed-dev.ts`; la función en sí no cambia.
+- vuelven a `postgres` al principio del cuerpo antes de tocar `auth.users`, porque `authenticated`
+  no tiene privilegios sobre esa tabla: sin ese paso, una segunda llamada a `tests.as_user` en el
+  mismo archivo (para simular a otra persona) falla con `permission denied for table users`.
 
 ## Qué queda pendiente de decidir en cada tarea de dominio
 

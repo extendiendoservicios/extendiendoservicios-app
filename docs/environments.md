@@ -71,15 +71,16 @@ La configuración de Auth vive versionada en `supabase/config.toml` (bloque
 aplica con `supabase config push` -- no hay pantalla del panel que haya que
 tocar a mano para lo que sigue:
 
-| Regla                  | Valor                                                                                                                                                                                                                                                                   | Decisión                |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| Registro público       | Deshabilitado (`enable_signup = false` general y de email). Los usuarios los crea el dueño o un administrador, por pantalla o por la Admin API (Edge Function `admin-users`, F7).                                                                                       | P-011, ADR-008          |
-| Contraseña mínima      | 8 caracteres, sin otras reglas de composición.                                                                                                                                                                                                                          | P-106                   |
-| JWT                    | 1 hora (`jwt_expiry = 3600`).                                                                                                                                                                                                                                           | P-015                   |
-| Sesión / refresh token | Persistente: rotación de refresh token habilitada con el intervalo de reúso recomendado por Supabase (10 s); sin `[auth.sessions].timebox` ni `.inactivity_timeout` declarados, es decir sin límite por tiempo ni por inactividad.                                      | P-015                   |
-| `site_url`             | `App_dev`: `https://dev.extendiendoservicios.com`. `App`: `https://app.extendiendoservicios.com`.                                                                                                                                                                       | P-111                   |
-| URLs de redirección    | `App_dev`: `http://localhost:5173`, `http://localhost:5173/restablecer`, `https://dev.extendiendoservicios.com`, `https://dev.extendiendoservicios.com/restablecer`. `App`: `https://app.extendiendoservicios.com`, `https://app.extendiendoservicios.com/restablecer`. | COM-03 (`/restablecer`) |
-| Rate limiting          | Sin cambios respecto del valor por defecto de Supabase.                                                                                                                                                                                                                 | P-107                   |
+| Regla                  | Valor                                                                                                                                                                                                                                                                           | Decisión                |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| Registro público       | Deshabilitado (`enable_signup = false` general y de email). Los usuarios los crea el dueño o un administrador, por pantalla o por la Admin API (Edge Function `admin-users`, F7).                                                                                               | P-011, ADR-008          |
+| Contraseña mínima      | 8 caracteres, sin otras reglas de composición.                                                                                                                                                                                                                                  | P-106                   |
+| JWT                    | 1 hora (`jwt_expiry = 3600`).                                                                                                                                                                                                                                                   | P-015                   |
+| Sesión / refresh token | Persistente: rotación de refresh token habilitada con el intervalo de reúso recomendado por Supabase (10 s); sin `[auth.sessions].timebox` ni `.inactivity_timeout` declarados, es decir sin límite por tiempo ni por inactividad.                                              | P-015                   |
+| `site_url`             | `App_dev`: `https://dev.extendiendoservicios.com`. `App`: `https://app.extendiendoservicios.com`.                                                                                                                                                                               | P-111                   |
+| URLs de redirección    | `App_dev`: `http://localhost:5173`, `http://localhost:5173/restablecer`, `https://dev.extendiendoservicios.com`, `https://dev.extendiendoservicios.com/restablecer`. `App`: `https://app.extendiendoservicios.com`, `https://app.extendiendoservicios.com/restablecer`.         | COM-03 (`/restablecer`) |
+| Rate limiting          | Sin cambios respecto del valor por defecto de Supabase.                                                                                                                                                                                                                         | P-107                   |
+| Hook de token          | `[auth.hook.custom_access_token]` habilitado, `uri = "pg-functions://postgres/app/custom_access_token_hook"` (misma función en los dos proyectos: no hay override en `[remotes.produccion]`). Agrega los claims `roles`/`capabilities` al JWT -- detalle en `docs/database.md`. | DB-004                  |
 
 **Aplicado hoy:** `App_dev`, con `pnpm exec supabase config push` (ver
 "Cómo lo verifiqué" en el reporte del encargo para la diferencia exacta que
@@ -97,10 +98,22 @@ pnpm exec supabase config push --project-ref fysuppdadwvabrjpnnoh
 Ese comando usa el bloque `[remotes.produccion]` de `supabase/config.toml`
 (que ya trae el `site_url` y las URLs de redirección de `App`; el resto de
 las reglas -- sin registro público, contraseña mínima, JWT, refresh token,
-rate limiting -- las hereda del bloque `[auth]` raíz, porque son las mismas
-para los dos proyectos) y pide confirmación mostrando el diff antes de
-escribir nada; conviene correr antes `pnpm exec supabase config diff
---project-ref fysuppdadwvabrjpnnoh` para revisarlo sin aplicar cambios.
+rate limiting, hook de token -- las hereda del bloque `[auth]` raíz, porque
+son las mismas para los dos proyectos) y pide confirmación mostrando el
+diff antes de escribir nada; conviene correr antes `pnpm exec supabase
+config diff --project-ref fysuppdadwvabrjpnnoh` para revisarlo sin aplicar
+cambios.
+
+**Orden obligatorio para el hook de token en `App`:** el `uri` apunta a
+`app.custom_access_token_hook`, una función que recién existe después de
+aplicar `supabase/migrations/0003_profiles_roles_capabilities.sql` en
+`App` (F20). Si el `config push` de arriba habilita el hook en `App` antes
+de que esa migración (y las tres tablas que la acompañan) esté aplicada
+ahí, Supabase Auth no va a poder emitir ningún token -- **corta el login de
+todo el mundo en producción** hasta que se corrija. Orden correcto en F20:
+
+1. Migraciones de base de datos (incluida `0003`) contra `App`.
+2. Recién después, el `config push` de arriba contra `App`.
 
 ### Qué no queda versionado ni se pushea con la CLI
 

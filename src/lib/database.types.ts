@@ -39,7 +39,147 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      admin_capabilities: {
+        Row: {
+          capability: Database["public"]["Enums"]["admin_capability"]
+          enabled: boolean
+          profile_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          capability: Database["public"]["Enums"]["admin_capability"]
+          enabled: boolean
+          profile_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          capability?: Database["public"]["Enums"]["admin_capability"]
+          enabled?: boolean
+          profile_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_capabilities_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_capabilities_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_path: string | null
+          contact_email: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          first_name: string
+          id: string
+          is_active: boolean
+          last_name: string
+          last_seen_changes_at: string | null
+          location_consent_at: string | null
+          phone: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          avatar_path?: string | null
+          contact_email?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          first_name: string
+          id: string
+          is_active?: boolean
+          last_name: string
+          last_seen_changes_at?: string | null
+          location_consent_at?: string | null
+          phone?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          avatar_path?: string | null
+          contact_email?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          first_name?: string
+          id?: string
+          is_active?: boolean
+          last_name?: string
+          last_seen_changes_at?: string | null
+          location_consent_at?: string | null
+          phone?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          granted_at: string
+          granted_by: string | null
+          profile_id: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          granted_at?: string
+          granted_by?: string | null
+          profile_id: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          granted_at?: string
+          granted_by?: string | null
+          profile_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_roles_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

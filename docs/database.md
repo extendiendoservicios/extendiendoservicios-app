@@ -32,7 +32,8 @@ y variables en `docs/environments.md`.
 ## Esquema `app`
 
 Funciones auxiliares de permisos, trazabilidad y utilidades (04 sección 5). No contiene tablas.
-Hasta ahora (DB-001, migración `0001_extensions_and_schema_app.sql`):
+
+De `0001_extensions_and_schema_app.sql` (DB-001):
 
 | Función                          | Firma                                          | Uso                                                                                                                                                                                                                                                                                                                                                                                                        |
 | -------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -40,13 +41,93 @@ Hasta ahora (DB-001, migración `0001_extensions_and_schema_app.sql`):
 | `app.local_ts(p_date, p_time)`   | `(date, time) returns timestamptz` `immutable` | Instante UTC de una fecha y hora locales de Argentina. Base de las columnas generadas `starts_at`/`ends_at` de `shifts` (04 sección 2.3, migración `0007`). Inmutable porque la zona no tiene horario de verano desde 2009 (ADR-019): el desplazamiento (`-03:00`) es constante todo el año, se verificó con una fecha de enero y una de julio (`supabase/tests/0001_extensions_and_schema_app.test.sql`). |
 | `app.valid_weekdays(p_weekdays)` | `(smallint[]) returns boolean` `immutable`     | Verdadero si el arreglo no es nulo, tiene al menos un valor, todos entre 0 (domingo) y 6 (sábado), sin repetidos. Usada por el check de `services.weekdays` (04 sección 2.3, migración `0007`, todavía no escrita).                                                                                                                                                                                        |
 
-El resto de las funciones de la sección 5 (`jwt_roles`, `jwt_capabilities`, `has_role`,
-`is_admin`, `has_capability`, `current_employee_id`, `supervises_shift`, `shares_shift`,
-`handle_new_user`, `custom_access_token_hook`, `log_security_event`) depende de tablas que
-todavía no existen o del hook de Auth: llegan desde la migración `0003` (P04.2 en adelante).
+De `0003_profiles_roles_capabilities.sql` (DB-003, DB-004, DB-005; todas con
+`set search_path = public, app, pg_temp`, como exige `03_Plan_Maestro_Tecnico.md` sección 15):
+
+| Función                                | Firma                                               | Uso                                                                                                                                     |
+| -------------------------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `app.jwt_roles()`                      | `() returns app_role[]` `stable`                    | Roles de la sesión actual (claim `roles` del JWT, sección 7.1). Arreglo vacío si no hay ninguno.                                        |
+| `app.jwt_capabilities()`               | `() returns text[]` `stable`                        | Capacidades de la sesión actual (claim `capabilities`, solo se completa para `admin`). Arreglo vacío si no hay ninguna.                 |
+| `app.has_role(p_role)`                 | `(app_role) returns boolean` `stable`               | True si la sesión tiene ese rol.                                                                                                        |
+| `app.is_admin()`                       | `() returns boolean` `stable`                       | True si la sesión es `owner` o `admin`.                                                                                                 |
+| `app.has_capability(p_capability)`     | `(admin_capability) returns boolean` `stable`       | True para `owner` siempre; para `admin`, si la capacidad está en el JWT.                                                                |
+| `app.require_role(variadic p_roles)`   | `(app_role[]) returns void` `stable`                | Corta con `FORBIDDEN` si la sesión no tiene ninguno de los roles indicados.                                                             |
+| `app.require_admin()`                  | `() returns void` `stable`                          | Corta con `FORBIDDEN` si la sesión no es `owner` ni `admin`.                                                                            |
+| `app.require_capability(p_capability)` | `(admin_capability) returns void` `stable`          | Corta con `FORBIDDEN` si la sesión no tiene la capacidad indicada.                                                                      |
+| `app.handle_new_user()`                | `() returns trigger` `security definer`             | Trigger `after insert on auth.users`: crea la fila de `profiles` (nombre y apellido desde `raw_user_meta_data`; si faltan, queda `''`). |
+| `app.prevent_last_owner_removal()`     | `() returns trigger`                                | Trigger `before delete or update on user_roles`: rechaza (`LAST_OWNER`) quitar el rol `owner` a la última persona que lo tiene.         |
+| `app.custom_access_token_hook(event)`  | `(jsonb) returns jsonb` `stable` `security definer` | Hook de Auth (sección siguiente).                                                                                                       |
+
+Pendientes de tablas que todavía no existen: `current_employee_id`, `supervises_shift` y
+`shares_shift` (dependen de `employees`/`shifts`/`assignments`), y `log_security_event`
+(depende de `security_events`, migración `0004`).
 
 Además, `0001` agrega la extensión `btree_gist` (esquema `extensions`), que van a usar las
 restricciones de exclusión de `employee_leaves` (`0006`) y `assignments` (`0007`).
+
+## Personas y acceso (04 sección 2.1, migración `0003`)
+
+`profiles` (una fila por persona con usuario; `id` = `auth.users.id`, la crea
+`app.handle_new_user()`), `user_roles` (roles por persona, PK `(profile_id, role)`, ADR-007) y
+`admin_capabilities` (capacidades por administrador, PK `(profile_id, capability)`, ADR-006). El
+owner tiene todas las capacidades implícitamente y no aparece en esta tabla. La regla "siempre
+queda al menos un owner" la aplica el trigger `app.prevent_last_owner_removal()` (código de error
+`LAST_OWNER`, antes de borrar o actualizar la última fila `owner` de `user_roles`).
+
+**RLS habilitada, todavía sin políticas.** Las tres tablas nacen con
+`alter table ... enable row level security` en la misma migración que las crea, aunque las
+políticas de la sección 7.2 llegan recién en `0012_rls_policies.sql` (DB-014). Esto no es
+opcional: se verificó en `App_dev` que el ACL por defecto del esquema `public` ya concede
+`select/insert/update/delete` a `anon` y a `authenticated` en cuanto `postgres` crea una tabla
+ahí (`select * from pg_default_acl where defaclnamespace = 'public'::regnamespace`), así que sin
+`enable row level security` inmediato cualquier tabla nueva quedaría expuesta por PostgREST desde
+el momento en que la migración se aplica y hasta que 0012 agregue las políticas -- inaceptable
+porque `App_dev` también sirve de staging. **Toda migración de acá en adelante que cree una tabla
+tiene que habilitar RLS en el mismo archivo**, aunque sus políticas lleguen después. Mientras no
+hay políticas, el acceso queda denegado a todos salvo el dueño de la tabla y los roles con el
+atributo `bypassrls` (`postgres`, `service_role`; se comprobó con
+`select rolname, rolbypassrls from pg_roles` que ni `authenticated`/`anon` ni
+`supabase_auth_admin` lo tienen).
+
+`authenticated` tiene `usage` sobre el esquema `app` desde esta migración (antes no tenía ni eso,
+verificado con `has_schema_privilege`): sin ese grant de esquema, ninguna política RLS que use
+`app.has_role(...)` (o cualquier otra función auxiliar) podría evaluarse desde una sesión
+autenticada en `0012`, sin importar el `execute` de la función en sí (Postgres ya concede
+`execute` a `public` -- y por lo tanto a `anon`/`authenticated` -- al crear una función nueva,
+salvo que se revoque explícitamente). No se le da a `anon`, que no participa de ninguna política
+basada en rol (sección 7.2: "anon solo `v_public_branding`").
+
+## Hook de Auth: `app.custom_access_token_hook` (04 sección 7.1, DB-004)
+
+Agrega los claims `roles` (siempre) y `capabilities` (solo si el rol `admin` está entre los
+roles de la persona) a cada JWT, leyendo `user_roles`/`admin_capabilities`. Habilitado en
+`supabase/config.toml` (`[auth.hook.custom_access_token]`, `uri =
+"pg-functions://postgres/app/custom_access_token_hook"`) y aplicado a `App_dev` con
+`pnpm exec supabase config push` (`docs/environments.md` tiene el detalle de cuentas y el
+comando para que Mike lo aplique a `App` cuando corresponda).
+
+Sigue el patrón oficial de Supabase para el "Custom Access Token Hook"
+(<https://supabase.com/docs/guides/auth/auth-hooks/custom-access-token-hook>): firma
+`(event jsonb) returns jsonb` que devuelve el mismo `event` con `claims` modificado
+(`jsonb_set`), y los grants que solo permiten invocarlo a `supabase_auth_admin`:
+
+```sql
+grant usage on schema app to supabase_auth_admin;
+grant execute on function app.custom_access_token_hook(jsonb) to supabase_auth_admin;
+revoke execute on function app.custom_access_token_hook(jsonb) from public, anon, authenticated;
+```
+
+Verificado en `App_dev`: `authenticated` recibe `permission denied for function
+custom_access_token_hook` (`42501`) al intentar llamarlo.
+
+**Diferencia deliberada con el ejemplo oficial:** la documentación de Supabase no marca su
+función de ejemplo `security definer` y en cambio le da a `supabase_auth_admin` acceso directo a
+la tabla que consulta. Acá no alcanza, porque esta base habilita RLS en cuanto crea cada tabla
+(sección anterior) y `supabase_auth_admin` **no** tiene el atributo `bypassrls` (verificado con
+`select rolbypassrls from pg_roles`; sí lo tienen `postgres` y `service_role`). Por eso
+`app.custom_access_token_hook` es `security definer`: corre con los permisos de quien aplicó la
+migración, sin pasar por RLS, y no hace falta darle a `supabase_auth_admin` acceso directo a
+`user_roles`/`admin_capabilities`.
 
 ## Enumeraciones (04 sección 3)
 
@@ -78,7 +159,8 @@ duplican acá para no desincronizarse.
 ## Migraciones aplicadas
 
 Ver `supabase/migrations/README.md` para la tabla completa y actualizada. Hasta este paquete:
-`0001_extensions_and_schema_app.sql` (DB-001) y `0002_enums.sql` (DB-002).
+`0001_extensions_and_schema_app.sql` (DB-001), `0002_enums.sql` (DB-002) y
+`0003_profiles_roles_capabilities.sql` (DB-003, DB-004, DB-005).
 
 ## Cómo escribir una migración
 
@@ -90,7 +172,13 @@ Ver `supabase/migrations/README.md` para la tabla completa y actualizada. Hasta 
 3. Todo lo que la sección 0 exige (trazabilidad, baja lógica, RLS habilitada, `security_invoker`
    en vistas, `security definer` + `search_path` fijo en RPC) se agrega en el mismo archivo que
    crea el objeto, salvo que el modelo lo separe explícitamente en su propio archivo (por ejemplo,
-   las políticas RLS van todas juntas en `0012_rls_policies.sql`).
+   las políticas RLS van todas juntas en `0012_rls_policies.sql`). En particular: **toda tabla
+   nueva lleva `alter table ... enable row level security` en el mismo archivo que la crea**,
+   aunque sus políticas lleguen recién en `0012` -- ver "Personas y acceso" más abajo para por
+   qué no es opcional (el ACL por defecto de `public` ya expone las tablas nuevas a
+   `anon`/`authenticated`). Toda función nueva de `app` lleva `set search_path` fijo desde que se
+   crea (lección de P04.1: las tres funciones de `0001` quedaron sin él y se corrigieron recién en
+   `0018_grants.sql`).
 4. Cada migración trae su/s test/s pgTAP (`supabase/tests/`, ver esa carpeta) antes de darse por
    terminada.
 5. `pnpm exec supabase db push --dry-run` para previsualizar, después `pnpm db:push` contra
