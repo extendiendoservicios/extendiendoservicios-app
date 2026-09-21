@@ -28,11 +28,15 @@ Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/C
   (`0001_extensions_and_schema_app.test.sql`,
   `0002_enums.test.sql`). `docs/database.md` nuevo (convenciones, esquema
   `app`, enumeraciones, cómo escribir una migración y correr pgTAP).
-  Docker Desktop no respondió (`docker version` sin salida ni con el
-  servidor prendido) durante esta entrega: los pgTAP quedaron escritos y
-  revisados a mano contra `App_dev` con `supabase db query`, pero sin
-  poder correr `pg_prove` (ADR-023); quedan para correr en cuanto Docker
-  responda o en el primer PR contra CI.
+  Los 31 tests pasan contra `App_dev` (`pnpm db:test`, 2 archivos). Para
+  que corrieran hubo que agregar dos líneas a cada archivo: con `--linked`
+  la CLI entra con el rol temporal `cli_login_postgres`, que es miembro de
+  `postgres` pero no hereda sus permisos (`set local role postgres`), y
+  las funciones de pgTAP viven en el esquema `extensions`, fuera del
+  `search_path` (`set local search_path`). Verificado además que una
+  corrida no deja rastro: se desinstaló `pgtap` de `App_dev`, se corrió
+  `pnpm db:test` y al terminar la extensión volvió a no estar (la CLI la
+  instala y la desinstala alrededor de la corrida).
 - Cierre de F3 (P03.7): `.github/workflows/restore-test.yml`
   (`workflow_dispatch` con confirmación `restaurar-app-dev`, sin correr
   todavía — se dispara recién con las tablas de F4, TEST-024).

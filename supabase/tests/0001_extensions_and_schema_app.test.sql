@@ -7,6 +7,15 @@
 
 begin;
 
+-- `supabase test db --linked` entra con el rol temporal `cli_login_postgres`, que es miembro de
+-- `postgres` pero no hereda sus permisos: sin tomar el rol, no hay acceso ni al esquema
+-- `extensions` ni a `public`. En el CI la conexión ya es `postgres` y esta línea no cambia nada.
+set local role postgres;
+
+-- pgtap vive en el esquema `extensions`, que no está en el search_path: sin esta línea, `plan()`
+-- y el resto de las aserciones no se encuentran.
+set local search_path = public, extensions, app, pg_temp;
+
 create extension if not exists pgtap with schema extensions;
 
 select plan(16);

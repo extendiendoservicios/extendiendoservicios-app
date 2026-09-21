@@ -1,6 +1,6 @@
 # ADR-014 · Dos proyectos Supabase y desarrollo contra App_dev
 
-Fecha: 17 de septiembre de 2026 · Estado: **Aceptado** · Origen: P-100, P-111, P-112, P-115
+Fecha: 17 de septiembre de 2026 · Estado: **Aceptado**, complementado por ADR-023 (Docker como herramienta de pruebas, 19 sep 2026) · Origen: P-100, P-111, P-112, P-115
 
 ## Problema
 Mike no tiene Supabase local (Docker). Existen dos proyectos vacíos en la organización: `App` y `App_dev`. Hay que definir entornos, dónde se desarrolla y dónde corren los tests.

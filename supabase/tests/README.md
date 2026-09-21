@@ -20,6 +20,9 @@ employee) sobre el seed, usando `tests.as_user(email)` (TEST-002, desde P04.2).
 ```sql
 begin;
 
+set local role postgres;
+set local search_path = public, extensions, app, pg_temp;
+
 create extension if not exists pgtap with schema extensions;
 
 select plan(<n>);
@@ -31,10 +34,20 @@ select * from finish();
 rollback;
 ```
 
+- `set local role postgres` es obligatorio y va primero. Con `--linked`, la CLI entra con un rol
+  temporal, `cli_login_postgres`, que es **miembro de `postgres` pero no hereda sus permisos**:
+  sin tomar el rol no hay acceso al esquema `extensions` ni a `public`, y cualquier aserción
+  falla con `function plan(integer) does not exist` o `permission denied for schema extensions`.
+  En CI la conexión ya es `postgres`, así que la línea no cambia nada.
+- `set local search_path` hace visibles las funciones de pgTAP (viven en `extensions`, que no
+  está en el `search_path` de la sesión) y el esquema `app`.
 - La extensión `pgtap` **no** va en una migración (las migraciones también llegan a
   producción): se crea con `create extension if not exists ... with schema extensions` dentro
   de la misma transacción del archivo, así que el `rollback` también deshace su creación cuando
-  no estaba instalada de antes.
+  no estaba instalada de antes. Además, `supabase test db` la instala antes de la corrida y la
+  desinstala al terminar: verificado el 20 sep 2026 en `App_dev` (se borró la extensión, se
+  corrió `pnpm db:test` y al terminar `pg_extension` volvió a quedar sin `pgtap`). La línea del
+  archivo igual se mantiene, para que cada test se pueda correr suelto con `psql`.
 - Todo el archivo es una única transacción que termina en `rollback`, nunca en `commit`: lo que
   el test crea (filas, tablas temporales, tipos) desaparece solo. Las tablas de prueba se
   declaran `temporary` (con `on commit drop` de más, por las dudas) en vez de tablas

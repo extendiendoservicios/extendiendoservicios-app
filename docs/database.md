@@ -112,8 +112,14 @@ un contenedor:
   `App_dev`, en un runner que ya trae Docker.
 
 `App_dev` también sirve de staging, así que ningún archivo de test puede dejar cambios: la
-convención completa (transacción con `rollback`, creación de la extensión `pgtap` dentro de esa
-misma transacción, nombre de archivo, fixtures de rol) está en `supabase/tests/README.md`.
+convención completa (transacción con `rollback`, `set local role postgres`, `search_path`,
+creación de la extensión `pgtap` dentro de esa misma transacción, nombre de archivo, fixtures de
+rol) está en `supabase/tests/README.md`.
+
+Con `--linked`, la CLI entra con el rol temporal `cli_login_postgres`, que es miembro de
+`postgres` pero **no hereda** sus permisos: por eso cada archivo empieza con
+`set local role postgres`. Sin esa línea, las aserciones fallan con
+`function plan(integer) does not exist`.
 
 ## Tipos para el frontend
 
