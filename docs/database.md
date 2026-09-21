@@ -81,6 +81,13 @@ De `0010_supervisions_ratings.sql` (DB-012):
 Con esto queda completa la sección 5 del modelo (todas las funciones auxiliares de `app` ya
 existen).
 
+De `0011_views.sql` (DB-013), auxiliar nuevo -- no está en la lista de la sección 5 del modelo,
+se agrega para las columnas derivadas de las vistas que necesitan "hoy" en Argentina:
+
+| Función       | Firma                      | Uso                                                                                                                                             |
+| ------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app.today()` | `() returns date` `stable` | Fecha de hoy en `America/Argentina/Buenos_Aires` (ADR-019). Usada por `v_employees` (licencia vigente) y `v_my_day` (ventana de 7 días, P-093). |
+
 Además, `0001` agrega la extensión `btree_gist` (esquema `extensions`), que usan las
 restricciones de exclusión de `employee_leaves` (`0006`) y `assignments` (`0007`).
 
@@ -389,6 +396,114 @@ sección 5 del modelo.
 
 Las cuatro tablas nacen con RLS habilitada y sin políticas (llegan en `0012`, DB-014).
 
+## Vistas (04 sección 4, migración `0011`, DB-013)
+
+Las diez vistas de `04_Modelo_de_Datos.md` sección 4, todas `with (security_invoker = true)`: la
+visibilidad de FILAS la deciden las políticas RLS de las tablas base (`0012`), no la vista -- la
+vista solo proyecta y calcula columnas derivadas.
+
+Agrega `app.today()` (`() returns date` `stable`), auxiliar nuevo que no está en la lista de
+`04` sección 5: fecha de hoy en `America/Argentina/Buenos_Aires` (ADR-019), para no repetir
+`(now() at time zone 'America/Argentina/Buenos_Aires')::date` en cada vista que la necesita
+(licencia vigente de `v_employees`, ventana de 7 días de `v_my_day`).
+
+| Vista                  | Filas                                                                                                             | Columnas derivadas (decisión de implementación)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `v_employees`          | `employees` join `profiles`                                                                                       | `effective_status` = `on_leave` si hay una `employee_leaves` vigente hoy (`deleted_at is null`, `starts_on <= hoy <= coalesce(ends_on, hoy)`), si no `employees.status`. `roles`: `array_agg` de `user_roles.role` (orden del enum, no alfabético: `owner, admin, supervisor, employee`).                                                                                                                                                                                                                                                                                                                                                                 |
+| `v_shifts_board`       | `shifts` join `clients`/`sites`, conteos de `assignments`                                                         | `assigned_count`/`present_count`/`finished_count`/`absent_count`/`delayed_count` sobre asignaciones vigentes (`removed_at is null`). `display_status`: `uncovered` si `status not in (in_progress, completed, cancelled)` y `assigned_count < required_staff` y (`now() > starts_at` o hay alguna asignación vigente `absence_notified`); `upcoming` si `status in (scheduled, assigned)` y `starts_at` está entre ahora y ahora + 2 horas; si no, el `status` real. La fórmula exacta de `uncovered` es una decisión de implementación (04 la describe en prosa, sin álgebra booleana) documentada en el comentario de la migración.                     |
+| `v_assignments_board`  | `assignments` join `shifts`/`clients`/`sites`/`profiles`, `attendance_records`                                    | Franja efectiva: `coalesce(start_time/end_time, turno)` y `lower/upper(assignments."window")`. `display_status = no_record` si `status in (expected, delay_notified)` y ya pasó el inicio efectivo (P-071). `minutes_late`/`minutes_early_leave` (P-076): minutos entre el registro y la hora efectiva, solo si el registro llegó después del inicio (o antes del fin, para early leave) -- `minutes_late` no está en `02_Decisiones.md`, se implementó por simetría con `minutes_early_leave`, que sí. Incluye asignaciones quitadas (`removed_at not null`): la fila queda para historia (04 sección 2.3), quien consuma la vista filtra si las quiere. |
+| `v_my_day`             | `assignments` propias (`employee_id = auth.uid()` en la definición, no solo por RLS) de hoy y los próximos 7 días | `is_today`, `tasks_total`/`tasks_done` (conteo de `shift_tasks`), `changed_since_last_seen` (P-092): compara `greatest(coalesce(updated_at, created_at))` de la asignación y del turno contra `profiles.last_seen_changes_at` (`coalesce` con `-infinity` si nunca abrió Hoy: todo se marca como cambiado).                                                                                                                                                                                                                                                                                                                                               |
+| `v_supervisions_admin` | `supervisions` join `shifts`/`clients`/`sites`/`profiles`                                                         | `ratings_count`, `ratings_avg` (`numeric(3,2)`, promedio simple del turno -- P-088: los promedios por empleado son módulo F).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `v_my_supervisions`    | `supervisions` propias (`supervisor_id = auth.uid()` en la definición)                                            | `assigned_employees`: `jsonb` con los empleados asignados vigentes del turno (id, nombre, estado).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `v_public_branding`    | `company_settings` (fila `id = 1`)                                                                                | Solo `name`, `logo_path`, `support_phone` (04 sección 7.2): no expone `location_consent_text` ni `updated_by`/`updated_at`. Única vía de `anon` hacia `company_settings`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `v_people_basic`       | `profiles`                                                                                                        | Solo `profile_id`, `first_name`, `last_name`, `avatar_path` (04 sección 7.2, P-103): la vista recorta columnas; qué personas ve cada rol lo decide la RLS de `profiles`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `v_clients`            | `clients`, conteos de `sites`/`services`                                                                          | `sites_count` (sedes vigentes, `deleted_at is null`, sin filtrar por estado), `active_services_count` (`services.status = active` y vigente).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `v_search`             | `employees`+`profiles`, `clients`, `sites` (unión)                                                                | PROPUESTO (06_API.md sección 3): forma común `kind` (`employee`/`client`/`site`), `id`, `title`, `subtitle`, `search_text` (concatenación en minúsculas, pensada para `.ilike('search_text', '%término%')` desde el cliente). Forma a confirmar con EMP-012 (F9) si hace falta full-text search de verdad.                                                                                                                                                                                                                                                                                                                                                |
+
+Detalle completo (fixtures, casos borde probados) en `supabase/tests/0011_views.test.sql` y
+`supabase/tests/0011_views_my_day_supervisions_search.test.sql`.
+
+## Políticas RLS (04 sección 7.2, migración `0012`, DB-014)
+
+Tabla por tabla, sobre las 23 tablas de negocio (más dos políticas de `anon` sobre
+`company_settings`, ver abajo). Convenciones:
+
+- Roles y capacidades se leen del JWT con `app.is_admin()`, `app.has_role(...)`,
+  `app.has_capability(...)`, sin subconsultas contra `user_roles`/`admin_capabilities` (04 sección
+  7.1: el hook ya los puso en el token). Las subconsultas que sí aparecen resuelven "¿esta fila
+  pertenece a un turno mío?" contra `assignments`/`supervisions`/`shifts` (equivalente por-fila de
+  `app.shares_shift`/`app.supervises_shift` cuando la tabla no tiene un `shift_id` propio).
+- Donde la escritura es "RPC" en `04` sección 7.2 (turnos, asignaciones -- salvo notas propias --,
+  asistencia, tareas, supervisiones, calificaciones), esta migración no agrega política de
+  insert/update/delete para ningún rol: esas RPC (fases 10 a 15) son `security definer` y no
+  necesitan grant de `authenticated`.
+- Ningún rol tiene política de `delete`: nada se borra físicamente (P-014, P-105); la baja es
+  siempre `update` (`deleted_at`, `removed_at`, `status`).
+- Las tablas con `deleted_at` filtran `deleted_at is null` en las políticas de supervisor/empleado
+  (04 sección 0); owner/admin ven todo, incluidas las filas dadas de baja lógica.
+- `to authenticated` en todas las políticas salvo las dos de `anon` sobre `company_settings`.
+
+**Límite real de "solo columnas" en Postgres (decisión de Mike, tramo A de P04.5).** RLS es por
+fila, no por columna. `04` sección 7.2 pide, para `profiles` (empleado: compañeros) y
+`clients`/`client_contacts` (empleado: clientes de sus turnos), exponer "solo columnas" limitadas
+a quien de otro modo vería la fila completa. Como las diez vistas de `0011` son `security_invoker`
+(para que la RLS de las tablas base decida qué filas se ven), la única manera de que
+`v_people_basic` muestre compañeros es que la política de `profiles` le dé al empleado acceso de
+FILA a esas personas -- no hay forma de restringir, encima, las columnas que ve _solo para esas
+filas_ sin un grant de columnas distinto por fila (que Postgres no ofrece). Resolución, distinta
+según la tabla:
+
+- `profiles`: se mantiene el acceso de fila del empleado a los perfiles de sus compañeros de turno
+  (`profiles_select_employee_teammates`), sin restricción de columna en este tramo. **Riesgo
+  residual aceptado por Mike:** un cliente API que consulte `profiles` en crudo para la fila de un
+  compañero puede leer `contact_email`/`phone` además de nombre y foto (lo único que el frontend
+  muestra, vía `v_people_basic`).
+- `client_contacts`: acá sí se cierra el acceso del empleado -- `client_contacts_select_shift_party`
+  es solo para `supervisor`. Los datos de contacto (teléfono, email) de la gente del cliente no los
+  necesita un empleado, a diferencia del nombre del cliente en `clients`, que sí conserva su acceso
+  de fila para empleado (mismo riesgo residual que `profiles`, pero acotado a
+  `legal_name`/`trade_name`/`cuit`/etc., de menor sensibilidad que un teléfono o email personal).
+
+**Guard de rol en las políticas "propias" de supervisión (decisión de consistencia, tramo A).**
+`supervisions_select_own`, `supervision_attendance_select_own` y `ratings_select_own_supervision`
+verifican `app.has_role('supervisor')` además de `supervisor_id = auth.uid()`. Sin ese chequeo, a
+alguien a quien le quitaron el rol supervisor le seguirían apareciendo sus supervisiones,
+asistencias y calificaciones pasadas por esta vía -- no es una brecha grave (ya fue supervisor de
+esa fila, no ve datos ajenos), pero rompe el patrón del resto de las políticas de rol no
+administrativo del archivo, que siempre exigen el rol vigente en el JWT antes de mirar la relación
+de fila.
+
+**`company_settings` y `anon`.** Es la única tabla con una política para `anon`
+(`company_settings_select_anon`, `using (true)`): necesaria para que `v_public_branding` funcione
+bajo `security_invoker`. A diferencia de `profiles`/`clients`, acá no hay riesgo residual de
+"fila ajena con más columnas de las debidas": `company_settings` es un singleton (una sola fila
+para todo el mundo), así que el recorte de columnas para `anon` (`name`, `logo_path`,
+`support_phone`) sí se puede lograr con un grant de columnas más adelante (`0017_grants.sql`,
+DB-017, tramo B) sin el problema de "misma fila, columnas distintas según quién mira" que sí tienen
+`profiles`/`clients`. Hasta que ese grant llegue, `anon` ve la fila completa de `company_settings`
+por el ACL por defecto del esquema (nota de seguridad de `0003`); `v_public_branding` igual solo
+proyecta las tres columnas públicas.
+
+**Columnas de `profiles` y `assignments.notes` pendientes de grant (tramo B).** El `update` propio
+de `profiles` (`profiles_update_own`) y el `update` de `assignments.notes` por el empleado
+(`assignments_update_own_notes`) están limitados por fila en este tramo (`id = auth.uid()`;
+`employee_id = auth.uid()` y turno no `completed`), pero **no** todavía por columna: hasta que
+`0017_grants.sql` agregue `grant update (contact_email, phone, avatar_path, location_consent_at,
+last_seen_changes_at) on profiles to authenticated` y `grant update (notes) on assignments to
+authenticated`, una persona autenticada podría, en su propia fila, actualizar columnas que no le
+corresponden (por ejemplo `profiles.is_active`). Documentado en los comentarios de la migración
+para que no se pierda al escribir `0017` (DB-017).
+
+Detalle completo (RLS por rol, con las filas exactas esperadas sobre fixtures) en
+`supabase/tests/0012_rls_policies.test.sql`,
+`supabase/tests/0012_rls_policies_clients_sites_services_shifts.test.sql`,
+`supabase/tests/0012_rls_policies_assignments_attendance_tasks.test.sql` y
+`supabase/tests/0012_rls_policies_supervisions_ratings_settings.test.sql`. Estos dos criterios de
+aceptación de F4 tienen un test explícito: un empleado autenticado no lee `ratings` (ni siquiera la
+propia, P-084) ni asignaciones de turnos ajenos (P-103: sí lee las propias y las de compañeros del
+mismo turno); `anon` no lee ninguna tabla de negocio salvo lo que expone `v_public_branding`
+(con la salvedad de `company_settings` fila completa, documentada arriba).
+
 ## Enumeraciones (04 sección 3)
 
 Las 15 enumeraciones del modelo, en el esquema `public`, migración `0002_enums.sql`. Agregar un
@@ -424,7 +539,8 @@ Ver `supabase/migrations/README.md` para la tabla completa y actualizada. Hasta 
 `0004_company_holidays_security_events.sql` (DB-006),
 `0005_clients_sites.sql` (DB-007), `0006_employees.sql` (DB-008),
 `0007_services_shifts_assignments.sql` (DB-009), `0008_checklists_tasks.sql` (DB-010),
-`0009_attendance.sql` (DB-011) y `0010_supervisions_ratings.sql` (DB-012).
+`0009_attendance.sql` (DB-011), `0010_supervisions_ratings.sql` (DB-012),
+`0011_views.sql` (DB-013) y `0012_rls_policies.sql` (DB-014).
 
 ## Cómo escribir una migración
 
@@ -441,8 +557,9 @@ Ver `supabase/migrations/README.md` para la tabla completa y actualizada. Hasta 
    aunque sus políticas lleguen recién en `0012` -- ver "Personas y acceso" más abajo para por
    qué no es opcional (el ACL por defecto de `public` ya expone las tablas nuevas a
    `anon`/`authenticated`). Toda función nueva de `app` lleva `set search_path` fijo desde que se
-   crea (lección de P04.1: las tres funciones de `0001` quedaron sin él y se corrigieron recién en
-   `0018_grants.sql`).
+   crea (lección de P04.1: las tres funciones de `0001` quedaron sin él; la corrección está
+   prevista para `0016_hardening.sql` según la numeración vigente desde el 21 sep 2026 -- ver
+   `04_Modelo_de_Datos.md` sección 11 -- todavía no escrita al cierre del tramo A de P04.5).
 4. Cada migración trae su/s test/s pgTAP (`supabase/tests/`, ver esa carpeta) antes de darse por
    terminada.
 5. `pnpm exec supabase db push --dry-run` para previsualizar, después `pnpm db:push` contra
