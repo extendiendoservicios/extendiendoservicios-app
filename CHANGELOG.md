@@ -7,7 +7,7 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
-Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022), y el cierre de F5: marca de la sidebar e íconos PWA desde un PNG temporal, `vite-plugin-pwa` y `/dev/design` completo (F5 · DS-016, DS-018 a DS-020, RESP-001, DOC-005), el cierre de F3 (F3 · DOC-003, INFRA-024, TEST-024), la revisión visual de cierre de F5 (P05.6), el inicio de F4: extensiones, esquema `app` y enumeraciones, con su runner de pgTAP (F4 · DB-001, DB-002, DB-022, TEST-001), y la continuación de F4: personas y acceso, hook de Auth y funciones de permisos (F4 · DB-003, DB-004, DB-005, TEST-002).
+Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022), y el cierre de F5: marca de la sidebar e íconos PWA desde un PNG temporal, `vite-plugin-pwa` y `/dev/design` completo (F5 · DS-016, DS-018 a DS-020, RESP-001, DOC-005), el cierre de F3 (F3 · DOC-003, INFRA-024, TEST-024), la revisión visual de cierre de F5 (P05.6), el inicio de F4: extensiones, esquema `app` y enumeraciones, con su runner de pgTAP (F4 · DB-001, DB-002, DB-022, TEST-001), la continuación de F4: personas y acceso, hook de Auth y funciones de permisos (F4 · DB-003, DB-004, DB-005, TEST-002), y la continuación de F4: configuración y seguridad, clientes y sedes, y empleados (F4 · DB-006, DB-007, DB-008).
 
 ### Agregado
 
@@ -59,6 +59,32 @@ Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/C
   claims que arma el propio hook; documentado en
   `supabase/tests/README.md`. 96 tests pgTAP pasan contra `App_dev`
   (`pnpm db:test`, 4 archivos); tipos regenerados sin diferencia.
+- Continuación de F4 (P04.3): migraciones
+  `0004_company_holidays_security_events.sql` (DB-006),
+  `0005_clients_sites.sql` (DB-007) y `0006_employees.sql` (DB-008) — los
+  maestros: `company_settings` (singleton `id = 1`), `holidays`,
+  `security_events` con `app.log_security_event(...)` (uso interno, sin
+  `execute` para `authenticated`/`anon`); `clients`, `client_contacts`
+  (un solo contacto principal por cliente, índice único parcial) y
+  `sites` (nombre único por cliente, `unique (id, client_id)` para las
+  FK compuestas que van a agregar `services`/`shifts` en `0007`);
+  `employees` (secuencia `employee_number_seq`, editable),
+  `employee_client_permissions`, `employee_availability` (check
+  `end_time > start_time`) y `employee_leaves` (check
+  `ends_on >= starts_on` y restricción de exclusión sobre el rango de
+  fechas con `btree_gist`, acotada a `deleted_at is null` para que una
+  licencia corregida no siga bloqueando su rango). RLS habilitada en las
+  diez tablas desde que nacen, sin políticas todavía (llegan en `0012`,
+  DB-014). Tres decisiones menores documentadas en `docs/database.md`:
+  `status` de `clients`/`sites`/`employees` nace en `'active'` por
+  defecto (el modelo no lo anota); `security_events.actor_id`/
+  `target_id` referencian `profiles.id` igual que `user_roles.granted_by`
+  en `0003`; ningún `check` de formato para `cuit`/`dni` (el modelo los
+  describe en prosa, no como `check`, a diferencia de, por ejemplo, el
+  rango horario de `employee_availability`). Las tres migraciones
+  aplicadas en `App_dev` (`pnpm db:push`) y tipos regenerados sin
+  diferencia. 219 tests pgTAP pasan contra `App_dev` (`pnpm db:test`, 7
+  archivos).
 - Cierre de F3 (P03.7): `.github/workflows/restore-test.yml`
   (`workflow_dispatch` con confirmación `restaurar-app-dev`, sin correr
   todavía — se dispara recién con las tablas de F4, TEST-024).

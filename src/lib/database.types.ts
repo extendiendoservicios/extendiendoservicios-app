@@ -78,6 +78,472 @@ export type Database = {
           },
         ]
       }
+      client_contacts: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          email: string | null
+          id: string
+          is_primary: boolean
+          name: string
+          phone: string | null
+          role_title: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          email?: string | null
+          id?: string
+          is_primary?: boolean
+          name: string
+          phone?: string | null
+          role_title?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          email?: string | null
+          id?: string
+          is_primary?: boolean
+          name?: string
+          phone?: string | null
+          role_title?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_contacts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_contacts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_contacts_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          admin_address: string | null
+          created_at: string
+          created_by: string | null
+          cuit: string | null
+          deleted_at: string | null
+          id: string
+          latitude: number | null
+          legal_name: string
+          longitude: number | null
+          notes: string | null
+          status: Database["public"]["Enums"]["client_status"]
+          trade_name: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          admin_address?: string | null
+          created_at?: string
+          created_by?: string | null
+          cuit?: string | null
+          deleted_at?: string | null
+          id?: string
+          latitude?: number | null
+          legal_name: string
+          longitude?: number | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["client_status"]
+          trade_name?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          admin_address?: string | null
+          created_at?: string
+          created_by?: string | null
+          cuit?: string | null
+          deleted_at?: string | null
+          id?: string
+          latitude?: number | null
+          legal_name?: string
+          longitude?: number | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["client_status"]
+          trade_name?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_settings: {
+        Row: {
+          id: number
+          location_consent_text: string | null
+          logo_path: string | null
+          name: string | null
+          support_phone: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id: number
+          location_consent_text?: string | null
+          logo_path?: string | null
+          name?: string | null
+          support_phone?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: number
+          location_consent_text?: string | null
+          logo_path?: string | null
+          name?: string | null
+          support_phone?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_availability: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          end_time: string
+          id: string
+          start_time: string
+          updated_at: string | null
+          updated_by: string | null
+          weekday: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          end_time: string
+          id?: string
+          start_time: string
+          updated_at?: string | null
+          updated_by?: string | null
+          weekday: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          end_time?: string
+          id?: string
+          start_time?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_availability_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_availability_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employee_availability_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_client_permissions: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          employee_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_client_permissions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_client_permissions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_client_permissions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      employee_leaves: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          employee_id: string
+          ends_on: string | null
+          id: string
+          reason: string | null
+          starts_on: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          employee_id: string
+          ends_on?: string | null
+          id?: string
+          reason?: string | null
+          starts_on: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          employee_id?: string
+          ends_on?: string | null
+          id?: string
+          reason?: string | null
+          starts_on?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_leaves_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_leaves_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employee_leaves_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employees: {
+        Row: {
+          address: string | null
+          birth_date: string | null
+          created_at: string
+          created_by: string | null
+          cuil: string | null
+          deleted_at: string | null
+          dni: string
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          emergency_contact_relationship: string | null
+          employee_number: number
+          hire_date: string | null
+          notes: string | null
+          profile_id: string
+          status: Database["public"]["Enums"]["employee_status"]
+          terminated_at: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          address?: string | null
+          birth_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          cuil?: string | null
+          deleted_at?: string | null
+          dni: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
+          employee_number?: number
+          hire_date?: string | null
+          notes?: string | null
+          profile_id: string
+          status?: Database["public"]["Enums"]["employee_status"]
+          terminated_at?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          address?: string | null
+          birth_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          cuil?: string | null
+          deleted_at?: string | null
+          dni?: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
+          employee_number?: number
+          hire_date?: string | null
+          notes?: string | null
+          profile_id?: string
+          status?: Database["public"]["Enums"]["employee_status"]
+          terminated_at?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      holidays: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          holiday_date: string | null
+          id: string
+          name: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          holiday_date?: string | null
+          id?: string
+          name?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          holiday_date?: string | null
+          id?: string
+          name?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "holidays_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "holidays_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_path: string | null
@@ -137,6 +603,142 @@ export type Database = {
           },
           {
             foreignKeyName: "profiles_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      security_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          details: Json | null
+          event_type: Database["public"]["Enums"]["security_event_type"]
+          id: string
+          ip: unknown
+          target_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          details?: Json | null
+          event_type: Database["public"]["Enums"]["security_event_type"]
+          id?: string
+          ip?: unknown
+          target_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          details?: Json | null
+          event_type?: Database["public"]["Enums"]["security_event_type"]
+          id?: string
+          ip?: unknown
+          target_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_events_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sites: {
+        Row: {
+          access_instructions: string | null
+          address: string
+          building_hours: string | null
+          city: string | null
+          client_id: string
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          name: string
+          phone_restricted: boolean
+          photos_not_allowed: boolean
+          restrictions_notes: string | null
+          status: Database["public"]["Enums"]["site_status"]
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          access_instructions?: string | null
+          address: string
+          building_hours?: string | null
+          city?: string | null
+          client_id: string
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          phone_restricted?: boolean
+          photos_not_allowed?: boolean
+          restrictions_notes?: string | null
+          status?: Database["public"]["Enums"]["site_status"]
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          access_instructions?: string | null
+          address?: string
+          building_hours?: string | null
+          city?: string | null
+          client_id?: string
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          phone_restricted?: boolean
+          photos_not_allowed?: boolean
+          restrictions_notes?: string | null
+          status?: Database["public"]["Enums"]["site_status"]
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sites_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sites_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
