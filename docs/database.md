@@ -64,10 +64,24 @@ De `0004_company_holidays_security_events.sql` (DB-006):
 | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `app.log_security_event(p_event_type, p_actor_id, p_target_id?, p_details?, p_ip?)` | `(security_event_type, uuid, uuid, jsonb, inet) returns security_events` `security definer` | Inserta una fila en `security_events` y la devuelve (04 sección 5). Uso interno: solo la llaman funciones `security definer` del sistema (dueñas: `postgres`, igual que la función); no es una RPC de la sección 9, así que se le revocó el `execute` que Postgres concede a `public` por defecto -- verificado en `App_dev` que `authenticated` recibe `permission denied for function log_security_event` (`42501`). |
 
-Pendientes de tablas que todavía no existen: `current_employee_id`, `supervises_shift` y
-`shares_shift` (dependen de `employees`/`shifts`/`assignments`, migración `0007`).
+De `0007_services_shifts_assignments.sql` (DB-009):
 
-Además, `0001` agrega la extensión `btree_gist` (esquema `extensions`), que van a usar las
+| Función                        | Firma                                                | Uso                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------ | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app.sync_assignment_window()` | `() returns trigger`                                 | Trigger: mantiene `assignments.shift_date`/`"window"` (rango `[)` en UTC de la franja efectiva). `before insert or update of shift_id, start_time, end_time on assignments` recalcula la fila propia; `after update of shift_date, start_time, end_time on shifts` recalcula las asignaciones vigentes del turno (04 sección 2.3, P-053). |
+| `app.current_employee_id()`    | `() returns uuid` `stable` `security definer`        | `auth.uid()` si la sesión tiene fila en `employees` (cualquiera sea su `status`), `null` si no. `security definer` porque `employees` ya tiene RLS habilitada y la función se evalúa dentro de políticas de otras tablas desde `0012`.                                                                                                    |
+| `app.shares_shift(p_shift_id)` | `(uuid) returns boolean` `stable` `security definer` | True si la sesión tiene una asignación vigente (`removed_at is null`) en ese turno (P-103, "ver compañeros").                                                                                                                                                                                                                             |
+
+De `0010_supervisions_ratings.sql` (DB-012):
+
+| Función                            | Firma                                                | Uso                                                                                                                             |
+| ---------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `app.supervises_shift(p_shift_id)` | `(uuid) returns boolean` `stable` `security definer` | True si la sesión tiene una supervisión no cancelada sobre ese turno. Pendiente desde `0007` porque dependía de `supervisions`. |
+
+Con esto queda completa la sección 5 del modelo (todas las funciones auxiliares de `app` ya
+existen).
+
+Además, `0001` agrega la extensión `btree_gist` (esquema `extensions`), que usan las
 restricciones de exclusión de `employee_leaves` (`0006`) y `assignments` (`0007`).
 
 ## Personas y acceso (04 sección 2.1, migración `0003`)
@@ -223,6 +237,158 @@ una licencia corregida (dada de baja lógica) no siga bloqueando el rango de fec
 
 Las cuatro tablas nacen con RLS habilitada y sin políticas (llegan en `0012`, DB-014).
 
+## Servicios, turnos y asignaciones (04 sección 2.3, migración `0007`)
+
+El corazón de la operación. `services` (acuerdo recurrente: `client_id not null`, `site_id not
+null` -- FK compuesta `(site_id, client_id) references sites (id, client_id)`, igual criterio que
+la de `sites` en `0005` --, `weekdays smallint[] not null check (app.valid_weekdays(weekdays))`,
+franja `check (end_time > start_time)`, `required_staff smallint not null default 1 check
+(between 1 and 10)`, `valid_from`/`valid_to`, `works_on_holidays not null default true` --
+decisión menor, P-050 queda POR CONFIRMAR en F10 --, horas informativas, `status service_status
+not null default 'active'`, traza + `deleted_at`).
+
+`shifts` (ocurrencia fechada: `service_id` nulo = turno puntual, `client_id`/`site_id not null`
+con la misma FK compuesta, `shift_date`/franja/`required_staff` con los mismos checks que
+`services`, `status shift_status not null default 'scheduled'`, `generated not null default
+false`, `checklist_template_id uuid` **sin FK todavía** -- `checklist_templates` nace en `0008`,
+después en el orden de la sección 11; la FK se agrega ahí con `alter table` --, campos de
+cancelación con `check` de conjunto -- `cancelled_at`/`cancelled_by`/`cancel_reason` obligatorios
+los tres cuando `status = 'cancelled'` --, traza + `deleted_at`). Columnas generadas `starts_at`/
+`ends_at timestamptz generated always as (app.local_ts(shift_date, start_time/end_time)) stored`
+(ADR-019; probado con una fecha de enero y otra de julio, mismo desplazamiento `-03:00`, sin
+horario de verano). Unicidad parcial `shifts_service_id_shift_date_key` sobre `(service_id,
+shift_date) where service_id is not null and deleted_at is null` (ADR-010): un turno **cancelado**
+(`status = 'cancelled'`, `deleted_at` sigue `null`) **sigue bloqueando** el día -- la restricción
+solo excluye `deleted_at is null`, no el `status` --; un turno **dado de baja lógica** (`deleted_at`
+no nulo) sí libera el día. Índices de 04 sección 8: `(shift_date)`, `(site_id, shift_date)`,
+`(status) where status in ('scheduled','assigned','in_progress')` (el par `(service_id,
+shift_date)` ya lo cubre el índice único parcial, no se duplica).
+
+`assignments` (empleado × turno: `start_time`/`end_time time null` -- franja propia opcional,
+P-046 --, con un `check` propio (`end_time > start_time` cuando ambas puntas vienen indicadas,
+decisión menor: el modelo no lo pide explícito) que en la práctica queda de respaldo porque el
+constructor de `tstzrange` del trigger ya rechaza antes una franja invertida con `22000`, ver test;
+`status assignment_status not null default 'expected'`; baja lógica con `removed_at`/`removed_by`/
+`removed_reason`, los dos últimos obligatorios cuando el primero no es nulo; **sin** `deleted_at`
+-- el modelo la lista como "Traza" simple --; `shift_date date not null`/`"window" tstzrange not
+null` denormalizadas, con la columna citada entre comillas dobles porque `window` es palabra
+reservada de SQL, verificado al aplicar la migración: `syntax error at or near "window"`).
+
+El trigger `app.sync_assignment_window()` mantiene `shift_date`/`"window"`: `before insert or
+update of shift_id, start_time, end_time on assignments` recalcula la fila propia leyendo el
+turno referenciado (franja efectiva = la propia si existe, si no la del turno; rango `"[)"` --
+media abierta -- para que dos turnos consecutivos sin hueco, por ejemplo 08-12 y 12-16, no se
+consideren superpuestos); `after update of shift_date, start_time, end_time on shifts` recalcula
+**todas** las asignaciones que referencian ese turno (incluidas las quitadas, `removed_at not
+null` -- decisión menor: no se filtró, así queda documentado; no afecta ninguna regla porque las
+quitadas ya están fuera de la exclusión y de las consultas activas) cuando cambia la fecha o la
+franja del turno (`update_shift_time`, `0013`, todavía no escrita). Verificado en `App_dev`: al
+correr el turno de 08:00 a 07:00, la asignación sin franja propia pasa de `[11:00,15:00)` a
+`[10:00,15:00)` UTC (07:00-12:00 ART) mientras que la asignación con franja propia (09:00-10:00
+ART) no se mueve.
+
+Restricción de exclusión `assignments_no_overlap` (P-053) `exclude using gist (employee_id with
+=, "window" with &&) where (removed_at is null)`: bloquea que el mismo empleado tenga dos
+asignaciones vigentes con ventanas superpuestas (verificado: dos turnos que se pisan -> `23P01`;
+adyacentes o con franja propia que evita el cruce -> entran; una asignación quitada libera el
+rango). Unicidad parcial `assignments_shift_id_employee_id_key` sobre `(shift_id, employee_id)
+where removed_at is null`: un empleado no puede tener dos asignaciones vigentes del mismo turno,
+_independiente_ de si las franjas se pisan o no (verificado con dos franjas que no se solapan:
+igual la rechaza la unicidad, no la exclusión). Índices de 04 sección 8: `(employee_id,
+shift_date)`, `(shift_id) where removed_at is null`.
+
+`app.current_employee_id()` (`auth.uid()` si existe fila en `employees`, sea cual sea su
+`status`) y `app.shares_shift(p_shift_id)` (asignación vigente del usuario en ese turno) nacen acá
+porque ya existen `employees`/`shifts`/`assignments`; ambas `security definer` por el mismo motivo
+que el hook de `0003` (evaluarse dentro de políticas de otras tablas desde `0012` sin pasar de
+nuevo por RLS). `app.supervises_shift` queda para `0010` (necesita `supervisions`).
+
+Las tres tablas nacen con RLS habilitada y sin políticas (llegan en `0012`, DB-014).
+
+## Checklists y tareas (04 sección 2.4, migración `0008`, ADR-011)
+
+`checklist_templates` (`client_id not null`, `site_id null` -- FK compuesta `(site_id, client_id)
+references sites (id, client_id)`, con `MATCH SIMPLE` la restricción no se evalúa cuando `site_id`
+es nulo --, `name not null` -- decisión menor, el modelo no lo anota pero toda plantilla necesita
+nombre --, `is_active not null default true`, traza + `deleted_at`). Único parcial
+`checklist_templates_client_site_key` sobre `(client_id, coalesce(site_id,
+'00000000-0000-0000-0000-000000000000')) where deleted_at is null`: una plantilla por cliente y
+una por sede como máximo, entre las vigentes.
+
+`checklist_template_items` (`template_id not null`, `position not null` -- decisión menor, igual
+criterio que `name` arriba --, `title not null`, `description`, `is_required not null default
+true` P-059, traza + `deleted_at`). Unicidad `(template_id, position) deferrable initially
+deferred`: permite reordenar dos ítems en un solo `update` (intercambiar posiciones) sin que la
+restricción se dispare a mitad de camino -- probado con un `update ... case id when ...`; para
+verlo fallar dentro de un test pgTAP (que nunca hace `commit`) hace falta forzar `set constraints
+... immediate` después del insert duplicado, porque un constraint diferido recién se evalúa al
+terminar la transacción o cuando se pide explícitamente.
+
+`shift_tasks` (copia del checklist en el turno, ADR-011: `shift_id not null`, `position`,
+`title not null`/`is_required not null` copiados sin default propio, `status task_status not null
+default 'pending'`, `not_done_reason` obligatorio si `status = 'not_done'` (check), traza **sin**
+`deleted_at` -- el modelo la lista solo "Traza"). Índice `(shift_id, position)` (04 sección 8).
+
+Este archivo también agrega la FK que había quedado pendiente en `0007`:
+`shifts.checklist_template_id references checklist_templates (id)` (sin `checklist_templates` no
+existía todavía cuando se creó `shifts`).
+
+Las tres tablas nacen con RLS habilitada y sin políticas (llegan en `0012`, DB-014).
+
+## Asistencia (04 sección 2.3, migración `0009`, ADR-009)
+
+`attendance_records` (inicio y fin por asignación: `assignment_id not null`, `kind
+attendance_kind not null`, `recorded_at not null` -- la pone `now()` dentro de la RPC, nunca el
+reloj del cliente --, coordenadas `numeric(9,6)`/`numeric(7,1)` opcionales -- solo si el empleado
+concede el permiso, ninguna pantalla de la Base las muestra --, `source attendance_source not
+null`, `recorded_by`, `reason` obligatorio cuando `source = 'admin'` (check), `unique
+(assignment_id, kind)`: un `check_in` y un `check_out` por asignación). Índice `(assignment_id)`
+(04 sección 8).
+
+`attendance_notices` (avisos de demora y ausencia: `assignment_id not null`, `kind notice_kind not
+null`, `minutes_late` obligatorio y en `1..600` cuando `kind = 'delay'` (check), `reason_code
+absence_reason` obligatorio cuando `kind = 'absence'` (check), `reason_text` obligatorio cuando
+`reason_code = 'other'` (check), `reported_by`, `source not null`). Varios avisos por asignación
+permitidos (probado: demora + dos ausencias sobre la misma asignación, las tres filas quedan).
+Índice `(assignment_id, created_at desc)` (04 sección 8, "último aviso").
+
+Solo estructura: las reglas de negocio (ventana de aviso, transición de la asignación) las
+verifican las RPC de asistencia (`0014`, fase 13/14). Las dos tablas nacen con RLS habilitada y
+sin políticas (llegan en `0012`, DB-014).
+
+## Supervisiones (04 sección 2.5, migración `0010`)
+
+`supervisions` (una por turno y supervisor entre las no canceladas: `shift_id not null`,
+`supervisor_id not null references employees (profile_id)`, `status supervision_status not null
+default 'assigned'`, `assigned_by`/`assigned_at not null default now()` -- decisión menor, mismo
+criterio que otras columnas `created_at`-like con default `now()` --, `not_done_reason` obligatorio
+si `status = 'not_done'` (check), `cancel_reason` obligatorio si `status = 'cancelled'` (check),
+`general_notes`, `criteria_snapshot jsonb`, traza **sin** `deleted_at`). Único parcial
+`supervisions_shift_id_supervisor_id_key` sobre `(shift_id, supervisor_id) where status <>
+'cancelled'` (P-086, sin supervisión espontánea): cancelar una libera el par para una nueva.
+Índices `(supervisor_id, status)`, `(shift_id)` (04 sección 8).
+
+`supervision_attendance` (inicio y fin de la supervisión, por sede: mismas columnas y mismo
+criterio que `attendance_records` -- hora del servidor, coordenadas opcionales sin validar,
+ADR-009 --, `unique (supervision_id, kind)`).
+
+`ratings` (calificación por asignación: `supervision_id not null`, `assignment_id not null`,
+`score smallint not null check (between 1 and 5)`, `comment`, traza sin `deleted_at`,
+`updated_by` distingue ediciones administrativas, `unique (supervision_id, assignment_id)`). La
+RPC `rate_employee` (`0015`, todavía no escrita) va a verificar que `assignment_id` pertenezca al
+turno de la supervisión; esta migración no agrega ese `check` porque cruza dos tablas y el modelo
+lo deja para "RPC y trigger" si hace falta. Índice `(assignment_id)` (04 sección 8).
+
+`rating_criteria` (guía de texto, sin puntaje por criterio: `position`, `title not null`,
+`description`, `valid_from not null default current_date`, `valid_to null` -- cerrar un criterio
+es poner `valid_to`, no se borra, P-087 --, traza sin `deleted_at`).
+
+`app.supervises_shift(p_shift_id)` (existe supervisión no cancelada del usuario sobre ese turno)
+nace acá porque necesitaba esta tabla; queda pendiente desde `0007`. Con esto se completa la
+sección 5 del modelo.
+
+Las cuatro tablas nacen con RLS habilitada y sin políticas (llegan en `0012`, DB-014).
+
 ## Enumeraciones (04 sección 3)
 
 Las 15 enumeraciones del modelo, en el esquema `public`, migración `0002_enums.sql`. Agregar un
@@ -256,7 +422,9 @@ Ver `supabase/migrations/README.md` para la tabla completa y actualizada. Hasta 
 `0001_extensions_and_schema_app.sql` (DB-001), `0002_enums.sql` (DB-002),
 `0003_profiles_roles_capabilities.sql` (DB-003, DB-004, DB-005),
 `0004_company_holidays_security_events.sql` (DB-006),
-`0005_clients_sites.sql` (DB-007) y `0006_employees.sql` (DB-008).
+`0005_clients_sites.sql` (DB-007), `0006_employees.sql` (DB-008),
+`0007_services_shifts_assignments.sql` (DB-009), `0008_checklists_tasks.sql` (DB-010),
+`0009_attendance.sql` (DB-011) y `0010_supervisions_ratings.sql` (DB-012).
 
 ## Cómo escribir una migración
 

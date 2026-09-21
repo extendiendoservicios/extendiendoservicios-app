@@ -7,7 +7,7 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
-Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022), y el cierre de F5: marca de la sidebar e íconos PWA desde un PNG temporal, `vite-plugin-pwa` y `/dev/design` completo (F5 · DS-016, DS-018 a DS-020, RESP-001, DOC-005), el cierre de F3 (F3 · DOC-003, INFRA-024, TEST-024), la revisión visual de cierre de F5 (P05.6), el inicio de F4: extensiones, esquema `app` y enumeraciones, con su runner de pgTAP (F4 · DB-001, DB-002, DB-022, TEST-001), la continuación de F4: personas y acceso, hook de Auth y funciones de permisos (F4 · DB-003, DB-004, DB-005, TEST-002), y la continuación de F4: configuración y seguridad, clientes y sedes, y empleados (F4 · DB-006, DB-007, DB-008).
+Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022), y el cierre de F5: marca de la sidebar e íconos PWA desde un PNG temporal, `vite-plugin-pwa` y `/dev/design` completo (F5 · DS-016, DS-018 a DS-020, RESP-001, DOC-005), el cierre de F3 (F3 · DOC-003, INFRA-024, TEST-024), la revisión visual de cierre de F5 (P05.6), el inicio de F4: extensiones, esquema `app` y enumeraciones, con su runner de pgTAP (F4 · DB-001, DB-002, DB-022, TEST-001), la continuación de F4: personas y acceso, hook de Auth y funciones de permisos (F4 · DB-003, DB-004, DB-005, TEST-002), la continuación de F4: configuración y seguridad, clientes y sedes, y empleados (F4 · DB-006, DB-007, DB-008), y la continuación de F4: servicios, turnos, asignaciones, checklists, tareas, asistencia, supervisiones y calificaciones (F4 · DB-009, DB-010, DB-011, DB-012).
 
 ### Agregado
 
@@ -85,6 +85,55 @@ Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/C
   aplicadas en `App_dev` (`pnpm db:push`) y tipos regenerados sin
   diferencia. 219 tests pgTAP pasan contra `App_dev` (`pnpm db:test`, 7
   archivos).
+- Continuación de F4 (P04.4): migraciones `0007_services_shifts_assignments.sql`
+  (DB-009), `0008_checklists_tasks.sql` (DB-010), `0009_attendance.sql`
+  (DB-011) y `0010_supervisions_ratings.sql` (DB-012) — el corazón de la
+  operación: `services` (días de la semana con `app.valid_weekdays`,
+  franja, dotación 1..10, vigencia, `works_on_holidays` default `true`);
+  `shifts` (columnas generadas `starts_at`/`ends_at` con `app.local_ts`,
+  verificado sin horario de verano en enero y julio, ADR-019; unicidad
+  parcial `(service_id, shift_date)` donde un turno cancelado sigue
+  bloqueando el día pero uno dado de baja lógica lo libera, ADR-010;
+  campos de cancelación con `check` de conjunto); `assignments` (franja
+  propia opcional, columnas denormalizadas `shift_date`/`"window"` —
+  entre comillas porque `window` es palabra reservada de SQL — mantenidas
+  por el trigger `app.sync_assignment_window` tanto al insertar/editar la
+  asignación como al cambiar la franja del turno; restricción de
+  exclusión `assignments_no_overlap` con `btree_gist`, P-053, verificada
+  con turnos que se pisan, adyacentes, con franja propia que evita el
+  cruce y con una asignación quitada que libera el rango; unicidad
+  parcial `(shift_id, employee_id)` independiente de la exclusión).
+  `checklist_templates` (una por cliente y una por sede como máximo,
+  ADR-011) y `checklist_template_items` (unicidad `(template_id,
+position)` deferrable, para reordenar dos ítems en un solo `update`);
+  `shift_tasks` (copia del checklist en el turno, `not_done` exige
+  motivo); FK `shifts.checklist_template_id -> checklist_templates`
+  agregada acá porque esa tabla no existía todavía en `0007`.
+  `attendance_records` (`unique (assignment_id, kind)`, `reason`
+  obligatorio si `source = admin`, ADR-009) y `attendance_notices`
+  (`minutes_late` 1..600 obligatorio si `kind = delay`, `reason_code`
+  obligatorio si `kind = absence`, `reason_text` obligatorio si
+  `reason_code = other`, varios avisos por asignación). `supervisions`
+  (unicidad parcial `(shift_id, supervisor_id)` entre las no canceladas,
+  P-086), `supervision_attendance`, `ratings` (`score` 1..5, `unique
+(supervision_id, assignment_id)`) y `rating_criteria`. Completan la
+  sección 5 del modelo: `app.current_employee_id()`, `app.shares_shift`
+  (en `0007`, ya existían `employees`/`shifts`/`assignments`) y
+  `app.supervises_shift` (en `0010`, recién con `supervisions`), las tres
+  `security definer` por el mismo motivo que el hook de `0003`. RLS
+  habilitada en las trece tablas desde que nacen, sin políticas todavía
+  (llegan en `0012`, DB-014). Decisiones menores documentadas en
+  `docs/database.md`: `services.site_id`/`shifts.site_id not null`;
+  `works_on_holidays`/`checklist_templates.name`/varias columnas
+  `position` sin anotación explícita del modelo pero tratadas como
+  `not null` por consistencia; un `check` propio de franja en
+  `assignments` que en la práctica queda de respaldo porque el
+  constructor de `tstzrange` del trigger ya rechaza antes una franja
+  invertida (`22000`); el `update` del trigger al cambiar el turno no
+  filtra `removed_at is null` (recalcula también asignaciones quitadas,
+  sin efecto en ninguna regla vigente). Las cuatro migraciones aplicadas
+  en `App_dev` (`pnpm db:push`) y tipos regenerados sin diferencia. 439
+  tests pgTAP pasan contra `App_dev` (`pnpm db:test`, 12 archivos).
 - Cierre de F3 (P03.7): `.github/workflows/restore-test.yml`
   (`workflow_dispatch` con confirmación `restaurar-app-dev`, sin correr
   todavía — se dispara recién con las tablas de F4, TEST-024).
