@@ -81,6 +81,13 @@ De `0010_supervisions_ratings.sql` (DB-012):
 Con esto queda completa la sección 5 del modelo (todas las funciones auxiliares de `app` ya
 existen).
 
+De `0011_views.sql` (DB-013), auxiliar nuevo -- no está en la lista de la sección 5 del modelo,
+se agrega para las columnas derivadas de las vistas que necesitan "hoy" en Argentina:
+
+| Función       | Firma                      | Uso                                                                                                                                             |
+| ------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app.today()` | `() returns date` `stable` | Fecha de hoy en `America/Argentina/Buenos_Aires` (ADR-019). Usada por `v_employees` (licencia vigente) y `v_my_day` (ventana de 7 días, P-093). |
+
 Además, `0001` agrega la extensión `btree_gist` (esquema `extensions`), que usan las
 restricciones de exclusión de `employee_leaves` (`0006`) y `assignments` (`0007`).
 
@@ -116,10 +123,17 @@ autenticada en `0012`, sin importar el `execute` de la función en sí (Postgres
 salvo que se revoque explícitamente). No se le da a `anon`, que no participa de ninguna política
 basada en rol (sección 7.2: "anon solo `v_public_branding`").
 
-## Hook de Auth: `app.custom_access_token_hook` (04 sección 7.1, DB-004)
+## Hook de Auth: `app.custom_access_token_hook` (04 sección 7.1, DB-004; endurecido en 0016)
 
 Agrega los claims `roles` (siempre) y `capabilities` (solo si el rol `admin` está entre los
-roles de la persona) a cada JWT, leyendo `user_roles`/`admin_capabilities`. Habilitado en
+roles de la persona) a cada JWT, leyendo `user_roles`/`admin_capabilities`. **Desde
+`0016_hardening.sql`**, antes de leer esas tablas verifica que exista una fila en `profiles` con
+`is_active = true` y `deleted_at is null` para ese `user_id`; si no (inactivo, dado de baja, o
+-- caso defensivo -- la fila de `profiles` todavía no existe), arma `roles`/`capabilities` vacíos
+sin lanzar excepción: el hook nunca corta el login del sistema entero, solo le deja a esa persona
+un JWT sin ningún rol (`RequireRole` y las políticas RLS la mandan a COM-05 "sin acceso"). Antes
+de esa migración, una persona desactivada seguía recibiendo roles en cualquier JWT que se le
+emitiera hasta que se le revocaran las sesiones aparte. Habilitado en
 `supabase/config.toml` (`[auth.hook.custom_access_token]`, `uri =
 "pg-functions://postgres/app/custom_access_token_hook"`) y aplicado a `App_dev` con
 `pnpm exec supabase config push` (`docs/environments.md` tiene el detalle de cuentas y el
@@ -279,13 +293,16 @@ update of shift_id, start_time, end_time on assignments` recalcula la fila propi
 turno referenciado (franja efectiva = la propia si existe, si no la del turno; rango `"[)"` --
 media abierta -- para que dos turnos consecutivos sin hueco, por ejemplo 08-12 y 12-16, no se
 consideren superpuestos); `after update of shift_date, start_time, end_time on shifts` recalcula
-**todas** las asignaciones que referencian ese turno (incluidas las quitadas, `removed_at not
-null` -- decisión menor: no se filtró, así queda documentado; no afecta ninguna regla porque las
-quitadas ya están fuera de la exclusión y de las consultas activas) cuando cambia la fecha o la
-franja del turno (`update_shift_time`, `0013`, todavía no escrita). Verificado en `App_dev`: al
-correr el turno de 08:00 a 07:00, la asignación sin franja propia pasa de `[11:00,15:00)` a
-`[10:00,15:00)` UTC (07:00-12:00 ART) mientras que la asignación con franja propia (09:00-10:00
-ART) no se mueve.
+las asignaciones **vigentes** que referencian ese turno cuando cambia la fecha o la franja
+(`update_shift_time`, fase 10/11, todavía no escrita). Verificado en `App_dev`: al correr el
+turno de 08:00 a 07:00, la asignación sin franja propia pasa de `[11:00,15:00)` a `[10:00,15:00)`
+UTC (07:00-12:00 ART) mientras que la asignación con franja propia (09:00-10:00 ART) no se mueve.
+**Corregido en `0016_hardening.sql` (P04.5 tramo B):** hasta esa migración, la rama de `shifts`
+recalculaba también las asignaciones quitadas (`removed_at not null`) -- el comentario de la
+función y el de esta migración ya decían "vigentes", pero el código no filtraba por eso todavía.
+`0016` agrega `and a.removed_at is null` al `where` de esa rama; probado en transacción deshecha
+con una asignación vigente y otra quitada del mismo turno: al mover el turno, solo la vigente
+recalculó su `window`, la quitada conservó el valor con el que quedó al quitarse.
 
 Restricción de exclusión `assignments_no_overlap` (P-053) `exclude using gist (employee_id with
 =, "window" with &&) where (removed_at is null)`: bloquea que el mismo empleado tenga dos
@@ -389,6 +406,244 @@ sección 5 del modelo.
 
 Las cuatro tablas nacen con RLS habilitada y sin políticas (llegan en `0012`, DB-014).
 
+## Vistas (04 sección 4, migración `0011`, DB-013)
+
+Las diez vistas de `04_Modelo_de_Datos.md` sección 4, todas `with (security_invoker = true)`: la
+visibilidad de FILAS la deciden las políticas RLS de las tablas base (`0012`), no la vista -- la
+vista solo proyecta y calcula columnas derivadas.
+
+Agrega `app.today()` (`() returns date` `stable`), auxiliar nuevo que no está en la lista de
+`04` sección 5: fecha de hoy en `America/Argentina/Buenos_Aires` (ADR-019), para no repetir
+`(now() at time zone 'America/Argentina/Buenos_Aires')::date` en cada vista que la necesita
+(licencia vigente de `v_employees`, ventana de 7 días de `v_my_day`).
+
+| Vista                  | Filas                                                                                                             | Columnas derivadas (decisión de implementación)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `v_employees`          | `employees` join `profiles`                                                                                       | `effective_status` = `on_leave` si hay una `employee_leaves` vigente hoy (`deleted_at is null`, `starts_on <= hoy <= coalesce(ends_on, hoy)`), si no `employees.status`. `roles`: `array_agg` de `user_roles.role` (orden del enum, no alfabético: `owner, admin, supervisor, employee`).                                                                                                                                                                                                                                                                                                                                                                 |
+| `v_shifts_board`       | `shifts` join `clients`/`sites`, conteos de `assignments`                                                         | `assigned_count`/`present_count`/`finished_count`/`absent_count`/`delayed_count` sobre asignaciones vigentes (`removed_at is null`). `display_status`: `uncovered` si `status not in (in_progress, completed, cancelled)` y `assigned_count < required_staff` y (`now() > starts_at` o hay alguna asignación vigente `absence_notified`); `upcoming` si `status in (scheduled, assigned)` y `starts_at` está entre ahora y ahora + 2 horas; si no, el `status` real. La fórmula exacta de `uncovered` es una decisión de implementación (04 la describe en prosa, sin álgebra booleana) documentada en el comentario de la migración.                     |
+| `v_assignments_board`  | `assignments` join `shifts`/`clients`/`sites`/`profiles`, `attendance_records`                                    | Franja efectiva: `coalesce(start_time/end_time, turno)` y `lower/upper(assignments."window")`. `display_status = no_record` si `status in (expected, delay_notified)` y ya pasó el inicio efectivo (P-071). `minutes_late`/`minutes_early_leave` (P-076): minutos entre el registro y la hora efectiva, solo si el registro llegó después del inicio (o antes del fin, para early leave) -- `minutes_late` no está en `02_Decisiones.md`, se implementó por simetría con `minutes_early_leave`, que sí. Incluye asignaciones quitadas (`removed_at not null`): la fila queda para historia (04 sección 2.3), quien consuma la vista filtra si las quiere. |
+| `v_my_day`             | `assignments` propias (`employee_id = auth.uid()` en la definición, no solo por RLS) de hoy y los próximos 7 días | `is_today`, `tasks_total`/`tasks_done` (conteo de `shift_tasks`), `changed_since_last_seen` (P-092): compara `greatest(coalesce(updated_at, created_at))` de la asignación y del turno contra `profiles.last_seen_changes_at` (`coalesce` con `-infinity` si nunca abrió Hoy: todo se marca como cambiado).                                                                                                                                                                                                                                                                                                                                               |
+| `v_supervisions_admin` | `supervisions` join `shifts`/`clients`/`sites`/`profiles`                                                         | `ratings_count`, `ratings_avg` (`numeric(3,2)`, promedio simple del turno -- P-088: los promedios por empleado son módulo F).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `v_my_supervisions`    | `supervisions` propias (`supervisor_id = auth.uid()` en la definición)                                            | `assigned_employees`: `jsonb` con los empleados asignados vigentes del turno (id, nombre, estado).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `v_public_branding`    | `company_settings` (fila `id = 1`)                                                                                | Solo `name`, `logo_path`, `support_phone` (04 sección 7.2): no expone `location_consent_text` ni `updated_by`/`updated_at`. Única vía de `anon` hacia `company_settings`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `v_people_basic`       | `profiles`                                                                                                        | Solo `profile_id`, `first_name`, `last_name`, `avatar_path` (04 sección 7.2, P-103): la vista recorta columnas; qué personas ve cada rol lo decide la RLS de `profiles`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `v_clients`            | `clients`, conteos de `sites`/`services`                                                                          | `sites_count` (sedes vigentes, `deleted_at is null`, sin filtrar por estado), `active_services_count` (`services.status = active` y vigente).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `v_search`             | `employees`+`profiles`, `clients`, `sites` (unión)                                                                | PROPUESTO (06_API.md sección 3): forma común `kind` (`employee`/`client`/`site`), `id`, `title`, `subtitle`, `search_text` (concatenación en minúsculas, pensada para `.ilike('search_text', '%término%')` desde el cliente). Forma a confirmar con EMP-012 (F9) si hace falta full-text search de verdad.                                                                                                                                                                                                                                                                                                                                                |
+
+Detalle completo (fixtures, casos borde probados) en `supabase/tests/0011_views.test.sql` y
+`supabase/tests/0011_views_my_day_supervisions_search.test.sql`.
+
+## Políticas RLS (04 sección 7.2, migración `0012`, DB-014)
+
+Tabla por tabla, sobre las 23 tablas de negocio (más dos políticas de `anon` sobre
+`company_settings`, ver abajo). Convenciones:
+
+- Roles y capacidades se leen del JWT con `app.is_admin()`, `app.has_role(...)`,
+  `app.has_capability(...)`, sin subconsultas contra `user_roles`/`admin_capabilities` (04 sección
+  7.1: el hook ya los puso en el token). Las subconsultas que sí aparecen resuelven "¿esta fila
+  pertenece a un turno mío?" contra `assignments`/`supervisions`/`shifts` (equivalente por-fila de
+  `app.shares_shift`/`app.supervises_shift` cuando la tabla no tiene un `shift_id` propio).
+- Donde la escritura es "RPC" en `04` sección 7.2 (turnos, asignaciones -- salvo notas propias --,
+  asistencia, tareas, supervisiones, calificaciones), esta migración no agrega política de
+  insert/update/delete para ningún rol: esas RPC (fases 10 a 15) son `security definer` y no
+  necesitan grant de `authenticated`.
+- Ningún rol tiene política de `delete`: nada se borra físicamente (P-014, P-105); la baja es
+  siempre `update` (`deleted_at`, `removed_at`, `status`).
+- Las tablas con `deleted_at` filtran `deleted_at is null` en las políticas de supervisor/empleado
+  (04 sección 0); owner/admin ven todo, incluidas las filas dadas de baja lógica.
+- `to authenticated` en todas las políticas salvo las dos de `anon` sobre `company_settings`.
+
+**Límite real de "solo columnas" en Postgres (decisión de Mike, tramo A de P04.5).** RLS es por
+fila, no por columna. `04` sección 7.2 pide, para `profiles` (empleado: compañeros) y
+`clients`/`client_contacts` (empleado: clientes de sus turnos), exponer "solo columnas" limitadas
+a quien de otro modo vería la fila completa. Como las diez vistas de `0011` son `security_invoker`
+(para que la RLS de las tablas base decida qué filas se ven), la única manera de que
+`v_people_basic` muestre compañeros es que la política de `profiles` le dé al empleado acceso de
+FILA a esas personas -- no hay forma de restringir, encima, las columnas que ve _solo para esas
+filas_ sin un grant de columnas distinto por fila (que Postgres no ofrece). Resolución, distinta
+según la tabla:
+
+- `profiles`: se mantiene el acceso de fila del empleado a los perfiles de sus compañeros de turno
+  (`profiles_select_employee_teammates`), sin restricción de columna en este tramo. **Riesgo
+  residual aceptado por Mike:** un cliente API que consulte `profiles` en crudo para la fila de un
+  compañero puede leer `contact_email`/`phone` además de nombre y foto (lo único que el frontend
+  muestra, vía `v_people_basic`).
+- `client_contacts`: acá sí se cierra el acceso del empleado -- `client_contacts_select_shift_party`
+  es solo para `supervisor`. Los datos de contacto (teléfono, email) de la gente del cliente no los
+  necesita un empleado, a diferencia del nombre del cliente en `clients`, que sí conserva su acceso
+  de fila para empleado (mismo riesgo residual que `profiles`, pero acotado a
+  `legal_name`/`trade_name`/`cuit`/etc., de menor sensibilidad que un teléfono o email personal).
+
+**Guard de rol en las políticas "propias" de supervisión (decisión de consistencia, tramo A).**
+`supervisions_select_own`, `supervision_attendance_select_own` y `ratings_select_own_supervision`
+verifican `app.has_role('supervisor')` además de `supervisor_id = auth.uid()`. Sin ese chequeo, a
+alguien a quien le quitaron el rol supervisor le seguirían apareciendo sus supervisiones,
+asistencias y calificaciones pasadas por esta vía -- no es una brecha grave (ya fue supervisor de
+esa fila, no ve datos ajenos), pero rompe el patrón del resto de las políticas de rol no
+administrativo del archivo, que siempre exigen el rol vigente en el JWT antes de mirar la relación
+de fila.
+
+**`company_settings` y `anon`.** Es la única tabla con una política para `anon`
+(`company_settings_select_anon`, `using (true)`): necesaria para que `v_public_branding` funcione
+bajo `security_invoker`. A diferencia de `profiles`/`clients`, acá no hay riesgo residual de
+"fila ajena con más columnas de las debidas": `company_settings` es un singleton (una sola fila
+para todo el mundo), así que el recorte de columnas para `anon` (`name`, `logo_path`,
+`support_phone`) sí se puede lograr con un grant de columnas más adelante (`0017_grants.sql`,
+DB-017, tramo B) sin el problema de "misma fila, columnas distintas según quién mira" que sí tienen
+`profiles`/`clients`. Hasta que ese grant llegue, `anon` ve la fila completa de `company_settings`
+por el ACL por defecto del esquema (nota de seguridad de `0003`); `v_public_branding` igual solo
+proyecta las tres columnas públicas.
+
+**Columnas de `profiles` y `assignments.notes`: resuelto en `0017_grants.sql` (DB-017, tramo B).**
+El `update` propio de `profiles` (`profiles_update_own`) y el `update` de `assignments.notes` por
+el empleado (`assignments_update_own_notes`) están limitados por fila en `0012` (`id =
+auth.uid()`; `employee_id = auth.uid()` y turno no `completed`); la restricción de columna llegó
+con `0017`: `grant update (notes) on assignments to authenticated` alcanza solo (no hay otro caso
+que necesite más columnas por esa vía), pero `profiles` necesitó además un trigger
+(`app.enforce_profile_self_update_columns`) porque el mismo rol de Postgres (`authenticated`)
+tiene que poder editar todas las columnas cuando es owner/admin y solo cinco cuando es la propia
+persona -- ver la sección "Grants" más abajo para el detalle completo de por qué un grant de
+columna solo no alcanza ahí.
+
+Detalle completo (RLS por rol, con las filas exactas esperadas sobre fixtures) en
+`supabase/tests/0012_rls_policies.test.sql`,
+`supabase/tests/0012_rls_policies_clients_sites_services_shifts.test.sql`,
+`supabase/tests/0012_rls_policies_assignments_attendance_tasks.test.sql` y
+`supabase/tests/0012_rls_policies_supervisions_ratings_settings.test.sql`. Estos dos criterios de
+aceptación de F4 tienen un test explícito: un empleado autenticado no lee `ratings` (ni siquiera la
+propia, P-084) ni asignaciones de turnos ajenos (P-103: sí lee las propias y las de compañeros del
+mismo turno); `anon` no lee ninguna tabla de negocio salvo lo que expone `v_public_branding`. Desde
+`0017_grants.sql` (tramo B) esto además se cumple a nivel de ACL, no solo de RLS: `anon` ni
+siquiera tiene el privilegio de tabla sobre el resto (ver la sección "Grants" más abajo).
+
+## RPC de usuarios, roles y capacidades (04 sección 9, migración `0013`, DB-015)
+
+Las únicas tres RPC de la fase 4 (04 sección 11: "las RPC de negocio... no se escriben en la fase
+4"; estas tres son la excepción explícita, listadas en `04` sección 9). Viven en el esquema
+`public` (no `app`): `supabase/config.toml` solo expone `public`/`graphql_public` a PostgREST.
+
+| RPC                                                                                         | Quién                                                                                                                                                               | Qué hace                                                                                                                                                                                                                                                                                                                                                                        |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `set_user_roles(p_profile_id uuid, p_roles app_role[])`                                     | Owner sin restricciones (sujeto a `LAST_OWNER`); admin con `manage_users` solo si el conjunto resultante no incluye `owner`/`admin` y la persona no los tenía antes | Reemplaza el conjunto de roles de una persona (`delete` + `insert`, dispara `app.prevent_last_owner_removal` cuando corresponde). `ROLE_REQUIRES_EMPLOYEE` si el conjunto incluye `employee`/`supervisor` sin fila en `employees`. Devuelve `app_role[]` (no hay una única fila de tabla que devolver: la operación toca varias filas de `user_roles`). Evento `roles_changed`. |
+| `set_admin_capability(p_profile_id uuid, p_capability admin_capability, p_enabled boolean)` | Solo owner                                                                                                                                                          | Upsert sobre `admin_capabilities`. `ADMIN_ROLE_REQUIRED` (código propio, no está en la tabla de `06` sección 15) si `p_profile_id` no tiene rol `admin`. Evento `capabilities_changed`.                                                                                                                                                                                         |
+| `mark_changes_seen()`                                                                       | Cualquier autenticado, sobre la propia fila                                                                                                                         | `update profiles set last_seen_changes_at = now() where id = auth.uid()`. Sin parámetros.                                                                                                                                                                                                                                                                                       |
+
+`ROLE_REQUIRES_EMPLOYEE` y `ADMIN_ROLE_REQUIRED` no tenían mensaje en voseo asignado en `06_API.md`
+sección 15 (el primero solo estaba citado como código en la sección 2.2); se redactaron como
+decisión menor: "Ese rol necesita datos de empleado cargados primero." y "Esa persona no tiene rol
+de administrador." respectivamente.
+
+Detalle completo en `supabase/tests/0013_rpc_users.test.sql` (25 aserciones).
+
+## Storage: buckets `avatars` y `branding` (04 sección 7.3, migración `0014`, DB-016, ADR-016)
+
+| Bucket     | Ruta                      | Límite | Tipos                                                                               | Lectura                           | Escritura                                                      |
+| ---------- | ------------------------- | ------ | ----------------------------------------------------------------------------------- | --------------------------------- | -------------------------------------------------------------- |
+| `avatars`  | `{profile_id}/{uuid}.jpg` | 2 MB   | `image/jpeg`                                                                        | Pública (`anon`, `authenticated`) | Propio (primer segmento del path = `auth.uid()`) u owner/admin |
+| `branding` | `logo.{ext}`              | 1 MB   | PNG, JPEG, SVG, WebP (decisión menor: el modelo dice "logo.{ext}" sin fijar cuáles) | Pública                           | Owner y admin                                                  |
+
+Políticas sobre `storage.objects` (RLS ya habilitada de fábrica por Supabase en esa tabla; esta
+migración solo agrega las políticas de estos dos buckets), con `(storage.foldername(name))[1]`
+para extraer el primer segmento del path de `avatars`.
+
+**Hallazgo verificado en `App_dev` (no documentado en `04`):** Supabase agrega de fábrica un
+trigger `storage.protect_delete()` sobre `storage.objects` que rechaza cualquier `delete` SQL
+directo ("Direct deletion from storage tables is not allowed. Use the Storage API instead."),
+independientemente de RLS. Las políticas de `delete` de esta migración se verifican contra
+`pg_policies` en los tests, no con un `delete` real.
+
+Detalle completo en `supabase/tests/0014_storage_buckets.test.sql` (19 aserciones).
+
+## Índices (04 sección 8, migración `0015`, DB-018)
+
+Los diecisiete índices de la sección 8 del modelo **ya existían**, creados en la misma migración
+que la tabla a la que pertenecen (`0003` a `0010`, cada una con su bloque "Índices de 04 sección
+8" -- ver las secciones de arriba). `0015_indexes.sql` no agrega ningún índice nuevo: queda solo
+para completar el número de la sección 11 del modelo, con un comentario que lista cada índice y
+su migración de origen, y un test (`supabase/tests/0015_indexes.test.sql`, 17 aserciones con
+`has_index`) que confirma que los diecisiete siguen existiendo.
+
+## Endurecimientos (migración `0016`, "endurecimientos pendientes" de `04` sección 11, sin tarea `DB-0xx` propia)
+
+Cuatro correcciones sobre lo ya aplicado, revisadas y priorizadas por Mike en el tramo B de
+P04.5:
+
+1. **`search_path` fijo** en `app.set_updated_at()`, `app.local_ts(date, time)` y
+   `app.valid_weekdays(smallint[])` (las tres funciones de `0001` que habían quedado sin él,
+   lección de P04.1). Con `alter function`, **no** recreándolas: `local_ts` la usan las columnas
+   generadas `shifts.starts_at`/`ends_at` y `valid_weekdays` el check `services_weekdays_check`.
+2. **Formato de documentos:** `clients.cuit` y `employees.cuil` (misma regla, decisión menor: el
+   modelo no describe el formato de `cuil`) 11 dígitos (`check (... ~ '^[0-9]{11}$')`, columnas
+   nullable, el check permite `null`); `employees.dni` solo dígitos, sin largo fijo (el modelo no
+   lo da). Las tres tablas estaban vacías al aplicar la migración: entraron sin `not valid`.
+3. **El hook exige usuario activo** -- ver la sección "Hook de Auth" más arriba.
+4. **`app.sync_assignment_window`** filtra `removed_at is null` al recalcular las asignaciones de
+   un turno cuyo horario cambió -- ver la sección "Servicios, turnos y asignaciones" más arriba.
+
+Los cuatro se probaron antes en transacciones deshechas contra `App_dev`. Detalle completo en
+`supabase/tests/0016_hardening.test.sql` (21 aserciones).
+
+## Grants (migración `0017`, DB-017)
+
+Hasta esta migración, `anon` y `authenticated` tenían `DELETE,INSERT,REFERENCES,SELECT,TRIGGER,
+TRUNCATE,UPDATE` sobre las 25 tablas de negocio y las diez vistas de `0011` -- el ACL por defecto
+del esquema `public` que Supabase deja provisionado (nota de seguridad de `0003`), nunca tocado
+porque RLS (`0012`) ya negaba el acceso real fila por fila. `0017_grants.sql` revoca todo, de los
+dos roles, sobre todo lo de `public`, y otorga desde cero exactamente lo que corresponde:
+
+- **`anon`:** únicamente `select` en `v_public_branding` y `select` en las columnas `id`, `name`,
+  `logo_path`, `support_phone` de `company_settings` (`id` agregada porque `v_public_branding` y
+  la consulta directa filtran por `where id = 1`: Postgres exige privilegio de columna también
+  sobre las que aparecen en el `where`, no solo en el `select`). A diferencia de `profiles`/
+  `clients` (ver más abajo), acá el grant de columna sí logra la restricción real: `company_settings`
+  es un singleton, sin el conflicto "propio vs. otro caso" que tienen esas dos tablas.
+- **`authenticated`:** `select` en todas las tablas y vistas (RLS decide qué filas ve cada quien);
+  `insert`/`update`/`delete` solo en las tablas con escritura directa según `04` sección 7.2 (no
+  "RPC") -- las tablas "RPC only" (`user_roles`, `admin_capabilities`, `shifts`,
+  `attendance_records`, `attendance_notices`, `shift_tasks`, `supervisions`,
+  `supervision_attendance`, `ratings`, `security_events`) quedan sin ningún privilegio de
+  escritura, capa adicional de defensa en profundidad sobre la ausencia de política en `0012`.
+- **Columnas de `profiles`:** el `grant update` es amplio (todas las columnas editables), porque
+  owner/admin necesitan poder editar cualquier columna de cualquier perfil por la misma vía
+  (`from('profiles').update(...)` directo) que usa el propio usuario para editar su contacto. El
+  candado real de "propio, no admin: solo `contact_email`/`phone`/`avatar_path`/
+  `location_consent_at`/`last_seen_changes_at`" lo aplica el trigger nuevo
+  `app.enforce_profile_self_update_columns` (`before update on profiles`), que compara `old` contra
+  `new` y rechaza (`FORBIDDEN`) si cambió alguna columna fuera de esa lista, cuando quien edita es
+  la propia persona (`auth.uid() = old.id`) y no es owner/admin. **Es un límite real de Postgres,
+  no una decisión de diseño:** un `grant` es por rol de sesión (`authenticated`), no por rol de
+  aplicación ni por fila, así que no hay forma de que el mismo rol tenga "todas las columnas para
+  este caso, cinco columnas para aquel otro" solo con `grant`.
+- **`assignments.notes`:** acá sí alcanza con `grant update (notes)` solo, sin trigger: owner y
+  admin nunca actualizan `assignments` directo (siempre por RPC, ninguna aún escrita), así que no
+  hay otro caso que necesite más columnas por esa vía.
+- **`execute`** de las tres RPC de `0013`: revocado de `anon`, concedido a `authenticated` (mismo
+  patrón que el hook de `0003`).
+
+**`alter default privileges` para tablas y vistas futuras -- pregunta resuelta por Mike.** El
+reporte del tramo A dejó abierta la pregunta de si convenía un `alter default privileges` o si la
+regla quedaba en "cada migración nueva se ocupa de sus grants". Mike decidió agregar el `alter
+default privileges`: la alternativa de que cada migración se acuerde, siempre, sin excepción, es
+frágil -- un solo olvido deja una tabla nueva completamente expuesta a `anon` hasta que alguien lo
+note. Desde `0017_grants.sql`, toda tabla o vista nueva de `public` creada por el rol `postgres`
+(el dueño real de las tablas que aplican las migraciones, verificado con `select tableowner from
+pg_tables`) nace **sin ningún privilegio para `anon`** y **con `select` para `authenticated`**
+-- RLS sigue siendo, como siempre, la que decide qué filas se ven; este default no reemplaza
+escribir la política de la tabla nueva, solo evita que quede expuesta mientras tanto. Hizo falta
+un `revoke all ... from authenticated` explícito antes del `grant select`: los `alter default
+privileges` de Postgres se acumulan (pueden convivir varias entradas para el mismo rol), y
+Supabase ya deja provisionado un default de "todo" para `authenticated`; sin el `revoke` antes,
+el `select` nuevo quedaba sumado al "todo" viejo, sin ningún efecto real (se detectó con un test
+que crea una tabla nueva dentro de la transacción de prueba y verifica sus privilegios). Los
+privilegios de **escritura** (`insert`/`update`/`delete`) para `authenticated` siguen siendo
+decisión explícita de cada migración nueva: no tiene sentido un default ahí, porque la mayoría de
+las tablas de negocio de los módulos futuros van a ser "RPC" (sin escritura directa), igual que la
+mayoría de las de la Base.
+
+Detalle completo en `supabase/tests/0017_grants.test.sql` (14 aserciones: ACL de `anon`/
+`authenticated` por catálogo, el trigger de columnas de `profiles`, el `alter default privileges`
+probado con una tabla creada dentro de la transacción de prueba).
+
 ## Enumeraciones (04 sección 3)
 
 Las 15 enumeraciones del modelo, en el esquema `public`, migración `0002_enums.sql`. Agregar un
@@ -424,7 +679,12 @@ Ver `supabase/migrations/README.md` para la tabla completa y actualizada. Hasta 
 `0004_company_holidays_security_events.sql` (DB-006),
 `0005_clients_sites.sql` (DB-007), `0006_employees.sql` (DB-008),
 `0007_services_shifts_assignments.sql` (DB-009), `0008_checklists_tasks.sql` (DB-010),
-`0009_attendance.sql` (DB-011) y `0010_supervisions_ratings.sql` (DB-012).
+`0009_attendance.sql` (DB-011), `0010_supervisions_ratings.sql` (DB-012),
+`0011_views.sql` (DB-013), `0012_rls_policies.sql` (DB-014),
+`0013_rpc_users.sql` (DB-015), `0014_storage_buckets.sql` (DB-016),
+`0015_indexes.sql` (DB-018), `0016_hardening.sql` y `0017_grants.sql` (DB-017). Con esto queda
+completo el modelo de datos de F4 (todas las migraciones de la sección 11 del modelo, `0001` a
+`0017`).
 
 ## Cómo escribir una migración
 
@@ -441,8 +701,8 @@ Ver `supabase/migrations/README.md` para la tabla completa y actualizada. Hasta 
    aunque sus políticas lleguen recién en `0012` -- ver "Personas y acceso" más abajo para por
    qué no es opcional (el ACL por defecto de `public` ya expone las tablas nuevas a
    `anon`/`authenticated`). Toda función nueva de `app` lleva `set search_path` fijo desde que se
-   crea (lección de P04.1: las tres funciones de `0001` quedaron sin él y se corrigieron recién en
-   `0018_grants.sql`).
+   crea (lección de P04.1: las tres funciones de `0001` quedaron sin él; corregido con `alter
+function` -- sin recrearlas, ver más abajo -- en `0016_hardening.sql`, P04.5 tramo B).
 4. Cada migración trae su/s test/s pgTAP (`supabase/tests/`, ver esa carpeta) antes de darse por
    terminada.
 5. `pnpm exec supabase db push --dry-run` para previsualizar, después `pnpm db:push` contra

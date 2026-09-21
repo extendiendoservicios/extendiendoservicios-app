@@ -199,22 +199,28 @@ select throws_ok(
   'authenticated no puede ejecutar app.log_security_event directamente'
 );
 
--- RLS habilitada + cero políticas deniega a authenticated (sanity check) ------------------------
-
+-- RLS habilitada + políticas de 0012 (DB-014, agregadas en P04.5): company_settings y holidays
+-- son de lectura para "todos los autenticados" (04 sección 7.2), así que authenticated ahora SÍ
+-- ve las filas que este archivo creó arriba (1 de company_settings, 2 de holidays -- Navidad y
+-- Año Nuevo, ninguna dada de baja lógica). security_events sigue en 0 porque esa política es
+-- solo para el rol owner (04 sección 7.2: "O.") y esta sesión de authenticated no tiene ningún
+-- rol en el JWT (set local role authenticated puro, sin tests.as_user). El detalle de "quién ve
+-- qué según su rol" para estas tres tablas está en
+-- supabase/tests/0012_rls_policies_supervisions_ratings_settings.test.sql (DB-014).
 select is(
   (select count(*)::int from public.company_settings),
-  0,
-  'company_settings: sin políticas, authenticated no ve ninguna fila'
+  1,
+  'company_settings: con las políticas de 0012, authenticated ve la fila (04 sección 7.2: "todos los autenticados")'
 );
 select is(
   (select count(*)::int from public.holidays),
-  0,
-  'holidays: sin políticas, authenticated no ve ninguna fila'
+  2,
+  'holidays: con las políticas de 0012, authenticated ve los dos feriados vigentes (04 sección 7.2: "todos los autenticados")'
 );
 select is(
   (select count(*)::int from public.security_events),
   0,
-  'security_events: sin políticas, authenticated no ve ninguna fila'
+  'security_events: sigue en 0 -- la política de 0012 es solo para el rol owner (04 sección 7.2: "O."), esta sesión no tiene ningún rol'
 );
 
 select * from finish();

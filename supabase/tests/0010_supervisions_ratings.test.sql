@@ -21,7 +21,7 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(53);
+select plan(56);
 
 -- Estructura ------------------------------------------------------------------------------------
 
@@ -282,14 +282,46 @@ select ok(
   'app.supervises_shift: false cuando la única supervisión del usuario sobre ese turno está cancelada'
 );
 
--- RLS habilitada + cero políticas deniega a authenticated (sanity check) ------------------------
-
+-- RLS habilitada + políticas de 0012 (DB-014, agregadas en P04.5) ------------------------------
+--
+-- El bloque de arriba ("sin políticas todavía") envejeció: 0012_rls_policies.sql ya agregó las
+-- políticas de la sección 7.2. El claims simulado en este archivo (set_config manual, sin pasar
+-- por tests.as_user ni por una fila real en user_roles) solo trae `sub`, sin `roles`: alcanza
+-- para probar rating_criteria (su política es "O, A, S", exige rol -> sigue en 0, sin cambios) y
+-- confirma además que supervisions/supervision_attendance/ratings, sin el rol supervisor en el
+-- JWT, tampoco muestran nada -- aunque `supervisor_id` coincida con `auth.uid()`. Esto es a
+-- propósito: supervisions_select_own, supervision_attendance_select_own y
+-- ratings_select_own_supervision verifican `app.has_role('supervisor')` además de la relación de
+-- fila (decisión de consistencia del tramo A, ver el comentario en 0012_rls_policies.sql y el
+-- reporte de la tarea) -- coherente con el resto de las políticas de rol no administrativo del
+-- archivo, que siempre exigen el rol vigente en el JWT.
 set local role authenticated;
 
-select is((select count(*)::int from public.supervisions), 0, 'supervisions: sin políticas, authenticated no ve ninguna fila');
-select is((select count(*)::int from public.supervision_attendance), 0, 'supervision_attendance: sin políticas, authenticated no ve ninguna fila');
-select is((select count(*)::int from public.ratings), 0, 'ratings: sin políticas, authenticated no ve ninguna fila');
-select is((select count(*)::int from public.rating_criteria), 0, 'rating_criteria: sin políticas, authenticated no ve ninguna fila');
+select is((select count(*)::int from public.rating_criteria), 0, 'rating_criteria: sin el rol supervisor en el claims, authenticated no ve nada (su política exige rol, sin cambios de P04.5)');
+
+select is((select count(*)::int from public.supervisions), 0, 'supervisions: CON supervisor_id = auth.uid() pero SIN el rol supervisor en el claims, authenticated no ve nada (supervisions_select_own exige también app.has_role(supervisor))');
+select is((select count(*)::int from public.supervision_attendance), 0, 'supervision_attendance: mismo caso, sin el rol en el claims no ve nada');
+select is((select count(*)::int from public.ratings), 0, 'ratings: mismo caso, sin el rol en el claims no ve nada');
+
+-- Con el rol supervisor agregado al claims (simulando que esta persona sí tiene ese rol vigente,
+-- que es lo que dice su email de fixture "test-db012-supervisora@example.com"), las mismas tres
+-- políticas SÍ muestran lo que le corresponde a esta persona como supervisora de las filas del
+-- fixture (04 sección 7.2: "S: propias"): las tres supervisiones de supervisor_id = '..081'
+-- ('..060' not_done->cancelled, '..061' assigned, '..062' cancelled), los dos registros de
+-- supervision_attendance de la supervisión '..061' (check_in y check_out) y la calificación
+-- '..080' de esa misma supervisión.
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub', '50000000-0000-0000-0000-000000000081',
+    'roles', jsonb_build_array('supervisor')
+  )::text,
+  true
+);
+
+select is((select count(*)::int from public.supervisions), 3, 'supervisions: con el rol supervisor en el claims, la supervisora ve sus 3 supervisiones (04 sección 7.2: "S: propias")');
+select is((select count(*)::int from public.supervision_attendance), 2, 'supervision_attendance: con el rol, ve los 2 registros de su supervisión ..061');
+select is((select count(*)::int from public.ratings), 1, 'ratings: con el rol, ve la calificación que hizo en su supervisión ..061');
 
 select * from finish();
 
