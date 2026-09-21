@@ -312,9 +312,14 @@ max_frequency = "5s"
 # uri = "pg-functions://postgres/auth/before-user-created-hook"
 
 # This hook runs before a token is issued and allows you to add additional claims based on the authentication method used.
-# [auth.hook.custom_access_token]
-# enabled = true
-# uri = "pg-functions://<database>/<schema>/<hook_name>"
+# DB-004 (04_Modelo_de_Datos.md sección 7.1): agrega los claims "roles" y "capabilities" al JWT.
+# `<database>` es "postgres" en todo proyecto Supabase hospedado (App y App_dev incluidos); el
+# esquema es `app` (04 sección 0: funciones auxiliares de permisos), no `public`. Los grants que
+# la función necesita (supabase_auth_admin puede ejecutarla; authenticated/anon/public no)
+# están en supabase/migrations/0003_profiles_roles_capabilities.sql, junto a la función.
+[auth.hook.custom_access_token]
+enabled = true
+uri = "pg-functions://postgres/app/custom_access_token_hook"
 
 # Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
 # Sin declarar: ADR-008 descartó OTP por SMS, no forma parte del plan. Queda como esté hoy en App_dev.

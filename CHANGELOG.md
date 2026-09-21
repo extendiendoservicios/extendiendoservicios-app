@@ -7,7 +7,7 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
-Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022), y el cierre de F5: marca de la sidebar e íconos PWA desde un PNG temporal, `vite-plugin-pwa` y `/dev/design` completo (F5 · DS-016, DS-018 a DS-020, RESP-001, DOC-005), el cierre de F3 (F3 · DOC-003, INFRA-024, TEST-024), la revisión visual de cierre de F5 (P05.6) y el inicio de F4: extensiones, esquema `app` y enumeraciones, con su runner de pgTAP (F4 · DB-001, DB-002, DB-022, TEST-001).
+Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022), y el cierre de F5: marca de la sidebar e íconos PWA desde un PNG temporal, `vite-plugin-pwa` y `/dev/design` completo (F5 · DS-016, DS-018 a DS-020, RESP-001, DOC-005), el cierre de F3 (F3 · DOC-003, INFRA-024, TEST-024), la revisión visual de cierre de F5 (P05.6), el inicio de F4: extensiones, esquema `app` y enumeraciones, con su runner de pgTAP (F4 · DB-001, DB-002, DB-022, TEST-001), y la continuación de F4: personas y acceso, hook de Auth y funciones de permisos (F4 · DB-003, DB-004, DB-005, TEST-002).
 
 ### Agregado
 
@@ -37,6 +37,28 @@ Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/C
   corrida no deja rastro: se desinstaló `pgtap` de `App_dev`, se corrió
   `pnpm db:test` y al terminar la extensión volvió a no estar (la CLI la
   instala y la desinstala alrededor de la corrida).
+- Continuación de F4 (P04.2): migración
+  `0003_profiles_roles_capabilities.sql` (DB-003, DB-004, DB-005) con las
+  tablas `profiles`, `user_roles` y `admin_capabilities` (RLS habilitada
+  de entrada, sin políticas todavía: llegan en `0012`, DB-014), el trigger
+  `app.handle_new_user()` sobre `auth.users`, el trigger "último owner"
+  (`app.prevent_last_owner_removal()`, código `LAST_OWNER`), las funciones
+  de permisos (`jwt_roles`, `jwt_capabilities`, `has_role`, `is_admin`,
+  `has_capability`, `require_role`, `require_admin`, `require_capability`,
+  todas con `search_path` fijo desde que nacen) y el hook de Auth
+  `app.custom_access_token_hook` (agrega los claims `roles`/`capabilities`
+  al JWT; `security definer` porque `supabase_auth_admin` no tiene
+  `bypassrls` y las tablas que lee ya tienen RLS habilitada). Hook
+  habilitado en `supabase/config.toml`
+  (`[auth.hook.custom_access_token]`) y aplicado a `App_dev` con
+  `supabase config push` (comando documentado en `docs/environments.md`
+  para cuando corresponda aplicarlo a `App`, con la advertencia de orden:
+  primero la migración, después el `config push`, o se corta el login de
+  producción). `tests.as_user(email)` (TEST-002): fixture de pgTAP que
+  simula una sesión autenticada fijando `request.jwt.claims` con los
+  claims que arma el propio hook; documentado en
+  `supabase/tests/README.md`. 96 tests pgTAP pasan contra `App_dev`
+  (`pnpm db:test`, 4 archivos); tipos regenerados sin diferencia.
 - Cierre de F3 (P03.7): `.github/workflows/restore-test.yml`
   (`workflow_dispatch` con confirmación `restaurar-app-dev`, sin correr
   todavía — se dispara recién con las tablas de F4, TEST-024).
