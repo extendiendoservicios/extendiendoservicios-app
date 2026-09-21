@@ -58,9 +58,14 @@ De `0003_profiles_roles_capabilities.sql` (DB-003, DB-004, DB-005; todas con
 | `app.prevent_last_owner_removal()`     | `() returns trigger`                                | Trigger `before delete or update on user_roles`: rechaza (`LAST_OWNER`) quitar el rol `owner` a la última persona que lo tiene.         |
 | `app.custom_access_token_hook(event)`  | `(jsonb) returns jsonb` `stable` `security definer` | Hook de Auth (sección siguiente).                                                                                                       |
 
+De `0004_company_holidays_security_events.sql` (DB-006):
+
+| Función                                                                             | Firma                                                                                       | Uso                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app.log_security_event(p_event_type, p_actor_id, p_target_id?, p_details?, p_ip?)` | `(security_event_type, uuid, uuid, jsonb, inet) returns security_events` `security definer` | Inserta una fila en `security_events` y la devuelve (04 sección 5). Uso interno: solo la llaman funciones `security definer` del sistema (dueñas: `postgres`, igual que la función); no es una RPC de la sección 9, así que se le revocó el `execute` que Postgres concede a `public` por defecto -- verificado en `App_dev` que `authenticated` recibe `permission denied for function log_security_event` (`42501`). |
+
 Pendientes de tablas que todavía no existen: `current_employee_id`, `supervises_shift` y
-`shares_shift` (dependen de `employees`/`shifts`/`assignments`), y `log_security_event`
-(depende de `security_events`, migración `0004`).
+`shares_shift` (dependen de `employees`/`shifts`/`assignments`, migración `0007`).
 
 Además, `0001` agrega la extensión `btree_gist` (esquema `extensions`), que van a usar las
 restricciones de exclusión de `employee_leaves` (`0006`) y `assignments` (`0007`).
@@ -129,6 +134,95 @@ la tabla que consulta. Acá no alcanza, porque esta base habilita RLS en cuanto 
 migración, sin pasar por RLS, y no hace falta darle a `supabase_auth_admin` acceso directo a
 `user_roles`/`admin_capabilities`.
 
+## Configuración y seguridad (04 sección 2.6, migración `0004`)
+
+`company_settings` (singleton, `id smallint primary key check (id = 1)`: nombre, logo -- bucket
+`branding` --, teléfono de soporte, texto de consentimiento de ubicación, `updated_by`/
+`updated_at`; sin `created_at`/`created_by`, mismo criterio que `admin_capabilities` en `0003` --
+`updated_at` nace `not null default now()` en vez de en null, porque es el único rastro temporal
+de la fila). La fila la crea el seed (`DB-019`/`DB-020`), no esta migración: `App_dev` queda con
+la tabla vacía hasta ese paquete (probado con el chequeo de RLS sin políticas).
+
+`holidays` (`id`, `holiday_date unique`, `name`, traza + `deleted_at`; ni `holiday_date` ni
+`name` se anotaron `not null` porque el modelo tampoco lo hace para esta tabla, a diferencia de
+otras fechas del sistema como `shifts.shift_date`). `generate_shifts` (`0013`) la va a usar para
+no crear turnos de servicios con `works_on_holidays = false`.
+
+`security_events` (`id`, `event_type not null`, `actor_id`/`target_id` -- ambos referencian
+`profiles.id`, igual criterio que `user_roles.granted_by` en `0003`: el nombre ya dice que
+apuntan a una persona --, `details jsonb`, `ip inet`, `created_at`). Tabla de solo inserción: sin
+`updated_at`/`updated_by`/`deleted_at`. Índices de 04 sección 8: `(created_at desc)` y
+`(actor_id)`. Se escribe únicamente a través de `app.log_security_event(...)` (sección anterior),
+desde funciones `security definer` del sistema o desde la Edge Function `admin-users` (conexión
+`service_role`, que hace `insert` directo porque `bypassrls` la exime de RLS sin pasar por esta
+función).
+
+Las tres tablas nacen con RLS habilitada y sin políticas (llegan en `0012`, DB-014).
+
+## Clientes y sedes (04 sección 2.2, migración `0005`)
+
+`clients` (`legal_name not null`, `trade_name`, `cuit unique`, `admin_address`,
+`latitude`/`longitude numeric(9,6)`, `status client_status not null default 'active'` --
+decisión menor: el modelo no anota un valor por defecto, pero toda alta de pantalla nace
+operable --, `notes`, traza + `deleted_at`). `CUIT_IN_USE` (06_API.md sección 15) sale de la
+restricción `unique` sobre `cuit`, sin `check` de formato: el modelo describe "11 dígitos" en
+prosa, no como un `check` explícito (a diferencia de, por ejemplo,
+`employee_availability.end_time`), así que esa validación queda para el formulario (zod) y no
+para la base.
+
+`client_contacts` (`client_id not null`, `name not null`, `role_title`, `phone`, `email`,
+`is_primary not null default false`, traza + `deleted_at`). Índice único parcial
+`client_contacts_one_primary_per_client_idx` sobre `(client_id) where is_primary and
+deleted_at is null`: a lo sumo un contacto principal por cliente entre los vigentes; los
+contactos no principales no tienen límite.
+
+`sites` (`client_id not null`, `name not null`, `address not null`, `city`,
+`latitude`/`longitude`, `contact_name`/`contact_phone`, `access_instructions`,
+`building_hours`, `phone_restricted`/`photos_not_allowed not null default false` -- informativos,
+P-029 --, `restrictions_notes`, `status site_status not null default 'active'` -- mismo criterio
+que `clients.status` --, traza + `deleted_at`). Nombre único por cliente entre las sedes vigentes
+(`sites_client_id_name_key`, índice parcial `where deleted_at is null`, `SITE_NAME_IN_USE`).
+`unique (id, client_id)` (además de la primary key en `id`) para que `services` y `shifts`
+(`0007`, DB-009) puedan declarar la FK compuesta `(site_id, client_id) references
+sites (id, client_id)` y así la base garantice que la sede referenciada pertenece de verdad al
+cliente referenciado. Índice `sites_client_id_idx` (04 sección 8) para el listado y el mapa por
+cliente.
+
+Las tres tablas nacen con RLS habilitada y sin políticas (llegan en `0012`, DB-014).
+
+## Empleados (04 sección 2.1, migración `0006`)
+
+`employees` (`profile_id primary key references profiles`, `employee_number not null unique
+default nextval('employee_number_seq')` -- editable, P-036 --, `dni not null unique`, `cuil`,
+`address`, `birth_date`, `hire_date`, datos de contacto de emergencia, `status employee_status
+not null default 'active'` -- decisión menor, mismo criterio que `clients.status` --,
+`terminated_at`, `notes`, traza + `deleted_at`). "De licencia" no es un valor de `status`: se
+deriva de `employee_leaves` en la vista `v_employees` (`0011`, todavía no escrita).
+`employee_number_seq` es una secuencia de Postgres común (`owned by
+employees.employee_number`); sus valores no son transaccionales -- un `rollback` no los
+"devuelve" -- lo cual es el comportamiento estándar y no afecta a la numeración real (el legajo
+es editable).
+
+`employee_client_permissions` (`employee_id`, `client_id`, `created_by`, `created_at`, primary
+key `(employee_id, client_id)`; sin `updated_at`/`deleted_at`, tal cual lo lista el modelo).
+Lista vacía para un empleado = habilitado para todos los clientes (P-034).
+
+`employee_availability` (`id`, `employee_id not null`, `weekday smallint not null check
+(weekday between 0 and 6)`, `start_time`/`end_time not null check (end_time > start_time)`,
+traza sin `deleted_at` -- el modelo la trata como "traza" simple, no como maestro, a diferencia
+de `employee_leaves`).
+
+`employee_leaves` (`id`, `employee_id not null`, `starts_on not null`, `ends_on` nulo = licencia
+abierta, `reason`, traza + `deleted_at`, `check (ends_on is null or ends_on >= starts_on)`).
+Restricción de exclusión `employee_leaves_no_overlap` con `btree_gist` (instalada por `0001`):
+`exclude using gist (employee_id with =, daterange(starts_on, coalesce(ends_on, 'infinity'),
+'[]') with &&) where (deleted_at is null)` -- bloquea dos licencias vigentes superpuestas del
+mismo empleado; el `where` es una decisión menor (no la escribe el modelo, pero sigue el mismo
+criterio que va a usar la exclusión de `assignments` en `0007` con `removed_at is null`) para que
+una licencia corregida (dada de baja lógica) no siga bloqueando el rango de fechas que ocupaba.
+
+Las cuatro tablas nacen con RLS habilitada y sin políticas (llegan en `0012`, DB-014).
+
 ## Enumeraciones (04 sección 3)
 
 Las 15 enumeraciones del modelo, en el esquema `public`, migración `0002_enums.sql`. Agregar un
@@ -159,8 +253,10 @@ duplican acá para no desincronizarse.
 ## Migraciones aplicadas
 
 Ver `supabase/migrations/README.md` para la tabla completa y actualizada. Hasta este paquete:
-`0001_extensions_and_schema_app.sql` (DB-001), `0002_enums.sql` (DB-002) y
-`0003_profiles_roles_capabilities.sql` (DB-003, DB-004, DB-005).
+`0001_extensions_and_schema_app.sql` (DB-001), `0002_enums.sql` (DB-002),
+`0003_profiles_roles_capabilities.sql` (DB-003, DB-004, DB-005),
+`0004_company_holidays_security_events.sql` (DB-006),
+`0005_clients_sites.sql` (DB-007) y `0006_employees.sql` (DB-008).
 
 ## Cómo escribir una migración
 
