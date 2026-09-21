@@ -78,6 +78,339 @@ export type Database = {
           },
         ]
       }
+      assignments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          end_time: string | null
+          id: string
+          notes: string | null
+          removed_at: string | null
+          removed_by: string | null
+          removed_reason: string | null
+          shift_date: string
+          shift_id: string
+          start_time: string | null
+          status: Database["public"]["Enums"]["assignment_status"]
+          updated_at: string | null
+          updated_by: string | null
+          window: unknown
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          end_time?: string | null
+          id?: string
+          notes?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          removed_reason?: string | null
+          shift_date: string
+          shift_id: string
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["assignment_status"]
+          updated_at?: string | null
+          updated_by?: string | null
+          window: unknown
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          end_time?: string | null
+          id?: string
+          notes?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          removed_reason?: string | null
+          shift_date?: string
+          shift_id?: string
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["assignment_status"]
+          updated_at?: string | null
+          updated_by?: string | null
+          window?: unknown
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "assignments_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attendance_notices: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["notice_kind"]
+          minutes_late: number | null
+          reason_code: Database["public"]["Enums"]["absence_reason"] | null
+          reason_text: string | null
+          reported_by: string | null
+          source: Database["public"]["Enums"]["attendance_source"]
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["notice_kind"]
+          minutes_late?: number | null
+          reason_code?: Database["public"]["Enums"]["absence_reason"] | null
+          reason_text?: string | null
+          reported_by?: string | null
+          source: Database["public"]["Enums"]["attendance_source"]
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["notice_kind"]
+          minutes_late?: number | null
+          reason_code?: Database["public"]["Enums"]["absence_reason"] | null
+          reason_text?: string | null
+          reported_by?: string | null
+          source?: Database["public"]["Enums"]["attendance_source"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_notices_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_notices_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attendance_records: {
+        Row: {
+          accuracy_m: number | null
+          assignment_id: string
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["attendance_kind"]
+          latitude: number | null
+          longitude: number | null
+          reason: string | null
+          recorded_at: string
+          recorded_by: string | null
+          source: Database["public"]["Enums"]["attendance_source"]
+        }
+        Insert: {
+          accuracy_m?: number | null
+          assignment_id: string
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["attendance_kind"]
+          latitude?: number | null
+          longitude?: number | null
+          reason?: string | null
+          recorded_at: string
+          recorded_by?: string | null
+          source: Database["public"]["Enums"]["attendance_source"]
+        }
+        Update: {
+          accuracy_m?: number | null
+          assignment_id?: string
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["attendance_kind"]
+          latitude?: number | null
+          longitude?: number | null
+          reason?: string | null
+          recorded_at?: string
+          recorded_by?: string | null
+          source?: Database["public"]["Enums"]["attendance_source"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_records_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_template_items: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          description: string | null
+          id: string
+          is_required: boolean
+          position: number
+          template_id: string
+          title: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          is_required?: boolean
+          position: number
+          template_id: string
+          title: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          is_required?: boolean
+          position?: number
+          template_id?: string
+          title?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_template_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_template_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_template_items_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_templates: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          is_active: boolean
+          name: string
+          site_id: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          site_id?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          site_id?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_templates_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_templates_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id", "client_id"]
+          },
+          {
+            foreignKeyName: "checklist_templates_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_contacts: {
         Row: {
           client_id: string
@@ -610,6 +943,125 @@ export type Database = {
           },
         ]
       }
+      rating_criteria: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          position: number
+          title: string
+          updated_at: string | null
+          updated_by: string | null
+          valid_from: string
+          valid_to: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          position: number
+          title: string
+          updated_at?: string | null
+          updated_by?: string | null
+          valid_from?: string
+          valid_to?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          position?: number
+          title?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          valid_from?: string
+          valid_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rating_criteria_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rating_criteria_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ratings: {
+        Row: {
+          assignment_id: string
+          comment: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          score: number
+          supervision_id: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          assignment_id: string
+          comment?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          score: number
+          supervision_id: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          assignment_id?: string
+          comment?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          score?: number
+          supervision_id?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ratings_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ratings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ratings_supervision_id_fkey"
+            columns: ["supervision_id"]
+            isOneToOne: false
+            referencedRelation: "supervisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ratings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       security_events: {
         Row: {
           actor_id: string | null
@@ -649,6 +1101,309 @@ export type Database = {
           {
             foreignKeyName: "security_events_target_id_fkey"
             columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      services: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          end_time: string
+          id: string
+          max_hours_month: number | null
+          min_hours_month: number | null
+          name: string
+          notes: string | null
+          required_staff: number
+          site_id: string
+          start_time: string
+          status: Database["public"]["Enums"]["service_status"]
+          updated_at: string | null
+          updated_by: string | null
+          valid_from: string
+          valid_to: string | null
+          weekdays: number[]
+          works_on_holidays: boolean
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          end_time: string
+          id?: string
+          max_hours_month?: number | null
+          min_hours_month?: number | null
+          name: string
+          notes?: string | null
+          required_staff?: number
+          site_id: string
+          start_time: string
+          status?: Database["public"]["Enums"]["service_status"]
+          updated_at?: string | null
+          updated_by?: string | null
+          valid_from: string
+          valid_to?: string | null
+          weekdays: number[]
+          works_on_holidays?: boolean
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          end_time?: string
+          id?: string
+          max_hours_month?: number | null
+          min_hours_month?: number | null
+          name?: string
+          notes?: string | null
+          required_staff?: number
+          site_id?: string
+          start_time?: string
+          status?: Database["public"]["Enums"]["service_status"]
+          updated_at?: string | null
+          updated_by?: string | null
+          valid_from?: string
+          valid_to?: string | null
+          weekdays?: number[]
+          works_on_holidays?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id", "client_id"]
+          },
+          {
+            foreignKeyName: "services_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shift_tasks: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_required: boolean
+          not_done_reason: string | null
+          position: number
+          shift_id: string
+          status: Database["public"]["Enums"]["task_status"]
+          status_changed_at: string | null
+          status_changed_by: string | null
+          title: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_required: boolean
+          not_done_reason?: string | null
+          position: number
+          shift_id: string
+          status?: Database["public"]["Enums"]["task_status"]
+          status_changed_at?: string | null
+          status_changed_by?: string | null
+          title: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_required?: boolean
+          not_done_reason?: string | null
+          position?: number
+          shift_id?: string
+          status?: Database["public"]["Enums"]["task_status"]
+          status_changed_at?: string | null
+          status_changed_by?: string | null
+          title?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_tasks_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_tasks_status_changed_by_fkey"
+            columns: ["status_changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_tasks_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shifts: {
+        Row: {
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          checklist_template_id: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          end_time: string
+          ends_at: string | null
+          generated: boolean
+          id: string
+          notes: string | null
+          required_staff: number
+          service_id: string | null
+          shift_date: string
+          site_id: string
+          start_time: string
+          starts_at: string | null
+          status: Database["public"]["Enums"]["shift_status"]
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          checklist_template_id?: string | null
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          end_time: string
+          ends_at?: string | null
+          generated?: boolean
+          id?: string
+          notes?: string | null
+          required_staff: number
+          service_id?: string | null
+          shift_date: string
+          site_id: string
+          start_time: string
+          starts_at?: string | null
+          status?: Database["public"]["Enums"]["shift_status"]
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          checklist_template_id?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          end_time?: string
+          ends_at?: string | null
+          generated?: boolean
+          id?: string
+          notes?: string | null
+          required_staff?: number
+          service_id?: string | null
+          shift_date?: string
+          site_id?: string
+          start_time?: string
+          starts_at?: string | null
+          status?: Database["public"]["Enums"]["shift_status"]
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shifts_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_checklist_template_id_fkey"
+            columns: ["checklist_template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id", "client_id"]
+          },
+          {
+            foreignKeyName: "shifts_updated_by_fkey"
+            columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -739,6 +1494,134 @@ export type Database = {
           },
           {
             foreignKeyName: "sites_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supervision_attendance: {
+        Row: {
+          accuracy_m: number | null
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["attendance_kind"]
+          latitude: number | null
+          longitude: number | null
+          recorded_at: string
+          supervision_id: string
+        }
+        Insert: {
+          accuracy_m?: number | null
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["attendance_kind"]
+          latitude?: number | null
+          longitude?: number | null
+          recorded_at: string
+          supervision_id: string
+        }
+        Update: {
+          accuracy_m?: number | null
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["attendance_kind"]
+          latitude?: number | null
+          longitude?: number | null
+          recorded_at?: string
+          supervision_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supervision_attendance_supervision_id_fkey"
+            columns: ["supervision_id"]
+            isOneToOne: false
+            referencedRelation: "supervisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supervisions: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          cancel_reason: string | null
+          created_at: string
+          created_by: string | null
+          criteria_snapshot: Json | null
+          general_notes: string | null
+          id: string
+          not_done_reason: string | null
+          shift_id: string
+          status: Database["public"]["Enums"]["supervision_status"]
+          supervisor_id: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          criteria_snapshot?: Json | null
+          general_notes?: string | null
+          id?: string
+          not_done_reason?: string | null
+          shift_id: string
+          status?: Database["public"]["Enums"]["supervision_status"]
+          supervisor_id: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          cancel_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          criteria_snapshot?: Json | null
+          general_notes?: string | null
+          id?: string
+          not_done_reason?: string | null
+          shift_id?: string
+          status?: Database["public"]["Enums"]["supervision_status"]
+          supervisor_id?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supervisions_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisions_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisions_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supervisions_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
