@@ -2816,7 +2816,58 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      mark_changes_seen: {
+        Args: never
+        Returns: {
+          avatar_path: string | null
+          contact_email: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          first_name: string
+          id: string
+          is_active: boolean
+          last_name: string
+          last_seen_changes_at: string | null
+          location_consent_at: string | null
+          phone: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "profiles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_admin_capability: {
+        Args: {
+          p_capability: Database["public"]["Enums"]["admin_capability"]
+          p_enabled: boolean
+          p_profile_id: string
+        }
+        Returns: {
+          capability: Database["public"]["Enums"]["admin_capability"]
+          enabled: boolean
+          profile_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "admin_capabilities"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_user_roles: {
+        Args: {
+          p_profile_id: string
+          p_roles: Database["public"]["Enums"]["app_role"][]
+        }
+        Returns: Database["public"]["Enums"]["app_role"][]
+      }
     }
     Enums: {
       absence_reason:
