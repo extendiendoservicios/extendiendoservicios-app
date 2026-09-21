@@ -20,7 +20,7 @@
     "prepare": "husky",
     "db:push": "supabase db push",
     "db:types": "supabase gen types --linked > src/lib/database.types.ts",
-    "db:test": "node -e \"console.error('db:test se define en DB-022 (F4): todavia no hay proyecto vinculado ni tests pgTAP que ejecutar.'); process.exit(1)\""
+    "db:test": "bash scripts/db-test.sh"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
