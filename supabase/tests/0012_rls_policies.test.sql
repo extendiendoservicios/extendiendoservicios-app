@@ -57,7 +57,7 @@ $$;
 
 grant execute on function tests.as_user(text) to authenticated, anon;
 
-select plan(29);
+select plan(30);
 
 -- Fixtures: owner, admin, supervisora, dos empleados de un mismo turno supervisado (E1, E2) y un
 -- tercer empleado "de afuera" (E3, sin turno compartido con nadie del fixture) --------------------
@@ -182,21 +182,36 @@ select is(
   'profiles: empleado de afuera (sin turno compartido) solo ve la propia fila'
 );
 
+-- Desde 0017_grants.sql (DB-017, tramo B), anon ni siquiera tiene el privilegio de tabla sobre
+-- profiles (antes de 0017 el ACL por defecto se lo daba y solo RLS lo bloqueaba, así que el
+-- select devolvía 0 filas; ahora corta con permission denied, más estricto).
 set local role anon;
-select is(
-  (select count(*)::int from public.profiles),
-  0,
-  'profiles: anon no lee ninguna fila'
+
+prepare profiles_select_anon as select count(*) from public.profiles;
+
+select throws_ok(
+  'profiles_select_anon', '42501', null,
+  'profiles: anon no tiene ni el privilegio de tabla (0017_grants.sql)'
 );
+
 set local role postgres;
 
--- Update propio: solo la propia fila, columnas de contacto (with check de fila; la restricción
--- de columnas llega con el grant de 0017, ver comentario en la migración).
+-- Update propio: solo la propia fila (with check), solo columnas de contacto (grant de columna +
+-- trigger app.enforce_profile_self_update_columns, ambos de 0017_grants.sql, DB-017 tramo B --
+-- ver el comentario de esa migración sobre por qué hace falta el trigger además del grant).
 select tests.as_user('test-db014-empleado1@example.com');
 
 select lives_ok(
   $$update public.profiles set contact_email = 'empleado1@example.com' where id = 'c2100000-0000-0000-0000-000000000084'$$,
   'profiles: empleado 1 puede actualizar su propia fila'
+);
+
+prepare profiles_update_own_first_name as
+  update public.profiles set first_name = 'Hackeado' where id = 'c2100000-0000-0000-0000-000000000084';
+
+select throws_ok(
+  'profiles_update_own_first_name', 'P0001', 'Desde tu perfil solo podés editar el email de contacto, el teléfono, la foto y el consentimiento de ubicación.',
+  'profiles: empleado 1 NO puede cambiar first_name de su propia fila (trigger de 0017_grants.sql)'
 );
 
 -- No se puede anidar un WITH con UPDATE dentro de `select is(...)` (Postgres exige que el WITH

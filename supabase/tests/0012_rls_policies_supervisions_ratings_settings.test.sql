@@ -49,7 +49,7 @@ $$;
 
 grant execute on function tests.as_user(text) to authenticated, anon;
 
-select plan(33);
+select plan(34);
 
 -- Fixtures: cliente/sede, turno supervisado por S1 con E1 asignado y calificado; S2 es una
 -- segunda supervisora sin relación con ese turno (para probar que S ve solo las propias) -------
@@ -262,8 +262,16 @@ select is(
   'holidays: no ve un feriado dado de baja lógica'
 );
 
+-- Desde 0017_grants.sql (DB-017, tramo B), anon ni siquiera tiene el privilegio de tabla.
 set local role anon;
-select is((select count(*)::int from public.holidays), 0, 'holidays: anon no lee (solo "todos los autenticados")');
+
+prepare holidays_select_anon as select count(*) from public.holidays;
+
+select throws_ok(
+  'holidays_select_anon', '42501', null,
+  'holidays: anon no tiene ni el privilegio de tabla (solo "todos los autenticados", 0017_grants.sql)'
+);
+
 set local role postgres;
 
 select tests.as_user('test-db014d-admin@example.com');
@@ -302,20 +310,26 @@ select is(
 
 -- Nota de arquitectura (ver también 0012_rls_policies.sql): anon SÍ tiene una política de select
 -- sobre esta tabla (using true), a propósito, para que v_public_branding (security_invoker,
--- 0011) le devuelva algo. Hasta que 0017_grants.sql (DB-017, tramo B) agregue el grant de
--- columnas (name, logo_path, support_phone) para anon, esta política le permite a anon leer
--- TODAS las columnas de la fila directamente desde la tabla (no solo las tres públicas) si
--- consulta `company_settings` en vez de la vista -- es el único caso, entre las políticas de este
--- archivo, en el que "anon no lee ninguna tabla salvo v_public_branding" (criterio de aceptación
--- de F4) no se cumple todavía al pie de la letra por el lado de la tabla base, aunque si se
--- cumple por el lado de "qué puede consumir el frontend a través de la vista". Documentado como
--- pregunta abierta en el reporte de la tarea.
+-- 0011) le devuelva algo. Desde 0017_grants.sql (DB-017, tramo B) el grant de columnas
+-- (name, logo_path, support_phone) para anon ya está aplicado: puede leer esas tres columnas
+-- directamente de la tabla, pero ninguna otra (por ejemplo location_consent_text) -- el caso que
+-- en el tramo A quedaba como pregunta abierta ("anon lee la fila completa hasta que 0017
+-- agregue el grant de columnas") ya está resuelto.
 set local role anon;
 select is(
   (select support_phone from public.company_settings where id = 1),
   '+54 11 5555-5555',
-  'company_settings: anon lee la fila directamente (necesario para que v_public_branding funcione bajo security_invoker; ver nota de arquitectura arriba)'
+  'company_settings: anon lee las columnas otorgadas (name, logo_path, support_phone) directamente de la tabla'
 );
+
+prepare company_settings_select_anon_other_column as
+  select location_consent_text from public.company_settings where id = 1;
+
+select throws_ok(
+  'company_settings_select_anon_other_column', '42501', null,
+  'company_settings: anon NO puede leer columnas fuera de las tres otorgadas (location_consent_text, 0017_grants.sql)'
+);
+
 select is(
   (select name from public.v_public_branding),
   'Extendiendo Servicios',
@@ -355,19 +369,34 @@ set local role postgres;
 
 -- ---------------------------------------------------------------------------------------------
 -- 7. anon no lee ninguna tabla de negocio salvo lo que expone v_public_branding (criterio de
---    aceptación de F4). El caso de company_settings (fila completa, no solo columnas públicas)
---    queda anotado arriba como pregunta abierta.
+--    aceptación de F4). Desde 0017_grants.sql (DB-017, tramo B) anon ni siquiera tiene el
+--    privilegio de tabla sobre estas siete (antes de 0017 el ACL por defecto se lo daba y RLS
+--    bloqueaba con 0 filas; ahora corta con permission denied, más estricto). El caso de
+--    company_settings (columnas específicas, no la fila completa) ya se cubrió arriba.
 -- ---------------------------------------------------------------------------------------------
 
 set local role anon;
 
-select is((select count(*)::int from public.clients where id = 'c2400000-0000-0000-0000-000000000001'), 0, 'anon: clients, 0 filas');
-select is((select count(*)::int from public.employees where profile_id = 'c2400000-0000-0000-0000-000000000085'), 0, 'anon: employees, 0 filas');
-select is((select count(*)::int from public.shifts where id = 'c2400000-0000-0000-0000-000000000041'), 0, 'anon: shifts, 0 filas');
-select is((select count(*)::int from public.assignments where id = 'c2400000-0000-0000-0000-000000000051'), 0, 'anon: assignments, 0 filas');
-select is((select count(*)::int from public.ratings where id = 'c2400000-0000-0000-0000-000000000071'), 0, 'anon: ratings, 0 filas');
-select is((select count(*)::int from public.user_roles), 0, 'anon: user_roles, 0 filas');
-select is((select count(*)::int from public.security_events), 0, 'anon: security_events, 0 filas');
+prepare anon_clients as select count(*) from public.clients where id = 'c2400000-0000-0000-0000-000000000001';
+select throws_ok('anon_clients', '42501', null, 'anon: clients, sin privilegio de tabla');
+
+prepare anon_employees as select count(*) from public.employees where profile_id = 'c2400000-0000-0000-0000-000000000085';
+select throws_ok('anon_employees', '42501', null, 'anon: employees, sin privilegio de tabla');
+
+prepare anon_shifts as select count(*) from public.shifts where id = 'c2400000-0000-0000-0000-000000000041';
+select throws_ok('anon_shifts', '42501', null, 'anon: shifts, sin privilegio de tabla');
+
+prepare anon_assignments as select count(*) from public.assignments where id = 'c2400000-0000-0000-0000-000000000051';
+select throws_ok('anon_assignments', '42501', null, 'anon: assignments, sin privilegio de tabla');
+
+prepare anon_ratings as select count(*) from public.ratings where id = 'c2400000-0000-0000-0000-000000000071';
+select throws_ok('anon_ratings', '42501', null, 'anon: ratings, sin privilegio de tabla');
+
+prepare anon_user_roles as select count(*) from public.user_roles;
+select throws_ok('anon_user_roles', '42501', null, 'anon: user_roles, sin privilegio de tabla');
+
+prepare anon_security_events as select count(*) from public.security_events;
+select throws_ok('anon_security_events', '42501', null, 'anon: security_events, sin privilegio de tabla');
 
 set local role postgres;
 

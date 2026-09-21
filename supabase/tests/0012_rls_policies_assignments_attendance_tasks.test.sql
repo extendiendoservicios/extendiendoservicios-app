@@ -362,25 +362,20 @@ select is(
   'shift_tasks: el empleado de afuera no ve la tarea de un turno ajeno'
 );
 
--- Sin RPC todavía (update_task_status llega en fase 12/13): ni siquiera el admin escribe directo
--- -- sin ninguna política de update en la tabla, el intento afecta 0 filas sin excepción (mismo
--- comportamiento que checklist_templates más arriba).
+-- Sin RPC todavía (update_task_status llega en fase 12/13): ni siquiera el admin escribe
+-- directo. Desde 0017_grants.sql (DB-017, tramo B) shift_tasks no tiene ningún privilegio de
+-- update otorgado a authenticated (tabla "RPC only", sin insert/update/delete directo para
+-- ningún rol): el intento corta con permission denied, no con "0 filas afectadas" como antes de
+-- 0017 (cuando el ACL por defecto todavía daba el privilegio de tabla y solo RLS bloqueaba).
 set local role postgres;
 select tests.as_user('test-db014c-admin@example.com');
 
-create temporary table c2300000_shift_tasks_probe (n int) on commit drop;
+prepare shift_tasks_update_direct as
+  update public.shift_tasks set status = 'done' where id = 'c2300000-0000-0000-0000-000000000071';
 
-with upd as (
-  update public.shift_tasks set status = 'done'
-  where id = 'c2300000-0000-0000-0000-000000000071'
-  returning 1
-)
-insert into c2300000_shift_tasks_probe select count(*) from upd;
-
-select is(
-  (select n from c2300000_shift_tasks_probe),
-  0,
-  'shift_tasks: ni el admin puede actualizar directo (04 sección 7.2: "RPC update_task_status", todavía no escrita; 0 filas afectadas)'
+select throws_ok(
+  'shift_tasks_update_direct', '42501', null,
+  'shift_tasks: ni el admin puede actualizar directo (04 sección 7.2: "RPC update_task_status", todavía no escrita; sin privilegio de tabla, 0017_grants.sql)'
 );
 
 set local role postgres;

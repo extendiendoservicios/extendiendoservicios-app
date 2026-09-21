@@ -191,8 +191,16 @@ select is(
   'sites: empleado sin turno en ninguna de las dos sedes no ve ninguna'
 );
 
+-- Desde 0017_grants.sql (DB-017, tramo B), anon ni siquiera tiene el privilegio de tabla.
 set local role anon;
-select is((select count(*)::int from public.sites), 0, 'sites: anon no lee ninguna fila');
+
+prepare sites_select_anon as select count(*) from public.sites;
+
+select throws_ok(
+  'sites_select_anon', '42501', null,
+  'sites: anon no tiene ni el privilegio de tabla (0017_grants.sql)'
+);
+
 set local role postgres;
 
 -- ---------------------------------------------------------------------------------------------
