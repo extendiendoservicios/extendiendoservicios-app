@@ -154,6 +154,19 @@ select throws_ok(
 
 -- LAST_OWNER: no se puede dejar al único owner sin ese rol ---------------------------------------
 
+-- Limpieza defensiva (DB-019, P04.6): el fixture de este archivo (comentario de arriba, línea 55)
+-- asume que su owner es "el único owner" al momento de este escenario -- premisa que
+-- `supabase/seed.sql` puede romper en App_dev (deja su propio owner real). Este archivo corre en
+-- su propia transacción con `rollback`, así que sacarle el rol acá adentro (el trigger
+-- `app.prevent_last_owner_removal` lo permite: sigue quedando el owner del fixture) no lo saca de
+-- verdad, solo restaura la premisa "un único owner" para este escenario puntual. `set local role
+-- postgres` primero: `authenticated` (el rol activo tras `tests.as_user` de arriba) no tiene
+-- `delete` sobre `user_roles` (tabla "RPC only", 0017_grants.sql); después hay que volver a
+-- `tests.as_user` para que la RPC de abajo se siga llamando con la sesión del owner del fixture.
+set local role postgres;
+delete from public.user_roles where role = 'owner' and profile_id <> 'c3100000-0000-0000-0000-000000000081';
+select tests.as_user('test-db015-owner@example.com');
+
 prepare set_roles_last_owner as
   select public.set_user_roles('c3100000-0000-0000-0000-000000000081', array['admin']::public.app_role[]);
 

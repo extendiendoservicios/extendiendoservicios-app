@@ -216,6 +216,11 @@ set local role postgres;
 
 -- 3. v_public_branding: solo tres columnas, sin location_consent_text -----------------------------
 
+-- Limpieza defensiva (DB-019, P04.6): `supabase/seed.sql` puede haber dejado su propia fila de
+-- company_settings en App_dev; este archivo corre en su propia transacción con `rollback`, así
+-- que borrarla acá adentro no la borra de verdad, solo evita chocar con la primary key (id = 1).
+delete from public.company_settings;
+
 insert into public.company_settings (id, name, logo_path, support_phone, location_consent_text)
 values (1, 'Extendiendo Servicios', 'branding/logo.png', '+54 11 5555-5555', 'Texto de consentimiento de prueba');
 

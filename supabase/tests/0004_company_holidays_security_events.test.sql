@@ -91,6 +91,15 @@ select ok(
   'security_events tiene RLS habilitada'
 );
 
+-- Limpieza defensiva (DB-019, P04.6): `supabase/seed.sql` puede haber dejado datos reales de
+-- staging en `App_dev` (una fila de company_settings, feriados). Este archivo corre en su propia
+-- transacción con `rollback` al final (convención de arriba), así que borrarlos acá adentro no
+-- los borra de verdad -- solo deja el terreno limpio para que las aserciones de más abajo, que
+-- esperan contar exactamente lo que fixturea este archivo, no dependan de qué haya cargado el
+-- seed antes de correr los tests.
+delete from public.company_settings;
+delete from public.holidays;
+
 -- company_settings: fila única (id = 1) ----------------------------------------------------------
 
 select lives_ok(

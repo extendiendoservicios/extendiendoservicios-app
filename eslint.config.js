@@ -48,4 +48,15 @@ export default tseslint.config(
       globals: globals.node,
     },
   },
+  {
+    // scripts/ (DB-019 en adelante): Node real, no navegador -- `process`, `console`, etc. Se
+    // agrega sobre el bloque general de `**/*.{ts,tsx}` (mismo chequeo de tipos vía
+    // projectService, que ya cubre `scripts/**/*.ts` desde tsconfig.node.json), sumando los
+    // globals de Node a los de browser en vez de reemplazarlos (ESLint flat config combina
+    // `languageOptions.globals` de todas las configs que matchean un archivo).
+    files: ['scripts/**/*.ts'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
 )
