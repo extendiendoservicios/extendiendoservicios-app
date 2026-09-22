@@ -153,7 +153,11 @@ def _aplicar_validacion(ws: Worksheet, columna: Columna, letra: str, fila_desde:
     elif columna.tipo == "dni":
         # `employees_dni_format_check` de 0016_hardening.sql exige solo dígitos, sin largo fijo.
         # Acá se acota a 6-9 dígitos (el rango real de un DNI argentino) para ayudar a detectar
-        # errores de tipeo; si algún DNI real queda fuera de ese rango, avisanos (ver reporte).
+        # errores de tipeo, pero como **la base no impone ese largo**, el aviso no bloquea: sale
+        # como advertencia y quien completa puede seguir igual. La regla general de esta plantilla
+        # es bloquear solo donde Postgres también rechazaría (por ejemplo CUIT y CUIL de 11
+        # dígitos, que sí son un `check`), y avisar donde es una ayuda nuestra. Si bloqueara,
+        # un documento legítimo fuera de ese rango dejaría a alguien sin poder cargarse.
         dv = DataValidation(
             type="custom",
             formula1=(
@@ -162,8 +166,12 @@ def _aplicar_validacion(ws: Worksheet, columna: Columna, letra: str, fila_desde:
             ),
             allow_blank=not columna.obligatoria,
             showErrorMessage=True,
-            errorTitle="DNI no válido",
-            error="Ingresá solo números, sin puntos ni espacios (por ejemplo 30111222).",
+            errorStyle="warning",
+            errorTitle="Revisá el DNI",
+            error=(
+                "Ingresá solo números, sin puntos ni espacios (por ejemplo 30111222). "
+                "Si el documento es correcto y tiene otra cantidad de dígitos, aceptá igual."
+            ),
         )
     elif columna.tipo == "fecha":
         dv = DataValidation(
