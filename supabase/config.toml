@@ -554,8 +554,9 @@ additional_redirect_urls = [
 # P06.0: override del SMTP para producción. Misma configuración que App_dev (mismo dominio
 # verificado, mismo remitente, mismo puerto) salvo la clave: Resend tiene una clave de API
 # separada por proyecto ("supabase-auth-prod", ya generada -- la tiene Mike), así que referencia
-# una variable de entorno DISTINTA (`RESEND_API_KEY_PROD`, no `RESEND_API_KEY`) para que la clave
-# de producción nunca conviva con la de App_dev en el mismo `.env`. Mike la carga en
+# una variable de entorno DISTINTA (`RESEND_API_KEY_PROD`, no `RESEND_API_KEY`): así un push
+# contra producción no puede terminar usando la clave de App_dev por descuido, y cada entorno
+# conserva su propia clave rotable por separado. Mike la carga en
 # `app/supabase/.env` (junto a `RESEND_API_KEY`, como una línea más) recién cuando F6 pase a
 # producción y corresponda ejecutar el `config push` contra `App` -- ver docs/environments.md
 # sección 3 y sección 4 para el nombre y el paso a paso. Nada de esto se aplica desde acá.
