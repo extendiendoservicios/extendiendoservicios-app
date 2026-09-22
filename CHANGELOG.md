@@ -7,7 +7,7 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
-Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022), y el cierre de F5: marca de la sidebar e íconos PWA desde un PNG temporal, `vite-plugin-pwa` y `/dev/design` completo (F5 · DS-016, DS-018 a DS-020, RESP-001, DOC-005), el cierre de F3 (F3 · DOC-003, INFRA-024, TEST-024), la revisión visual de cierre de F5 (P05.6), el inicio de F4: extensiones, esquema `app` y enumeraciones, con su runner de pgTAP (F4 · DB-001, DB-002, DB-022, TEST-001), la continuación de F4: personas y acceso, hook de Auth y funciones de permisos (F4 · DB-003, DB-004, DB-005, TEST-002), la continuación de F4: configuración y seguridad, clientes y sedes, y empleados (F4 · DB-006, DB-007, DB-008), la continuación de F4: servicios, turnos, asignaciones, checklists, tareas, asistencia, supervisiones y calificaciones (F4 · DB-009, DB-010, DB-011, DB-012), y el SMTP de Resend en Auth, con las plantillas de correo en español (F6 · P06.0, más la parte de plantillas de AUTH-005).
+Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022), y el cierre de F5: marca de la sidebar e íconos PWA desde un PNG temporal, `vite-plugin-pwa` y `/dev/design` completo (F5 · DS-016, DS-018 a DS-020, RESP-001, DOC-005), el cierre de F3 (F3 · DOC-003, INFRA-024, TEST-024), la revisión visual de cierre de F5 (P05.6), el inicio de F4: extensiones, esquema `app` y enumeraciones, con su runner de pgTAP (F4 · DB-001, DB-002, DB-022, TEST-001), la continuación de F4: personas y acceso, hook de Auth y funciones de permisos (F4 · DB-003, DB-004, DB-005, TEST-002), la continuación de F4: configuración y seguridad, clientes y sedes, y empleados (F4 · DB-006, DB-007, DB-008), la continuación de F4: servicios, turnos, asignaciones, checklists, tareas, asistencia, supervisiones y calificaciones (F4 · DB-009, DB-010, DB-011, DB-012), el SMTP de Resend en Auth, con las plantillas de correo en español (F6 · P06.0, más la parte de plantillas de AUTH-005), y el registro del inicio de sesión en `security_events` (F6 · P06.1, AUTH-009, más la parte de base de datos de DOC-006).
 
 ### Agregado
 
@@ -527,6 +527,36 @@ position)` deferrable, para reordenar dos ítems en un solo `update`);
   recortado) y `TaskItem` ("no realizada" exige motivo, solo lectura no
   dispara callbacks, etiqueta "Opcional", atenuado con hora de
   finalización).
+- Registro del inicio de sesión en `security_events` (P06.1, AUTH-009,
+  P-104): migración `0019_security_events_sign_in.sql` con
+  `app.log_sign_in()` (trigger `security definer` sobre
+  `after insert on auth.sessions`) y el trigger `trg_log_sign_in`. Se
+  confirmó en vivo contra `App_dev`, entre las dos alternativas que
+  dejaba abiertas `06_API.md` sección 1, que el trigger sobre
+  `auth.sessions` (en vez de una Edge Function `log-sign-in`) es viable:
+  el rol de las migraciones puede crearlo, la tabla trae `ip` como
+  esperaba el plan, y un login real seguido de un refresco de token
+  mostró que cada sesión nueva es un `insert` (dispara el evento una vez
+  por inicio de sesión real) mientras que el refresco solo actualiza la
+  fila existente (no duplica el evento). Lo central de la tarea: un
+  fallo al registrar el evento no puede cortar el login -- `app.
+log_sign_in()` envuelve la llamada a `app.log_security_event(...)`
+  (0004) en su propio `exception when others`, así que aunque
+  `security_events.actor_id` no encuentre la fila de `profiles`
+  correspondiente (u ocurra cualquier otro error, presente o futuro), el
+  `insert` en `auth.sessions` -- y con él, el login -- se completa
+  igual; se deja un `raise warning` en los logs de Postgres para poder
+  detectarlo. Probado con pgTAP
+  (`supabase/tests/0019_security_events_sign_in.test.sql`, 12
+  aserciones: estructura, camino feliz con `ip`/`details.session_id`,
+  que un refresco simulado no duplica el evento, camino de fallo sin
+  `profile` que no revienta el `insert`, y que la función no se puede
+  invocar directamente) y verificado con un login real contra una cuenta
+  del seed (`andrea.rios@extendiendoservicios.com`), con la fila de
+  prueba y la sesión limpiadas después. Documentado en
+  `docs/database.md` (parte de base de datos de DOC-006, ya que
+  `docs/security.md` todavía no existe -- llega completo en F6 con las
+  pantallas de Auth).
 
 ### Corregido
 
