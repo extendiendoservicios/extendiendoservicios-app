@@ -7,7 +7,7 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
-Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022), y el cierre de F5: marca de la sidebar e íconos PWA desde un PNG temporal, `vite-plugin-pwa` y `/dev/design` completo (F5 · DS-016, DS-018 a DS-020, RESP-001, DOC-005), el cierre de F3 (F3 · DOC-003, INFRA-024, TEST-024), la revisión visual de cierre de F5 (P05.6), el inicio de F4: extensiones, esquema `app` y enumeraciones, con su runner de pgTAP (F4 · DB-001, DB-002, DB-022, TEST-001), la continuación de F4: personas y acceso, hook de Auth y funciones de permisos (F4 · DB-003, DB-004, DB-005, TEST-002), la continuación de F4: configuración y seguridad, clientes y sedes, y empleados (F4 · DB-006, DB-007, DB-008), la continuación de F4: servicios, turnos, asignaciones, checklists, tareas, asistencia, supervisiones y calificaciones (F4 · DB-009, DB-010, DB-011, DB-012), y el SMTP de Resend en Auth (F6 · P06.0).
+Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022), y el cierre de F5: marca de la sidebar e íconos PWA desde un PNG temporal, `vite-plugin-pwa` y `/dev/design` completo (F5 · DS-016, DS-018 a DS-020, RESP-001, DOC-005), el cierre de F3 (F3 · DOC-003, INFRA-024, TEST-024), la revisión visual de cierre de F5 (P05.6), el inicio de F4: extensiones, esquema `app` y enumeraciones, con su runner de pgTAP (F4 · DB-001, DB-002, DB-022, TEST-001), la continuación de F4: personas y acceso, hook de Auth y funciones de permisos (F4 · DB-003, DB-004, DB-005, TEST-002), la continuación de F4: configuración y seguridad, clientes y sedes, y empleados (F4 · DB-006, DB-007, DB-008), la continuación de F4: servicios, turnos, asignaciones, checklists, tareas, asistencia, supervisiones y calificaciones (F4 · DB-009, DB-010, DB-011, DB-012), y el SMTP de Resend en Auth, con las plantillas de correo en español (F6 · P06.0, más la parte de plantillas de AUTH-005).
 
 ### Agregado
 
@@ -33,6 +33,21 @@ Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/C
   texto literal `env(NOMBRE)` como valor, dejando Auth sin poder enviar
   correos sin ningún error visible (mismo patrón silencioso que el
   incidente de P04.9).
+- Plantillas de los correos de Auth en español con voseo (parte de
+  AUTH-005 que asigna ADR-022; las pantallas COM-02 y COM-03 siguen en
+  P06.3): `supabase/templates/recovery.html` (recuperación de contraseña,
+  la única que se dispara hoy) y `supabase/templates/email_change.html`
+  (hoy inactiva, declarada como red), con sus asuntos en
+  `[auth.email.template.*]` de `supabase/config.toml`. HTML de correo: CSS
+  en línea, maquetado con tablas, sin fuentes ni imágenes externas, legible
+  a 360 px y con el fondo declarado en cada celda para los clientes que
+  fuerzan modo oscuro. El botón usa `#356A70` en vez del teal de marca
+  porque con texto blanco el teal no llega al contraste mínimo. La duración
+  del enlace que anuncia el correo sale de `auth.otp_expiry`, no de una
+  suposición. `supabase/templates` queda fuera de Prettier
+  (`.prettierignore`): reacomoda el espacio en blanco alrededor de los
+  elementos en línea y en un correo eso se ve. Aplicadas a `App_dev` y
+  verificadas con un correo real recibido en bandeja de entrada.
 - Inicio de F4 (P04.1): migración `0001_extensions_and_schema_app.sql`
   (DB-001) con la extensión `btree_gist`, el esquema `app` y sus primeras
   tres funciones —`app.set_updated_at()` (trigger de trazabilidad),
