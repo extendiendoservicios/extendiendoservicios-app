@@ -348,12 +348,34 @@ admin_email = "no-reply@extendiendoservicios.com"
 # que no espera un correo de este sistema y que puede dudar si es legítimo.
 sender_name = "Extendiendo Servicios"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+# AUTH-005 / ADR-022: plantillas propias en español con voseo, en vez de la
+# plantilla genérica en inglés que trae Supabase por defecto (la que llegó
+# con el primer correo real de prueba de P06.0). Cada bloque declara solo
+# `subject` (usado también por `config diff`, que compara nada más que
+# eso) y `content_path`, el HTML completo en `supabase/templates/`.
+#
+# `recovery`: la única que se dispara hoy -- la usa COM-02 (P-012) cuando
+# alguien se olvidó la contraseña.
+[auth.email.template.recovery]
+subject = "Restablecé tu contraseña de Extendiendo Servicios"
+content_path = "./supabase/templates/recovery.html"
 
-# Uncomment to customize notification email template
+# `email_change`: hoy no se dispara -- el cambio de email de login lo hace
+# un administrador desde ADM-27 por la Edge Function `admin-users` con la
+# Admin API, que no manda este correo. Se declara igual como red: si algún
+# día se dispara (por un cambio en esa función o por cualquier otro uso
+# futuro de este flujo de Auth), que no salga en inglés con la plantilla
+# genérica.
+[auth.email.template.email_change]
+subject = "Confirmá tu nuevo email de acceso a Extendiendo Servicios"
+content_path = "./supabase/templates/email_change.html"
+
+# Sin declarar (fuera de este encargo): `confirmation` (no se usa,
+# `enable_confirmations = false` arriba), `invite` (no hay invitaciones,
+# P-011 y ADR-005) y `magic_link` (ADR-008 descartó OTP). La notificación
+# `password_changed` sigue apagada -- encenderla es otra decisión, no de
+# AUTH-005.
+#
 # [auth.email.notification.password_changed]
 # enabled = true
 # subject = "Your password has been changed"
