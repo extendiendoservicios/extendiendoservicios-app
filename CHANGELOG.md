@@ -7,10 +7,32 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
-Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022), y el cierre de F5: marca de la sidebar e íconos PWA desde un PNG temporal, `vite-plugin-pwa` y `/dev/design` completo (F5 · DS-016, DS-018 a DS-020, RESP-001, DOC-005), el cierre de F3 (F3 · DOC-003, INFRA-024, TEST-024), la revisión visual de cierre de F5 (P05.6), el inicio de F4: extensiones, esquema `app` y enumeraciones, con su runner de pgTAP (F4 · DB-001, DB-002, DB-022, TEST-001), la continuación de F4: personas y acceso, hook de Auth y funciones de permisos (F4 · DB-003, DB-004, DB-005, TEST-002), la continuación de F4: configuración y seguridad, clientes y sedes, y empleados (F4 · DB-006, DB-007, DB-008), y la continuación de F4: servicios, turnos, asignaciones, checklists, tareas, asistencia, supervisiones y calificaciones (F4 · DB-009, DB-010, DB-011, DB-012).
+Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022), y el cierre de F5: marca de la sidebar e íconos PWA desde un PNG temporal, `vite-plugin-pwa` y `/dev/design` completo (F5 · DS-016, DS-018 a DS-020, RESP-001, DOC-005), el cierre de F3 (F3 · DOC-003, INFRA-024, TEST-024), la revisión visual de cierre de F5 (P05.6), el inicio de F4: extensiones, esquema `app` y enumeraciones, con su runner de pgTAP (F4 · DB-001, DB-002, DB-022, TEST-001), la continuación de F4: personas y acceso, hook de Auth y funciones de permisos (F4 · DB-003, DB-004, DB-005, TEST-002), la continuación de F4: configuración y seguridad, clientes y sedes, y empleados (F4 · DB-006, DB-007, DB-008), la continuación de F4: servicios, turnos, asignaciones, checklists, tareas, asistencia, supervisiones y calificaciones (F4 · DB-009, DB-010, DB-011, DB-012), y el SMTP de Resend en Auth (F6 · P06.0).
 
 ### Agregado
 
+- SMTP de Resend en Supabase Auth (P06.0, ADR-022): bloque
+  `[auth.email.smtp]` en `supabase/config.toml` (host `smtp.resend.com`,
+  puerto 587/STARTTLS, remitente `no-reply@extendiendoservicios.com`,
+  nombre visible "Extendiendo Servicios", clave desde
+  `env(RESEND_API_KEY)`), aplicado a `App_dev` con `supabase config push`
+  (verificado sin diferencias pendientes en el `config diff` posterior).
+  `auth.rate_limit.email_sent` sube de 2 a 20 por hora, calculado contra el
+  plan gratis de Resend (100/día, 3000/mes) y el uso esperable de la Base
+  (recuperación de contraseña y cambio de email, unos sesenta usuarios).
+  `auth.email.enable_confirmations` declarado en `false`: el alta de
+  usuarios (P-011) la hace siempre un administrador con contraseña inicial,
+  sin invitación por correo. Override para `App` en
+  `[remotes.produccion.auth.email.smtp]`, con clave propia
+  (`RESEND_API_KEY_PROD`) sin aplicar todavía (lo aplica Mike cuando F6
+  llegue a producción). `supabase/.env.example` nuevo (documenta
+  `RESEND_API_KEY` sin su valor). Dos hallazgos de la CLI 2.117.0
+  documentados en `docs/environments.md`: `env(...)` solo se resuelve desde
+  `supabase/.env` o el entorno del proceso (nunca la raíz del proyecto ni
+  `.env.local`), y si la variable falta, `config push` no falla —empuja el
+  texto literal `env(NOMBRE)` como valor, dejando Auth sin poder enviar
+  correos sin ningún error visible (mismo patrón silencioso que el
+  incidente de P04.9).
 - Inicio de F4 (P04.1): migración `0001_extensions_and_schema_app.sql`
   (DB-001) con la extensión `btree_gist`, el esquema `app` y sus primeras
   tres funciones —`app.set_updated_at()` (trigger de trazabilidad),
