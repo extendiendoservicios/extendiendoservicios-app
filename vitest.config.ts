@@ -18,6 +18,22 @@ export default defineConfig({
   },
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(pkg.version),
+    // AUTH-001: `src/lib/supabase.ts` corta con un error si estas dos faltan,
+    // y lo hace al importarse el módulo. Cualquier test que importe algo que
+    // llegue hasta el cliente (por ejemplo `RequireRole`, vía `AuthProvider`)
+    // explota antes de correr, aunque tenga `useAuth` mockeado.
+    //
+    // Sin estas dos líneas, el resultado de `pnpm test` dependía de si quien
+    // lo corre tiene `.env.local` — verde en la máquina de desarrollo y rojo
+    // en CI, que fue exactamente lo que pasó en el PR de P06.2. Se fijan acá
+    // con valores falsos y evidentes, así los tests dan lo mismo en los dos
+    // lados y, de paso, ninguna corrida puede pegarle sin querer a App_dev.
+    'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(
+      'https://proyecto-de-prueba.supabase.co',
+    ),
+    'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(
+      'sb_publishable_clave-falsa-solo-para-tests',
+    ),
   },
   test: {
     environment: 'jsdom',

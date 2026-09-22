@@ -23,8 +23,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
-import { setDevRoleSelection } from '@/features/auth/devRole'
-import { ROLE_LABELS, useSession } from '@/features/auth/session'
+import { useAuth } from '@/features/auth/AuthProvider'
+import { ROLE_LABELS } from '@/features/auth/session'
 import { useRouteHandle } from '@/app/routes/placeholder'
 import {
   ADMIN_MORE_ITEMS,
@@ -61,7 +61,7 @@ export function AdminShell({
 } = {}) {
   const location = useLocation()
   const navigate = useNavigate()
-  const session = useSession()
+  const { displayName, roles, signOut } = useAuth()
   const handle = useRouteHandle()
   const [moreOpen, setMoreOpen] = useState(false)
 
@@ -71,17 +71,17 @@ export function AdminShell({
   const showSidebar = useMediaQuery('(min-width: 1024px)')
   const showTabbar = !showSidebar
 
-  const displayName =
-    session.status === 'authenticated' ? session.displayName : 'Cuenta'
-  const roleLabel =
-    session.status === 'authenticated'
-      ? session.roles.includes('owner')
-        ? ROLE_LABELS.owner
-        : ROLE_LABELS.admin
-      : ''
+  // `AdminShell` solo se monta dentro de `RequireRole allow={['owner', 'admin']}`
+  // (`router.tsx`), así que acá siempre hay al menos uno de los dos.
+  const roleLabel = roles.includes('owner')
+    ? ROLE_LABELS.owner
+    : ROLE_LABELS.admin
 
-  function handleSignOut() {
-    setDevRoleSelection('none')
+  async function handleSignOut() {
+    await signOut()
+    // `AuthProvider` ya va a pasar a `unauthenticated` (RequireRole
+    // redirige solo), pero navegar acá evita esperar ese ciclo de render
+    // extra: la persona ve `/ingresar` en el mismo clic.
     void navigate('/ingresar')
   }
 
@@ -129,7 +129,7 @@ export function AdminShell({
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={handleSignOut}>
+                <DropdownMenuItem onSelect={() => void handleSignOut()}>
                   <LogOut /> Cerrar sesión
                 </DropdownMenuItem>
               </DropdownMenuContent>

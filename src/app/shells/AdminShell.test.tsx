@@ -3,6 +3,23 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AdminShell } from './AdminShell'
 
+// `AdminShell` lee `useAuth()` (nombre, rol, cerrar sesión): estos tests
+// prueban el layout, no la sesión (eso lo cubre `AuthProvider.test.tsx`),
+// así que alcanza con una sesión fija de administradora.
+vi.mock('@/features/auth/AuthProvider', () => ({
+  useAuth: () => ({
+    status: 'authenticated',
+    userId: 'user-1',
+    email: 'andrea.rios@extendiendoservicios.com',
+    roles: ['admin'],
+    capabilities: [],
+    profile: null,
+    displayName: 'Andrea Ríos',
+    signOut: vi.fn(),
+    refreshProfile: vi.fn(),
+  }),
+}))
+
 /**
  * Mismo criterio que `DataTable.test.tsx` (P05.3), pero resolviendo
  * `matches` según el `min-width` de cada consulta: `AdminShell` combina dos
