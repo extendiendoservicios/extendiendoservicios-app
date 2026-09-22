@@ -227,6 +227,53 @@ función).
 
 Las tres tablas nacen con RLS habilitada y sin políticas (llegan en `0012`, DB-014).
 
+### Registro del inicio de sesión (04 sección 2.6, P-104; migración `0019`, AUTH-009)
+
+`app.log_sign_in()`: trigger `after insert on auth.sessions` que inserta un evento `sign_in` en
+`security_events` en cada inicio de sesión real (`04` sección 2.6, P-104). `06_API.md` sección 1
+dejaba la vía PROPUESTA entre dos alternativas (trigger sobre `auth.sessions` o Edge Function
+`log-sign-in`); se confirmó el trigger con evidencia en vivo contra `App_dev`:
+
+- El rol con el que corren las migraciones puede crear el trigger (probado con `create trigger`
+  dentro de una transacción con `rollback`).
+- Columnas reales de `auth.sessions` en esta versión de GoTrue (Postgres 17.6.1.166):
+  `id`, `user_id`, `created_at`, `updated_at`, `factor_id`, `aal`, `not_after`, `refreshed_at`,
+  `user_agent`, `ip`, `tag`, `oauth_client_id`, `refresh_token_hmac_key`,
+  `refresh_token_counter`, `scopes`. El evento guarda `actor_id` (`user_id`), `ip` y, en
+  `details`, el `session_id` y el `user_agent`.
+- `auth.sessions` es la tabla correcta: un login real (`grant_type=password`) contra una cuenta
+  del seed creó una fila nueva; un refresco posterior del token (`grant_type=refresh_token`) de
+  esa misma sesión actualizó la fila existente (mismo `id`) en vez de crear una nueva. Un trigger
+  `after insert` dispara entonces una vez por sesión real (una por dispositivo/pestaña), no en
+  cada refresco automático del cliente (`autoRefreshToken`). La Admin API (creación de usuario,
+  reseteo de contraseña, cierre de sesión) no inserta filas en `auth.sessions`, así que la Edge
+  Function `admin-users` (F7) no va a disparar `sign_in` espurios.
+
+**Lo central de la tarea: un fallo al registrar el evento no puede cortar el login.**
+`security_events.actor_id` referencia `profiles(id)` sin `on delete`/`on update` especial: si esa
+fila no existiera todavía cuando se crea la sesión (no debería pasar -- `app.handle_new_user()`
+crea `profiles` en la misma transacción del alta en `auth.users`, y toda alta pasa por la Edge
+Function `admin-users` o `scripts/seed-dev.ts` -- pero "no debería" no es "no puede"), la llamada
+a `app.log_security_event(...)` cortaría por violación de clave foránea. Por eso
+`app.log_sign_in()` envuelve esa llamada en su propio bloque `exception when others`: cualquier
+error se atrapa ahí, se deja un `raise warning` en los logs de Postgres (mensaje
+`app.log_sign_in: ...`) y la función igual devuelve `new`, así el `insert` original en
+`auth.sessions` -- y con él, todo el login -- se completa sin enterarse de que el registro del
+evento falló. Probado en vivo (transacción con `rollback`, sin dejar rastro): con un `user_id`
+sin `profiles` correspondiente, el `insert` en `auth.sessions` vive igual y `security_events`
+queda en cero filas para ese actor.
+
+Riesgo de una actualización futura de GoTrue: el trigger vive en `auth.sessions`, objeto del
+esquema `auth` gestionado por Supabase -- mismo riesgo que corre `trg_handle_new_user` sobre
+`auth.users` desde `0003` (DB-004). Si GoTrue agrega/renombra una columna que el trigger usa, la
+función sigue existiendo pero falla en tiempo de ejecución (atrapado por el `exception`, sin
+avisar); se detecta revisando los `WARNING` en Logs > Postgres Logs del panel, o notando que
+`security_events` deja de sumar filas `sign_in` pese a haber logins. Si GoTrue recrea
+`auth.sessions` entera (`drop table` + `create table`, no solo `alter table`), el trigger
+desaparece con la tabla y no vuelve a crearse solo: se detecta con `select tgname from pg_trigger
+where tgrelid = 'auth.sessions'::regclass` después de cualquier actualización de versión de
+Supabase notificada por la plataforma, y hace falta una migración nueva para recrearlo.
+
 ## Clientes y sedes (04 sección 2.2, migración `0005`)
 
 `clients` (`legal_name not null`, `trade_name`, `cuit unique`, `admin_address`,
@@ -862,7 +909,10 @@ completo el modelo de datos de F4 (todas las migraciones de la sección 11 del m
 `0017`). `0018_performance_shifts_board.sql` (DB-024, P04.6) llega después, fuera de la
 numeración de la sección 11 del modelo (que termina en `0017`): es un índice adicional que salió
 de la revisión de rendimiento con un seed ampliado, no de un bloque nuevo del modelo de datos --
-ver "Rendimiento" más arriba.
+ver "Rendimiento" más arriba. `0019_security_events_sign_in.sql` (AUTH-009, P06.1) llega todavía
+después, ya en F6: `app.log_sign_in()` y el trigger `trg_log_sign_in` sobre `auth.sessions`, que
+registra el inicio de sesión en `security_events` -- ver "Registro del inicio de sesión" más
+arriba.
 
 ## Cómo escribir una migración
 
