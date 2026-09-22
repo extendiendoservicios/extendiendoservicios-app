@@ -1,0 +1,290 @@
+<!--
+  AUTH-005 / ADR-022 -- Confirmación de cambio de email de acceso.
+
+  Hoy este correo probablemente nunca se dispara: el cambio de email de
+  login lo hace un administrador desde ADM-27 por la Edge Function
+  `admin-users` con la Admin API, que no manda correo por sí sola. Se
+  declara igual como red: si alguna vez se dispara (por ejemplo, si la
+  implementación de esa función cambia, o ante cualquier otro uso futuro
+  de este flujo de Supabase Auth), que no salga en inglés con la
+  plantilla genérica.
+
+  Mismas reglas de email HTML que `recovery.html` (ver los comentarios
+  de ese archivo: CSS en línea, tablas, sin `<style>`, sin fuentes ni
+  imágenes externas, defensa de modo oscuro con `color-scheme` +
+  fondos explícitos en cada celda, botón con `--primary-800` en vez de
+  `--primary` por contraste).
+
+  Variables de Supabase usadas (confirmadas contra la plantilla por
+  defecto de "Change Email Address" de la documentación de Supabase
+  Auth): `{{ .Email }}` (el email actual, el de antes del cambio),
+  `{{ .NewEmail }}` (el email nuevo al que se quiere cambiar, propia de
+  esta plantilla -- no existe en las demás) y `{{ .ConfirmationURL }}`.
+  Con `double_confirm_changes = true` (`supabase/config.toml`), Supabase
+  manda esta misma plantilla dos veces, una a cada casilla, cada una con
+  su propio enlace: el texto está escrito para servir en cualquiera de
+  las dos. El enlace vale 3600 segundos (1 hora), el mismo
+  `otp_expiry` del bloque `[auth.email]`.
+-->
+<!doctype html>
+<html lang="es-AR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light" />
+    <title>Confirmar cambio de email -- Extendiendo Servicios</title>
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background-color: #f6f7f9;
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    "
+  >
+    <div
+      style="
+        display: none;
+        max-height: 0;
+        overflow: hidden;
+        mso-hide: all;
+        font-size: 1px;
+        line-height: 1px;
+        color: #f6f7f9;
+      "
+    >
+      Se pidió cambiar el email con el que iniciás sesión en Extendiendo
+      Servicios. El enlace vale por 1 hora.
+    </div>
+
+    <table
+      role="presentation"
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      border="0"
+      bgcolor="#f6f7f9"
+      style="width: 100%; background-color: #f6f7f9"
+    >
+      <tr>
+        <td align="center" style="padding: 32px 16px">
+          <table
+            role="presentation"
+            width="480"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            bgcolor="#ffffff"
+            style="
+              width: 100%;
+              max-width: 480px;
+              background-color: #ffffff;
+              border: 1px solid #e6e9ef;
+              border-radius: 12px;
+            "
+          >
+            <!-- Encabezado -->
+            <tr>
+              <td style="padding: 32px 32px 8px 32px">
+                <p
+                  style="
+                    margin: 0;
+                    font-family: -apple-system, BlinkMacSystemFont,
+                      'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                    font-size: 15px;
+                    font-weight: 700;
+                    color: #356a70;
+                  "
+                >
+                  Extendiendo Servicios
+                </p>
+              </td>
+            </tr>
+
+            <!-- Título -->
+            <tr>
+              <td style="padding: 8px 32px 0 32px">
+                <h1
+                  style="
+                    margin: 0;
+                    font-family: -apple-system, BlinkMacSystemFont,
+                      'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                    font-size: 20px;
+                    font-weight: 700;
+                    line-height: 1.3;
+                    color: #13151e;
+                  "
+                >
+                  Confirmá tu nuevo email de acceso
+                </h1>
+              </td>
+            </tr>
+
+            <!-- Cuerpo -->
+            <tr>
+              <td style="padding: 16px 32px 0 32px">
+                <p
+                  style="
+                    margin: 0;
+                    font-family: -apple-system, BlinkMacSystemFont,
+                      'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                    font-size: 15px;
+                    line-height: 1.6;
+                    color: #13151e;
+                  "
+                >
+                  Un administrador de Extendiendo Servicios pidió cambiar
+                  el email con el que iniciás sesión, de
+                  <strong>{{ .Email }}</strong> a
+                  <strong>{{ .NewEmail }}</strong>.
+                </p>
+              </td>
+            </tr>
+
+            <!-- Botón -->
+            <tr>
+              <td align="center" style="padding: 28px 32px 4px 32px">
+                <table
+                  role="presentation"
+                  cellpadding="0"
+                  cellspacing="0"
+                  border="0"
+                >
+                  <tr>
+                    <td
+                      align="center"
+                      bgcolor="#356a70"
+                      style="
+                        background-color: #356a70;
+                        border-radius: 8px;
+                      "
+                    >
+                      <a
+                        href="{{ .ConfirmationURL }}"
+                        target="_blank"
+                        style="
+                          display: inline-block;
+                          padding: 14px 32px;
+                          font-family: -apple-system, BlinkMacSystemFont,
+                            'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                          font-size: 16px;
+                          font-weight: 700;
+                          color: #ffffff;
+                          text-decoration: none;
+                          border-radius: 8px;
+                        "
+                      >
+                        Confirmar el cambio
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Enlace de respaldo -->
+            <tr>
+              <td style="padding: 12px 32px 0 32px">
+                <p
+                  style="
+                    margin: 0;
+                    font-family: -apple-system, BlinkMacSystemFont,
+                      'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                    font-size: 13px;
+                    line-height: 1.6;
+                    color: #4a5061;
+                  "
+                >
+                  Si el botón no funciona, copiá y pegá este enlace en el
+                  navegador:<br />
+                  <a
+                    href="{{ .ConfirmationURL }}"
+                    style="color: #356a70; word-break: break-all"
+                    >{{ .ConfirmationURL }}</a
+                  >
+                </p>
+              </td>
+            </tr>
+
+            <!-- Vigencia -->
+            <tr>
+              <td style="padding: 20px 32px 0 32px">
+                <p
+                  style="
+                    margin: 0;
+                    font-family: -apple-system, BlinkMacSystemFont,
+                      'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                    font-size: 14px;
+                    line-height: 1.6;
+                    color: #13151e;
+                  "
+                >
+                  El enlace vale por <strong>1 hora</strong>. Pasado ese
+                  tiempo, va a hacer falta que el administrador pida el
+                  cambio de nuevo.
+                </p>
+              </td>
+            </tr>
+
+            <!-- Tranquilidad -->
+            <tr>
+              <td style="padding: 12px 32px 0 32px">
+                <p
+                  style="
+                    margin: 0;
+                    font-family: -apple-system, BlinkMacSystemFont,
+                      'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                    font-size: 14px;
+                    line-height: 1.6;
+                    color: #13151e;
+                  "
+                >
+                  Si no lo esperabas, no hace falta que hagas nada:
+                  mientras no confirmes el enlace, tu email de acceso
+                  sigue siendo el mismo. Ante cualquier duda, consultale a
+                  tu administrador.
+                </p>
+              </td>
+            </tr>
+
+            <!-- Pie -->
+            <tr>
+              <td style="padding: 28px 32px 32px 32px">
+                <table
+                  role="presentation"
+                  width="100%"
+                  cellpadding="0"
+                  cellspacing="0"
+                  border="0"
+                  style="border-top: 1px solid #e6e9ef"
+                >
+                  <tr>
+                    <td style="padding: 16px 0 0 0">
+                      <p
+                        style="
+                          margin: 0;
+                          font-family: -apple-system, BlinkMacSystemFont,
+                            'Segoe UI', Roboto, Helvetica, Arial,
+                            sans-serif;
+                          font-size: 12px;
+                          line-height: 1.5;
+                          color: #4a5061;
+                        "
+                      >
+                        Este es un correo automático de Extendiendo
+                        Servicios, no hace falta que lo respondas.
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

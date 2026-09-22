@@ -218,9 +218,31 @@ password_requirements = ""
 # rp_origins = ["http://127.0.0.1:3000"]
 
 [auth.rate_limit]
-# P-107: rate limiting por defecto de Supabase, sin cambios (no hay bloqueo propio por cuenta).
+# P-107: rate limiting por defecto de Supabase, sin cambios (no hay bloqueo propio por cuenta),
+# salvo email_sent de abajo, que P06.0 sube porque deja de ser un valor inerte.
 # Number of emails that can be sent per hour. Requires auth.email.smtp to be enabled.
-email_sent = 2
+#
+# P06.0: con el SMTP de Resend habilitado más abajo, este valor pasa a regir de verdad (antes,
+# sin `auth.email.smtp` encendido, Supabase lo ignoraba). El plan gratis de Resend permite 100
+# emails por día y 3000 por mes -- sin límite propio por hora -- y acá el único uso de Auth es
+# recuperación de contraseña (COM-02, P-012) y el cambio de email de login, que hace un
+# administrador desde ADM-27 por la Edge Function `admin-users` (nadie lo cambia por su cuenta:
+# en COM-04 el email de login es de solo lectura), sobre
+# una base de unos sesenta usuarios. Con el valor anterior (2/hora, heredado de la plantilla)
+# alcanzaba para dos personas por hora en todo el proyecto: la tercera que pidiera un reseteo en
+# esa misma hora se quedaba sin correo y sin ningún aviso de por qué. 20/hora le da margen a
+# cualquier pico real (por ejemplo, varios empleados reseteando contraseña el mismo día) sin
+# acercarse al límite diario de Resend salvo que ese ritmo se sostenga varias horas seguidas, lo
+# que en la práctica sería un patrón de abuso, no un uso legítimo -- ahí el límite diario del
+# proveedor termina de frenarlo.
+#
+# OJO con la documentación previa de este repositorio (`docs/environments.md` decía que esta
+# propiedad era "unmanaged" y que la CLI no la pushea): eso era cierto solo mientras nadie la
+# declaraba acá -- sin un valor local, la CLI la listaba como "unmanaged" (ni se compara). Al
+# declararla, `config push` SÍ la aplicó de verdad contra App_dev (verificado en vivo el 22 sep
+# 2026: el push la incluyó en `secrets/changes` de `auth` con status "updated", y el `config
+# diff` posterior ya no la mostró como diferencia). No hace falta tocar el panel a mano.
+email_sent = 20
 # Number of SMS messages that can be sent per hour. Requires auth.sms to be enabled.
 sms_sent = 30
 # Number of anonymous sign-ins that can be made per hour per IP address. Requires enable_anonymous_sign_ins = true.
@@ -258,9 +280,22 @@ enable_signup = true
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
-# Sin declarar: depende de si hay SMTP propio para entregar el correo de confirmación, decisión
-# pendiente del orquestador (fuera de este encargo). Queda como esté hoy en App_dev.
-# enable_confirmations = false
+#
+# P06.0: se declara en `false` (autoconfirmar), a propósito y en contra del valor que trae hoy
+# App_dev (`true`, verificado con `config diff` antes de este cambio). P-011 es explícito: el
+# alta la hace siempre el dueño o un administrador desde la pantalla de usuarios, con una
+# contraseña inicial que le entrega a la persona por fuera del sistema, "no hay cambio
+# obligatorio al primer ingreso" -- no hay ningún paso de invitación ni de confirmación por
+# correo en ese flujo (ADR-005 lo dice explícito: "la invitación por email contradice P-011").
+#
+# Con `enable_confirmations = true`, un usuario recién creado por la Edge Function `admin-users`
+# (F7, todavía no existe) quedaría sin poder iniciar sesión hasta hacer clic en un enlace de un
+# correo que el flujo de P-011 ni siquiera contempla enviar, salvo que esa función pase
+# `email_confirm: true` explícito al crear la cuenta con la Admin API -- un detalle de
+# implementación futura del que hoy no hay garantía. Declararlo acá en `false` hace que la alta
+# funcione según lo decidido sin depender de que ese detalle se implemente bien, y evita
+# consumir el rate limit de email_sent de arriba con un correo que nadie pidió.
+enable_confirmations = false
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
@@ -273,21 +308,74 @@ secure_password_change = false
 otp_expiry = 3600
 
 # Use a production-ready SMTP server
-# [auth.email.smtp]
-# enabled = true
-# host = "smtp.sendgrid.net"
-# port = 587
-# user = "apikey"
-# pass = "env(SENDGRID_API_KEY)"
-# admin_email = "admin@email.com"
-# sender_name = "Admin"
+#
+# P06.0 / ADR-022: SMTP de Resend para App_dev. El dominio `extendiendoservicios.com` ya está
+# verificado en Resend (SPF, DKIM y DMARC publicados) y el remitente es
+# `no-reply@extendiendoservicios.com`.
+#
+# La clave sale de `env(RESEND_API_KEY)`, que la CLI resuelve leyendo `app/supabase/.env` (el
+# `.env` de DENTRO de esta carpeta, no el de la raíz del proyecto ni un `.env.local`) o el
+# entorno del proceso si ya está exportada ahí -- verificado en vivo contra App_dev el 22 sep
+# 2026, no documentado como tal en la referencia de la CLI. Ver `supabase/.env.example` y
+# `docs/environments.md` sección 4.
+#
+# TRAMPA, verificada en vivo el 22 sep 2026: si `RESEND_API_KEY` no está definida en ninguno de
+# esos dos lugares cuando se corre `config push`, la CLI NO FALLA -- empuja el texto literal
+# `env(RESEND_API_KEY)` como si fuera la contraseña real. Auth queda con una contraseña de SMTP
+# que no es ninguna contraseña, todos los envíos de correo empiezan a fallar, y no hay ningún
+# error visible en el push que lo delate (mismo patrón que el incidente de P04.9, cuando un
+# `config push` apagó el proveedor Email de staging sin que nadie lo notara hasta después).
+# Antes de cualquier `config push` que toque este bloque, confirmar que la variable existe
+# (`grep -c RESEND_API_KEY supabase/.env`, sin imprimir el valor) y, después del push, comprobar
+# de verdad que un correo sale (o, como mínimo, que `/auth/v1/settings` sigue con el proveedor
+# Email habilitado).
+[auth.email.smtp]
+enabled = true
+host = "smtp.resend.com"
+# Puerto 587 (STARTTLS), no 465: es el que Resend recomienda como el más estándar y compatible
+# para un cliente SMTP genérico (su documentación soporta 25/465/587/2465/2587, pero destaca 587
+# como el de uso normal; 465 es TLS implícito, para clientes que no saben hacer STARTTLS).
+port = 587
+# Usuario literal "resend" -- no es una cuenta ni un email, así lo pide Resend para SMTP: la
+# autenticación real es la contraseña, que es la clave de la API.
+user = "resend"
+pass = "env(RESEND_API_KEY)"
+# Remitente de los correos de Auth (ADR-022). `no-reply` porque nadie va a leer las respuestas:
+# la recuperación de contraseña y el cambio de email no esperan una respuesta por correo.
+admin_email = "no-reply@extendiendoservicios.com"
+# Nombre que ve el empleado en su bandeja de entrada junto al remitente. El nombre de la empresa
+# a secas, sin adornos ("Soporte", "No responder", etc.): es lo que más rápido reconoce alguien
+# que no espera un correo de este sistema y que puede dudar si es legítimo.
+sender_name = "Extendiendo Servicios"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+# AUTH-005 / ADR-022: plantillas propias en español con voseo, en vez de la
+# plantilla genérica en inglés que trae Supabase por defecto (la que llegó
+# con el primer correo real de prueba de P06.0). Cada bloque declara solo
+# `subject` (usado también por `config diff`, que compara nada más que
+# eso) y `content_path`, el HTML completo en `supabase/templates/`.
+#
+# `recovery`: la única que se dispara hoy -- la usa COM-02 (P-012) cuando
+# alguien se olvidó la contraseña.
+[auth.email.template.recovery]
+subject = "Restablecé tu contraseña de Extendiendo Servicios"
+content_path = "./supabase/templates/recovery.html"
 
-# Uncomment to customize notification email template
+# `email_change`: hoy no se dispara -- el cambio de email de login lo hace
+# un administrador desde ADM-27 por la Edge Function `admin-users` con la
+# Admin API, que no manda este correo. Se declara igual como red: si algún
+# día se dispara (por un cambio en esa función o por cualquier otro uso
+# futuro de este flujo de Auth), que no salga en inglés con la plantilla
+# genérica.
+[auth.email.template.email_change]
+subject = "Confirmá tu nuevo email de acceso a Extendiendo Servicios"
+content_path = "./supabase/templates/email_change.html"
+
+# Sin declarar (fuera de este encargo): `confirmation` (no se usa,
+# `enable_confirmations = false` arriba), `invite` (no hay invitaciones,
+# P-011 y ADR-005) y `magic_link` (ADR-008 descartó OTP). La notificación
+# `password_changed` sigue apagada -- encenderla es otra decisión, no de
+# AUTH-005.
+#
 # [auth.email.notification.password_changed]
 # enabled = true
 # subject = "Your password has been changed"
@@ -470,7 +558,8 @@ enabled = true
 # bpcfjqvpdfmepiohltbz), el único proyecto vinculado localmente (docs/environments.md). Este
 # bloque documenta, sin aplicarlo, el override de Auth para "App" (producción, ref
 # fysuppdadwvabrjpnnoh): mismas reglas que App_dev (sin registro público, contraseña mínima 8,
-# JWT de 1 hora, refresh token sin expiración, rate limiting por defecto) salvo el dominio.
+# JWT de 1 hora, refresh token sin expiración, rate limiting por defecto, SMTP de Resend,
+# enable_confirmations) salvo el dominio y la clave de SMTP (abajo, propia de producción).
 # `supabase config push` toma los valores no declarados acá del bloque raíz de arriba.
 #
 # Este repositorio NUNCA ejecuta `supabase link` ni `config push` contra este ref: "App" se toca
@@ -485,3 +574,21 @@ additional_redirect_urls = [
   "https://app.extendiendoservicios.com",
   "https://app.extendiendoservicios.com/restablecer",
 ]
+
+# P06.0: override del SMTP para producción. Misma configuración que App_dev (mismo dominio
+# verificado, mismo remitente, mismo puerto) salvo la clave: Resend tiene una clave de API
+# separada por proyecto ("supabase-auth-prod", ya generada -- la tiene Mike), así que referencia
+# una variable de entorno DISTINTA (`RESEND_API_KEY_PROD`, no `RESEND_API_KEY`): así un push
+# contra producción no puede terminar usando la clave de App_dev por descuido, y cada entorno
+# conserva su propia clave rotable por separado. Mike la carga en
+# `app/supabase/.env` (junto a `RESEND_API_KEY`, como una línea más) recién cuando F6 pase a
+# producción y corresponda ejecutar el `config push` contra `App` -- ver docs/environments.md
+# sección 3 y sección 4 para el nombre y el paso a paso. Nada de esto se aplica desde acá.
+[remotes.produccion.auth.email.smtp]
+enabled = true
+host = "smtp.resend.com"
+port = 587
+user = "resend"
+pass = "env(RESEND_API_KEY_PROD)"
+admin_email = "no-reply@extendiendoservicios.com"
+sender_name = "Extendiendo Servicios"

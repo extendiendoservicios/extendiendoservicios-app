@@ -1,0 +1,297 @@
+<!--
+  AUTH-005 / ADR-022 -- Recuperación de contraseña (COM-02, P-012).
+
+  Reglas de un email HTML: todo el CSS va en línea (atributo `style` de
+  cada elemento), maquetado con tablas, sin fuentes externas, sin
+  imágenes externas y pensado para que se lea bien tanto a 360 px como
+  en escritorio y tanto en modo claro como en el modo oscuro que fuerzan
+  varios clientes de correo. No hay ninguna etiqueta `<style>`: Gmail
+  descarta buena parte de lo que pondríamos ahí, así que ni se usa.
+
+  Colores: los mismos valores que `src/styles/tokens.css`, pero pisados
+  a mano (un email no puede leer variables CSS). El botón usa
+  `--primary-800` (#356A70), no `--primary` (#569EA4): con texto blanco
+  encima, `--primary` da un contraste de ~3,1:1 (no llega a 4,5:1), y
+  `--primary-800` da ~6,1:1. Es la misma regla que ya rige en el resto
+  del design system ("el teal no se usa para texto chico").
+
+  Modo oscuro: sin `<style>` no hay forma de usar `prefers-color-scheme`,
+  así que la defensa es doble -- `color-scheme`/`supported-color-schemes`
+  en `<head>` le piden a los clientes que respeten el modo claro tal
+  cual, y además cada tabla y celda lleva su propio `background-color`
+  explícito (y el atributo `bgcolor` como refuerzo para Outlook), para
+  que ningún cliente se quede sin declarar un fondo y termine
+  heredando negro.
+
+  Variables de Supabase usadas (confirmadas contra la plantilla por
+  defecto de "Reset Password" de la documentación de Supabase Auth):
+  `{{ .Email }}` (la cuenta para la que se pidió el restablecimiento) y
+  `{{ .ConfirmationURL }}` (el enlace con el token). El enlace vale
+  3600 segundos (1 hora): `otp_expiry` en `supabase/config.toml`,
+  bloque `[auth.email]`.
+-->
+<!doctype html>
+<html lang="es-AR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Le pide a los clientes que respeten el modo claro tal cual está
+         escrito, en vez de forzar una inversión automática de colores. -->
+    <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light" />
+    <title>Restablecer contraseña -- Extendiendo Servicios</title>
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background-color: #f6f7f9;
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    "
+  >
+    <!-- Texto de vista previa: lo que se ve junto al asunto en la bandeja
+         de entrada, antes de abrir el correo. Oculto en el cuerpo. -->
+    <div
+      style="
+        display: none;
+        max-height: 0;
+        overflow: hidden;
+        mso-hide: all;
+        font-size: 1px;
+        line-height: 1px;
+        color: #f6f7f9;
+      "
+    >
+      Pediste restablecer tu contraseña de Extendiendo Servicios. El
+      enlace vale por 1 hora.
+    </div>
+
+    <table
+      role="presentation"
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      border="0"
+      bgcolor="#f6f7f9"
+      style="width: 100%; background-color: #f6f7f9"
+    >
+      <tr>
+        <td align="center" style="padding: 32px 16px">
+          <table
+            role="presentation"
+            width="480"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            bgcolor="#ffffff"
+            style="
+              width: 100%;
+              max-width: 480px;
+              background-color: #ffffff;
+              border: 1px solid #e6e9ef;
+              border-radius: 12px;
+            "
+          >
+            <!-- Encabezado: nombre de la empresa, sin logo (esta primera
+                 versión no usa imágenes externas). -->
+            <tr>
+              <td style="padding: 32px 32px 8px 32px">
+                <p
+                  style="
+                    margin: 0;
+                    font-family: -apple-system, BlinkMacSystemFont,
+                      'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                    font-size: 15px;
+                    font-weight: 700;
+                    color: #356a70;
+                  "
+                >
+                  Extendiendo Servicios
+                </p>
+              </td>
+            </tr>
+
+            <!-- Título -->
+            <tr>
+              <td style="padding: 8px 32px 0 32px">
+                <h1
+                  style="
+                    margin: 0;
+                    font-family: -apple-system, BlinkMacSystemFont,
+                      'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                    font-size: 20px;
+                    font-weight: 700;
+                    line-height: 1.3;
+                    color: #13151e;
+                  "
+                >
+                  Restablecé tu contraseña
+                </h1>
+              </td>
+            </tr>
+
+            <!-- Cuerpo -->
+            <tr>
+              <td style="padding: 16px 32px 0 32px">
+                <p
+                  style="
+                    margin: 0;
+                    font-family: -apple-system, BlinkMacSystemFont,
+                      'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                    font-size: 15px;
+                    line-height: 1.6;
+                    color: #13151e;
+                  "
+                >
+                  Recibimos un pedido para restablecer la contraseña de la
+                  cuenta <strong>{{ .Email }}</strong> en Extendiendo
+                  Servicios.
+                </p>
+              </td>
+            </tr>
+
+            <!-- Botón -->
+            <tr>
+              <td align="center" style="padding: 28px 32px 4px 32px">
+                <table
+                  role="presentation"
+                  cellpadding="0"
+                  cellspacing="0"
+                  border="0"
+                >
+                  <tr>
+                    <td
+                      align="center"
+                      bgcolor="#356a70"
+                      style="
+                        background-color: #356a70;
+                        border-radius: 8px;
+                      "
+                    >
+                      <a
+                        href="{{ .ConfirmationURL }}"
+                        target="_blank"
+                        style="
+                          display: inline-block;
+                          padding: 14px 32px;
+                          font-family: -apple-system, BlinkMacSystemFont,
+                            'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                          font-size: 16px;
+                          font-weight: 700;
+                          color: #ffffff;
+                          text-decoration: none;
+                          border-radius: 8px;
+                        "
+                      >
+                        Restablecer contraseña
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Enlace de respaldo, por si el botón no se ve -->
+            <tr>
+              <td style="padding: 12px 32px 0 32px">
+                <p
+                  style="
+                    margin: 0;
+                    font-family: -apple-system, BlinkMacSystemFont,
+                      'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                    font-size: 13px;
+                    line-height: 1.6;
+                    color: #4a5061;
+                  "
+                >
+                  Si el botón no funciona, copiá y pegá este enlace en el
+                  navegador:<br />
+                  <a
+                    href="{{ .ConfirmationURL }}"
+                    style="color: #356a70; word-break: break-all"
+                    >{{ .ConfirmationURL }}</a
+                  >
+                </p>
+              </td>
+            </tr>
+
+            <!-- Vigencia -->
+            <tr>
+              <td style="padding: 20px 32px 0 32px">
+                <p
+                  style="
+                    margin: 0;
+                    font-family: -apple-system, BlinkMacSystemFont,
+                      'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                    font-size: 14px;
+                    line-height: 1.6;
+                    color: #13151e;
+                  "
+                >
+                  Por seguridad, el enlace vale por <strong>1 hora</strong>.
+                  Pasado ese tiempo, vas a tener que pedirlo de nuevo desde
+                  la pantalla de ingreso.
+                </p>
+              </td>
+            </tr>
+
+            <!-- Tranquilidad: si no lo pidió, no pasa nada -->
+            <tr>
+              <td style="padding: 12px 32px 0 32px">
+                <p
+                  style="
+                    margin: 0;
+                    font-family: -apple-system, BlinkMacSystemFont,
+                      'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                    font-size: 14px;
+                    line-height: 1.6;
+                    color: #13151e;
+                  "
+                >
+                  Si no fuiste vos quien lo pidió, no hace falta que hagas
+                  nada: podés ignorar este correo y tu contraseña sigue
+                  siendo la misma.
+                </p>
+              </td>
+            </tr>
+
+            <!-- Pie -->
+            <tr>
+              <td style="padding: 28px 32px 32px 32px">
+                <table
+                  role="presentation"
+                  width="100%"
+                  cellpadding="0"
+                  cellspacing="0"
+                  border="0"
+                  style="border-top: 1px solid #e6e9ef"
+                >
+                  <tr>
+                    <td style="padding: 16px 0 0 0">
+                      <p
+                        style="
+                          margin: 0;
+                          font-family: -apple-system, BlinkMacSystemFont,
+                            'Segoe UI', Roboto, Helvetica, Arial,
+                            sans-serif;
+                          font-size: 12px;
+                          line-height: 1.5;
+                          color: #4a5061;
+                        "
+                      >
+                        Este es un correo automático de Extendiendo
+                        Servicios, no hace falta que lo respondas.
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
