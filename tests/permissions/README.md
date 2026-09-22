@@ -52,6 +52,12 @@ Desde `app/`, con `.env.local` completo (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANO
 `scripts/seed-dev.ts`, ver `docs/environments.md` sección 4):
 
 ```bash
+pnpm test:permissions
+```
+
+Que es un atajo de:
+
+```bash
 node --env-file=.env.local ./node_modules/vitest/vitest.mjs run --config tests/permissions/vitest.config.ts
 ```
 
