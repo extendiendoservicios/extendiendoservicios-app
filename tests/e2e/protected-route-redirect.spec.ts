@@ -7,7 +7,7 @@ test('una ruta protegida sin sesión termina en /ingresar', async ({ page }) => 
   await page.goto('/admin')
 
   await expect(page).toHaveURL(/\/ingresar$/)
-  await expect(page.getByRole('heading', { name: 'Ingreso' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Ingresar' })).toBeVisible()
 })
 
 test('/app y /sup sin sesión también terminan en /ingresar', async ({

@@ -3,20 +3,29 @@ import type { RouteObject } from 'react-router'
 import { RequireRole } from '@/features/auth/RequireRole'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { LazyAdminShell, LazyMobileShell } from '@/app/shells/lazyShells'
+import LoginPage from '@/pages/auth/LoginPage'
+import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage'
+import ResetPasswordPage from '@/pages/auth/ResetPasswordPage'
+import NoAccessPage from '@/pages/auth/NoAccessPage'
+import ProfilePage from '@/pages/common/ProfilePage'
 import { RouteFallback } from './RouteFallback'
-import {
-  PlaceholderScreen,
-  placeholderRoute,
-  type RouteHandle,
-} from './placeholder'
+import type { RouteHandle } from './placeholder'
 
 /**
  * Pantallas comunes (DS-015), `05_Pantallas_y_Navegacion.md` sección 5:
  * `ingresar`, `recuperar`, `restablecer` y `sin-acceso` son de acceso
  * público (nadie tiene sesión todavía cuando las ve, o la sesión ya no
- * sirve) y no llevan ningún shell — tarjeta centrada sobre `--bg`, como
- * COM-01 en el mockup (M01). La autenticación real de estas pantallas es
- * de F6 (AUTH-003/005/006); acá son placeholders.
+ * sirve) y no llevan ningún shell — cada una arma su propia tarjeta
+ * centrada con `AuthScreenLayout` (`src/pages/auth/AuthScreenLayout.tsx`).
+ * Sin `React.lazy`: son las primeras pantallas que ve cualquiera sin
+ * sesión (empezando por `/ingresar`, a donde `/` redirige, `router.tsx`),
+ * así que no hay ningún ahorro real en diferirlas — a diferencia de
+ * `AdminShell`/`MobileShell` (`lazyShells.tsx`), que sí conviene no bajar
+ * hasta saber la vía.
+ *
+ * Implementadas en P06.3 (AUTH-003/005/006/007): `src/pages/auth/`
+ * (`LoginPage`, `ForgotPasswordPage`, `ResetPasswordPage`, `NoAccessPage`)
+ * y `src/pages/common/ProfilePage.tsx`.
  *
  * `perfil` (COM-04) sí lleva shell, "según rol" (`05` sección 5): la
  * decide `ProfileLayout` a partir de `useAuth()`, no una ruta fija —
@@ -28,26 +37,10 @@ import {
  *
  * Rutas relativas (sin `/` inicial): estas rutas cuelgan de `RootLayout`
  * (`router.tsx`), un layout sin `path` propio (solo monta el banner de
- * staging) — con parent "vacío", una ruta relativa `'ingresar'` ya resuelve
- * a `/ingresar`.
+ * staging y, desde AUTH-004, el redirect defensivo de `isPasswordRecovery`)
+ * — con parent "vacío", una ruta relativa `'ingresar'` ya resuelve a
+ * `/ingresar`.
  */
-function centeredPlaceholderRoute(
-  path: string,
-  handle: RouteHandle,
-): RouteObject {
-  return {
-    path,
-    element: (
-      <div className="grid min-h-dvh place-items-center bg-bg p-6">
-        <div className="w-full max-w-sm rounded-lg border border-border bg-surface p-6 shadow-card">
-          <PlaceholderScreen {...handle} />
-        </div>
-      </div>
-    ),
-    handle,
-  }
-}
-
 function ProfileLayout() {
   const { roles } = useAuth()
 
@@ -62,27 +55,17 @@ function ProfileLayout() {
   return <LazyMobileShell variant="employee" />
 }
 
+const profileHandle: RouteHandle = {
+  screenId: 'COM-04',
+  title: 'Mi perfil',
+  subtitle: 'Ver y editar datos propios',
+}
+
 export const commonRoutes: RouteObject[] = [
-  centeredPlaceholderRoute('ingresar', {
-    screenId: 'COM-01',
-    title: 'Ingreso',
-    subtitle: 'Iniciar sesión con email y contraseña',
-  }),
-  centeredPlaceholderRoute('recuperar', {
-    screenId: 'COM-02',
-    title: 'Recuperar contraseña',
-    subtitle: 'Pedir el email de restablecimiento',
-  }),
-  centeredPlaceholderRoute('restablecer', {
-    screenId: 'COM-03',
-    title: 'Restablecer contraseña',
-    subtitle: 'Definir nueva contraseña desde el enlace del email',
-  }),
-  centeredPlaceholderRoute('sin-acceso', {
-    screenId: 'COM-05',
-    title: 'Sin acceso',
-    subtitle: 'El usuario fue desactivado o no tiene ningún rol',
-  }),
+  { path: 'ingresar', element: <LoginPage /> },
+  { path: 'recuperar', element: <ForgotPasswordPage /> },
+  { path: 'restablecer', element: <ResetPasswordPage /> },
+  { path: 'sin-acceso', element: <NoAccessPage /> },
   {
     element: (
       <RequireRole allow={['owner', 'admin', 'employee', 'supervisor']}>
@@ -92,12 +75,7 @@ export const commonRoutes: RouteObject[] = [
       </RequireRole>
     ),
     children: [
-      placeholderRoute({
-        path: 'perfil',
-        screenId: 'COM-04',
-        title: 'Mi perfil',
-        subtitle: 'Ver y editar datos propios',
-      }),
+      { path: 'perfil', element: <ProfilePage />, handle: profileHandle },
     ],
   },
 ]

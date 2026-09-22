@@ -72,6 +72,7 @@ function Probe() {
       <p data-testid="status">{auth.status}</p>
       <p data-testid="roles">{auth.roles.join(',')}</p>
       <p data-testid="displayName">{auth.displayName}</p>
+      <p data-testid="passwordRecovery">{String(auth.isPasswordRecovery)}</p>
       <button onClick={() => void auth.signOut()}>salir</button>
     </div>
   )
@@ -242,5 +243,73 @@ describe('AuthProvider / useAuth', () => {
     expect(screen.getByTestId('status')).toHaveTextContent('unauthenticated')
     expect(screen.getByTestId('roles')).toHaveTextContent('')
     expect(screen.getByTestId('displayName')).toHaveTextContent('Cuenta')
+  })
+
+  it('un evento PASSWORD_RECOVERY prende isPasswordRecovery (COM-03)', () => {
+    renderProbe()
+
+    expect(screen.getByTestId('passwordRecovery')).toHaveTextContent('false')
+
+    // Así llega el enlace de COM-02 procesado por `detectSessionInUrl`: con
+    // sesión completa (roles incluidos, ver `AuthProvider.tsx`), pero por el
+    // evento `PASSWORD_RECOVERY`, no `SIGNED_IN`.
+    act(() => {
+      authStateCallbacks[0]?.(
+        'PASSWORD_RECOVERY',
+        fakeSession('user-1', 'carlos.medina@extendiendoservicios.com', {
+          roles: ['employee'],
+          capabilities: [],
+        }),
+      )
+    })
+
+    expect(screen.getByTestId('status')).toHaveTextContent('authenticated')
+    expect(screen.getByTestId('passwordRecovery')).toHaveTextContent('true')
+  })
+
+  it('USER_UPDATED apaga isPasswordRecovery (la contraseña ya se cambió)', () => {
+    renderProbe()
+
+    act(() => {
+      authStateCallbacks[0]?.(
+        'PASSWORD_RECOVERY',
+        fakeSession('user-1', 'carlos.medina@extendiendoservicios.com', {
+          roles: ['employee'],
+          capabilities: [],
+        }),
+      )
+    })
+    expect(screen.getByTestId('passwordRecovery')).toHaveTextContent('true')
+
+    act(() => {
+      authStateCallbacks[0]?.(
+        'USER_UPDATED',
+        fakeSession('user-1', 'carlos.medina@extendiendoservicios.com', {
+          roles: ['employee'],
+          capabilities: [],
+        }),
+      )
+    })
+    expect(screen.getByTestId('passwordRecovery')).toHaveTextContent('false')
+  })
+
+  it('SIGNED_OUT también apaga isPasswordRecovery', () => {
+    renderProbe()
+
+    act(() => {
+      authStateCallbacks[0]?.(
+        'PASSWORD_RECOVERY',
+        fakeSession('user-1', 'carlos.medina@extendiendoservicios.com', {
+          roles: ['employee'],
+          capabilities: [],
+        }),
+      )
+    })
+
+    act(() => {
+      authStateCallbacks[0]?.('SIGNED_OUT', null)
+    })
+
+    expect(screen.getByTestId('passwordRecovery')).toHaveTextContent('false')
   })
 })
