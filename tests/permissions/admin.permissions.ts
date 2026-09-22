@@ -12,6 +12,12 @@
 // acciones para las que a Andrea directamente le falte una capacidad (ese caso, más
 // interesante para una cuenta admin SIN todas las capacidades, queda para TEST-019/F18: hoy el
 // seed no tiene una segunda cuenta admin con capacidades parciales para probarlo).
+//
+// Los ids de las cuentas objetivo se resuelven UNA sola vez en `beforeAll` (no dentro de cada
+// `it`): con los cuatro archivos de esta carpeta corriendo en paralelo (Vitest, un worker por
+// archivo), reconsultar `auth.admin.listUsers()` en cada caso multiplica las llamadas
+// concurrentes a la Admin API sin necesidad -- se vio un falso positivo intermitente en el
+// reporte de esta tarea con ese patrón (ver el reporte para el detalle de la investigación).
 
 import { beforeAll, describe, expect, it } from 'vitest'
 import {
@@ -23,6 +29,9 @@ import { resolveUserId } from './helpers/admin-lookups.ts'
 import { missingEnvWarning, readPermissionsTestEnv } from './helpers/env.ts'
 import { SEED_ACCOUNTS } from './fixtures/seed-accounts.ts'
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 const env = readPermissionsTestEnv()
 if (!env) console.warn(missingEnvWarning('admin.permissions.ts'))
 
@@ -31,18 +40,34 @@ describe.skipIf(!env)(
   () => {
     let admin: TestClient // cliente con la clave de servicio, solo para preparar/verificar datos
     let administradora: TestClient // cliente logueado como andrea.rios
+    let empleadoObjetivoId: string // maria.gomez, target de los RPC que deben fallar
+    let otroEmpleadoObjetivoId: string // diego.fabbri, target del RPC que sí debe funcionar
 
     beforeAll(async () => {
       admin = createAdminClient()
       const login = await loginAs(SEED_ACCOUNTS.admin)
       administradora = login.client
+      empleadoObjetivoId = await resolveUserId(
+        admin,
+        SEED_ACCOUNTS.employees[0],
+      )
+      otroEmpleadoObjetivoId = await resolveUserId(
+        admin,
+        SEED_ACCOUNTS.employees[7],
+      )
+
+      // Defensa contra el falso positivo del reporte de esta tarea: si `resolveUserId` alguna vez
+      // no devuelve un uuid real, mejor un mensaje claro acá que un "no tiene permiso" confuso más
+      // abajo.
+      expect(empleadoObjetivoId).toMatch(UUID_RE)
+      expect(otroEmpleadoObjetivoId).toMatch(UUID_RE)
+      expect(otroEmpleadoObjetivoId).not.toBe(empleadoObjetivoId)
     })
 
     describe('lo que NO puede hacer aunque tenga las 7 capacidades (son "solo owner")', () => {
       it('CB-17: no puede llamar set_admin_capability (06_API.md: "set_admin_capability | RPC | O")', async () => {
-        const targetId = await resolveUserId(admin, SEED_ACCOUNTS.employees[0])
         const { error } = await administradora.rpc('set_admin_capability', {
-          p_profile_id: targetId,
+          p_profile_id: empleadoObjetivoId,
           p_capability: 'manage_users',
           p_enabled: true,
         })
@@ -50,9 +75,8 @@ describe.skipIf(!env)(
       })
 
       it('no puede otorgar el rol owner con set_user_roles (06_API.md: "A + manage_users solo si el conjunto resultante no incluye owner ni admin")', async () => {
-        const targetId = await resolveUserId(admin, SEED_ACCOUNTS.employees[0])
         const { error } = await administradora.rpc('set_user_roles', {
-          p_profile_id: targetId,
+          p_profile_id: empleadoObjetivoId,
           p_roles: ['owner'],
         })
         expect(error?.hint).toBe('FORBIDDEN')
@@ -128,18 +152,18 @@ describe.skipIf(!env)(
       })
 
       it('con manage_users, llama set_user_roles reemplazando el rol de un empleado por el mismo conjunto (sin efecto de negocio, deja evento de auditoría real)', async () => {
-        const targetId = await resolveUserId(admin, SEED_ACCOUNTS.employees[7]) // diego.fabbri
         const before = await admin
           .from('user_roles')
           .select('role')
-          .eq('profile_id', targetId)
+          .eq('profile_id', otroEmpleadoObjetivoId)
         const beforeRows = (before.data ?? []) as {
           role: 'owner' | 'admin' | 'supervisor' | 'employee'
         }[]
         const rolesActuales = beforeRows.map((r) => r.role)
+        expect(rolesActuales.length).toBeGreaterThan(0)
 
         const { data, error } = await administradora.rpc('set_user_roles', {
-          p_profile_id: targetId,
+          p_profile_id: otroEmpleadoObjetivoId,
           p_roles: rolesActuales,
         })
         expect(error).toBeNull()

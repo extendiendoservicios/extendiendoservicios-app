@@ -29,13 +29,22 @@ describe.skipIf(!env)(
     let supervisora: TestClient
     let supervisoraId: string
     let empleadoAjenoId: string
+    let empleadoDeSuEquipoId: string
 
     beforeAll(async () => {
       admin = createAdminClient()
       const login = await loginAs(SEED_ACCOUNTS.supervisors[0]) // paula.lemos
       supervisora = login.client
       supervisoraId = login.userId
+      // Los dos ids se resuelven acá, una sola vez (no dentro de cada `it`): con los cuatro
+      // archivos de esta carpeta corriendo en paralelo, reconsultar `auth.admin.listUsers()`
+      // repetidas veces multiplica las llamadas concurrentes a la Admin API sin necesidad -- ver
+      // el reporte de esta tarea para el falso positivo intermitente que motivó este cambio.
       empleadoAjenoId = await resolveUserId(admin, SEED_ACCOUNTS.employees[1]) // juan.perez
+      empleadoDeSuEquipoId = await resolveUserId(
+        admin,
+        SEED_ACCOUNTS.employees[0],
+      ) // maria.gomez
     })
 
     afterAll(async () => {
@@ -152,11 +161,10 @@ describe.skipIf(!env)(
       })
 
       it('lee los datos laborales de un empleado de su equipo', async () => {
-        const equipoId = await resolveUserId(admin, SEED_ACCOUNTS.employees[0]) // maria.gomez
         const { data, error } = await supervisora
           .from('employees')
           .select('*')
-          .eq('profile_id', equipoId)
+          .eq('profile_id', empleadoDeSuEquipoId)
         expect(error).toBeNull()
         expect(data).toHaveLength(1)
       })
