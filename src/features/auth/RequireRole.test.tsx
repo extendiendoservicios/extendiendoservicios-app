@@ -22,6 +22,7 @@ function authValue(overrides: Partial<AuthContextValue>): AuthContextValue {
     capabilities: [],
     profile: null,
     displayName: 'Cuenta',
+    isPasswordRecovery: false,
     signOut: vi.fn(),
     refreshProfile: vi.fn(),
     ...overrides,

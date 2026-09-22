@@ -1201,6 +1201,228 @@ el email) + campos de email/contraseña que llaman al mismo
 que ni la página, ni los emails del seed, ni ningún rastro de `/dev/rol`
 llegan a `dist/` (`pnpm build` + `grep` sobre `dist/assets/*.js`).
 
+## Pantallas de autenticación (AUTH-003 a AUTH-007, P06.3)
+
+Cierra el círculo que dejó P06.2: `/ingresar`, `/recuperar`, `/restablecer`,
+`/sin-acceso` y `/perfil` dejan de ser placeholders. Archivos nuevos:
+`src/pages/auth/` (`LoginPage`, `ForgotPasswordPage`, `ResetPasswordPage`,
+`NoAccessPage`, `AuthScreenLayout`), `src/pages/common/ProfilePage.tsx`,
+`src/features/auth/authErrors.ts`, `src/features/auth/useBranding.ts`.
+`commonRoutes.tsx` reemplaza los cinco placeholders por estas páginas;
+`router.tsx` reemplaza `ConstructionPage` (borrada) por el redirect de `/`
+que pedía `05` sección 5 desde F5.
+
+### COM-01 · Ingreso (`LoginPage.tsx`, AUTH-003/AUTH-004)
+
+`react-hook-form` + `zod` (email, contraseña obligatoria — sin mínimo: el
+login no compone reglas, solo `signInWithPassword`). Logo de
+`v_public_branding` (`useBranding.ts`, lectura pública, `anon`) o
+`/favicon.png` (isotipo en color, ya usado por `NotFoundPage` sobre
+`--bg` claro) si `logo_path` es `null` — hoy lo es en el seed, comprobado
+contra `App_dev` antes de escribir la pantalla (`{"name":"Extendiendo
+Servicios","logo_path":null,"support_phone":"11 4000-0000"}`, ver el
+reporte del encargo). Teléfono de soporte solo si está cargado, con
+`tel:`.
+
+**AUTH-004 (la redirección al entrar) vive DENTRO de `LoginPage`, no en el
+router**: mientras `status !== 'authenticated'` la pantalla se queda
+quieta; en cuanto `AuthProvider` confirma la sesión (el mismo
+`onAuthStateChange` que ya dispara `signInWithPassword`), el mismo render
+calcula `homePathForRoles(roles, isDesktop)` y redirige con `<Navigate>` —
+cubre "acabo de loguearme" y "ya tenía sesión y entré a `/ingresar` por
+las mías" con una sola rama.
+
+**Error de login: un solo mensaje genérico, y por qué alcanza.** Probado
+en vivo contra `App_dev` (no supuesto, `authErrors.ts` lo documenta):
+`signInWithPassword` devuelve el mismo `error.code` ('invalid_credentials',
+"Invalid login credentials", 400) para una contraseña incorrecta de una
+cuenta real Y para un email que no existe en absoluto —
+
+```
+carlos.medina@extendiendoservicios.com | status 400 | error_code: invalid_credentials
+esta-cuenta-no-existe-xyz@... | status 400 | error_code: invalid_credentials
+```
+
+Supabase Auth ya unifica los dos casos del lado del servidor. `authErrors.ts`
+(`loginErrorMessage`) traduce ese único código a "El email o la contraseña
+no son correctos." — sin una rama aparte para "no existe": agregar esa
+distinción inventaría una fuga que el propio servidor no comete. Mismo
+mapa de errores para `over_request_rate_limit`, `user_banned` (no puede
+pasar hoy, la desactivación es F7, pero el código ya existe en
+`@supabase/auth-js`) y `email_address_invalid`.
+
+### `homePathForRoles(roles, isDesktopWidth)`: el quiebre de ancho (`session.ts`)
+
+`05` sección 3, fila COM-01, tiene CINCO casos, no cuatro: "owner o admin y
+el ancho es de escritorio → ADM-02" y, por separado, "admin en móvil →
+ADM-02 responsive" son el MISMO destino contado dos veces para dejar
+explícito que owner/admin sin otro rol también entra por acá en el
+celular — el ancho no cambia el destino de un owner/admin "puro". Donde sí
+importa: alguien que además de owner/admin tiene un rol con experiencia
+mobile-first propia (empleado o supervisor) entra por esa vía en el
+celular, no por el `AdminShell` colapsado — un administrador que abre la
+app desde el teléfono para fichar su propio turno cae en `/app`, no en
+`/admin`. En escritorio, owner/admin sigue ganando siempre. El parámetro
+tiene un valor por omisión (`true`, el comportamiento de siempre) para no
+tocar `RequireRole` (que sigue sin el caso del ancho: eso es "al entrar",
+no la protección general de rutas) — decisión menor, ver el reporte.
+
+Verificado en vivo (no solo en el test unitario): `andrea.rios@…`
+(admin) en escritorio (1440 px) cae en `/admin`; `maria.gomez@…`
+(employee) en el MISMO ancho de escritorio cae en `/app`.
+
+### COM-02 · Recuperar (`ForgotPasswordPage.tsx`, AUTH-005)
+
+Un email, un mensaje de confirmación genérico
+(`FORGOT_PASSWORD_CONFIRMATION`, `authErrors.ts`). Igual que el login,
+comprobado contra `App_dev`: `resetPasswordForEmail` no devuelve error para
+un email sin cuenta — el mismo resultado "sin error" que para una cuenta
+real. El único caso que cambia el mensaje es `over_email_send_rate_limit`
+(no tiene nada que ver con si el email existe).
+
+### COM-03 · Restablecer (`ResetPasswordPage.tsx`, AUTH-005/AUTH-006): el hallazgo del token
+
+**Cómo llega de verdad (leído en el código de `@supabase/auth-js`
+instalado, no supuesto):** con el flujo implícito (`flowType` por omisión,
+no se pisa en este proyecto), el enlace del correo apunta a
+`{SUPABASE_URL}/auth/v1/verify?token=…&type=recovery&redirect_to=…`.
+GoTrue verifica el token server-side y responde `303` a `redirect_to` con
+la sesión completa en el fragmento de la URL
+(`#access_token=…&refresh_token=…&type=recovery`). `detectSessionInUrl:
+true` (`supabase.ts`, ya declarado a propósito en P06.2) hace que
+`GoTrueClient._initialize()` procese ese fragmento SOLO — llama a
+`/auth/v1/user` para validar el `access_token` (un viaje de red real) antes
+de armar la sesión, así que el `AuthProvider` (montado en `main.tsx`, por
+encima del router) siempre llega a tiempo para capturar el evento: no
+`SIGNED_IN`, sino **`PASSWORD_RECOVERY`** (`GoTrueClient.js`, ~línea 424).
+
+Por eso `AuthProvider` (`AuthProvider.tsx`) agrega `isPasswordRecovery:
+boolean` al contexto: se prende con el evento `PASSWORD_RECOVERY` y se
+apaga con `USER_UPDATED` (la contraseña ya se cambió, `auth.updateUser`)
+o `SIGNED_OUT`. Es la señal que distingue "llegué con el enlace del
+email" (sesión completa, pero por ESTE evento) de "ya tenía sesión y entré
+a `/restablecer` por mi cuenta" (sesión completa, pero por `SIGNED_IN`/
+`INITIAL_SESSION`) — las dos dejan `status: 'authenticated'`, así que sin
+esta señal no habría forma de distinguirlas. `ResetPasswordPage` usa
+`isPasswordRecovery` así:
+
+- Sin sesión → "el enlace venció o ya se usó", con un enlace a `/recuperar`.
+- Con sesión pero NO por el enlace → `<Navigate to="/perfil" />` (ahí ya
+  vive "cambiar contraseña" para alguien que ya inició sesión de la forma
+  normal).
+- Con sesión Y `isPasswordRecovery` → el formulario. Al guardar
+  (`auth.updateUser({password})`), el evento `USER_UPDATED` apaga la
+  bandera y la pantalla navega a `homePathForRoles(roles, isDesktop)` — el
+  mismo ancho que usa COM-01, mismo criterio ("Navega a: Según rol", `05`).
+
+**Ruta "intermedia", no pública ni protegida por `RequireRole`:** no puede
+exigir un rol (nadie con `roles: []` podría cambiar su contraseña si la
+desactivación existiera hoy) pero tampoco puede tratar "tiene sesión" como
+"vino del enlace" — de ahí que la protección sea la bandera de arriba, no
+un wrapper de ruta.
+
+**Sobre el `redirect_to` (corregido por el orquestador al revisar P06.3).**
+El encargo reportó que `additional_redirect_urls` no se respetaba en
+`App_dev`. No es así, y conviene que quede escrito para que nadie salga a
+"arreglar" algo que funciona. El endpoint de administración
+`/auth/v1/admin/generate_link` toma `redirect_to` como **parámetro de
+consulta en la URL**, no dentro del cuerpo del pedido; pasándolo en el
+cuerpo, GoTrue lo ignora y cae al `site_url` — el síntoma que se vio.
+Repetida la prueba con el parámetro de consulta, contra `App_dev`:
+
+| `redirect_to` pedido                               | Devuelto   |
+| -------------------------------------------------- | ---------- |
+| `https://dev.extendiendoservicios.com/restablecer` | igual      |
+| `http://localhost:5173/restablecer`                | igual      |
+| un destino fuera de la lista blanca                | `site_url` |
+
+La lista blanca funciona, y el tercer caso es la protección haciendo su
+trabajo. El enlace real del correo de COM-02 llega bien a `/restablecer`,
+porque `resetPasswordForEmail` pide `${origin}/restablecer` y ese origen
+está declarado.
+
+El redirect defensivo de `RootLayout` se conserva, pero por otro motivo:
+cualquier origen fuera de la lista blanca (una URL de vista previa de
+Cloudflare Pages, por ejemplo) vuelve al `site_url` por diseño, y ahí la
+persona aterriza en `/` con el token en el hash. `detectSessionInUrl`
+procesa ese hash sin importar qué ruta esté montada, así que el redirect lo
+recupera.
+
+**Circuito completo, verificado de punta a punta contra `App_dev` (no solo
+leído):** `auth.admin.generateLink` para `carlos.medina@…` → `fetch` con
+`redirect: manual` para capturar el fragmento real de sesión → Playwright
+carga `http://localhost:5173/#<fragmento real>` (simulando dónde cae el
+enlace hoy) → rebota solo a `/restablecer` → formulario → contraseña nueva
+→ termina en `/app` como "Carlos". Sin errores de consola. La contraseña
+de prueba se restauró a `SEED_DEV_PASSWORD` con `auth.admin.updateUserById`
+apenas terminó la prueba (confirmado con un login real después).
+
+### COM-04 · Perfil propio (`ProfilePage.tsx`, AUTH-007)
+
+Sin shell propio: cuelga de `ProfileLayout` (`commonRoutes.tsx`, sin
+cambios) y sin `<h1>` propio — el `handle` de la ruta (`{screenId:
+'COM-04', title: 'Mi perfil'}`) ya lo muestra el topbar/cabecera de cada
+shell (`useRouteHandle`). Cuatro `Card`: datos de la cuenta (nombre y
+email de login de solo lectura — el encargo lo remarca explícitamente;
+roles con `Badge`), contacto (`contact_email`/`phone`, `update profiles`),
+cambiar contraseña (`auth.updateUser`, mismo `updatePasswordErrorMessage`
+que COM-03) y ubicación (P-091/P-108: estado con fecha si ya consintió,
+más el texto de `company_settings.location_consent_text` — leído en vivo
+del seed, no un placeholder propio). La foto NO va acá (EMP-011, otra
+fase).
+
+**`location_consent_at`** no estaba en `AuthProfile` (`AuthProvider.tsx`,
+P06.2 solo trajo `contact_email`/`phone`/`avatar_path`): se agregó acá
+porque EMP-06 (front-movil, consentimiento antes de fichar) también lo va
+a necesitar — mejor una sola fuente en el contexto que cada pantalla
+pidiéndolo aparte.
+
+### COM-05 · Sin acceso (`NoAccessPage.tsx`, AUTH-006)
+
+A dónde manda `RequireRole` a quien tiene sesión sin ningún rol. Mensaje,
+teléfono de soporte (misma `useBranding`) y un botón "Cerrar sesión"
+(`auth.signOut()`, no automático — la persona ve el mensaje antes de que
+la sesión se vaya). Sin sesión (alguien llega a la URL directo) →
+`/ingresar`: no tiene sentido "sin acceso" sin sesión.
+
+### `AuthScreenLayout.tsx`: el layout compartido de las cinco
+
+"En móvil ocupa toda la pantalla; en escritorio, tarjeta centrada sobre
+fondo claro" (`05`, fila COM-01) se escribe una sola vez para COM-01/02/03/
+05 (COM-04 no la usa: lleva shell). Quiebre puro CSS (`sm:`, 480 px) sin
+`useMediaQuery`: a diferencia del redirect de AUTH-004, acá el ancho solo
+cambia estilo, no una decisión de navegación.
+
+### `/dev/rol`: se conserva (decisión menor)
+
+Ahora que COM-01 existe de verdad, `/dev/rol` podría borrarse — se decidió
+CONSERVARLA: sigue siendo más rápida para recorrer cada vía durante el
+desarrollo (un clic sobre una de las 14 cuentas rellena el email). Se le
+agregó un enlace a `/ingresar` en el pie. Nunca llega a `dist/` (mismo
+patrón de siempre).
+
+### Otras decisiones menores
+
+- **Sin `TanStack Query` todavía** (`useBranding.ts`,
+  `useLocationConsentText` en `ProfilePage.tsx`): son lecturas únicas, sin
+  parámetros ni invalidación, en pantallas que ni siquiera tienen sesión
+  (COM-01). Instalar `@tanstack/react-query` (no está en `package.json`
+  hoy) y su `QueryClientProvider` es una decisión de arquitectura más
+  grande que le corresponde a quien construya la primera pantalla de
+  datos de dominio (polling, paginación, invalidación de verdad).
+- **Sin toggle de "mostrar contraseña"** en los campos de contraseña: no
+  lo pide `05`, y el `Input` del design system no trae esa variante —
+  no se inventó una para esta tarea.
+- **Consentimiento de ubicación editable en los dos sentidos** (dar y
+  quitar) en COM-04: la RLS de `profiles` permite las dos direcciones por
+  igual (`location_consent_at` es una columna más de "propio"), y P-091
+  ("el registro funciona igual si se niega") no excluye poder retractarse
+  después.
+- **`ConstructionPage` borrada entera** (componente, CSS y test), junto
+  con el e2e que la probaba (renombrado a `root-redirect.spec.ts`, ahora
+  prueba el redirect de `/` a `/ingresar`): dejó de tener ningún punto de
+  montaje una vez que `/` pasó a redirigir según sesión y rol.
+
 ## Revisión visual de cierre de F5 (P05.6)
 
 El orquestador recorrió `/dev/design`, los tres shells, sus menús y

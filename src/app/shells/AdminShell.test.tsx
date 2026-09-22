@@ -15,6 +15,7 @@ vi.mock('@/features/auth/AuthProvider', () => ({
     capabilities: [],
     profile: null,
     displayName: 'Andrea Ríos',
+    isPasswordRecovery: false,
     signOut: vi.fn(),
     refreshProfile: vi.fn(),
   }),

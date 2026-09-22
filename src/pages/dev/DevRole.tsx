@@ -10,13 +10,20 @@ import { useAuth } from '@/features/auth/AuthProvider'
 import { homePathForRoles } from '@/features/auth/session'
 
 /**
- * `/dev/rol` (solo en desarrollo, P06.2): desde que existe `AuthProvider`
- * (AUTH-002), esta página dejó de simular una sesión falsa (el
- * `devRole.ts` de F5 se borró entero) y pasó a ser un atajo para entrar
- * rápido con una cuenta REAL del seed de `App_dev`, sin tener que esperar
- * a COM-01 (`/ingresar`, paquete siguiente). Llama al mismo
- * `supabase.auth.signInWithPassword` que va a usar esa pantalla — no hay
- * ningún camino paralelo que mantener el día que exista.
+ * `/dev/rol` (solo en desarrollo, P06.2, sigue en pie tras P06.3): desde
+ * que existe `AuthProvider` (AUTH-002), esta página dejó de simular una
+ * sesión falsa (el `devRole.ts` de F5 se borró entero) y pasó a ser un
+ * atajo para entrar rápido con una cuenta REAL del seed de `App_dev`. Llama
+ * al mismo `supabase.auth.signInWithPassword` que usa COM-01
+ * (`/ingresar`, ya construida en P06.3) — no hay ningún camino paralelo
+ * que mantener.
+ *
+ * Se decidió CONSERVARLA (no borrarla) ahora que COM-01 existe de verdad:
+ * sigue siendo más rápida para ir probando cada vía durante el desarrollo
+ * (un clic sobre una de las 14 cuentas rellena el email, sin tener que
+ * escribirlo cada vez) — decisión menor del encargo P06.3, ver el reporte.
+ * Nunca llega a `dist/` (mismo patrón `lazy()` + `if (import.meta.env.DEV)`
+ * de siempre, `router.tsx`).
  *
  * La contraseña (`SEED_DEV_PASSWORD` de `.env.local`) NO está acá: es una
  * variable sin prefijo `VITE_` a propósito (`scripts/seed-dev.ts`), así que
@@ -220,6 +227,9 @@ function DevRolePage() {
         </div>
 
         <div className="flex flex-wrap gap-2 border-t border-border pt-4">
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/ingresar">Ir a /ingresar (COM-01)</Link>
+          </Button>
           <Button asChild variant="ghost" size="sm">
             <Link to="/admin">Ir a /admin</Link>
           </Button>

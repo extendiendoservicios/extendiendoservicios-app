@@ -124,6 +124,8 @@ export interface AuthProfile {
   contactEmail: string | null
   phone: string | null
   avatarPath: string | null
+  /** `null` = no dio su consentimiento (P-091). COM-04 lo muestra; EMP-06 (front-movil) lo pide. */
+  locationConsentAt: string | null
 }
 
 type AuthState =
@@ -151,6 +153,19 @@ export interface AuthContextValue {
   profile: AuthProfile | null
   /** `profile.displayName`, o el email, o `'Cuenta'` — lo que ya pueden usar los shells sin chequear `status`. */
   displayName: string
+  /**
+   * `true` desde que `supabase-js` detecta, en la URL, el enlace de
+   * recuperación de contraseña que manda el correo de COM-02 (evento
+   * `PASSWORD_RECOVERY` de `onAuthStateChange`, ver el comentario grande
+   * más abajo) hasta que la contraseña se cambia de verdad (evento
+   * `USER_UPDATED`, disparado por `auth.updateUser({password})`) o hasta
+   * que la sesión se cierra. Es la señal que usa `ResetPasswordPage`
+   * (COM-03) para distinguir "llegué acá con el enlace del email" de
+   * "ya tenía sesión y entré a `/restablecer` por mi cuenta" — las dos
+   * dejan `status: 'authenticated'`, pero solo la primera tiene que poder
+   * cambiar la contraseña desde esta pantalla sin pasar por nada más.
+   */
+  isPasswordRecovery: boolean
   /** Cierra la sesión local (`auth.signOut()`, `06_API.md` sección 1: "Cerrar sesión | propio"). */
   signOut: () => Promise<void>
   /** Vuelve a pedir la fila propia de `profiles` (después de editar el perfil o subir un avatar). */
@@ -165,7 +180,9 @@ const EMPTY_CAPABILITIES: Capability[] = []
 async function fetchProfile(userId: string): Promise<AuthProfile | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, first_name, last_name, contact_email, phone, avatar_path')
+    .select(
+      'id, first_name, last_name, contact_email, phone, avatar_path, location_consent_at',
+    )
     .eq('id', userId)
     .maybeSingle()
 
@@ -181,6 +198,7 @@ async function fetchProfile(userId: string): Promise<AuthProfile | null> {
     contactEmail: data.contact_email,
     phone: data.phone,
     avatarPath: data.avatar_path,
+    locationConsentAt: data.location_consent_at,
   }
 }
 
@@ -214,6 +232,11 @@ async function fetchProfileWithRetry(
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ status: 'loading' })
+  // AUTH-006/COM-03: ver el comentario de `isPasswordRecovery` en
+  // `AuthContextValue`. Aparte de `state` (no depende del usuario ni del
+  // perfil, sino de CÓMO se llegó a esta sesión) para no acoplar su ciclo
+  // de vida al de `AuthState`.
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false)
   // Evita recargar el perfil en cada TOKEN_REFRESHED (mismo usuario, nuevo
   // access_token): solo se pide de nuevo cuando cambia el `userId`.
   const profileLoadedFor = useRef<string | null>(null)
@@ -257,8 +280,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       applySession(session)
+      // `PASSWORD_RECOVERY`: la URL traía el enlace de COM-02 — arranca el
+      // modo "restablecer" (ver el comentario de `isPasswordRecovery`
+      // arriba). `USER_UPDATED`: dispara `auth.updateUser({password})`
+      // (COM-03) al guardar la contraseña nueva — cierra el modo, ya
+      // cumplió su propósito. `SIGNED_OUT`: cierre de sesión por cualquier
+      // vía — no tendría sentido dejarlo prendido para la próxima sesión.
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsPasswordRecovery(true)
+      } else if (event === 'USER_UPDATED' || event === 'SIGNED_OUT') {
+        setIsPasswordRecovery(false)
+      }
     })
     return () => subscription.unsubscribe()
   }, [applySession])
@@ -296,6 +330,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         capabilities: EMPTY_CAPABILITIES,
         profile: null,
         displayName: 'Cuenta',
+        isPasswordRecovery,
         signOut,
         refreshProfile,
       }
@@ -308,10 +343,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       capabilities: state.capabilities,
       profile: state.profile,
       displayName: state.profile?.displayName ?? state.email ?? 'Cuenta',
+      isPasswordRecovery,
       signOut,
       refreshProfile,
     }
-  }, [state, signOut, refreshProfile])
+  }, [state, isPasswordRecovery, signOut, refreshProfile])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

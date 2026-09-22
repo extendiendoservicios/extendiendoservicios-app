@@ -1,9 +1,17 @@
 import { lazy, Suspense } from 'react'
-import { createBrowserRouter, Outlet, type RouteObject } from 'react-router'
-import { ConstructionPage } from '@/pages/common/ConstructionPage'
+import {
+  createBrowserRouter,
+  Navigate,
+  Outlet,
+  useLocation,
+  type RouteObject,
+} from 'react-router'
 import { NotFoundPage } from '@/pages/common/NotFoundPage'
 import { StagingBanner } from '@/components/StagingBanner'
 import { RequireRole } from '@/features/auth/RequireRole'
+import { useAuth } from '@/features/auth/AuthProvider'
+import { homePathForRoles } from '@/features/auth/session'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { LazyAdminShell, LazyMobileShell } from '@/app/shells/lazyShells'
 import { RouteFallback } from './routes/RouteFallback'
 import { adminRoutes } from './routes/adminRoutes'
@@ -15,16 +23,68 @@ import { commonRoutes } from './routes/commonRoutes'
 // ADR-021).
 //
 // `RootLayout` es el único punto de montaje del banner "Entorno de prueba"
-// (INFRA-022, `StagingBanner`): al envolver TODO el árbol de rutas (la
-// portada incluida), ningún layout tiene que acordarse de agregarlo por su
-// cuenta, y no aparece nunca en `production`/`local` (la propia
-// `StagingBanner` no renderiza nada fuera de `VITE_APP_ENV=staging`).
+// (INFRA-022, `StagingBanner`): al envolver TODO el árbol de rutas, ningún
+// layout tiene que acordarse de agregarlo por su cuenta, y no aparece nunca
+// en `production`/`local` (la propia `StagingBanner` no renderiza nada
+// fuera de `VITE_APP_ENV=staging`).
+//
+// Desde AUTH-004/AUTH-005 (P06.3) también es el punto único del redirect
+// defensivo de `isPasswordRecovery` hacia `/restablecer` (COM-03) — ver el
+// comentario grande de `ResetPasswordPage.tsx` para el detalle.
+//
+// El caso normal NO lo necesita: `additional_redirect_urls` funciona y
+// COM-02 pide `${origin}/restablecer`, así que el enlace cae donde tiene
+// que caer. Sigue acá para el caso en que Auth vuelve al `site_url`: eso
+// pasa, por diseño, con cualquier origen que no esté en la lista blanca
+// (por ejemplo una URL de vista previa de Cloudflare Pages). Ahí la
+// persona aterriza en `/` con el token en el hash; como
+// `detectSessionInUrl` procesa ese hash sin importar qué ruta esté
+// montada, `AuthProvider` igual llega a `isPasswordRecovery: true` — este
+// layout, que envuelve
+// TODA ruta (la propia `/restablecer` incluida, de ahí el chequeo de
+// `pathname`), es el único lugar por el que pasa cualquier ruta a la que
+// ese enlace pueda haber caído, así que es el lugar correcto para
+// corregirlo sin importar dónde haya aterrizado.
 function RootLayout() {
+  const { isPasswordRecovery } = useAuth()
+  const location = useLocation()
+
+  if (isPasswordRecovery && location.pathname !== '/restablecer') {
+    return <Navigate to="/restablecer" replace />
+  }
+
   return (
     <>
       <StagingBanner />
       <Outlet />
     </>
+  )
+}
+
+/**
+ * `/` (AUTH-004, `05` sección 5: "/ → redirige según sesión y rol"):
+ * reemplaza a la portada `ConstructionPage` de F5 (borrada en este
+ * paquete, junto con el e2e que la probaba — ver el reporte del encargo
+ * P06.3). Sin sesión → `/ingresar` (COM-01); con sesión, la vía de sus
+ * roles (`homePathForRoles`, con el mismo ancho "de escritorio" que usa
+ * `LoginPage` — 1024 px, `05` sección 7) o `/sin-acceso` si no tiene
+ * ninguno.
+ */
+function RootRedirect() {
+  const { status, roles } = useAuth()
+  const isDesktop = useMediaQuery('(min-width: 1024px)')
+
+  if (status === 'loading') {
+    return <RouteFallback />
+  }
+  if (status === 'unauthenticated') {
+    return <Navigate to="/ingresar" replace />
+  }
+  return (
+    <Navigate
+      to={homePathForRoles(roles, isDesktop) ?? '/sin-acceso'}
+      replace
+    />
   )
 }
 
@@ -39,16 +99,7 @@ function RootLayout() {
 // código del shell de administración, ni viceversa (ver tamaños de bundle
 // en el reporte del encargo).
 const rootChildren: RouteObject[] = [
-  {
-    index: true,
-    element: <ConstructionPage />,
-    // Portada pública "Plataforma en construcción": es lo que hoy sirve
-    // app.extendiendoservicios.com (verificado por
-    // tests/e2e/construction-page.spec.ts) y sigue siendo así hasta F6.
-    // AUTH-004 va a reemplazar este `element` por el redirect según sesión
-    // y rol que pide `05` sección 5 ("/ → redirige según sesión y rol");
-    // hasta entonces `/` no depende de `RequireRole` ni de `useSession`.
-  },
+  { index: true, element: <RootRedirect /> },
   ...commonRoutes,
   {
     path: 'admin',
