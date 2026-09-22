@@ -30,12 +30,17 @@ import { commonRoutes } from './routes/commonRoutes'
 //
 // Desde AUTH-004/AUTH-005 (P06.3) también es el punto único del redirect
 // defensivo de `isPasswordRecovery` hacia `/restablecer` (COM-03) — ver el
-// comentario grande de `ResetPasswordPage.tsx` para el hallazgo completo:
-// hoy, contra `App_dev`, el enlace real del correo de COM-02 no respeta el
-// `redirect_to` configurado y deja a la persona en `/` con el token en el
-// hash en vez de en `/restablecer`. Como `detectSessionInUrl` procesa ese
-// hash sin importar qué ruta esté montada, `AuthProvider` igual llega a
-// `isPasswordRecovery: true` estando en `/` — este layout, que envuelve
+// comentario grande de `ResetPasswordPage.tsx` para el detalle.
+//
+// El caso normal NO lo necesita: `additional_redirect_urls` funciona y
+// COM-02 pide `${origin}/restablecer`, así que el enlace cae donde tiene
+// que caer. Sigue acá para el caso en que Auth vuelve al `site_url`: eso
+// pasa, por diseño, con cualquier origen que no esté en la lista blanca
+// (por ejemplo una URL de vista previa de Cloudflare Pages). Ahí la
+// persona aterriza en `/` con el token en el hash; como
+// `detectSessionInUrl` procesa ese hash sin importar qué ruta esté
+// montada, `AuthProvider` igual llega a `isPasswordRecovery: true` — este
+// layout, que envuelve
 // TODA ruta (la propia `/restablecer` incluida, de ahí el chequeo de
 // `pathname`), es el único lugar por el que pasa cualquier ruta a la que
 // ese enlace pueda haber caído, así que es el lugar correcto para

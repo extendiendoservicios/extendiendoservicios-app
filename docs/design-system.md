@@ -1321,22 +1321,32 @@ desactivación existiera hoy) pero tampoco puede tratar "tiene sesión" como
 "vino del enlace" — de ahí que la protección sea la bandera de arriba, no
 un wrapper de ruta.
 
-**Hallazgo de infraestructura, no de este archivo (probado contra
-`App_dev` con `auth.admin.generateLink`, tres `redirect_to` distintos —
-`.../restablecer`, la raíz del sitio, y hasta el propio `site_url`):**
-el `redirect_to` que declara `additional_redirect_urls`
-(`supabase/config.toml`) NO se está respetando ahora mismo — los tres
-volvieron con `redirect_to` pisado por el `site_url` pelado. Un enlace de
-recuperación real hoy deja a la persona en `/` con el token en el hash, no
-en `/restablecer`. Comprobado también que esto no rompe nada: `/` no
-tiene `RequireRole`, y `detectSessionInUrl` procesa el hash sin importar
-qué ruta esté montada. Por eso `RootLayout` (`router.tsx`) agrega un
-redirect defensivo a `/restablecer` para CUALQUIER ruta cuando
-`isPasswordRecovery` es `true` (salvo ya estar ahí) — funciona hoy con el
-`redirect_to` roto, y sigue funcionando el día que alguien lo corrija (deja
-de hacer falta, pero no rompe nada si sigue). **No se corrigió
-`config.toml`/`config push` acá**: no es de este paquete (ni de este
-agente) — queda como hallazgo para backend-supabase/Mike en el reporte.
+**Sobre el `redirect_to` (corregido por el orquestador al revisar P06.3).**
+El encargo reportó que `additional_redirect_urls` no se respetaba en
+`App_dev`. No es así, y conviene que quede escrito para que nadie salga a
+"arreglar" algo que funciona. El endpoint de administración
+`/auth/v1/admin/generate_link` toma `redirect_to` como **parámetro de
+consulta en la URL**, no dentro del cuerpo del pedido; pasándolo en el
+cuerpo, GoTrue lo ignora y cae al `site_url` — el síntoma que se vio.
+Repetida la prueba con el parámetro de consulta, contra `App_dev`:
+
+| `redirect_to` pedido                               | Devuelto   |
+| -------------------------------------------------- | ---------- |
+| `https://dev.extendiendoservicios.com/restablecer` | igual      |
+| `http://localhost:5173/restablecer`                | igual      |
+| un destino fuera de la lista blanca                | `site_url` |
+
+La lista blanca funciona, y el tercer caso es la protección haciendo su
+trabajo. El enlace real del correo de COM-02 llega bien a `/restablecer`,
+porque `resetPasswordForEmail` pide `${origin}/restablecer` y ese origen
+está declarado.
+
+El redirect defensivo de `RootLayout` se conserva, pero por otro motivo:
+cualquier origen fuera de la lista blanca (una URL de vista previa de
+Cloudflare Pages, por ejemplo) vuelve al `site_url` por diseño, y ahí la
+persona aterriza en `/` con el token en el hash. `detectSessionInUrl`
+procesa ese hash sin importar qué ruta esté montada, así que el redirect lo
+recupera.
 
 **Circuito completo, verificado de punta a punta contra `App_dev` (no solo
 leído):** `auth.admin.generateLink` para `carlos.medina@…` → `fetch` con

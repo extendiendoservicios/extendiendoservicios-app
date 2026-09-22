@@ -51,21 +51,24 @@ import { AuthScreenLayout } from './AuthScreenLayout'
  * que suscribirse por su cuenta ni arriesgar una carrera con el
  * `AuthProvider` de más arriba.
  *
- * **Hallazgo aparte, de infraestructura, no de este archivo:** el
- * `redirect_to` configurado en `additional_redirect_urls`
- * (`supabase/config.toml`, incluye `.../restablecer`) no se está
- * respetando en `App_dev` ahora mismo — probado con
- * `auth.admin.generateLink` contra tres valores distintos (`.../restablecer`,
- * la raíz del sitio, y hasta el propio `site_url`): los tres volvieron con
- * `redirect_to` pisado por el `site_url` pelado, sin `/restablecer`. Un
- * enlace de recuperación real hoy deja a la persona en `/` con el token en
- * el hash, no en esta ruta. Por eso el `RootLayout` (`router.tsx`) hace un
- * redirect defensivo a `/restablecer` para cualquier ruta cuando
- * `isPasswordRecovery` es `true`: funciona HOY (`detectSessionInUrl` lee el
- * hash sin importar qué ruta esté montada) y sigue funcionando el día que
- * alguien corrija el `redirect_to` en el proyecto real (deja de hacer
- * falta, pero no rompe nada si sigue). Se reporta como hallazgo, no se
- * corrige acá: tocar `config.toml`/`config push` no es de este paquete.
+ * **Sobre el `redirect_to` (corregido por el orquestador):** el encargo
+ * P06.3 reportó que `additional_redirect_urls` no se respetaba en
+ * `App_dev`. No es así. Lo que pasaba es que el endpoint de administración
+ * `/auth/v1/admin/generate_link` toma `redirect_to` como **parámetro de
+ * consulta en la URL**, no dentro del cuerpo: pasándolo en el cuerpo, GoTrue
+ * lo ignora y cae al `site_url`, que es exactamente el síntoma que se vio.
+ * Repetida la prueba con el parámetro de consulta, contra `App_dev`, la
+ * lista blanca funciona perfecto: `.../restablecer` y
+ * `http://localhost:5173/restablecer` vuelven tal cual, y un destino que no
+ * está en la lista cae al `site_url` — que es la protección haciendo su
+ * trabajo, no una falla.
+ *
+ * O sea que el enlace real del correo de COM-02 llega bien a esta ruta:
+ * `resetPasswordForEmail` pide `${origin}/restablecer` y ese origen está
+ * declarado. El redirect defensivo de `RootLayout` se conserva igual, pero
+ * por otro motivo: cualquier origen fuera de la lista blanca (una URL de
+ * vista previa de Cloudflare Pages, por ejemplo) sí vuelve al `site_url` por
+ * diseño, y ahí la persona aterriza en `/` con el token en el hash.
  */
 const resetPasswordSchema = z
   .object({
