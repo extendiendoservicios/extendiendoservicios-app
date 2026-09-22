@@ -225,7 +225,9 @@ password_requirements = ""
 # P06.0: con el SMTP de Resend habilitado más abajo, este valor pasa a regir de verdad (antes,
 # sin `auth.email.smtp` encendido, Supabase lo ignoraba). El plan gratis de Resend permite 100
 # emails por día y 3000 por mes -- sin límite propio por hora -- y acá el único uso de Auth es
-# recuperación de contraseña (COM-02) y confirmación de cambio de email (P-012, P-019), sobre
+# recuperación de contraseña (COM-02, P-012) y el cambio de email de login, que hace un
+# administrador desde ADM-27 por la Edge Function `admin-users` (nadie lo cambia por su cuenta:
+# en COM-04 el email de login es de solo lectura), sobre
 # una base de unos sesenta usuarios. Con el valor anterior (2/hora, heredado de la plantilla)
 # alcanzaba para dos personas por hora en todo el proyecto: la tercera que pidiera un reseteo en
 # esa misma hora se quedaba sin correo y sin ningún aviso de por qué. 20/hora le da margen a

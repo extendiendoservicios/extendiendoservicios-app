@@ -181,7 +181,8 @@ aplica Mike cuando F6 llegue a producción (ver más abajo).
   porque no había SMTP encendido). Calculado contra el plan gratis de
   Resend (100 emails/día, 3000/mes, sin límite propio por hora) y el uso
   esperable de la Base: recuperación de contraseña (COM-02) y confirmación
-  de cambio de email (P-012, P-019) para unos sesenta usuarios. 20/hora
+  de cambio de email hecho por un administrador desde ADM-27 (en COM-04 el
+  email de login es de solo lectura) para unos sesenta usuarios. 20/hora
   cubre cualquier pico legítimo sin acercarse al límite diario de Resend,
   salvo que se sostenga varias horas seguidas -- ahí ya sería un patrón de
   abuso, no uso real, y el límite diario del proveedor termina de frenarlo.
