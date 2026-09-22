@@ -242,8 +242,18 @@ web3 = 30
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
-# P-011: sin registro público por ningún método (ver auth.enable_signup arriba).
-enable_signup = false
+#
+# OJO, no es lo que parece por el nombre (verificado en vivo contra App_dev el 22 sep 2026):
+# en esta versión de la CLI, esta propiedad gobierna el INTERRUPTOR DEL PROVEEDOR EMAIL del
+# panel (`external_email_enabled`), no el registro público. Con `false`, Auth rechaza todo
+# inicio de sesión con `Email logins are disabled`, que es lo que pasó cuando un `config push`
+# la aplicó sobre App_dev y dejó la aplicación sin login.
+#
+# Quien garantiza P-011 (sin registro público por ningún método) es `enable_signup = false` del
+# bloque [auth] de arriba, que es el global: con eso, `/auth/v1/settings` devuelve
+# `disable_signup: true` y nadie se puede registrar solo. Las cuentas las crea siempre un
+# administrador por la Admin API (Edge Function `admin-users`, F7) o el seed.
+enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
