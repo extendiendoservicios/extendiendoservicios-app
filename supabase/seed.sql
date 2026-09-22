@@ -147,6 +147,23 @@ begin
   end if;
 end $$;
 
+-- Nombre y apellido: la fuente es la metadata de Auth que carga `scripts/seed-dev.ts`. El
+-- trigger `app.handle_new_user()` (0003) la copia a `profiles` solo al insertar, así que si un
+-- nombre cambia en la lista del script, la fila espejo queda vieja. Se sincroniza acá, que corre
+-- como `postgres`: por PostgREST no se puede, porque el trigger de `profiles` vive en el esquema
+-- `app`, cerrado a `service_role` en 0016/0017.
+update public.profiles p
+set
+  first_name = coalesce(u.raw_user_meta_data ->> 'first_name', p.first_name),
+  last_name = coalesce(u.raw_user_meta_data ->> 'last_name', p.last_name)
+from auth.users u
+join tmp_profiles t on t.profile_id = u.id
+where p.id = u.id
+  and (
+    p.first_name is distinct from coalesce(u.raw_user_meta_data ->> 'first_name', p.first_name)
+    or p.last_name is distinct from coalesce(u.raw_user_meta_data ->> 'last_name', p.last_name)
+  );
+
 create temporary table tmp_owner (profile_id uuid not null) on commit drop;
 insert into tmp_owner select profile_id from tmp_profiles where key = 'owner';
 

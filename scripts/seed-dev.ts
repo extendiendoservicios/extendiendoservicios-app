@@ -115,8 +115,8 @@ const USUARIOS: UsuarioSeed[] = [
   // Dueño (P-099).
   {
     email: 'extserviciosapp@gmail.com',
-    first_name: 'Miguel',
-    last_name: 'Mussi',
+    first_name: 'Lucas',
+    last_name: 'Enriquez',
   },
   // Administradora (Andrea Ríos, screens_sistema.py).
   {
@@ -219,6 +219,38 @@ async function main(): Promise<void> {
   for (const usuario of USUARIOS) {
     const previo = existentesPorEmail.get(usuario.email.toLowerCase())
     if (previo) {
+      // La cuenta de Auth no se recrea nunca (perdería su id, y con él todo lo que cuelga del
+      // perfil). Pero sí se sincroniza el nombre: si cambia en la lista de arriba, una corrida
+      // nueva tiene que dejarlo igual en la base, o el seed deja de ser idempotente. Acá se
+      // actualiza solo la metadata de Auth; la fila espejo de `public.profiles` la sincroniza
+      // `supabase/seed.sql` leyendo esa misma metadata, porque el trigger `app.handle_new_user()`
+      // (0003) la copia solo al insertar y `service_role` no puede actualizar `profiles` por
+      // PostgREST: el trigger de la tabla vive en el esquema `app`, cerrado en 0016/0017
+      // (`permission denied for schema app`). El paso SQL corre como `postgres` y sí puede.
+      const metadata = previo.user_metadata ?? {}
+      if (
+        metadata.first_name !== usuario.first_name ||
+        metadata.last_name !== usuario.last_name
+      ) {
+        const { error: errorMeta } = await admin.auth.admin.updateUserById(
+          previo.id,
+          {
+            user_metadata: {
+              ...metadata,
+              first_name: usuario.first_name,
+              last_name: usuario.last_name,
+            },
+          },
+        )
+        if (errorMeta) {
+          console.error(
+            `- ${usuario.email}: error al actualizar el nombre en Auth -> ${errorMeta.message}`,
+          )
+          fallidos += 1
+          continue
+        }
+      }
+
       console.log(
         `- ${usuario.email}: ya existe (id ${previo.id}), no se recrea.`,
       )
