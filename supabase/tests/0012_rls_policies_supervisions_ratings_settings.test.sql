@@ -298,6 +298,11 @@ set local role postgres;
 --    O (A puede subir logo: se otorga a O y A).")
 -- ---------------------------------------------------------------------------------------------
 
+-- Limpieza defensiva (DB-019, P04.6): `supabase/seed.sql` puede haber dejado su propia fila de
+-- company_settings en App_dev; este archivo corre en su propia transacción con `rollback`, así
+-- que borrarla acá adentro no la borra de verdad, solo evita chocar con la primary key (id = 1).
+delete from public.company_settings;
+
 insert into public.company_settings (id, name, logo_path, support_phone, location_consent_text)
 values (1, 'Extendiendo Servicios', 'branding/logo.png', '+54 11 5555-5555', 'Texto de consentimiento');
 

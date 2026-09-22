@@ -151,12 +151,16 @@ select is(
 
 -- clients: unicidad de CUIT -----------------------------------------------------------------------
 
-update public.clients set cuit = '30712345678' where id = 'd0000000-0000-0000-0000-000000000001';
+-- CUIT de fixture con prefijo "999" a propósito (DB-019, P04.6): los CUIT reales que carga
+-- `supabase/seed.sql` en App_dev empiezan todos con "307" o "273" (Grupo Norte, Clínica del
+-- Parque, etc.); este archivo corre en su propia transacción con `rollback`, pero igual conviene
+-- que su fixture no coincida por casualidad con un CUIT real del seed.
+update public.clients set cuit = '99911112223' where id = 'd0000000-0000-0000-0000-000000000001';
 
-insert into public.clients (id, legal_name) values ('d0000000-0000-0000-0000-000000000002', 'Clínica del Parque SA');
+insert into public.clients (id, legal_name) values ('d0000000-0000-0000-0000-000000000002', 'Cliente de prueba DB-007 SA');
 
 prepare client_duplicate_cuit as
-  update public.clients set cuit = '30712345678' where id = 'd0000000-0000-0000-0000-000000000002';
+  update public.clients set cuit = '99911112223' where id = 'd0000000-0000-0000-0000-000000000002';
 
 select throws_ok(
   'client_duplicate_cuit',

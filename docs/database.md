@@ -15,6 +15,46 @@ migraciones se escriben y se aplican contra `App_dev` con `pnpm db:push`; Docker
 como herramienta para correr pgTAP y los tests de la Edge Function (ADR-023). Detalle de cuentas
 y variables en `docs/environments.md`.
 
+## Diagrama de entidades (04 sección 1)
+
+Reproducido de `04_Modelo_de_Datos.md` sección 1 (DOC-004, P04.6): mismo diagrama, no se
+duplica ni se actualiza por separado -- si el modelo cambia una relación, este bloque se copia de
+nuevo desde ahí en el mismo PR.
+
+```mermaid
+erDiagram
+    auth_users ||--|| profiles : "mismo id"
+    profiles ||--o{ user_roles : tiene
+    profiles ||--o{ admin_capabilities : "si es administrador"
+    profiles ||--o| employees : "datos laborales"
+    employees ||--o{ employee_client_permissions : habilitado_en
+    employees ||--o{ employee_availability : declara
+    employees ||--o{ employee_leaves : tiene
+    clients ||--o{ client_contacts : tiene
+    clients ||--o{ sites : tiene
+    clients ||--o{ employee_client_permissions : habilita
+    clients ||--o{ services : contrata
+    sites ||--o{ services : recibe
+    clients ||--o{ checklist_templates : define
+    sites o|--o{ checklist_templates : "ajusta (opcional)"
+    checklist_templates ||--o{ checklist_template_items : contiene
+    services ||--o{ shifts : genera
+    sites ||--o{ shifts : ubica
+    shifts ||--o{ assignments : dota
+    employees ||--o{ assignments : cumple
+    shifts ||--o{ shift_tasks : "checklist copiado"
+    assignments ||--o{ attendance_records : "inicio y fin"
+    assignments ||--o{ attendance_notices : "demora o ausencia"
+    shifts ||--o{ supervisions : supervisado_por
+    employees ||--o{ supervisions : supervisa
+    supervisions ||--o{ supervision_attendance : "inicio y fin"
+    supervisions ||--o{ ratings : produce
+    assignments ||--o{ ratings : "califica a"
+    rating_criteria }o--|| company_settings : "guía vigente"
+    holidays }o--|| company_settings : calendario
+    profiles ||--o{ security_events : actor
+```
+
 ## Convenciones (04 sección 0)
 
 | Convención     | Regla                                                                                                                                                                                                                                                                                                                                                         |
@@ -644,6 +684,141 @@ Detalle completo en `supabase/tests/0017_grants.test.sql` (14 aserciones: ACL de
 `authenticated` por catálogo, el trigger de columnas de `profiles`, el `alter default privileges`
 probado con una tabla creada dentro de la transacción de prueba).
 
+## Datos de ejemplo: seeds y tipos (DB-019, DB-020, DB-021, P04.6)
+
+Con `0001` a `0018` aplicadas, F4 tiene datos de verdad para probar contra `App_dev`. Tres piezas:
+
+- **`supabase/seed.sql`** (DB-019): datos ficticios de staging (04 sección 10). Idempotente --
+  trunca en cascada lo que vuelve a poblar (`clients`, `employees` y todo lo que cuelga de ellos
+  por FK), así que correrlo de nuevo sobre `App_dev` no duplica nada.
+- **`scripts/seed-dev.ts`** (DB-019): crea (o reutiliza, si ya existen) las 14 personas en
+  `auth.users` por la Admin API -- nunca por SQL. Sin dependencias de línea de comandos: lee
+  `.env.local` con la flag nativa de Node `--env-file`.
+- **`supabase/seed-prod.sql`** (DB-020): mínimo y parametrizado para `App` (producción, F20).
+  **Nunca se corre desde este repositorio ni por ningún agente**: queda escrito y probado por su
+  lógica (misma estructura que `seed.sql`, revisada contra `App_dev` con `rollback` en vez de
+  `commit`), pero lo ejecuta Mike a mano el día de F20, después de crear el usuario dueño en Auth
+  (panel de Supabase o `scripts/seed-dev.ts` apuntado a `App` con una sola fila).
+
+Orden de ejecución (`pnpm db:seed`, que encadena los dos pasos; o por separado):
+
+```bash
+pnpm db:seed:users   # scripts/seed-dev.ts -- crea las 14 personas en Auth
+pnpm db:seed:data    # supabase db query --linked -f supabase/seed.sql -- carga el resto
+```
+
+`seed.sql` corta con un mensaje claro (`raise exception` con las 14 personas contadas) si se corre
+antes que `seed-dev.ts` contra el mismo proyecto.
+
+**Qué carga `seed.sql`:** el dueño (`extserviciosapp@gmail.com`, P-099), la administradora Andrea
+Ríos (siete capacidades en `true`), las supervisoras Paula Lemos y Noelia Vera, diez empleados,
+seis clientes con 13 sedes en total (Grupo Norte 3, Clínica del Parque 2, Oficinas Delta 4,
+Logística Central 2, Estudio Paredes 1, Textil Morán 1), un contacto principal por cliente, una
+plantilla de checklist por cliente (cinco ítems cada una), cuatro criterios de calificación,
+doce feriados nacionales de fecha fija del año en curso, dieciséis servicios (diez con un
+empleado fijo asignado, seis sin -- a propósito, para poblar el derivado "sin cubrir" de
+`v_shifts_board` con datos reales) y los turnos que esos servicios generan para los últimos 14
+días corridos más el resto del mes actual y todo el mes siguiente (todo relativo a `app.today()`,
+nunca a una fecha fija: el archivo sirve igual sin importar cuándo se corra). Los turnos pasados
+con empleado fijo quedan `completed` con asistencia completa (fichada por el propio empleado); los
+sin empleado fijo quedan `cancelled` ("sin personal disponible"); los futuros quedan
+`assigned`/`scheduled` según tengan o no empleado.
+
+**Escenarios de "hoy" (03 sección 14.3):** cinco turnos puntuales adicionales (`service_id null`,
+no compiten por empleado con los turnos recurrentes porque el bloque de generación excluye el día
+de hoy) que cubren los estados que pide la sección 14.3 -- en curso con supervisión en curso
+(María Gómez, Grupo Norte–San Isidro, supervisada por Paula Lemos), sin registro (Carlos Medina,
+Logística Central–Munro, franja ya vencida), ausencia avisada (Diego Fabbri, mismo cliente),
+próximo (Patricia Núñez, Estudio Paredes, franja calculada dinámicamente desde la hora real de
+Argentina al momento de correr el archivo) y completado (Rocío Aguirre, Oficinas Delta–Olivos).
+Más dos supervisiones `completed` en días pasados, cada una con su calificación.
+
+**Decisiones menores tomadas para este paquete** (fuentes: `Mockup/screens_personas.py`,
+`screens_planificacion.py`, `screens_asistencia.py`, `screens_incidencias.py`,
+`screens_reportes.py`, `screens_sistema.py` -- el código Python que genera el mockup real, según
+`01_Auditoria_Inicial.md` la fuente más precisa de datos):
+
+- El mockup solo nombra **nueve** empleados con legajo (María Gómez, Juan Pérez, Sofía Ruiz,
+  Carlos Medina, Lucía Torres, Rocío Aguirre, Valeria Paz, Diego Fabbri, Martín Sosa); 04 sección
+  10 pide diez. Se agregó **Patricia Núñez** (legajo 045) con el mismo estilo.
+- **Textil Morán** (uno de los seis clientes que pide 04 sección 10) no aparece en ningún archivo
+  del mockup: se completó con una sede ficticia (San Martín) y un contacto de estilo consistente.
+- Las direcciones de sede que sí aparecen en el mockup se usaron tal cual (San Isidro/Av.
+  Centenario 1450, Clínica del Parque–Martínez/Av. Santa Fe 1234, Oficinas Delta–Vicente
+  López/Laprida 820); el resto son ficticias, con criterio de zona norte del GBA.
+- **Feriados:** solo los de fecha fija del calendario nacional argentino; se omiten los móviles
+  (Carnaval, Viernes Santo), cuya fecha depende del cálculo de la Pascua de cada año -- fuera de
+  alcance de este seed, sin efecto real porque todos los servicios nacen con
+  `works_on_holidays = true`.
+- **Emails ficticios** bajo `@extendiendoservicios.com` (P-010: login por email real, "real o
+  provisto por la empresa"; sin mapeo por DNI). Contraseña inicial compartida, obligatoria en
+  `SEED_DEV_PASSWORD` (`.env.local`, que git ignora) y **sin valor por defecto a propósito**: los
+  datos de estas cuentas son ficticios, pero el acceso a `App_dev` no lo es. Este repositorio es
+  público y `App_dev` es el backend de `dev.extendiendoservicios.com`, así que una contraseña
+  escrita acá quedaría publicada de forma permanente en el historial de git, y es la de una
+  cuenta con rol `owner` de un proyecto vivo. Si la variable falta, `scripts/seed-dev.ts` corta
+  y explica cómo cargarla.
+- **CUIT/CUIL/DNI ficticios**, sin relación con documentos reales.
+
+**DB-021 (generación de tipos y verificación de diff en CI):** el paso ya estaba escrito en
+`.github/workflows/ci.yml` (INFRA-016, P03.3), condicionado a que existan migraciones y tests --
+desde `0001`/TEST-001 (P04.1) esa condición ya se cumple, así que el paso se activa solo, sin
+tocar el workflow. `pnpm db:types` corrido dos veces seguidas contra `App_dev` (con `0001` a
+`0018` aplicadas) da el mismo archivo byte a byte las dos veces: sin diferencia contra lo ya
+commiteado en `38006f1` (P04.5) tampoco -- ese commit ya había regenerado `database.types.ts`
+después de aplicar `0011` a `0017`, y la migración `0018` (un índice) no cambia el esquema que
+expone PostgREST, así que el archivo queda igual.
+
+## Rendimiento (migración `0018`, DB-024)
+
+Revisión pedida por DB-024: `explain (analyze, buffers)` sobre las vistas del tablero, con un
+seed ampliado a volumen real -- el `seed.sql` normal (mes actual y siguiente, ~629 turnos) más un
+año adicional hacia atrás generado ad hoc para la prueba (mismo patrón que el bloque 9 de
+`seed.sql`, sin quedar en el repositorio: se cargó, se midió y se descartó volviendo a correr
+`seed.sql`, que trunca y repuebla el conjunto normal). Con eso, `App_dev` llegó a **4629 turnos**
+y **~2900 asignaciones** al momento de medir.
+
+**Hallazgo:** `v_shifts_board` (`0011_views.sql`) calcula `assigned_count`/`present_count`/
+`finished_count`/`absent_count`/`delayed_count` con una subconsulta lateral
+(`... from public.assignments a where a.shift_id = sh.id`) que filtra por estado **dentro** de
+cada `count(*) filter (where ...)`, no en el `where` de la subconsulta: necesita ver todas las
+asignaciones del turno, vigentes o quitadas. El único índice que ya existía sobre
+`assignments.shift_id` (`assignments_shift_id_idx`, 0007) es **parcial** (`where removed_at is
+null`), así que Postgres no podía usarlo para esta subconsulta -- se veía como
+`Seq Scan on assignments ... Rows Removed by Filter: 2894`, repetido una vez por cada turno del
+resultado (`loops=9`, `loops=20` en los dos casos probados: crece con el volumen total de
+`assignments`, no con el tamaño del resultado, justo lo que un año de datos deja ver y un seed
+chico no). Ejemplo antes/después sobre la misma consulta (turnos activos de una franja de tres
+días):
+
+|                              | Antes (sin índice)        | Después (`assignments_shift_id_all_idx`)        |
+| ---------------------------- | ------------------------- | ----------------------------------------------- |
+| Plan de la subconsulta       | `Seq Scan on assignments` | `Index Scan using assignments_shift_id_all_idx` |
+| `Buffers` de esa subconsulta | `shared hit=1060`         | `shared hit=54`                                 |
+| `Execution Time` total       | `6.752 ms`                | `1.076 ms`                                      |
+
+**Corrección:** `0018_performance_shifts_board.sql` agrega `assignments_shift_id_all_idx` (btree
+simple sobre `assignments (shift_id)`, sin predicado) -- complementa a `assignments_shift_id_idx`
+(sigue siendo el mejor índice para "asignaciones vigentes de este turno"), no lo reemplaza. Test
+pgTAP en `supabase/tests/0018_performance_shifts_board.test.sql` (3 aserciones: el índice existe,
+tiene definición, no es parcial).
+
+**Resto de las vistas revisadas (sin cambios, ya usaban los índices de 04 sección 8 sin `Seq
+Scan` sobre tablas grandes):**
+
+- `v_assignments_board` (filtrado por `employee_id` + rango de fecha, pantalla "Mi día"):
+  `Bitmap Heap Scan` sobre `assignments_employee_id_shift_date_idx` y `Index Scan` sobre
+  `shifts_shift_date_idx`/`attendance_records_assignment_id_idx`.
+- `v_my_day` (como un empleado, vía `request.jwt.claims`): `Index Scan` sobre
+  `assignments_employee_id_shift_date_idx`, `shifts_shift_date_idx` y
+  `shift_tasks_shift_id_position_idx`.
+- `v_supervisions_admin` (rango de un mes): arranca por un `Seq Scan on profiles` de 14 filas
+  (la tabla completa de personas, trivial a cualquier escala razonable de personal) y de ahí usa
+  `supervisions_supervisor_id_status_idx`; sin volumen de supervisiones no hay nada que optimizar
+  todavía.
+- `v_clients` (listado completo con conteos): `Seq Scan on clients` (6 filas, correcto para un
+  listado completo) más `Index Scan` sobre `sites_client_id_idx`/`services_client_id_idx`.
+
 ## Enumeraciones (04 sección 3)
 
 Las 15 enumeraciones del modelo, en el esquema `public`, migración `0002_enums.sql`. Agregar un
@@ -684,7 +859,10 @@ Ver `supabase/migrations/README.md` para la tabla completa y actualizada. Hasta 
 `0013_rpc_users.sql` (DB-015), `0014_storage_buckets.sql` (DB-016),
 `0015_indexes.sql` (DB-018), `0016_hardening.sql` y `0017_grants.sql` (DB-017). Con esto queda
 completo el modelo de datos de F4 (todas las migraciones de la sección 11 del modelo, `0001` a
-`0017`).
+`0017`). `0018_performance_shifts_board.sql` (DB-024, P04.6) llega después, fuera de la
+numeración de la sección 11 del modelo (que termina en `0017`): es un índice adicional que salió
+de la revisión de rendimiento con un seed ampliado, no de un bloque nuevo del modelo de datos --
+ver "Rendimiento" más arriba.
 
 ## Cómo escribir una migración
 

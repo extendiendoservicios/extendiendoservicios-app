@@ -20,7 +20,10 @@
     "prepare": "husky",
     "db:push": "supabase db push",
     "db:types": "supabase gen types --linked > src/lib/database.types.ts",
-    "db:test": "bash scripts/db-test.sh"
+    "db:test": "bash scripts/db-test.sh",
+    "db:seed:users": "node --env-file=.env.local scripts/seed-dev.ts",
+    "db:seed:data": "supabase db query --linked -f supabase/seed.sql",
+    "db:seed": "pnpm db:seed:users && pnpm db:seed:data"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
@@ -35,6 +38,7 @@
     "@date-fns/tz": "1.5.0",
     "@hookform/resolvers": "5.9.1",
     "@sentry/react": "10.75.0",
+    "@supabase/supabase-js": "2.116.0",
     "@tanstack/react-table": "8.21.3",
     "class-variance-authority": "0.7.1",
     "cmdk": "1.1.1",
