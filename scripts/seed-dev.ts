@@ -227,28 +227,30 @@ async function main(): Promise<void> {
       // (0003) la copia solo al insertar y `service_role` no puede actualizar `profiles` por
       // PostgREST: el trigger de la tabla vive en el esquema `app`, cerrado en 0016/0017
       // (`permission denied for schema app`). El paso SQL corre como `postgres` y sí puede.
+      //
+      // La contraseña también se reescribe en cada corrida, no solo al crear. SEED_DEV_PASSWORD
+      // es la única fuente: si cambia en `.env.local` -- porque se rotó, o porque la anterior
+      // quedó expuesta en algún lado -- una corrida deja las 14 cuentas con la nueva y la vieja
+      // deja de servir. Si no se reescribieran, la contraseña de las cuentas ya creadas viviría
+      // solo en la memoria de quien las creó.
       const metadata = previo.user_metadata ?? {}
-      if (
-        metadata.first_name !== usuario.first_name ||
-        metadata.last_name !== usuario.last_name
-      ) {
-        const { error: errorMeta } = await admin.auth.admin.updateUserById(
-          previo.id,
-          {
-            user_metadata: {
-              ...metadata,
-              first_name: usuario.first_name,
-              last_name: usuario.last_name,
-            },
+      const { error: errorSync } = await admin.auth.admin.updateUserById(
+        previo.id,
+        {
+          password: PASSWORD,
+          user_metadata: {
+            ...metadata,
+            first_name: usuario.first_name,
+            last_name: usuario.last_name,
           },
+        },
+      )
+      if (errorSync) {
+        console.error(
+          `- ${usuario.email}: error al sincronizar la cuenta en Auth -> ${errorSync.message}`,
         )
-        if (errorMeta) {
-          console.error(
-            `- ${usuario.email}: error al actualizar el nombre en Auth -> ${errorMeta.message}`,
-          )
-          fallidos += 1
-          continue
-        }
+        fallidos += 1
+        continue
       }
 
       console.log(
