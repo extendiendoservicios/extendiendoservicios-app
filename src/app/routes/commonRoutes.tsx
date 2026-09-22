@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import type { RouteObject } from 'react-router'
 import { RequireRole } from '@/features/auth/RequireRole'
-import { useSession } from '@/features/auth/session'
+import { useAuth } from '@/features/auth/AuthProvider'
 import { LazyAdminShell, LazyMobileShell } from '@/app/shells/lazyShells'
 import { RouteFallback } from './RouteFallback'
 import {
@@ -19,7 +19,7 @@ import {
  * de F6 (AUTH-003/005/006); acá son placeholders.
  *
  * `perfil` (COM-04) sí lleva shell, "según rol" (`05` sección 5): la
- * decide `ProfileLayout` a partir de `useSession()`, no una ruta fija —
+ * decide `ProfileLayout` a partir de `useAuth()`, no una ruta fija —
  * owner/admin ven `AdminShell`, empleado `MobileShell` de empleado,
  * supervisor `MobileShell` de supervisor. Usa los mismos `lazy()` que
  * `router.tsx` (`lazyShells.tsx`) para no romper el code splitting por vía:
@@ -49,8 +49,7 @@ function centeredPlaceholderRoute(
 }
 
 function ProfileLayout() {
-  const session = useSession()
-  const roles = session.status === 'authenticated' ? session.roles : []
+  const { roles } = useAuth()
 
   if (roles.includes('owner') || roles.includes('admin')) {
     return <LazyAdminShell />

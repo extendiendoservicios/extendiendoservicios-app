@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router'
 import { router } from '@/app/router'
+import { AuthProvider } from '@/features/auth/AuthProvider'
 import { initSentry } from '@/lib/sentry'
 import { Toaster } from '@/components/ui/sonner'
 import '@/styles/globals.css'
@@ -16,9 +17,13 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <RouterProvider router={router} />
-    {/* Montado una sola vez en la raíz (DS-010): cualquier pantalla puede
-        llamar a `toast(...)` de "sonner" sin volver a montar el Toaster. */}
-    <Toaster />
+    {/* Una sola instancia para todo el árbol de rutas (AUTH-002): la
+        sesión persistida se lee una vez acá arriba, no en cada shell. */}
+    <AuthProvider>
+      <RouterProvider router={router} />
+      {/* Montado una sola vez en la raíz (DS-010): cualquier pantalla puede
+          llamar a `toast(...)` de "sonner" sin volver a montar el Toaster. */}
+      <Toaster />
+    </AuthProvider>
   </StrictMode>,
 )

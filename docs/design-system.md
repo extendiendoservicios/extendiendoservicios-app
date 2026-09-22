@@ -580,13 +580,16 @@ DataTableColumnMeta }`), sin tocar el tipo de la librería: como
   `--table-header-bg` (`#FAFBFC`, encabezado de `DataTable`), `--r-task-box`
   (radio de la casilla de `TaskItem`, ver arriba).
 
-## Shells, router y sesión provisoria (DS-013 a DS-015, P05.4)
+## Shells, router y sesión (DS-013 a DS-015, P05.4; sesión real desde P06.2)
 
 Estado: `AdminShell`, `MobileShell` y el router con `RequireRole` sobre
 todas las rutas de `05_Pantallas_y_Navegacion.md` sección 5, como
-placeholders. Sin autenticación real todavía (llega en F6, AUTH-001 a
-AUTH-012): hasta entonces, cualquier ruta protegida se recorre con el
-simulador de rol de `/dev/rol` (más abajo).
+placeholders. **La sesión que sigue documentada más abajo ("Sesión
+provisoria") es la de F5 y ya no existe** — P06.2 (AUTH-001/002/008/010) la
+reemplazó por `AuthProvider`/`useAuth` de verdad; ver la sección nueva
+"Autenticación real" más abajo, después de "PWA". El resto de esta sección
+(shells, router, `RequireRole` como wrapper de experiencia) sigue vigente
+tal cual.
 
 ### `AdminShell` (`src/app/shells/AdminShell.tsx`, DS-013)
 
@@ -733,10 +736,20 @@ página completa.
   ~107 kB (~35 kB gzip) y `MobileShell` ~35 kB (~10 kB gzip) quedan en
   chunks separados del bundle principal.
 
-### Sesión provisoria (`src/features/auth/session.ts`, `devRole.ts`)
+### Sesión provisoria (histórico, F5 — reemplazada en P06.2)
 
-**Contrato que P06.2 (AUTH-002/AUTH-008) tiene que respetar** para
-reemplazar esto sin tocar `router.tsx` ni los shells:
+**Esta subsección queda como registro histórico de F5, no como estado
+actual**: P06.2 borró `devRole.ts` entero y el `useSession`/`SessionState`
+de `session.ts` (ver "Autenticación real", después de "PWA", para el
+reemplazo). Se conserva sin reescribir porque el contrato que describe
+("`RequireRole`/los shells no cambian, solo la implementación de la
+sesión") es exactamente lo que P06.2 cumplió — vale como prueba de que el
+diseño de F5 funcionó como estaba pensado.
+
+Contrato que tenía que respetar la sesión real para reemplazar esto sin
+tocar `router.tsx` ni los shells (cumplido: los shells sí cambiaron una
+línea — `useSession()` por `useAuth()` — porque P06.2 decidió no dejar un
+re-export de compatibilidad; ver "Autenticación real"):
 
 - `useSession(): SessionState` es el único punto que leen `RequireRole`,
   `AdminShell` y `MobileShell`. `SessionState` ya tiene la forma final
@@ -1006,6 +1019,187 @@ solo las decisiones de este paquete.
   service worker llega a `state: 'activating'` en la primera instalación
   y el manifest se lee con `content-type: application/manifest+json` y
   cero errores de consola.
+
+## Autenticación real (AUTH-001, AUTH-002, AUTH-008, AUTH-010, P06.2)
+
+Reemplaza la sesión provisoria de F5 (ver más arriba, "Sesión provisoria
+(histórico)"). Archivos nuevos: `src/lib/supabase.ts` (AUTH-001),
+`src/features/auth/claims.ts`, `src/features/auth/AuthProvider.tsx`
+(AUTH-002, AUTH-010). `RequireRole.tsx` (AUTH-008), `AdminShell.tsx`,
+`MobileShell.tsx`, `commonRoutes.tsx` (`ProfileLayout`) y `main.tsx` pasan
+de `useSession()` a `useAuth()` — ese único cambio en cada uno, nada de
+forma. `session.ts` se achicó a lo que quedó sin dueño de React: `Role`
+(ahora `Database['public']['Enums']['app_role']`, no una unión a mano),
+`ROLE_LABELS`, `homePathForRoles`.
+
+### `src/lib/supabase.ts` (AUTH-001)
+
+Cliente único de `supabase-js`, tipado con `Database`
+(`src/lib/database.types.ts`), `persistSession: true`,
+`autoRefreshToken: true`, `detectSessionInUrl: true` (para `/restablecer`,
+AUTH-006, paquete siguiente). Solo `VITE_SUPABASE_URL`/
+`VITE_SUPABASE_ANON_KEY` — nunca `service_role` (verificado: no aparece en
+ningún archivo de `src/`, ni en `dist/` tras `pnpm build`).
+
+### `AuthProvider`/`useAuth` (AUTH-002, `AuthProvider.tsx`)
+
+Contexto de React montado una sola vez en `main.tsx`, por encima de
+`<RouterProvider>`. `useAuth()` devuelve:
+
+```ts
+{
+  status: 'loading' | 'unauthenticated' | 'authenticated'
+  userId: string | null
+  email: string | null
+  roles: Role[]              // [] salvo authenticated
+  capabilities: Capability[] // [] salvo authenticated y no-admin
+  profile: AuthProfile | null // { id, firstName, lastName, displayName, contactEmail, phone, avatarPath }
+  displayName: string        // profile.displayName ?? email ?? 'Cuenta' — ya resuelto, sin chequear status
+  signOut: () => Promise<void>
+  refreshProfile: () => Promise<void>
+}
+```
+
+- `status`/`roles`/`capabilities` salen de `supabase.auth.onAuthStateChange`
+  y del `access_token` de esa sesión, decodificado por
+  `decodeAccessTokenClaims` (`claims.ts`) — el mismo claim `roles`/
+  `capabilities` que arma `app.custom_access_token_hook` (`0003`, `0016`) y
+  que leen las políticas RLS (`app.has_role`/`app.is_admin`/
+  `app.has_capability`). `TOKEN_REFRESHED` (renovación automática, o al
+  recuperar la conexión) vuelve a decodificar solo — un cambio de rol se ve
+  en el próximo refresh, no antes (ver "La decisión de AUTH-010" abajo).
+- `profile` sale de una lectura aparte a `public.profiles` (el JWT no trae
+  nombre/apellido), con reintento (0, 300 ms, 900 ms) ante un hipo de red.
+  Se pide una sola vez por `userId` (no se repite en cada
+  `TOKEN_REFRESHED`). `refreshProfile()` la vuelve a pedir a demanda — para
+  COM-04 ("Mi perfil", paquete siguiente) después de guardar cambios, o
+  para `AvatarUpload` (EMP-011) después de subir una foto nueva.
+- `signOut()` es `auth.signOut()` local (`06_API.md` sección 1). El cierre
+  GLOBAL ("cerrar todas las sesiones de otra persona") es la Edge Function
+  `admin-users`/`sign_out_user` (F7) — no algo que la propia sesión haga
+  sobre sí misma.
+
+**Qué necesitan las pantallas COM-01 a COM-05 (paquete siguiente,
+AUTH-003/005/006/007) de este `AuthProvider`, para que no haga falta
+tocarlo:**
+
+- COM-01 (`/ingresar`): llama `supabase.auth.signInWithPassword(...)`
+  directo (como ya hace `/dev/rol`) y no necesita nada nuevo de
+  `useAuth()` — `AuthProvider` reacciona solo al cambio de sesión.
+- COM-02/COM-03 (recuperar/restablecer): `auth.resetPasswordForEmail`/
+  `auth.updateUser({password})`, tampoco tocan `AuthProvider`.
+- COM-04 ("Mi perfil"): lee `profile`/`displayName` de `useAuth()`, edita
+  con `from('profiles').update(...)` (`06_API.md` sección 2.2) y llama
+  `refreshProfile()` al guardar.
+- Si alguna pantalla necesita "¿soy owner o admin con esta capacidad?",
+  ya está en `capabilities` (arreglo de `admin_capability`, `claims.ts`) —
+  no hace falta agregar nada.
+
+### `RequireRole` real (AUTH-008)
+
+Mismo contrato de siempre (wrapper por grupo de rutas, `allow: Role[]`),
+ahora contra `useAuth()`: `'loading'` → `RouteFallback` (el mismo spinner
+del `Suspense` de los shells, evita un parpadeo a `/ingresar` mientras
+`supabase-js` lee la sesión persistida — dura milisegundos con sesión
+guardada, nunca pega a la red en ese caso); `'unauthenticated'` →
+`/ingresar`; con sesión pero sin ningún rol de `allow` → la vía propia
+(`homePathForRoles`) o `/sin-acceso`.
+
+### La decisión de AUTH-010: confiar en el claim (con evidencia)
+
+**Pregunta:** si a alguien se le saca un rol, ¿el `AuthProvider` tiene que
+volver a consultar `user_roles`/`admin_capabilities` para "adelantarse", o
+alcanza con confiar en el claim del JWT vigente?
+
+**Se leyeron las funciones, no se supuso.** `app.has_role`/`app.is_admin`/
+`app.has_capability` (`0003_profiles_roles_capabilities.sql`) llaman a
+`app.jwt_roles()`/`app.jwt_capabilities()`, que leen
+`auth.jwt() -> 'roles'`/`'capabilities'` — el claim del token, sin ninguna
+subconsulta a las tablas. Las 69 políticas de `0012_rls_policies.sql` usan
+exclusivamente esas funciones (el propio encabezado del archivo lo dice:
+"sin subconsultas contra user_roles/admin_capabilities -- el hook ya los
+puso en el token"). Conclusión: **la base confía en el claim**, no lo
+revalida contra las tablas en cada pedido.
+
+Como el frontend y las políticas RLS leen exactamente el mismo dato
+(`decodeAccessTokenClaims` decodifica el mismo `access_token` que
+`auth.jwt()` del lado del servidor), el `AuthProvider` no gana nada
+sondeando `user_roles` por su cuenta: no hay ningún estado "más
+actualizado" que pudiera mostrar sin mentir sobre lo que el servidor va a
+autorizar en ese momento. Sondear solo agregaría latencia y consultas sin
+cerrar ninguna ventana real.
+
+**Ventana de exposición, medida en vivo contra `App_dev` (no supuesta),
+con una cuenta del seed (`maria.gomez@extendiendoservicios.com`):**
+
+1. Login normal (`signInWithPassword`) → `access_token` con
+   `roles: ['employee']`.
+2. `from('profiles').select(...)` con ese token → responde bien (RLS lo
+   deja pasar).
+3. `service_role.auth.admin.signOut(access_token, 'global')` — lo mismo
+   que hace `sign_out_user`/`deactivate_user` (`06_API.md` sección 2.1) al
+   sacarle un rol o desactivar a alguien.
+4. **El mismo `from('profiles').select(...)` con el MISMO `access_token`
+   viejo, otra vez → sigue respondiendo bien.** PostgREST valida el JWT
+   solo por firma y `exp`, no contra `auth.sessions`: no tiene forma de
+   saber que esa sesión fue revocada.
+5. Un `fetch` directo a `/auth/v1/user` con el mismo token viejo sí lo
+   rechaza (`403 session_not_found`) — GoTrue (los endpoints propios de
+   Auth) sí valida la sesión viva; PostgREST (`from`/`rpc`, el 100 % de las
+   RPC y consultas de la app) no.
+6. Un intento de `refreshSession()` con el `refresh_token` viejo falla
+   ("Invalid Refresh Token: Refresh Token Not Found") — bloquea la
+   RENOVACIÓN, no el `access_token` ya emitido.
+7. **Más todavía** (leyendo `_callRefreshToken` en el
+   `@supabase/auth-js` instalado, no solo probándolo): la propia librería,
+   a propósito, distingue un refresh "proactivo" (el `access_token`
+   vigente no venció) de uno "reactivo" (ya venció). Si un refresh
+   proactivo falla — exactamente este caso, revocación mientras el token
+   de una hora sigue vigente — la librería CONSERVA la sesión en
+   `localStorage` y NO dispara `SIGNED_OUT`, a propósito, para no
+   desloguear a alguien cuyo `access_token` todavía funciona. Verificado
+   en vivo: forzar `supabase.auth.refreshSession()` a mano después de
+   revocar devuelve el error de (6) pero deja la sesión intacta — la
+   pantalla sigue mostrando a la persona como autenticada.
+
+**Conclusión, sin atenuarla:** revocar una sesión (por sacar un rol, por
+desactivar a alguien) NO tiene efecto inmediato sobre ningún dato ni
+ninguna RPC — sigue vigente hasta que el `access_token` expira de verdad
+(hasta una hora, `jwt_expiry = 3600` en `supabase/config.toml`), momento en
+el que recién el temporizador interno de `autoRefreshToken` (reintenta
+cada 30 s, `AUTO_REFRESH_TICK_DURATION_MS`, empieza a intentar 90 s antes
+del vencimiento, `EXPIRY_MARGIN_MS`) cae en la rama "reactiva", el refresh
+falla contra el refresh token ya revocado, y ahí sí `supabase-js` limpia
+la sesión y dispara `SIGNED_OUT` — `AuthProvider` lo recibe como cualquier
+cierre de sesión (`session` llega `null`) y `RequireRole` redirige solo a
+`/ingresar`. Esa es la "salida limpia" del encargo, con la demora real de
+hasta una hora, no antes — y ningún sondeo, reintento ni `refreshSession()`
+manual desde el frontend la acorta (probado: no la acorta).
+
+Esto **contradice lo que asume `04_Modelo_de_Datos.md` línea 421**
+("cuando el cambio es restrictivo... la Edge Function además revoca las
+sesiones del usuario para que el efecto sea inmediato"): revocar la sesión
+bloquea la renovación y los endpoints de Auth, pero no es inmediato para
+los datos. **Este paquete no puede cerrar esa ventana** — es una decisión
+de infraestructura (bajar `jwt_expiry`, agregar una verificación de sesión
+viva dentro de cada política RLS, o algo equivalente) que le toca a
+backend-supabase o a Mike, no al frontend: ningún código en `src/` cambia
+lo que PostgREST ya le permitió a un token válido por firma. Queda
+anotado como pendiente en el reporte del encargo, no tapado con un sondeo
+cosmético.
+
+### `/dev/rol`: de simulador a atajo real (decisión menor)
+
+`devRole.ts` (F5, sesión simulada en `localStorage`) se borró entero.
+`/dev/rol` (`src/pages/dev/DevRole.tsx`, sigue solo en desarrollo, mismo
+patrón `lazy()` + `if (import.meta.env.DEV)`) pasó a ser un formulario de
+login real contra una cuenta del seed: botones con las 14 cuentas (rellenan
+el email) + campos de email/contraseña que llaman al mismo
+`supabase.auth.signInWithPassword` que va a usar COM-01. La contraseña
+(`SEED_DEV_PASSWORD`) no está en el código — es una variable sin prefijo
+`VITE_`, Vite no la expone al bundle — se escribe a mano una vez. Verificado
+que ni la página, ni los emails del seed, ni ningún rastro de `/dev/rol`
+llegan a `dist/` (`pnpm build` + `grep` sobre `dist/assets/*.js`).
 
 ## Revisión visual de cierre de F5 (P05.6)
 

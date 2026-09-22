@@ -4,7 +4,7 @@ import { cn } from 'cn'
 import { Avatar } from '@/components/Avatar'
 import { Fab } from '@/components/Fab'
 import { formatShortDate } from '@/lib/format'
-import { useSession } from '@/features/auth/session'
+import { useAuth } from '@/features/auth/AuthProvider'
 import { useRouteHandle } from '@/app/routes/placeholder'
 import {
   EMPLOYEE_TABBAR_ITEMS,
@@ -46,7 +46,7 @@ export type MobileShellVariant = 'employee' | 'supervisor'
 export function MobileShell({ variant }: { variant: MobileShellVariant }) {
   const location = useLocation()
   const navigate = useNavigate()
-  const session = useSession()
+  const { displayName } = useAuth()
   const handle = useRouteHandle()
 
   const rootPath = variant === 'employee' ? '/app' : '/sup'
@@ -54,9 +54,6 @@ export function MobileShell({ variant }: { variant: MobileShellVariant }) {
     variant === 'employee' ? EMPLOYEE_TABBAR_ITEMS : SUPERVISOR_TABBAR_ITEMS
   const isRootTab = tabItems.some((item) => location.pathname === item.path)
   const isGreeting = location.pathname === rootPath
-
-  const displayName =
-    session.status === 'authenticated' ? session.displayName : 'Cuenta'
 
   return (
     <div className="flex min-h-dvh justify-center bg-bg">

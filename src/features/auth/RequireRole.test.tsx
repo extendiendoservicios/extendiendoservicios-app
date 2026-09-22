@@ -2,11 +2,34 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 import { RequireRole } from './RequireRole'
-import * as sessionModule from './session'
-import type { Role, SessionState } from './session'
+import * as authModule from './AuthProvider'
+import type { AuthContextValue } from './AuthProvider'
+import type { Role } from './session'
 
-function renderProtectedRoute(session: SessionState, allow: Role[]) {
-  vi.spyOn(sessionModule, 'useSession').mockReturnValue(session)
+/**
+ * `RequireRole` contra la sesión real (`useAuth`, AuthProvider.tsx):
+ * reemplaza la suite que probaba la sesión provisoria de F5 (`useSession`/
+ * `devRole.ts`, ya borrados en P06.2). `AuthProvider` en sí se prueba en
+ * `AuthProvider.test.tsx` — acá solo importa qué hace `RequireRole` con
+ * cada valor que `useAuth()` puede devolver.
+ */
+function authValue(overrides: Partial<AuthContextValue>): AuthContextValue {
+  return {
+    status: 'unauthenticated',
+    userId: null,
+    email: null,
+    roles: [],
+    capabilities: [],
+    profile: null,
+    displayName: 'Cuenta',
+    signOut: vi.fn(),
+    refreshProfile: vi.fn(),
+    ...overrides,
+  }
+}
+
+function renderProtectedRoute(auth: AuthContextValue, allow: Role[]) {
+  vi.spyOn(authModule, 'useAuth').mockReturnValue(auth)
 
   return render(
     <MemoryRouter initialEntries={['/admin']}>
@@ -29,8 +52,19 @@ function renderProtectedRoute(session: SessionState, allow: Role[]) {
 }
 
 describe('RequireRole', () => {
+  it('mientras la sesión está cargando no muestra ni protege ni redirige', () => {
+    renderProtectedRoute(authValue({ status: 'loading' }), ['owner', 'admin'])
+
+    expect(screen.getByRole('status', { name: 'Cargando' })).toBeInTheDocument()
+    expect(screen.queryByText('Contenido protegido')).not.toBeInTheDocument()
+    expect(screen.queryByText('Pantalla de ingreso')).not.toBeInTheDocument()
+  })
+
   it('sin sesión redirige a /ingresar', () => {
-    renderProtectedRoute({ status: 'unauthenticated' }, ['owner', 'admin'])
+    renderProtectedRoute(authValue({ status: 'unauthenticated' }), [
+      'owner',
+      'admin',
+    ])
 
     expect(screen.getByText('Pantalla de ingreso')).toBeInTheDocument()
     expect(screen.queryByText('Contenido protegido')).not.toBeInTheDocument()
@@ -38,7 +72,7 @@ describe('RequireRole', () => {
 
   it('con un rol que no corresponde redirige a su propia vía', () => {
     renderProtectedRoute(
-      { status: 'authenticated', roles: ['employee'], displayName: 'María' },
+      authValue({ status: 'authenticated', roles: ['employee'] }),
       ['owner', 'admin'],
     )
 
@@ -48,18 +82,18 @@ describe('RequireRole', () => {
 
   it('un supervisor que no es empleado va a /sup', () => {
     renderProtectedRoute(
-      { status: 'authenticated', roles: ['supervisor'], displayName: 'Paula' },
+      authValue({ status: 'authenticated', roles: ['supervisor'] }),
       ['owner', 'admin'],
     )
 
     expect(screen.getByText('Inicio del supervisor')).toBeInTheDocument()
   })
 
-  it('con sesión pero sin ningún rol redirige a /sin-acceso', () => {
-    renderProtectedRoute(
-      { status: 'authenticated', roles: [], displayName: 'María' },
-      ['owner', 'admin'],
-    )
+  it('con sesión pero sin ningún rol redirige a /sin-acceso (desactivado o sin roles)', () => {
+    renderProtectedRoute(authValue({ status: 'authenticated', roles: [] }), [
+      'owner',
+      'admin',
+    ])
 
     expect(screen.getByText('Sin acceso')).toBeInTheDocument()
     expect(screen.queryByText('Contenido protegido')).not.toBeInTheDocument()
@@ -67,7 +101,7 @@ describe('RequireRole', () => {
 
   it('con el rol correcto muestra el contenido protegido', () => {
     renderProtectedRoute(
-      { status: 'authenticated', roles: ['admin'], displayName: 'Andrea' },
+      authValue({ status: 'authenticated', roles: ['admin'] }),
       ['owner', 'admin'],
     )
 
@@ -76,11 +110,7 @@ describe('RequireRole', () => {
 
   it('acepta a quien tiene más de un rol si alguno está permitido', () => {
     renderProtectedRoute(
-      {
-        status: 'authenticated',
-        roles: ['employee', 'supervisor'],
-        displayName: 'María',
-      },
+      authValue({ status: 'authenticated', roles: ['employee', 'supervisor'] }),
       ['supervisor'],
     )
 

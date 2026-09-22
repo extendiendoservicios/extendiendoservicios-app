@@ -29,10 +29,12 @@ function RootLayout() {
 }
 
 // DS-015: rutas de `05_Pantallas_y_Navegacion.md` sección 5, como
-// placeholders, dentro del shell que corresponda. `RequireRole` (provisorio
-// hasta AUTH-008, `src/features/auth/RequireRole.tsx`) protege cada grupo:
-// sin sesión, cualquiera de estas rutas redirige a `/ingresar`; con un rol
-// que no corresponde, a `/sin-acceso`. `AdminShell`/`MobileShell` van
+// placeholders, dentro del shell que corresponda. `RequireRole`
+// (`src/features/auth/RequireRole.tsx`, AUTH-008, sesión real de
+// `AuthProvider`) protege cada grupo: sin sesión, cualquiera de estas
+// rutas redirige a `/ingresar`; con un rol que no corresponde, a la vía
+// propia de sus roles (o `/sin-acceso` si no tiene ninguno).
+// `AdminShell`/`MobileShell` van
 // detrás de `React.lazy` (`lazyShells.tsx`) para que el celular no baje el
 // código del shell de administración, ni viceversa (ver tamaños de bundle
 // en el reporte del encargo).
@@ -83,8 +85,9 @@ const rootChildren: RouteObject[] = [
   },
 ]
 
-// `/dev/design` (DS-016 parcial, P05.2) y `/dev/rol` (DS-015, simulador de
-// rol): solo en desarrollo. `import.meta.env.DEV` es una constante que Vite
+// `/dev/design` (DS-016 parcial, P05.2) y `/dev/rol` (atajo de desarrollo
+// para entrar con una cuenta real del seed, P06.2): solo en desarrollo.
+// `import.meta.env.DEV` es una constante que Vite
 // resuelve en build (`true`/`false` literal) y luego elimina como código
 // muerto: en `pnpm build` este bloque completo -- y los `import()` de cada
 // página, que es lo que arma sus chunks -- desaparece de `dist/`
