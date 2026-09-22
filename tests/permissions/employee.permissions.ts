@@ -1,0 +1,301 @@
+// tests/permissions/employee.permissions.ts — P04.7 (08_Fases_y_Backlog.md, F4)
+//
+// Verificación independiente (la escribe qa-pruebas, no backend-supabase) del criterio de
+// aceptación de F4: "Un empleado del seed, autenticado, no puede leer `ratings` ni asignaciones
+// ajenas (test)" (08_Fases_y_Backlog.md). Cubre también, con el mismo criterio, otras tablas de
+// 04_Modelo_de_Datos.md sección 7.2 donde el empleado NO tiene acceso o solo tiene acceso
+// parcial -- representativo, no exhaustivo: la suite completa por tabla y por RPC es TEST-019
+// (F18), que esta tarea adelanta parcialmente (P04.7).
+//
+// Cada caso queda anotado con la fila de trazabilidad (09_Trazabilidad.md) o el caso borde
+// (08_Fases_y_Backlog.md sección 3) que cubre. Regla de independencia: usa las cuentas fijas del
+// seed (no crea personas), pero cualquier dato que modifica (teléfono propio, nota de una
+// asignación propia) lo deja como estaba al final de cada test.
+//
+// Empleado principal: maria.gomez (SEED_ACCOUNTS.employees[0]). "Otro empleado" (ajeno, sin
+// turnos en común -- verificado en el reporte de esta tarea: el seed actual da un turno por
+// asignación, así que ningún par de empleados comparte turno hoy): juan.perez.
+
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import {
+  createAdminClient,
+  loginAs,
+  type TestClient,
+} from './helpers/clients.ts'
+import { resolveUserId } from './helpers/admin-lookups.ts'
+import { missingEnvWarning, readPermissionsTestEnv } from './helpers/env.ts'
+import { SEED_ACCOUNTS } from './fixtures/seed-accounts.ts'
+
+const env = readPermissionsTestEnv()
+if (!env) console.warn(missingEnvWarning('employee.permissions.ts'))
+
+describe.skipIf(!env)(
+  'rol employee — permisos por API directa contra App_dev',
+  () => {
+    let admin: TestClient
+    let empleado: TestClient
+    let empleadoId: string
+    let otroEmpleadoId: string
+
+    beforeAll(async () => {
+      admin = createAdminClient()
+      const login = await loginAs(SEED_ACCOUNTS.employees[0])
+      empleado = login.client
+      empleadoId = login.userId
+      otroEmpleadoId = await resolveUserId(admin, SEED_ACCOUNTS.employees[1])
+    })
+
+    afterAll(async () => {
+      await empleado.auth.signOut()
+    })
+
+    describe('lo que NO puede hacer (cero filas o FORBIDDEN)', () => {
+      it('CB-15 / RB-X02: no lee ninguna fila de ratings, aunque existan calificaciones reales (04 sección 7.2, P-084)', async () => {
+        // Confirma primero que la tabla tiene datos reales protegidos: si estuviera vacía, un
+        // `deny all` accidental pasaría este test igual y no probaría nada (04 sección 7.2:
+        // "ratings | ... E: no (P-084)").
+        const real = await admin
+          .from('ratings')
+          .select('id', { count: 'exact', head: true })
+        expect(real.count ?? 0).toBeGreaterThan(0)
+
+        const { data, error } = await empleado.from('ratings').select('*')
+        expect(error).toBeNull()
+        expect(data).toEqual([])
+      })
+
+      it('RB-X02: no lee asignaciones de un empleado con el que no comparte turno', async () => {
+        const { data, error } = await empleado
+          .from('assignments')
+          .select('*')
+          .eq('employee_id', otroEmpleadoId)
+        expect(error).toBeNull()
+        expect(data).toEqual([])
+      })
+
+      it('no lee el perfil completo de alguien que no es compañero de turno', async () => {
+        const { data, error } = await empleado
+          .from('profiles')
+          .select('*')
+          .eq('id', otroEmpleadoId)
+        expect(error).toBeNull()
+        expect(data).toEqual([])
+      })
+
+      it('no lee supervisiones (04 sección 7.2: "supervisions | ... E: no")', async () => {
+        const { data, error } = await empleado.from('supervisions').select('*')
+        expect(error).toBeNull()
+        expect(data).toEqual([])
+      })
+
+      it('no lee criterios de calificación (04 sección 7.2: "rating_criteria | O, A, S ... E: no")', async () => {
+        const { data, error } = await empleado
+          .from('rating_criteria')
+          .select('*')
+        expect(error).toBeNull()
+        expect(data).toEqual([])
+      })
+
+      it('no lee eventos de seguridad (04 sección 7.2: "security_events | O.")', async () => {
+        const { data, error } = await empleado
+          .from('security_events')
+          .select('*')
+        expect(error).toBeNull()
+        expect(data).toEqual([])
+      })
+
+      it('CB-17 / RB-A01: no puede llamar set_admin_capability, RPC fuera de su rol', async () => {
+        const { error } = await empleado.rpc('set_admin_capability', {
+          p_profile_id: empleadoId,
+          p_capability: 'manage_users',
+          p_enabled: true,
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('RB-A01: no puede subirse el propio rol a owner con set_user_roles', async () => {
+        const { error } = await empleado.rpc('set_user_roles', {
+          p_profile_id: empleadoId,
+          p_roles: ['owner'],
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede insertar un cliente por API directa (04 sección 7.2: "clients | ... | O, A.")', async () => {
+        const { error } = await empleado.from('clients').insert({
+          legal_name: 'e2e-perm no debería crearse',
+          trade_name: 'e2e-perm',
+          cuit: '20111111112',
+        })
+        expect(error?.code).toBe('42501')
+      })
+
+      it('no puede editar shifts.notes por API directa (tabla "RPC" en 04 sección 7.2, sin política de escritura para nadie todavía)', async () => {
+        const { error } = await empleado
+          .from('shifts')
+          .update({ notes: 'e2e-perm no debería aplicarse' })
+          .eq('id', '00000000-0000-0000-0000-000000000000') // cualquier uuid: el permiso de tabla falla antes de mirar la fila
+        expect(error?.code).toBe('42501')
+      })
+
+      it('no puede editar su propio perfil fuera de las columnas permitidas (is_active)', async () => {
+        const { error } = await empleado
+          .from('profiles')
+          .update({ is_active: false })
+          .eq('id', empleadoId)
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede editar sus propios datos laborales en employees (04 sección 7.2: "employees | ... | O, A")', async () => {
+        const before = await admin
+          .from('employees')
+          .select('employee_number')
+          .eq('profile_id', empleadoId)
+          .single()
+
+        const { data, error } = await empleado
+          .from('employees')
+          .update({ employee_number: 999999 })
+          .eq('profile_id', empleadoId)
+          .select()
+        expect(error).toBeNull()
+        // RLS lo bloquea en silencio: el grant de UPDATE existe (para que O/A puedan editar
+        // cualquier fila), pero la política `employees_update_admin` exige `app.is_admin()` -- un
+        // empleado que intenta tocar su propia fila obtiene 0 filas afectadas, sin error.
+        expect(data).toEqual([])
+
+        const after = await admin
+          .from('employees')
+          .select('employee_number')
+          .eq('profile_id', empleadoId)
+          .single()
+        expect(after.data?.employee_number).toBe(before.data?.employee_number)
+      })
+    })
+
+    describe('lo que SÍ puede hacer (contraprueba: que un "denegar todo" no pase el bloque de arriba)', () => {
+      it('lee su propio perfil', async () => {
+        const { data, error } = await empleado
+          .from('profiles')
+          .select('*')
+          .eq('id', empleadoId)
+        expect(error).toBeNull()
+        expect(data).toHaveLength(1)
+      })
+
+      it('lee sus propios datos laborales en employees', async () => {
+        const { data, error } = await empleado
+          .from('employees')
+          .select('*')
+          .eq('profile_id', empleadoId)
+        expect(error).toBeNull()
+        expect(data).toHaveLength(1)
+      })
+
+      it('RB-X02: lee exactamente sus propias asignaciones vigentes, ni una de más ni una de menos', async () => {
+        const mine = await empleado.from('assignments').select('id')
+        expect(mine.error).toBeNull()
+
+        const expected = await admin
+          .from('assignments')
+          .select('id')
+          .eq('employee_id', empleadoId)
+          .is('removed_at', null)
+
+        const mineRows = (mine.data ?? []) as { id: string }[]
+        const expectedRows = (expected.data ?? []) as { id: string }[]
+        const mineIds = new Set(mineRows.map((r) => r.id))
+        const expectedIds = new Set(expectedRows.map((r) => r.id))
+        expect(mineIds).toEqual(expectedIds)
+        // Si esto diera 0, el caso de arriba (mineIds === expectedIds con ambos vacíos) no
+        // probaría nada: confirma que el empleado de prueba tiene asignaciones reales en el seed.
+        expect(mineIds.size).toBeGreaterThan(0)
+      })
+
+      it('lee los feriados (04 sección 7.2: "holidays | Todos autenticados.")', async () => {
+        const { count, error } = await empleado
+          .from('holidays')
+          .select('id', { count: 'exact', head: true })
+        expect(error).toBeNull()
+        expect(count ?? 0).toBeGreaterThan(0)
+      })
+
+      it('lee la configuración de la empresa (04 sección 7.2: "company_settings | Todos autenticados")', async () => {
+        const { data, error } = await empleado
+          .from('company_settings')
+          .select('*')
+          .eq('id', 1)
+        expect(error).toBeNull()
+        expect(data).toHaveLength(1)
+      })
+
+      it('edita el teléfono de su propio perfil, columna permitida', async () => {
+        const nuevo = '+54 9 11 0000-0000'
+        const { data, error } = await empleado
+          .from('profiles')
+          .update({ phone: nuevo })
+          .eq('id', empleadoId)
+          .select()
+        expect(error).toBeNull()
+        expect(data?.[0]?.phone).toBe(nuevo)
+
+        // Limpieza (regla de independencia): deja el teléfono como estaba.
+        await empleado
+          .from('profiles')
+          .update({ phone: null })
+          .eq('id', empleadoId)
+      })
+
+      it('edita la nota de una asignación propia con turno todavía no completado (04 sección 7.2: "assignments | ... E: update de notes propia mientras el turno no esté completed")', async () => {
+        const propias = await admin
+          .from('assignments')
+          .select('id, shift_id')
+          .eq('employee_id', empleadoId)
+          .is('removed_at', null)
+        const propiasRows = (propias.data ?? []) as {
+          id: string
+          shift_id: string
+        }[]
+        const shiftIds = propiasRows.map((a) => a.shift_id)
+
+        const noCompletados = await admin
+          .from('shifts')
+          .select('id')
+          .in('id', shiftIds)
+          .neq('status', 'completed')
+        const noCompletadosRows = (noCompletados.data ?? []) as { id: string }[]
+        const idsNoCompletados = new Set(noCompletadosRows.map((s) => s.id))
+        const candidata = propiasRows.find((a) =>
+          idsNoCompletados.has(a.shift_id),
+        )
+
+        expect(
+          candidata,
+          'el seed necesita al menos una asignación propia con turno no completado',
+        ).toBeDefined()
+        if (!candidata) return
+
+        const nota = 'e2e-perm nota de prueba'
+        const { data, error } = await empleado
+          .from('assignments')
+          .update({ notes: nota })
+          .eq('id', candidata.id)
+          .select()
+        expect(error).toBeNull()
+        expect(data?.[0]?.notes).toBe(nota)
+
+        // Limpieza.
+        await empleado
+          .from('assignments')
+          .update({ notes: null })
+          .eq('id', candidata.id)
+      })
+
+      it('llama mark_changes_seen() sobre sí mismo', async () => {
+        const { data, error } = await empleado.rpc('mark_changes_seen')
+        expect(error).toBeNull()
+        expect(data?.id).toBe(empleadoId)
+      })
+    })
+  },
+)
