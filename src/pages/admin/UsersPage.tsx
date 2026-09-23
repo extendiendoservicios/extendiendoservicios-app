@@ -94,22 +94,28 @@ export default function UsersPage() {
         />
       ),
     },
-    {
-      id: 'lastSignIn',
-      header: 'Último ingreso',
-      meta: { card: 'meta', cardLabel: 'Último ingreso' },
-      cell: ({ row }) => {
-        const value = row.original.lastSignInAt
-        if (!value) {
-          return <span className="text-text-3">—</span>
-        }
-        return (
-          <span>
-            {formatShortDate(value)}, {formatTime(value)}
-          </span>
-        )
-      },
-    },
+    // Solo para el dueño: un administrador no puede leer `security_events`,
+    // y una columna vacía diría "nunca entró" de gente que sí entró.
+    ...(isOwnerViewer
+      ? [
+          {
+            id: 'lastSignIn',
+            header: 'Último ingreso',
+            meta: { card: 'meta', cardLabel: 'Último ingreso' },
+            cell: ({ row }) => {
+              const value = row.original.lastSignInAt
+              if (!value) {
+                return <span className="text-text-3">—</span>
+              }
+              return (
+                <span>
+                  {formatShortDate(value)}, {formatTime(value)}
+                </span>
+              )
+            },
+          } satisfies DataTableColumnDef<UserRowView>,
+        ]
+      : []),
     {
       id: 'actions',
       header: '',

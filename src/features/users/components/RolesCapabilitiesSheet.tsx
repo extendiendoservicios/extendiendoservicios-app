@@ -173,7 +173,7 @@ function RolesCapabilitiesSheet({
             {rolesChanged && willSignOut && (
               <p className="text-[11px] text-warning-800">
                 Le vas a quitar al menos un rol: al guardar, vamos a cerrar
-                todas sus sesiones para que el cambio tome efecto (P-015).
+                todas sus sesiones para que el cambio tome efecto.
               </p>
             )}
             <Button
@@ -194,8 +194,8 @@ function RolesCapabilitiesSheet({
                 Capacidades de administrador
               </h3>
               <p className="mb-2 text-[11px] text-text-3">
-                Solo el dueño ve y edita esto (05 sección 2, nota de permisos).
-                El dueño tiene todas las capacidades siempre, no aparecen acá.
+                Solo el dueño ve y edita estas capacidades. El dueño las tiene
+                todas siempre, por eso no aparece en esta lista.
               </p>
               {capabilitiesQuery.isLoading ? (
                 <div className="flex flex-col gap-2">

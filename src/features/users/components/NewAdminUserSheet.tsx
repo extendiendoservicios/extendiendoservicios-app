@@ -134,7 +134,7 @@ function NewAdminUserSheet({
             ) : (
               <p className="text-[11px] text-text-3">
                 La persona puede cambiarla después desde su perfil. No hace
-                falta que la cambie al ingresar por primera vez (P-011).
+                falta que la cambie al ingresar por primera vez.
               </p>
             )}
           </Field>
