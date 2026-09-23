@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react'
 import { cn } from 'cn'
 import { Avatar } from '@/components/Avatar'
 import { Fab } from '@/components/Fab'
+import { PwaUpdateBanner } from '@/components/PwaUpdateBanner'
 import { formatShortDate } from '@/lib/format'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { useRouteHandle } from '@/app/routes/placeholder'
@@ -77,12 +78,21 @@ export function MobileShell({ variant }: { variant: MobileShellVariant }) {
         </main>
 
         {isRootTab && (
-          <MobileTabbar
-            variant={variant}
-            items={tabItems}
-            pathname={location.pathname}
-            rootPath={rootPath}
-          />
+          <>
+            {/* Solo en las pestañas raíz, nunca en una subpágina: ahí es
+                donde puede estar `ActionBar` (`src/app/shells/ActionBar.tsx`)
+                anclada al mismo borde inferior, y es justamente donde
+                alguien puede estar a mitad de fichar o de cargar algo --
+                el peor momento para un aviso, aunque sea uno que no
+                interrumpe. */}
+            <PwaUpdateBanner className="sticky bottom-[74px] z-20" />
+            <MobileTabbar
+              variant={variant}
+              items={tabItems}
+              pathname={location.pathname}
+              rootPath={rootPath}
+            />
+          </>
         )}
       </div>
     </div>

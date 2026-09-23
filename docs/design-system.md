@@ -945,9 +945,11 @@ public/icons/apple-touch-icon-180x180.png  ídem, 180×180
 `vite: "^3 || ^4 || ^5 || ^6 || ^7 || ^8"`, compatible con Vite 8 sin forzar
 nada; publicada el 5 may 2026, muy por delante de cualquier
 `minimumReleaseAge` de pnpm). Documentación completa de responsive/PWA
-(prompt de actualización con interfaz, Lighthouse, dispositivos reales)
-llega con RESP-012/DOC-017 en F17 (`docs/pwa.md`, todavía no existe); acá
-solo las decisiones de este paquete.
+(Lighthouse, dispositivos reales) llega con RESP-012/DOC-017 en F17
+(`docs/pwa.md`, todavía no existe); acá solo las decisiones de este
+paquete y de RESP-009 (aviso de actualización, adelantado de F17 a antes
+del primer pase a producción — ver el reporte del encargo P06.5 para el
+motivo).
 
 - **`strategies: 'generateSW'`**: Workbox arma el service worker desde el
   build, sin escribir uno a mano (`injectManifest` no hacía falta: no hay
@@ -970,17 +972,13 @@ solo las decisiones de este paquete.
   app instalada, porque `name` no entra. Lo confirmó Mike el 19 sep 2026,
   sabiendo que algunos launchers de Android lo cortan a unos 12
   caracteres.
-- **`registerType: 'prompt'`, sin interfaz todavía** (decisión del
-  orquestador para este paquete): el service worker nuevo instala y queda
+- **`registerType: 'prompt'`**: el service worker nuevo instala y queda
   esperando — nunca llama `self.skipWaiting()`/`clientsClaim()` por su
   cuenta (verificado leyendo `dist/sw.js`: el único disparador de
   `skipWaiting()` es un listener de `message` con
-  `{ type: 'SKIP_WAITING' }`, que nadie envía todavía). Se activa recién
-  cuando se cierran todas las pestañas o la app instalada — nunca solo,
-  para no interrumpir a un empleado que puede estar fichando. El aviso
-  "hay una versión nueva" con botón para actualizar es RESP-009 (F17):
-  ese código va a llamar `postMessage({ type: 'SKIP_WAITING' })` al
-  service worker en espera; este paquete no agrega ninguna interfaz.
+  `{ type: 'SKIP_WAITING' }`). Se activa recién cuando `PwaUpdateProvider`
+  le manda esa señal (RESP-009, ver más abajo) — nunca solo, para no
+  interrumpir a un empleado que puede estar fichando.
 - **`devOptions: { enabled: false }`** (el valor por omisión, dejado
   explícito): sin service worker en `pnpm dev`. Si estuviera habilitado,
   el navegador podría servir un `index.html` de un build viejo por encima
@@ -1019,6 +1017,89 @@ solo las decisiones de este paquete.
   service worker llega a `state: 'activating'` en la primera instalación
   y el manifest se lee con `content-type: application/manifest+json` y
   cero errores de consola.
+
+### Aviso de actualización (RESP-009, adelantado a P06.5)
+
+Adelantado de F17 a antes del primer pase a producción: sin esto, alguien
+con la PWA instalada podía quedarse con una versión vieja por tiempo
+indefinido (el `registerType: 'prompt'` de arriba, correcto para no
+interrumpir a quien está fichando, también significa que nadie se entera
+de que hay una versión nueva salvo que algo se lo diga). Ver el reporte del
+encargo para el hallazgo que lo disparó (un despliegue verde en staging que
+seguía mostrando la pantalla vieja).
+
+- **`src/app/PwaUpdateProvider.tsx`** (`PwaUpdateProvider`/`usePwaUpdate`):
+  registra el service worker con `virtual:pwa-register/react`
+  (`useRegisterSW`) en vez del script genérico que el plugin inyectaría
+  solo — por eso `injectRegister: false` en `vite.config.ts`. Se monta una
+  sola vez en `main.tsx`, envolviendo `RouterProvider` (como `AuthProvider`):
+  el registro y el chequeo periódico corren para toda la sesión de la
+  pestaña, sin importar la vía, incluso antes de iniciar sesión.
+  - **Chequeo cada una hora** (`CHECK_INTERVAL_MS`) mientras la app sigue
+    abierta, más uno extra al volver de segundo plano (`visibilitychange`):
+    el navegador revisa un service worker por su cuenta en cada navegación
+    de página completa, pero acá adentro no hay ninguna (es una SPA, el
+    router cambia de pantalla sin recargar), y ese chequeo del navegador
+    además está limitado a una vez cada 24 horas por
+    especificación — insuficiente para alguien que deja la app abierta un
+    turno entero. Una hora se eligió por costo: `dist/sw.js` pesa ~2,4 kB y
+    ya tiene `Cache-Control: no-cache` (arriba), así que cada chequeo es
+    una revalidación liviana.
+  - **`applyUpdate()`** no se apoya en el comportamiento por defecto de la
+    librería (que asume `clients.claim()`, algo que este service worker no
+    llama — ver el bullet de `registerType` arriba): manda
+    `SKIP_WAITING` y espera a que el worker que estaba en espera llegue a
+    `state: 'activated'` antes de recargar la página a mano
+    (`window.location.reload()`). Sin esa espera, una recarga demasiado
+    rápida podía encontrar el worker nuevo todavía activándose y seguir
+    sirviendo la versión vieja.
+  - **`postpone()`** reusa el setter que ya expone el hook
+    (`setNeedRefresh(false)`) en vez de un estado propio: el listener
+    interno de la librería sigue enganchado, así que si aparece una
+    versión más nueva todavía mientras el aviso está pospuesto, vuelve a
+    mostrarse solo.
+  - **`workbox-window` como dependencia directa** (`package.json`): sin
+    esto, `pnpm build` rompe (`Rolldown failed to resolve import
+"workbox-window"`) — el runtime de `virtual:pwa-register/react` hace
+    `import("workbox-window")`, y con la estructura estricta de `node_modules`
+    de pnpm esa importación necesita que el propio paquete de la app lo
+    declare (es peer dependency de `vite-plugin-pwa`, no algo que
+    heredemos solo por tener el plugin instalado).
+- **`src/components/PwaUpdateBanner.tsx`**: usa `Alert`/`AlertActions`
+  (DS-010) en vez de un componente nuevo — encaja tal cual con
+  título + texto + dos acciones, y ya es el componente que se usa para
+  avisos en línea. `role="status"` en vez del `role="alert"` que trae
+  `Alert` por defecto (se pisa pasándolo como prop, ya que `Alert` separa
+  `...props` después de fijar el suyo): esto es informativo y de baja
+  urgencia, no tiene que interrumpir a quien usa lector de pantalla con
+  `aria-live="assertive"`.
+- **Un montaje por shell, no uno global fijo al viewport**: `AdminShell` y
+  `MobileShell` (los tres shells: administración, empleado, supervisor)
+  montan `PwaUpdateBanner` cada uno dentro de su propia columna de layout
+  (`sticky`, no `fixed`), así se recorta solo al ancho de cada shell (la
+  columna de 480 px de `MobileShell`, centrada en escritorio; la columna a
+  la derecha de la sidebar en `AdminShell`) sin tener que calcular el ancho
+  de la sidebar a mano. El offset (`bottom-[74px]` con tabbar visible,
+  `bottom-4` sin ella) deja un margen de 8 px por encima de la tabbar de
+  66 px, para no pisar el `Fab` "Fichar", que sobresale unos 4 px por
+  encima de la tabbar. En `MobileShell` solo se monta en las pestañas raíz
+  (`isRootTab`), nunca en una subpágina: ahí puede estar `ActionBar`
+  anclada al mismo borde inferior, y es el peor momento para cualquier
+  aviso, aunque no interrumpa.
+- **Verificación de punta a punta, con un service worker real** (`pnpm
+test` no alcanza acá: hace falta un service worker de verdad, dos
+  versiones distintas y un navegador — ver el reporte del encargo para el
+  detalle completo): `pnpm build` dos veces con contenido distinto, la
+  primera servida con `pnpm preview` y la segunda pisando `dist/` en disco
+  sin reiniciar el servidor (mismo escenario que un despliegue real).
+  Contra un navegador real con Playwright: el service worker de la primera
+  instalación llega a `activated` sin ningún worker en espera; tras pisar
+  los archivos y forzar `registration.update()` (lo mismo que hace el
+  chequeo periódico), aparece un worker nuevo en espera y el aviso se
+  muestra solo, sin que nadie recargue nada. "Actualizar ahora" recarga la
+  página y deja servido el contenido de la versión nueva de verdad (no una
+  copia cacheada); "Más tarde" oculta el aviso sin ninguna navegación y sin
+  aplicar nada.
 
 ## Autenticación real (AUTH-001, AUTH-002, AUTH-008, AUTH-010, P06.2)
 
