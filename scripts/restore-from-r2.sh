@@ -25,6 +25,41 @@ set -euo pipefail
 #      empleado real podría iniciar sesión en staging con su contraseña de producción, y los
 #      emails de Auth de App_dev podrían llegarle a gente real.
 #
+# CORRECCIÓN (23 sep 2026, fix/TEST-024-restore-sequence — validada de punta a punta contra
+# Postgres 17 local en Docker, docs/deployment.md sección 6.3): la versión anterior recreaba
+# "public" desde cero (DROP TABLE + CREATE TABLE, --section=pre-data/post-data) y eso traía DOS
+# defectos reales:
+#   a. El DROP TABLE podía fallar por objetos de post-data (claves foráneas, políticas RLS) que
+#      dependen de la tabla y que --clean de pre-data no toca, y probando la solución "borrar
+#      antes las FK/políticas" apareció un problema más de fondo: recrear la estructura puede
+#      cascadear a objetos de OTRO esquema (por ejemplo, `app.log_security_event` devuelve
+#      `public.security_events`, así que `drop table ... cascade` se llevaría puesta una función
+#      de "app" que este script no tiene que tocar).
+#   b. `--no-privileges` (necesario porque `backup-to-r2.sh` tampoco graba privilegios en el
+#      volcado) dejaba las tablas recreadas con el ACL por defecto de Supabase (más abierto que
+#      `0017_grants.sql`).
+#   Los dos defectos comparten la misma causa: recrear la ESTRUCTURA de "public" es innecesario.
+#   El paso 0 (más abajo) YA garantiza que App_dev tiene exactamente las mismas migraciones que el
+#   volcado, así que la estructura (tablas, columnas, restricciones, índices, políticas, ACL) es
+#   IDÉNTICA en los dos lados: alcanza con reemplazar los DATOS, sin tocar nunca la estructura.
+#   Se deshabilitan los triggers de las tablas de "public" mientras dura la carga (con
+#   `alter table ... disable trigger all`, permiso de dueño de tabla, no de superusuario -- ni
+#   siquiera hace falta `session_replication_role`, que si es de superusuario): eso también
+#   deshabilita los triggers internos que aplican las claves foráneas, así que el orden entre
+#   tablas no importa, sin necesidad de borrar ni recrear nada. Nunca se toca un GRANT, un REVOKE
+#   ni una política: quedan exactamente como los dejaron las migraciones, siempre.
+#   Además, en la validación local aparecieron dos defectos más, independientes de los dos de
+#   arriba, los dos de PostgreSQL 17.11 (el cliente que instala `asegurar_pg17` en el runner):
+#   c. `pg_restore -t auth.users` (con el esquema pegado al nombre de la tabla) no matcheaba
+#      NINGÚN objeto del volcado (falla silenciosa: pg_restore no imprime error, pero tampoco
+#      restaura una sola fila) -- confirmado también contra `public.clients` con el mismo patrón:
+#      `--table=esquema.tabla` no encuentra nada, `--table=tabla` sí. Se corrige usando
+#      `-n <esquema> -t <tabla>` (dos argumentos separados), que sí matchea.
+#   d. `pg_restore --data-only -t <tabla>` sin `--dbname` NI `--file` (para leer el volcado sin
+#      tocar ninguna base, paso 0 de más abajo) ahora corta con el error "one of -d/--dbname and
+#      -f/--file must be specified": esta versión ya no imprime a la salida estándar por defecto
+#      como hacían versiones anteriores. Se corrige agregando `-f -` (salida estándar explícita).
+#
 # PERMISOS SIN CONFIRMAR: la documentación pública de Supabase describe al rol "postgres" (el que
 # usa este script, vía el Session pooler) como "the default Postgres role. This has admin
 # privileges", pero en ningún lado confirma ni niega privilegios de INSERT/DELETE sobre
@@ -34,41 +69,45 @@ set -euo pipefail
 # el permiso no está (cada paso corre en su propia transacción, y la limpieza final corre siempre
 # por `trap`). Antes de la primera corrida real (después de F4), Mike puede confirmarlo sin
 # arriesgar nada, desde el SQL Editor de App_dev:
-#   select has_table_privilege('postgres', 'auth.users', 'INSERT, DELETE') as auth_users,
-#          has_table_privilege('postgres', 'auth.identities', 'INSERT, DELETE') as auth_identities;
+#   select has_table_privilege('postgres', 'auth.users', 'INSERT') as auth_users_insert,
+#          has_table_privilege('postgres', 'auth.users', 'DELETE') as auth_users_delete,
+#          has_table_privilege('postgres', 'auth.identities', 'INSERT') as auth_identities_insert,
+#          has_table_privilege('postgres', 'auth.identities', 'DELETE') as auth_identities_delete;
 #
 # ALCANCE en "public": todas las tablas, vistas, funciones, índices y datos que crean las
 # migraciones propias. No se toca la ESTRUCTURA de "auth" (solo sus filas): nunca se hace DROP ni
 # ALTER sobre auth.users/auth.identities, esquemas/tablas que administra Supabase
 # (supabase_auth_admin es su dueño, no "postgres").
 #
-# SECUENCIA (pensada para que no falle por claves foráneas ni por claves primarias duplicadas):
+# SECUENCIA (validada de punta a punta contra Postgres 17 local en Docker, ver el reporte de la
+# tarea para los números):
 #   0. Verifica que App_dev tenga las mismas migraciones aplicadas que el volcado
 #      (supabase_migrations.schema_migrations) -- si no coinciden, aborta ANTES de tocar nada.
-#   1. Recrea "public" vacío: solo estructura (--section=pre-data), sin restricciones ni datos
-#      todavía -- pg_dump/pg_restore ponen las FK, PK, UNIQUE e índices en post-data a propósito
-#      (documentación de PostgreSQL 17), así que en este punto ninguna tabla de "public" tiene
-#      todavía la clave foránea hacia auth.users: no hace falta ningún orden especial más
-#      adelante para la carga de datos.
+#      Esto es lo que garantiza que la ESTRUCTURA de "public" es idéntica en los dos lados: el
+#      resto de la secuencia confía en eso para no tener que recrear nada.
+#   1. Deshabilita los triggers (incluidos los internos de las claves foráneas) de todas las
+#      tablas de "public", y vacía "public" por si App_dev tenía datos de antes.
 #   2. Reemplaza auth.users/auth.identities: borra lo que haya (identities antes que users, por
-#      la FK entre ellas) y restaura los datos del volcado (users antes que identities).
+#      la FK entre ellas) y restaura los datos del volcado (users antes que identities, con
+#      `-n auth -t <tabla>`, ver la nota de arriba sobre `-t esquema.tabla`).
 #   3. Si el trigger que F4 agrega sobre auth.users (crea la fila de "profiles", según
 #      04_Modelo_de_Datos.md) disparó al insertar los usuarios del paso 2, vacía de nuevo TODO
 #      "public" (TRUNCATE ... CASCADE) para borrar cualquier fila que haya creado ese efecto
 #      secundario, antes de cargar los datos reales.
-#   4. Carga los datos de "public" (--section=data): en este punto ninguna restricción está
-#      activa todavía, así que el orden entre tablas no importa.
-#   5. Agrega de nuevo las restricciones, índices y triggers de "public" (--section=post-data):
-#      acá se valida cada clave foránea, incluida la de auth.users -- ya tiene con qué cerrar.
+#   4. Carga los datos de "public" (--section=data): con los triggers deshabilitados (paso 1) el
+#      orden entre tablas no importa, ninguna clave foránea se evalúa todavía.
+#   5. Rehabilita los triggers de todas las tablas de "public".
 #   6. Verifica (cantidad de tablas y filas por tabla, nunca contenido: nada de emails, nombres
 #      ni otras columnas).
-#   7. Limpieza (siempre, por `trap`, corra lo que corra arriba): vacía "public" y borra los
-#      usuarios de auth restaurados, y confirma que quedaron vacíos.
+#   7. Limpieza (siempre, por `trap`, corra lo que corra arriba): rehabilita los triggers (por si
+#      el paso 5 no llegó a correr), vacía "public" y borra los usuarios de auth restaurados, y
+#      confirma que quedaron vacíos.
 #
-# Cada paso de pg_restore usa --single-transaction (implica --exit-on-error, documentación de
-# PostgreSQL 17): si algo falla a mitad de ESE paso, ese paso se revierte solo. Entre pasos no hay
-# una única transacción global (el paso 5 necesita ver ya confirmados los datos del paso 2), así
-# que la garantía de "nunca dejar nada a medias" la da la limpieza del paso 7, que corre siempre.
+# Cada `pg_restore`/bloque de la secuencia corre en su propia transacción (`--single-transaction`
+# en pg_restore, `begin`/`commit` explícito en los bloques de psql): si algo falla a mitad de un
+# paso, ESE paso se revierte solo. No hay una única transacción global para toda la secuencia (el
+# paso 4 necesita ver ya confirmados los datos del paso 2, escritos en una conexión distinta) --
+# la garantía de "nunca dejar nada a medias" la da la limpieza del paso 7, que corre siempre.
 #
 # NO SE IMPRIME NINGÚN DATO PERSONAL: la verificación cuenta filas (números), nunca imprime
 # contenido de ninguna tabla ni de auth.users/auth.identities.
@@ -157,6 +196,24 @@ contar_filas_app_dev() {
     "select count(*) from auth.identities;")"
 }
 
+# Rehabilita los triggers de todas las tablas de "public" (idempotente: no falla si ya estaban
+# habilitados). Se llama tanto en el paso 5 de la secuencia normal como en la limpieza del paso 7,
+# para que un corte a mitad de camino nunca deje una tabla con los triggers apagados.
+rehabilitar_triggers_public() {
+  "$PG_BIN_DIR/psql" "$SUPABASE_DB_URL_DEV" -X -q -v ON_ERROR_STOP=1 -f - <<'SQL'
+begin;
+do $do$
+declare r record;
+begin
+  for r in select tablename from pg_tables where schemaname = 'public' loop
+    execute format('alter table public.%I enable trigger all', r.tablename);
+  end loop;
+end
+$do$;
+commit;
+SQL
+}
+
 if [ "${1:-}" = "--listar" ]; then
   requerir_vars R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BUCKET CLOUDFLARE_ACCOUNT_ID
   asegurar_aws_cli
@@ -235,9 +292,10 @@ limpiar_app_dev() {
   local rc=$?
   if [ "$restauracion_iniciada" = true ]; then
     echo ""
-    echo "Limpiando App_dev (dejando public y los usuarios de auth restaurados vacíos, siempre" \
-      "corre esto, haya salido bien o mal lo de arriba)..."
-    if "$PG_BIN_DIR/psql" "$SUPABASE_DB_URL_DEV" -X -q -v ON_ERROR_STOP=1 -f - <<'SQL'
+    echo "Limpiando App_dev (rehabilitando triggers por si quedaron apagados, dejando public y" \
+      "los usuarios de auth restaurados vacíos -- siempre corre esto, haya salido bien o mal lo" \
+      "de arriba)..."
+    if rehabilitar_triggers_public && "$PG_BIN_DIR/psql" "$SUPABASE_DB_URL_DEV" -X -q -v ON_ERROR_STOP=1 -f - <<'SQL'
 begin;
 do $do$
 declare r record;
@@ -290,7 +348,7 @@ echo "Verificando que App_dev tenga las mismas migraciones aplicadas que el volc
 # "version" es la clave primaria de esta tabla de control de Supabase CLI: se busca su posición
 # en la lista de columnas del propio COPY en vez de asumir que es la primera, por si el orden
 # cambiara. No toca ninguna base de datos: pg_restore sin --dbname solo imprime el SQL.
-versiones_volcado="$("$PG_BIN_DIR/pg_restore" --data-only -t supabase_migrations.schema_migrations "$dump_file" \
+versiones_volcado="$("$PG_BIN_DIR/pg_restore" --data-only -n supabase_migrations -t schema_migrations -f - "$dump_file" \
   | awk '
       /^COPY supabase_migrations\.schema_migrations \(/ {
         line = $0
@@ -327,15 +385,30 @@ if [ "$versiones_volcado" != "$versiones_app_dev" ]; then
   exit 1
 fi
 echo "OK: App_dev tiene las mismas migraciones que el volcado (${versiones_app_dev})."
+echo "Como la estructura es idéntica a la del volcado, esta secuencia solo reemplaza DATOS: nunca" \
+  "hace falta recrear tablas, restricciones, políticas ni permisos (docs/deployment.md sección 6.3)."
 
 restauracion_iniciada=true
 
 echo ""
-echo "1/5 - Recreando el esquema public vacío (solo estructura, sin datos ni restricciones" \
-  "todavía: --section=pre-data)..."
-"$PG_BIN_DIR/pg_restore" --schema=public --clean --if-exists --no-owner --no-privileges \
-  --section=pre-data --single-transaction \
-  --dbname "$SUPABASE_DB_URL_DEV" "$dump_file"
+echo "1/5 - Deshabilitando los triggers de todas las tablas de public (incluye los internos de" \
+  "las claves foráneas: así el orden entre tablas no importa más adelante) y vaciando public" \
+  "por si App_dev tenía datos de antes..."
+"$PG_BIN_DIR/psql" "$SUPABASE_DB_URL_DEV" -X -q -v ON_ERROR_STOP=1 -f - <<'SQL'
+begin;
+do $do$
+declare r record;
+begin
+  for r in select tablename from pg_tables where schemaname = 'public' loop
+    execute format('alter table public.%I disable trigger all', r.tablename);
+  end loop;
+  for r in select tablename from pg_tables where schemaname = 'public' loop
+    execute format('truncate table public.%I cascade', r.tablename);
+  end loop;
+end
+$do$;
+commit;
+SQL
 
 echo ""
 echo "2/5 - Reemplazando los usuarios de auth (auth.users, auth.identities)..."
@@ -345,9 +418,12 @@ echo "2/5 - Reemplazando los usuarios de auth (auth.users, auth.identities)..."
   delete from auth.users;
   commit;
 "
-"$PG_BIN_DIR/pg_restore" --data-only -t auth.users --no-owner --no-privileges \
+# `-n <esquema> -t <tabla>` (dos argumentos), NO `-t esquema.tabla`: verificado en la validación
+# local (ver el comentario del encabezado) que `pg_restore -t esquema.tabla` no matchea ningún
+# objeto del volcado en PostgreSQL 17.11 -- termina sin error pero sin restaurar una sola fila.
+"$PG_BIN_DIR/pg_restore" --data-only -n auth -t users --no-owner --no-privileges \
   --single-transaction --dbname "$SUPABASE_DB_URL_DEV" "$dump_file"
-"$PG_BIN_DIR/pg_restore" --data-only -t auth.identities --no-owner --no-privileges \
+"$PG_BIN_DIR/pg_restore" --data-only -n auth -t identities --no-owner --no-privileges \
   --single-transaction --dbname "$SUPABASE_DB_URL_DEV" "$dump_file"
 
 echo ""
@@ -367,17 +443,15 @@ commit;
 SQL
 
 echo ""
-echo "4/5 - Cargando los datos de public (--section=data; ninguna restricción está activa" \
-  "todavía, así que el orden entre tablas no importa)..."
+echo "4/5 - Cargando los datos de public (--section=data; los triggers siguen deshabilitados" \
+  "desde el paso 1, así que el orden entre tablas no importa)..."
 "$PG_BIN_DIR/pg_restore" --schema=public --data-only --no-owner --no-privileges \
   --section=data --single-transaction \
   --dbname "$SUPABASE_DB_URL_DEV" "$dump_file"
 
 echo ""
-echo "5/5 - Agregando de nuevo las restricciones, índices y triggers de public (--section=post-data;" \
-  "acá se valida cada clave foránea, incluida la de auth.users)..."
-"$PG_BIN_DIR/pg_restore" --schema=public --section=post-data --no-owner --no-privileges \
-  --single-transaction --dbname "$SUPABASE_DB_URL_DEV" "$dump_file"
+echo "5/5 - Rehabilitando los triggers de public (quedaron apagados desde el paso 1)..."
+rehabilitar_triggers_public
 
 echo ""
 echo "Restauración completa. Verificando (solo cantidades, nunca contenido)..."
