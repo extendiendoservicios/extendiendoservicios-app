@@ -14,9 +14,12 @@ Detalle completo (autorización por acción, límite de acciones por minuto,
 ## Archivos
 
 - `admin-users/index.ts`: la función.
-- `admin-users/index.test.ts`: tests Deno (`deno test`) de la parte que no
-  necesita una base de Postgres real detrás (CORS, validaciones, falta de
-  `Authorization`). Las seis acciones en sí se verificaron en vivo contra
+- `admin-users/index.test.ts`: tests Deno (`deno test`, TEST-004). Dos
+  capas: `handleRequest` con requests reales (CORS, validaciones, falta de
+  `Authorization`, método) y las funciones de cada acción llamadas directo
+  con un cliente de Supabase simulado (rechaza sin capacidad, crea un
+  usuario, no desactiva al último dueño). El límite de acciones por minuto
+  y el registro en `security_events` se verificaron en vivo contra
   `App_dev`, no con mocks (ver `docs/database.md`).
 - `_shared/cors.ts`: lista blanca de orígenes y cabeceras CORS. El prefijo
   `_` es la convención de Supabase para que la carpeta no se despliegue

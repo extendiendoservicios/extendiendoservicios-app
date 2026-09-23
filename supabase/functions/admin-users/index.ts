@@ -29,9 +29,9 @@ import { corsHeaders, ALLOWED_ORIGINS } from '../_shared/cors.ts'
 // `src/`: la Edge Function corre en Deno, fuera del build de Vite).
 // ---------------------------------------------------------------------------------------------
 
-type AppRole = 'owner' | 'admin' | 'supervisor' | 'employee'
+export type AppRole = 'owner' | 'admin' | 'supervisor' | 'employee'
 
-type AdminCapability =
+export type AdminCapability =
   | 'manage_users'
   | 'cancel_shifts'
   | 'edit_ratings'
@@ -93,7 +93,7 @@ type ErrorHint =
   | 'UNKNOWN_ACTION'
   | 'INTERNAL_ERROR'
 
-class DomainError extends Error {
+export class DomainError extends Error {
   constructor(
     public readonly hint: ErrorHint,
     message: string,
@@ -142,8 +142,20 @@ const errors = {
     ),
   unknownAction: (action: string) =>
     new DomainError('UNKNOWN_ACTION', `La acción "${action}" no existe.`, 400),
-  internal: (message: string) =>
-    new DomainError('INTERNAL_ERROR', message, 500),
+  // El mensaje QUE VE la persona usuaria siempre es el mismo genérico en español (nunca vacío ni
+  // el texto crudo de Postgres/PostgREST, que podría filtrar detalles del esquema): el detalle
+  // técnico (`detail`, puede ser el `message` de un error de Postgres, potencialmente vacío --
+  // se vio en vivo con un error de embed ambiguo de PostgREST sobre una consulta `head: true`,
+  // defecto encontrado por la suite e2e de P07.4) se deja constancia en el log de la función con
+  // `console.error`, nunca en la respuesta.
+  internal: (detail: string) => {
+    console.error('admin-users: error interno', detail || '(sin detalle)')
+    return new DomainError(
+      'INTERNAL_ERROR',
+      'Ocurrió un error inesperado. Intentá de nuevo en unos minutos.',
+      500,
+    )
+  },
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -167,13 +179,13 @@ function createAdminClient(): SupabaseClient {
 // Quién llama: perfil activo + roles + capacidades, leídos en vivo de la base (no del JWT) -------
 // ---------------------------------------------------------------------------------------------
 
-interface Actor {
+export interface Actor {
   id: string
   roles: AppRole[]
   capabilities: AdminCapability[]
 }
 
-async function resolveActor(
+export async function resolveActor(
   admin: SupabaseClient,
   authorizationHeader: string | null,
 ): Promise<Actor> {
@@ -227,18 +239,18 @@ async function resolveActor(
   return { id: actorId, roles, capabilities }
 }
 
-function isOwner(actor: Actor): boolean {
+export function isOwner(actor: Actor): boolean {
   return actor.roles.includes('owner')
 }
 
-function isAdminWithManageUsers(actor: Actor): boolean {
+export function isAdminWithManageUsers(actor: Actor): boolean {
   return (
     actor.roles.includes('admin') && actor.capabilities.includes('manage_users')
   )
 }
 
 /** O siempre puede; A necesita manage_users. FORBIDDEN si ninguna de las dos. */
-function requireOwnerOrManageUsers(actor: Actor): void {
+export function requireOwnerOrManageUsers(actor: Actor): void {
   if (!isOwner(actor) && !isAdminWithManageUsers(actor)) {
     throw errors.forbidden()
   }
@@ -249,7 +261,7 @@ function requireOwnerOrManageUsers(actor: Actor): void {
  * sign_out_user): un admin con manage_users no puede actuar sobre alguien que ya tiene el rol
  * owner o admin. El owner no tiene esta restricción.
  */
-async function assertCanActOnTarget(
+export async function assertCanActOnTarget(
   admin: SupabaseClient,
   actor: Actor,
   targetProfileId: string,
@@ -430,7 +442,7 @@ function assertValidCreateUserInput(
   }
 }
 
-async function actionCreateUser(
+export async function actionCreateUser(
   admin: SupabaseClient,
   actor: Actor,
   body: Record<string, unknown>,
@@ -590,7 +602,7 @@ async function actionCreateUser(
   return { profile_id: newProfileId }
 }
 
-async function actionResetPassword(
+export async function actionResetPassword(
   admin: SupabaseClient,
   actor: Actor,
   body: Record<string, unknown>,
@@ -627,7 +639,7 @@ async function actionResetPassword(
   return { profile_id }
 }
 
-async function actionUpdateEmail(
+export async function actionUpdateEmail(
   admin: SupabaseClient,
   actor: Actor,
   body: Record<string, unknown>,
@@ -666,7 +678,7 @@ async function actionUpdateEmail(
   return { profile_id }
 }
 
-async function actionSignOutUser(
+export async function actionSignOutUser(
   admin: SupabaseClient,
   actor: Actor,
   body: Record<string, unknown>,
@@ -687,7 +699,7 @@ async function actionSignOutUser(
   return { profile_id }
 }
 
-async function actionDeactivateUser(
+export async function actionDeactivateUser(
   admin: SupabaseClient,
   actor: Actor,
   body: Record<string, unknown>,
@@ -707,12 +719,21 @@ async function actionDeactivateUser(
   if (targetRoles.includes('owner')) {
     // Regla del último dueño (06 sección 2.1, P-017): acá lo relevante es que quede al menos un
     // OWNER ACTIVO, no solo un owner con el rol -- un owner desactivado no puede ejercer nada.
+    // `profiles!user_roles_profile_id_fkey!inner`: `user_roles` tiene DOS FK hacia `profiles`
+    // (`profile_id` y `granted_by`) -- sin el hint del nombre de la restricción, PostgREST no
+    // puede elegir sola cuál usar para el embed y devuelve PGRST201 (ambigüedad), que sin este
+    // fix hacía que desactivar a CUALQUIER dueño respondiera 500 en vez de validar la regla del
+    // último dueño (defecto encontrado por la suite e2e de P07.4, mismo patrón que
+    // `src/api/users.ts`).
     const { count, error } = await admin
       .from('user_roles')
-      .select('profile_id, profiles!inner(is_active, deleted_at)', {
-        count: 'exact',
-        head: true,
-      })
+      .select(
+        'profile_id, profiles!user_roles_profile_id_fkey!inner(is_active, deleted_at)',
+        {
+          count: 'exact',
+          head: true,
+        },
+      )
       .eq('role', 'owner')
       .neq('profile_id', profile_id)
       .eq('profiles.is_active', true)
@@ -766,7 +787,7 @@ async function actionDeactivateUser(
   return { profile_id }
 }
 
-async function actionReactivateUser(
+export async function actionReactivateUser(
   admin: SupabaseClient,
   actor: Actor,
   body: Record<string, unknown>,
