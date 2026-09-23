@@ -7,6 +7,7 @@ import { StatusBadge } from '@/components/status'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { ROLE_LABELS } from '@/features/auth/session'
 import type { AdminUserRow } from '@/api/users'
+import { ConfigNav } from '@/features/settings/components/ConfigNav'
 import { NewAdminUserSheet } from '@/features/users/components/NewAdminUserSheet'
 import { RolesCapabilitiesSheet } from '@/features/users/components/RolesCapabilitiesSheet'
 import { UpdatedAgo } from '@/features/users/components/UpdatedAgo'
@@ -132,6 +133,8 @@ export default function UsersPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <ConfigNav roles={auth.roles} />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           {usersQuery.dataUpdatedAt > 0 && (
