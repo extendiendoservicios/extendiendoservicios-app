@@ -45,7 +45,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,
-    // Los specs de tests/e2e/ son de Playwright, no de Vitest.
-    exclude: ['node_modules/**', 'tests/e2e/**'],
+    // Los specs de tests/e2e/ y tests/e2e-auth/ son de Playwright, no de Vitest.
+    exclude: ['node_modules/**', 'tests/e2e/**', 'tests/e2e-auth/**'],
   },
 })
