@@ -2,18 +2,23 @@
 
 Fuente: `03_Plan_Maestro_Tecnico.md` sección 3 (`Docs/Plan_Maestro/`, fuera de
 este repo), `02_Decisiones.md` P-010 a P-015, P-106, P-107, P-109 a P-115;
-ADR-008, ADR-013, ADR-014, ADR-015, ADR-021. Este archivo se actualiza en el
-mismo PR que cambie algo de lo que describe (ampliado en P03.4: proyecto de
-Pages y bucket R2 creados, tokens con permisos mínimos para P03.5).
+ADR-008, ADR-013, ADR-014, ADR-015, ADR-021, ADR-022. Este archivo se
+actualiza en el mismo PR que cambie algo de lo que describe (ampliado en
+P03.4: proyecto de Pages y bucket R2 creados, tokens con permisos mínimos
+para P03.5; puesto al día en P03.7 tras P03.5 y P03.6: secretos cargados,
+`dev.`/`app.` sirviendo desde Cloudflare Pages, GitHub Pages desactivado,
+cuenta de Sentry creada y primer respaldo verificado; puesto al día en P06.0:
+SMTP de Resend en `App_dev`, override listo para `App`, `RESEND_API_KEY` en
+`supabase/.env`).
 
 ## 1. Entornos
 
-| Entorno    | Frontend                                                                 | Base de datos      | Datos                                        | Quién lo usa                      | Notas                                                                                                                                          |
-| ---------- | ------------------------------------------------------------------------ | ------------------ | -------------------------------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Local      | `pnpm dev` en la máquina de cada desarrollador (`http://localhost:5173`) | `App_dev` (remoto) | Seed ficticio (desde F4)                     | Mike, quien desarrolle            | `.env.local` con la URL y la anon key de `App_dev`. Sin Supabase local / Docker (ADR-014).                                                     |
-| Testing    | Playwright contra `localhost` o staging; pgTAP contra `App_dev`          | `App_dev`          | Seed ficticio recreado por corrida           | CI y quien desarrolle             | Los tests no dependen del estado previo.                                                                                                       |
-| Staging    | `dev.extendiendoservicios.com` (rama `develop`)                          | `App_dev`          | Seed ficticio; datos reales solo durante F19 | Mike, referente del cliente (UAT) | Público con `noindex` y banner "Entorno de prueba" (INFRA-022, pendiente el banner en front). Keepalive semanal (INFRA-019).                   |
-| Producción | `app.extendiendoservicios.com` (rama `main`)                             | `App`              | Reales                                       | Todos                             | Despliegue con aprobación manual (F20). Respaldo diario a R2 (INFRA-018, escrito y validado; falta activarlo, `docs/deployment.md` sección 3). |
+| Entorno    | Frontend                                                                      | Base de datos      | Datos                                        | Quién lo usa                      | Notas                                                                                                                                                                                                                                                           |
+| ---------- | ----------------------------------------------------------------------------- | ------------------ | -------------------------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Local      | `pnpm dev` en la máquina de cada desarrollador (`http://localhost:5173`)      | `App_dev` (remoto) | Seed ficticio (desde F4)                     | Mike, quien desarrolle            | `.env.local` con la URL y la anon key de `App_dev`. Sin Supabase local / Docker (ADR-014).                                                                                                                                                                      |
+| Testing    | Playwright contra `localhost` o staging; pgTAP contra `App_dev`               | `App_dev`          | Seed ficticio recreado por corrida           | CI y quien desarrolle             | Los tests no dependen del estado previo.                                                                                                                                                                                                                        |
+| Staging    | `dev.extendiendoservicios.com` (rama `develop`), servido por Cloudflare Pages | `App_dev`          | Seed ficticio; datos reales solo durante F19 | Mike, referente del cliente (UAT) | Público con `noindex` y banner "Entorno de prueba" (INFRA-022, banner agregado en P05.4). Keepalive semanal (INFRA-019).                                                                                                                                        |
+| Producción | `app.extendiendoservicios.com` (rama `main`), servido por Cloudflare Pages    | `App`              | Reales                                       | Todos                             | Despliegue con aprobación manual de Mike en el `environment` `production` (`docs/deployment.md` sección 4). Respaldo diario a R2 activo (INFRA-018, `BACKUP_ENABLED=true` desde el 19 sep 2026, primer respaldo verificado — `docs/deployment.md` sección 6.2). |
 
 `App_dev` hace doble función -- staging y desarrollo -- porque no hay
 Supabase local (ADR-014, P-112). Es el único proyecto que este repositorio
@@ -21,13 +26,13 @@ vincula localmente.
 
 ## 2. Cuentas y proyectos (V3 punto 6)
 
-| Servicio   | Cuenta                                                        | Recurso                                                                                                                                                                                        |
-| ---------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Supabase   | Organización `bpcfjqvpdfmepiohltbz` ("Extendiendo Servicios") | Proyecto **`App`** (producción): ref `fysuppdadwvabrjpnnoh`, región `sa-east-1`, Postgres 17.6.                                                                                                |
-| Supabase   | ídem                                                          | Proyecto **`App_dev`** (desarrollo y staging): ref `anesttvrnpsaaaxaquce`, región `sa-east-1`, Postgres 17.6.                                                                                  |
-| Cloudflare | `extserviciosapp@gmail.com`                                   | Zona `extendiendoservicios.com`; Pages `extendiendoservicios-app` (creado en P03.4, sin dominios ni despliegues todavía); R2 `es-backups` (creado en P03.4, privado, con reglas de retención). |
-| GitHub     | Organización `extendiendoservicios`                           | Repositorio `extendiendoservicios/extendiendoservicios-app`; secretos y environments.                                                                                                          |
-| Sentry     | `extserviciosapp@gmail.com` (a crear, P03.1)                  | Proyecto `extendiendoservicios-app` (desde INFRA-021).                                                                                                                                         |
+| Servicio   | Cuenta                                                        | Recurso                                                                                                                                                                                                                                                                                                                                    |
+| ---------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Supabase   | Organización `bpcfjqvpdfmepiohltbz` ("Extendiendo Servicios") | Proyecto **`App`** (producción): ref `fysuppdadwvabrjpnnoh`, región `sa-east-1`, Postgres 17.6.                                                                                                                                                                                                                                            |
+| Supabase   | ídem                                                          | Proyecto **`App_dev`** (desarrollo y staging): ref `anesttvrnpsaaaxaquce`, región `sa-east-1`, Postgres 17.6.                                                                                                                                                                                                                              |
+| Cloudflare | `extserviciosapp@gmail.com`                                   | Zona `extendiendoservicios.com`; Pages `extendiendoservicios-app` (creado en P03.4; desde P03.6 sirve `dev.extendiendoservicios.com` desde la rama `develop` y `app.extendiendoservicios.com` desde `main`, los dos con proxy); R2 `es-backups` (creado en P03.4, privado, con reglas de retención; primer respaldo real subido en P03.7). |
+| GitHub     | Organización `extendiendoservicios`                           | Repositorio `extendiendoservicios/extendiendoservicios-app`; secretos y environments (`staging`, `production`, cargados en P03.5).                                                                                                                                                                                                         |
+| Sentry     | `extserviciosapp@gmail.com`                                   | Organización `extendiendo-servicios`, proyecto `extendiendoservicios-app`, región de datos Unión Europea (creada por Mike antes de P03.5; en uso desde P03.6, sección 4 más abajo).                                                                                                                                                        |
 
 Regla permanente (memoria del proyecto): antes de crear o tocar cualquier
 recurso remoto, verificar que la cuenta activa de la CLI o el navegador sea la
@@ -68,15 +73,18 @@ La configuración de Auth vive versionada en `supabase/config.toml` (bloque
 aplica con `supabase config push` -- no hay pantalla del panel que haya que
 tocar a mano para lo que sigue:
 
-| Regla                  | Valor                                                                                                                                                                                                                                                                   | Decisión                |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| Registro público       | Deshabilitado (`enable_signup = false` general y de email). Los usuarios los crea el dueño o un administrador, por pantalla o por la Admin API (Edge Function `admin-users`, F7).                                                                                       | P-011, ADR-008          |
-| Contraseña mínima      | 8 caracteres, sin otras reglas de composición.                                                                                                                                                                                                                          | P-106                   |
-| JWT                    | 1 hora (`jwt_expiry = 3600`).                                                                                                                                                                                                                                           | P-015                   |
-| Sesión / refresh token | Persistente: rotación de refresh token habilitada con el intervalo de reúso recomendado por Supabase (10 s); sin `[auth.sessions].timebox` ni `.inactivity_timeout` declarados, es decir sin límite por tiempo ni por inactividad.                                      | P-015                   |
-| `site_url`             | `App_dev`: `https://dev.extendiendoservicios.com`. `App`: `https://app.extendiendoservicios.com`.                                                                                                                                                                       | P-111                   |
-| URLs de redirección    | `App_dev`: `http://localhost:5173`, `http://localhost:5173/restablecer`, `https://dev.extendiendoservicios.com`, `https://dev.extendiendoservicios.com/restablecer`. `App`: `https://app.extendiendoservicios.com`, `https://app.extendiendoservicios.com/restablecer`. | COM-03 (`/restablecer`) |
-| Rate limiting          | Sin cambios respecto del valor por defecto de Supabase.                                                                                                                                                                                                                 | P-107                   |
+| Regla                  | Valor                                                                                                                                                                                                                                                                           | Decisión                |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| Registro público       | Deshabilitado (`enable_signup = false` general y de email). Los usuarios los crea el dueño o un administrador, por pantalla o por la Admin API (Edge Function `admin-users`, F7).                                                                                               | P-011, ADR-008          |
+| Contraseña mínima      | 8 caracteres, sin otras reglas de composición.                                                                                                                                                                                                                                  | P-106                   |
+| JWT                    | 1 hora (`jwt_expiry = 3600`).                                                                                                                                                                                                                                                   | P-015                   |
+| Sesión / refresh token | Persistente: rotación de refresh token habilitada con el intervalo de reúso recomendado por Supabase (10 s); sin `[auth.sessions].timebox` ni `.inactivity_timeout` declarados, es decir sin límite por tiempo ni por inactividad.                                              | P-015                   |
+| `site_url`             | `App_dev`: `https://dev.extendiendoservicios.com`. `App`: `https://app.extendiendoservicios.com`.                                                                                                                                                                               | P-111                   |
+| URLs de redirección    | `App_dev`: `http://localhost:5173`, `http://localhost:5173/restablecer`, `https://dev.extendiendoservicios.com`, `https://dev.extendiendoservicios.com/restablecer`. `App`: `https://app.extendiendoservicios.com`, `https://app.extendiendoservicios.com/restablecer`.         | COM-03 (`/restablecer`) |
+| Rate limiting          | Valor por defecto de Supabase, salvo `email_sent` (correos de Auth por hora): 20, desde P06.0 (antes 2, sin efecto real porque no había SMTP encendido). Detalle y cálculo en "SMTP de Resend..." más abajo.                                                                    | P-107                   |
+| SMTP de Auth           | Resend, `App_dev` desde P06.0; `App` con override listo, pendiente de que Mike lo aplique. Detalle en "SMTP de Resend..." más abajo.                                                                                                                                            | ADR-022                 |
+| Confirmación de email  | `enable_confirmations = false` (autoconfirmar), desde P06.0. El alta la hace siempre un administrador, sin invitación por correo. Detalle en "SMTP de Resend..." más abajo.                                                                                                     | P-011, ADR-005          |
+| Hook de token          | `[auth.hook.custom_access_token]` habilitado, `uri = "pg-functions://postgres/app/custom_access_token_hook"` (misma función en los dos proyectos: no hay override en `[remotes.produccion]`). Agrega los claims `roles`/`capabilities` al JWT -- detalle en `docs/database.md`. | DB-004                  |
 
 **Aplicado hoy:** `App_dev`, con `pnpm exec supabase config push` (ver
 "Cómo lo verifiqué" en el reporte del encargo para la diferencia exacta que
@@ -92,12 +100,32 @@ pnpm exec supabase config push --project-ref fysuppdadwvabrjpnnoh
 ```
 
 Ese comando usa el bloque `[remotes.produccion]` de `supabase/config.toml`
-(que ya trae el `site_url` y las URLs de redirección de `App`; el resto de
-las reglas -- sin registro público, contraseña mínima, JWT, refresh token,
-rate limiting -- las hereda del bloque `[auth]` raíz, porque son las mismas
-para los dos proyectos) y pide confirmación mostrando el diff antes de
-escribir nada; conviene correr antes `pnpm exec supabase config diff
---project-ref fysuppdadwvabrjpnnoh` para revisarlo sin aplicar cambios.
+(que ya trae el `site_url`, las URLs de redirección y el SMTP de `App`; el
+resto de las reglas -- sin registro público, contraseña mínima, JWT, refresh
+token, rate limiting, hook de token, `enable_confirmations` -- las hereda
+del bloque `[auth]` raíz, porque son las mismas para los dos proyectos) y
+pide confirmación mostrando el diff antes de escribir nada; conviene correr
+antes `pnpm exec supabase config diff --project-ref fysuppdadwvabrjpnnoh`
+para revisarlo sin aplicar cambios.
+
+**Antes de este `config push` en particular, Mike tiene que cargar
+`RESEND_API_KEY_PROD` en `supabase/.env`** (la clave de Resend
+"supabase-auth-prod", distinta de la de `App_dev`) -- ver el primer
+hallazgo de la CLI en "SMTP de Resend..." más arriba: si esa variable no
+está, el push no falla, empuja el texto literal `env(RESEND_API_KEY_PROD)`
+como contraseña de SMTP y `App` se queda sin poder enviar correos de Auth
+sin ningún error visible.
+
+**Orden obligatorio para el hook de token en `App`:** el `uri` apunta a
+`app.custom_access_token_hook`, una función que recién existe después de
+aplicar `supabase/migrations/0003_profiles_roles_capabilities.sql` en
+`App` (F20). Si el `config push` de arriba habilita el hook en `App` antes
+de que esa migración (y las tres tablas que la acompañan) esté aplicada
+ahí, Supabase Auth no va a poder emitir ningún token -- **corta el login de
+todo el mundo en producción** hasta que se corrija. Orden correcto en F20:
+
+1. Migraciones de base de datos (incluida `0003`) contra `App`.
+2. Recién después, el `config push` de arriba contra `App`.
 
 ### Qué no queda versionado ni se pushea con la CLI
 
@@ -105,60 +133,123 @@ escribir nada; conviene correr antes `pnpm exec supabase config diff
 `config push` (quedan fuera de la comparación y de cualquier push, se tocan
 solo desde el panel si hace falta en el futuro):
 
-- `auth.rate_limit.email_sent` (límite de correos de Auth por hora).
 - `auth.external.apple.*`, `auth.oauth_server.*` (no se usan en este plan).
 - `db.network_restrictions.*` (no se usan en este plan).
 - `storage.analytics.*` (no se usa en este plan).
 
-Además, a propósito, `supabase/config.toml` **no declara** en este encargo
-`auth.email.enable_confirmations`, `auth.email.max_frequency`,
-`auth.email.otp_length`, `auth.sms.twilio.*` ni `auth.mfa.totp.*`: son
-ajustes de email/SMTP/SMS/MFA que no forman parte de este encargo (SMTP
-queda pendiente, ver más abajo) o directamente no forman parte del plan
-(SMS, MFA -- ADR-008 descartó OTP por SMS). Quedan como estén hoy en cada
-proyecto remoto hasta que un encargo futuro (P06.0, según
-`11_Desglose_de_Tareas.md`) los declare y decida su valor.
+**Corrección de P06.0 sobre `auth.rate_limit.email_sent`:** este documento
+decía antes que esta propiedad también era "no administrada". Eso era un
+efecto de que nadie la había declarado nunca en `supabase/config.toml`: sin
+un valor local, la CLI la lista como "unmanaged" (ni la compara), lo cual se
+parece a "no administrada" pero no lo es. Al declararla (P06.0, ver más
+abajo), `config push` **sí** la aplicó de verdad contra `App_dev` -- quedó
+confirmado en vivo el 22 sep 2026 con la CLI 2.117.0 (el push la reportó
+como propiedad actualizada del servicio `auth`, y el `config diff` posterior
+ya no la mostró como diferencia). Es el segundo de los dos hallazgos sobre
+la CLI de la sección "SMTP de Resend" más abajo.
 
-### Límites del envío de emails de Auth con la configuración por defecto
+Además, a propósito, `supabase/config.toml` **no declara**
+`auth.email.max_frequency`, `auth.email.otp_length`, `auth.sms.twilio.*` ni
+`auth.mfa.totp.*`: son ajustes de email/SMTP/SMS/MFA que no forman parte de
+este encargo (los dos primeros están ligados al SMTP recién habilitado por
+P06.0, pero ese encargo solo pidió `email_sent` y `enable_confirmations`) o
+directamente no forman parte del plan (SMS, MFA -- ADR-008 descartó OTP por
+SMS). Quedan como estén hoy en cada proyecto remoto hasta que un encargo
+futuro los declare y decida su valor.
 
-Ni `App` ni `App_dev` tienen un servidor SMTP propio configurado (ese es
-justamente el trabajo pendiente de P06.0: Resend + DNS + `config.toml`). Sin
-SMTP propio, Supabase usa su servicio de correo integrado para los emails de
-Auth (recuperación de contraseña, invitación, cambio de email), que tiene
-limitaciones importantes hoy:
+`auth.email.enable_confirmations` sí quedó declarado en P06.0 (`false`, ver
+la sección de SMTP más abajo): antes quedaba sin declarar "hasta que hubiera
+SMTP propio"; ahora que lo hay, P06.0 tomó esa decisión.
 
-- **2 correos por hora por proyecto** en total -- muy por debajo de lo que
-  necesita un uso real.
-- **Solo entrega a direcciones que son parte del equipo del proyecto** en el
-  panel de Supabase; a cualquier otra dirección responde "Email address not
-  authorized". En la práctica, hoy **nadie que no sea parte del equipo de
-  Supabase del proyecto puede recibir un correo de recuperación de
-  contraseña**, ni en `App_dev` ni en `App`.
-- Sin garantía de entrega ni de disponibilidad (servicio "best effort"),
-  pensado solo para explorar y probar plantillas, no para producción.
+### SMTP de Resend y límites del envío de emails de Auth (P06.0)
 
-Mientras esto no se resuelva (P06.0), la recuperación de contraseña por
-email (COM-02) no funciona para usuarios reales; el reseteo administrativo
-de contraseña (P-012, pantalla de usuarios / Edge Function `admin-users`,
-F7) es la única vía utilizable en la práctica.
+**Estado desde P06.0 (22 sep 2026):** `App_dev` tiene SMTP propio
+configurado (`[auth.email.smtp]` en `supabase/config.toml`, aplicado con
+`config push`). `App` (producción) tiene el override documentado en
+`[remotes.produccion.auth.email.smtp]`, listo pero **sin aplicar** -- lo
+aplica Mike cuando F6 llegue a producción (ver más abajo).
+
+- **Proveedor:** Resend (ADR-022), dominio `extendiendoservicios.com`
+  verificado con SPF, DKIM y DMARC publicados (DMARC desde el 22 sep 2026).
+- **Remitente:** `no-reply@extendiendoservicios.com`, nombre visible
+  "Extendiendo Servicios".
+- **Puerto 587** (STARTTLS), el que Resend recomienda para un cliente SMTP
+  genérico (también soporta 465, TLS implícito, para clientes que no saben
+  hacer STARTTLS).
+- **Límite de Auth (`auth.rate_limit.email_sent`): 20 correos por hora**, en
+  todo el proyecto (antes 2, heredado de la plantilla, y sin efecto real
+  porque no había SMTP encendido). Calculado contra el plan gratis de
+  Resend (100 emails/día, 3000/mes, sin límite propio por hora) y el uso
+  esperable de la Base: recuperación de contraseña (COM-02) y confirmación
+  de cambio de email hecho por un administrador desde ADM-27 (en COM-04 el
+  email de login es de solo lectura) para unos sesenta usuarios. 20/hora
+  cubre cualquier pico legítimo sin acercarse al límite diario de Resend,
+  salvo que se sostenga varias horas seguidas -- ahí ya sería un patrón de
+  abuso, no uso real, y el límite diario del proveedor termina de frenarlo.
+- **`auth.email.enable_confirmations = false`** (declarado en P06.0,
+  a propósito distinto del valor que traía `App_dev`, `true`): el alta de
+  usuarios (P-011) la hace siempre un administrador con una contraseña
+  inicial que entrega por fuera del sistema, sin invitación por correo ni
+  paso de confirmación -- detalle completo en el comentario de
+  `supabase/config.toml`.
+
+**Antes de P06.0**, ni `App` ni `App_dev` tenían SMTP propio y Supabase
+usaba su servicio de correo integrado para los emails de Auth, con
+limitaciones que lo hacían inutilizable para usuarios reales: 2 correos por
+hora por proyecto y entrega solo a direcciones que son parte del equipo del
+proyecto en el panel de Supabase (a cualquier otra, "Email address not
+authorized"). Ese estado queda superado en `App_dev` desde este encargo; en
+`App` sigue vigente hasta que Mike aplique el override de producción.
+
+**Dos hallazgos sobre la CLI de Supabase (2.117.0), verificados en vivo el
+22 sep 2026, útiles para cualquier `config push` futuro que toque Auth:**
+
+1. **`env(NOMBRE)` en `config.toml` se resuelve solo desde `app/supabase/.env`
+   (el `.env` de DENTRO de la carpeta `supabase/`) o desde el entorno del
+   proceso.** No lee el `.env` de la raíz del proyecto ni `.env.local`. Por
+   eso `RESEND_API_KEY` vive en `supabase/.env`, no en la raíz -- ver
+   `supabase/.env.example` y la fila de la variable en la sección 4.
+2. **Si la variable referenciada por `env(...)` no está definida, `config
+push` no falla: empuja el texto literal `"env(NOMBRE)"` como si fuera el
+   valor real.** En `auth.email.smtp.pass` eso deja a Auth con una
+   contraseña de SMTP que no es ninguna contraseña, y los correos dejan de
+   salir sin ningún error visible en el push -- mismo patrón silencioso que
+   el incidente de P04.9 (un `config push` apagó el proveedor Email de
+   staging y nadie lo notó hasta después). Antes de cualquier `config push`
+   que toque `[auth.email.smtp]`, confirmar que la variable existe (por
+   nombre, nunca por valor) y, después, comprobar que Auth sigue
+   funcionando.
+
+También quedó corregido un supuesto anterior sobre `auth.rate_limit.email_sent`
+(ver la sección de arriba, "Qué no queda versionado ni se pushea con la
+CLI"): al declararla, `config push` sí la aplica.
+
+El reseteo administrativo de contraseña (P-012, pantalla de usuarios / Edge
+Function `admin-users`, F7) sigue siendo la única vía utilizable en
+producción hasta que Mike aplique el override de `App`; en `App_dev`, desde
+P06.0, la recuperación de contraseña por email (COM-02) ya tiene SMTP real
+detrás -- la prueba de punta a punta (que llegue a una bandeja de entrada de
+verdad) la hace el orquestador con Mike, fuera de este encargo.
 
 ## 4. Variables y secretos
 
-| Nombre                                                                       | Dónde vive                                                                                                                                                     | Quién lo carga                                           | Para qué se usa                                                                                                                                                                                                                   | En qué paquete hace falta                                               |
-| ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`                                | `.env.local` (cada desarrollador); secreto de los `environment` de GitHub `staging` y `production` (mismo nombre, valor distinto por entorno) [^actions-build] | Cada desarrollador; Mike (secretos de GitHub)            | Cliente de Supabase del frontend. La anon key es pública por diseño: RLS protege.                                                                                                                                                 | P03.4 (existe el proyecto de Pages) / P03.5 (Mike las carga)            |
-| `VITE_APP_ENV`                                                               | ídem, pero fijo por workflow (`staging`/`production`), no un secreto                                                                                           | `deploy-staging.yml`/`deploy-production.yml`, automático | Banner de "Entorno de prueba" en staging; `environment` de Sentry.                                                                                                                                                                | P03.3 (ya, en este encargo) / P03.5 (Mike solo carga las otras)         |
-| `VITE_APP_VERSION`                                                           | Build (`vite.config.ts` lo lee de `package.json`, no es una variable cargada a mano)                                                                           | Automático, siempre                                      | Versión visible en la interfaz.                                                                                                                                                                                                   | Ya (F2, ADR-020)                                                        |
-| `VITE_SENTRY_DSN`                                                            | Secreto de GitHub (de repositorio, no de `environment`: un solo proyecto de Sentry para los dos entornos) [^actions-build]                                     | Mike                                                     | Errores de frontend (INFRA-021).                                                                                                                                                                                                  | P03.3 (workflow, ya en este encargo) / P03.5 (Mike carga el valor real) |
-| `SUPABASE_ACCESS_TOKEN`                                                      | Secreto de GitHub                                                                                                                                              | Mike                                                     | Autenticar la CLI de Supabase dentro de los workflows.                                                                                                                                                                            | P03.3                                                                   |
-| `SUPABASE_PROJECT_REF_DEV`                                                   | Secreto de GitHub                                                                                                                                              | Mike                                                     | `supabase link --project-ref` en `deploy-staging.yml` / `ci.yml`.                                                                                                                                                                 | P03.3                                                                   |
-| `SUPABASE_PROJECT_REF_PROD`                                                  | Secreto de GitHub                                                                                                                                              | Mike                                                     | `supabase link --project-ref` en `deploy-production.yml`.                                                                                                                                                                         | P03.3                                                                   |
-| `SUPABASE_DB_URL_DEV`                                                        | Secreto de GitHub                                                                                                                                              | Mike                                                     | `keepalive.yml` (**ya, en este encargo**); además `ci.yml` (pgTAP) y `deploy-staging.yml` más adelante. Cadena del **Session pooler** (IPv4), no la conexión directa: los runners de GitHub no tienen salida IPv6.                | Ya (P03.2) y luego P03.3                                                |
-| `SUPABASE_DB_URL_PROD`                                                       | Secreto de GitHub                                                                                                                                              | Mike                                                     | `backup.yml` (`pg_dump`) y `deploy-production.yml`. Cadena del **Session pooler** (IPv4), mismo motivo que arriba.                                                                                                                | P03.4 (respaldo) / P03.3 (deploy)                                       |
-| `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`                              | Secreto de GitHub                                                                                                                                              | Mike                                                     | Crear el proyecto de Pages y el bucket R2 con `wrangler` (P03.4); publicar builds desde `deploy-staging.yml` / `deploy-production.yml` (P03.3).                                                                                   | P03.4 y P03.3                                                           |
-| `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `BACKUP_PASSPHRASE` | Secreto de GitHub                                                                                                                                              | Mike                                                     | Subida cifrada del volcado diario a R2 (`backup.yml`).                                                                                                                                                                            | P03.4                                                                   |
-| `SENTRY_AUTH_TOKEN`                                                          | Secreto de GitHub (de repositorio)                                                                                                                             | Mike                                                     | Subir source maps a Sentry desde `deploy-staging.yml`/`deploy-production.yml` (`vite.config.ts`, INFRA-021). Sin este secreto, esos workflows construyen igual pero sin generar ni subir `.map` (`docs/deployment.md` sección 9). | P03.3 (workflow, ya en este encargo) / P03.5 (Mike carga el valor real) |
-| `SUPABASE_SERVICE_ROLE_KEY`                                                  | Ninguno (la inyecta Supabase automáticamente dentro de la Edge Function)                                                                                       | Nadie manualmente                                        | Únicamente dentro de `supabase/functions/admin-users`. Nunca en el repo, nunca en el frontend, nunca en un secreto de GitHub.                                                                                                     | F7 (la Edge Function)                                                   |
+| Nombre                                                                       | Dónde vive                                                                                                                                                     | Quién lo carga                                            | Para qué se usa                                                                                                                                                                                                                   | En qué paquete hace falta                                               |
+| ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`                                | `.env.local` (cada desarrollador); secreto de los `environment` de GitHub `staging` y `production` (mismo nombre, valor distinto por entorno) [^actions-build] | Cada desarrollador; Mike (secretos de GitHub)             | Cliente de Supabase del frontend. La anon key es pública por diseño: RLS protege.                                                                                                                                                 | P03.4 (existe el proyecto de Pages) / P03.5 (Mike las carga)            |
+| `VITE_APP_ENV`                                                               | ídem, pero fijo por workflow (`staging`/`production`), no un secreto                                                                                           | `deploy-staging.yml`/`deploy-production.yml`, automático  | Banner de "Entorno de prueba" en staging; `environment` de Sentry.                                                                                                                                                                | P03.3 (ya, en este encargo) / P03.5 (Mike solo carga las otras)         |
+| `VITE_APP_VERSION`                                                           | Build (`vite.config.ts` lo lee de `package.json`, no es una variable cargada a mano)                                                                           | Automático, siempre                                       | Versión visible en la interfaz.                                                                                                                                                                                                   | Ya (F2, ADR-020)                                                        |
+| `VITE_SENTRY_DSN`                                                            | Secreto de GitHub (de repositorio, no de `environment`: un solo proyecto de Sentry para los dos entornos) [^actions-build]                                     | Mike                                                      | Errores de frontend (INFRA-021).                                                                                                                                                                                                  | P03.3 (workflow, ya en este encargo) / P03.5 (Mike carga el valor real) |
+| `SUPABASE_ACCESS_TOKEN`                                                      | Secreto de GitHub                                                                                                                                              | Mike                                                      | Autenticar la CLI de Supabase dentro de los workflows.                                                                                                                                                                            | P03.3                                                                   |
+| `SUPABASE_PROJECT_REF_DEV`                                                   | Secreto de GitHub                                                                                                                                              | Mike                                                      | `supabase link --project-ref` en `deploy-staging.yml` / `ci.yml`.                                                                                                                                                                 | P03.3                                                                   |
+| `SUPABASE_PROJECT_REF_PROD`                                                  | Secreto de GitHub                                                                                                                                              | Mike                                                      | `supabase link --project-ref` en `deploy-production.yml`.                                                                                                                                                                         | P03.3                                                                   |
+| `SUPABASE_DB_URL_DEV`                                                        | Secreto de GitHub                                                                                                                                              | Mike                                                      | `keepalive.yml` (**ya, en este encargo**); además `ci.yml` (pgTAP) y `deploy-staging.yml` más adelante. Cadena del **Session pooler** (IPv4), no la conexión directa: los runners de GitHub no tienen salida IPv6.                | Ya (P03.2) y luego P03.3                                                |
+| `SUPABASE_DB_URL_PROD`                                                       | Secreto de GitHub                                                                                                                                              | Mike                                                      | `backup.yml` (`pg_dump`) y `deploy-production.yml`. Cadena del **Session pooler** (IPv4), mismo motivo que arriba.                                                                                                                | P03.4 (respaldo) / P03.3 (deploy)                                       |
+| `RESEND_API_KEY`                                                             | `app/supabase/.env` (NO la raíz del proyecto ni `.env.local` -- primer hallazgo de la CLI, sección 3), gitignorado                                             | Ya cargada por el orquestador, verificada solo por nombre | `[auth.email.smtp].pass` de `supabase/config.toml`, resuelto por `supabase config push`/`config diff` contra `App_dev`: contraseña del SMTP de Resend para los emails de Auth (ADR-022).                                          | P06.0                                                                   |
+| `RESEND_API_KEY_PROD`                                                        | `app/supabase/.env`, gitignorado (pendiente: la carga Mike)                                                                                                    | Mike, cuando F6 llegue a producción                       | `[remotes.produccion.auth.email.smtp].pass`, misma función que la anterior pero para `App` -- clave de Resend distinta ("supabase-auth-prod") para no mezclar el SMTP de los dos proyectos.                                       | P06.0 (declarado) / pendiente de F6 para aplicarse                      |
+| `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`                              | Secreto de GitHub                                                                                                                                              | Mike                                                      | Crear el proyecto de Pages y el bucket R2 con `wrangler` (P03.4); publicar builds desde `deploy-staging.yml` / `deploy-production.yml` (P03.3).                                                                                   | P03.4 y P03.3                                                           |
+| `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `BACKUP_PASSPHRASE` | Secreto de GitHub                                                                                                                                              | Mike                                                      | Subida cifrada del volcado diario a R2 (`backup.yml`).                                                                                                                                                                            | P03.4                                                                   |
+| `SENTRY_AUTH_TOKEN`                                                          | Secreto de GitHub (de repositorio)                                                                                                                             | Mike                                                      | Subir source maps a Sentry desde `deploy-staging.yml`/`deploy-production.yml` (`vite.config.ts`, INFRA-021). Sin este secreto, esos workflows construyen igual pero sin generar ni subir `.map` (`docs/deployment.md` sección 9). | P03.3 (workflow, ya en este encargo) / P03.5 (Mike carga el valor real) |
+| `SUPABASE_SERVICE_ROLE_KEY`                                                  | Ninguno (la inyecta Supabase automáticamente dentro de la Edge Function)                                                                                       | Nadie manualmente                                         | Únicamente dentro de `supabase/functions/admin-users`. Nunca en el repo, nunca en el frontend, nunca en un secreto de GitHub.                                                                                                     | F7 (la Edge Function)                                                   |
 
 Ningún secreto vive en el repositorio; `.env.example` documenta los nombres
 sin valores. Rotación anual y ante cualquier sospecha (`03` sección 3.3).
@@ -177,9 +268,14 @@ sin valores. Rotación anual y ante cualquier sospecha (`03` sección 3.3).
 
 ### Comandos para cargar los secretos de GitHub
 
-El valor **nunca** va en la línea de comando, en un archivo ni en el chat:
-`gh secret set` sin `--body` lo pide por teclado (entrada oculta). Correr
-uno por uno, desde una terminal de Mike:
+**Ya cargados por Mike (P03.5).** Los 13 secretos de repositorio de esta
+lista, más `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` en los `environment`
+`staging` y `production`, están en GitHub desde el 19 sep 2026 (verificado
+por el orquestador solo por nombre, nunca por valor — sección "Comandos" más
+abajo queda como referencia para rotarlos, no como pendiente). El valor
+**nunca** va en la línea de comando, en un archivo ni en el chat: `gh secret
+set` sin `--body` lo pide por teclado (entrada oculta). Para rotar uno,
+correrlo de nuevo desde una terminal de Mike (sobrescribe el anterior):
 
 ```bash
 gh secret set SUPABASE_ACCESS_TOKEN --repo extendiendoservicios/extendiendoservicios-app
@@ -196,13 +292,13 @@ gh secret set BACKUP_PASSPHRASE --repo extendiendoservicios/extendiendoservicios
 gh secret set SENTRY_AUTH_TOKEN --repo extendiendoservicios/extendiendoservicios-app
 ```
 
-`SUPABASE_DB_URL_DEV` es el único de esta lista que hace falta **ya**, para
-que `keepalive.yml` funcione (sección 5). Los demás los carga Mike en P03.5,
-una vez creados los tokens correspondientes (`CLOUDFLARE_API_TOKEN`, R2 y
-Sentry: ver más abajo) -- los workflows que los usan (`deploy-staging.yml`,
-`deploy-production.yml`, `backup.yml`) ya existen (P03.3, P03.4) pero están
-detrás de sus interruptores (`docs/deployment.md` sección 3) y no corren
-hasta P03.6.
+`SUPABASE_DB_URL_DEV` fue el primero en cargarse (hacía falta ya para
+`keepalive.yml`, sección 5). Los demás los cargó Mike en P03.5, con los
+tokens correspondientes (`CLOUDFLARE_API_TOKEN`, R2 y Sentry: ver más abajo)
+ya creados -- los workflows que los usan (`deploy-staging.yml`,
+`deploy-production.yml`, `backup.yml`) corren de verdad desde P03.6, detrás
+de sus interruptores (`docs/deployment.md` sección 3), hoy los tres en
+`true`.
 
 ### Dónde obtener cada valor en el panel de Supabase
 
@@ -224,9 +320,10 @@ hasta P03.6.
 ### Cloudflare, R2 y Sentry
 
 El proyecto de Pages y el bucket R2 ya existen (P03.4, `wrangler pages
-project create` / `wrangler r2 bucket create`, sección 6); lo que falta es
-que Mike cree los tokens con permisos mínimos y cargue los secretos (P03.5).
-Paso a paso en el panel:
+project create` / `wrangler r2 bucket create`, sección 6) y ya tienen sus
+tokens cargados (P03.5); `dev.`/`app.` publican desde Pages desde P03.6. Paso
+a paso en el panel (queda como referencia para rotar un token, no como
+pendiente):
 
 **`CLOUDFLARE_API_TOKEN`** (publica builds en Pages desde
 `deploy-staging.yml`/`deploy-production.yml`, `pnpm exec wrangler pages
@@ -289,10 +386,12 @@ siempre**, sin forma de recuperarlos. Guardarla también en un gestor de
 contraseñas u otro lugar seguro fuera de GitHub (nunca en el repositorio, un
 chat o un archivo sin cifrar) es indispensable, no opcional.
 
-**Sentry (`SENTRY_AUTH_TOKEN`, `VITE_SENTRY_DSN`)**: la cuenta de Sentry
-todavía no existe (`03` sección 3.2 la marca "a crear"); su creación y los
-tokens correspondientes quedan para cuando Mike la cree (P03.5). El uso de
-cada uno ya está documentado en `docs/deployment.md` sección 9.
+**Sentry (`SENTRY_AUTH_TOKEN`, `VITE_SENTRY_DSN`)**: la cuenta de Sentry ya
+existe (organización `extendiendo-servicios`, proyecto
+`extendiendoservicios-app`, región de datos Unión Europea) y sus dos
+secretos ya están cargados (P03.5); están en uso real desde el primer
+despliegue a staging y a producción (P03.6). El uso de cada uno ya está
+documentado en `docs/deployment.md` sección 9.
 
 ## 5. Keepalive (INFRA-019)
 
@@ -327,14 +426,131 @@ pnpm exec wrangler pages project create extendiendoservicios-app --production-br
 pnpm exec wrangler r2 bucket create es-backups
 ```
 
-Detalle de ambos recursos, sus reglas de retención y lo que falta (tokens,
-dominios, primer despliegue): `docs/deployment.md` sección 7.
+Detalle de ambos recursos, sus reglas de retención y los dominios conectados:
+`docs/deployment.md` sección 7.
 
-Ya en uso, sin ejecutarse todavía (proyecto creado, pero sin token de API
-cargado ni interruptor activado): `deploy-staging.yml` y
-`deploy-production.yml` (INFRA-016/INFRA-017) publican con
+**En uso real desde P03.6.** `deploy-staging.yml` y `deploy-production.yml`
+(INFRA-016/INFRA-017) publican con
 `pnpm exec wrangler pages deploy dist --project-name=extendiendoservicios-app --branch=<develop|main>`,
 autenticado con los secretos `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID`.
-Ambos workflows están detrás de sus interruptores (`docs/deployment.md`
-sección 3): no publican nada hasta que Mike cargue los secretos (P03.5) y
-active los interruptores (P03.6).
+Los tres interruptores (`docs/deployment.md` sección 3) están en `true`:
+`dev.extendiendoservicios.com` sirve el build de `develop` y
+`app.extendiendoservicios.com` el de `main`, los dos por Cloudflare Pages.
+GitHub Pages quedó desactivado (ver `docs/deployment.md` sección 7 y
+`README.md`).
+
+## 7. Alertas por email (INFRA-024)
+
+INFRA-024 pide alertas de dos cosas distintas: uso de Supabase (base, auth,
+storage) y fallos de los workflows. Cada plataforma resuelve esto de forma
+distinta en su plan sin cargo, y ninguna de las dos se puede configurar
+desde este repositorio (son ajustes de cuenta, no de código): quedan como
+guía para Mike, clic por clic. **No se construyó nada nuevo para esto**
+(ningún workflow ni script): INFRA-024 solo pide la alerta, no un tablero, y
+armar una alternativa a mano cuando la plataforma ya avisa sola sería
+duplicar esfuerzo sin necesidad (ver la sección 7.1 para el único punto
+donde eso no está garantizado).
+
+### 7.1 Uso de Supabase (base, auth, storage)
+
+**Lo que confirma la documentación pública de Supabase:** el plan sin cargo
+("Free Plan") incluye un aviso automático al superar la cuota -- la propia
+documentación de facturación dice literalmente _"You will be notified when
+you exceed the Free Plan quota"_ -- pero no detalla ahí mismo a qué
+dirección llega ni si hace falta activar algo. **Lo que no pude confirmar
+sin iniciar sesión** (esta capa no iniciar sesión en ningún servicio, regla
+común 7): si existe un umbral configurable (por ejemplo "avisame al 80 %")
+o si el aviso es fijo (por ejemplo al superar el 100 %), y el nombre exacto
+de la pantalla donde eso se ve hoy en el panel. Por eso el paso a paso de
+abajo es "andá, mirá y contame qué ves", no una lista de casillas que no
+pude verificar.
+
+**Guía para Mike:**
+
+1. Entrar a
+   `https://supabase.com/dashboard/org/bpcfjqvpdfmepiohltbz/billing` (la
+   organización de Extendiendo Servicios) con la cuenta
+   `extserviciosapp@gmail.com`.
+2. Revisar la pestaña **Usage** (o **Uso**) de esa misma página: muestra una
+   barra de progreso por cada recurso medido (tamaño de base de datos,
+   usuarios activos de Auth, tamaño de Storage, egreso, etc.) contra el
+   límite del plan `Free`. Si alguna barra ya está en amarillo o rojo, hay
+   uso real cerca del límite: ese es el disparador de los avisos
+   automáticos de Supabase, no hace falta ninguna acción para que existan.
+3. Buscar, dentro de esa misma sección o en **Organization Settings** →
+   **General**, algo llamado "Notification preferences", "Email
+   preferences" o similar. Si existe una opción para alertas de uso o de
+   facturación, dejarla activada (suele venir activada por defecto; lo que
+   sí conviene revisar y, si aparece, desactivar, es únicamente correo de
+   marketing/novedades de producto, nunca los de facturación o seguridad).
+4. Confirmar que el email de la cuenta (`extserviciosapp@gmail.com`) es el
+   que recibe esos avisos, en **Organization Settings** → **General** →
+   **Billing email** (o el campo equivalente) si el panel lo distingue del
+   email de inicio de sesión.
+5. Si en el panel no aparece ningún umbral configurable y el único aviso es
+   automático al superar la cuota (sin margen de reacción): opciones, con
+   costo, para tener margen antes de llegar al límite:
+   - **Revisión manual periódica** (sin costo): agendar una revisión mensual
+     de la pestaña Usage de la organización. Es lo más simple y no depende
+     de ninguna herramienta nueva.
+   - **Plan Pro de Supabase** (usd 25/mes por organización, más el consumo
+     que exceda lo incluido): no cambia el mecanismo de alertas en sí, pero
+     saca el proyecto de la pausa automática por inactividad (ADR-014) y
+     sube los límites, lo que da más margen antes de que cualquier aviso
+     importe.
+   - **Monitoreo propio** (con costo de tiempo, no de dinero): un workflow
+     de GitHub Actions que consulte la API de administración de Supabase
+     periódicamente y avise si el uso supera un umbral. No se construyó en
+     este encargo porque el plan sin cargo ya avisa solo (punto 1) y esto
+     sería una segunda capa de alertas sobre un problema que la plataforma
+     ya cubre; se deja como opción si en el futuro hiciera falta un umbral
+     más temprano que el de Supabase.
+
+### 7.2 Fallos de workflows de GitHub Actions
+
+**Esto sí está documentado con precisión.** GitHub manda una notificación
+cuando falla una ejecución de un workflow. Para los tres workflows de este
+repositorio que corren por `schedule` (`backup.yml`, `keepalive.yml`, y
+`restore-test.yml` cuando tenga uno en el futuro -- hoy no tiene cron,
+sección 6.3 de `docs/deployment.md`), la notificación de un fallo **no le
+llega a todo el equipo ni al dueño del repositorio**: le llega a la persona
+cuya cuenta de GitHub modificó por última vez la línea del `cron` de ese
+workflow (o, si el workflow estuvo deshabilitado y se reactivó, a quien lo
+reactivó). En este repositorio, quien hace el `push`/merge final a `develop`
+o `main` es el orquestador con la cuenta verificada por `gh auth status`
+(organización `extendiendoservicios`) -- conviene que Mike confirme con ese
+comando de qué cuenta se trata exactamente, porque las notificaciones de
+`backup.yml` y `keepalive.yml` le llegan a esa cuenta, no necesariamente a
+la personal de Mike si son distintas.
+
+**Guía para Mike, clic por clic:**
+
+1. Entrar a `https://github.com/settings/notifications` (con la cuenta que
+   `gh auth status` marca como activa para este repositorio -- ver el
+   párrafo anterior).
+2. Arriba de la página, en **"Default notification email"** (o "Email
+   predeterminado de notificaciones"), confirmar que hay una dirección
+   verificada. Si no hay ninguna, agregarla primero en
+   `https://github.com/settings/emails`.
+3. Bajar hasta la sección con encabezado **"Actions"** (aparece separada de
+   "Watching" y "Participating"). Ahí hay una casilla **"Email"**: tiene que
+   estar tildada -- así los avisos de Actions llegan por correo y no solo a
+   la campanita de `github.com/notifications`.
+4. En esa misma sección, elegir la opción para **notificar solo cuando
+   falla una ejecución** (no en cada corrida exitosa) -- el nombre exacto
+   puede variar según la versión de la interfaz, pero la idea es "solo
+   fallidas" en vez de "todas las ejecuciones". Con `backup.yml` corriendo
+   todos los días y `keepalive.yml` una vez por semana, la opción "todas"
+   generaría un correo diario sin valor.
+5. Esta página no tiene un botón "Guardar": cada casilla se aplica al
+   tildarla.
+6. Repetir esta configuración en cualquier otra cuenta de GitHub que también
+   pueda terminar modificando la línea del `cron` de `backup.yml` o
+   `keepalive.yml` (por ejemplo, si en el futuro alguien además de Mike hace
+   merges a `main`/`develop`).
+
+Esto ya funciona hoy para `deploy-staging.yml`/`deploy-production.yml`/
+`ci.yml` (no son por `schedule`: la notificación de un fallo le llega a
+quien disparó esa ejecución en particular -- quien hizo el push o el
+merge), y para `backup.yml`/`keepalive.yml` en cuanto Mike complete el paso
+a paso de arriba.

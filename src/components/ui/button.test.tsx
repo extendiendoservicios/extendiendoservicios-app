@@ -26,4 +26,16 @@ describe('Button', () => {
 
     expect(screen.getByRole('button', { name: 'Guardar' })).toBeDisabled()
   })
+
+  it('con asChild renderiza el hijo (un link) en vez de un <button>, sin romper (DS-015)', () => {
+    render(
+      <Button asChild>
+        <a href="/admin">Ir a admin</a>
+      </Button>,
+    )
+
+    const link = screen.getByRole('link', { name: 'Ir a admin' })
+    expect(link).toHaveAttribute('href', '/admin')
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
 })

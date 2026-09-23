@@ -1,0 +1,29 @@
+-- DB-018 (08_Fases_y_Backlog.md, F4 · Modelo de datos y RLS base, P04.5 tramo B)
+--
+-- Índices de 04_Modelo_de_Datos.md sección 8. Verificado uno por uno contra las migraciones ya
+-- aplicadas (0003 a 0010): **los diecisiete ya existen**, creados en la misma migración que la
+-- tabla a la que pertenecen (cada una de 0003 a 0010 ya trae, al final de su bloque, "Índices de
+-- 04 sección 8" -- ver sus propios comentarios). Esta migración no agrega ningún índice nuevo;
+-- queda solo para completar el número de la sección 11 del modelo y dejar un lugar único donde
+-- verificar, con pgTAP, que la lista completa de la sección 8 sigue existiendo.
+--
+-- Lista completa (tabla → índice → migración de origen):
+--   shifts.shift_date                                          -> shifts_shift_date_idx (0007)
+--   shifts (site_id, shift_date)                                -> shifts_site_id_shift_date_idx (0007)
+--   shifts (service_id, shift_date)                             -> shifts_service_id_shift_date_key (0007, único parcial: ya cubre el par que pide la sección 8, no se duplica)
+--   shifts.status parcial (scheduled, assigned, in_progress)     -> shifts_status_idx (0007)
+--   assignments (employee_id, shift_date)                       -> assignments_employee_id_shift_date_idx (0007)
+--   assignments.shift_id parcial (removed_at is null)            -> assignments_shift_id_idx (0007)
+--   attendance_records.assignment_id                             -> attendance_records_assignment_id_idx (0009)
+--   attendance_notices (assignment_id, created_at desc)          -> attendance_notices_assignment_id_created_at_idx (0009)
+--   shift_tasks (shift_id, position)                             -> shift_tasks_shift_id_position_idx (0008)
+--   supervisions (supervisor_id, status)                         -> supervisions_supervisor_id_status_idx (0010)
+--   supervisions.shift_id                                        -> supervisions_shift_id_idx (0010)
+--   ratings.assignment_id                                        -> ratings_assignment_id_idx (0010)
+--   sites.client_id                                              -> sites_client_id_idx (0005)
+--   employee_leaves: gist de exclusión                           -> employee_leaves_no_overlap (0006)
+--   security_events.created_at desc                              -> security_events_created_at_idx (0004)
+--   security_events.actor_id                                     -> security_events_actor_id_idx (0004)
+--   profiles (last_name, first_name)                             -> profiles_last_name_first_name_idx (0003)
+--
+-- No hay nada que ejecutar en este archivo (sin DDL): queda vacío a propósito, documentado.

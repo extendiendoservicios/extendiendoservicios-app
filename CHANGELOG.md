@@ -7,9 +7,310 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
-Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007) y tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012).
+## [0.3.0] - 2026-09-23
+
+Primer pase a producción con la aplicación de verdad: base de datos completa (F4), design system (F5) y autenticación real (F6). No hubo una versión 0.2.0 publicada aparte: el hito de F3 + F4 se juntó con este por decisión de Mike (P04.9), porque sin inicio de sesión no tenía sentido publicarlo en `app.`.
+
+Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022), y el cierre de F5: marca de la sidebar e íconos PWA desde un PNG temporal, `vite-plugin-pwa` y `/dev/design` completo (F5 · DS-016, DS-018 a DS-020, RESP-001, DOC-005), el cierre de F3 (F3 · DOC-003, INFRA-024, TEST-024), la revisión visual de cierre de F5 (P05.6), el inicio de F4: extensiones, esquema `app` y enumeraciones, con su runner de pgTAP (F4 · DB-001, DB-002, DB-022, TEST-001), la continuación de F4: personas y acceso, hook de Auth y funciones de permisos (F4 · DB-003, DB-004, DB-005, TEST-002), la continuación de F4: configuración y seguridad, clientes y sedes, y empleados (F4 · DB-006, DB-007, DB-008), la continuación de F4: servicios, turnos, asignaciones, checklists, tareas, asistencia, supervisiones y calificaciones (F4 · DB-009, DB-010, DB-011, DB-012), el SMTP de Resend en Auth, con las plantillas de correo en español (F6 · P06.0, más la parte de plantillas de AUTH-005), el registro del inicio de sesión en `security_events` (F6 · P06.1, AUTH-009, más la parte de base de datos de DOC-006), la autenticación real (F6 · AUTH-001, AUTH-002, AUTH-008, AUTH-010, AUTH-011), las pantallas comunes de autenticación (F6 · AUTH-003 a AUTH-007, DOC-006), el aviso de actualización de la PWA (RESP-009, adelantado de F17) y los e2e de autenticación (F6 · AUTH-012, TEST-003).
 
 ### Agregado
+
+- SMTP de Resend en Supabase Auth (P06.0, ADR-022): bloque
+  `[auth.email.smtp]` en `supabase/config.toml` (host `smtp.resend.com`,
+  puerto 587/STARTTLS, remitente `no-reply@extendiendoservicios.com`,
+  nombre visible "Extendiendo Servicios", clave desde
+  `env(RESEND_API_KEY)`), aplicado a `App_dev` con `supabase config push`
+  (verificado sin diferencias pendientes en el `config diff` posterior).
+  `auth.rate_limit.email_sent` sube de 2 a 20 por hora, calculado contra el
+  plan gratis de Resend (100/día, 3000/mes) y el uso esperable de la Base
+  (recuperación de contraseña y cambio de email, unos sesenta usuarios).
+  `auth.email.enable_confirmations` declarado en `false`: el alta de
+  usuarios (P-011) la hace siempre un administrador con contraseña inicial,
+  sin invitación por correo. Override para `App` en
+  `[remotes.produccion.auth.email.smtp]`, con clave propia
+  (`RESEND_API_KEY_PROD`) sin aplicar todavía (lo aplica Mike cuando F6
+  llegue a producción). `supabase/.env.example` nuevo (documenta
+  `RESEND_API_KEY` sin su valor). Dos hallazgos de la CLI 2.117.0
+  documentados en `docs/environments.md`: `env(...)` solo se resuelve desde
+  `supabase/.env` o el entorno del proceso (nunca la raíz del proyecto ni
+  `.env.local`), y si la variable falta, `config push` no falla —empuja el
+  texto literal `env(NOMBRE)` como valor, dejando Auth sin poder enviar
+  correos sin ningún error visible (mismo patrón silencioso que el
+  incidente de P04.9).
+- Plantillas de los correos de Auth en español con voseo (parte de
+  AUTH-005 que asigna ADR-022; las pantallas COM-02 y COM-03 siguen en
+  P06.3): `supabase/templates/recovery.html` (recuperación de contraseña,
+  la única que se dispara hoy) y `supabase/templates/email_change.html`
+  (hoy inactiva, declarada como red), con sus asuntos en
+  `[auth.email.template.*]` de `supabase/config.toml`. HTML de correo: CSS
+  en línea, maquetado con tablas, sin fuentes ni imágenes externas, legible
+  a 360 px y con el fondo declarado en cada celda para los clientes que
+  fuerzan modo oscuro. El botón usa `#356A70` en vez del teal de marca
+  porque con texto blanco el teal no llega al contraste mínimo. La duración
+  del enlace que anuncia el correo sale de `auth.otp_expiry`, no de una
+  suposición. `supabase/templates` queda fuera de Prettier
+  (`.prettierignore`): reacomoda el espacio en blanco alrededor de los
+  elementos en línea y en un correo eso se ve. Aplicadas a `App_dev` y
+  verificadas con un correo real recibido en bandeja de entrada.
+- Inicio de F4 (P04.1): migración `0001_extensions_and_schema_app.sql`
+  (DB-001) con la extensión `btree_gist`, el esquema `app` y sus primeras
+  tres funciones —`app.set_updated_at()` (trigger de trazabilidad),
+  `app.local_ts(date, time)` (fecha y hora de Argentina a instante UTC,
+  `immutable`, ADR-019) y `app.valid_weekdays(smallint[])`— y migración
+  `0002_enums.sql` (DB-002) con las 15 enumeraciones de
+  `04_Modelo_de_Datos.md` sección 3. Las dos aplicadas en `App_dev`
+  (`pnpm db:push`) y con tipos regenerados sin diferencia
+  (`src/lib/database.types.ts`). Runner de pgTAP (DB-022, TEST-001):
+  `pnpm db:test` (`scripts/db-test.sh`) corre `supabase test db --linked`
+  en una máquina de desarrollo o `--db-url "$SUPABASE_DB_URL_DEV"` en CI;
+  convención de test por archivo (transacción con `rollback`, extensión
+  `pgtap` creada dentro de esa misma transacción, no en una migración)
+  documentada en `supabase/tests/README.md`, con los primeros dos tests
+  (`0001_extensions_and_schema_app.test.sql`,
+  `0002_enums.test.sql`). `docs/database.md` nuevo (convenciones, esquema
+  `app`, enumeraciones, cómo escribir una migración y correr pgTAP).
+  Los 31 tests pasan contra `App_dev` (`pnpm db:test`, 2 archivos). Para
+  que corrieran hubo que agregar dos líneas a cada archivo: con `--linked`
+  la CLI entra con el rol temporal `cli_login_postgres`, que es miembro de
+  `postgres` pero no hereda sus permisos (`set local role postgres`), y
+  las funciones de pgTAP viven en el esquema `extensions`, fuera del
+  `search_path` (`set local search_path`). Verificado además que una
+  corrida no deja rastro: se desinstaló `pgtap` de `App_dev`, se corrió
+  `pnpm db:test` y al terminar la extensión volvió a no estar (la CLI la
+  instala y la desinstala alrededor de la corrida).
+- Continuación de F4 (P04.2): migración
+  `0003_profiles_roles_capabilities.sql` (DB-003, DB-004, DB-005) con las
+  tablas `profiles`, `user_roles` y `admin_capabilities` (RLS habilitada
+  de entrada, sin políticas todavía: llegan en `0012`, DB-014), el trigger
+  `app.handle_new_user()` sobre `auth.users`, el trigger "último owner"
+  (`app.prevent_last_owner_removal()`, código `LAST_OWNER`), las funciones
+  de permisos (`jwt_roles`, `jwt_capabilities`, `has_role`, `is_admin`,
+  `has_capability`, `require_role`, `require_admin`, `require_capability`,
+  todas con `search_path` fijo desde que nacen) y el hook de Auth
+  `app.custom_access_token_hook` (agrega los claims `roles`/`capabilities`
+  al JWT; `security definer` porque `supabase_auth_admin` no tiene
+  `bypassrls` y las tablas que lee ya tienen RLS habilitada). Hook
+  habilitado en `supabase/config.toml`
+  (`[auth.hook.custom_access_token]`) y aplicado a `App_dev` con
+  `supabase config push` (comando documentado en `docs/environments.md`
+  para cuando corresponda aplicarlo a `App`, con la advertencia de orden:
+  primero la migración, después el `config push`, o se corta el login de
+  producción). `tests.as_user(email)` (TEST-002): fixture de pgTAP que
+  simula una sesión autenticada fijando `request.jwt.claims` con los
+  claims que arma el propio hook; documentado en
+  `supabase/tests/README.md`. 96 tests pgTAP pasan contra `App_dev`
+  (`pnpm db:test`, 4 archivos); tipos regenerados sin diferencia.
+- Continuación de F4 (P04.3): migraciones
+  `0004_company_holidays_security_events.sql` (DB-006),
+  `0005_clients_sites.sql` (DB-007) y `0006_employees.sql` (DB-008) — los
+  maestros: `company_settings` (singleton `id = 1`), `holidays`,
+  `security_events` con `app.log_security_event(...)` (uso interno, sin
+  `execute` para `authenticated`/`anon`); `clients`, `client_contacts`
+  (un solo contacto principal por cliente, índice único parcial) y
+  `sites` (nombre único por cliente, `unique (id, client_id)` para las
+  FK compuestas que van a agregar `services`/`shifts` en `0007`);
+  `employees` (secuencia `employee_number_seq`, editable),
+  `employee_client_permissions`, `employee_availability` (check
+  `end_time > start_time`) y `employee_leaves` (check
+  `ends_on >= starts_on` y restricción de exclusión sobre el rango de
+  fechas con `btree_gist`, acotada a `deleted_at is null` para que una
+  licencia corregida no siga bloqueando su rango). RLS habilitada en las
+  diez tablas desde que nacen, sin políticas todavía (llegan en `0012`,
+  DB-014). Tres decisiones menores documentadas en `docs/database.md`:
+  `status` de `clients`/`sites`/`employees` nace en `'active'` por
+  defecto (el modelo no lo anota); `security_events.actor_id`/
+  `target_id` referencian `profiles.id` igual que `user_roles.granted_by`
+  en `0003`; ningún `check` de formato para `cuit`/`dni` (el modelo los
+  describe en prosa, no como `check`, a diferencia de, por ejemplo, el
+  rango horario de `employee_availability`). Las tres migraciones
+  aplicadas en `App_dev` (`pnpm db:push`) y tipos regenerados sin
+  diferencia. 219 tests pgTAP pasan contra `App_dev` (`pnpm db:test`, 7
+  archivos).
+- Continuación de F4 (P04.4): migraciones `0007_services_shifts_assignments.sql`
+  (DB-009), `0008_checklists_tasks.sql` (DB-010), `0009_attendance.sql`
+  (DB-011) y `0010_supervisions_ratings.sql` (DB-012) — el corazón de la
+  operación: `services` (días de la semana con `app.valid_weekdays`,
+  franja, dotación 1..10, vigencia, `works_on_holidays` default `true`);
+  `shifts` (columnas generadas `starts_at`/`ends_at` con `app.local_ts`,
+  verificado sin horario de verano en enero y julio, ADR-019; unicidad
+  parcial `(service_id, shift_date)` donde un turno cancelado sigue
+  bloqueando el día pero uno dado de baja lógica lo libera, ADR-010;
+  campos de cancelación con `check` de conjunto); `assignments` (franja
+  propia opcional, columnas denormalizadas `shift_date`/`"window"` —
+  entre comillas porque `window` es palabra reservada de SQL — mantenidas
+  por el trigger `app.sync_assignment_window` tanto al insertar/editar la
+  asignación como al cambiar la franja del turno; restricción de
+  exclusión `assignments_no_overlap` con `btree_gist`, P-053, verificada
+  con turnos que se pisan, adyacentes, con franja propia que evita el
+  cruce y con una asignación quitada que libera el rango; unicidad
+  parcial `(shift_id, employee_id)` independiente de la exclusión).
+  `checklist_templates` (una por cliente y una por sede como máximo,
+  ADR-011) y `checklist_template_items` (unicidad `(template_id,
+position)` deferrable, para reordenar dos ítems en un solo `update`);
+  `shift_tasks` (copia del checklist en el turno, `not_done` exige
+  motivo); FK `shifts.checklist_template_id -> checklist_templates`
+  agregada acá porque esa tabla no existía todavía en `0007`.
+  `attendance_records` (`unique (assignment_id, kind)`, `reason`
+  obligatorio si `source = admin`, ADR-009) y `attendance_notices`
+  (`minutes_late` 1..600 obligatorio si `kind = delay`, `reason_code`
+  obligatorio si `kind = absence`, `reason_text` obligatorio si
+  `reason_code = other`, varios avisos por asignación). `supervisions`
+  (unicidad parcial `(shift_id, supervisor_id)` entre las no canceladas,
+  P-086), `supervision_attendance`, `ratings` (`score` 1..5, `unique
+(supervision_id, assignment_id)`) y `rating_criteria`. Completan la
+  sección 5 del modelo: `app.current_employee_id()`, `app.shares_shift`
+  (en `0007`, ya existían `employees`/`shifts`/`assignments`) y
+  `app.supervises_shift` (en `0010`, recién con `supervisions`), las tres
+  `security definer` por el mismo motivo que el hook de `0003`. RLS
+  habilitada en las trece tablas desde que nacen, sin políticas todavía
+  (llegan en `0012`, DB-014). Decisiones menores documentadas en
+  `docs/database.md`: `services.site_id`/`shifts.site_id not null`;
+  `works_on_holidays`/`checklist_templates.name`/varias columnas
+  `position` sin anotación explícita del modelo pero tratadas como
+  `not null` por consistencia; un `check` propio de franja en
+  `assignments` que en la práctica queda de respaldo porque el
+  constructor de `tstzrange` del trigger ya rechaza antes una franja
+  invertida (`22000`); el `update` del trigger al cambiar el turno no
+  filtra `removed_at is null` (recalcula también asignaciones quitadas,
+  sin efecto en ninguna regla vigente). Las cuatro migraciones aplicadas
+  en `App_dev` (`pnpm db:push`) y tipos regenerados sin diferencia. 439
+  tests pgTAP pasan contra `App_dev` (`pnpm db:test`, 12 archivos).
+- Cierre de F3 (P03.7): `.github/workflows/restore-test.yml`
+  (`workflow_dispatch` con confirmación `restaurar-app-dev`, sin correr
+  todavía — se dispara recién con las tablas de F4, TEST-024).
+  `docs/environments.md`/`docs/deployment.md`/`README.md` puestos al día:
+  se activaron los tres interruptores de despliegue, primer respaldo real
+  verificado, `dev.`/`app.` sirviendo desde Cloudflare Pages con GitHub
+  Pages desactivado, el pase `develop → main` con merge commit, el límite
+  de `workflow_dispatch` a la rama por defecto, la cuenta de Sentry ya
+  creada, y la guía clic por clic de INFRA-024 (avisos de uso de Supabase y
+  de fallos de workflows).
+- Corrección de P03.7 (decisión de Mike, 19 sep 2026): la restauración de
+  prueba ahora repone en `App_dev` el esquema `public` **más los usuarios
+  de auth** (`auth.users`, `auth.identities`, lo mínimo para que las
+  referencias de `public` hacia `auth.users` cierren) y **borra todo lo
+  restaurado antes de terminar** (siempre, incluso si algo falla a mitad de
+  camino), porque `dev.` sirve desde `App_dev` y no es un entorno seguro
+  mientras esos usuarios sigan ahí. `scripts/restore-from-r2.sh` reescrito:
+  verifica que `App_dev` tenga las mismas migraciones que el volcado antes
+  de tocar nada (`supabase_migrations.schema_migrations`); restaura `public`
+  en tres secciones (`pre-data`/`data`/`post-data`, aprovechando que
+  PostgreSQL deja las claves foráneas para `post-data`) para no depender de
+  ningún orden entre tablas; agrega el modo `--confirmar-vacio`; nunca
+  imprime contenido de ninguna tabla, solo conteos. `restore-test.yml` suma
+  un paso `if: always()` que corre ese modo como segunda confirmación,
+  independiente de la limpieza del propio script. `docs/deployment.md`
+  sección 6.3 registra las dos decisiones con su motivo (en vez de la
+  pregunta pendiente de la entrega anterior) y cómo volver a cargar datos
+  de prueba después. Sin confirmar: si el rol `postgres` (Session pooler)
+  tiene privilegios reales de `INSERT`/`DELETE` sobre `auth.users`/
+  `auth.identities` — la documentación pública de Supabase no lo dice
+  (dice que `postgres` "has admin privileges" pero recomienda no escribir
+  en `auth.users` a mano); queda una consulta de solo lectura para que
+  Mike lo confirme antes de la primera corrida real.
+- Marca de la sidebar e íconos PWA (DS-018, PNG temporal — decisión de
+  Mike del 19 sep 2026 de recortar el isotipo del PNG original en vez de
+  esperar el vectorial IF-08; deuda **DS-020** registrada en
+  `docs/design-system.md` para cuando llegue): `public/icons/` con los
+  recortes que preparó el orquestador desde `Images/` (isotipo blanco a
+  34 px con `@2x`/`@3x`, íconos
+  PWA 192/512/512 maskable y `apple-touch-icon` 180, todos copiados tal
+  cual, sin redibujar ni recolorear). Sidebar de `AdminShell`
+  (`AdminSidebar`) reemplaza el lockup completo de P05.4 por el patrón de
+  `07` sección 1.5/`Mockup/png/D01.png`: isotipo de 34 px + lockup de
+  texto "EXTENDIENDO / SERVICIOS" (dos líneas, 12.5 px/700/mayúsculas/
+  tracking 1.3 px) con una regla de 26×2 px debajo, colapsada a solo el
+  isotipo, y sin nombres accesibles duplicados (`alt=""` en la imagen
+  cuando el texto es visible, `alt="Extendiendo Servicios"` cuando no).
+  `index.html`: `apple-touch-icon` al ícono de 180 y `theme-color` al teal
+  de marca `#569EA4`, igual que el manifest (antes, `#0E1017` de la
+  portada oscura).
+  `public/logo.png`/`favicon.png` no se tocan (los sigue usando la
+  portada, el 404 y el `og:image`).
+- `vite-plugin-pwa` 1.3.0 (RESP-001, P-089): manifest (`name`/`short_name`/
+  `description`/`lang: 'es-AR'`/`start_url`/`scope: '/'`/
+  `display: 'standalone'` — "pantalla completa" sin la barra del
+  navegador, no `fullscreen`, que ocultaría además la barra de estado del
+  celular — `theme_color`/`background_color: '#569EA4'`, íconos 192/512
+  `purpose: 'any'` + 512 `purpose: 'maskable'`), service worker
+  (`strategies: 'generateSW'`) con precache exclusivo del build
+  (`globPatterns` de JS/CSS/HTML/fuentes/íconos, sin `runtimeCaching`:
+  ninguna llamada a Supabase, Nominatim ni OpenStreetMap se cachea) y
+  `navigateFallback: '/index.html'` para la SPA.
+  `registerType: 'prompt'` sin ninguna interfaz todavía (decisión del
+  orquestador: el service worker nuevo queda esperando —
+  `skipWaiting`/`clientsClaim` nunca se llaman solos, verificado en
+  `dist/sw.js` — y se activa recién cuando se cierran todas las pestañas,
+  para no interrumpir a un empleado fichando; el aviso "hay una versión
+  nueva" es RESP-009, F17). `devOptions.enabled: false`: sin service
+  worker en `pnpm dev`. Verificado que `/dev/*` no queda en el precache
+  (`pnpm build` + `grep` sobre `dist/sw.js`), y con Playwright contra
+  `pnpm preview` que el service worker se registra (`state: 'activating'`
+  en la primera instalación) y el manifest se lee
+  (`content-type: application/manifest+json`) sin errores de consola.
+- `public/_headers` (INFRA-018, de infra-devops — este paquete solo
+  agregó las reglas de caché, sin tocar el resto): dos bloques nuevos,
+  `/sw.js` y `/manifest.webmanifest`, con `Cache-Control: no-cache` (sin
+  hash de contenido en el nombre de archivo, a diferencia de
+  `dist/assets/*`, así que sin esto un CDN o el navegador podrían
+  quedarse con una copia vieja y una actualización del build no llegaría
+  nunca a una app ya instalada). Verificado con `wrangler pages dev` que
+  las dos rutas combinan este `Cache-Control` con las cabeceras de
+  seguridad del bloque `/*` existente (CSP, HSTS, etc.), sin perder
+  ninguna.
+- `/dev/design` completo (DS-016): `DropdownMenu` ("más acciones" de una
+  fila y menú de usuario de la sidebar), `Drawer`/`Sheet` (452 px a la
+  derecha, cabecera/cuerpo con scroll/pie a ancho completo — hasta ahora
+  solo se veía el `Sheet side="bottom"` del menú "Más"), `ActionBar`
+  (ejemplo de M16 dentro del contenedor móvil de 390 px) y
+  `StagingBanner` (con una réplica estática al lado, porque el componente
+  real solo se ve con `VITE_APP_ENV=staging`). Inventario completo contra
+  `07` sección 2 en el reporte del encargo.
+- `docs/design-system.md` (DS-019/DOC-005): documento cerrado de F5 —
+  secciones nuevas de marca (DS-018/DS-020) y PWA (RESP-001) con el
+  detalle de cada decisión, inventario de `/dev/design` (DS-016) y ajuste
+  de las notas de P05.4 que quedaban desactualizadas.
+
+- Shells y router (DS-013 a DS-015, P05.4): `AdminShell`
+  (`src/app/shells/AdminShell.tsx`) con sidebar teal de 236 px (las ocho
+  secciones de P-121, colapsa a íconos de 60 px entre 1024 y 1279 px con
+  `Tooltip`, tabbar inferior por debajo de 1024 con un menú "Más" en
+  `Sheet` para el resto de las secciones), topbar con menú de usuario
+  (`DropdownMenu`, agregado en este paquete) y punto de extensión para el
+  buscador global (P09.0, sin ningún input real todavía); `MobileShell`
+  (`src/app/shells/MobileShell.tsx`) para empleado y supervisor, con
+  cabecera de saludo o navbar de subpágina según la ruta, tabbar propio de
+  cada rol (con el `Fab` "Fichar" integrado en el de empleado) y
+  `ActionBar` (`src/app/shells/ActionBar.tsx`) para las acciones al pie de
+  una subpágina. Router (`src/app/router.tsx`, `src/app/routes/*`) con las
+  51 rutas de `05_Pantallas_y_Navegacion.md` sección 5 como placeholders
+  (título, `screenId` y "Pantalla en construcción."), un `RequireRole`
+  (`src/features/auth/RequireRole.tsx`) por grupo (`/admin`, `/app`,
+  `/sup`, y `/perfil` con el shell según el rol) sobre una sesión
+  provisoria (`src/features/auth/session.ts`) que P06.2 reemplaza sin
+  tocar rutas ni shells (ver `docs/design-system.md`), 404 con la marca
+  (`src/pages/common/NotFoundPage.tsx`) y `AdminShell`/`MobileShell`
+  detrás de `React.lazy` para que el celular no baje el código de
+  administración (ni viceversa).
+- `/dev/rol` (solo en desarrollo, mismo patrón que `/dev/design`): simula
+  un rol (dueño, administrador, empleado, supervisor, o empleado y
+  supervisor a la vez) para recorrer los shells antes de que exista
+  AUTH-002; se guarda en `localStorage`
+  (`src/features/auth/devRole.ts`). Ni la página ni la clave de
+  `localStorage` quedan en `dist/` (verificado con `pnpm build` + `grep`
+  sobre el bundle).
+- `StagingBanner` (`src/components/StagingBanner.tsx`, INFRA-022): franja
+  "Entorno de prueba…" (`role="status"`) cuando `VITE_APP_ENV=staging`,
+  montada una sola vez en `RootLayout` (`router.tsx`) para que la vean
+  todos los layouts, portada incluida, sin tocar cada uno por separado.
+  Nunca en `production` ni en `local`.
+- Tests de Testing Library para `RequireRole` (sin sesión, rol de otra
+  vía, sin ningún rol, rol correcto, más de un rol a la vez), `AdminShell`
+  (colapso de la sidebar y aparición del tabbar según el ancho, mismo
+  criterio de `matchMedia` simulado que P05.3) y `StagingBanner` (los tres
+  entornos). E2e nuevo
+  (`tests/e2e/protected-route-redirect.spec.ts`): una ruta protegida sin
+  sesión termina en `/ingresar` para `/admin`, `/app` y `/sup`.
 
 - Acciones (DS-003): `Button` restyleado (`variant`: `primary`/`ghost`/
   `dark`/`destructive`/`link`; `size`: `sm`/`md`/`mobile`; ícono a la
@@ -230,9 +531,103 @@ Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/C
   recortado) y `TaskItem` ("no realizada" exige motivo, solo lectura no
   dispara callbacks, etiqueta "Opcional", atenuado con hora de
   finalización).
+- Registro del inicio de sesión en `security_events` (P06.1, AUTH-009,
+  P-104): migración `0019_security_events_sign_in.sql` con
+  `app.log_sign_in()` (trigger `security definer` sobre
+  `after insert on auth.sessions`) y el trigger `trg_log_sign_in`. Se
+  confirmó en vivo contra `App_dev`, entre las dos alternativas que
+  dejaba abiertas `06_API.md` sección 1, que el trigger sobre
+  `auth.sessions` (en vez de una Edge Function `log-sign-in`) es viable:
+  el rol de las migraciones puede crearlo, la tabla trae `ip` como
+  esperaba el plan, y un login real seguido de un refresco de token
+  mostró que cada sesión nueva es un `insert` (dispara el evento una vez
+  por inicio de sesión real) mientras que el refresco solo actualiza la
+  fila existente (no duplica el evento). Lo central de la tarea: un
+  fallo al registrar el evento no puede cortar el login -- `app.
+log_sign_in()` envuelve la llamada a `app.log_security_event(...)`
+  (0004) en su propio `exception when others`, así que aunque
+  `security_events.actor_id` no encuentre la fila de `profiles`
+  correspondiente (u ocurra cualquier otro error, presente o futuro), el
+  `insert` en `auth.sessions` -- y con él, el login -- se completa
+  igual; se deja un `raise warning` en los logs de Postgres para poder
+  detectarlo. Probado con pgTAP
+  (`supabase/tests/0019_security_events_sign_in.test.sql`, 12
+  aserciones: estructura, camino feliz con `ip`/`details.session_id`,
+  que un refresco simulado no duplica el evento, camino de fallo sin
+  `profile` que no revienta el `insert`, y que la función no se puede
+  invocar directamente) y verificado con un login real contra una cuenta
+  del seed (`andrea.rios@extendiendoservicios.com`), con la fila de
+  prueba y la sesión limpiadas después. Documentado en
+  `docs/database.md` (parte de base de datos de DOC-006, ya que
+  `docs/security.md` todavía no existe -- llega completo en F6 con las
+  pantallas de Auth).
+- Autenticación real (P06.2, AUTH-001, AUTH-002, AUTH-008, AUTH-010,
+  AUTH-011): cliente de Supabase tipado (`persistSession`,
+  `autoRefreshToken`), `AuthProvider`/`useAuth` (sesión, perfil, roles y
+  capacidades desde los claims del JWT, `signOut`, `refreshProfile`) y
+  `RequireRole` sobre esos claims. `devRole.ts` borrado: `/dev/rol` pasa a
+  hacer un login real contra una cuenta del seed y sigue fuera de `dist/`.
+- Pantallas comunes de autenticación (P06.3, AUTH-003 a AUTH-007,
+  DOC-006): COM-01 Ingreso (logo y teléfono de soporte desde
+  `v_public_branding`), COM-02 Recuperar, COM-03 Restablecer, COM-04
+  Perfil propio y COM-05 Sin acceso; `/` redirige según sesión y rol, y
+  `authErrors.ts` traduce los errores de Auth al español sin delatar qué
+  emails tienen cuenta.
+- Aviso de actualización de la PWA (RESP-009, adelantado de F17):
+  `PwaUpdateProvider` (chequeo cada hora y al volver de segundo plano,
+  `SKIP_WAITING` y recarga recién con el worker nuevo activo) y
+  `PwaUpdateBanner` en los tres shells. Sin esto, quien tuviera la PWA
+  instalada podía quedarse con una versión vieja indefinidamente.
+  `workbox-window` 7.4.1 como dependencia directa.
+- e2e de autenticación (P06.4, AUTH-012, TEST-003): suite
+  `tests/e2e-auth/` contra `App_dev` con su propio config de Playwright
+  (`chromium` y `mobile` a 390 px) y el script `pnpm test:e2e:auth`, fuera
+  de los workflows de CI y de despliegue. Cubre el ingreso por rol,
+  credenciales erróneas con mensaje idéntico exista o no el email,
+  recuperación de punta a punta, persistencia de sesión y cuenta
+  baneada, con cuentas descartables que se borran al final. Unitario de
+  `homePathForRoles` (`src/features/auth/session.test.ts`).
 
 ### Corregido
 
+- Revisión de P05.4 (orquestador):
+  - Con contenido más alto que la ventana, la cabecera y el tabbar de los
+    dos shells se iban con el scroll. En el celular, el botón "Fichar"
+    quedaba fuera de la pantalla hasta llegar al final. Ahora scrollea el
+    documento: la topbar, la navbar de subpágina y los tabbar son
+    `sticky`, y la sidebar es `sticky` con el alto de la ventana y scroll
+    propio. `<main>` dejó de ser contenedor de scroll, así que `ActionBar`
+    se ancla a la ventana; además ocupa todo el ancho (márgenes negativos
+    sobre el `p-4` de `<main>`). El saludo de la raíz sí se va con el
+    scroll.
+  - `RequireRole`: con un rol que no corresponde a la vía, redirige a la
+    vía propia (`homePathForRoles` en `session.ts`) y no a `/sin-acceso`,
+    como pide `05` sección 5. `/sin-acceso` queda para quien no tiene
+    ningún rol.
+  - Sidebar: los `<li>` de cada sección estaban directo dentro de `<nav>`;
+    ahora van en un `<ul>`, y cada `<nav>` lleva su nombre ("Operación",
+    "Configuración") también expandida.
+  - Los nombres de ejemplo del simulador de rol (`devRole.ts`) llegaban a
+    `dist/`. Ahora quedan como código muerto en el build.
+  - `index.html` declaraba `color-scheme: dark`, heredado de la portada
+    provisoria, y `body` no tenía color propio: el texto sin clase salía
+    blanco sobre el fondo claro de los shells. Ahora es `light` y `body`
+    usa `--text` y `--bg`. La portada define sus propios colores y no
+    cambia.
+- `ui/button.tsx`: `<Button asChild>` (usado por primera vez en este
+  paquete, en `/dev/rol`) rompía siempre con "Slot failed to slot onto its
+  children" — `Slot.Root` (Radix) exige exactamente un elemento hijo, y el
+  `return` de `Button` le pasaba tres nodos sueltos (ícono/spinner,
+  `children`, texto de carga para lectores de pantalla). Se corrigió
+  armando un único nodo: con `asChild` es directamente `children`; sin
+  `asChild`, los tres de antes dentro de un solo `<>` (a un `<button>` real
+  no le importa recibir un Fragment). Test de regresión en
+  `button.test.tsx`.
+- `ui/dropdown-menu.tsx` (agregado en este paquete): mismo bug de
+  `data-open:`/`data-closed:` que el resto de los componentes shadcn del
+  repo (ver más abajo) — corregido a `data-[state=open]:`/
+  `data-[state=closed]:` en `DropdownMenuContent`, `DropdownMenuSubTrigger`
+  y `DropdownMenuSubContent`, antes de que este paquete llegara a usarlo.
 - Bug heredado de DS-001/DS-002 (P05.1): `dialog.tsx`, `sheet.tsx`,
   `popover.tsx`, `select.tsx`, `tooltip.tsx`, `tabs.tsx`, `separator.tsx`
   y `command.tsx` usaban clases como `data-open:`, `data-closed:`,
@@ -272,6 +667,31 @@ Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/C
   Se reemplazaron por los KPIs reales de la Base (`05_Pantallas_y_Navegacion.md`
   ADM-02): turnos hoy, presentes, próximos (2 h), sin registro, avisos de
   ausencia y demora.
+- Revisión visual de cierre de F5 (P05.6, orquestador), a 1440, 1024, 768
+  y 390 px:
+  - Sidebar colapsada (1024 a 1279 px): cada link medía 16 px de ancho,
+    lo mismo que el ícono, y el resaltado del activo era una franja
+    angosta. Ahora es un cuadrado de 44 px.
+  - Color de borde por defecto en `globals.css`. En Tailwind 4, `border`
+    sin color usa el color del texto: el borde de `Sheet` (el menú "Más" y
+    el drawer) salía casi negro.
+  - `Sheet` a los costados: 452 px desde 768 px y toda la pantalla por
+    debajo, como pide `07` sección 2.4 (antes, tres cuartos del ancho y
+    como máximo 384 px).
+  - Objetivos táctiles de 44 px en móvil (`07`): avatar y "Volver" de
+    `MobileShell`, menú de usuario de `AdminShell`, la X de `Sheet` y
+    `Dialog` y "Volver al inicio" del 404. Se agranda el área con un
+    `::after`, sin cambiar cómo se ven.
+  - Textos de shadcn que habían quedado en inglés: "Close" pasa a
+    "Cerrar" (`Sheet`, `Dialog`) y `CommandDialog` pasa a "Buscar".
+  - `/dev/design`: el ejemplo de tres columnas de `Field` volvía a usar
+    "Tolerancia (min)", un término de módulos futuros (P-068). Ahora
+    muestra "Inicio / Fin / Dotación", los campos de ADM-07.
+  - `/dev/rol`: la opción elegida usaba `bg-primary-050`, una clase que
+    no existe; pasa a `bg-primary-50`.
+- `vite.config.ts`: los source maps se generan con `sourcemap: 'hidden'`.
+  El JS publicado ya no apunta a un `.map` que se borra después de
+  subirlo a Sentry (Sentry los asocia por debug ID).
 
 ### Quitado
 

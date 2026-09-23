@@ -5,10 +5,13 @@ import {
   Calendar as CalendarIcon,
   Fingerprint,
   Info,
+  LogOut,
+  MoreHorizontal,
   Phone,
   Plus,
   Search,
   TriangleAlert,
+  User,
   Users,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -43,6 +46,31 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from '@/components/ui/field'
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
+import { ActionBar } from '@/app/shells/ActionBar'
+import { StagingBanner } from '@/components/StagingBanner'
 import { IconButton } from '@/components/IconButton'
 import { Fab } from '@/components/Fab'
 import { Combobox } from '@/components/Combobox'
@@ -75,11 +103,19 @@ import {
 } from '@/components/status'
 
 /**
- * `/dev/design` (DS-016, adelanto parcial): vidriera de los componentes de
- * DS-003 a DS-012, solo para desarrollo — ver `router.tsx`, que la
- * registra únicamente bajo `import.meta.env.DEV`. Falta lo de P05.4
- * (shells, router con `RequireRole`) y P05.5 (`StarRating`,
- * `MapPicker`/`MapView`, íconos PWA).
+ * `/dev/design` (DS-016): vidriera de todos los componentes de
+ * `07_Design_System.md` sección 2 con sus variantes, solo para desarrollo —
+ * ver `router.tsx`, que la registra únicamente bajo `import.meta.env.DEV`
+ * (no queda en el build de producción, verificado con `pnpm build` + `grep`
+ * sobre `dist/`).
+ *
+ * Quedan afuera a propósito, con sus propias fases (`08_Fases_y_Backlog.md`
+ * F5 alcance): `StarRating` (F15, MOB-SUP-001), `MapPicker`/`MapView` (F8,
+ * SITE-004/SITE-005), `Calendar` mensual y `WeekGrid` (F11,
+ * `src/features/planning`, por el ajuste de `11_Desglose_de_Tareas.md`
+ * sección 5). `AdminShell`/`MobileShell` completos no se embeben acá (son
+ * layouts de ruta, no piezas del vocabulario visual): se recorren enteros
+ * desde `/dev/rol` (DS-015).
  */
 function Section({
   title,
@@ -473,7 +509,10 @@ function DesignPage() {
           /dev/design — Design system de Extendiendo Servicios
         </h1>
         <p className="mt-1 text-[13px] text-text-3">
-          Componentes de DS-003 a DS-012 (P05.2 y P05.3). Solo en desarrollo:
+          Todos los componentes de <code>07_Design_System.md</code> sección 2,
+          salvo <code>StarRating</code> (F15), <code>MapPicker</code>/
+          <code>MapView</code> (F8) y <code>Calendar</code>/
+          <code>WeekGrid</code> (F11) — ver la nota al pie. Solo en desarrollo:
           esta página no se registra en el router de producción.
         </p>
       </header>
@@ -510,7 +549,7 @@ function DesignPage() {
         </Row>
       </Section>
 
-      <Section title="IconButton y FAB">
+      <Section title="IconButton, FAB y DropdownMenu">
         <Row label="IconButton">
           <IconButton icon={Search} aria-label="Buscar" />
           <IconButton icon={Users} aria-label="Ver equipo" disabled />
@@ -519,6 +558,39 @@ function DesignPage() {
           <div className="flex h-[66px] w-[120px] items-center justify-center border-t border-border bg-surface">
             <Fab />
           </div>
+        </Row>
+        <Row label='DropdownMenu — "más acciones" de una fila'>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton icon={MoreHorizontal} aria-label="Más acciones" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem>Ver ficha</DropdownMenuItem>
+              <DropdownMenuItem>Editar</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive">
+                Dar de baja
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </Row>
+        <Row label="DropdownMenu — usuario de la sidebar (AdminShell)">
+          <DropdownMenu>
+            <DropdownMenuTrigger className="flex items-center gap-2 rounded-full p-1 outline-none focus-visible:ring-3 focus-visible:ring-ring">
+              <Avatar id="dropdown-user" name="Andrea Ríos" />
+              <span className="sr-only">Menú de usuario</span>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Andrea Ríos</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <User /> Mi perfil
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <LogOut /> Cerrar sesión
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </Row>
       </Section>
 
@@ -572,6 +644,63 @@ function DesignPage() {
             <Input mobile placeholder="Buscar…" icon={Search} />
             <Textarea mobile placeholder="Observación del servicio…" />
           </MobileFrame>
+        </Row>
+      </Section>
+
+      <Section title="Field / FormField">
+        <p className="text-[11.5px] text-text-3">
+          Reemplazo de <code>form</code> (react-hook-form + zod, `07` sección
+          2.2): etiqueta 11 px/650/<code>--text-2</code>, ayuda 11 px/
+          <code>--text-3</code>. Las grillas <code>row2</code>/<code>row3</code>{' '}
+          del mockup son un <code>className</code> de Tailwind (
+          <code>grid grid-cols-2</code>/<code>grid-cols-3</code>), no un
+          subcomponente propio.
+        </p>
+        <Row label="Campo con ayuda">
+          <Field className="w-72">
+            <FieldLabel htmlFor="field-demo-nombre">Nombre completo</FieldLabel>
+            <Input id="field-demo-nombre" placeholder="María Gómez" />
+            <FieldDescription>Como figura en el documento.</FieldDescription>
+          </Field>
+        </Row>
+        <Row label="Campo con error (FieldError, sin el error propio de Input)">
+          <Field data-invalid="true" className="w-72">
+            <FieldLabel htmlFor="field-demo-cuit">CUIT</FieldLabel>
+            <Input id="field-demo-cuit" defaultValue="12345678" aria-invalid />
+            <FieldError>El CUIT tiene que tener 11 dígitos.</FieldError>
+          </Field>
+        </Row>
+        <Row label="row2 — dos columnas">
+          <FieldGroup className="grid w-full max-w-xl grid-cols-2 gap-3">
+            <Field>
+              <FieldLabel htmlFor="field-demo-row2-nombre">Nombre</FieldLabel>
+              <Input id="field-demo-row2-nombre" placeholder="María" />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="field-demo-row2-apellido">
+                Apellido
+              </FieldLabel>
+              <Input id="field-demo-row2-apellido" placeholder="Gómez" />
+            </Field>
+          </FieldGroup>
+        </Row>
+        <Row label="row3 — tres columnas">
+          <FieldGroup className="grid w-full max-w-xl grid-cols-3 gap-3">
+            <Field>
+              <FieldLabel htmlFor="field-demo-row3-inicio">Inicio</FieldLabel>
+              <Input id="field-demo-row3-inicio" defaultValue="08:00" />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="field-demo-row3-fin">Fin</FieldLabel>
+              <Input id="field-demo-row3-fin" defaultValue="12:00" />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="field-demo-row3-dotacion">
+                Dotación
+              </FieldLabel>
+              <Input id="field-demo-row3-dotacion" defaultValue="2" />
+            </Field>
+          </FieldGroup>
         </Row>
       </Section>
 
@@ -1034,6 +1163,102 @@ function DesignPage() {
         <Row label="Solo lectura (supervisor o antes de iniciar el turno)">
           <div className="w-full max-w-md rounded-lg border border-border bg-surface px-[14px]">
             <TaskList tasks={tasks} readOnly />
+          </div>
+        </Row>
+      </Section>
+
+      <Section title="Drawer / Sheet (DS-013/014, 452 px a la derecha)">
+        <p className="text-[11.5px] text-text-3">
+          Cabecera, cuerpo con scroll y pie con botones a ancho completo (`07`
+          sección 2.4). En móvil ({'<'} 768 px) ocupa toda la pantalla — es el
+          mismo componente que usa <code>AdminShell</code> para el menú
+          &quot;Más&quot; (<code>side=&quot;bottom&quot;</code>, ver
+          `/dev/rol`).
+        </p>
+        <Row label='Drawer de detalle (side="right", 452 px)'>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost">Abrir detalle del turno</Button>
+            </SheetTrigger>
+            <SheetContent side="right">
+              <SheetHeader>
+                <SheetTitle>Grupo Norte — San Isidro</SheetTitle>
+              </SheetHeader>
+              <div className="flex flex-col gap-3 overflow-y-auto px-6 text-[12px] text-text-2">
+                <p>Turno de 08:00 a 12:00, jue 13 ago.</p>
+                <p>
+                  Cuerpo con scroll propio: el contenido largo de un drawer real
+                  (asignaciones, tareas, historial) se desplaza acá adentro sin
+                  mover la cabecera ni el pie.
+                </p>
+              </div>
+              <SheetFooter className="flex-row">
+                <Button variant="ghost" className="flex-1">
+                  Cancelar
+                </Button>
+                <Button variant="primary" className="flex-1">
+                  Guardar
+                </Button>
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
+        </Row>
+      </Section>
+
+      <Section title="ActionBar (DS-014, móvil)">
+        <p className="text-[11.5px] text-text-3">
+          Franja de botones apilados al pie de una subpágina móvil (M16
+          &quot;Volver al servicio&quot; / &quot;Registrar salida&quot;). Hijo
+          directo de <code>&lt;main&gt;</code>, se pega a la ventana con
+          <code>sticky</code> — acá, al contenedor de 390 px de este ejemplo.
+        </p>
+        <Row label="Botones apilados con nota debajo">
+          <MobileFrame>
+            <div className="flex h-40 flex-col">
+              <p className="text-[12px] text-text-2">
+                Contenido de la subpágina…
+              </p>
+              <ActionBar note="Se guardarán la hora y la ubicación de salida.">
+                <Button size="mobile" variant="primary" icon={Fingerprint}>
+                  Registrar salida
+                </Button>
+                <Button size="mobile" variant="ghost">
+                  Volver al servicio
+                </Button>
+              </ActionBar>
+            </div>
+          </MobileFrame>
+        </Row>
+      </Section>
+
+      <Section title="StagingBanner (INFRA-022)">
+        <p className="text-[11.5px] text-text-3">
+          Franja <code>role=&quot;status&quot;</code> montada una sola vez en{' '}
+          <code>RootLayout</code>, visible en los tres shells y en la portada
+          solo con <code>VITE_APP_ENV=staging</code> (nunca en{' '}
+          <code>production</code> ni en <code>local</code>) — el{' '}
+          <code>&lt;StagingBanner /&gt;</code> de acá abajo no se ve en este
+          entorno de desarrollo, así que se muestra además una réplica estática
+          con el mismo marcado, solo para esta vidriera.
+        </p>
+        <Row label="Componente real (se ve solo con VITE_APP_ENV=staging)">
+          <div className="w-full max-w-md rounded-lg border border-border">
+            <StagingBanner />
+            <div className="p-3 text-[11.5px] text-text-3">
+              (vacío acá: este entorno no es staging)
+            </div>
+          </div>
+        </Row>
+        <Row label="Réplica estática (mismo marcado, para verlo sin cambiar de entorno)">
+          <div
+            role="status"
+            className="flex w-full max-w-md items-center justify-center gap-[7px] rounded-lg bg-warning-bg px-4 py-[6px] text-center text-[11px] font-semibold text-warning-800"
+          >
+            <TriangleAlert
+              aria-hidden="true"
+              className="size-[13px] shrink-0"
+            />
+            Entorno de prueba: los datos de esta versión no son reales.
           </div>
         </Row>
       </Section>

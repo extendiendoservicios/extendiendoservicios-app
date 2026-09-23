@@ -25,3 +25,5 @@ Cada decisión técnica relevante tiene un archivo con el formato del brief (sec
 | [ADR-019](ADR-019-zona-horaria-unica.md) | Zona horaria única de Argentina | Aceptado | DT-21, P-057 |
 | [ADR-020](ADR-020-versionado.md) | Versionado semántico y changelog | Aceptado | P-127 |
 | [ADR-021](ADR-021-versiones-del-stack.md) | Versiones del stack al iniciar la implementación | Aceptado | P-002, D-01 |
+| [ADR-022](ADR-022-smtp-resend.md) | Envío de emails de Auth con Resend | Aceptado | P-012, D-03 |
+| [ADR-023](ADR-023-docker-como-herramienta.md) | Docker como herramienta de pruebas | Aceptado | P-112, D-02 |

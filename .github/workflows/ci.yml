@@ -65,6 +65,18 @@ jobs:
         run: pnpm test
 
       - name: Build
+        # Valores falsos y evidentes a propósito, no los secretos reales. Desde P06.2
+        # `src/lib/supabase.ts` corta con un error si estas dos faltan, y lo hace al
+        # importarse el módulo: sin ellas el bundle no arranca y los e2e de más abajo
+        # ven una pantalla en blanco (así falló el primer intento del PR de P06.2).
+        # Acá no hacen falta las reales: los e2e de este workflow son de humo y no
+        # tocan datos -- comprueban la portada y que una ruta protegida sin sesión
+        # redirija a /ingresar, que se resuelve leyendo localStorage, sin red. Los
+        # despliegues sí inyectan las verdaderas (deploy-staging.yml y
+        # deploy-production.yml, docs/deployment.md sección 11).
+        env:
+          VITE_SUPABASE_URL: https://proyecto-de-prueba.supabase.co
+          VITE_SUPABASE_ANON_KEY: sb_publishable_clave-falsa-solo-para-ci
         run: pnpm build
 
       - name: Generar tipos y verificar diff (db:types) — DB-021
