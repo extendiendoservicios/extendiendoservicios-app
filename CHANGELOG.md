@@ -7,7 +7,11 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
-Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022), y el cierre de F5: marca de la sidebar e íconos PWA desde un PNG temporal, `vite-plugin-pwa` y `/dev/design` completo (F5 · DS-016, DS-018 a DS-020, RESP-001, DOC-005), el cierre de F3 (F3 · DOC-003, INFRA-024, TEST-024), la revisión visual de cierre de F5 (P05.6), el inicio de F4: extensiones, esquema `app` y enumeraciones, con su runner de pgTAP (F4 · DB-001, DB-002, DB-022, TEST-001), la continuación de F4: personas y acceso, hook de Auth y funciones de permisos (F4 · DB-003, DB-004, DB-005, TEST-002), la continuación de F4: configuración y seguridad, clientes y sedes, y empleados (F4 · DB-006, DB-007, DB-008), la continuación de F4: servicios, turnos, asignaciones, checklists, tareas, asistencia, supervisiones y calificaciones (F4 · DB-009, DB-010, DB-011, DB-012), el SMTP de Resend en Auth, con las plantillas de correo en español (F6 · P06.0, más la parte de plantillas de AUTH-005), y el registro del inicio de sesión en `security_events` (F6 · P06.1, AUTH-009, más la parte de base de datos de DOC-006).
+## [0.3.0] - 2026-09-23
+
+Primer pase a producción con la aplicación de verdad: base de datos completa (F4), design system (F5) y autenticación real (F6). No hubo una versión 0.2.0 publicada aparte: el hito de F3 + F4 se juntó con este por decisión de Mike (P04.9), porque sin inicio de sesión no tenía sentido publicarlo en `app.`.
+
+Entornos remotos y Auth (F3 · INFRA-010, INFRA-011, INFRA-019, INFRA-023), CI/CD, Sentry y robots de staging (F3 · INFRA-015 a INFRA-017, INFRA-021, INFRA-022), Cloudflare Pages, R2, respaldos y cabeceras de seguridad (F3 · INFRA-012, INFRA-018, INFRA-020), base del design system (F5 · DS-001, DS-002, DS-017), acciones, entradas, selectores, tarjetas y `StatusBadge` (F5 · DS-003 a DS-007), tablas, avatares, avisos, diálogos, timeline y lista de tareas (F5 · DS-008 a DS-012), `AdminShell`, `MobileShell` y el router con `RequireRole` (F5 · DS-013 a DS-015), más el banner "Entorno de prueba" (INFRA-022), y el cierre de F5: marca de la sidebar e íconos PWA desde un PNG temporal, `vite-plugin-pwa` y `/dev/design` completo (F5 · DS-016, DS-018 a DS-020, RESP-001, DOC-005), el cierre de F3 (F3 · DOC-003, INFRA-024, TEST-024), la revisión visual de cierre de F5 (P05.6), el inicio de F4: extensiones, esquema `app` y enumeraciones, con su runner de pgTAP (F4 · DB-001, DB-002, DB-022, TEST-001), la continuación de F4: personas y acceso, hook de Auth y funciones de permisos (F4 · DB-003, DB-004, DB-005, TEST-002), la continuación de F4: configuración y seguridad, clientes y sedes, y empleados (F4 · DB-006, DB-007, DB-008), la continuación de F4: servicios, turnos, asignaciones, checklists, tareas, asistencia, supervisiones y calificaciones (F4 · DB-009, DB-010, DB-011, DB-012), el SMTP de Resend en Auth, con las plantillas de correo en español (F6 · P06.0, más la parte de plantillas de AUTH-005), el registro del inicio de sesión en `security_events` (F6 · P06.1, AUTH-009, más la parte de base de datos de DOC-006), la autenticación real (F6 · AUTH-001, AUTH-002, AUTH-008, AUTH-010, AUTH-011), las pantallas comunes de autenticación (F6 · AUTH-003 a AUTH-007, DOC-006), el aviso de actualización de la PWA (RESP-009, adelantado de F17) y los e2e de autenticación (F6 · AUTH-012, TEST-003).
 
 ### Agregado
 
@@ -557,6 +561,32 @@ log_sign_in()` envuelve la llamada a `app.log_security_event(...)`
   `docs/database.md` (parte de base de datos de DOC-006, ya que
   `docs/security.md` todavía no existe -- llega completo en F6 con las
   pantallas de Auth).
+- Autenticación real (P06.2, AUTH-001, AUTH-002, AUTH-008, AUTH-010,
+  AUTH-011): cliente de Supabase tipado (`persistSession`,
+  `autoRefreshToken`), `AuthProvider`/`useAuth` (sesión, perfil, roles y
+  capacidades desde los claims del JWT, `signOut`, `refreshProfile`) y
+  `RequireRole` sobre esos claims. `devRole.ts` borrado: `/dev/rol` pasa a
+  hacer un login real contra una cuenta del seed y sigue fuera de `dist/`.
+- Pantallas comunes de autenticación (P06.3, AUTH-003 a AUTH-007,
+  DOC-006): COM-01 Ingreso (logo y teléfono de soporte desde
+  `v_public_branding`), COM-02 Recuperar, COM-03 Restablecer, COM-04
+  Perfil propio y COM-05 Sin acceso; `/` redirige según sesión y rol, y
+  `authErrors.ts` traduce los errores de Auth al español sin delatar qué
+  emails tienen cuenta.
+- Aviso de actualización de la PWA (RESP-009, adelantado de F17):
+  `PwaUpdateProvider` (chequeo cada hora y al volver de segundo plano,
+  `SKIP_WAITING` y recarga recién con el worker nuevo activo) y
+  `PwaUpdateBanner` en los tres shells. Sin esto, quien tuviera la PWA
+  instalada podía quedarse con una versión vieja indefinidamente.
+  `workbox-window` 7.4.1 como dependencia directa.
+- e2e de autenticación (P06.4, AUTH-012, TEST-003): suite
+  `tests/e2e-auth/` contra `App_dev` con su propio config de Playwright
+  (`chromium` y `mobile` a 390 px) y el script `pnpm test:e2e:auth`, fuera
+  de los workflows de CI y de despliegue. Cubre el ingreso por rol,
+  credenciales erróneas con mensaje idéntico exista o no el email,
+  recuperación de punta a punta, persistencia de sesión y cuenta
+  baneada, con cuentas descartables que se borran al final. Unitario de
+  `homePathForRoles` (`src/features/auth/session.test.ts`).
 
 ### Corregido
 
