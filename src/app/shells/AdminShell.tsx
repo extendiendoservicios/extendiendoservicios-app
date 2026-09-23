@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router'
 import { LogOut, MoreHorizontal, User } from 'lucide-react'
 import { cn } from 'cn'
 import { Avatar } from '@/components/Avatar'
+import { PwaUpdateBanner } from '@/components/PwaUpdateBanner'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -140,6 +141,16 @@ export function AdminShell({
         <main className="flex-1 px-4 py-4 lg:px-[26px] lg:py-[22px]">
           <Outlet />
         </main>
+
+        {/* Con tabbar (por debajo de 1024 px), encima de ella, con el mismo
+            offset que `MobileShell`; con sidebar (1024 px o más, sin
+            tabbar) apenas separada del borde inferior. */}
+        <PwaUpdateBanner
+          className={cn(
+            'sticky z-20',
+            showTabbar ? 'bottom-[74px]' : 'bottom-4',
+          )}
+        />
 
         {showTabbar && (
           <AdminTabbar

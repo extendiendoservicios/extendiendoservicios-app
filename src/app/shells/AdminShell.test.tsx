@@ -21,6 +21,23 @@ vi.mock('@/features/auth/AuthProvider', () => ({
   }),
 }))
 
+// `AdminShell` monta `PwaUpdateBanner` (RESP-009), que lee `usePwaUpdate()`:
+// sin este mock, `AdminShell` termina importando (por la cadena de
+// `PwaUpdateBanner` → `PwaUpdateProvider`) el módulo virtual
+// `virtual:pwa-register/react`, que solo existe con el plugin de
+// `vite-plugin-pwa` corriendo (no en `vitest.config.ts` — ver el comentario
+// de `PwaUpdateProvider.test.tsx`). Ese aviso tiene su propia suite
+// (`PwaUpdateBanner.test.tsx`, `PwaUpdateProvider.test.tsx`); acá alcanza
+// con que no haya ninguna actualización pendiente.
+vi.mock('@/app/PwaUpdateProvider', () => ({
+  usePwaUpdate: () => ({
+    needRefresh: false,
+    applying: false,
+    applyUpdate: vi.fn(),
+    postpone: vi.fn(),
+  }),
+}))
+
 /**
  * Mismo criterio que `DataTable.test.tsx` (P05.3), pero resolviendo
  * `matches` según el `min-width` de cada consulta: `AdminShell` combina dos

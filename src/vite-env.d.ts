@@ -1,4 +1,8 @@
 /// <reference types="vite/client" />
+// RESP-009: tipos del módulo virtual que registra el service worker desde React
+// (`virtual:pwa-register/react`, usado por `src/app/PwaUpdateProvider.tsx`). `tsconfig.app.json`
+// fija `types: ["vite/client"]` a mano, así que sin esta referencia explícita no se suma sola.
+/// <reference types="vite-plugin-pwa/react" />
 
 interface ImportMetaEnv {
   /** Versión de la app, inyectada en el build desde `package.json` (ADR-020). */

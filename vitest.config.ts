@@ -14,6 +14,12 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // RESP-009: ver el comentario de `src/test/pwaRegisterReactStub.ts`
+      // para por qué hace falta este alias y no alcanza con `vi.mock(...)`
+      // solo.
+      'virtual:pwa-register/react': fileURLToPath(
+        new URL('./src/test/pwaRegisterReactStub.ts', import.meta.url),
+      ),
     },
   },
   define: {

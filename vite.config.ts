@@ -34,12 +34,17 @@ const pwaPlugin = VitePWA({
   // ninguno a mano -- no hace falta la estrategia 'injectManifest' porque esta entrega no
   // necesita lógica de cacheo a medida (nada de datos, nada de Supabase).
   strategies: 'generateSW',
-  // 'prompt' (decisión del orquestador, P05.5): el service worker nuevo instala y queda
-  // esperando (`skipWaiting`/`clientsClaim` en falso); se activa recién cuando se cierran
-  // todas las pestañas o la app instalada, nunca solo. Un empleado podría estar fichando en
-  // otra pestaña -- recargar solo por una actualización lo interrumpiría. El aviso "hay una
-  // versión nueva" es RESP-009 (F17): esta entrega no agrega ninguna interfaz para eso.
+  // 'prompt' (decisión del orquestador, P05.5, se mantiene en RESP-009): el service worker
+  // nuevo instala y queda esperando (`skipWaiting`/`clientsClaim` en falso); se activa recién
+  // cuando `PwaUpdateProvider` (`src/app/PwaUpdateProvider.tsx`) le manda la señal, nunca
+  // solo. Un empleado podría estar fichando en otra pestaña -- recargar solo por una
+  // actualización lo interrumpiría; con `autoUpdate` esto pasaría sin avisar.
   registerType: 'prompt',
+  // `false`: el registro del service worker no lo arma el script genérico que este plugin
+  // inyectaría solo (`registerSW.js`, sin ningún aviso), sino `PwaUpdateProvider`, con
+  // `virtual:pwa-register/react` (RESP-009) -- necesita ser quien registra para enterarse de
+  // cuándo hay una versión nueva esperando y poder avisar.
+  injectRegister: false,
   // Nunca en `pnpm dev`: sin esto, el navegador registraría un service worker que serviría
   // el `index.html` de un build viejo por encima del servidor de desarrollo de Vite.
   devOptions: { enabled: false },

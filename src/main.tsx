@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router'
 import { router } from '@/app/router'
+import { PwaUpdateProvider } from '@/app/PwaUpdateProvider'
 import { AuthProvider } from '@/features/auth/AuthProvider'
 import { initSentry } from '@/lib/sentry'
 import { Toaster } from '@/components/ui/sonner'
@@ -20,10 +21,17 @@ createRoot(rootElement).render(
     {/* Una sola instancia para todo el árbol de rutas (AUTH-002): la
         sesión persistida se lee una vez acá arriba, no en cada shell. */}
     <AuthProvider>
-      <RouterProvider router={router} />
-      {/* Montado una sola vez en la raíz (DS-010): cualquier pantalla puede
-          llamar a `toast(...)` de "sonner" sin volver a montar el Toaster. */}
-      <Toaster />
+      {/* Registra el service worker una sola vez para toda la sesión de la
+          pestaña (RESP-009), sin importar la vía en la que esté la persona
+          -- el chequeo periódico tiene que seguir corriendo incluso en
+          `/ingresar`, antes de cualquier shell. */}
+      <PwaUpdateProvider>
+        <RouterProvider router={router} />
+        {/* Montado una sola vez en la raíz (DS-010): cualquier pantalla
+            puede llamar a `toast(...)` de "sonner" sin volver a montar el
+            Toaster. */}
+        <Toaster />
+      </PwaUpdateProvider>
     </AuthProvider>
   </StrictMode>,
 )

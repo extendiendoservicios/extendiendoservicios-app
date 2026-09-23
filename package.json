@@ -53,6 +53,7 @@
     "react-hook-form": "7.86.0",
     "react-router": "7.18.4",
     "sonner": "2.0.8",
+    "workbox-window": "7.4.1",
     "zod": "4.4.3"
   },
   "devDependencies": {
