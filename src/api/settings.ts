@@ -57,7 +57,7 @@ function mapWriteError(error: {
       'DUPLICATE',
     )
   }
-  return new ApiError(error.message, error.hint ?? null)
+  return fromPostgrestError(error)
 }
 
 // -------------------------------------------------------------------------
