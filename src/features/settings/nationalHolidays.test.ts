@@ -71,4 +71,29 @@ describe('computeNationalHolidays', () => {
     expect(dates).toEqual(sorted)
     expect(new Set(dates).size).toBe(dates.length)
   })
+
+  it('trasladables (Ley 27.399): 2025, con las fechas que ya pasaron', () => {
+    const byName = (year: number, part: string) =>
+      computeNationalHolidays(year).find((h) => h.name.includes(part))?.date
+    // martes 17 de junio -> lunes anterior
+    expect(byName(2025, 'Güemes')).toBe('2025-06-16')
+    // domingo 17 de agosto -> queda
+    expect(byName(2025, 'San Martín')).toBe('2025-08-17')
+    // domingo 12 de octubre -> queda
+    expect(byName(2025, 'Diversidad')).toBe('2025-10-12')
+    // jueves 20 de noviembre -> lunes siguiente
+    expect(byName(2025, 'Soberanía')).toBe('2025-11-24')
+  })
+
+  it('trasladables (Ley 27.399): 2026', () => {
+    const byName = (part: string) =>
+      computeNationalHolidays(2026).find((h) => h.name.includes(part))?.date
+    // miércoles 17 de junio -> lunes anterior
+    expect(byName('Güemes')).toBe('2026-06-15')
+    // lunes 17 de agosto y lunes 12 de octubre -> quedan
+    expect(byName('San Martín')).toBe('2026-08-17')
+    expect(byName('Diversidad')).toBe('2026-10-12')
+    // viernes 20 de noviembre -> lunes siguiente
+    expect(byName('Soberanía')).toBe('2026-11-23')
+  })
 })

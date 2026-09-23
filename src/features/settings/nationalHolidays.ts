@@ -23,20 +23,15 @@
  * - Móviles atados a Pascua (3): Carnaval (lunes y martes) y Viernes Santo,
  *   calculados con el algoritmo de Gauss para el domingo de Pascua
  *   (calendario gregoriano) -- exactos para cualquier año.
- * - Trasladables por REGLA fija de "n-ésimo lunes del mes" (3): Paso a la
- *   Inmortalidad del General San Martín (3er lunes de agosto), Día del
- *   Respeto a la Diversidad Cultural (2do lunes de octubre) y Día de la
- *   Soberanía Nacional (4to lunes de noviembre) -- la ley fija esa regla
- *   desde hace más de una década, sin decreto año a año.
- * - Paso a la Inmortalidad del General Güemes (17 de junio): la ley permite
- *   trasladarlo a un lunes cercano SI el Poder Ejecutivo lo decreta ese año
- *   en particular (no hay una regla fija, es caso a caso) -- acá se
- *   carga en su fecha original (17 de junio) sin ningún corrimiento
- *   automático; si el Gobierno decreta un traslado para un año puntual, el
- *   dueño edita esa fecha a mano desde la pantalla, como cualquier otro
- *   feriado. Mismo criterio, y por la misma razón, para cualquier "puente"
- *   extraordinario que no forme parte de esta lista (no son reglas fijas,
- *   son decisiones de gobierno año a año).
+ * - Trasladables de la Ley 27.399, artículo 6 (4): Güemes (17 de junio), San
+ *   Martín (17 de agosto), Diversidad Cultural (12 de octubre) y Soberanía
+ *   Nacional (20 de noviembre). Martes o miércoles pasan al lunes anterior;
+ *   jueves o viernes, al lunes siguiente; el resto queda en su fecha (ver
+ *   `movableHoliday`). Corregido por el orquestador en P07.3: la versión
+ *   anterior usaba "n-ésimo lunes del mes" y dejaba a Güemes fijo.
+ * - Fuera de la lista: los "días feriados con fines turísticos" (puentes)
+ *   y cualquier cambio que decrete el Gobierno para un año puntual. No son
+ *   reglas fijas: el dueño los carga o corrige a mano desde la pantalla.
  */
 export interface NationalHoliday {
   /** `yyyy-MM-dd`. */
@@ -89,13 +84,18 @@ function dateToIso(date: Date): string {
   return toIsoDate(year, month, day)
 }
 
-/** N-ésimo lunes de un mes dado (n arranca en 1). */
-function nthMondayOfMonth(year: number, month: number, n: number): string {
-  const firstOfMonth = new Date(Date.UTC(year, month - 1, 1))
-  const firstWeekday = firstOfMonth.getUTCDay() // 0 = domingo, 1 = lunes, ...
-  const offsetToFirstMonday = firstWeekday === 1 ? 0 : (8 - firstWeekday) % 7
-  const day = 1 + offsetToFirstMonday + (n - 1) * 7
-  return toIsoDate(year, month, day)
+/**
+ * Feriado trasladable de la Ley 27.399, artículo 6: si cae martes o
+ * miércoles se traslada al lunes anterior; si cae jueves o viernes, al lunes
+ * siguiente; sábado, domingo y lunes quedan en su fecha. Aplica a los cuatro
+ * trasladables: 17 de junio, 17 de agosto, 12 de octubre y 20 de noviembre.
+ * (Revisión del orquestador en P07.3: la versión anterior usaba "n-ésimo
+ * lunes del mes", que en 2025 daba mal tres de los cuatro.)
+ */
+function movableHoliday(year: number, month: number, day: number): string {
+  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay() // 0 = domingo
+  const deltaByWeekday: Record<number, number> = { 2: -1, 3: -2, 4: 4, 5: 3 }
+  return dateToIso(addDays(year, month, day, deltaByWeekday[weekday] ?? 0))
 }
 
 export function computeNationalHolidays(year: number): NationalHoliday[] {
@@ -123,7 +123,7 @@ export function computeNationalHolidays(year: number): NationalHoliday[] {
     { date: toIsoDate(year, 5, 1), name: 'Día del Trabajador' },
     { date: toIsoDate(year, 5, 25), name: 'Día de la Revolución de Mayo' },
     {
-      date: toIsoDate(year, 6, 17),
+      date: movableHoliday(year, 6, 17),
       name: 'Paso a la Inmortalidad del General Martín Miguel de Güemes',
     },
     {
@@ -132,15 +132,15 @@ export function computeNationalHolidays(year: number): NationalHoliday[] {
     },
     { date: toIsoDate(year, 7, 9), name: 'Día de la Independencia' },
     {
-      date: nthMondayOfMonth(year, 8, 3),
+      date: movableHoliday(year, 8, 17),
       name: 'Paso a la Inmortalidad del General José de San Martín',
     },
     {
-      date: nthMondayOfMonth(year, 10, 2),
+      date: movableHoliday(year, 10, 12),
       name: 'Día del Respeto a la Diversidad Cultural',
     },
     {
-      date: nthMondayOfMonth(year, 11, 4),
+      date: movableHoliday(year, 11, 20),
       name: 'Día de la Soberanía Nacional',
     },
     { date: toIsoDate(year, 12, 8), name: 'Inmaculada Concepción de María' },
