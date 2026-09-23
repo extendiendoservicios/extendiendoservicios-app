@@ -176,8 +176,14 @@ additional_redirect_urls = [
   "https://dev.extendiendoservicios.com/restablecer",
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
-# P-015: JWT de 1 hora, renovado en segundo plano con el refresh token.
-jwt_expiry = 3600
+# P-015: sesión persistente, renovada en segundo plano con el refresh token -- este valor no
+# limita cuánto dura la sesión, solo cuánto tarda en reflejarse un cambio restrictivo (quitar un
+# rol o una capacidad) mientras la persona sigue activa. Bajado de 3600 a 900 el 23 sep 2026
+# (decisión de Mike, ver 12_Registro_de_Progreso.md "Antes de F7"): la otra mitad de esa decisión,
+# el chequeo de profiles.is_active en las funciones de permisos que cierra la ventana para el caso
+# de una persona desactivada (el más grave, con efecto inmediato en vez de esperar a esto), va en
+# `supabase/migrations/0020_permission_functions_active_check.sql`.
+jwt_expiry = 900
 # JWT issuer URL. If not set, defaults to auth.external_url.
 # jwt_issuer = ""
 # Path to JWT signing key. DO NOT commit your signing keys file to git.
