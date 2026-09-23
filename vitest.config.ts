@@ -46,6 +46,14 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     css: true,
     // Los specs de tests/e2e/ y tests/e2e-auth/ son de Playwright, no de Vitest.
-    exclude: ['node_modules/**', 'tests/e2e/**', 'tests/e2e-auth/**'],
+    // supabase/functions/**/*.test.ts es Deno (USERS-006, P07.1): usa imports `npm:`/`jsr:` y
+    // globals (`Deno.serve`) que Vite no puede resolver -- se corre con `deno test`, no acá (ver
+    // `supabase/functions/README.md`).
+    exclude: [
+      'node_modules/**',
+      'tests/e2e/**',
+      'tests/e2e-auth/**',
+      'supabase/functions/**',
+    ],
   },
 })
