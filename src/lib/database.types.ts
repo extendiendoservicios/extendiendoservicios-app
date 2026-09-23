@@ -2816,6 +2816,10 @@ export type Database = {
       }
     }
     Functions: {
+      admin_revoke_user_sessions: {
+        Args: { p_profile_id: string }
+        Returns: undefined
+      }
       mark_changes_seen: {
         Args: never
         Returns: {

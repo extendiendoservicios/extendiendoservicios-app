@@ -6,13 +6,18 @@ import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
   {
-    // Carpetas generadas o de terceros: nunca se lintean.
+    // Carpetas generadas o de terceros: nunca se lintean. `supabase/functions` corre en Deno
+    // (globals y módulos propios, `npm:`/`jsr:` en los imports), no en el proyecto de TypeScript
+    // de Vite -- no hay `tsconfig.json` que lo cubra y no tiene sentido crear uno solo para que
+    // `projectService` no falle (USERS-006, P07.1): se verifica con `deno test`/`deno check`
+    // (ver `supabase/functions/README.md`), no con este linter.
     ignores: [
       'dist',
       'coverage',
       'playwright-report',
       'test-results',
       'src/lib/database.types.ts',
+      'supabase/functions',
     ],
   },
   {
