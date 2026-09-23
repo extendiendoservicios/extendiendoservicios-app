@@ -24,19 +24,11 @@ import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
 //
 // Solo en `chromium` (prueba de API, sin nada visual).
 //
-// DEFECTO CONOCIDO (ver el reporte del encargo P07.4, "Defectos encontrados"): este test hoy
-// FALLA de verdad contra `App_dev`, con 500 INTERNAL_ERROR en vez de 409 LAST_OWNER. La causa:
-// `actionDeactivateUser` (`supabase/functions/admin-users/index.ts`) cuenta los owners activos
-// distintos del blanco con `.from('user_roles').select('profile_id, profiles!inner(...)', ...)`
-// sin el hint del nombre de la restricción -- `user_roles` tiene DOS FK hacia `profiles`
-// (`profile_id` y `granted_by`, el mismo problema que ya documentó `fetchUsers` en
-// `src/api/users.ts`, resuelto ahí con `user_roles!user_roles_profile_id_fkey`). PostgREST
-// devuelve `PGRST201` ("Could not embed because more than one relationship was found") para
-// CUALQUIER intento de desactivar a alguien con rol `owner`, no solo al último -- así que hoy
-// tampoco funcionaría el caso positivo (desactivar a un segundo dueño mientras quede al menos
-// otro activo). Se deja el test con la expectativa CORRECTA (409/LAST_OWNER, `06_API.md` sección
-// 2.1) para que quede rojo hasta que se corrija la Edge Function: adaptarlo a lo que la función
-// hace hoy ocultaría el defecto.
+// Historia: este test encontró en P07.4 que `actionDeactivateUser` respondía 500 INTERNAL_ERROR
+// en vez de 409 LAST_OWNER al intentar desactivar a CUALQUIER dueño. El conteo de dueños activos
+// embebía `profiles!inner(...)` sin indicar la FK, y `user_roles` tiene dos hacia `profiles`
+// (`profile_id` y `granted_by`), así que PostgREST devolvía `PGRST201`. Corregido en P07.5 con
+// `profiles!user_roles_profile_id_fkey!inner(...)`, el mismo patrón que `src/api/users.ts`.
 
 const env = readE2eUsersEnv()
 test.skip(!env, MISSING_ENV_MESSAGE)
