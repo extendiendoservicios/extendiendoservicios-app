@@ -190,14 +190,13 @@ todos los días a las 06:00 UTC.
 
 ### 6.3 Restauración de prueba (`scripts/restore-from-r2.sh`, `restore-test.yml`, TEST-024)
 
-> **Corrección validada (23 sep 2026, `fix/TEST-024-restore-sequence`).** La versión anterior de
-> esta sección describía dos defectos conocidos y una traba en `restore-test.yml` mientras no se
-> corrigieran. Los dos se corrigieron, se validaron de punta a punta contra un Postgres 17 local
-> en Docker (con las 19 migraciones reales aplicadas, datos de prueba y un volcado generado con
-> los mismos comandos que `backup-to-r2.sh`) y aparecieron además dos defectos más de
-> `pg_restore` en PostgreSQL 17.11 que no estaban documentados. Los cuatro quedan corregidos en
-> `scripts/restore-from-r2.sh` (el encabezado del script tiene el detalle completo) y la traba de
-> `restore-test.yml` ya se quitó. Resumen de los cuatro:
+> **Corrección validada, en dos rondas (23 sep 2026, `fix/TEST-024-restore-sequence`).** La
+> versión anterior de esta sección describía dos defectos conocidos y una traba en
+> `restore-test.yml` mientras no se corrigieran. Primera ronda: los dos se corrigieron, se
+> validaron de punta a punta contra un Postgres 17 local en Docker (con las 19 migraciones reales
+> aplicadas, datos de prueba y un volcado generado con los mismos comandos que `backup-to-r2.sh`)
+> y aparecieron además dos defectos más de `pg_restore` en PostgreSQL 17.11 que no estaban
+> documentados. Resumen de los cuatro:
 >
 > 1. **Recrear la estructura era innecesario y arriesgado.** La versión anterior recreaba
 >    `public` desde cero (`DROP TABLE` + `CREATE TABLE`, pre-data/post-data). Eso fallaba por
@@ -225,11 +224,41 @@ todos los días a las 06:00 UTC.
 >    estándar como antes: el paso 0 (lee las migraciones del volcado sin tocar ninguna base)
 >    quedaba roto por esto. Corregido agregando `-f -`.
 >
-> La secuencia nueva reemplaza los datos con los triggers de `public` deshabilitados
-> (`alter table ... disable trigger all`, permiso de dueño de tabla, no de superusuario): eso
-> también deshabilita los triggers internos que aplican las claves foráneas, así que el orden
-> entre tablas deja de importar sin necesidad de tocar la estructura. Detalle completo, con los
-> números de la validación, en el reporte de la tarea `fix/TEST-024-restore-sequence`.
+> La primera ronda resolvía el orden de carga entre tablas con
+> `alter table ... disable trigger all` en todas las tablas de `public` (permiso, se creyó, de
+> dueño de tabla). **Segunda ronda, revisión del orquestador:** eso tenía un defecto bloqueante.
+> `disable trigger all` deshabilita TAMBIÉN los triggers internos de las claves foráneas
+> (`RI_ConstraintTrigger_*`), y deshabilitar esos puntualmente exige superusuario, no alcanza con
+> ser dueño de la tabla. La validación de la primera ronda no lo detectó porque corrió como
+> superusuario de un Postgres vainilla; reproducido por el orquestador en Docker con un rol dueño
+> de las tablas sin superusuario (`ERROR: permission denied: "RI_ConstraintTrigger_c_..." is a
+system trigger`), y confirmado que en Supabase el rol `postgres` **no** es superusuario
+> (`select rolsuper from pg_roles where rolname = 'postgres'` da `false` en `App_dev`) — la
+> restauración real habría abortado en ese paso.
+>
+> **Corrección adoptada:** en vez de deshabilitar triggers tabla por tabla, cada carga de datos
+> fija `session_replication_role = replica` en su propia conexión antes de insertar filas. Con
+> `replica` activo, ni los triggers de usuario (incluido el que crea la fila de `profiles` al
+> insertar en `auth.users`) ni los internos de las claves foráneas se disparan: el orden de carga
+> entre tablas deja de importar, sin tocar ningún trigger de ninguna tabla ni recrear nada. Esto
+> funciona sin superusuario en Supabase porque la extensión `supautils` (que Supabase instala en
+> todos sus proyectos) mantiene su propia lista de parámetros que roles no-superusuario sí pueden
+> fijar (`supautils.privileged_role_allowed_configs`), y `session_replication_role` para
+> `postgres` figura ahí — confirmado por el orquestador en `App_dev`, en una transacción revertida
+> (`begin; set local session_replication_role = replica; rollback;`, sin dejar ningún cambio),
+> aunque `select has_parameter_privilege('postgres', 'session_replication_role', 'SET')` devuelva
+> `false` (esa función solo conoce el mecanismo estándar de PostgreSQL 15+,
+> `GRANT SET ON PARAMETER ... TO ...`, no el mecanismo propio de `supautils`). Como el parámetro
+> vale por conexión, cada carga arma el `SET` junto con el SQL que genera `pg_restore -f -` y
+> manda todo por la misma tubería a un único `psql --single-transaction` — nunca `PGOPTIONS`,
+> porque el Session pooler de Supabase puede no reenviar opciones de arranque al servidor real, y
+> `supautils` valida el permiso en el momento del `SET` explícito dentro de la sesión, no en el
+> arranque de la conexión. Con `replica` ya no hace falta el paso que vaciaba `public` por segunda
+> vez (el trigger que crea `profiles` tampoco se dispara), así que la secuencia quedó con un paso
+> menos. Validado de nuevo en Docker, esta vez con roles sin superusuario en `public` y en `auth`
+> (`auth.users` con dueño distinto de `postgres`, igual que en Supabase). Detalle completo, con
+> los números de las dos rondas de validación, en el reporte de la tarea
+> `fix/TEST-024-restore-sequence`.
 
 **Decisión de Mike:** la restauración de prueba es un workflow de GitHub
 (así los secretos de R2/Supabase nunca salen de Actions) y se ejecuta
@@ -285,44 +314,49 @@ detalle completo está en los comentarios de `scripts/restore-from-r2.sh`):
    nada**, con un mensaje claro. Esto es lo que garantiza que la
    ESTRUCTURA de `public` es idéntica en los dos lados: el resto de la
    secuencia confía en eso para no tener que recrear nada.
-1. Deshabilita los triggers de todas las tablas de `public`
-   (`alter table ... disable trigger all`, incluye los internos de las
-   claves foráneas) y vacía `public` (`TRUNCATE ... CASCADE`) por si
-   `App_dev` tenía datos de antes.
-2. Reemplaza `auth.users`/`auth.identities`: borra lo que haya (primero
-   `identities`, después `users`, por la clave foránea entre ellas) y
-   restaura los datos del volcado (`pg_restore --data-only -n auth -t
-users`/`-t identities`, primero `users`, después `identities` — nunca
-   `-t auth.users`, ver el recuadro de arriba, defecto 3).
-3. Si el trigger que F4 agrega sobre `auth.users` (crea la fila de
-   `profiles`, según `04_Modelo_de_Datos.md`) disparó al insertar los
-   usuarios del paso 2, vacía de nuevo **todo** `public`
-   (`TRUNCATE ... CASCADE`) para borrar cualquier fila que haya creado ese
-   efecto secundario, antes de cargar los datos reales.
-4. Carga los datos de `public` (`--section=data`): con los triggers
-   deshabilitados desde el paso 1 (incluidos los que aplican las claves
-   foráneas), el orden entre tablas no importa.
-5. Rehabilita los triggers de todas las tablas de `public`
-   (`alter table ... enable trigger all`).
-6. Verifica (cantidad de tablas del volcado contra las de `App_dev`, más
+1. Vacía `public` (`TRUNCATE ... CASCADE`) por si `App_dev` tenía datos de
+   antes. `TRUNCATE` no necesita `session_replication_role` ni deshabilitar
+   nada: alcanza con ser dueño de la tabla, y `CASCADE` ya se encarga de
+   las tablas dependientes.
+2. Reemplaza `auth.users`/`auth.identities`, todo en **una única conexión**
+   con `session_replication_role = replica` fijado al principio: borra lo
+   que haya (primero `identities`, después `users`) y restaura los datos
+   del volcado (`pg_restore --data-only -n auth -t users`/`-t identities`,
+   primero `users`, después `identities` — nunca `-t auth.users`, ver el
+   recuadro de arriba, defecto 3). Con `replica` activo, el trigger que F4
+   agrega sobre `auth.users` (crea la fila de `profiles`, según
+   `04_Modelo_de_Datos.md`) **no se dispara** — ya no hace falta un paso
+   aparte para limpiar ese efecto secundario.
+3. Carga los datos de `public` (`--section=data`), también con
+   `session_replication_role = replica` fijado en esa misma conexión: ni
+   los triggers de usuario ni los internos de las claves foráneas se
+   disparan, así que el orden de carga entre tablas no importa.
+4. Verifica (cantidad de tablas del volcado contra las de `App_dev`, más
    filas por tabla) — nunca contenido.
-7. **Limpieza, siempre** (por un `trap` de bash: corre aunque cualquiera de
-   los pasos de arriba falle): rehabilita los triggers de `public` (por si
-   el paso 5 no llegó a correr), vacía `public` y borra los usuarios de
-   auth restaurados, y confirma que quedaron vacíos. El workflow además
-   corre un paso `if: always()` aparte (`scripts/restore-from-r2.sh
+5. **Limpieza, siempre** (por un `trap` de bash: corre aunque cualquiera de
+   los pasos de arriba falle): vacía `public` y borra los usuarios de auth
+   restaurados, y confirma que quedaron vacíos. El workflow además corre
+   un paso `if: always()` aparte (`scripts/restore-from-r2.sh
 --confirmar-vacio`) como segunda confirmación independiente, visible en
    el log de la corrida. Validado forzando una falla a mitad de camino
-   (después del paso 1): la limpieza rehabilitó los triggers y dejó
-   `App_dev` vacío igual.
+   (después del paso 1): la limpieza dejó `App_dev` vacío igual.
 
-Cada `pg_restore`/bloque de la secuencia corre en su propia transacción
-(`--single-transaction` en `pg_restore`, `begin`/`commit` explícito en los
-bloques de `psql`): si algo falla a mitad de un paso, ESE paso se revierte
-solo. No hay una única transacción global para toda la secuencia (el paso 4
-necesita ver ya confirmados los datos del paso 2, escritos en una conexión
-distinta) — la garantía de "nunca dejar nada a medias" la da la limpieza del
-paso 7, que corre siempre.
+Cada paso de la secuencia corre en su propia transacción (`begin`/`commit`
+explícito en los bloques de `psql`, incluidos los que arman
+`session_replication_role = replica` junto con el SQL que genera
+`pg_restore -f -` y los mandan juntos a un único `psql
+--single-transaction`): si algo falla a mitad de un paso, ESE paso se
+revierte solo. No hay una única transacción global para toda la secuencia
+(el paso 3 necesita ver ya confirmados los datos del paso 2, escritos en una
+conexión distinta) — la garantía de "nunca dejar nada a medias" la da la
+limpieza del paso 5, que corre siempre.
+
+**Por qué cada carga usa su propia conexión.** `session_replication_role`
+vale por conexión, no por rol ni de forma global: fijarlo en un `psql`
+aparte y restaurar después con un `pg_restore --dbname ...` (que abre OTRA
+conexión) no serviría de nada. Por eso los pasos 2 y 3 arman el `SET` más el
+SQL que genera `pg_restore -f -` y lo mandan todo por la misma tubería a un
+único `psql`, que abre una sola conexión para las dos cosas.
 
 **Ningún dato personal se imprime en ningún log.** La verificación (paso 6)
 y la limpieza (paso 7) solo cuentan filas (números); nunca hacen `SELECT *`
