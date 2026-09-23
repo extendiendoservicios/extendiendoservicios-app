@@ -761,8 +761,10 @@ antes que `seed-dev.ts` contra el mismo proyecto.
 Ríos (siete capacidades en `true`), las supervisoras Paula Lemos y Noelia Vera, diez empleados,
 seis clientes con 13 sedes en total (Grupo Norte 3, Clínica del Parque 2, Oficinas Delta 4,
 Logística Central 2, Estudio Paredes 1, Textil Morán 1), un contacto principal por cliente, una
-plantilla de checklist por cliente (cinco ítems cada una), cuatro criterios de calificación,
-doce feriados nacionales de fecha fija del año en curso, dieciséis servicios (diez con un
+plantilla de checklist por cliente (cinco ítems cada una), cuatro criterios de calificación, trece
+feriados nacionales del año en curso (nueve de fecha fija y los cuatro trasladables de la Ley
+27.399 artículo 6, ya con el traslado aplicado -- ver la decisión menor de "Feriados" más abajo),
+dieciséis servicios (diez con un
 empleado fijo asignado, seis sin -- a propósito, para poblar el derivado "sin cubrir" de
 `v_shifts_board` con datos reales) y los turnos que esos servicios generan para los últimos 14
 días corridos más el resto del mes actual y todo el mes siguiente (todo relativo a `app.today()`,
@@ -793,10 +795,17 @@ Más dos supervisiones `completed` en días pasados, cada una con su calificaci�
 - Las direcciones de sede que sí aparecen en el mockup se usaron tal cual (San Isidro/Av.
   Centenario 1450, Clínica del Parque–Martínez/Av. Santa Fe 1234, Oficinas Delta–Vicente
   López/Laprida 820); el resto son ficticias, con criterio de zona norte del GBA.
-- **Feriados:** solo los de fecha fija del calendario nacional argentino; se omiten los móviles
-  (Carnaval, Viernes Santo), cuya fecha depende del cálculo de la Pascua de cada año -- fuera de
-  alcance de este seed, sin efecto real porque todos los servicios nacen con
-  `works_on_holidays = true`.
+- **Feriados:** los de fecha fija del calendario nacional argentino más los cuatro trasladables de
+  la Ley 27.399 artículo 6 (Güemes 17/6, San Martín 17/8, Diversidad Cultural 12/10 y Soberanía
+  Nacional 20/11), con el traslado a lunes ya aplicado en SQL (martes o miércoles -> lunes
+  anterior; jueves o viernes -> lunes siguiente; sábado, domingo o lunes -> sin cambio) -- misma
+  regla que `movableHoliday` en `src/features/settings/nationalHolidays.ts` (P07.3). Corregido en
+  P07.5: la versión anterior cargaba los cuatro trasladables en su fecha literal (sin trasladar) y
+  omitía a Güemes; en `App_dev` esto había dejado dos "Día de la Soberanía Nacional" activos en
+  2026 (20/11, mal, y 23/11, el correcto por ley) -- se le dio de baja lógica al del 20/11. Se
+  siguen omitiendo los móviles atados a la Pascua (Carnaval, Viernes Santo), cuyo cálculo depende
+  del algoritmo de Gauss -- fuera de alcance de este seed, sin efecto real porque todos los
+  servicios nacen con `works_on_holidays = true`.
 - **Emails ficticios** bajo `@extendiendoservicios.com` (P-010: login por email real, "real o
   provisto por la empresa"; sin mapeo por DNI). Contraseña inicial compartida, obligatoria en
   `SEED_DEV_PASSWORD` (`.env.local`, que git ignora) y **sin valor por defecto a propósito**: los
@@ -987,17 +996,52 @@ de login, cerrar sesiones, desactivar y reactivar. Nunca reimplementa algo que y
   deshacerlo (`auth.admin.deleteUser` falla por diseño mientras exista la fila de `profiles`
   referenciada -- P-014/P-105, nada se borra físicamente). Se minimiza el caso más común
   (DNI repetido) chequeándolo antes de crear el usuario en Auth; si igual falla algo después, el
-  mensaje de error deja explícito el `profile_id` para revisar a mano.
+  `profile_id` para revisar a mano queda en el log de la función (`console.error`), no en la
+  respuesta -- ver el punto siguiente.
+- **`INTERNAL_ERROR` (500) siempre con un mensaje genérico en español, nunca vacío** (corregido en
+  P07.5, defecto de P07.4): antes, `errors.internal(mensaje)` le devolvía a quien llama el
+  `mensaje` técnico crudo (el de Postgres/PostgREST, o el de `auth.admin.*`), que en un caso
+  concreto (ver el punto de abajo) llegaba directamente VACÍO. Ahora `errors.internal(detalle)`
+  siempre construye la respuesta con "Ocurrió un error inesperado. Intentá de nuevo en unos
+  minutos." y deja el `detalle` técnico en el log de la función con `console.error` -- nunca en
+  la respuesta al cliente (ni detalles de esquema, ni el `profile_id` de un alta a mitad de
+  camino, ni nada de Postgres).
+- **Bloqueante de P07.4, corregido en P07.5: conteo de dueños activos en `deactivate_user`**.
+  `user_roles` tiene DOS claves foráneas hacia `profiles` (`profile_id` y `granted_by`,
+  `0003_profiles_roles_capabilities.sql`): el `select('profile_id, profiles!inner(...)')` del
+  conteo de dueños activos (para la regla del último dueño, P-017) no le decía a PostgREST cuál
+  de las dos usar para el embed, así que devolvía `PGRST201` (ambigüedad) para CUALQUIER intento
+  de desactivar a alguien con rol `owner` -- y como además esa consulta usa `head: true`
+  (`count: 'exact'`), el `message` del error de PostgREST llegaba vacío, agravando el defecto de
+  arriba: la función respondía `500 INTERNAL_ERROR` con mensaje vacío en vez de `409 LAST_OWNER`.
+  Mismo patrón que ya documentaba `fetchUsers` en `src/api/users.ts`: se corrige con el hint del
+  nombre de la restricción, `profiles!user_roles_profile_id_fkey!inner(...)`. Encontrado por la
+  suite e2e `tests/e2e-users/last-owner-cannot-be-deactivated.spec.ts` (P07.4), verificado en vivo
+  contra `App_dev` (desactivar al único dueño del seed vuelve a dar `409 LAST_OWNER`) y cubierto
+  ahora también por un test Deno sin base real (`actionDeactivateUser` con un cliente simulado,
+  ver más abajo).
 
 Tests Deno en `supabase/functions/admin-users/index.test.ts` (`deno test`, sin Docker ni el
-proyecto vinculado): la parte que no necesita una base de Postgres real detrás (CORS, sin
-`Authorization`, método distinto de `POST`). Las seis acciones, la regla del último owner, el
-límite de acciones por minuto y el registro en `security_events` se verificaron en vivo contra
-`App_dev` (crear una persona, desactivarla con el owner, comprobar que su token vigente deja de
-leer, reactivarla, confirmar `exp - iat = 900` en un token nuevo, y superar el límite de 10
-acciones por minuto) -- mockear toda la cadena de supabase-js para cada acción se descartó por el
-riesgo de que el mock oculte un error real de integración (pasó justamente con el hallazgo de
-`auth.admin.signOut()` de arriba).
+proyecto vinculado; TEST-004, ampliados en P07.5). Dos capas:
+
+- `handleRequest` con requests reales, sin base de Postgres real detrás: CORS, sin
+  `Authorization`, método distinto de `POST`, Origin no permitido.
+- Las funciones de cada acción (`actionCreateUser`, `actionDeactivateUser`,
+  `requireOwnerOrManageUsers`, etc. -- exportadas para esto, sin cambiar su comportamiento),
+  llamadas directo con un cliente de Supabase simulado que solo entiende la consulta puntual de
+  cada escenario (por tabla y por las columnas del `select`, no un mock genérico de PostgREST):
+  un admin sin `manage_users` no puede actuar (`FORBIDDEN`), el dueño crea un administrador con
+  sus siete capacidades, y no se puede desactivar al último dueño (`LAST_OWNER`, el mismo defecto
+  de arriba, cubierto también acá para que no vuelva a filtrarse sin que un test lo note).
+
+El límite de acciones por minuto y el registro en `security_events` se siguen verificando en vivo
+contra `App_dev` (crear una persona, desactivarla con el owner, comprobar que su token vigente
+deja de leer, reactivarla, confirmar `exp - iat = 900` en un token nuevo, y superar el límite de
+10 acciones por minuto, P07.1) -- mockear esa parte se descartó por el riesgo de que el mock
+oculte un error real de integración (pasó justamente con el hallazgo de `auth.admin.signOut()` de
+arriba). `ci.yml` no corre estos tests Deno (pendiente para `infra-devops`, ver el reporte de
+P07.1): el paso propuesto es `deno test --allow-env --allow-net
+supabase/functions/admin-users/index.test.ts` después de que exista Deno en el runner.
 
 `supabase/functions/admin-users/index.ts` y `.test.ts`, además de `_shared/cors.ts`, corren en
 Deno (no en el proyecto de TypeScript de Vite): excluidos de `eslint.config.js` (`ignores`) y de
