@@ -436,10 +436,15 @@ echo "2/3 - Reemplazando los usuarios de auth (auth.users, auth.identities), con
 # validación local (ver el comentario del encabezado) que `pg_restore -t esquema.tabla` no
 # matchea ningún objeto del volcado en PostgreSQL 17.11 -- termina sin error pero sin restaurar
 # una sola fila.
+# Los DELETE van ANTES del SET, a propósito: con `replica` tampoco se disparan los ON DELETE
+# CASCADE, y borrar auth.users así dejaría huérfanas las filas de auth.sessions,
+# auth.refresh_tokens, auth.mfa_factors y demás tablas que dependen de ella (comprobado por el
+# orquestador en Docker el 23 sep 2026). Si después se recrearan usuarios con los mismos id,
+# esas sesiones viejas volverían a quedar asociadas a ellos.
 {
-  printf 'set session_replication_role = replica;\n'
   printf 'delete from auth.identities;\n'
   printf 'delete from auth.users;\n'
+  printf 'set session_replication_role = replica;\n'
   "$PG_BIN_DIR/pg_restore" --data-only -n auth -t users --no-owner --no-privileges -f - "$dump_file"
   "$PG_BIN_DIR/pg_restore" --data-only -n auth -t identities --no-owner --no-privileges -f - "$dump_file"
 } | "$PG_BIN_DIR/psql" "$SUPABASE_DB_URL_DEV" -X -q -v ON_ERROR_STOP=1 --single-transaction -f -

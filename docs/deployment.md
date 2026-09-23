@@ -318,9 +318,13 @@ detalle completo está en los comentarios de `scripts/restore-from-r2.sh`):
    antes. `TRUNCATE` no necesita `session_replication_role` ni deshabilitar
    nada: alcanza con ser dueño de la tabla, y `CASCADE` ya se encarga de
    las tablas dependientes.
-2. Reemplaza `auth.users`/`auth.identities`, todo en **una única conexión**
-   con `session_replication_role = replica` fijado al principio: borra lo
-   que haya (primero `identities`, después `users`) y restaura los datos
+2. Reemplaza `auth.users`/`auth.identities`, todo en **una única conexión**:
+   borra lo que haya (primero `identities`, después `users`) **antes** de
+   fijar `session_replication_role = replica`, porque con `replica` activo
+   tampoco se disparan los `ON DELETE CASCADE` y quedarían huérfanas las
+   filas de `auth.sessions`, `auth.refresh_tokens`, `auth.mfa_factors` y
+   demás (comprobado en Docker el 23 sep 2026); después fija `replica` y
+   restaura los datos
    del volcado (`pg_restore --data-only -n auth -t users`/`-t identities`,
    primero `users`, después `identities` — nunca `-t auth.users`, ver el
    recuadro de arriba, defecto 3). Con `replica` activo, el trigger que F4
