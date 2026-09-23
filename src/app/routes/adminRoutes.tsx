@@ -1,4 +1,5 @@
 import type { RouteObject } from 'react-router'
+import UsersPage from '@/pages/admin/UsersPage'
 import { placeholderRoute } from './placeholder'
 
 /**
@@ -160,12 +161,15 @@ export const adminRoutes: RouteObject[] = [
     title: 'Plantillas de tareas',
     subtitle: 'Definir checklists por cliente y por sede',
   }),
-  placeholderRoute({
+  {
     path: 'configuracion/usuarios',
-    screenId: 'ADM-27',
-    title: 'Usuarios y roles',
-    subtitle: 'Gestionar accesos',
-  }),
+    element: <UsersPage />,
+    handle: {
+      screenId: 'ADM-27',
+      title: 'Usuarios y roles',
+      subtitle: 'Gestionar accesos',
+    },
+  },
   placeholderRoute({
     path: 'configuracion/empresa',
     screenId: 'ADM-28',

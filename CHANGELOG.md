@@ -7,6 +7,19 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+### Agregado
+
+- ADM-27 "Usuarios y roles" (P07.2, USERS-007 a USERS-011): lista de
+  usuarios con roles, estado y último inicio de sesión (solo visible para
+  el dueño), alta de administradores, editor de roles y capacidades (solo
+  dueño) y las acciones por usuario (resetear contraseña, cambiar email,
+  cerrar sesiones, desactivar con motivo obligatorio, reactivar), todas
+  con sus errores de dominio traducidos en voseo. Primer dominio de
+  `src/api/` con datos reales: patrón documentado en `src/api/README.md`
+  (módulo por dominio, `ApiError`, hooks de TanStack Query 5 —
+  incorporado en este paquete — con `QueryClient` único en
+  `src/lib/queryClient.ts`).
+
 ## [0.3.0] - 2026-09-23
 
 Primer pase a producción con la aplicación de verdad: base de datos completa (F4), design system (F5) y autenticación real (F6). No hubo una versión 0.2.0 publicada aparte: el hito de F3 + F4 se juntó con este por decisión de Mike (P04.9), porque sin inicio de sesión no tenía sentido publicarlo en `app.`.
