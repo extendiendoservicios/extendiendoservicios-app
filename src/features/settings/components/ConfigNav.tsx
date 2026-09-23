@@ -51,7 +51,7 @@ function ConfigNav({ roles }: { roles: Role[] }) {
   return (
     <nav
       aria-label="Secciones de configuración"
-      className="flex items-center gap-[2px] overflow-x-auto border-b border-border"
+      className="flex items-center gap-[2px] overflow-x-auto overflow-y-hidden border-b [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-border"
     >
       {items.map((item) => {
         const active = location.pathname === item.path

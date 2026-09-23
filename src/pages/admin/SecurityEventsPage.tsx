@@ -51,7 +51,7 @@ export default function SecurityEventsPage() {
   const usersQuery = useUsersQuery()
   const userOptions = useMemo(
     () => [
-      { value: ALL_USERS, label: 'Todos' },
+      { value: ALL_USERS, label: 'Todas las personas' },
       ...(usersQuery.data ?? []).map((user) => ({
         value: user.profileId,
         label: `${user.firstName} ${user.lastName}`,

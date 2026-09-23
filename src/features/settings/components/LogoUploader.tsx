@@ -83,8 +83,7 @@ function LogoUploader({
           Subir logo
         </Button>
         <p className="text-[11px] text-text-3">
-          PNG, JPEG, SVG o WebP. Hasta 1 MB. Se va a ver en el ingreso y en el
-          menú lateral.
+          PNG, JPEG, SVG o WebP. Hasta 1 MB.
         </p>
       </div>
       <input

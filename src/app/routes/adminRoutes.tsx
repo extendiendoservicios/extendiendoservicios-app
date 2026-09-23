@@ -180,7 +180,7 @@ export const adminRoutes: RouteObject[] = [
     handle: {
       screenId: 'ADM-28',
       title: 'Empresa',
-      subtitle: 'Nombre, logo, teléfono y consentimiento de ubicación',
+      subtitle: 'Datos de la empresa',
     },
   },
   {
