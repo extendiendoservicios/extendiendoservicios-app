@@ -453,58 +453,44 @@ donde eso no está garantizado).
 
 ### 7.1 Uso de Supabase (base, auth, storage)
 
-**Lo que confirma la documentación pública de Supabase:** el plan sin cargo
-("Free Plan") incluye un aviso automático al superar la cuota -- la propia
-documentación de facturación dice literalmente _"You will be notified when
-you exceed the Free Plan quota"_ -- pero no detalla ahí mismo a qué
-dirección llega ni si hace falta activar algo. **Lo que no pude confirmar
-sin iniciar sesión** (esta capa no iniciar sesión en ningún servicio, regla
-común 7): si existe un umbral configurable (por ejemplo "avisame al 80 %")
-o si el aviso es fijo (por ejemplo al superar el 100 %), y el nombre exacto
-de la pantalla donde eso se ve hoy en el panel. Por eso el paso a paso de
-abajo es "andá, mirá y contame qué ves", no una lista de casillas que no
-pude verificar.
+**Confirmado (23 sep 2026, corrección de TEST-024/INFRA-024):** el plan sin
+cargo ("Free Plan") de Supabase **no tiene ningún umbral configurable** --
+no existe una pantalla tipo "avisame al 80 %": el único aviso es automático
+y fijo, al superar la cuota de cada recurso medido (tamaño de base de datos,
+usuarios activos de Auth, tamaño de Storage, egreso, etc.). Ese aviso **le
+llega al email de facturación de la organización, `extserviciosapp@gmail.com`**
+(la misma cuenta con la que se administra el proyecto: en el plan `Free` no
+hay un campo de "billing email" separado del email de la cuenta). No hace
+falta activar nada para que este aviso exista.
 
-**Guía para Mike:**
+**Guía para Mike (para revisar el uso actual, no para configurar nada -- no
+hay nada que configurar):**
 
 1. Entrar a
    `https://supabase.com/dashboard/org/bpcfjqvpdfmepiohltbz/billing` (la
    organización de Extendiendo Servicios) con la cuenta
    `extserviciosapp@gmail.com`.
 2. Revisar la pestaña **Usage** (o **Uso**) de esa misma página: muestra una
-   barra de progreso por cada recurso medido (tamaño de base de datos,
-   usuarios activos de Auth, tamaño de Storage, egreso, etc.) contra el
-   límite del plan `Free`. Si alguna barra ya está en amarillo o rojo, hay
-   uso real cerca del límite: ese es el disparador de los avisos
-   automáticos de Supabase, no hace falta ninguna acción para que existan.
-3. Buscar, dentro de esa misma sección o en **Organization Settings** →
-   **General**, algo llamado "Notification preferences", "Email
-   preferences" o similar. Si existe una opción para alertas de uso o de
-   facturación, dejarla activada (suele venir activada por defecto; lo que
-   sí conviene revisar y, si aparece, desactivar, es únicamente correo de
-   marketing/novedades de producto, nunca los de facturación o seguridad).
-4. Confirmar que el email de la cuenta (`extserviciosapp@gmail.com`) es el
-   que recibe esos avisos, en **Organization Settings** → **General** →
-   **Billing email** (o el campo equivalente) si el panel lo distingue del
-   email de inicio de sesión.
-5. Si en el panel no aparece ningún umbral configurable y el único aviso es
-   automático al superar la cuota (sin margen de reacción): opciones, con
-   costo, para tener margen antes de llegar al límite:
+   barra de progreso por cada recurso medido contra el límite del plan
+   `Free`. Si alguna barra ya está en amarillo o rojo, hay uso real cerca
+   del límite: ese es el disparador del aviso automático, sin margen de
+   reacción (no es "al 80 %", es al superar la cuota).
+3. Dado que no hay umbral configurable, para tener margen de reacción antes
+   de llegar al límite las opciones son:
    - **Revisión manual periódica** (sin costo): agendar una revisión mensual
      de la pestaña Usage de la organización. Es lo más simple y no depende
      de ninguna herramienta nueva.
    - **Plan Pro de Supabase** (usd 25/mes por organización, más el consumo
-     que exceda lo incluido): no cambia el mecanismo de alertas en sí, pero
-     saca el proyecto de la pausa automática por inactividad (ADR-014) y
-     sube los límites, lo que da más margen antes de que cualquier aviso
-     importe.
+     que exceda lo incluido): no agrega un umbral configurable, pero saca el
+     proyecto de la pausa automática por inactividad (ADR-014) y sube los
+     límites, lo que da más margen antes de que el aviso fijo importe.
    - **Monitoreo propio** (con costo de tiempo, no de dinero): un workflow
      de GitHub Actions que consulte la API de administración de Supabase
-     periódicamente y avise si el uso supera un umbral. No se construyó en
-     este encargo porque el plan sin cargo ya avisa solo (punto 1) y esto
-     sería una segunda capa de alertas sobre un problema que la plataforma
-     ya cubre; se deja como opción si en el futuro hiciera falta un umbral
-     más temprano que el de Supabase.
+     periódicamente y avise si el uso supera un umbral propio, más
+     temprano que el aviso fijo de Supabase. No se construyó en este
+     encargo (INFRA-024 solo pide la alerta, no un tablero, y la plataforma
+     ya avisa sola al superar la cuota); se deja como opción si en el
+     futuro hiciera falta reaccionar antes de llegar al límite.
 
 ### 7.2 Fallos de workflows de GitHub Actions
 
