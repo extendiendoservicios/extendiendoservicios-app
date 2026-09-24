@@ -1,6 +1,6 @@
 {
   "name": "extendiendoservicios-app",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -16,6 +16,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:auth": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-auth/playwright.auth.config.ts",
+    "test:e2e:users": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-users/playwright.users.config.ts",
     "test:permissions": "node --env-file=.env.local ./node_modules/vitest/vitest.mjs run --config tests/permissions/vitest.config.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -41,6 +42,7 @@
     "@hookform/resolvers": "5.9.1",
     "@sentry/react": "10.75.0",
     "@supabase/supabase-js": "2.116.0",
+    "@tanstack/react-query": "^5.103.2",
     "@tanstack/react-table": "8.21.3",
     "class-variance-authority": "0.7.1",
     "cmdk": "1.1.1",

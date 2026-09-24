@@ -245,9 +245,12 @@ set local role postgres;
 -- 4. holidays (04 sección 7.2: "Todos autenticados. | O.")
 -- ---------------------------------------------------------------------------------------------
 
+-- Fechas fijas y lejanas, no relativas a hoy: los tests corren contra App_dev, que tiene feriados
+-- reales cargados, y `holiday_date` es única. Con `current_date + 100` el test se rompió el
+-- 23 sep 2026, cuando cayó en un 1 de enero ya cargado (P07.3).
 insert into public.holidays (id, holiday_date, name, deleted_at) values
-  ('c2400000-0000-0000-0000-000000000093', current_date + 100, 'Feriado vigente', null),
-  ('c2400000-0000-0000-0000-000000000094', current_date + 101, 'Feriado dado de baja', now());
+  ('c2400000-0000-0000-0000-000000000093', date '2199-01-04', 'Feriado vigente', null),
+  ('c2400000-0000-0000-0000-000000000094', date '2199-01-05', 'Feriado dado de baja', now());
 
 select tests.as_user('test-db014d-empleado1@example.com');
 select is(

@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { Branding } from '@/features/auth/useBranding'
 import { AdminShell } from './AdminShell'
 
 // `AdminShell` lee `useAuth()` (nombre, rol, cerrar sesión): estos tests
@@ -19,6 +20,21 @@ vi.mock('@/features/auth/AuthProvider', () => ({
     signOut: vi.fn(),
     refreshProfile: vi.fn(),
   }),
+}))
+
+// `AdminShell` lee `useBranding()` (USERS-013, logo personalizado de la
+// sidebar): sin este mock, el `useEffect` de ese hook dispara una consulta
+// real a `v_public_branding` contra el proyecto falso de `vitest.config.ts`
+// (mismo motivo que `LoginPage.test.tsx`, que mockea esto mismo). Por
+// omisión no hay logo propio (isotipo de marca); el describe de USERS-013
+// más abajo lo pisa con `mockReturnValueOnce` para probar el caso con logo.
+const useBrandingMock = vi.fn<
+  () => { status: 'ready'; branding: Branding | null }
+>(() => ({ status: 'ready', branding: null }))
+vi.mock('@/features/auth/useBranding', () => ({
+  useBranding: () => useBrandingMock(),
+  brandingLogoUrl: (path: string) =>
+    `https://ejemplo.supabase.co/storage/v1/object/public/branding/${path}`,
 }))
 
 // `AdminShell` monta `PwaUpdateBanner` (RESP-009), que lee `usePwaUpdate()`:
@@ -141,6 +157,34 @@ describe('AdminShell — entre 1024 y 1279 px', () => {
     expect(
       screen.getByRole('link', { name: 'Extendiendo Servicios' }),
     ).toHaveAttribute('href', '/admin')
+  })
+})
+
+describe('AdminShell — logo personalizado (USERS-013)', () => {
+  it('muestra el logo de la empresa en vez del isotipo cuando hay uno cargado', () => {
+    useBrandingMock.mockReturnValueOnce({
+      status: 'ready',
+      branding: {
+        name: 'Limpiezas del Sur',
+        logoPath: 'logo.png',
+        supportPhone: null,
+      },
+    })
+    mockViewportWidth(1440)
+    renderAdminShell()
+
+    const logo = screen.getByRole('img', { name: 'Limpiezas del Sur' })
+    expect(logo).toHaveAttribute(
+      'src',
+      'https://ejemplo.supabase.co/storage/v1/object/public/branding/logo.png',
+    )
+  })
+
+  it('sin logo cargado, sigue mostrando el isotipo de marca', () => {
+    mockViewportWidth(1440)
+    renderAdminShell()
+
+    expect(screen.queryByRole('img', { name: /./ })).not.toBeInTheDocument()
   })
 })
 

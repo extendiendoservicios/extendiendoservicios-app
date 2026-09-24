@@ -1,4 +1,9 @@
 import type { RouteObject } from 'react-router'
+import CompanySettingsPage from '@/pages/admin/CompanySettingsPage'
+import HolidaysPage from '@/pages/admin/HolidaysPage'
+import RatingCriteriaPage from '@/pages/admin/RatingCriteriaPage'
+import SecurityEventsPage from '@/pages/admin/SecurityEventsPage'
+import UsersPage from '@/pages/admin/UsersPage'
 import { placeholderRoute } from './placeholder'
 
 /**
@@ -160,34 +165,49 @@ export const adminRoutes: RouteObject[] = [
     title: 'Plantillas de tareas',
     subtitle: 'Definir checklists por cliente y por sede',
   }),
-  placeholderRoute({
+  {
     path: 'configuracion/usuarios',
-    screenId: 'ADM-27',
-    title: 'Usuarios y roles',
-    subtitle: 'Gestionar accesos',
-  }),
-  placeholderRoute({
+    element: <UsersPage />,
+    handle: {
+      screenId: 'ADM-27',
+      title: 'Usuarios y roles',
+      subtitle: 'Gestionar accesos',
+    },
+  },
+  {
     path: 'configuracion/empresa',
-    screenId: 'ADM-28',
-    title: 'Empresa',
-    subtitle: 'Nombre, logo, teléfono y consentimiento de ubicación',
-  }),
-  placeholderRoute({
+    element: <CompanySettingsPage />,
+    handle: {
+      screenId: 'ADM-28',
+      title: 'Empresa',
+      subtitle: 'Datos de la empresa',
+    },
+  },
+  {
     path: 'configuracion/feriados',
-    screenId: 'ADM-29',
-    title: 'Feriados',
-    subtitle: 'Mantener el calendario',
-  }),
-  placeholderRoute({
+    element: <HolidaysPage />,
+    handle: {
+      screenId: 'ADM-29',
+      title: 'Feriados',
+      subtitle: 'Mantener el calendario',
+    },
+  },
+  {
     path: 'configuracion/criterios',
-    screenId: 'ADM-30',
-    title: 'Criterios de calificación',
-    subtitle: 'Mantener la guía de texto',
-  }),
-  placeholderRoute({
+    element: <RatingCriteriaPage />,
+    handle: {
+      screenId: 'ADM-30',
+      title: 'Criterios de calificación',
+      subtitle: 'Mantener la guía de texto',
+    },
+  },
+  {
     path: 'configuracion/seguridad',
-    screenId: 'ADM-31',
-    title: 'Eventos de seguridad',
-    subtitle: 'Consultar inicios de sesión y cambios de acceso',
-  }),
+    element: <SecurityEventsPage />,
+    handle: {
+      screenId: 'ADM-31',
+      title: 'Eventos de seguridad',
+      subtitle: 'Consultar inicios de sesión y cambios de acceso',
+    },
+  },
 ]

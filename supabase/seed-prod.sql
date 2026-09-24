@@ -65,28 +65,49 @@ begin
     updated_by = excluded.updated_by;
 
   -- ---------------------------------------------------------------------------------------------
-  -- 3. Feriados nacionales de Argentina del año en curso, de fecha fija (04 sección 2.6, P-050).
-  --    Misma lista y misma decisión menor que supabase/seed.sql (DB-019): se omiten los feriados
-  --    móviles (Carnaval, Viernes Santo), que dependen del cálculo de la Pascua de cada año.
+  -- 3. Feriados nacionales de Argentina del año en curso, de fecha fija o trasladable (04 sección
+  --    2.6, P-050). Misma lista y misma decisión menor que supabase/seed.sql (DB-019): se omiten
+  --    los feriados móviles atados a la Pascua (Carnaval, Viernes Santo), que dependen del
+  --    algoritmo de Gauss. Los cuatro trasladables de la Ley 27.399, artículo 6 (Güemes 17/6, San
+  --    Martín 17/8, Diversidad Cultural 12/10 y Soberanía Nacional 20/11) pasan al lunes anterior
+  --    si caen martes o miércoles, y al lunes siguiente si caen jueves o viernes -- misma regla
+  --    que `movableHoliday` en `src/features/settings/nationalHolidays.ts` (P07.3). Corregido en
+  --    P07.5: la versión anterior cargaba los cuatro en su fecha literal y omitía a Güemes.
   -- ---------------------------------------------------------------------------------------------
 
   insert into public.holidays (holiday_date, name, created_by)
-  select make_date(extract(year from app.today())::int, mes, dia), nombre, v_owner_id
+  select
+    case
+      when f.trasladable then
+        make_date(extract(year from app.today())::int, f.mes, f.dia)
+        + (case extract(dow from make_date(extract(year from app.today())::int, f.mes, f.dia))::int
+             when 2 then -1 -- martes -> lunes anterior
+             when 3 then -2 -- miércoles -> lunes anterior
+             when 4 then 4 -- jueves -> lunes siguiente
+             when 5 then 3 -- viernes -> lunes siguiente
+             else 0 -- sábado, domingo o lunes: sin traslado
+           end)
+      else
+        make_date(extract(year from app.today())::int, f.mes, f.dia)
+    end,
+    f.nombre,
+    v_owner_id
   from (
     values
-      (1, 1, 'Año Nuevo'),
-      (3, 24, 'Día Nacional de la Memoria por la Verdad y la Justicia'),
-      (4, 2, 'Día del Veterano y de los Caídos en la Guerra de Malvinas'),
-      (5, 1, 'Día del Trabajador'),
-      (5, 25, 'Día de la Revolución de Mayo'),
-      (6, 20, 'Paso a la Inmortalidad del General Manuel Belgrano'),
-      (7, 9, 'Día de la Independencia'),
-      (8, 17, 'Paso a la Inmortalidad del General José de San Martín'),
-      (10, 12, 'Día del Respeto a la Diversidad Cultural'),
-      (11, 20, 'Día de la Soberanía Nacional'),
-      (12, 8, 'Inmaculada Concepción de María'),
-      (12, 25, 'Navidad')
-  ) as f (mes, dia, nombre)
+      (1, 1, 'Año Nuevo', false),
+      (3, 24, 'Día Nacional de la Memoria por la Verdad y la Justicia', false),
+      (4, 2, 'Día del Veterano y de los Caídos en la Guerra de Malvinas', false),
+      (5, 1, 'Día del Trabajador', false),
+      (5, 25, 'Día de la Revolución de Mayo', false),
+      (6, 17, 'Paso a la Inmortalidad del General Martín Miguel de Güemes', true),
+      (6, 20, 'Paso a la Inmortalidad del General Manuel Belgrano', false),
+      (7, 9, 'Día de la Independencia', false),
+      (8, 17, 'Paso a la Inmortalidad del General José de San Martín', true),
+      (10, 12, 'Día del Respeto a la Diversidad Cultural', true),
+      (11, 20, 'Día de la Soberanía Nacional', true),
+      (12, 8, 'Inmaculada Concepción de María', false),
+      (12, 25, 'Navidad', false)
+  ) as f (mes, dia, nombre, trasladable)
   on conflict (holiday_date) do nothing;
 end $$;
 

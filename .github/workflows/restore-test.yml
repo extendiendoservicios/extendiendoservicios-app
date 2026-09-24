@@ -53,23 +53,15 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # TRABA (revisión del orquestador, P03.7): la secuencia de restauración tiene dos defectos
-  # conocidos que hay que corregir y validar antes de la primera corrida real (después de F4):
-  # el paso 1 puede fallar por las claves foráneas entre tablas de public, y --no-privileges
-  # dejaría en App_dev permisos más amplios que los de 04_Modelo_de_Datos.md. Detalle en
-  # docs/deployment.md sección 6.3 ("Defectos conocidos"). Se quita borrando este job y el
-  # `needs` de abajo, en el mismo PR que corrige la secuencia.
-  traba:
-    name: Traba hasta validar la secuencia de restauración
-    runs-on: ubuntu-latest
-    steps:
-      - name: Abortar
-        run: |
-          echo "::error::restore-test.yml está trabado: la secuencia de restauración tiene defectos conocidos (docs/deployment.md sección 6.3). No se tocó App_dev."
-          exit 1
-
+  # La traba que tenía este workflow (job "traba", que abortaba antes de tocar nada mientras la
+  # secuencia de restauración tenía defectos conocidos) se quitó en fix/TEST-024-restore-sequence
+  # (23 sep 2026): los defectos se corrigieron y la secuencia se validó de punta a punta contra un
+  # Postgres 17 local en Docker, en dos rondas (la segunda con un rol dueño de las tablas SIN
+  # superusuario, que reprodujo un defecto que la primera ronda no detectaba -- docs/deployment.md
+  # sección 6.3 tiene el detalle completo). Sigue sin correr contra recursos remotos: recién cuando
+  # `App` (producción) tenga las tablas de F4, ver el comentario del encabezado de este archivo y
+  # la sección 6.3 de docs/deployment.md.
   restore-test:
-    needs: traba
     name: Restaurar un respaldo en App_dev (public + usuarios de auth), verificar y limpiar
     runs-on: ubuntu-latest
     timeout-minutes: 30

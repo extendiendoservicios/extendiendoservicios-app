@@ -26,6 +26,7 @@ import {
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { ROLE_LABELS } from '@/features/auth/session'
+import { brandingLogoUrl, useBranding } from '@/features/auth/useBranding'
 import { useRouteHandle } from '@/app/routes/placeholder'
 import {
   ADMIN_MORE_ITEMS,
@@ -65,6 +66,10 @@ export function AdminShell({
   const { displayName, roles, signOut } = useAuth()
   const handle = useRouteHandle()
   const [moreOpen, setMoreOpen] = useState(false)
+  // USERS-013: logo personalizado de la empresa (ADM-28) en la marca de la
+  // sidebar, con el mismo hook y el mismo criterio de reserva que ya usa
+  // `LoginPage` -- sin logo cargado, se sigue viendo el isotipo de `Images/`.
+  const { branding } = useBranding()
 
   // xl (1280px): sidebar completa. lg (1024px) a xl: colapsada a íconos.
   // Por debajo de lg: tabbar en vez de sidebar (05 sección 7).
@@ -94,6 +99,8 @@ export function AdminShell({
           pathname={location.pathname}
           displayName={displayName}
           roleLabel={roleLabel}
+          logoPath={branding?.logoPath ?? null}
+          logoAlt={branding?.name ?? null}
         />
       )}
 
@@ -192,11 +199,16 @@ function AdminSidebar({
   pathname,
   displayName,
   roleLabel,
+  logoPath,
+  logoAlt,
 }: {
   collapsed: boolean
   pathname: string
   displayName: string
   roleLabel: string
+  /** `company_settings.logo_path` (ADM-28, USERS-013). `null` sin logo propio cargado. */
+  logoPath: string | null
+  logoAlt: string | null
 }) {
   return (
     <TooltipProvider delayDuration={200}>
@@ -220,13 +232,26 @@ function AdminSidebar({
               accesible propio cuando el lockup de texto está visible (el
               nombre lo aporta ese texto, no hay que duplicarlo); cuando la
               sidebar está colapsada es el único contenido del link, así que
-              ahí sí lleva `alt`. */}
-          <img
-            src="/icons/isotipo_blanco_34px@2x.png"
-            srcSet="/icons/isotipo_blanco_34px@2x.png 2x, /icons/isotipo_blanco_34px@3x.png 3x"
-            alt={collapsed ? 'Extendiendo Servicios' : ''}
-            className="h-[34px] w-auto shrink-0"
-          />
+              ahí sí lleva `alt`.
+              USERS-013: si la empresa cargó un logo propio (ADM-28), se
+              muestra ese en vez del isotipo de marca -- mismo criterio de
+              reserva que `LoginPage` (`useBranding`/`brandingLogoUrl`), sin
+              `srcSet` propio porque el archivo lo sube quien administra la
+              cuenta, no viene en varias densidades. */}
+          {logoPath ? (
+            <img
+              src={brandingLogoUrl(logoPath)}
+              alt={logoAlt ?? 'Logo de la empresa'}
+              className="h-[34px] w-auto shrink-0 object-contain"
+            />
+          ) : (
+            <img
+              src="/icons/isotipo_blanco_34px@2x.png"
+              srcSet="/icons/isotipo_blanco_34px@2x.png 2x, /icons/isotipo_blanco_34px@3x.png 3x"
+              alt={collapsed ? 'Extendiendo Servicios' : ''}
+              className="h-[34px] w-auto shrink-0"
+            />
+          )}
           {!collapsed && (
             <span className="flex flex-col">
               <span className="text-[12.5px] leading-[1.18] font-bold tracking-[1.3px] uppercase">

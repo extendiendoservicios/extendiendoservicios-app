@@ -9,6 +9,12 @@ name: CI
 # migraciones y tests de base en supabase/migrations/ y supabase/tests/: hoy no hay ninguno
 # (llegan en F4 -- DB-021 y DB-022), así que esos dos pasos se saltean. Cuando F4 agregue el
 # primer archivo .sql en cada carpeta, se activan solos, sin tocar este workflow.
+#
+# Tests Deno de las Edge Functions (TEST-004, P07.6): corren con `deno test`, aparte de Vitest
+# (supabase/functions/** está excluido de vitest.config.ts y de eslint.config.js -- ver
+# supabase/functions/README.md), buscando cualquier *.test.ts bajo supabase/functions/ -- así
+# alcanza también a funciones futuras sin tocar este workflow. Hoy solo existe
+# supabase/functions/admin-users/index.test.ts.
 
 on:
   pull_request:
@@ -63,6 +69,34 @@ jobs:
 
       - name: Tests unitarios (Vitest + Testing Library)
         run: pnpm test
+
+      - name: Detectar si hay tests Deno en supabase/functions/ (TEST-004)
+        id: deno-estado
+        run: |
+          if find supabase/functions -name '*.test.ts' 2>/dev/null | grep -q .; then
+            echo "hay_tests_deno=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "hay_tests_deno=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deno 2 (para los tests de las Edge Functions) — TEST-004
+        if: steps.deno-estado.outputs.hay_tests_deno == 'true'
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: '2.2.4'
+
+      - name: Tests Deno de las Edge Functions (TEST-004)
+        # Permisos mínimos, verificados en local (docs/deployment.md sección 2): `--allow-env`
+        # porque los tests fijan variables con Deno.env.set, y `--allow-net` porque el propio
+        # index.ts de cada función llama a Deno.serve al importarse (abre un socket) -- sin
+        # `--allow-net` ni siquiera llega a correr un test, corta antes con NotCapable.
+        if: steps.deno-estado.outputs.hay_tests_deno == 'true'
+        run: deno test --allow-env --allow-net $(find supabase/functions -name '*.test.ts')
+
+      - name: Tests Deno condicionados — todavía no hay ninguno
+        if: steps.deno-estado.outputs.hay_tests_deno != 'true'
+        run: |
+          echo "supabase/functions todavía no tiene ningún archivo *.test.ts. Paso preparado, sin ejecutar."
 
       - name: Build
         # Valores falsos y evidentes a propósito, no los secretos reales. Desde P06.2

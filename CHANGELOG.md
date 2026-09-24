@@ -7,6 +7,78 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.4.0] - 2026-09-24
+
+Usuarios, roles y configuración (F7). El dueño administra los accesos desde la plataforma, y una persona desactivada pierde el acceso al instante. Incluye la corrección de la restauración de prueba (TEST-024).
+
+### Agregado
+
+- Edge Function `admin-users` (P07.1, USERS-001 a USERS-006): crear usuario,
+  resetear contraseña, cambiar email, cerrar sesiones, desactivar (con motivo
+  obligatorio) y reactivar. Verifica el JWT y que el perfil de quien actúa
+  siga activo, exige el rol o la capacidad de cada acción, respeta la regla
+  del último dueño, limita a 10 acciones por minuto por persona
+  (`RATE_LIMITED`) y registra cada acción en `security_events`. Un
+  administrador nuevo arranca con todas las capacidades activas.
+- ADM-27 "Usuarios y roles" (P07.2, USERS-007 a USERS-011): lista de
+  usuarios con roles, estado y último inicio de sesión (solo visible para
+  el dueño), alta de administradores, editor de roles y capacidades (solo
+  dueño) y las acciones por usuario (resetear contraseña, cambiar email,
+  cerrar sesiones, desactivar con motivo obligatorio, reactivar), todas
+  con sus errores de dominio traducidos en voseo. Primer dominio de
+  `src/api/` con datos reales: patrón documentado en `src/api/README.md`
+  (módulo por dominio, `ApiError`, hooks de TanStack Query 5 —
+  incorporado en este paquete — con `QueryClient` único en
+  `src/lib/queryClient.ts`).
+- Configuración (P07.3, USERS-012 a USERS-016, DOC-007): ADM-28 Empresa
+  (nombre, logo en el bucket `branding`, teléfono de soporte y texto de
+  consentimiento de ubicación; el administrador edita solo el logo, que se ve
+  en el ingreso y en la barra lateral), ADM-29 Feriados (lista por año, alta,
+  baja lógica y "Cargar feriados nacionales de <año>", calculados para
+  cualquier año, con los trasladables según la Ley 27.399), ADM-30 Criterios
+  de calificación (guía de texto con vigencia y vista "Ver como supervisor") y
+  ADM-31 Eventos de seguridad (filtros por tipo, persona y fecha). ADM-29 a
+  ADM-31 son solo del dueño.
+- ADM-27 muestra por defecto solo los usuarios activos, con el interruptor
+  "Mostrar desactivados" (P07.7).
+- Pruebas: suite e2e `tests/e2e-users/` del dueño que crea un administrador y
+  le ajusta capacidades, la revocación inmediata, los límites del
+  administrador, el último dueño y las pantallas de configuración (P07.4,
+  USERS-018); tests Deno de `admin-users` con cliente simulado (TEST-004), que
+  el CI corre en cada PR (P07.6).
+
+### Cambiado
+
+- Ventana de revocación cerrada (decisión de Mike, 23 sep 2026): las funciones
+  de permisos y las políticas de "fila propia" exigen que el perfil siga
+  activo (`0020`, `0022`), así que un token vigente de una persona
+  desactivada deja de leer y escribir al instante. `jwt_expiry` baja de 3600
+  a 900 segundos: quitar un rol tarda como máximo 15 minutos en surtir
+  efecto.
+- Los errores que no vienen de una RPC propia (restricciones, permisos de
+  RLS) se muestran traducidos al español; ya no llega a la pantalla el texto
+  crudo de Postgres.
+- El menú desplegable base toma el ancho de su contenido, no el del botón que
+  lo abre.
+
+### Corregido
+
+- `admin-users` respondía 500 con mensaje vacío al intentar desactivar a
+  cualquier dueño (consulta con dos claves foráneas posibles); ahora responde
+  `409 LAST_OWNER` con el último dueño, y todo error inesperado sale con un
+  mensaje genérico en español (P07.5).
+- `service_role` no podía actualizar `profiles` (el trigger de columnas pasa a
+  `security definer`, `0020`).
+- Los seeds cargaban los feriados trasladables en su fecha literal y omitían
+  Güemes; ahora aplican la regla de la Ley 27.399 (P07.5).
+- La restauración de prueba desde R2 (TEST-024, INFRA-024): ya no recrea la
+  estructura de `public`, carga los datos con `session_replication_role =
+replica` (sin superusuario) y borra los usuarios de `auth` antes de fijarlo,
+  para que las cascadas no dejen sesiones huérfanas. Se quita la traba de
+  `restore-test.yml`.
+- Un pgTAP de feriados usaba fechas relativas a hoy y chocaba con los feriados
+  reales de App_dev.
+
 ## [0.3.0] - 2026-09-23
 
 Primer pase a producción con la aplicación de verdad: base de datos completa (F4), design system (F5) y autenticación real (F6). No hubo una versión 0.2.0 publicada aparte: el hito de F3 + F4 se juntó con este por decisión de Mike (P04.9), porque sin inicio de sesión no tenía sentido publicarlo en `app.`.

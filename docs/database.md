@@ -761,8 +761,10 @@ antes que `seed-dev.ts` contra el mismo proyecto.
 Ríos (siete capacidades en `true`), las supervisoras Paula Lemos y Noelia Vera, diez empleados,
 seis clientes con 13 sedes en total (Grupo Norte 3, Clínica del Parque 2, Oficinas Delta 4,
 Logística Central 2, Estudio Paredes 1, Textil Morán 1), un contacto principal por cliente, una
-plantilla de checklist por cliente (cinco ítems cada una), cuatro criterios de calificación,
-doce feriados nacionales de fecha fija del año en curso, dieciséis servicios (diez con un
+plantilla de checklist por cliente (cinco ítems cada una), cuatro criterios de calificación, trece
+feriados nacionales del año en curso (nueve de fecha fija y los cuatro trasladables de la Ley
+27.399 artículo 6, ya con el traslado aplicado -- ver la decisión menor de "Feriados" más abajo),
+dieciséis servicios (diez con un
 empleado fijo asignado, seis sin -- a propósito, para poblar el derivado "sin cubrir" de
 `v_shifts_board` con datos reales) y los turnos que esos servicios generan para los últimos 14
 días corridos más el resto del mes actual y todo el mes siguiente (todo relativo a `app.today()`,
@@ -793,10 +795,17 @@ Más dos supervisiones `completed` en días pasados, cada una con su calificaci�
 - Las direcciones de sede que sí aparecen en el mockup se usaron tal cual (San Isidro/Av.
   Centenario 1450, Clínica del Parque–Martínez/Av. Santa Fe 1234, Oficinas Delta–Vicente
   López/Laprida 820); el resto son ficticias, con criterio de zona norte del GBA.
-- **Feriados:** solo los de fecha fija del calendario nacional argentino; se omiten los móviles
-  (Carnaval, Viernes Santo), cuya fecha depende del cálculo de la Pascua de cada año -- fuera de
-  alcance de este seed, sin efecto real porque todos los servicios nacen con
-  `works_on_holidays = true`.
+- **Feriados:** los de fecha fija del calendario nacional argentino más los cuatro trasladables de
+  la Ley 27.399 artículo 6 (Güemes 17/6, San Martín 17/8, Diversidad Cultural 12/10 y Soberanía
+  Nacional 20/11), con el traslado a lunes ya aplicado en SQL (martes o miércoles -> lunes
+  anterior; jueves o viernes -> lunes siguiente; sábado, domingo o lunes -> sin cambio) -- misma
+  regla que `movableHoliday` en `src/features/settings/nationalHolidays.ts` (P07.3). Corregido en
+  P07.5: la versión anterior cargaba los cuatro trasladables en su fecha literal (sin trasladar) y
+  omitía a Güemes; en `App_dev` esto había dejado dos "Día de la Soberanía Nacional" activos en
+  2026 (20/11, mal, y 23/11, el correcto por ley) -- se le dio de baja lógica al del 20/11. Se
+  siguen omitiendo los móviles atados a la Pascua (Carnaval, Viernes Santo), cuyo cálculo depende
+  del algoritmo de Gauss -- fuera de alcance de este seed, sin efecto real porque todos los
+  servicios nacen con `works_on_holidays = true`.
 - **Emails ficticios** bajo `@extendiendoservicios.com` (P-010: login por email real, "real o
   provisto por la empresa"; sin mapeo por DNI). Contraseña inicial compartida, obligatoria en
   `SEED_DEV_PASSWORD` (`.env.local`, que git ignora) y **sin valor por defecto a propósito**: los
@@ -866,6 +875,178 @@ Scan` sobre tablas grandes):**
 - `v_clients` (listado completo con conteos): `Seq Scan on clients` (6 filas, correcto para un
   listado completo) más `Index Scan` sobre `sites_client_id_idx`/`services_client_id_idx`.
 
+## Ventana de revocación (migraciones `0020`, `0022`, P07.1)
+
+Decisión de Mike del 23 sep 2026 (ver `12_Registro_de_Progreso.md`), alternativa **(b) + (a)**
+frente al hallazgo de P06.2: revocar una sesión, quitar un rol o desactivar a alguien **no** tenía
+efecto inmediato. `04` sección 7.1 explica el porqué (PostgREST valida el JWT por firma y
+vencimiento, no contra `auth.sessions`): un `access_token` ya emitido seguía leyendo y escribiendo
+con sus claims viejos hasta que expiraba.
+
+- **(a)** `jwt_expiry` baja de 3600 a **900** segundos en `supabase/config.toml`: acota a 15
+  minutos, como mucho, la demora en que un cambio de rol o capacidad se refleje.
+- **(b)** cierra el caso más grave (una persona desactivada) con efecto **inmediato**, sin esperar
+  a que el token expire: `app.current_profile_active()` (`0020_permission_functions_active_check.sql`)
+  hace una lectura por clave primaria de `profiles.is_active`/`deleted_at` para `auth.uid()`,
+  `stable` y `security definer`. `app.has_role`/`app.has_capability` (y por herencia
+  `app.is_admin`, `app.require_role`, `app.require_admin`, `app.require_capability` -- y con eso,
+  toda RPC y toda política RLS que pase por alguna de esas funciones) exigen ahora también que el
+  perfil siga activo. Ninguna de esas llamadas depende de una columna de la fila que se está
+  evaluando (siempre son literales, por ejemplo `app.has_role('supervisor')`), así que Postgres
+  las reconoce como "pseudo-constantes" y las evalúa **una vez por consulta**, no una vez por
+  fila -- no hizo falta reescribir las políticas de `0012` con el patrón `(select ...)` que sí
+  hace falta para expresiones que dependen de la fila (por ejemplo `auth.uid() = tabla.columna`).
+
+**Lo que `0020` no alcanzaba a cubrir, corregido en `0022_own_row_policies_active_check.sql`:**
+verificado en vivo contra `App_dev` (crear una persona, desactivarla, y comprobar con el mismo
+token si `GET /rest/v1/profiles?id=eq....` seguía devolviendo su fila), las políticas de "acceso a
+la fila propia" que **no** pasan por ninguna función de rol (`profiles_select_own`,
+`profiles_update_own`, `user_roles_select_own`, `admin_capabilities_select_own`,
+`employees_select_own`, `employee_client_permissions_select_own`,
+`employee_availability_select_own`, `employee_leaves_select_own` -- todas comparan `auth.uid()`
+directo contra una columna, porque ver los datos propios no exige ningún rol puntual) seguían
+dejando pasar a una persona recién desactivada. `app.current_uid()` devuelve `auth.uid()` solo si
+`app.current_profile_active()` es verdadero, si no `null` -- y `null = cualquier_columna` nunca es
+verdadero en SQL, así que la política deja de matchear filas. Las ocho políticas de arriba se
+recrearon (`drop policy` + `create policy`, no existe `create or replace policy`) con
+`app.current_uid()` en vez de `auth.uid()`. El resto de las políticas de "propio" que ya combinan
+`auth.uid()` con `app.has_role(...)`/`app.is_admin()` en la misma condición (por ejemplo
+`assignments_update_own_notes`, `attendance_records_select_employee`, `supervisions_select_own`)
+no se tocaron: ya quedaron cubiertas por el cambio de `0020`.
+
+**Costo medido** (`explain (analyze, buffers)`, como una empleada del seed, antes/después de
+`0020`, sobre `select * from public.shifts` -- 629 filas escaneadas, 40 visibles): `Buffers:
+shared hit` sube de `1558` a `2208` (+41,7 %), consistente con una lectura extra por fila
+(`app.current_profile_active()`, una búsqueda por clave primaria contra `profiles`, siempre en
+caché). El tiempo de ejecución no mostró una diferencia consistente entre corridas (250-570 ms en
+las dos versiones): el ruido de la conexión por el _pooler_ domina por sobre el costo real
+agregado a esta escala. El costo crece linealmente con las filas escaneadas, no con las
+visibles -- a vigilar si algún listado llega a escanear tablas de decenas de miles de filas antes
+del filtro de RLS.
+
+**Pendiente de P04.6/P04.7, resuelto en el mismo paquete:** `app.enforce_profile_self_update_columns`
+(`0017`) pasa a `security definer` (`alter function`, sin tocar el cuerpo) -- antes,
+`service_role` no podía actualizar `profiles` por PostgREST (`permission denied for schema app`,
+porque el trigger llamaba a `app.is_admin()` sin tener `usage on schema app`). Necesario para que
+`deactivate_user`/`reactivate_user` de la Edge Function `admin-users` (ver más abajo) puedan tocar
+`profiles.is_active`/`deleted_at` directo.
+
+Tests: `supabase/tests/0020_permission_functions_active_check.test.sql` (12 aserciones: perfil
+activo funciona igual que antes, perfil inactivo pierde el acceso con el mismo token, se reactiva
+sin necesitar un token nuevo, `service_role` puede actualizar `profiles`) y
+`supabase/tests/0022_own_row_policies_active_check.test.sql` (8 aserciones, mismo patrón sobre las
+ocho políticas de "propio").
+
+## Edge Function `admin-users` (04 sección 7.1, 06 sección 2.1, ADR-005, USERS-001 a USERS-006)
+
+`supabase/functions/admin-users/index.ts` (Deno). Única función del proyecto que usa la clave
+`service_role` (excepción explícita a ADR-004): crear usuario, resetear contraseña, cambiar email
+de login, cerrar sesiones, desactivar y reactivar. Nunca reimplementa algo que ya hace una RPC
+`security definer` (`0013_rpc_users.sql` sigue siendo el único lugar donde se tocan
+`user_roles`/`admin_capabilities` desde el cliente autenticado).
+
+- **Quién puede llamar cada acción, y con qué usuario objetivo**, tal cual `06_API.md` sección
+  2.1: owner siempre; admin con `manage_users` solo sobre personas que no tengan (ni vayan a
+  tener) el rol `owner` ni `admin`, y solo con roles `employee`/`supervisor` al crear.
+  `reactivate_user` es exclusiva del owner.
+- **No confía en los claims del JWT del llamador** (`roles`/`capabilities`): los vuelve a leer en
+  vivo de `profiles`/`user_roles`/`admin_capabilities` en cada llamada, con el mismo criterio que
+  `app.current_profile_active()` -- si confiara en el JWT, sería la propia función que puede dejar
+  a alguien sin acceso la que decidiría con datos potencialmente desactualizados.
+- **`auth.admin.signOut()` de supabase-js no sirve para "cerrar todas las sesiones de esta
+  persona"**, hallazgo verificado en vivo contra `App_dev` (ver `0021_admin_revoke_user_sessions.sql`):
+  ese método usa su primer argumento como el `Authorization: Bearer` de la request a
+  `/auth/v1/logout`, así que revoca la sesión **dueña de ese token**, no las de un `profile_id`
+  cualquiera -- pasarle un uuid ahí manda un JWT inválido y GoTrue devuelve 401 (se veía como
+  `500 INTERNAL_ERROR` en `reset_password`/`sign_out_user`/`deactivate_user`, las tres acciones
+  que tienen que revocar sesión). `auth.sessions` tampoco está expuesta por PostgREST. Se agregó
+  `public.admin_revoke_user_sessions(p_profile_id)`, `security definer`, que borra directo de
+  `auth.sessions` -- uso exclusivo de esta Edge Function, `execute` revocado a todos salvo
+  `service_role`.
+- **Límite de 10 acciones por minuto por persona que actúa** (CONFIRMADO por Mike el 23 sep 2026,
+  P07.0). `06_API.md` no fija cómo contarlo ni con qué código; decisión menor de esta tarea: se
+  cuenta sobre `security_events` (que de todos modos ya guarda cada acción exitosa, P-104) filtrando
+  por `actor_id` y una ventana de 60 segundos, en vez de sumar una tabla nueva solo para contar --
+  funciona igual con varias instancias de la función corriendo en paralelo, porque todas leen y
+  escriben la misma tabla de Postgres, sin estado en memoria de la función. No es perfectamente
+  atómico bajo una carrera exacta de milisegundos (aceptable: es una salvaguarda contra abuso, no
+  un control de concurrencia fino). Código estable nuevo, no listado en `06` sección 15:
+  `RATE_LIMITED` (429, "Hiciste demasiadas acciones en poco tiempo. Esperá un minuto e intentá de
+  nuevo."). Verificado en vivo contra `App_dev`: la 11ª acción de una racha (3 previas + 8) dio
+  `429 RATE_LIMITED`.
+- **`banned_until = infinity`** (06 sección 2.1, `deactivate_user`): la Admin API de GoTrue no
+  acepta el literal `"infinity"` en `ban_duration` (espera una duración que `time.ParseDuration`
+  de Go entienda). Decisión menor: se usa `"876000h"` (~100 años) como equivalente práctico.
+- **`x-forwarded-for` puede traer varias IP separadas por coma** (una por cada salto de proxy);
+  `security_events.ip` es `inet`, que solo acepta una. Hallazgo en vivo: sin recortar a la
+  primera, el `insert` fallaba (`invalid input syntax for type inet`) y `logEvent()` se comía el
+  error en silencio (mismo criterio que `app.log_sign_in()`: un fallo al auditar no puede tirar
+  abajo una acción que ya se hizo de verdad) -- con lo cual ninguna acción quedaba auditada y el
+  límite de acciones por minuto, que cuenta sobre esa misma tabla, nunca veía nada para contar.
+- **Contrato de respuesta** (decisión menor, `06_API.md` no lo fija para la Edge Function):
+  `{ data: {...} }` con `200` si sale bien; `{ error: { message, hint } }` con el status que
+  corresponda al código (`401` UNAUTHENTICATED, `403` FORBIDDEN/ORIGIN_NOT_ALLOWED, `404`
+  PROFILE_NOT_FOUND, `409` EMAIL_IN_USE/DNI_IN_USE/LAST_OWNER, `429` RATE_LIMITED, `500`
+  INTERNAL_ERROR) si no.
+- **Origin**: lista blanca en `supabase/functions/_shared/cors.ts` (local, `dev.` y `app.`). Si
+  viene declarado y no está en la lista, `403 ORIGIN_NOT_ALLOWED` antes de tocar cualquier dato.
+  Sin `Origin` (llamadas de servidor a servidor, no hay nada que verificar) sigue de largo.
+- **Estado parcial en `create_user`**: si falla el `insert` en `employees`/`user_roles`/
+  `admin_capabilities` después de que el usuario ya se creó en Auth, no hay forma confiable de
+  deshacerlo (`auth.admin.deleteUser` falla por diseño mientras exista la fila de `profiles`
+  referenciada -- P-014/P-105, nada se borra físicamente). Se minimiza el caso más común
+  (DNI repetido) chequeándolo antes de crear el usuario en Auth; si igual falla algo después, el
+  `profile_id` para revisar a mano queda en el log de la función (`console.error`), no en la
+  respuesta -- ver el punto siguiente.
+- **`INTERNAL_ERROR` (500) siempre con un mensaje genérico en español, nunca vacío** (corregido en
+  P07.5, defecto de P07.4): antes, `errors.internal(mensaje)` le devolvía a quien llama el
+  `mensaje` técnico crudo (el de Postgres/PostgREST, o el de `auth.admin.*`), que en un caso
+  concreto (ver el punto de abajo) llegaba directamente VACÍO. Ahora `errors.internal(detalle)`
+  siempre construye la respuesta con "Ocurrió un error inesperado. Intentá de nuevo en unos
+  minutos." y deja el `detalle` técnico en el log de la función con `console.error` -- nunca en
+  la respuesta al cliente (ni detalles de esquema, ni el `profile_id` de un alta a mitad de
+  camino, ni nada de Postgres).
+- **Bloqueante de P07.4, corregido en P07.5: conteo de dueños activos en `deactivate_user`**.
+  `user_roles` tiene DOS claves foráneas hacia `profiles` (`profile_id` y `granted_by`,
+  `0003_profiles_roles_capabilities.sql`): el `select('profile_id, profiles!inner(...)')` del
+  conteo de dueños activos (para la regla del último dueño, P-017) no le decía a PostgREST cuál
+  de las dos usar para el embed, así que devolvía `PGRST201` (ambigüedad) para CUALQUIER intento
+  de desactivar a alguien con rol `owner` -- y como además esa consulta usa `head: true`
+  (`count: 'exact'`), el `message` del error de PostgREST llegaba vacío, agravando el defecto de
+  arriba: la función respondía `500 INTERNAL_ERROR` con mensaje vacío en vez de `409 LAST_OWNER`.
+  Mismo patrón que ya documentaba `fetchUsers` en `src/api/users.ts`: se corrige con el hint del
+  nombre de la restricción, `profiles!user_roles_profile_id_fkey!inner(...)`. Encontrado por la
+  suite e2e `tests/e2e-users/last-owner-cannot-be-deactivated.spec.ts` (P07.4), verificado en vivo
+  contra `App_dev` (desactivar al único dueño del seed vuelve a dar `409 LAST_OWNER`) y cubierto
+  ahora también por un test Deno sin base real (`actionDeactivateUser` con un cliente simulado,
+  ver más abajo).
+
+Tests Deno en `supabase/functions/admin-users/index.test.ts` (`deno test`, sin Docker ni el
+proyecto vinculado; TEST-004, ampliados en P07.5). Dos capas:
+
+- `handleRequest` con requests reales, sin base de Postgres real detrás: CORS, sin
+  `Authorization`, método distinto de `POST`, Origin no permitido.
+- Las funciones de cada acción (`actionCreateUser`, `actionDeactivateUser`,
+  `requireOwnerOrManageUsers`, etc. -- exportadas para esto, sin cambiar su comportamiento),
+  llamadas directo con un cliente de Supabase simulado que solo entiende la consulta puntual de
+  cada escenario (por tabla y por las columnas del `select`, no un mock genérico de PostgREST):
+  un admin sin `manage_users` no puede actuar (`FORBIDDEN`), el dueño crea un administrador con
+  sus siete capacidades, y no se puede desactivar al último dueño (`LAST_OWNER`, el mismo defecto
+  de arriba, cubierto también acá para que no vuelva a filtrarse sin que un test lo note).
+
+El límite de acciones por minuto y el registro en `security_events` se siguen verificando en vivo
+contra `App_dev` (crear una persona, desactivarla con el owner, comprobar que su token vigente
+deja de leer, reactivarla, confirmar `exp - iat = 900` en un token nuevo, y superar el límite de
+10 acciones por minuto, P07.1) -- mockear esa parte se descartó por el riesgo de que el mock
+oculte un error real de integración (pasó justamente con el hallazgo de `auth.admin.signOut()` de
+arriba). `ci.yml` no corre estos tests Deno (pendiente para `infra-devops`, ver el reporte de
+P07.1): el paso propuesto es `deno test --allow-env --allow-net
+supabase/functions/admin-users/index.test.ts` después de que exista Deno en el runner.
+
+`supabase/functions/admin-users/index.ts` y `.test.ts`, además de `_shared/cors.ts`, corren en
+Deno (no en el proyecto de TypeScript de Vite): excluidos de `eslint.config.js` (`ignores`) y de
+`vitest.config.ts` (`exclude`), verificados con `deno check`/`deno test`.
+
 ## Enumeraciones (04 sección 3)
 
 Las 15 enumeraciones del modelo, en el esquema `public`, migración `0002_enums.sql`. Agregar un
@@ -912,7 +1093,10 @@ de la revisión de rendimiento con un seed ampliado, no de un bloque nuevo del m
 ver "Rendimiento" más arriba. `0019_security_events_sign_in.sql` (AUTH-009, P06.1) llega todavía
 después, ya en F6: `app.log_sign_in()` y el trigger `trg_log_sign_in` sobre `auth.sessions`, que
 registra el inicio de sesión en `security_events` -- ver "Registro del inicio de sesión" más
-arriba.
+arriba. En F7 (P07.1), sin tarea `DB-0xx` propia (encargo explícito de Mike sobre la ventana de
+revocación y la Edge Function `admin-users`): `0020_permission_functions_active_check.sql`,
+`0021_admin_revoke_user_sessions.sql` y `0022_own_row_policies_active_check.sql` -- ver "Ventana
+de revocación" y "Edge Function `admin-users`" más arriba.
 
 ## Cómo escribir una migración
 
