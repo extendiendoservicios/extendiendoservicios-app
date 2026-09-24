@@ -96,6 +96,52 @@ export function computeAvatarDisplayScale(
 }
 
 /**
+ * Desplazamientos que dejan la imagen centrada en el recuadro con el zoom
+ * dado (el encuadre inicial al abrir el recorte).
+ */
+export function centeredAvatarOffset(params: {
+  naturalWidth: number
+  naturalHeight: number
+  viewportPx: number
+  zoom: number
+}): { offsetX: number; offsetY: number } {
+  const { naturalWidth, naturalHeight, viewportPx, zoom } = params
+  const scale = computeAvatarDisplayScale(
+    naturalWidth,
+    naturalHeight,
+    viewportPx,
+    zoom,
+  )
+  return {
+    offsetX: (viewportPx - naturalWidth * scale) / 2,
+    offsetY: (viewportPx - naturalHeight * scale) / 2,
+  }
+}
+
+/**
+ * Nuevos desplazamientos al pasar de `fromZoom` a `toZoom` manteniendo fijo
+ * el punto de la imagen que está en el centro del recuadro (el zoom acerca
+ * sobre el centro, no sobre la esquina superior izquierda). El resultado se
+ * acota después con `clampAvatarOffset`.
+ */
+export function zoomAvatarOffsetAroundCenter(params: {
+  offsetX: number
+  offsetY: number
+  fromZoom: number
+  toZoom: number
+  viewportPx: number
+}): { offsetX: number; offsetY: number } {
+  const { offsetX, offsetY, fromZoom, toZoom, viewportPx } = params
+  if (fromZoom <= 0) return { offsetX, offsetY }
+  const ratio = toZoom / fromZoom
+  const center = viewportPx / 2
+  return {
+    offsetX: center - (center - offsetX) * ratio,
+    offsetY: center - (center - offsetY) * ratio,
+  }
+}
+
+/**
  * Recorta un desplazamiento (posición del borde superior/izquierdo de la
  * imagen mostrada, en px de pantalla, relativo al recuadro) para que la
  * imagen siga cubriendo todo el recuadro sin dejar huecos.

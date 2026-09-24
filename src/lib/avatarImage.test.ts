@@ -7,6 +7,8 @@ import {
   computeAvatarDisplayScale,
   cropAndResizeToBlob,
   validateAvatarSourceFile,
+  centeredAvatarOffset,
+  zoomAvatarOffsetAroundCenter,
 } from './avatarImage'
 
 /**
@@ -61,6 +63,60 @@ describe('computeAvatarDisplayScale', () => {
     const scaleAt1 = computeAvatarDisplayScale(1000, 1000, 260, 1)
     const scaleAt2 = computeAvatarDisplayScale(1000, 1000, 260, 2)
     expect(scaleAt2).toBeCloseTo(scaleAt1 * 2)
+  })
+})
+
+describe('centeredAvatarOffset', () => {
+  it('centra una foto apaisada: recorta lo mismo a cada lado', () => {
+    // 1200×800 en un recuadro de 240: escala 0,3 → 360×240 mostrados.
+    expect(
+      centeredAvatarOffset({
+        naturalWidth: 1200,
+        naturalHeight: 800,
+        viewportPx: 240,
+        zoom: 1,
+      }),
+    ).toEqual({ offsetX: -60, offsetY: 0 })
+  })
+
+  it('centra una foto vertical', () => {
+    expect(
+      centeredAvatarOffset({
+        naturalWidth: 800,
+        naturalHeight: 1200,
+        viewportPx: 240,
+        zoom: 1,
+      }),
+    ).toEqual({ offsetX: 0, offsetY: -60 })
+  })
+})
+
+describe('zoomAvatarOffsetAroundCenter', () => {
+  it('mantiene fijo el punto del centro del recuadro al acercar', () => {
+    // Centro del recuadro en 120; la imagen empieza en -60, así que el
+    // centro está 180 px adentro. Al duplicar el zoom, pasa a estar 360 px
+    // adentro: el borde tiene que quedar en 120 - 360 = -240.
+    expect(
+      zoomAvatarOffsetAroundCenter({
+        offsetX: -60,
+        offsetY: 0,
+        fromZoom: 1,
+        toZoom: 2,
+        viewportPx: 240,
+      }),
+    ).toEqual({ offsetX: -240, offsetY: -120 })
+  })
+
+  it('con el mismo zoom no mueve nada', () => {
+    expect(
+      zoomAvatarOffsetAroundCenter({
+        offsetX: -30,
+        offsetY: -10,
+        fromZoom: 1.5,
+        toZoom: 1.5,
+        viewportPx: 240,
+      }),
+    ).toEqual({ offsetX: -30, offsetY: -10 })
   })
 })
 

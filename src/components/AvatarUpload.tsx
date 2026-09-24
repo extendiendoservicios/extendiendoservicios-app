@@ -26,11 +26,13 @@ import {
   AVATAR_MIN_ZOOM,
   avatarOffsetToCropRect,
   avatarStoragePath,
+  centeredAvatarOffset,
   clampAvatarOffset,
   computeAvatarDisplayScale,
   cropAndResizeToBlob,
   loadImageFromFile,
   validateAvatarSourceFile,
+  zoomAvatarOffsetAroundCenter,
 } from '@/lib/avatarImage'
 
 /**
@@ -106,7 +108,18 @@ export function AvatarUpload({
 
     try {
       const image = await loadImageFromFile(file)
-      setCropState({ image, zoom: AVATAR_MIN_ZOOM, offsetX: 0, offsetY: 0 })
+      // Arranca centrado: con 0/0 la imagen quedaba pegada arriba a la
+      // izquierda y una foto apaisada se recortaba por el borde izquierdo.
+      setCropState({
+        image,
+        zoom: AVATAR_MIN_ZOOM,
+        ...centeredAvatarOffset({
+          naturalWidth: image.naturalWidth,
+          naturalHeight: image.naturalHeight,
+          viewportPx: AVATAR_CROP_VIEWPORT_PX,
+          zoom: AVATAR_MIN_ZOOM,
+        }),
+      })
     } catch {
       setError('No pudimos leer esa imagen. Probá con otro archivo.')
     }
@@ -464,9 +477,22 @@ function AvatarCropDialog({
             max={AVATAR_MAX_ZOOM}
             step={0.01}
             value={zoom}
-            onChange={(event) =>
-              onChangeState({ ...state, zoom: Number(event.target.value) })
-            }
+            onChange={(event) => {
+              const nextZoom = Number(event.target.value)
+              // Acerca sobre el centro del recuadro; el efecto de más arriba
+              // acota el resultado para que no queden huecos.
+              onChangeState({
+                ...state,
+                zoom: nextZoom,
+                ...zoomAvatarOffsetAroundCenter({
+                  offsetX,
+                  offsetY,
+                  fromZoom: zoom,
+                  toZoom: nextZoom,
+                  viewportPx: AVATAR_CROP_VIEWPORT_PX,
+                }),
+              })
+            }}
             className="w-full accent-primary"
           />
         </div>
