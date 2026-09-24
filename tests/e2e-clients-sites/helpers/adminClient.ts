@@ -121,7 +121,7 @@ export async function createDisposableSite(
 
 /**
  * Borra en cascada (a mano, sin `on delete cascade` en el esquema — decisión del modelo,
- * `04_Modelo_de_Datos.md` sección 1: nada se borra físicamente salvo un alta de prueba
+ * `04_Modelo_de_Datos.md` sección 0 ("Baja lógica"): nada se borra físicamente salvo un alta de prueba
  * descartable como esta) todo lo que un cliente de esta suite pudo haber dejado: sus sedes y sus
  * contactos, y por último el cliente. Solo para clientes `E2E-P085*` creados por la propia
  * suite; nunca para un cliente real.

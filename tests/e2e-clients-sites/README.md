@@ -75,9 +75,8 @@ distinto del de `tests/e2e-auth/` (`e2e-auth-`) y `tests/e2e-users/` (`e2e-p074-
 identificar de un vistazo qué suite dejó cada fila si algo quedara a medio limpiar. `clients`,
 `sites` y `client_contacts` no tienen `on delete cascade` entre sí (decisión del modelo: nada se
 borra físicamente salvo un alta de prueba descartable como esta, `04_Modelo_de_Datos.md` sección
-
-1. — `deleteDisposableClient` borra a mano, en orden (sedes, contactos, cliente), en un
-   `try/finally` de cada spec, aun si el test falla.
+0, "Baja lógica") — `deleteDisposableClient` borra a mano, en orden (sedes, contactos, cliente),
+en un `try/finally` de cada spec, aun si el test falla.
 
 ## Qué no cubre (para el orquestador)
 
