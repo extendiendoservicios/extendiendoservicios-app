@@ -40,6 +40,21 @@ export function formatShortDate(date: DateInput): string {
 }
 
 /**
+ * Fecha de calendario (columna `date`, sin hora) con año: `"1 feb 2018"`.
+ * Para nacimiento, ingreso, baja, licencias y otras fechas que no son un
+ * instante. No pasa por la zona horaria a propósito: `"2018-02-01"` como
+ * `Date` es la medianoche UTC, que en Buenos Aires es el 31 de enero, y con
+ * `formatShortDate` se mostraba un día antes.
+ */
+export function formatCalendarDate(dateOnly: string): string {
+  const [year = 0, month = 1, day = 1] = dateOnly
+    .slice(0, 10)
+    .split('-')
+    .map(Number)
+  return format(new Date(year, month - 1, day), 'd MMM yyyy', { locale: es })
+}
+
+/**
  * Hora en formato 24 horas con cero a la izquierda: `"08:00"`.
  */
 export function formatTime(date: DateInput): string {

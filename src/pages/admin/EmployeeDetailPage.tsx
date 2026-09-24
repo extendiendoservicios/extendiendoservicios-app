@@ -8,7 +8,7 @@ import { Avatar } from '@/components/Avatar'
 import { EmptyState } from '@/components/EmptyState'
 import { StatusBadge } from '@/components/status'
 import { avatarUrl } from '@/lib/avatarUrl'
-import { formatShortDate } from '@/lib/format'
+import { formatCalendarDate } from '@/lib/format'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { ROLE_LABELS } from '@/features/auth/session'
 import {
@@ -285,7 +285,7 @@ function EmployeeDataTab({
           <LabeledValue
             label="Fecha de nacimiento"
             value={
-              employee.birthDate ? formatShortDate(employee.birthDate) : null
+              employee.birthDate ? formatCalendarDate(employee.birthDate) : null
             }
           />
         </dl>
@@ -303,14 +303,14 @@ function EmployeeDataTab({
           <LabeledValue
             label="Fecha de ingreso"
             value={
-              employee.hireDate ? formatShortDate(employee.hireDate) : null
+              employee.hireDate ? formatCalendarDate(employee.hireDate) : null
             }
           />
           <LabeledValue
             label="Fecha de baja"
             value={
               employee.terminatedAt
-                ? formatShortDate(employee.terminatedAt)
+                ? formatCalendarDate(employee.terminatedAt)
                 : null
             }
           />

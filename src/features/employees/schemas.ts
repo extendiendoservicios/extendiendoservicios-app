@@ -9,12 +9,24 @@ import { z } from 'zod'
  * caracteres), no las reemplazan -- el servidor vuelve a validar todo esto.
  */
 
+/**
+ * Saca puntos, guiones y espacios: mucha gente escribe el DNI con puntos y el
+ * CUIL con guiones. Se valida y se guarda sin ellos (la base exige solo
+ * dígitos), así el alta no se frena por el formato.
+ */
+export function onlyDigits(value: string): string {
+  return value.replace(/[\s.-]/g, '')
+}
+
 /** `0016_hardening.sql`: `employees_dni_format_check`. */
 const dniSchema = z
   .string()
   .trim()
   .min(1, 'Falta el DNI.')
-  .regex(/^[0-9]+$/, 'El DNI tiene que tener solo dígitos, sin puntos.')
+  .refine(
+    (value) => /^[0-9]+$/.test(onlyDigits(value)),
+    'El DNI tiene que tener solo números.',
+  )
 
 /** `0016_hardening.sql`: `employees_cuil_format_check` (opcional, 11 dígitos si se carga). */
 const cuilSchema = z
@@ -22,8 +34,8 @@ const cuilSchema = z
   .trim()
   .optional()
   .refine(
-    (value) => !value || /^[0-9]{11}$/.test(value),
-    'El CUIL tiene que tener 11 dígitos, sin puntos ni guiones.',
+    (value) => !value || /^[0-9]{11}$/.test(onlyDigits(value)),
+    'El CUIL tiene que tener 11 números.',
   )
 
 /**
@@ -141,8 +153,8 @@ function commonValuesToInput(
   return {
     firstName: values.firstName.trim(),
     lastName: values.lastName.trim(),
-    dni: values.dni.trim(),
-    cuil: emptyToNull(values.cuil),
+    dni: onlyDigits(values.dni.trim()),
+    cuil: values.cuil ? emptyToNull(onlyDigits(values.cuil)) : null,
     employeeNumber: Number(values.employeeNumber),
     phone: emptyToNull(values.phone),
     address: emptyToNull(values.address),

@@ -5,6 +5,7 @@ import {
   employeeEditFormValuesToInput,
   employeeEditSchema,
   employeeRolesFromCheckboxes,
+  onlyDigits,
 } from './schemas'
 
 /**
@@ -40,12 +41,23 @@ describe('employeeCreateSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it('rechaza el DNI con letras o puntos', () => {
+  it('rechaza el DNI con letras', () => {
+    const result = employeeCreateSchema.safeParse({
+      ...baseCreateValues,
+      dni: '30A11222',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('acepta el DNI con puntos y el CUIL con guiones (se limpian al guardar)', () => {
     const result = employeeCreateSchema.safeParse({
       ...baseCreateValues,
       dni: '30.111.222',
+      cuil: '20-30111222-3',
     })
-    expect(result.success).toBe(false)
+    expect(result.success).toBe(true)
+    expect(onlyDigits('30.111.222')).toBe('30111222')
+    expect(onlyDigits('20-30111222-3')).toBe('20301112223')
   })
 
   it('rechaza un CUIL que no tenga 11 dígitos', () => {
