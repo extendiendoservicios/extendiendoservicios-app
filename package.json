@@ -17,6 +17,7 @@
     "test:e2e": "playwright test",
     "test:e2e:auth": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-auth/playwright.auth.config.ts",
     "test:e2e:users": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-users/playwright.users.config.ts",
+    "test:e2e:clients-sites": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-clients-sites/playwright.clients-sites.config.ts",
     "test:permissions": "node --env-file=.env.local ./node_modules/vitest/vitest.mjs run --config tests/permissions/vitest.config.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
