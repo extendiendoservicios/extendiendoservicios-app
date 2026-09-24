@@ -412,7 +412,12 @@ function DeactivateDialog({
   async function handleConfirm(reason: string) {
     try {
       await deactivateUser.mutateAsync({ profileId: user.profileId, reason })
-      toast.success(`Desactivamos la cuenta de ${fullNameOf(user)}.`)
+      // USERS-008: por defecto la lista solo muestra activos -- la persona
+      // desactivada desaparece de la vista al confirmar, así que el aviso
+      // aclara dónde encontrarla en vez de dejar que parezca que se borró.
+      toast.success(
+        `Desactivamos la cuenta de ${fullNameOf(user)}. Para volver a verla en la lista, activá "Mostrar desactivados".`,
+      )
       onOpenChange(false)
     } catch (error) {
       toast.error(apiErrorMessage(error, 'No pudimos desactivar la cuenta.'))
