@@ -37,7 +37,7 @@
 const NOMINATIM_SEARCH_URL = 'https://nominatim.openstreetmap.org/search'
 
 /** Dirección de contacto que manda la app como parámetro `email` (ver arriba). */
-const NOMINATIM_CONTACT_EMAIL = 'soporte@extendiendoservicios.com'
+const NOMINATIM_CONTACT_EMAIL = 'extserviciosapp@gmail.com'
 
 /** Mínimo de milisegundos entre dos pedidos a Nominatim desde esta app. */
 const MIN_INTERVAL_MS = 1000
