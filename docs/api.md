@@ -77,9 +77,44 @@ de los códigos caen en el texto de Postgres tal cual. `created_by`/
 | `fetchRatingCriteria`, `createRatingCriterion`, `updateRatingCriterion`, `closeRatingCriterion`, `reorderRatingCriteria` | `from('rating_criteria')`           | `closeRatingCriterion` pone `valid_to` en hoy, no borra. `reorderRatingCriteria` reescribe `position` de cada fila en el orden final que ya armó la pantalla (mismo patrón que ADM-26).                                                                                                                         |
 | `fetchSecurityEvents(filters)`                                                                                           | `from('security_events')`           | Solo el dueño ve resultados (`security_events_select_owner`); para cualquier otra sesión vuelve vacío por RLS, sin error. Embebe `profiles` dos veces (actor y destinatario), nombrando cada FK a mano por la misma ambigüedad que `fetchUsers`. `limit(500)`, sin paginado real.                               |
 
+### `clients` (`src/api/clients.ts`, P08.3 — CLIENT-001 a CLIENT-006, CLIENT-009)
+
+Clientes y contactos de ADM-19 a ADM-21. Igual que `settings`: sin RPC
+propia (`06_API.md` sección 4, todo `insert/update`/`update status`/`insert
+/update/delete lógico` directo por PostgREST); `mapWriteError` traduce a
+mano el único código que documenta `06` sección 15 para este dominio
+(`CUIT_IN_USE`, restricción `clients.cuit unique`); `created_by`/
+`updated_by` los pasa cada función como parámetro, no un trigger.
+
+| Función                                                                                        | Canal                                   | Notas                                                                                                                                                                                                                                                              |
+| ---------------------------------------------------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `fetchClients(filters)`                                                                        | `from('v_clients')`                     | Filtros de texto (`ilike` sobre razón social, fantasía y CUIT) y estado, siempre `deleted_at is null`. `sites_count` cuenta sedes vigentes sin filtrar por estado (la pantalla lo etiqueta "Sedes", no "Sedes activas" — ver `docs/features/clientes-y-sedes.md`). |
+| `fetchPrimaryContactNames()`                                                                   | `from('client_contacts')`               | Mapa `clientId → nombre` del contacto con `is_primary = true`, para la columna de ADM-19 (`v_clients` no lo trae).                                                                                                                                                 |
+| `fetchClientDetail(id)`, `createClient`, `updateClient`                                        | `from('clients')`                       | `createClient`/`updateClient` mapean `ClientFormInput` ↔ columnas `snake_case`; CUIT repetido → `ApiError('Ese CUIT ya está registrado.', 'CUIT_IN_USE')`.                                                                                                         |
+| `setClientStatus(id, status, updatedBy)`                                                       | `from('clients')`                       | Solo toca `status` (CLIENT-006), aparte del formulario completo.                                                                                                                                                                                                   |
+| `fetchClientContacts`, `createClientContact`, `updateClientContact`, `deactivateClientContact` | `from('client_contacts')`               | Baja lógica con `deleted_at`.                                                                                                                                                                                                                                      |
+| `setPrimaryClientContact(clientId, contactId, updatedBy)`                                      | `from('client_contacts')`, dos `update` | Sin RPC que lo haga en una transacción: primero le saca `is_primary` al contacto anterior, después se lo pone al nuevo (el índice único parcial `client_contacts_one_primary_per_client_idx` rechaza tener dos filas en `true` a la vez).                          |
+| `fetchClientSites(clientId)`                                                                   | `from('sites')`                         | Listado simple para la pestaña Sedes de ADM-21.                                                                                                                                                                                                                    |
+
+### `sites` (`src/api/sites.ts`, P08.4 — SITE-001 a SITE-003, SITE-005, SITE-006)
+
+Sedes de ADM-22, ADM-23 y ADM-24. Igual que `clients`: sin RPC propia
+(`06_API.md` sección 5, todo `insert/update`/`update status` directo por
+PostgREST); `mapWriteError` traduce a mano el único código que documenta
+`06` sección 15 para este dominio (`SITE_NAME_IN_USE`, índice
+`sites_client_id_name_key`); `created_by`/`updated_by` los pasa cada
+función como parámetro, no un trigger.
+
+| Función                                           | Canal             | Notas                                                                                                                                                                                                                                              |
+| ------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fetchSiteDetail(id)`, `createSite`, `updateSite` | `from('sites')`   | Embeben `clients(legal_name, trade_name, status)`: la cabecera de ADM-22 necesita el nombre del cliente y `sites` no lo trae. Nombre repetido en el cliente → `ApiError('Ya hay una sede con ese nombre para este cliente.', 'SITE_NAME_IN_USE')`. |
+| `setSiteStatus(id, status, updatedBy)`            | `from('sites')`   | Solo toca `status` (SITE-006), aparte del formulario completo.                                                                                                                                                                                     |
+| `fetchSitesForMap(filters)`                       | `from('sites')`   | Para ADM-24: trae todas las sedes vigentes del cliente filtrado, con y sin coordenadas (el filtrado por coordenadas lo hace la pantalla, para poder avisar cuántas quedaron afuera del mapa).                                                      |
+| `fetchClientFilterOptions()`                      | `from('clients')` | Opciones del filtro "Cliente" del mapa de sedes: todos los clientes vigentes, sin filtrar por `status`.                                                                                                                                            |
+
 ## Próximos dominios
 
-Cada paquete de F8 en adelante agrega su sección acá (`clients`,
-`employees`, `shifts`, `attendance`, `supervisions`, `tasks`) siguiendo el
-mismo formato: función, canal, particularidades que no se deducen de leer
-el nombre.
+Cada paquete de F8 en adelante agrega su sección acá (`employees`,
+`shifts`, `attendance`, `supervisions`, `tasks`) siguiendo el mismo
+formato: función, canal, particularidades que no se deducen de leer el
+nombre.

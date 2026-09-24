@@ -7,6 +7,42 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.5.0] - 2026-09-24
+
+Clientes y sedes (F8). El dueño y los administradores dan de alta clientes con sus contactos y sedes con ubicación, y las ven en un mapa. Sin migraciones nuevas.
+
+### Agregado
+
+- pgTAP de permisos por rol en clientes, contactos y sedes (P08.1, CLIENT-007,
+  SITE-007): lectura por administrador, escritura con y sin capacidades,
+  supervisor y empleado sin escritura, y bajas lógicas ocultas para ellos.
+- Componentes de mapa `MapView` y `MapPicker` con Leaflet y OpenStreetMap
+  (P08.2, SITE-004, SITE-005): marcadores por estado, popup, encuadre
+  automático, búsqueda de direcciones con Nominatim (un pedido por acción, uno
+  por segundo, limitado a Argentina) y coordenadas opcionales. Leaflet se
+  carga en diferido y no entra al bundle inicial.
+- Clientes (P08.3, CLIENT-001 a CLIENT-006, CLIENT-009): ADM-19 listado con
+  búsqueda y filtro de estado, ADM-20 alta y edición con ubicación, ADM-21
+  detalle con sedes, contactos (alta, edición, principal y baja lógica),
+  servicios y tareas, y cambio de estado con la explicación de su efecto. CUIT
+  repetido traducido a `CUIT_IN_USE`.
+- Sedes (P08.4, SITE-001 a SITE-003, SITE-005, SITE-006, SITE-009, SITE-010):
+  ADM-23 alta y edición con ubicación y restricciones, ADM-22 detalle con mapa
+  y cambio de estado, ADM-24 mapa de sedes con filtro por cliente (pestaña
+  "Mapa" de Clientes), y el componente `SiteInfo` para las vistas de empleado
+  y supervisor. Nombre repetido traducido a `SITE_NAME_IN_USE`.
+- Suite e2e `tests/e2e-clients-sites/` (P08.5, CLIENT-008, SITE-008,
+  TEST-005), con el criterio de aceptación de F8 corrido por un
+  administrador, acceso denegado a empleado y supervisor, y capturas a 390 px
+  sin scroll horizontal.
+- Documentación: `docs/features/clientes-y-sedes.md` (CLIENT-010, DOC-008) y
+  las secciones `clients` y `sites` de `docs/api.md`.
+
+### Cambiado
+
+- Subtítulos de rutas sin referencias internas (IDs de pantalla ni parámetros
+  de URL).
+
 ## [0.4.0] - 2026-09-24
 
 Usuarios, roles y configuración (F7). El dueño administra los accesos desde la plataforma, y una persona desactivada pierde el acceso al instante. Incluye la corrección de la restauración de prueba (TEST-024).

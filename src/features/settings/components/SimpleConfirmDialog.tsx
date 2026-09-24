@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -26,6 +27,7 @@ function SimpleConfirmDialog({
   cancelLabel = 'Cancelar',
   isLoading = false,
   onConfirm,
+  children,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -35,6 +37,8 @@ function SimpleConfirmDialog({
   cancelLabel?: string
   isLoading?: boolean
   onConfirm: () => void
+  /** Contenido extra entre la descripción y los botones (por ejemplo, un `Select`). */
+  children?: ReactNode
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -43,6 +47,7 @@ function SimpleConfirmDialog({
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
+        {children}
         <DialogFooter>
           <Button
             type="button"

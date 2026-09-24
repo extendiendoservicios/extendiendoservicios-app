@@ -9,8 +9,9 @@ acciones, entradas, selectores, tarjetas, `StatusBadge`, tablas, avatares,
 avisos, diálogos, timeline y lista de tareas (P05.1 a P05.3); `AdminShell`,
 `MobileShell` y el router con `RequireRole` sobre una sesión provisoria
 (P05.4); marca de la sidebar e íconos PWA desde un PNG temporal (deuda
-`DS-020`), `vite-plugin-pwa` y `/dev/design` completo (P05.5). `/dev/design`
-sigue sin `StarRating` (F15), `MapPicker`/`MapView` (F8) y `Calendar`/
+`DS-020`), `vite-plugin-pwa` y `/dev/design` completo (P05.5). `MapPicker` y
+`MapView` (SITE-004/SITE-005) se suman en P08.2 — ver la sección dedicada
+más abajo. `/dev/design` sigue sin `StarRating` (F15) y `Calendar`/
 `WeekGrid` (F11) — llegan con sus fases de dominio.
 
 ## Tokens (`src/styles/tokens.css`)
@@ -1533,6 +1534,141 @@ Queda para F17 (RESP): el `index.html` no tiene `viewport-fit=cover`, así
 que hoy `env(safe-area-inset-bottom)` vale 0. Si se agrega, el tabbar de
 66 px de alto fijo tiene que crecer con el área segura; si no, los ítems
 quedan apretados en los iPhone con barra de inicio.
+
+## Mapas: `MapView` y `MapPicker` (SITE-004/SITE-005, P08.2)
+
+`src/components/map/`: los dos componentes de mapa del design system (`07`
+sección 2.2/2.4, fila `MapPicker` y `MapView`), con Leaflet + react-leaflet
+y tiles de OpenStreetMap. Sin presencia de empleados ni GPS en tiempo real
+(ADR-017): son mapas estáticos, de sedes.
+
+### Carga diferida de Leaflet
+
+Cada componente público (`MapView.tsx`, `MapPicker.tsx`) es un envoltorio
+delgado: hace `React.lazy(() => import('./LeafletMapView'))` /
+`'./LeafletMapPicker'` y muestra un `Skeleton` del alto pedido mientras
+carga. Toda la dependencia de Leaflet (el paquete, `react-leaflet` y el CSS
+importado localmente, `leaflet/dist/leaflet.css`) vive únicamente en
+`LeafletMapView.tsx`/`LeafletMapPicker.tsx`: Vite arma un chunk aparte para
+ese `import()` dinámico, así que ninguna ruta que solo _tipe_ contra
+`MapViewProps`/`MapPickerProps` (importando desde `@/components/map`) paga
+ese peso — el chunk recién se descarga cuando el componente efectivamente
+se monta. Verificado con `pnpm build`: hoy nada en el árbol de rutas de
+producción usa `MapView`/`MapPicker` todavía (SITE-004/SITE-005 arman las
+pantallas ADM-20/ADM-24 en P08.4, front-admin), así que `dist/` no tiene
+ningún rastro de `leaflet` (comprobado con `grep` sobre `dist/assets/*.js`);
+cuando front-admin los use desde una ruta con `React.lazy` propio (como ya
+hacen todas las vías del router, DS-015), el chunk de Leaflet cuelga del de
+esa ruta.
+
+### `MapView` — mapa de solo lectura
+
+```tsx
+import { MapView, type MapViewMarker } from '@/components/map'
+
+const markers: MapViewMarker[] = [
+  { id: 'sede-1', position: { lat: -34.47, lng: -58.53 }, variant: 'success', label: 'Grupo Norte — San Isidro', popup: <p>Grupo Norte — San Isidro</p> },
+]
+
+<MapView markers={markers} height={320} />
+```
+
+- `markers: MapViewMarker[]` — `{ id, position: { lat, lng }, label, variant?, popup? }`.
+  `variant` son las mismas variantes que `StatusBadge` (`BadgeVariant` de
+  `@/components/status`, `07` sección 3): el color del pin sale de ahí
+  (`bg-success`, `bg-warning`, etc., nunca un hex suelto — ver
+  `markerIcon.ts`), así que quien arma la lista de sedes solo tiene que
+  mapear `SiteStatus` → `BadgeVariant` (`active` → `success`, `inactive` →
+  `neutral`), igual que ya hace con `StatusBadge`.
+- `height` (`number | string`, 320 por omisión), `className`.
+- `defaultCenter`/`defaultZoom` — centro y zoom cuando no hay marcadores
+  para calcular el encuadre (por omisión, Obelisco/CABA, zoom 12); con
+  marcadores, el mapa siempre encuadra solo (un marcador → centra y hace
+  zoom 15; más de uno → `fitBounds` con margen).
+- `emptyTitle`/`emptyDescription` — texto del `EmptyState` cuando
+  `markers` está vacío (en vez del mapa: no tiene sentido mostrar un mapa
+  en blanco).
+- El popup lo arma quien usa `MapView` (`marker.popup`, cualquier
+  `ReactNode`): el componente no sabe nada de clientes, sedes ni del resto
+  del dominio.
+
+### `MapPicker` — elegir una ubicación, pensado para `react-hook-form`
+
+```tsx
+import { Controller, useForm } from 'react-hook-form'
+import { MapPicker, type Coordinates } from '@/components/map'
+
+const { control } = useForm<{ coordinates: Coordinates | null }>()
+
+<Controller
+  name="coordinates"
+  control={control}
+  render={({ field }) => (
+    <MapPicker value={field.value ?? null} onChange={field.onChange} />
+  )}
+/>
+```
+
+- `value: Coordinates | null` (`{ lat, lng } | null`) / `onChange` — un
+  único campo controlado, nunca lat/lng sueltos: así el formulario puede
+  dejarlo vacío (coordenadas opcionales, `CLIENT-003`) con un solo
+  `resolver` de zod (`z.object({ lat: z.number(), lng: z.number() })
+.nullable()`).
+- Clic en el mapa o arrastre del marcador actualizan `value`; los campos de
+  texto "Latitud"/"Longitud" se sincronizan en los dos sentidos
+  (`useCoordinateFields.ts`, testeado sin Leaflet). Mientras un campo tiene
+  un valor fuera de rango o no numérico, no se llama a `onChange` todavía
+  (para no mandar un valor a medio escribir) y se muestra el error debajo
+  del campo (`Input` con su prop `error` de siempre).
+- Dejar los dos campos vacíos, o el botón "Borrar coordenadas" (aparece
+  solo cuando hay un valor), mandan `onChange(null)`.
+- `height`, `className`, `defaultCenter`/`defaultZoom` (centro cuando
+  `value` es `null`), `disabled` (desactiva el clic, el arrastre y los
+  campos; atenúa el mapa).
+
+### El botón "Buscar dirección" contra Nominatim
+
+`src/components/map/nominatimClient.ts` documenta en el propio archivo la
+decisión completa; en resumen: un `fetch` de navegador no puede fijar el
+header `User-Agent` que pide la política de uso de Nominatim (es un
+"forbidden request header" de la spec de Fetch, el navegador lo pisa
+igual). En su lugar, esta app cumple el resto de la política desde el
+cliente:
+
+- `Referer`: lo manda el navegador solo, con el origen de la app.
+- `email` como parámetro de la URL (alternativa que sugiere la propia
+  política cuando no se puede mandar `User-Agent` con contacto).
+- Una consulta por clic del botón "Buscar dirección" (o `Enter` en el
+  campo, que es la misma acción deliberada) — nunca por cada tecla.
+- Límite de un pedido por segundo (`RateLimiter`, con el reloj inyectable
+  para poder testearlo con un reloj simulado).
+- `countrycodes=ar`, `limit` bajo (5) y `accept-language=es`.
+
+Si en algún momento hace falta más volumen o cumplir el `User-Agent` al pie
+de la letra, la alternativa es mover la búsqueda a un backend propio (la
+Edge Function, por ejemplo); fuera de alcance de esta tarea, que es sobre
+el cliente.
+
+### CSP y tiles/Nominatim (INFRA-018)
+
+`public/_headers` ya tenía, desde P03.4, lo que hace falta para los dos
+componentes (anticipado en el pendiente que dejó anotado ese paquete,
+`12_Registro_de_Progreso.md`): `img-src` incluye
+`https://tile.openstreetmap.org` y `https://*.tile.openstreetmap.org` (las
+tres subdominios `a`/`b`/`c` que usa el patrón `{s}` de la URL de tiles) y
+`connect-src` incluye `https://nominatim.openstreetmap.org`. No hizo falta
+tocar el archivo para este encargo — queda solo esta nota para quien lo
+revise, porque no era obvio a simple vista que ya estuviera cubierto.
+
+### Tests
+
+`coordinates.test.ts` (validación de rango, parseo, formateo, comparación
+por valor), `nominatimClient.test.ts` (armado de la URL, limitador de
+pedidos con reloj simulado y `fetch` simulado, manejo de errores) y
+`useCoordinateFields.test.ts`/`useAddressSearch.test.ts` (los dos hooks de
+lógica, con `renderHook`) — todo sin montar Leaflet (`jsdom` no mide bien
+un contenedor de mapa real). Los dos componentes visuales se pueden ver
+enteros en `/dev/design` (sección "MapView y MapPicker").
 
 ## Cómo ver los componentes
 
