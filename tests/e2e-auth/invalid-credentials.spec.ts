@@ -17,7 +17,7 @@ async function intentarIngresar(
 ) {
   await page.goto('/ingresar')
   await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Contraseña').fill(password)
+  await page.getByLabel('Contraseña', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Ingresar' }).click()
   await expect(page.getByText('No pudimos iniciar sesión')).toBeVisible()
   return page.getByText(MENSAJE_ESPERADO)

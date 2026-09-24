@@ -9,7 +9,7 @@ test.skip(!env, MISSING_ENV_MESSAGE)
 test('la sesión sobrevive a recargar la página', async ({ page }) => {
   await page.goto('/ingresar')
   await page.getByLabel('Email').fill(SEED_ACCOUNTS.employees[0])
-  await page.getByLabel('Contraseña').fill(env!.seedPassword)
+  await page.getByLabel('Contraseña', { exact: true }).fill(env!.seedPassword)
   await page.getByRole('button', { name: 'Ingresar' }).click()
   await expect(page).toHaveURL(/\/app$/)
 
@@ -25,7 +25,7 @@ test('la sesión sigue disponible en una pestaña nueva del mismo contexto', asy
 }) => {
   await page.goto('/ingresar')
   await page.getByLabel('Email').fill(SEED_ACCOUNTS.employees[0])
-  await page.getByLabel('Contraseña').fill(env!.seedPassword)
+  await page.getByLabel('Contraseña', { exact: true }).fill(env!.seedPassword)
   await page.getByRole('button', { name: 'Ingresar' }).click()
   await expect(page).toHaveURL(/\/app$/)
 

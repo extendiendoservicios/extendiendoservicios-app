@@ -5,6 +5,7 @@ import {
   Calendar as CalendarIcon,
   Fingerprint,
   Info,
+  Lock,
   LogOut,
   MoreHorizontal,
   Phone,
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
@@ -644,6 +646,21 @@ function DesignPage() {
         <Row label="Input deshabilitado">
           <Input disabled placeholder="No editable" className="w-72" />
         </Row>
+        <Row label="PasswordInput (P08.6)">
+          <PasswordInput
+            placeholder="Contraseña"
+            autoComplete="current-password"
+            className="w-72"
+          />
+        </Row>
+        <Row label="PasswordInput con ícono y error">
+          <PasswordInput
+            icon={Lock}
+            defaultValue="12345"
+            error="Mínimo 8 caracteres."
+            className="w-72"
+          />
+        </Row>
         <Row label="Textarea">
           <Textarea
             placeholder="Observaciones del turno…"
@@ -674,6 +691,7 @@ function DesignPage() {
         <Row label="Móvil (390 px)">
           <MobileFrame>
             <Input mobile placeholder="Buscar…" icon={Search} />
+            <PasswordInput mobile placeholder="Contraseña" icon={Lock} />
             <Textarea mobile placeholder="Observación del servicio…" />
           </MobileFrame>
         </Row>

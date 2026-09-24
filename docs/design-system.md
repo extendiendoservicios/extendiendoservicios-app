@@ -12,7 +12,9 @@ avisos, diálogos, timeline y lista de tareas (P05.1 a P05.3); `AdminShell`,
 `DS-020`), `vite-plugin-pwa` y `/dev/design` completo (P05.5). `MapPicker` y
 `MapView` (SITE-004/SITE-005) se suman en P08.2 — ver la sección dedicada
 más abajo. `/dev/design` sigue sin `StarRating` (F15) y `Calendar`/
-`WeekGrid` (F11) — llegan con sus fases de dominio.
+`WeekGrid` (F11) — llegan con sus fases de dominio. `PasswordInput` (P08.6,
+pedido de Mike, 24 sep 2026) se suma después de cerrar F8 — ver "Entrada
+(DS-004)" más abajo.
 
 ## Tokens (`src/styles/tokens.css`)
 
@@ -245,6 +247,23 @@ destructive | link` (default `primary`). `size` — `sm | md | mobile`
   `--danger` y muestra el mensaje en 11 px debajo, con `aria-invalid` y
   `aria-describedby`), `mobile` (booleano: variante de 12×13 con 14 px de
   fuente). Resto de props nativas.
+- **`PasswordInput`** (`ui/password-input.tsx`, P08.6, pedido de Mike del 24
+  sep 2026): campo de contraseña con un botón "ojito" a la derecha
+  (`Eye`/`EyeOff` de lucide-react) que alterna el `type` entre `password` y
+  `text`. Mismos tokens y tamaños que `Input` — no lo envuelve, porque
+  `Input` solo deja lugar para un ícono a la izquierda, así que repite su
+  estructura y agrega el botón. Misma API que `Input` (`icon`, `error`,
+  `mobile`, resto de props nativas, `ref` reenviada) menos `type`, que el
+  propio componente controla. El botón es `type="button"` (no envía el
+  formulario), con `aria-label` "Mostrar contraseña" / "Ocultar
+  contraseña", `aria-pressed` y `aria-controls` apuntando al `id` del
+  input; objetivo táctil de 44 px de alto en la variante `mobile` (toma
+  toda la altura del campo). Arranca siempre oculto — como el estado vive
+  en el componente, un formulario que se reinicia o un diálogo que se
+  cierra ya vuelve a arrancar oculto sin lógica extra. Esconde el ojito
+  nativo de Edge (`::-ms-reveal`/`::-ms-clear`) para que no aparezcan dos.
+  Reemplaza a `Input type="password"` en `LoginPage`, `ResetPasswordPage`,
+  `ProfilePage`, `NewAdminUserSheet`, `UserActionsMenu` y `DevRole`.
 - **`Select`** (`ui/select.tsx`): sin cambios de API sobre shadcn/Radix,
   solo restyleado (borde `--border-strong`, radio 8, 13 px).
 - **`Combobox`** (`src/components/Combobox.tsx`): `options`

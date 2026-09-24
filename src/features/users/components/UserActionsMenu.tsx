@@ -14,6 +14,7 @@ import {
 import { IconButton } from '@/components/IconButton'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import {
   Dialog,
@@ -236,9 +237,8 @@ function ResetPasswordDialog({
             <FieldLabel htmlFor="reset-password-new">
               Contraseña nueva
             </FieldLabel>
-            <Input
+            <PasswordInput
               id="reset-password-new"
-              type="password"
               autoComplete="new-password"
               aria-invalid={Boolean(errors.newPassword)}
               {...register('newPassword')}

@@ -4,6 +4,7 @@ import { LogOut } from 'lucide-react'
 import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/features/auth/AuthProvider'
@@ -182,9 +183,8 @@ function DevRolePage() {
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor="dev-rol-password">Contraseña</Label>
-              <Input
+              <PasswordInput
                 id="dev-rol-password"
-                type="password"
                 autoComplete="current-password"
                 required
                 value={password}
