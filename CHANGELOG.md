@@ -9,6 +9,14 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ### Agregado
 
+- Empleados y supervisores (P09.3, EMP-001 a EMP-005): ADM-16 listado con
+  filtros por texto, rol, estado efectivo y cliente habilitado; ADM-18 alta
+  con usuario (una sola llamada a la Edge Function `create_user`, sin riesgo
+  de usuario huérfano) y edición de datos laborales y personales; ADM-17
+  ficha con la pestaña Datos completa y baja en dos pasos con motivo
+  obligatorio (revoca el acceso primero, después marca `employees.status`).
+  `createAdminUser` de `users.ts` ahora acepta datos de empleado opcionales,
+  reutilizado por el alta de ADM-18.
 - `AvatarUpload` (P09.2, EMP-011): elegir una foto, recortarla en cuadrado
   (arrastre o teclado, con zoom), redimensionarla a 512×512 en el cliente y
   subirla al bucket `avatars`, o quitarla. Foto en el menú de usuario de la
