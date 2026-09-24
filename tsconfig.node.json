@@ -26,6 +26,7 @@
     "playwright.config.ts",
     "tests/e2e/**/*.ts",
     "tests/e2e-auth/**/*.ts",
+    "tests/e2e-users/**/*.ts",
     "tests/permissions/**/*.ts",
     "scripts/**/*.ts"
   ]
