@@ -595,8 +595,14 @@ columna solo no alcanza ahí.
 Detalle completo (RLS por rol, con las filas exactas esperadas sobre fixtures) en
 `supabase/tests/0012_rls_policies.test.sql`,
 `supabase/tests/0012_rls_policies_clients_sites_services_shifts.test.sql`,
-`supabase/tests/0012_rls_policies_assignments_attendance_tasks.test.sql` y
-`supabase/tests/0012_rls_policies_supervisions_ratings_settings.test.sql`. Estos dos criterios de
+`supabase/tests/0012_rls_policies_assignments_attendance_tasks.test.sql`,
+`supabase/tests/0012_rls_policies_supervisions_ratings_settings.test.sql` y
+`supabase/tests/0012_rls_policies_employees_writes.test.sql` (EMP-013, F9: el `update` de
+`employees` -- incluido que el legajo es editable y sigue siendo único en un `update`, no solo en
+el `insert` -- y el `update`/`delete` de `employee_client_permissions`, `employee_availability` y
+`employee_leaves`, que `0012_rls_policies.test.sql` no había cubierto; además `v_employees` y
+`v_search` respetando esa misma RLS a través de `security_invoker` cuando se consultan como una
+persona con rol `employee`). Estos dos criterios de
 aceptación de F4 tienen un test explícito: un empleado autenticado no lee `ratings` (ni siquiera la
 propia, P-084) ni asignaciones de turnos ajenos (P-103: sí lee las propias y las de compañeros del
 mismo turno); `anon` no lee ninguna tabla de negocio salvo lo que expone `v_public_branding`. Desde
