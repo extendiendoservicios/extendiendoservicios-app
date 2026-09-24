@@ -254,7 +254,9 @@ destructive | link` (default `primary`). `size` — `sm | md | mobile`
   `Input` solo deja lugar para un ícono a la izquierda, así que repite su
   estructura y agrega el botón. Misma API que `Input` (`icon`, `error`,
   `mobile`, resto de props nativas, `ref` reenviada) menos `type`, que el
-  propio componente controla. El botón es `type="button"` (no envía el
+  propio componente controla. Diferencia con `Input`: `className` se aplica
+  al contenedor, no al `<input>`, para que un ancho (por ejemplo `w-72`)
+  mueva también el botón. El botón es `type="button"` (no envía el
   formulario), con `aria-label` "Mostrar contraseña" / "Ocultar
   contraseña", `aria-pressed` y `aria-controls` apuntando al `id` del
   input; objetivo táctil de 44 px de alto en la variante `mobile` (toma

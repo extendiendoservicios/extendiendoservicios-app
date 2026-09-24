@@ -28,6 +28,9 @@ import { cn } from 'cn'
  *   `Input`) y el resto de las props nativas del input, incluidas las que
  *   pone `register(...)` de react-hook-form y `autoComplete`, para no
  *   romper gestores de contraseñas ni validaciones.
+ * - A diferencia de `Input`, `className` va al contenedor y no al `<input>`:
+ *   el botón se ubica respecto del contenedor, así que un ancho puesto solo
+ *   en el input (por ejemplo `w-72`) dejaba el ojito afuera del campo.
  */
 function PasswordInput({
   className,
@@ -51,7 +54,7 @@ function PasswordInput({
   const errorId = error ? `${inputId}-error` : undefined
 
   return (
-    <div className="w-full">
+    <div className={cn('w-full', className)}>
       <div className="relative flex items-center">
         {Icon && (
           <Icon
@@ -75,7 +78,6 @@ function PasswordInput({
               ? 'py-3 pl-[13px] pr-11 text-[14px]'
               : 'px-3 py-[9px] pr-9 text-[13px]',
             Icon && (mobile ? 'pl-9' : 'pl-8'),
-            className,
           )}
           {...props}
         />
