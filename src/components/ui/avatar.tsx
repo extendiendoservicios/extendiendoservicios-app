@@ -7,15 +7,20 @@ function Avatar({
   size = 'default',
   ...props
 }: React.ComponentProps<typeof AvatarPrimitive.Root> & {
-  /** 28 px (`07` sección 2.3) o 26 px para `DataTable` "compact" (ds.css `.tbl.compact .av`). */
-  size?: 'default' | 'compact'
+  /**
+   * 28 px (`07` sección 2.3, default), 26 px para `DataTable` "compact"
+   * (ds.css `.tbl.compact .av`), u 80 px para la vista previa grande de
+   * `AvatarUpload` (`lg`, decisión menor de EMP-011: `07` no define un
+   * tamaño grande de avatar, así que se fija acá).
+   */
+  size?: 'default' | 'compact' | 'lg'
 }) {
   return (
     <AvatarPrimitive.Root
       data-slot="avatar"
       data-size={size}
       className={cn(
-        'group/avatar relative flex size-[28px] shrink-0 rounded-full select-none after:absolute after:inset-0 after:rounded-full after:border after:border-border after:mix-blend-darken data-[size=compact]:size-[26px] dark:after:mix-blend-lighten',
+        'group/avatar relative flex size-[28px] shrink-0 rounded-full select-none after:absolute after:inset-0 after:rounded-full after:border after:border-border after:mix-blend-darken data-[size=compact]:size-[26px] data-[size=lg]:size-20 dark:after:mix-blend-lighten',
         className,
       )}
       {...props}
@@ -48,8 +53,9 @@ function AvatarFallback({
       data-slot="avatar-fallback"
       className={cn(
         // Iniciales 11 px (redondeado de los 10.5 px de ds.css `.av`, `07`
-        // sección 4), 10 px en la variante "compact" (redondeado de 9.5 px).
-        'flex size-full items-center justify-center rounded-full text-[11px] font-semibold tracking-[0.2px] text-white group-data-[size=compact]/avatar:text-[10px]',
+        // sección 4), 10 px en la variante "compact" (redondeado de 9.5 px),
+        // 26 px en `lg` (misma proporción que 11/28 llevada a 80 px).
+        'flex size-full items-center justify-center rounded-full text-[11px] font-semibold tracking-[0.2px] text-white group-data-[size=compact]/avatar:text-[10px] group-data-[size=lg]/avatar:text-[26px]',
         className,
       )}
       {...props}

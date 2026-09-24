@@ -104,6 +104,8 @@ import {
   type StatusBadgeInput,
 } from '@/components/status'
 import { MapPicker, MapView, type MapViewMarker } from '@/components/map'
+import { AvatarUpload } from '@/components/AvatarUpload'
+import { GlobalSearch } from '@/components/search/GlobalSearch'
 
 /**
  * `/dev/design` (DS-016): vidriera de todos los componentes de
@@ -501,6 +503,16 @@ function DesignPage() {
     lat: number
     lng: number
   } | null>({ lat: -34.4708, lng: -58.5273 })
+  // `AvatarUpload` (EMP-011): componente real contra `App_dev` (mismo
+  // criterio que "Buscar dirección" de `MapPicker` más abajo, que ya pega
+  // contra Nominatim de verdad). El recorte pasa por el cliente sin tocar
+  // la red; recién al confirmar "Usar esta foto" se ve el estado de error
+  // real (sin sesión iniciada en `/dev/design`, las políticas de Storage
+  // rechazan la subida por no ser `authenticated` — RLS haciendo su
+  // trabajo, no un error simulado).
+  const [demoAvatarPath, setDemoAvatarPath] = React.useState<string | null>(
+    null,
+  )
 
   function handleTaskComplete(id: string) {
     setTasks((current) =>
@@ -1339,6 +1351,40 @@ function DesignPage() {
               height={280}
             />
           </div>
+        </Row>
+      </Section>
+
+      <Section title="AvatarUpload (EMP-011, P09.2)">
+        <p className="text-[11.5px] text-text-3">
+          Elegir una foto, recortarla en cuadrado (arrastre + zoom, con flechas
+          del teclado como alternativa), redimensionarla a 512×512 en el cliente
+          y subirla al bucket <code>avatars</code>, o quitar la foto actual.
+          Mismo componente para la foto propia (COM-04) y, más adelante, la de
+          otra persona (ADM-18, front-admin) — cambia solo el{' '}
+          <code>profileId</code> que se le pasa.
+        </p>
+        <Row label="Sin foto todavía (fallback de iniciales)">
+          <AvatarUpload
+            profileId="dev-avatar-demo"
+            name="Sofía Ibarra"
+            avatarPath={demoAvatarPath}
+            onChange={setDemoAvatarPath}
+          />
+        </Row>
+      </Section>
+
+      <Section title="GlobalSearch (EMP-012, P09.2)">
+        <p className="text-[11.5px] text-text-3">
+          Buscador global de la topbar del <code>AdminShell</code>, solo para
+          dueño y administradores — empleados, clientes y sedes desde{' '}
+          <code>v_search</code>, agrupados, con navegación por teclado (
+          <code>cmdk</code>), atajo <code>Ctrl K</code> (o <code>/</code>) y
+          "Escape" para cerrar. El botón de acá abajo es el mismo componente que
+          ya está montado en la topbar real (por eso el atajo de teclado también
+          funciona en esta página).
+        </p>
+        <Row label='Disparador (clic, Ctrl K o "/" para abrir el diálogo real)'>
+          <GlobalSearch />
         </Row>
       </Section>
     </div>

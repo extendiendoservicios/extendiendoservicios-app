@@ -55,8 +55,8 @@ interface AvatarProps {
   name: string
   /** Foto (`storage avatars`). Si falta o no carga, se ve el fallback. */
   src?: string | null
-  /** 28 px (default) o 26 px para `DataTable` "compact". */
-  size?: 'default' | 'compact'
+  /** 28 px (default), 26 px para `DataTable` "compact", u 80 px para la vista previa de `AvatarUpload` (`lg`). */
+  size?: 'default' | 'compact' | 'lg'
   className?: string
 }
 

@@ -12,7 +12,7 @@
   Referrer-Policy: strict-origin-when-cross-origin
   X-Frame-Options: DENY
   Permissions-Policy: geolocation=(self), camera=(), microphone=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), midi=(), sync-xhr=()
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://anesttvrnpsaaaxaquce.supabase.co https://fysuppdadwvabrjpnnoh.supabase.co https://tile.openstreetmap.org https://*.tile.openstreetmap.org; connect-src 'self' https://anesttvrnpsaaaxaquce.supabase.co https://fysuppdadwvabrjpnnoh.supabase.co https://*.ingest.de.sentry.io https://nominatim.openstreetmap.org; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://anesttvrnpsaaaxaquce.supabase.co https://fysuppdadwvabrjpnnoh.supabase.co https://tile.openstreetmap.org https://*.tile.openstreetmap.org; connect-src 'self' https://anesttvrnpsaaaxaquce.supabase.co https://fysuppdadwvabrjpnnoh.supabase.co https://*.ingest.de.sentry.io https://nominatim.openstreetmap.org; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'
 
 # RESP-001 (P05.5, front-plataforma): el service worker y el manifest de la PWA (`07`/`02`
 # P-089) no llevan nombre de archivo con hash de contenido (a diferencia de `dist/assets/*`), así
