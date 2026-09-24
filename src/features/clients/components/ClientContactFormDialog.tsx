@@ -139,6 +139,7 @@ function ClientContactFormDialog({
           </DialogDescription>
         </DialogHeader>
         <form
+          noValidate
           onSubmit={(event) => void handleSubmit(onSubmit)(event)}
           className="flex flex-col gap-[13px]"
         >

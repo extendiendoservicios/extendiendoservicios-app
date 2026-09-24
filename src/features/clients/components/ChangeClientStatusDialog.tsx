@@ -46,11 +46,16 @@ function ChangeClientStatusDialog({
 }) {
   const auth = useAuth()
   const setClientStatus = useSetClientStatusMutation()
-  const [nextStatus, setNextStatus] = useState<ClientStatus>(client.status)
+  // El estado actual no se ofrece: elegirlo no cambiaría nada.
+  const statusOptions = CLIENT_STATUS_OPTIONS.filter(
+    (option) => option.value !== client.status,
+  )
+  const firstOtherStatus = statusOptions[0]?.value ?? client.status
+  const [nextStatus, setNextStatus] = useState<ClientStatus>(firstOtherStatus)
 
   function handleOpenChange(nextOpen: boolean) {
     if (nextOpen) {
-      setNextStatus(client.status)
+      setNextStatus(firstOtherStatus)
     }
     onOpenChange(nextOpen)
   }
@@ -91,7 +96,7 @@ function ChangeClientStatusDialog({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {CLIENT_STATUS_OPTIONS.map((option) => (
+            {statusOptions.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}
               </SelectItem>

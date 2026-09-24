@@ -175,15 +175,15 @@ export default function ClientDetailPage() {
 
         <TabsContent value="servicios" className="pt-3">
           <EmptyState
-            title="Los servicios se gestionan a partir de F10"
-            description="Esta pestaña todavía no tiene funcionalidad: llega con el paquete de servicios y turnos."
+            title="Todavía no hay servicios para mostrar"
+            description="Los servicios del cliente se van a ver acá cuando esté habilitada la gestión de servicios."
           />
         </TabsContent>
 
         <TabsContent value="tareas" className="pt-3">
           <EmptyState
             title="Plantilla de tareas del cliente"
-            description="Se define en la pantalla de plantillas de tareas (ADM-26)."
+            description="Las tareas de este cliente se definen en Plantillas de tareas."
             action={
               <Button
                 variant="ghost"

@@ -1,7 +1,14 @@
 import * as React from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
+import {
+  MapContainer,
+  Marker,
+  Popup,
+  TileLayer,
+  useMap,
+  ZoomControl,
+} from 'react-leaflet'
 import { MapPin } from 'lucide-react'
 import { cn } from 'cn'
 import { EmptyState } from '@/components/EmptyState'
@@ -110,13 +117,14 @@ function MapView({
       <MapContainer
         center={[defaultCenter.lat, defaultCenter.lng]}
         zoom={defaultZoom}
-        scrollWheelZoom
+        zoomControl={false}
         className="size-full"
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">colaboradores de OpenStreetMap</a>'
         />
+        <ZoomControl zoomInTitle="Acercar" zoomOutTitle="Alejar" />
         <FitToMarkers markers={markers} />
         {markers.map((marker) => (
           <Marker

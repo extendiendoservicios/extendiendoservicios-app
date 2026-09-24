@@ -126,9 +126,11 @@ function ClientContactsPanel({ clientId }: { clientId: string }) {
                 {contact.roleTitle && (
                   <p className="text-[11px] text-text-3">{contact.roleTitle}</p>
                 )}
-                <p className="mt-1 text-[12px] text-text-2">
-                  {contact.phone ?? '—'} · {contact.email ?? '—'}
-                </p>
+                {(contact.phone || contact.email) && (
+                  <p className="mt-1 text-[12px] text-text-2">
+                    {[contact.phone, contact.email].filter(Boolean).join(' · ')}
+                  </p>
+                )}
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

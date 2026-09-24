@@ -32,8 +32,7 @@ export const adminRoutes: RouteObject[] = [
     path: 'planificacion',
     screenId: 'ADM-03',
     title: 'Planificación',
-    subtitle:
-      'Ver y navegar el cronograma (?vista=semana → ADM-04, ?vista=dia → ADM-05)',
+    subtitle: 'Ver y navegar el cronograma',
   }),
   placeholderRoute({
     path: 'turnos/nuevo',
@@ -100,7 +99,7 @@ export const adminRoutes: RouteObject[] = [
     path: 'empleados/:id',
     screenId: 'ADM-17',
     title: 'Ficha del empleado',
-    subtitle: 'Ver todo lo de una persona (?pestana=asistencia → ADM-12)',
+    subtitle: 'Ver todo lo de una persona',
   }),
   placeholderRoute({
     path: 'empleados/:id/editar',
@@ -114,7 +113,7 @@ export const adminRoutes: RouteObject[] = [
     handle: {
       screenId: 'ADM-19',
       title: 'Clientes',
-      subtitle: 'Ver clientes (?pestana=mapa → ADM-24)',
+      subtitle: 'Ver clientes y sus sedes',
     },
   },
   {

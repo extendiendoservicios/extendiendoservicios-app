@@ -127,6 +127,7 @@ export default function ClientFormPage() {
 
   return (
     <form
+      noValidate
       onSubmit={(event) => void handleSubmit(onSubmit)(event)}
       className="flex max-w-2xl flex-col gap-4"
     >
