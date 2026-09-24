@@ -101,6 +101,7 @@ import {
   type AssignmentStatus,
   type StatusBadgeInput,
 } from '@/components/status'
+import { MapPicker, MapView, type MapViewMarker } from '@/components/map'
 
 /**
  * `/dev/design` (DS-016): vidriera de todos los componentes de
@@ -110,12 +111,15 @@ import {
  * sobre `dist/`).
  *
  * Quedan afuera a propósito, con sus propias fases (`08_Fases_y_Backlog.md`
- * F5 alcance): `StarRating` (F15, MOB-SUP-001), `MapPicker`/`MapView` (F8,
- * SITE-004/SITE-005), `Calendar` mensual y `WeekGrid` (F11,
- * `src/features/planning`, por el ajuste de `11_Desglose_de_Tareas.md`
- * sección 5). `AdminShell`/`MobileShell` completos no se embeben acá (son
- * layouts de ruta, no piezas del vocabulario visual): se recorren enteros
- * desde `/dev/rol` (DS-015).
+ * F5 alcance): `StarRating` (F15, MOB-SUP-001), `Calendar` mensual y
+ * `WeekGrid` (F11, `src/features/planning`, por el ajuste de
+ * `11_Desglose_de_Tareas.md` sección 5). `AdminShell`/`MobileShell`
+ * completos no se embeben acá (son layouts de ruta, no piezas del
+ * vocabulario visual): se recorren enteros desde `/dev/rol` (DS-015).
+ *
+ * `MapPicker`/`MapView` (F8, SITE-004/SITE-005) se suman en P08.2: la
+ * sección de más abajo es lo único de esta página que carga Leaflet de
+ * verdad (con carga diferida, `MapView.tsx`/`MapPicker.tsx`).
  */
 function Section({
   title,
@@ -451,6 +455,31 @@ const MOBILE_SEGMENTED_OPTIONS = [
   { value: 'absence', label: 'Ausencia', critical: true as const },
 ] as const
 
+/** Sedes de ejemplo para `MapView` (SITE-005): mismos nombres que el resto de la vidriera. */
+const SITE_MARKERS: MapViewMarker[] = [
+  {
+    id: 'san-isidro',
+    position: { lat: -34.4708, lng: -58.5273 },
+    variant: 'success',
+    label: 'Grupo Norte — San Isidro',
+    popup: 'Grupo Norte — San Isidro (activa)',
+  },
+  {
+    id: 'martinez',
+    position: { lat: -34.4894, lng: -58.5069 },
+    variant: 'success',
+    label: 'Clínica del Parque — Martínez',
+    popup: 'Clínica del Parque — Martínez (activa)',
+  },
+  {
+    id: 'munro',
+    position: { lat: -34.5308, lng: -58.5225 },
+    variant: 'neutral',
+    label: 'Logística Central — Munro',
+    popup: 'Logística Central — Munro (inactiva)',
+  },
+]
+
 function DesignPage() {
   const [segmentedValue, setSegmentedValue] =
     React.useState<(typeof SEGMENTED_OPTIONS)[number]['value']>('today')
@@ -466,6 +495,10 @@ function DesignPage() {
   const [tablePagination, setTablePagination] =
     React.useState<DataTablePagination>({ pageIndex: 0, pageSize: 5 })
   const [cancelDialogOpen, setCancelDialogOpen] = React.useState(false)
+  const [mapPickerValue, setMapPickerValue] = React.useState<{
+    lat: number
+    lng: number
+  } | null>({ lat: -34.4708, lng: -58.5273 })
 
   function handleTaskComplete(id: string) {
     setTasks((current) =>
@@ -510,8 +543,7 @@ function DesignPage() {
         </h1>
         <p className="mt-1 text-[13px] text-text-3">
           Todos los componentes de <code>07_Design_System.md</code> sección 2,
-          salvo <code>StarRating</code> (F15), <code>MapPicker</code>/
-          <code>MapView</code> (F8) y <code>Calendar</code>/
+          salvo <code>StarRating</code> (F15) y <code>Calendar</code>/
           <code>WeekGrid</code> (F11) — ver la nota al pie. Solo en desarrollo:
           esta página no se registra en el router de producción.
         </p>
@@ -1259,6 +1291,35 @@ function DesignPage() {
               className="size-[13px] shrink-0"
             />
             Entorno de prueba: los datos de esta versión no son reales.
+          </div>
+        </Row>
+      </Section>
+
+      <Section title="MapView y MapPicker (P08.2, SITE-004/SITE-005)">
+        <p className="text-[11.5px] text-text-3">
+          Tiles de OpenStreetMap con atribución, CSS de Leaflet importado
+          localmente (nada de CDN) y carga diferida: el chunk de Leaflet recién
+          se descarga cuando uno de los dos mapas de esta sección entra en
+          pantalla. Marcadores propios (<code>divIcon</code>), sin el ícono por
+          omisión de Leaflet.
+        </p>
+        <Row label="MapView — sedes de un cliente, color por estado (variantes de StatusBadge)">
+          <div className="w-full max-w-2xl">
+            <MapView markers={SITE_MARKERS} height={280} />
+          </div>
+        </Row>
+        <Row label="MapView — estado vacío (sin coordenadas cargadas)">
+          <div className="w-full max-w-2xl">
+            <MapView markers={[]} height={200} />
+          </div>
+        </Row>
+        <Row label='MapPicker — marcador arrastrable, clic en el mapa, "Buscar dirección" (Nominatim) y campos de lat/lng opcionales'>
+          <div className="w-full max-w-2xl">
+            <MapPicker
+              value={mapPickerValue}
+              onChange={setMapPickerValue}
+              height={280}
+            />
           </div>
         </Row>
       </Section>
