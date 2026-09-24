@@ -94,11 +94,15 @@ test.describe('EMP-014: dar de baja a un empleado revoca el acceso', () => {
         }
       })
     } finally {
-      // Ya quedó de baja por la propia acción probada: solo confirma el estado, sin volver a
-      // banear (`terminateEmployeeDirectly` es idempotente igual, por si el paso de la
-      // interfaz falló a mitad de camino).
-      if (profileId) {
-        await terminateEmployeeDirectly(admin, profileId)
+      // Si el test llegó a la baja por interfaz, ya quedó de baja (esto solo confirma el
+      // estado). Si `createEmployeeViaForm` lanzó ANTES de eso pero la cuenta ya se había
+      // creado de verdad del lado del servidor, `profileId` puede seguir en `null` -- se
+      // vuelve a resolver por email para no dejar un huérfano (encontrado corriendo esta suite
+      // contra `App_dev`, ver el reporte del encargo P09.5). `terminateEmployeeDirectly` es
+      // idempotente en cualquiera de los dos casos.
+      const idToClean = profileId ?? (await findProfileIdByEmail(admin, email))
+      if (idToClean) {
+        await terminateEmployeeDirectly(admin, idToClean)
       }
     }
   })

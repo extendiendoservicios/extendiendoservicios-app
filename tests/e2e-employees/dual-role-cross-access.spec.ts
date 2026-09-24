@@ -131,11 +131,20 @@ test.describe('EMP-014: persona con ambos roles (empleado y supervisor)', () => 
         }
       })
     } finally {
-      if (dualProfileId) {
-        await terminateEmployeeDirectly(admin, dualProfileId)
+      // Vuelve a resolver por email si alguno quedó en `null`: `createEmployeeViaForm` puede
+      // lanzar DESPUÉS de que la cuenta ya se creó de verdad del lado del servidor -- sin este
+      // resguardo, ese caso deja un huérfano sin dar de baja (encontrado corriendo esta suite
+      // contra `App_dev`, ver el reporte del encargo P09.5).
+      const dualIdToClean =
+        dualProfileId ?? (await findProfileIdByEmail(admin, dualEmail))
+      if (dualIdToClean) {
+        await terminateEmployeeDirectly(admin, dualIdToClean)
       }
-      if (supervisorOnlyProfileId) {
-        await terminateEmployeeDirectly(admin, supervisorOnlyProfileId)
+      const supervisorOnlyIdToClean =
+        supervisorOnlyProfileId ??
+        (await findProfileIdByEmail(admin, supervisorOnlyEmail))
+      if (supervisorOnlyIdToClean) {
+        await terminateEmployeeDirectly(admin, supervisorOnlyIdToClean)
       }
     }
   })

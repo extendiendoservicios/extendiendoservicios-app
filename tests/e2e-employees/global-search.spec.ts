@@ -94,8 +94,13 @@ test.describe('EMP-012: el buscador global encuentra a un empleado', () => {
         await page.keyboard.press('Escape')
       })
     } finally {
-      if (profileId) {
-        await terminateEmployeeDirectly(admin, profileId)
+      // Vuelve a resolver por email si quedó en `null`: `createEmployeeViaForm` puede lanzar
+      // DESPUÉS de que la cuenta ya se creó de verdad del lado del servidor -- sin este
+      // resguardo, ese caso deja un huérfano sin dar de baja (encontrado corriendo esta suite
+      // contra `App_dev`, ver el reporte del encargo P09.5).
+      const idToClean = profileId ?? (await findProfileIdByEmail(admin, email))
+      if (idToClean) {
+        await terminateEmployeeDirectly(admin, idToClean)
       }
     }
   })

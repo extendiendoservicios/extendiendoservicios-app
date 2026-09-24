@@ -62,6 +62,16 @@ test.describe('EMP-014: licencias y el estado efectivo de la ficha', () => {
         ).toBeTruthy()
       })
 
+      // Badge de estado efectivo de la cabecera (junto al nombre): se acota a ese contenedor
+      // porque la pestaña Datos también muestra un segundo badge "Activo"/"Desactivado" para el
+      // acceso de la cuenta (`StatusBadge domain="user"`, sección "Usuario y roles") -- sin
+      // acotar, `getByText('Activo', { exact: true })` resuelve dos elementos cuando los dos
+      // coinciden en texto (encontrado corriendo esta suite contra `App_dev`, ver el reporte del
+      // encargo P09.5).
+      const headerStatusBadge = page
+        .getByRole('heading', { name: `E2E ${lastName}` })
+        .locator('..')
+
       await test.step('una licencia vigente (desde hoy, sin fecha de fin) → cabecera "De licencia"', async () => {
         await page.getByRole('tab', { name: 'Licencias' }).click()
         await page.getByLabel('Desde').fill(today)
@@ -70,13 +80,16 @@ test.describe('EMP-014: licencias y el estado efectivo de la ficha', () => {
           .fill('E2E P095: licencia vigente')
         await page.getByRole('button', { name: 'Agregar licencia' }).click()
         await expect(page.getByText('Agregamos la licencia.')).toBeVisible()
-        await expect(page.getByText('Vigente')).toBeVisible()
+        // `exact: true`: sin esto, "Vigente" también matchea el motivo que se acaba de cargar
+        // ("E2E P095: licencia vigente", substring case-insensitive) -- encontrado corriendo
+        // esta suite contra `App_dev`, ver el reporte del encargo P09.5.
+        await expect(page.getByText('Vigente', { exact: true })).toBeVisible()
 
         // El estado efectivo de la cabecera (`v_employees.effective_status`) depende de la misma
         // licencia: se comprueba en la pestaña Datos, no en Licencias.
         await page.getByRole('tab', { name: 'Datos' }).click()
         await expect(
-          page.getByText('De licencia', { exact: true }),
+          headerStatusBadge.getByText('De licencia', { exact: true }),
         ).toBeVisible()
       })
 
@@ -108,11 +121,18 @@ test.describe('EMP-014: licencias y el estado efectivo de la ficha', () => {
         await expect(page.getByText('Dimos de baja la licencia.')).toBeVisible()
 
         await page.getByRole('tab', { name: 'Datos' }).click()
-        await expect(page.getByText('Activo', { exact: true })).toBeVisible()
+        await expect(
+          headerStatusBadge.getByText('Activo', { exact: true }),
+        ).toBeVisible()
       })
     } finally {
-      if (profileId) {
-        await terminateEmployeeDirectly(admin, profileId)
+      // Vuelve a resolver por email si quedó en `null`: `createEmployeeViaForm` puede lanzar
+      // DESPUÉS de que la cuenta ya se creó de verdad del lado del servidor -- sin este
+      // resguardo, ese caso deja un huérfano sin dar de baja (encontrado corriendo esta suite
+      // contra `App_dev`, ver el reporte del encargo P09.5).
+      const idToClean = profileId ?? (await findProfileIdByEmail(admin, email))
+      if (idToClean) {
+        await terminateEmployeeDirectly(admin, idToClean)
       }
     }
   })
