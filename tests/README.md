@@ -31,6 +31,13 @@ Pruebas que no son unitarias (esas viven junto a cada archivo en `src/` como
   `tests/e2e-auth/README.md` y `tests/e2e-auth/helpers/env.ts` para el
   detalle.
 
+- `e2e-clients-sites/` — e2e de clientes y sedes (CLIENT-008/SITE-008/TEST-005, P08.5) contra
+  un backend real (`App_dev`): alta de cliente con contactos y CUIT repetido, alta de sede con
+  coordenadas y su marcador en el mapa, el criterio de aceptación de F8 con la cuenta `admin`,
+  rutas vedadas a empleado y supervisor, capturas móviles sin scroll horizontal. Mismo motivo de
+  separación que `e2e-auth/` y `e2e-users/` (necesita la clave de servicio); puerto propio
+  (4175), sin la restricción de CORS de `e2e-users/` porque este dominio no llama a ninguna Edge
+  Function. Se corre a mano: `pnpm test:e2e:clients-sites`. Ver `tests/e2e-clients-sites/README.md`.
 - `permissions/` — suite negativa por rol (cada rol intenta lo que no puede,
   por interfaz y por API directa). Primer esqueleto desde P04.7 (F4, API
   directa solamente, criterio de aceptación de la fase); la versión
