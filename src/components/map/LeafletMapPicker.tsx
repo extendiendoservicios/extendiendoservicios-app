@@ -7,6 +7,7 @@ import {
   TileLayer,
   useMap,
   useMapEvents,
+  ZoomControl,
 } from 'react-leaflet'
 import { Search, X } from 'lucide-react'
 import { cn } from 'cn'
@@ -173,13 +174,15 @@ function MapPicker({
         <MapContainer
           center={[initialCenter.lat, initialCenter.lng]}
           zoom={value ? PICKED_ZOOM : defaultZoom}
-          scrollWheelZoom
+          scrollWheelZoom={false}
+          zoomControl={false}
           className="size-full"
         >
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">colaboradores de OpenStreetMap</a>'
           />
+          <ZoomControl zoomInTitle="Acercar" zoomOutTitle="Alejar" />
           <ClickToPlace onPick={setCoordinates} disabled={disabled} />
           <RecenterOnChange position={value} />
           {value && (
@@ -187,8 +190,8 @@ function MapPicker({
               position={[value.lat, value.lng]}
               icon={createMarkerIcon('primary')}
               draggable={!disabled}
-              alt="Ubicación de la sede"
-              title="Ubicación de la sede"
+              alt="Ubicación elegida"
+              title="Ubicación elegida"
               eventHandlers={{
                 dragend: (event) => {
                   const marker = event.target as L.Marker

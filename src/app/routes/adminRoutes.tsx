@@ -1,4 +1,7 @@
 import type { RouteObject } from 'react-router'
+import ClientDetailPage from '@/pages/admin/ClientDetailPage'
+import ClientFormPage from '@/pages/admin/ClientFormPage'
+import ClientsPage from '@/pages/admin/ClientsPage'
 import CompanySettingsPage from '@/pages/admin/CompanySettingsPage'
 import HolidaysPage from '@/pages/admin/HolidaysPage'
 import RatingCriteriaPage from '@/pages/admin/RatingCriteriaPage'
@@ -29,8 +32,7 @@ export const adminRoutes: RouteObject[] = [
     path: 'planificacion',
     screenId: 'ADM-03',
     title: 'Planificación',
-    subtitle:
-      'Ver y navegar el cronograma (?vista=semana → ADM-04, ?vista=dia → ADM-05)',
+    subtitle: 'Ver y navegar el cronograma',
   }),
   placeholderRoute({
     path: 'turnos/nuevo',
@@ -97,7 +99,7 @@ export const adminRoutes: RouteObject[] = [
     path: 'empleados/:id',
     screenId: 'ADM-17',
     title: 'Ficha del empleado',
-    subtitle: 'Ver todo lo de una persona (?pestana=asistencia → ADM-12)',
+    subtitle: 'Ver todo lo de una persona',
   }),
   placeholderRoute({
     path: 'empleados/:id/editar',
@@ -105,30 +107,42 @@ export const adminRoutes: RouteObject[] = [
     title: 'Editar empleado',
     subtitle: 'Editar datos laborales y personales',
   }),
-  placeholderRoute({
+  {
     path: 'clientes',
-    screenId: 'ADM-19',
-    title: 'Clientes',
-    subtitle: 'Ver clientes (?pestana=mapa → ADM-24)',
-  }),
-  placeholderRoute({
+    element: <ClientsPage />,
+    handle: {
+      screenId: 'ADM-19',
+      title: 'Clientes',
+      subtitle: 'Ver clientes y sus sedes',
+    },
+  },
+  {
     path: 'clientes/nuevo',
-    screenId: 'ADM-20',
-    title: 'Nuevo cliente',
-    subtitle: 'Alta de cliente',
-  }),
-  placeholderRoute({
+    element: <ClientFormPage />,
+    handle: {
+      screenId: 'ADM-20',
+      title: 'Nuevo cliente',
+      subtitle: 'Alta de cliente',
+    },
+  },
+  {
     path: 'clientes/:id',
-    screenId: 'ADM-21',
-    title: 'Detalle del cliente',
-    subtitle: 'Ver sedes, contactos, servicios y plantilla',
-  }),
-  placeholderRoute({
+    element: <ClientDetailPage />,
+    handle: {
+      screenId: 'ADM-21',
+      title: 'Detalle del cliente',
+      subtitle: 'Ver sedes, contactos, servicios y plantilla',
+    },
+  },
+  {
     path: 'clientes/:id/editar',
-    screenId: 'ADM-20',
-    title: 'Editar cliente',
-    subtitle: 'Editar datos del cliente',
-  }),
+    element: <ClientFormPage />,
+    handle: {
+      screenId: 'ADM-20',
+      title: 'Editar cliente',
+      subtitle: 'Editar datos del cliente',
+    },
+  },
   placeholderRoute({
     path: 'sedes/:id',
     screenId: 'ADM-22',
