@@ -36,6 +36,29 @@ acá. Decisión documentada en `src/features/users/permissions.ts`.
 
 ### Decisiones tomadas en este paquete
 
+- **Por defecto la lista solo muestra usuarios activos** (P07.7, decisión de
+  Mike del 23 sep 2026: en producción se van acumulando los que dejan de
+  trabajar, y una lista con todos mezclados se vuelve difícil de leer —
+  `App_dev` ya tenía ~48 desactivados, casi todos de prueba). El interruptor
+  "Mostrar desactivados" de la barra superior suma a los desactivados (con
+  su insignia de estado, sin cambios ahí). Filtro en el **cliente**
+  (`filterUsersByStatus`, `src/features/users/userListFilters.ts`), no en la
+  consulta: `fetchUsers` ya trae la lista completa en una sola consulta
+  liviana (decenas de filas, sin paginado) y de esa misma lista completa
+  dependen también los roles y "último inicio de sesión" — pedirle al
+  servidor dos variantes distintas por este interruptor duplicaría la
+  consulta sin necesidad; el polling de 60 s sigue trayendo todo, el
+  interruptor solo decide qué parte se muestra. Si con el filtro apagado no
+  queda ningún activo, un estado vacío aparte lo explica ("No hay usuarios
+  activos... Activá 'Mostrar desactivados' para verlos") en vez de mostrar
+  el mismo "Todavía no hay usuarios" que cuando no hay nadie cargado. El
+  interruptor no persiste entre sesiones (dura mientras la pantalla está
+  abierta, con `useState`) y usa el mismo `Switch` de `RolesCapabilitiesSheet`
+  (`@/components/ui/switch`), con etiqueta visible asociada por
+  `htmlFor`/`id`. Al desactivar a alguien desde el menú de acciones, con el
+  interruptor apagado esa persona deja de verse: el aviso de éxito lo aclara
+  ("Para volver a verla en la lista, activá 'Mostrar desactivados'") en vez
+  de agregar más estado para acordarse de "quién se acaba de ir".
 - **La alta desde ADM-27 es siempre de un administrador** (`roles:
 ['admin']`), nunca de dueño/supervisor/empleado: la Edge Function
   `admin-users` rechaza con `FORBIDDEN` a quien no sea el dueño si pide un
