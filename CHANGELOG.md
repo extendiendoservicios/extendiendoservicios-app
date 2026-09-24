@@ -7,6 +7,17 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+### Agregado
+
+- `AvatarUpload` (P09.2, EMP-011): elegir una foto, recortarla en cuadrado
+  (arrastre o teclado, con zoom), redimensionarla a 512×512 en el cliente y
+  subirla al bucket `avatars`, o quitarla. Foto en el menú de usuario de la
+  topbar, el pie de la sidebar, la cabecera del saludo móvil y COM-04.
+- `GlobalSearch` (P09.2, EMP-012, CONFIRMADO en P09.0): buscador global de
+  la topbar de `AdminShell` (solo dueño y administradores) contra
+  `v_search`, agrupado en Empleados, Clientes y Sedes, con atajo `Ctrl K`/`/`
+  y navegación por teclado.
+
 ## [0.5.0] - 2026-09-24
 
 Clientes y sedes (F8). El dueño y los administradores dan de alta clientes con sus contactos y sedes con ubicación, y las ven en un mapa. Sin migraciones nuevas.

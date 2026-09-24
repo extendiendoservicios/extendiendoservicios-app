@@ -17,7 +17,7 @@ import { MapView, type MapViewMarker } from '@/components/map'
 import type { ClientListRow, ClientStatus } from '@/api/clients'
 import { CLIENT_STATUS_OPTIONS } from '@/features/clients/schemas'
 import { UpdatedAgo } from '@/features/clients/components/UpdatedAgo'
-import { useDebouncedValue } from '@/features/clients/useDebouncedValue'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import {
   useClientsQuery,
   usePrimaryContactNamesQuery,

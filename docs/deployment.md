@@ -648,7 +648,7 @@ default-src 'self';
 script-src 'self';
 style-src 'self' 'unsafe-inline';
 font-src 'self';
-img-src 'self' data: https://anesttvrnpsaaaxaquce.supabase.co https://fysuppdadwvabrjpnnoh.supabase.co https://tile.openstreetmap.org https://*.tile.openstreetmap.org;
+img-src 'self' data: blob: https://anesttvrnpsaaaxaquce.supabase.co https://fysuppdadwvabrjpnnoh.supabase.co https://tile.openstreetmap.org https://*.tile.openstreetmap.org;
 connect-src 'self' https://anesttvrnpsaaaxaquce.supabase.co https://fysuppdadwvabrjpnnoh.supabase.co https://*.ingest.de.sentry.io https://nominatim.openstreetmap.org;
 base-uri 'self';
 form-action 'self';
@@ -668,11 +668,17 @@ object-src 'none'
   hace falta abrir WebSockets.
 - **`img-src`**: `'self'` (logo e íconos propios de `public/`), `data:`
   (por si algún componente necesita un placeholder inline, hoy ninguno lo
-  usa), los dos hosts de Supabase (Storage: buckets `avatars` y `branding`
-  de ADR-016) y los tiles de OpenStreetMap — se listan las dos formas
-  (`tile.openstreetmap.org` y `*.tile.openstreetmap.org`) porque Leaflet
-  puede pedirlos con o sin el esquema de subdominios `a/b/c` según la
-  configuración final del mapa (ADR-017, todavía sin implementar).
+  usa), `blob:` (agregado en P09.2, EMP-011: la vista previa del recorte de
+  `AvatarUpload` dibuja el `<img>` elegido con
+  `URL.createObjectURL(file)` antes de subirlo — sin este esquema, el
+  navegador bloquea esa vista previa aunque la imagen final sí venga de un
+  origen permitido; era la nota pendiente de
+  `12_Registro_de_Progreso.md`), los dos hosts de Supabase (Storage:
+  buckets `avatars` y `branding` de ADR-016) y los tiles de OpenStreetMap —
+  se listan las dos formas (`tile.openstreetmap.org` y
+  `*.tile.openstreetmap.org`) porque Leaflet puede pedirlos con o sin el
+  esquema de subdominios `a/b/c` según la configuración final del mapa
+  (ADR-017, todavía sin implementar).
 - **`style-src 'self' 'unsafe-inline'`**: **probado**, no supuesto. Con
   `style-src 'self'` a secas (sin `'unsafe-inline'`), sonner (el `Toaster`
   de `src/components/ui/sonner.tsx`, dependencia real del proyecto) inyecta

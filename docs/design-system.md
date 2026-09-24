@@ -1691,6 +1691,155 @@ lógica, con `renderHook`) — todo sin montar Leaflet (`jsdom` no mide bien
 un contenedor de mapa real). Los dos componentes visuales se pueden ver
 enteros en `/dev/design` (sección "MapView y MapPicker").
 
+## `AvatarUpload` y foto de perfil (EMP-011, P09.2)
+
+`src/components/AvatarUpload.tsx`: elegir una foto (JPG, PNG o WEBP, hasta
+15 MB), recortarla en cuadrado con arrastre del puntero o flechas del
+teclado y una barra de zoom, redimensionarla a 512×512 en el cliente,
+subirla al bucket `avatars` (`0014_storage_buckets.sql`:
+`{profile_id}/{uuid}.jpg`, máximo 2 MB, solo `image/jpeg` — por eso el
+recorte siempre exporta JPEG aunque el archivo elegido sea PNG o WEBP) y
+guardar la ruta en `profiles.avatar_path`; o quitar la foto actual. La
+lógica pura (validación del archivo, geometría del recorte, exportación a
+`Blob`) vive en `src/lib/avatarImage.ts`, sin depender de React — se prueba
+sola en `avatarImage.test.ts`, incluido un `<canvas>` simulado
+(`getContext`/`toBlob`) para no depender de que `jsdom` sepa dibujar de
+verdad.
+
+Sin librería de recorte de imagen (ninguna está en la lista de
+dependencias del stack, `03_Plan_Maestro_Tecnico.md` sección 2, y
+agregar una no estaba pedida): el recorte interactivo se resuelve con
+geometría 2D propia (`computeAvatarDisplayScale`, `clampAvatarOffset`,
+`avatarOffsetToCropRect`) y un `<canvas>` para el paso final — unas 200
+líneas en total entre lógica y diálogo, contra los ~5-8 KB adicionales
+(sin comprimir) de una librería como `react-easy-crop`, y sin sumar una
+dependencia nueva a mantener.
+
+**API:**
+
+```ts
+interface AvatarUploadProps {
+  /** Perfil dueño de la foto (`profiles.id`). */
+  profileId: string
+  /** Nombre completo: color e iniciales del fallback, y lo que anuncia un lector de pantalla. */
+  name: string
+  /** `profiles.avatar_path` actual, o `null` sin foto todavía. */
+  avatarPath: string | null
+  /** Se llama después de subir o quitar la foto, con la ruta nueva (`null` si se quitó). */
+  onChange?: (avatarPath: string | null) => void
+  className?: string
+}
+```
+
+El componente hace la persistencia completa (Storage + `update` de
+`profiles`) — quien lo usa solo refleja la ruta nueva en su propio estado
+(`ProfilePage.tsx`, COM-04, llama `auth.refreshProfile()` en `onChange`).
+Pensado desde el vamos para dos usos con el mismo componente, sin
+variantes: `profileId` propio en COM-04, y el de otra persona en ADM-18
+(front-admin, P09.3/P09.4) — las políticas de Storage
+(`avatars_insert_own_or_admin`/`update`/`delete`, "`app.is_admin() or
+(storage.foldername(name))[1] = auth.uid()::text`") y de `profiles`
+("O, A: todas las columnas", `04_Modelo_de_Datos.md` sección 6) ya
+habilitan que owner/admin suban o quiten la foto de otra persona sin
+ninguna política nueva — verificado contra las migraciones antes de
+escribir el componente, no falta nada del lado de la base para que
+front-admin lo use tal cual.
+
+**Dónde se ve la foto:** `Avatar` (`src/components/Avatar.tsx`) ya
+aceptaba `src`; lo nuevo es de dónde sale esa URL y un tamaño más. El
+bucket `avatars` es público (`0014_storage_buckets.sql`) con ruta no
+adivinable, así que `src/lib/avatarUrl.ts` arma la URL pública directo
+(`supabase.storage.from('avatars').getPublicUrl(path)`), sin URL firmada
+— y sin parámetro de versión para evitar caché vieja: cada foto nueva sube
+con un `uuid` de archivo distinto (`avatarStoragePath`), así que la URL
+cambia sola en cada reemplazo, a diferencia del logo de `branding`
+(`brandingLogoUrl`), que sí podría repetir nombre de archivo. `AdminShell`
+(menú de usuario de la topbar y pie de la sidebar) y `MobileShell`
+(cabecera del saludo) ya pasan `src={avatarPath ? avatarUrl(avatarPath) :
+null}` a su `Avatar`; sin foto, sigue el fallback de iniciales de
+siempre.
+
+Se sumó un tercer tamaño a `Avatar`/`ui/avatar.tsx`: `size="lg"` (80 px,
+iniciales a 26 px) para la vista previa de `AvatarUpload` — decisión
+menor, `07` no define un tamaño grande de avatar y los `group-data-
+[size=lg]` de `AvatarBadge`/`AvatarGroupCount` ya estaban anticipados en
+el componente de shadcn sin usarse todavía.
+
+**COM-04** (`ProfilePage.tsx`): `AvatarUpload` se agregó arriba de "Nombre"
+y "Email de login", dentro de la misma tarjeta "Datos de la cuenta", con
+`profileId={auth.userId}` y `onChange={() => void auth.refreshProfile()}`.
+
+## `GlobalSearch` (EMP-012, P09.2)
+
+`src/components/search/GlobalSearch.tsx`: buscador global de la topbar del
+`AdminShell`, **solo para dueño y administradores** (CONFIRMADO por Mike
+el 24 sep 2026, P09.0) — nunca se monta en `MobileShell`. Consulta
+`v_search` (`06_API.md` sección 3) con `.ilike('search_text', '%texto%')`,
+mínimo 2 caracteres, con `debounce` de 300 ms
+(`useDebouncedValue`, movido de `features/clients/` a `src/hooks/` en
+este mismo paquete: dejó de ser un filtro exclusivo de un solo dominio en
+cuanto un segundo lo necesitó, tal como anticipaba el comentario original
+de ese archivo). Resultados agrupados en tres encabezados fijos —
+Empleados, Clientes y Sedes, en ese orden, siempre los tres aunque alguno
+esté vacío (`groupSearchResults`, `useGlobalSearch.ts`) — y navegación por
+teclado (flechas, Enter, Escape) resuelta por `cmdk`
+(`Command`/`CommandInput`/`CommandList`/`CommandItem`, ya en
+`src/components/ui/command.tsx` desde antes de este paquete, sin usar
+todavía). Atajos para abrir: `Ctrl K` (o `Cmd K` en Mac) desde cualquier
+lugar de la vía de administración, y `/` — salvo que la persona ya esté
+escribiendo en otro campo, para no robarle la tecla a un formulario.
+
+Elegir un resultado navega a su ficha: `/admin/empleados/:id`,
+`/admin/clientes/:id`, `/admin/sedes/:id` (`05_Pantallas_y_Navegacion.md`
+sección 5) — la ficha de empleado sigue siendo un placeholder hasta P09.3,
+pero el enlace ya apunta ahí.
+
+En 1024 px o más (con sidebar), el disparador es un campo de búsqueda de
+mentira en la topbar ("Buscar…", con el atajo `Ctrl K` como pista) que abre
+el diálogo real; por debajo de 1024 px (tabbar), se reduce a un ícono de
+lupa de 34×34 con área táctil ampliada a 44 px, y el diálogo pasa a ocupar
+toda la pantalla (`className` condicional sobre `CommandDialog`, sin tocar
+`ui/command.tsx`). `AdminShell` monta `GlobalSearch` por omisión en su
+prop `topbarEnd` (ver la sección de shells más arriba: ese prop existía
+desde P05.4 justo como punto de extensión para este componente) — sigue
+siendo reemplazable, por ejemplo en sus propios tests.
+
+**Hallazgo de accesibilidad, corregido en el mismo paquete:** `cmdk` liga
+su `<input>` a una etiqueta propia con `aria-labelledby` (para el nombre
+accesible del campo dentro del listbox), que por precedencia de ARIA pisa
+cualquier `aria-label` puesto directo en `CommandInput` — sin pasarle
+`label` al `Command`, esa etiqueta queda vacía y el campo se anuncia sin
+nombre. Se agregó `label="Buscar empleados, clientes o sedes"` al
+`<Command>` de `GlobalSearch` (no hacía falta tocar `ui/command.tsx`: el
+prop ya se reenviaba). Documentado acá porque es un problema real de
+`ui/command.tsx`/`cmdk` que cualquier otro uso futuro de `Command` puede
+repetir si no le pasa `label`.
+
+**API:** sin props — `<GlobalSearch />` a secas, todo lo que necesita sale
+de `useAuth()` (no, en realidad ni eso: `AdminShell` ya solo lo monta para
+owner/admin) y de `useMediaQuery`.
+
+**Tests:** `useGlobalSearch.test.ts` (agrupado por tipo, siempre los tres
+grupos, filas sin `id` descartadas, ruta de cada tipo de resultado) y
+`GlobalSearch.test.tsx` (mínimo de caracteres, debounce real contra
+`supabase` simulado, agrupado visible, seleccionar un resultado navega y
+cierra, atajo `Ctrl K`, disparador angosto vs. ancho). Nota de test: los
+campos se ubican por `placeholder`, no por rol + nombre accesible — el
+`label` de `cmdk` que corrige el hallazgo de arriba tarda un tick en
+asentarse en el DOM, y `placeholder` es un selector igual de específico y
+más estable para este caso.
+
+## CSP: `blob:` en `img-src` (P09.2)
+
+Pendiente que había dejado anotado P03.4
+(`12_Registro_de_Progreso.md`): la vista previa del recorte de
+`AvatarUpload` dibuja el `<img>` elegido con
+`URL.createObjectURL(file)` antes de subir nada — sin `blob:` en
+`img-src`, el navegador bloquea esa vista previa aunque la imagen final
+sí venga de un origen ya permitido (`https://*.supabase.co`). Se agregó
+`blob:` a `public/_headers` y a `docs/deployment.md` sección 10.3; no hizo
+falta tocar ningún otro archivo de CSP.
+
 ## Cómo ver los componentes
 
 `pnpm dev` y abrir `http://localhost:5173/dev/design`. Para recorrer

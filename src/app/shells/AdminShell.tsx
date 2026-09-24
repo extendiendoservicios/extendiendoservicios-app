@@ -4,6 +4,8 @@ import { LogOut, MoreHorizontal, User } from 'lucide-react'
 import { cn } from 'cn'
 import { Avatar } from '@/components/Avatar'
 import { PwaUpdateBanner } from '@/components/PwaUpdateBanner'
+import { GlobalSearch } from '@/components/search/GlobalSearch'
+import { avatarUrl } from '@/lib/avatarUrl'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,18 +54,19 @@ import {
  */
 export function AdminShell({
   /**
-   * Punto de extensión para el buscador global de la topbar (EMP-012,
-   * P09.0): esta entrega no lo implementa ("sin un input que no
-   * funcione"), pero la topbar ya tiene dónde montarlo el día que exista,
-   * sin tocar `AdminShell`.
+   * Contenido de la topbar antes del menú de usuario: por omisión,
+   * `GlobalSearch` (EMP-012, P09.2) — `AdminShell` solo se monta para
+   * owner/admin, así que no hace falta que quien lo use decida si
+   * corresponde mostrarlo. Sigue siendo reemplazable (por ejemplo en los
+   * tests de este archivo, que no necesitan el buscador real).
    */
-  topbarEnd,
+  topbarEnd = <GlobalSearch />,
 }: {
   topbarEnd?: ReactNode
 } = {}) {
   const location = useLocation()
   const navigate = useNavigate()
-  const { displayName, roles, signOut } = useAuth()
+  const { displayName, roles, signOut, profile } = useAuth()
   const handle = useRouteHandle()
   const [moreOpen, setMoreOpen] = useState(false)
   // USERS-013: logo personalizado de la empresa (ADM-28) en la marca de la
@@ -98,6 +101,7 @@ export function AdminShell({
           collapsed={!isSidebarExpanded}
           pathname={location.pathname}
           displayName={displayName}
+          avatarPath={profile?.avatarPath ?? null}
           roleLabel={roleLabel}
           logoPath={branding?.logoPath ?? null}
           logoAlt={branding?.name ?? null}
@@ -127,7 +131,13 @@ export function AdminShell({
               {/* `after:-inset-1`: área táctil de 44 px por debajo de 1024,
                   donde este shell se usa en el celular (`07`: ≥ 44 px). */}
               <DropdownMenuTrigger className="relative flex items-center gap-2 rounded-full p-1 outline-none after:absolute after:-inset-1 focus-visible:ring-3 focus-visible:ring-ring">
-                <Avatar id="admin-session-user" name={displayName} />
+                <Avatar
+                  id="admin-session-user"
+                  name={displayName}
+                  src={
+                    profile?.avatarPath ? avatarUrl(profile.avatarPath) : null
+                  }
+                />
                 <span className="sr-only">Menú de usuario</span>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -198,6 +208,7 @@ function AdminSidebar({
   collapsed,
   pathname,
   displayName,
+  avatarPath,
   roleLabel,
   logoPath,
   logoAlt,
@@ -205,6 +216,8 @@ function AdminSidebar({
   collapsed: boolean
   pathname: string
   displayName: string
+  /** `profiles.avatar_path` propio (EMP-011). `null` sin foto cargada. */
+  avatarPath: string | null
   roleLabel: string
   /** `company_settings.logo_path` (ADM-28, USERS-013). `null` sin logo propio cargado. */
   logoPath: string | null
@@ -287,7 +300,11 @@ function AdminSidebar({
               collapsed && 'justify-center px-0',
             )}
           >
-            <Avatar id="admin-session-user" name={displayName} />
+            <Avatar
+              id="admin-session-user"
+              name={displayName}
+              src={avatarPath ? avatarUrl(avatarPath) : null}
+            />
             {!collapsed && (
               <div className="min-w-0 leading-tight">
                 <p className="truncate text-[12.5px] font-semibold">
