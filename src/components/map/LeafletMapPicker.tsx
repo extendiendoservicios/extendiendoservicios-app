@@ -166,7 +166,7 @@ function MapPicker({
 
       <div
         className={cn(
-          'overflow-hidden rounded-lg border border-border',
+          'isolate overflow-hidden rounded-lg border border-border',
           disabled && 'opacity-60',
         )}
         style={{ height }}

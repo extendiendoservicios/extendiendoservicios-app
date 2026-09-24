@@ -38,6 +38,15 @@ export interface MapViewProps {
   defaultZoom?: number
   emptyTitle?: string
   emptyDescription?: string
+  /**
+   * Desactiva el zoom con la rueda del mouse (SITE-005/P08.4): en un mapa
+   * de página completa (ADM-24) conviene dejarlo en `true`, pero en uno
+   * embebido dentro de una página con scroll (ADM-22) la rueda tiene que
+   * seguir haciendo scroll de la página, no zoom del mapa — mismo criterio
+   * que ya aplica `MapPicker` (`scrollWheelZoom={false}` fijo).
+   * `true` por omisión.
+   */
+  scrollWheelZoom?: boolean
 }
 
 /** Centro por omisión cuando no hay marcadores para calcular el encuadre: Obelisco, CABA. */
@@ -87,6 +96,7 @@ function MapView({
   defaultZoom = DEFAULT_ZOOM,
   emptyTitle = 'Sin ubicaciones para mostrar',
   emptyDescription = 'Todavía no hay coordenadas cargadas.',
+  scrollWheelZoom = true,
 }: MapViewProps) {
   if (markers.length === 0) {
     return (
@@ -109,7 +119,7 @@ function MapView({
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-lg border border-border',
+        'isolate overflow-hidden rounded-lg border border-border',
         className,
       )}
       style={{ height }}
@@ -118,6 +128,7 @@ function MapView({
         center={[defaultCenter.lat, defaultCenter.lng]}
         zoom={defaultZoom}
         zoomControl={false}
+        scrollWheelZoom={scrollWheelZoom}
         className="size-full"
       >
         <TileLayer
@@ -134,7 +145,12 @@ function MapView({
             alt={marker.label}
             title={marker.label}
           >
-            {marker.popup && <Popup>{marker.popup}</Popup>}
+            {marker.popup && (
+              <Popup>
+                {/* Leaflet les pone 17px de margen a los <p> del popup. */}
+                <div className="[&_p]:!m-0">{marker.popup}</div>
+              </Popup>
+            )}
           </Marker>
         ))}
       </MapContainer>
