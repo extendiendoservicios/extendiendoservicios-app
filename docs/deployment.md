@@ -10,7 +10,9 @@ INFRA-022, F3; ampliado en P03.4: INFRA-012, INFRA-018, INFRA-020,
 interruptores activos, `dev.`/`app.` publicando de verdad, primer respaldo
 real, GitHub Pages desactivado, y `restore-test.yml`, INFRA-024; corregida
 y validada el 23 sep 2026 en `fix/TEST-024-restore-sequence` la secuencia
-de restauración de `scripts/restore-from-r2.sh` (sección 6.3)).
+de restauración de `scripts/restore-from-r2.sh` (sección 6.3); ampliada el
+23 sep 2026 en `ci/TEST-004-deno` con los tests Deno de las Edge Functions
+dentro de `ci.yml` (cierre de TEST-004, sección 2)).
 
 ## 1. Los seis workflows
 
@@ -44,11 +46,57 @@ protección de ramas de `develop` y `main` — hecho en P03.6, ver sección 12.
 
 Pasos, en orden: instalar dependencias (`pnpm install --frozen-lockfile`),
 `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm test` (Vitest),
-`pnpm build`, y por último Playwright con **solo el proyecto `chromium`**
-contra el propio build local (`pnpm preview`, que `playwright.config.ts`
-levanta solo). Los navegadores de Playwright se instalan en el runner en
-cada corrida (`playwright install --with-deps chromium`): no están
-cacheados ni preinstalados.
+los tests Deno de las Edge Functions (ver más abajo), `pnpm build`, y por
+último Playwright con **solo el proyecto `chromium`** contra el propio
+build local (`pnpm preview`, que `playwright.config.ts` levanta solo). Los
+navegadores de Playwright se instalan en el runner en cada corrida
+(`playwright install --with-deps chromium`): no están cacheados ni
+preinstalados.
+
+**Tests Deno de las Edge Functions (TEST-004, P07.6).** `supabase/functions/**`
+corre en Deno, no en el proyecto de Vite (está excluido de `vitest.config.ts`
+y de `eslint.config.js`, ver `supabase/functions/README.md`), así que sus
+`*.test.ts` no los levanta `pnpm test`: `ci.yml` los corre aparte, con un
+paso previo (`Detectar si hay tests Deno en supabase/functions/`) que busca
+cualquier `*.test.ts` bajo esa carpeta con `find` — genérico a propósito,
+para que alcance también a funciones futuras sin tocar el workflow. Si
+encuentra alguno:
+
+1. Instala Deno 2 con la acción `denoland/setup-deno@v2`, fijando
+   `deno-version: '2.2.4'` — la misma versión que `denoland/deno:2.2.4` que
+   ya se venía usando a mano con Docker en P07.1/P07.5, y coincide con
+   `deno_version = 2` de `supabase/config.toml`.
+2. Corre `deno test --allow-env --allow-net $(find supabase/functions -name
+'*.test.ts')`. Permisos mínimos, verificados en local: `--allow-env`
+   porque los tests fijan variables con `Deno.env.set`; `--allow-net` porque
+   el propio `index.ts` de la función llama a `Deno.serve` al importarse (abre
+   un socket) y sin el permiso el runner corta antes de llegar a correr un
+   solo test, con `NotCapable`. Ninguno de los dos permisos habilita tráfico
+   de red saliente real en los escenarios que cubren estos tests: todos
+   cortan antes de llamar a la Admin API o a PostgREST (CORS, falta de
+   `Authorization`, método) o usan un cliente de Supabase simulado
+   (`supabase/functions/README.md`).
+3. Si no encuentra ningún `*.test.ts` (hoy no puede pasar: ya existe
+   `supabase/functions/admin-users/index.test.ts`), el paso condicionado deja
+   un mensaje en el log y no ejecuta nada, mismo patrón que `db:types`/pgTAP
+   más abajo.
+
+Si algún test Deno falla, el paso (y por lo tanto todo el job `CI`) falla —
+verificado a propósito rompiendo una aserción del archivo de tests y
+confirmando el corte, después revertido (reporte de la tarea
+`ci/TEST-004-deno`).
+
+`deno.lock` (raíz del repo) no se toca en este paso ni en ningún otro de
+`ci.yml`: `deno test` sin `--frozen` puede reescribirlo si detecta que el
+`package.json` de la raíz tiene una dependencia que el lock todavía no
+conoce (Deno trata el `package.json` de un proyecto Node como un
+"workspace" para resolver `npm:`/`jsr:`, aunque no haya `deno.json`) — un
+efecto que no persiste en CI (cada corrida usa un checkout nuevo) pero que
+sí se puede ver corriendo el comando en una copia local. Al momento de este
+encargo, `deno.lock` ya estaba desactualizado respecto de `package.json`
+(le faltaba `npm:@tanstack/react-query`, agregado en otra tarea sin
+regenerar `deno.lock`) — no se corrigió acá por no ser parte del alcance de
+TEST-004; ver el reporte de la tarea para la pregunta a Mike.
 
 **Condicionados, no eliminados:** `db:types --check` (genera
 `src/lib/database.types.ts` desde `App_dev` y falla si difiere de lo

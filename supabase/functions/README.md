@@ -27,8 +27,16 @@ Detalle completo (autorización por acción, límite de acciones por minuto,
 
 ## Cómo correr los tests
 
-No hace falta Docker Desktop ni el proyecto vinculado para esta parte (a
-diferencia de los pgTAP): alcanza con Deno.
+**En CI (`.github/workflows/ci.yml`, TEST-004, P07.6):** ya corren solos en
+cada Pull Request a `develop`/`main`, en un paso propio dentro del job `CI`
+(instala Deno 2 con `denoland/setup-deno@v2` y corre `deno test --allow-env
+--allow-net` contra cualquier `*.test.ts` que encuentre bajo
+`supabase/functions/`, con `find` — genérico para funciones futuras, no hace
+falta tocar el workflow cuando llegue la próxima). Detalle completo en
+`docs/deployment.md` sección 2.
+
+En local, no hace falta Docker Desktop ni el proyecto vinculado para esta
+parte (a diferencia de los pgTAP): alcanza con Deno.
 
 ```bash
 cd supabase/functions/admin-users
