@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { CalendarClock, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { FieldLabel } from '@/components/ui/field'
 import { IconButton } from '@/components/IconButton'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -129,18 +130,16 @@ function EmployeeAvailabilityTab({
           className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3 sm:flex-row sm:flex-wrap sm:items-end"
         >
           <div className="flex flex-col gap-1">
-            <label
-              htmlFor="availability-weekday"
-              className="text-[10px] font-semibold tracking-wide text-text-3 uppercase"
-            >
-              Día
-            </label>
+            <FieldLabel htmlFor="availability-weekday">Día</FieldLabel>
             <Controller
               control={control}
               name="weekday"
               render={({ field }) => (
                 <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger id="availability-weekday" className="w-40">
+                  <SelectTrigger
+                    id="availability-weekday"
+                    className="w-40 py-[9px]"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -155,12 +154,7 @@ function EmployeeAvailabilityTab({
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label
-              htmlFor="availability-start"
-              className="text-[10px] font-semibold tracking-wide text-text-3 uppercase"
-            >
-              Desde
-            </label>
+            <FieldLabel htmlFor="availability-start">Desde</FieldLabel>
             <Input
               id="availability-start"
               type="time"
@@ -169,12 +163,7 @@ function EmployeeAvailabilityTab({
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label
-              htmlFor="availability-end"
-              className="text-[10px] font-semibold tracking-wide text-text-3 uppercase"
-            >
-              Hasta
-            </label>
+            <FieldLabel htmlFor="availability-end">Hasta</FieldLabel>
             <Input
               id="availability-end"
               type="time"
@@ -192,7 +181,7 @@ function EmployeeAvailabilityTab({
           </Button>
           {(errors.startTime || errors.endTime) && (
             <p className="w-full text-[11px] text-danger">
-              {errors.endTime?.message ?? errors.startTime?.message}
+              {errors.startTime?.message ?? errors.endTime?.message}
             </p>
           )}
         </form>
@@ -223,12 +212,13 @@ function EmployeeAvailabilityTab({
                   (slot) => (
                     <li
                       key={slot.id}
-                      className="flex items-center gap-2 rounded-full border border-border-strong bg-surface px-3 py-1 text-[12px] text-text"
+                      className="flex items-center gap-2 rounded-full border border-border-strong bg-surface py-0.5 pl-3 pr-2 text-[12px] text-text"
                     >
                       {shortTime(slot.startTime)} – {shortTime(slot.endTime)}
                       {canEdit && (
                         <IconButton
                           icon={X}
+                          className="-mr-2 rounded-full border-transparent"
                           aria-label={`Quitar franja de ${weekdayLabel(slot.weekday)}, ${shortTime(slot.startTime)} a ${shortTime(slot.endTime)}`}
                           onClick={() => setSlotToDelete(slot)}
                         />

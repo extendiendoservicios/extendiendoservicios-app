@@ -221,7 +221,7 @@ function EmployeeLeavesTab({
         title="Dar de baja esta licencia"
         description={
           leaveToEnd
-            ? `Se saca del cálculo de "de licencia" y deja libre ese rango de fechas para cargar otra licencia. El registro queda en el historial, atenuado.`
+            ? `La persona deja de figurar de licencia en esas fechas y podés cargar otra licencia en ese rango. Esta queda en el historial como dada de baja.`
             : undefined
         }
         confirmLabel="Dar de baja"
