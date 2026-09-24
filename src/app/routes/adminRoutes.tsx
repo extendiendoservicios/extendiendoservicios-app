@@ -6,6 +6,8 @@ import CompanySettingsPage from '@/pages/admin/CompanySettingsPage'
 import HolidaysPage from '@/pages/admin/HolidaysPage'
 import RatingCriteriaPage from '@/pages/admin/RatingCriteriaPage'
 import SecurityEventsPage from '@/pages/admin/SecurityEventsPage'
+import SiteDetailPage from '@/pages/admin/SiteDetailPage'
+import SiteFormPage from '@/pages/admin/SiteFormPage'
 import UsersPage from '@/pages/admin/UsersPage'
 import { placeholderRoute } from './placeholder'
 
@@ -143,24 +145,33 @@ export const adminRoutes: RouteObject[] = [
       subtitle: 'Editar datos del cliente',
     },
   },
-  placeholderRoute({
+  {
     path: 'sedes/:id',
-    screenId: 'ADM-22',
-    title: 'Detalle de la sede',
-    subtitle: 'Ver la sede',
-  }),
-  placeholderRoute({
+    element: <SiteDetailPage />,
+    handle: {
+      screenId: 'ADM-22',
+      title: 'Detalle de la sede',
+      subtitle: 'Ver la sede',
+    },
+  },
+  {
     path: 'sedes/nueva',
-    screenId: 'ADM-23',
-    title: 'Nueva sede',
-    subtitle: 'Alta de sede',
-  }),
-  placeholderRoute({
+    element: <SiteFormPage />,
+    handle: {
+      screenId: 'ADM-23',
+      title: 'Nueva sede',
+      subtitle: 'Alta de sede',
+    },
+  },
+  {
     path: 'sedes/:id/editar',
-    screenId: 'ADM-23',
-    title: 'Editar sede',
-    subtitle: 'Editar datos de la sede',
-  }),
+    element: <SiteFormPage />,
+    handle: {
+      screenId: 'ADM-23',
+      title: 'Editar sede',
+      subtitle: 'Editar datos de la sede',
+    },
+  },
   placeholderRoute({
     path: 'servicios/nuevo',
     screenId: 'ADM-25',

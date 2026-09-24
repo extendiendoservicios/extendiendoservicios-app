@@ -25,9 +25,9 @@ function isClientDetailTab(value: string | null): value is ClientDetailTab {
  * estado y pestañas Sedes, Contactos, Servicios (placeholder hasta F10) y
  * Tareas (enlace a ADM-26).
  *
- * El alta y el detalle de sede (ADM-22, ADM-23) son de SITE-001 a SITE-004
- * (P08.4): la pestaña Sedes solo lista y enlaza a esas rutas, ya dadas de
- * alta como placeholder en `adminRoutes.tsx` (ver el reporte del encargo).
+ * El alta y el detalle de sede (ADM-22, ADM-23) son de SITE-001 a SITE-003
+ * (P08.4, `src/pages/admin/SiteDetailPage.tsx`/`SiteFormPage.tsx`): la
+ * pestaña Sedes solo lista y enlaza a esas rutas.
  */
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>()
