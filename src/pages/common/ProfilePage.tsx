@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Field, FieldLabel, FieldError } from '@/components/ui/field'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -260,9 +261,8 @@ export default function ProfilePage() {
               <FieldLabel htmlFor="profile-new-password">
                 Contraseña nueva
               </FieldLabel>
-              <Input
+              <PasswordInput
                 id="profile-new-password"
-                type="password"
                 autoComplete="new-password"
                 aria-invalid={Boolean(passwordErrors.newPassword)}
                 {...registerPassword('newPassword')}
@@ -279,9 +279,8 @@ export default function ProfilePage() {
               <FieldLabel htmlFor="profile-confirm-password">
                 Confirmar contraseña
               </FieldLabel>
-              <Input
+              <PasswordInput
                 id="profile-confirm-password"
-                type="password"
                 autoComplete="new-password"
                 aria-invalid={Boolean(passwordErrors.confirmPassword)}
                 {...registerPassword('confirmPassword')}

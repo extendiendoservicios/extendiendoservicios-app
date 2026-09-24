@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import {
   Sheet,
@@ -122,9 +123,8 @@ function NewAdminUserSheet({
             <FieldLabel htmlFor="new-admin-password">
               Contraseña inicial
             </FieldLabel>
-            <Input
+            <PasswordInput
               id="new-admin-password"
-              type="password"
               autoComplete="new-password"
               aria-invalid={Boolean(errors.password)}
               {...register('password')}

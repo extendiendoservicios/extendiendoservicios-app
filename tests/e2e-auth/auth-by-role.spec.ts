@@ -60,7 +60,7 @@ for (const caso of casos) {
   }) => {
     await page.goto('/ingresar')
     await page.getByLabel('Email').fill(caso.email)
-    await page.getByLabel('Contraseña').fill(env!.seedPassword)
+    await page.getByLabel('Contraseña', { exact: true }).fill(env!.seedPassword)
     await page.getByRole('button', { name: 'Ingresar' }).click()
 
     await expect(page).toHaveURL(caso.urlEsperada)
