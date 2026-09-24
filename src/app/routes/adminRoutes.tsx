@@ -70,8 +70,7 @@ export const adminRoutes: RouteObject[] = [
     path: 'supervisiones',
     screenId: 'ADM-13',
     title: 'Supervisiones',
-    subtitle:
-      'Consultar supervisiones y calificaciones (?pestana=calificaciones)',
+    subtitle: 'Consultar supervisiones y calificaciones',
   }),
   placeholderRoute({
     path: 'supervisiones/nueva',

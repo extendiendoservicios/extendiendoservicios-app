@@ -119,7 +119,7 @@ function MapView({
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-lg border border-border',
+        'isolate overflow-hidden rounded-lg border border-border',
         className,
       )}
       style={{ height }}
@@ -145,7 +145,12 @@ function MapView({
             alt={marker.label}
             title={marker.label}
           >
-            {marker.popup && <Popup>{marker.popup}</Popup>}
+            {marker.popup && (
+              <Popup>
+                {/* Leaflet les pone 17px de margen a los <p> del popup. */}
+                <div className="[&_p]:!m-0">{marker.popup}</div>
+              </Popup>
+            )}
           </Marker>
         ))}
       </MapContainer>
