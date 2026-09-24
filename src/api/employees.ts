@@ -60,6 +60,31 @@ function mapWriteError(error: {
         'VALIDATION_ERROR',
       )
     }
+    if (error.message.includes('employee_leaves_ends_on_check')) {
+      return new ApiError(
+        'La fecha "hasta" no puede ser anterior a la fecha "desde".',
+        'VALIDATION_ERROR',
+      )
+    }
+    if (error.message.includes('employee_availability')) {
+      return new ApiError(
+        'La hora de fin tiene que ser posterior a la hora de inicio.',
+        'VALIDATION_ERROR',
+      )
+    }
+  }
+  // Exclusión de solapamiento de licencias (`employee_leaves_no_overlap`,
+  // `0006_employees.sql`): a diferencia de `ASSIGNMENT_OVERLAP` o
+  // `SHIFT_OVERLAP`, esta restricción vive en una tabla que se escribe
+  // directo por PostgREST (sin RPC), así que llega como un 23P01 crudo de
+  // Postgres, no como un `raise exception` con `hint` propio -- se traduce
+  // acá, mismo criterio que el resto de este mapeador (06 sección 3:
+  // "Solapamiento bloqueado por exclusión → LEAVE_OVERLAP").
+  if (error.code === '23P01' && error.message.includes('employee_leaves')) {
+    return new ApiError(
+      'Esa persona ya tiene una licencia cargada que se superpone con esas fechas.',
+      'LEAVE_OVERLAP',
+    )
   }
   return fromPostgrestError(error)
 }
@@ -507,3 +532,223 @@ export async function terminateEmployee(
 // cabecera de este módulo.
 export const resetEmployeePassword = resetUserPassword
 export const signOutEmployee = signOutUserAccount
+
+// -------------------------------------------------------------------------
+// 4. Habilitaciones por cliente (EMP-006, `employee_client_permissions`,
+//    P-034: "lista vacía = habilitado para todos")
+// -------------------------------------------------------------------------
+
+export interface EmployeeClientPermission {
+  clientId: string
+  clientName: string
+}
+
+interface ClientPermissionRow {
+  client_id: string
+  clients: { legal_name: string; trade_name: string | null } | null
+}
+
+/** Clientes habilitados de una persona puntual, para la pestaña Habilitaciones de ADM-17. */
+export async function fetchEmployeeClientPermissionsFor(
+  employeeId: string,
+): Promise<EmployeeClientPermission[]> {
+  const { data, error } = await supabase
+    .from('employee_client_permissions')
+    .select('client_id, clients(legal_name, trade_name)')
+    .eq('employee_id', employeeId)
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return ((data ?? []) as ClientPermissionRow[])
+    .map((row) => ({
+      clientId: row.client_id,
+      clientName: row.clients?.trade_name ?? row.clients?.legal_name ?? '',
+    }))
+    .sort((a, b) => a.clientName.localeCompare(b.clientName, 'es'))
+}
+
+/** Alta de una habilitación (`06` sección 3: "insert/delete en employee_client_permissions"). */
+export async function addEmployeeClientPermission(
+  employeeId: string,
+  clientId: string,
+  createdBy: string,
+): Promise<void> {
+  const { error } = await supabase.from('employee_client_permissions').insert({
+    employee_id: employeeId,
+    client_id: clientId,
+    created_by: createdBy,
+  })
+  if (error) {
+    if (error.code === '23505') {
+      throw new ApiError(
+        'Ese cliente ya está habilitado para esta persona.',
+        'DUPLICATE',
+      )
+    }
+    throw mapWriteError(error)
+  }
+}
+
+/** Quita una habilitación (no es baja lógica: la tabla no tiene `deleted_at`, `06` sección 3). */
+export async function removeEmployeeClientPermission(
+  employeeId: string,
+  clientId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('employee_client_permissions')
+    .delete()
+    .eq('employee_id', employeeId)
+    .eq('client_id', clientId)
+  if (error) {
+    throw mapWriteError(error)
+  }
+}
+
+// -------------------------------------------------------------------------
+// 5. Disponibilidad declarada (EMP-007, `employee_availability`, P-035)
+// -------------------------------------------------------------------------
+
+export interface EmployeeAvailabilitySlot {
+  id: string
+  /** `0` = domingo .. `6` = sábado (`04_Modelo_de_Datos.md` sección 2.1, `extract(dow from ...)`). */
+  weekday: number
+  /** `"HH:mm:ss"`, tal cual la devuelve Postgres para una columna `time`. */
+  startTime: string
+  endTime: string
+}
+
+export async function fetchEmployeeAvailability(
+  employeeId: string,
+): Promise<EmployeeAvailabilitySlot[]> {
+  const { data, error } = await supabase
+    .from('employee_availability')
+    .select('id, weekday, start_time, end_time')
+    .eq('employee_id', employeeId)
+    .order('weekday', { ascending: true })
+    .order('start_time', { ascending: true })
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    weekday: row.weekday,
+    startTime: row.start_time,
+    endTime: row.end_time,
+  }))
+}
+
+export interface EmployeeAvailabilitySlotInput {
+  weekday: number
+  startTime: string
+  endTime: string
+}
+
+/** Alta de una franja (`0006_employees.sql`: `end_time > start_time`, mismo check que replica el esquema zod). */
+export async function createEmployeeAvailability(
+  employeeId: string,
+  input: EmployeeAvailabilitySlotInput,
+  createdBy: string,
+): Promise<void> {
+  const { error } = await supabase.from('employee_availability').insert({
+    employee_id: employeeId,
+    weekday: input.weekday,
+    start_time: input.startTime,
+    end_time: input.endTime,
+    created_by: createdBy,
+  })
+  if (error) {
+    throw mapWriteError(error)
+  }
+}
+
+/** Quita una franja (sin baja lógica: `employee_availability` no tiene `deleted_at`, es traza simple). */
+export async function deleteEmployeeAvailability(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('employee_availability')
+    .delete()
+    .eq('id', id)
+  if (error) {
+    throw mapWriteError(error)
+  }
+}
+
+// -------------------------------------------------------------------------
+// 6. Licencias (EMP-008, `employee_leaves`, P-033)
+// -------------------------------------------------------------------------
+
+export interface EmployeeLeave {
+  id: string
+  startsOn: string
+  endsOn: string | null
+  reason: string | null
+  deletedAt: string | null
+}
+
+/** Todas las licencias de la persona, incluidas las dadas de baja lógica (para el historial, `06` sección 3). */
+export async function fetchEmployeeLeaves(
+  employeeId: string,
+): Promise<EmployeeLeave[]> {
+  const { data, error } = await supabase
+    .from('employee_leaves')
+    .select('id, starts_on, ends_on, reason, deleted_at')
+    .eq('employee_id', employeeId)
+    .order('starts_on', { ascending: false })
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    startsOn: row.starts_on,
+    endsOn: row.ends_on,
+    reason: row.reason,
+    deletedAt: row.deleted_at,
+  }))
+}
+
+export interface EmployeeLeaveInput {
+  startsOn: string
+  endsOn: string | null
+  reason: string | null
+}
+
+/** Alta de una licencia. Errores posibles: `LEAVE_OVERLAP` (exclusión de solapamiento, `06` sección 3). */
+export async function createEmployeeLeave(
+  employeeId: string,
+  input: EmployeeLeaveInput,
+  createdBy: string,
+): Promise<void> {
+  const { error } = await supabase.from('employee_leaves').insert({
+    employee_id: employeeId,
+    starts_on: input.startsOn,
+    ends_on: input.endsOn,
+    reason: input.reason,
+    created_by: createdBy,
+  })
+  if (error) {
+    throw mapWriteError(error)
+  }
+}
+
+/**
+ * Baja lógica de una licencia (EMP-008, "no ofrezcas borrar físicamente,
+ * aunque la política de la base lo permita" -- ver el reporte del encargo).
+ * Libera el rango de fechas que ocupaba para la exclusión de solapamiento
+ * (`employee_leaves_no_overlap` filtra `where deleted_at is null`), así que
+ * después se puede cargar otra licencia superpuesta si hacía falta corregir
+ * una carga errónea.
+ */
+export async function deactivateEmployeeLeave(
+  id: string,
+  updatedBy: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('employee_leaves')
+    .update({ deleted_at: new Date().toISOString(), updated_by: updatedBy })
+    .eq('id', id)
+  if (error) {
+    throw mapWriteError(error)
+  }
+}

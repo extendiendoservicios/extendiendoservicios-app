@@ -1,4 +1,4 @@
-import type { EmployeeListRow } from '@/api/employees'
+import type { EmployeeEffectiveStatus, EmployeeListRow } from '@/api/employees'
 
 /**
  * EMP-002: filtro "cliente habilitado" de ADM-16, sin React -- así se
@@ -20,6 +20,26 @@ export function filterEmployeesByClient<T extends { profileId: string }>(
     const enabledClientIds = clientIdsByEmployeeId.get(row.profileId)
     return !enabledClientIds || enabledClientIds.includes(clientId)
   })
+}
+
+/**
+ * Decisión de Mike del 24 sep 2026: por defecto ADM-16 solo muestra activos
+ * y de licencia -- mismo criterio que ADM-27 ("Mostrar desactivados"), pero
+ * acá el filtro de estado ya existe como `Select` (no un interruptor): el
+ * valor `'all'` ("Todos los estados") deja de traer literalmente todos los
+ * estados y pasa a significar "activos y de licencia"; para ver las bajas
+ * hay que elegir el filtro "Baja" a propósito (`EMPLOYEE_STATUS_FILTER_
+ * OPTIONS`, `EmployeesPage.tsx`). Elegir "Baja" explícitamente sigue
+ * andando porque esta función no toca nada cuando `statusFilter !== 'all'`
+ * -- ese caso ya lo filtró `fetchEmployees` en el servidor.
+ */
+export function filterEmployeesByDefaultStatus<
+  T extends { effectiveStatus: EmployeeEffectiveStatus },
+>(rows: T[], statusFilter: EmployeeEffectiveStatus | 'all'): T[] {
+  if (statusFilter !== 'all') {
+    return rows
+  }
+  return rows.filter((row) => row.effectiveStatus !== 'terminated')
 }
 
 /** Etiquetas de `06_API.md` sección 3 / `05` línea 65 para el selector de rol de ADM-16. */

@@ -53,7 +53,7 @@ partir de la undécima acción sensible (`create_user`, `deactivate_user`,
 la misma persona en 60 segundos (P07.1). El frontend no reintenta
 automáticamente: muestra el mensaje del servidor tal cual.
 
-### `employees` (`src/api/employees.ts`, P09.3 — EMP-001, EMP-003, EMP-004)
+### `employees` (`src/api/employees.ts`, P09.3 — EMP-001, EMP-003, EMP-004; P09.4 — EMP-006 a EMP-010)
 
 Empleados y supervisores de ADM-16 a ADM-18. Una misma tabla `employees`
 para los dos roles (P-038). El alta y las acciones de cuenta (resetear
@@ -73,6 +73,24 @@ también sirva para EMP-003.
 | `updateEmployee(profileId, input, updatedBy)`     | `from('profiles')` + `from('employees')`                     | Dos `update`: datos personales (`profiles`) y laborales (`employees`, incluido `employee_number`, editable y único). Sin tocar el email de login (acción de usuario, `updateEmail` de `users.ts`).                                                                                                                                                                                               |
 | `terminateEmployee(profileId, reason, updatedBy)` | `deactivateUser` (Edge `admin-users`) + `from('employees')`  | Baja en dos pasos, en este orden: primero se revoca el acceso (banea el login y cierra sesiones), recién después se marca `employees.status = 'terminated'`. Si el segundo paso fallara, se avisa con `ApiError('...', 'EMPLOYEE_STATUS_NOT_UPDATED')` — se prefiere ese estado parcial (acceso ya bloqueado, estado laboral desactualizado) al inverso.                                         |
 | `resetEmployeePassword`, `signOutEmployee`        | Re-exportadas de `users.ts`                                  | Mismas funciones que USERS-011 usa para administradores — la Edge Function no distingue el tipo de cuenta.                                                                                                                                                                                                                                                                                       |
+
+P09.4 (EMP-006 a EMP-008) suma tres bloques, todos escritura directa por
+PostgREST (sin RPC, `06` sección 3), con el mismo `mapWriteError` de arriba
+extendido para traducir sus errores propios:
+
+| Función                                                                                 | Canal                                                      | Notas                                                                                                                                                                                                                                                                                                                                                                           |
+| --------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fetchEmployeeClientPermissionsFor(employeeId)`                                         | `from('employee_client_permissions')` embebiendo `clients` | Clientes habilitados de una persona puntual (pestaña Habilitaciones), a diferencia de `fetchEmployeeClientPermissions()` (mapa para el listado).                                                                                                                                                                                                                                |
+| `addEmployeeClientPermission`, `removeEmployeeClientPermission`                         | `insert`/`delete`                                          | Sin baja lógica: la tabla no tiene `deleted_at` (P-034). Un `23505` al agregar un cliente ya habilitado se traduce a `DUPLICATE` con un mensaje propio (no debería pasar: la pantalla ya saca del selector los clientes ya habilitados).                                                                                                                                        |
+| `fetchEmployeeAvailability`, `createEmployeeAvailability`, `deleteEmployeeAvailability` | `from('employee_availability')`                            | Franjas por día de la semana (`0`..`6` = domingo..sábado). `mapWriteError` traduce el check `end_time > start_time` (`23514`) a un mensaje claro.                                                                                                                                                                                                                               |
+| `fetchEmployeeLeaves`, `createEmployeeLeave`, `deactivateEmployeeLeave`                 | `from('employee_leaves')`                                  | `deactivateEmployeeLeave` marca `deleted_at` (baja lógica, nunca `delete` físico). `mapWriteError` traduce dos errores propios de esta tabla: el check `ends_on >= starts_on` (`23514`) y, sobre todo, la exclusión de solapamiento `employee_leaves_no_overlap` (`23P01`, sin `hint` propio porque no pasa por una RPC) → `ApiError('...', 'LEAVE_OVERLAP')` (`06` sección 3). |
+
+Los roles `employee`/`supervisor` editables desde la ficha (decisión de
+Mike del 24 sep 2026) reutilizan `setUserRoles`/`signOutUser` de
+`src/api/users.ts` tal cual (misma RPC `set_user_roles` que ADM-27) — no
+suman funciones nuevas a este módulo, solo un hook propio en
+`features/employees/queries.ts` (`useSetEmployeeRolesMutation`) que invalida
+las consultas de este dominio en vez de las de `users`.
 
 ### `settings` (`src/api/settings.ts`, P07.3 — USERS-012 a USERS-016)
 

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { Role } from '@/api/users'
 
 /**
  * Esquemas zod de ADM-18 (EMP-001, EMP-003, EMP-004): repiten las
@@ -185,4 +186,104 @@ export function employeeEditFormValuesToInput(values: EmployeeEditFormValues) {
     ...commonValuesToInput(values),
     contactEmail: emptyToNull(values.contactEmail),
   }
+}
+
+// -------------------------------------------------------------------------
+// EMP-006: habilitación por cliente (pestaña Habilitaciones de ADM-17)
+// -------------------------------------------------------------------------
+
+export const employeeClientPermissionSchema = z.object({
+  clientId: z.string().trim().min(1, 'Elegí un cliente.'),
+})
+export type EmployeeClientPermissionFormValues = z.infer<
+  typeof employeeClientPermissionSchema
+>
+
+// -------------------------------------------------------------------------
+// EMP-007: disponibilidad declarada (pestaña Disponibilidad de ADM-17,
+// P-035, `0006_employees.sql`: `end_time > start_time`)
+// -------------------------------------------------------------------------
+
+export const employeeAvailabilitySlotSchema = z
+  .object({
+    weekday: z.string().trim().min(1, 'Elegí un día.'),
+    startTime: z.string().trim().min(1, 'Falta la hora de inicio.'),
+    endTime: z.string().trim().min(1, 'Falta la hora de fin.'),
+  })
+  .refine((values) => values.endTime > values.startTime, {
+    message: 'La hora de fin tiene que ser posterior a la de inicio.',
+    path: ['endTime'],
+  })
+export type EmployeeAvailabilitySlotFormValues = z.infer<
+  typeof employeeAvailabilitySlotSchema
+>
+
+export function employeeAvailabilitySlotFormValuesToInput(
+  values: EmployeeAvailabilitySlotFormValues,
+) {
+  return {
+    weekday: Number(values.weekday),
+    startTime: values.startTime,
+    endTime: values.endTime,
+  }
+}
+
+// -------------------------------------------------------------------------
+// EMP-008: licencias (pestaña Licencias de ADM-17, P-033: "desde"
+// obligatorio, "hasta" opcional)
+// -------------------------------------------------------------------------
+
+export const employeeLeaveSchema = z
+  .object({
+    startsOn: z.string().trim().min(1, 'Falta la fecha "desde".'),
+    endsOn: z.string().trim().optional(),
+    reason: z.string().trim().optional(),
+  })
+  .refine((values) => !values.endsOn || values.endsOn >= values.startsOn, {
+    message: 'La fecha "hasta" no puede ser anterior a la fecha "desde".',
+    path: ['endsOn'],
+  })
+export type EmployeeLeaveFormValues = z.infer<typeof employeeLeaveSchema>
+
+export function employeeLeaveFormValuesToInput(
+  values: EmployeeLeaveFormValues,
+) {
+  return {
+    startsOn: values.startsOn.trim(),
+    endsOn: emptyToNull(values.endsOn),
+    reason: emptyToNull(values.reason),
+  }
+}
+
+// -------------------------------------------------------------------------
+// Decisión de Mike (24 sep 2026): roles empleado/supervisor editables desde
+// la ficha (pestaña Datos de ADM-17), con `set_user_roles`. Owner y admin no
+// se tocan acá: se preservan tal cual (ver `EmployeeRolesDialog.tsx`).
+// -------------------------------------------------------------------------
+
+export const employeeRolesEditSchema = refineAtLeastOneRole(
+  z.object({
+    isEmployeeRole: z.boolean(),
+    isSupervisorRole: z.boolean(),
+  }),
+)
+export type EmployeeRolesEditFormValues = z.infer<
+  typeof employeeRolesEditSchema
+>
+
+/**
+ * Arma el conjunto completo de roles a mandarle a `set_user_roles`: los
+ * roles de administración que la persona ya tuviera (`owner`, `admin`) se
+ * preservan tal cual -- este diálogo ni los muestra ni los toca, siguen
+ * gestionándose en ADM-27 -- más `employee`/`supervisor` según lo que se
+ * tildó en el formulario.
+ */
+export function nextEmployeeRoles(
+  currentRoles: Role[],
+  values: { isEmployeeRole: boolean; isSupervisorRole: boolean },
+): Role[] {
+  const preservedRoles = currentRoles.filter(
+    (role) => role === 'owner' || role === 'admin',
+  )
+  return [...preservedRoles, ...employeeRolesFromCheckboxes(values)]
 }
