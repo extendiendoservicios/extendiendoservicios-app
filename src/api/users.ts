@@ -254,21 +254,50 @@ async function invokeAdminUsers<T>(
   return (data as { data: T }).data
 }
 
+/**
+ * Datos de `employees` que exige `create_user` cuando `roles` incluye
+ * `employee` o `supervisor` (`06_API.md` sección 2.1: "employee (datos de
+ * employees, obligatorio si roles incluye employee o supervisor)"). Usado
+ * tanto por ADM-27 (nunca lo manda: siempre `roles: ['admin']`) como por
+ * ADM-18 (EMP-003, `src/api/employees.ts`).
+ */
+export interface CreateUserEmployeeInput {
+  dni: string
+  cuil?: string | null
+  address?: string | null
+  birthDate?: string | null
+  hireDate?: string | null
+  emergencyContactName?: string | null
+  emergencyContactPhone?: string | null
+  emergencyContactRelationship?: string | null
+  notes?: string | null
+}
+
 export interface CreateAdminUserInput {
   email: string
   password: string
   firstName: string
   lastName: string
-  /** Alta de ADM-27: siempre `['admin']` (el dueño se crea por el seed, P-019). */
+  /**
+   * Alta de ADM-27: siempre `['admin']` (el dueño se crea por el seed,
+   * P-019). Alta de ADM-18 (EMP-003): `['employee']`, `['supervisor']` o
+   * ambos.
+   */
   roles: Role[]
+  /** Obligatorio cuando `roles` incluye `employee` o `supervisor` (`06` sección 2.1). */
+  employee?: CreateUserEmployeeInput
 }
 
 /**
- * Alta de un usuario administrativo (USERS-009, `06` acción `create_user`).
- * Si `roles` incluye `admin`, la propia Edge Function inserta las siete
- * capacidades en `true` (confirmado por Mike el 23 sep 2026, ver el
- * comentario de cabecera de `admin-users/index.ts`) -- esta función no
- * repite esa lógica.
+ * Alta de un usuario, con o sin datos de empleado (USERS-009/EMP-003, `06`
+ * acción `create_user`). Si `roles` incluye `admin`, la propia Edge Function
+ * inserta las siete capacidades en `true` (confirmado por Mike el 23 sep
+ * 2026, ver el comentario de cabecera de `admin-users/index.ts`) -- esta
+ * función no repite esa lógica. Si `roles` incluye `employee`/`supervisor`,
+ * la misma Edge Function crea la fila de `employees` en la misma llamada
+ * (una sola invocación, sin un segundo paso desde el cliente que pudiera
+ * dejar un usuario de Auth huérfano -- ver el comentario de cabecera de
+ * `actionCreateUser` en `admin-users/index.ts` y el reporte de EMP-003).
  */
 export async function createAdminUser(
   input: CreateAdminUserInput,
@@ -279,6 +308,23 @@ export async function createAdminUser(
     first_name: input.firstName,
     last_name: input.lastName,
     roles: input.roles,
+    ...(input.employee
+      ? {
+          employee: {
+            dni: input.employee.dni,
+            cuil: input.employee.cuil ?? null,
+            address: input.employee.address ?? null,
+            birth_date: input.employee.birthDate ?? null,
+            hire_date: input.employee.hireDate ?? null,
+            emergency_contact_name: input.employee.emergencyContactName ?? null,
+            emergency_contact_phone:
+              input.employee.emergencyContactPhone ?? null,
+            emergency_contact_relationship:
+              input.employee.emergencyContactRelationship ?? null,
+            notes: input.employee.notes ?? null,
+          },
+        }
+      : {}),
   })
   return { profileId: result.profile_id }
 }
