@@ -1,6 +1,14 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
-import { KeyRound, LogOut, Pencil, User, UserX } from 'lucide-react'
+import {
+  CalendarClock,
+  KeyRound,
+  LogOut,
+  Pencil,
+  Star,
+  User,
+  UserX,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -16,6 +24,10 @@ import {
   SignOutEmployeeDialog,
   TerminateEmployeeDialog,
 } from '@/features/employees/components/EmployeeAccountDialogs'
+import { EmployeeAvailabilityTab } from '@/features/employees/components/EmployeeAvailabilityTab'
+import { EmployeeClientPermissionsTab } from '@/features/employees/components/EmployeeClientPermissionsTab'
+import { EmployeeLeavesTab } from '@/features/employees/components/EmployeeLeavesTab'
+import { EmployeeRolesDialog } from '@/features/employees/components/EmployeeRolesDialog'
 import {
   canEditEmployee,
   canManageEmployeeAccounts,
@@ -38,10 +50,14 @@ function isEmployeeDetailTab(value: string | null): value is EmployeeDetailTab {
 }
 
 /**
- * ADM-17 "Empleado · ficha" (EMP-005, `05` línea 66): cabecera (foto,
- * nombre, legajo, roles, estado efectivo) y pestaña Datos completa. Las
- * demás pestañas quedan con su estructura y un estado vacío -- se completan
- * en un encargo posterior (ver el reporte).
+ * ADM-17 "Empleado · ficha" (`05` línea 66): cabecera (foto, nombre,
+ * legajo, roles, estado efectivo) y las siete pestañas. Datos, Habilitaciones
+ * (EMP-006), Disponibilidad (EMP-007) y Licencias (EMP-008) están completas;
+ * Próximos turnos (EMP-009) y Calificaciones (EMP-010) quedan con su estado
+ * vacío y un enlace preparado -- los turnos llegan en una fase posterior de
+ * asignaciones y las calificaciones con supervisiones (ver el reporte del
+ * encargo). Asistencia (ADM-12) también queda con su estado vacío: el
+ * historial llega junto con el registro de asistencia.
  */
 export default function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -52,7 +68,7 @@ export default function EmployeeDetailPage() {
   )
   const [searchParams, setSearchParams] = useSearchParams()
   const [openDialog, setOpenDialog] = useState<
-    'reset-password' | 'sign-out' | 'terminate' | null
+    'reset-password' | 'sign-out' | 'terminate' | 'roles' | null
   >(null)
 
   const activeTab = isEmployeeDetailTab(searchParams.get('pestana'))
@@ -127,7 +143,7 @@ export default function EmployeeDetailPage() {
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 flex-wrap gap-2">
+        <div className="flex min-w-0 flex-wrap gap-2">
           {canManageAccount && !isTerminated && (
             <>
               <Button
@@ -178,34 +194,41 @@ export default function EmployeeDetailPage() {
         </TabsList>
 
         <TabsContent value="datos" className="pt-3">
-          <EmployeeDataTab employee={employee} />
+          <EmployeeDataTab
+            employee={employee}
+            canEditRoles={canManageAccount}
+            onEditRoles={() => setOpenDialog('roles')}
+          />
         </TabsContent>
 
         <TabsContent value="habilitaciones" className="pt-3">
-          <EmptyState
-            title="Todavía no hay habilitaciones cargadas"
-            description="Los clientes habilitados para esta persona se van a poder cargar acá."
+          <EmployeeClientPermissionsTab
+            profileId={employee.profileId}
+            canEdit={canEdit}
           />
         </TabsContent>
 
         <TabsContent value="disponibilidad" className="pt-3">
-          <EmptyState
-            title="Todavía no hay disponibilidad cargada"
-            description="Los horarios declarados por esta persona se van a poder cargar acá."
+          <EmployeeAvailabilityTab
+            profileId={employee.profileId}
+            canEdit={canEdit}
           />
         </TabsContent>
 
         <TabsContent value="licencias" className="pt-3">
-          <EmptyState
-            title="Todavía no hay licencias cargadas"
-            description="Las licencias de esta persona se van a poder cargar acá."
-          />
+          <EmployeeLeavesTab profileId={employee.profileId} canEdit={canEdit} />
         </TabsContent>
 
         <TabsContent value="proximos-turnos" className="pt-3">
           <EmptyState
+            icon={CalendarClock}
             title="Todavía no hay turnos próximos para mostrar"
             description="Los turnos asignados a esta persona se van a ver acá."
+            action={
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/admin/planificacion?vista=semana">Ver semana</Link>
+              </Button>
+            }
           />
         </TabsContent>
 
@@ -218,6 +241,7 @@ export default function EmployeeDetailPage() {
 
         <TabsContent value="calificaciones" className="pt-3">
           <EmptyState
+            icon={Star}
             title="Todavía no hay calificaciones para mostrar"
             description="Las calificaciones recibidas por esta persona se van a ver acá."
           />
@@ -239,6 +263,11 @@ export default function EmployeeDetailPage() {
         updatedBy={auth.userId as string}
         open={openDialog === 'terminate'}
         onOpenChange={(open) => setOpenDialog(open ? 'terminate' : null)}
+      />
+      <EmployeeRolesDialog
+        employee={employee}
+        open={openDialog === 'roles'}
+        onOpenChange={(open) => setOpenDialog(open ? 'roles' : null)}
       />
     </div>
   )
@@ -268,8 +297,12 @@ function LabeledValue({
 
 function EmployeeDataTab({
   employee,
+  canEditRoles,
+  onEditRoles,
 }: {
   employee: NonNullable<ReturnType<typeof useEmployeeDetailQuery>['data']>
+  canEditRoles: boolean
+  onEditRoles: () => void
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -345,9 +378,16 @@ function EmployeeDataTab({
       </section>
 
       <section className="rounded-lg border border-border bg-surface p-5">
-        <h3 className="mb-3 text-[13px] font-semibold text-text">
-          Usuario y roles
-        </h3>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h3 className="text-[13px] font-semibold text-text">
+            Usuario y roles
+          </h3>
+          {canEditRoles && (
+            <Button variant="ghost" size="sm" onClick={onEditRoles}>
+              Editar roles
+            </Button>
+          )}
+        </div>
         <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-3">
           <div>
             <dt className="text-[10px] font-semibold tracking-wide text-text-3 uppercase">

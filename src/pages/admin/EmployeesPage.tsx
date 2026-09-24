@@ -31,6 +31,7 @@ import { UpdatedAgo } from '@/features/employees/components/UpdatedAgo'
 import {
   EMPLOYEE_ROLE_FILTER_OPTIONS,
   filterEmployeesByClient,
+  filterEmployeesByDefaultStatus,
 } from '@/features/employees/employeeListFilters'
 import { canManageEmployeeAccounts } from '@/features/employees/permissions'
 import {
@@ -48,11 +49,15 @@ import {
  */
 const PAGE_SIZE = 20
 
+// Decisión de Mike del 24 sep 2026: por defecto la lista solo muestra
+// activos y de licencia (igual que ADM-27 oculta los desactivados por
+// omisión) -- ver `filterEmployeesByDefaultStatus`. La etiqueta de "all" se
+// ajusta para no prometer que también trae las bajas.
 const EMPLOYEE_STATUS_FILTER_OPTIONS: {
   value: EmployeeEffectiveStatus | 'all'
   label: string
 }[] = [
-  { value: 'all', label: 'Todos los estados' },
+  { value: 'all', label: 'Activos y de licencia' },
   {
     value: 'active',
     label: getStatusMeta({ domain: 'employee', status: 'active' }).label,
@@ -97,12 +102,18 @@ export default function EmployeesPage() {
 
   const filteredRows = useMemo(() => {
     const rows = employeesQuery.data ?? []
-    return filterEmployeesByClient(
+    const byClient = filterEmployeesByClient(
       rows,
       clientFilter,
       clientPermissionsQuery.data ?? new Map<string, string[]>(),
     )
-  }, [employeesQuery.data, clientFilter, clientPermissionsQuery.data])
+    return filterEmployeesByDefaultStatus(byClient, statusFilter)
+  }, [
+    employeesQuery.data,
+    clientFilter,
+    clientPermissionsQuery.data,
+    statusFilter,
+  ])
 
   // Cualquier cambio de filtro vuelve a la primera página (evita quedar en
   // una página vacía si el filtro nuevo trae menos resultados).

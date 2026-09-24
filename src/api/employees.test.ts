@@ -16,6 +16,7 @@ function makeChainable<T>(result: PostgrestResult<T>) {
     select: () => chain,
     insert: () => chain,
     update: () => chain,
+    delete: () => chain,
     is: () => chain,
     eq: () => chain,
     or: () => chain,
@@ -49,6 +50,15 @@ const {
   createEmployeeUser,
   updateEmployee,
   terminateEmployee,
+  fetchEmployeeClientPermissionsFor,
+  addEmployeeClientPermission,
+  removeEmployeeClientPermission,
+  fetchEmployeeAvailability,
+  createEmployeeAvailability,
+  deleteEmployeeAvailability,
+  fetchEmployeeLeaves,
+  createEmployeeLeave,
+  deactivateEmployeeLeave,
 } = await import('./employees')
 
 beforeEach(() => {
@@ -368,5 +378,183 @@ describe('terminateEmployee', () => {
     await expect(promise).rejects.toSatisfy((error: unknown) => {
       return isApiError(error) && error.hint === 'EMPLOYEE_STATUS_NOT_UPDATED'
     })
+  })
+})
+
+describe('fetchEmployeeClientPermissionsFor', () => {
+  it('mapea el cliente habilitado, prefiriendo el nombre de fantasía', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: [
+          {
+            client_id: 'c1',
+            clients: { legal_name: 'Limpieza SA', trade_name: 'Limpieza' },
+          },
+          {
+            client_id: 'c2',
+            clients: { legal_name: 'Otro SA', trade_name: null },
+          },
+        ],
+        error: null,
+      }),
+    )
+    const result = await fetchEmployeeClientPermissionsFor('e1')
+    expect(result).toEqual([
+      { clientId: 'c1', clientName: 'Limpieza' },
+      { clientId: 'c2', clientName: 'Otro SA' },
+    ])
+  })
+})
+
+describe('addEmployeeClientPermission', () => {
+  it('avisa con un mensaje claro si el cliente ya estaba habilitado (23505)', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: null,
+        error: { message: 'duplicate key', code: '23505' },
+      }),
+    )
+    await expect(
+      addEmployeeClientPermission('e1', 'c1', 'admin-1'),
+    ).rejects.toMatchObject({ hint: 'DUPLICATE' })
+  })
+})
+
+describe('removeEmployeeClientPermission', () => {
+  it('borra la fila de employee_client_permissions', async () => {
+    fromMock.mockReturnValue(makeChainable({ data: [], error: null }))
+    await removeEmployeeClientPermission('e1', 'c1')
+    expect(fromMock).toHaveBeenCalledWith('employee_client_permissions')
+  })
+})
+
+describe('fetchEmployeeAvailability', () => {
+  it('mapea las franjas de employee_availability', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: [
+          {
+            id: 's1',
+            weekday: 1,
+            start_time: '08:00:00',
+            end_time: '12:00:00',
+          },
+        ],
+        error: null,
+      }),
+    )
+    const result = await fetchEmployeeAvailability('e1')
+    expect(result).toEqual([
+      { id: 's1', weekday: 1, startTime: '08:00:00', endTime: '12:00:00' },
+    ])
+  })
+})
+
+describe('createEmployeeAvailability', () => {
+  it('traduce el check de end_time > start_time a un mensaje claro', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: null,
+        error: {
+          message:
+            'new row for relation "employee_availability" violates check constraint',
+          code: '23514',
+        },
+      }),
+    )
+    await expect(
+      createEmployeeAvailability(
+        'e1',
+        { weekday: 1, startTime: '12:00', endTime: '08:00' },
+        'admin-1',
+      ),
+    ).rejects.toMatchObject({ hint: 'VALIDATION_ERROR' })
+  })
+})
+
+describe('deleteEmployeeAvailability', () => {
+  it('borra la franja por id', async () => {
+    fromMock.mockReturnValue(makeChainable({ data: [], error: null }))
+    await deleteEmployeeAvailability('s1')
+    expect(fromMock).toHaveBeenCalledWith('employee_availability')
+  })
+})
+
+describe('fetchEmployeeLeaves', () => {
+  it('mapea las licencias, incluidas las dadas de baja', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: [
+          {
+            id: 'l1',
+            starts_on: '2026-01-10',
+            ends_on: null,
+            reason: 'Vacaciones',
+            deleted_at: null,
+          },
+        ],
+        error: null,
+      }),
+    )
+    const result = await fetchEmployeeLeaves('e1')
+    expect(result).toEqual([
+      {
+        id: 'l1',
+        startsOn: '2026-01-10',
+        endsOn: null,
+        reason: 'Vacaciones',
+        deletedAt: null,
+      },
+    ])
+  })
+})
+
+describe('createEmployeeLeave', () => {
+  it('traduce la exclusión de solapamiento (23P01) a LEAVE_OVERLAP', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: null,
+        error: {
+          message:
+            'conflicting key value violates exclusion constraint "employee_leaves_no_overlap"',
+          code: '23P01',
+        },
+      }),
+    )
+    await expect(
+      createEmployeeLeave(
+        'e1',
+        { startsOn: '2026-01-10', endsOn: null, reason: null },
+        'admin-1',
+      ),
+    ).rejects.toMatchObject({ hint: 'LEAVE_OVERLAP' })
+  })
+
+  it('traduce el check de ends_on >= starts_on a un mensaje claro', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: null,
+        error: {
+          message:
+            'new row for relation "employee_leaves" violates check constraint "employee_leaves_ends_on_check"',
+          code: '23514',
+        },
+      }),
+    )
+    await expect(
+      createEmployeeLeave(
+        'e1',
+        { startsOn: '2026-01-10', endsOn: '2026-01-01', reason: null },
+        'admin-1',
+      ),
+    ).rejects.toMatchObject({ hint: 'VALIDATION_ERROR' })
+  })
+})
+
+describe('deactivateEmployeeLeave', () => {
+  it('marca deleted_at en vez de borrar la fila (baja lógica)', async () => {
+    fromMock.mockReturnValue(makeChainable({ data: [], error: null }))
+    await deactivateEmployeeLeave('l1', 'admin-1')
+    expect(fromMock).toHaveBeenCalledWith('employee_leaves')
   })
 })

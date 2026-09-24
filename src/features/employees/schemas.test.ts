@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import {
+  employeeAvailabilitySlotFormValuesToInput,
+  employeeAvailabilitySlotSchema,
   employeeCreateFormValuesToInput,
   employeeCreateSchema,
   employeeEditFormValuesToInput,
   employeeEditSchema,
+  employeeLeaveFormValuesToInput,
+  employeeLeaveSchema,
+  employeeRolesEditSchema,
   employeeRolesFromCheckboxes,
+  nextEmployeeRoles,
   onlyDigits,
 } from './schemas'
 
@@ -179,5 +185,134 @@ describe('employeeEditSchema', () => {
     const input = employeeEditFormValuesToInput(baseEditValues)
     expect(input.contactEmail).toBeNull()
     expect(input.employeeNumber).toBe(5)
+  })
+})
+
+/** EMP-007: franjas de disponibilidad (P-035, `end_time > start_time`). */
+describe('employeeAvailabilitySlotSchema', () => {
+  const baseSlot = { weekday: '1', startTime: '08:00', endTime: '12:00' }
+
+  it('acepta una franja válida', () => {
+    expect(employeeAvailabilitySlotSchema.safeParse(baseSlot).success).toBe(
+      true,
+    )
+  })
+
+  it('rechaza si la hora de fin no es posterior a la de inicio', () => {
+    const result = employeeAvailabilitySlotSchema.safeParse({
+      ...baseSlot,
+      startTime: '12:00',
+      endTime: '08:00',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('rechaza horas iguales', () => {
+    const result = employeeAvailabilitySlotSchema.safeParse({
+      ...baseSlot,
+      startTime: '08:00',
+      endTime: '08:00',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('employeeAvailabilitySlotFormValuesToInput convierte el día a número', () => {
+    const input = employeeAvailabilitySlotFormValuesToInput(baseSlot)
+    expect(input).toEqual({ weekday: 1, startTime: '08:00', endTime: '12:00' })
+  })
+})
+
+/** EMP-008: licencias (P-033, "hasta" opcional, no anterior a "desde"). */
+describe('employeeLeaveSchema', () => {
+  it('acepta una licencia abierta (sin "hasta")', () => {
+    const result = employeeLeaveSchema.safeParse({
+      startsOn: '2026-01-10',
+      endsOn: '',
+      reason: '',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('acepta "hasta" igual a "desde" (un solo día)', () => {
+    const result = employeeLeaveSchema.safeParse({
+      startsOn: '2026-01-10',
+      endsOn: '2026-01-10',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('rechaza "hasta" anterior a "desde"', () => {
+    const result = employeeLeaveSchema.safeParse({
+      startsOn: '2026-01-10',
+      endsOn: '2026-01-01',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('rechaza si falta "desde"', () => {
+    const result = employeeLeaveSchema.safeParse({ startsOn: '', endsOn: '' })
+    expect(result.success).toBe(false)
+  })
+
+  it('employeeLeaveFormValuesToInput normaliza "hasta" y motivo vacíos a null', () => {
+    const input = employeeLeaveFormValuesToInput({
+      startsOn: '2026-01-10',
+      endsOn: '',
+      reason: '',
+    })
+    expect(input).toEqual({
+      startsOn: '2026-01-10',
+      endsOn: null,
+      reason: null,
+    })
+  })
+})
+
+/**
+ * Decisión de Mike (24 sep 2026): roles empleado/supervisor editables desde
+ * la ficha. Owner/admin no forman parte de este esquema -- se preservan
+ * aparte, ver `EmployeeRolesDialog.tsx`.
+ */
+describe('employeeRolesEditSchema', () => {
+  it('rechaza si no se elige ningún rol', () => {
+    const result = employeeRolesEditSchema.safeParse({
+      isEmployeeRole: false,
+      isSupervisorRole: false,
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('acepta con al menos un rol marcado', () => {
+    const result = employeeRolesEditSchema.safeParse({
+      isEmployeeRole: true,
+      isSupervisorRole: false,
+    })
+    expect(result.success).toBe(true)
+  })
+})
+
+describe('nextEmployeeRoles', () => {
+  it('reemplaza employee/supervisor según los checkboxes, sin roles previos de administración', () => {
+    const result = nextEmployeeRoles(['employee'], {
+      isEmployeeRole: false,
+      isSupervisorRole: true,
+    })
+    expect(result).toEqual(['supervisor'])
+  })
+
+  it('preserva owner si la persona ya lo tenía, aunque el diálogo no lo muestre', () => {
+    const result = nextEmployeeRoles(['owner', 'employee'], {
+      isEmployeeRole: true,
+      isSupervisorRole: true,
+    })
+    expect(result.sort()).toEqual(['employee', 'owner', 'supervisor'].sort())
+  })
+
+  it('preserva admin si la persona ya lo tenía', () => {
+    const result = nextEmployeeRoles(['admin', 'supervisor'], {
+      isEmployeeRole: false,
+      isSupervisorRole: false,
+    })
+    expect(result).toEqual(['admin'])
   })
 })
