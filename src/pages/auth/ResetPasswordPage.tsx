@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Field, FieldLabel, FieldError } from '@/components/ui/field'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { supabase } from '@/lib/supabase'
@@ -172,9 +172,8 @@ export default function ResetPasswordPage() {
       >
         <Field data-invalid={Boolean(errors.password) || undefined}>
           <FieldLabel htmlFor="reset-password">Contraseña nueva</FieldLabel>
-          <Input
+          <PasswordInput
             id="reset-password"
-            type="password"
             icon={Lock}
             autoComplete="new-password"
             aria-invalid={Boolean(errors.password)}
@@ -189,9 +188,8 @@ export default function ResetPasswordPage() {
           <FieldLabel htmlFor="reset-confirm-password">
             Confirmar contraseña
           </FieldLabel>
-          <Input
+          <PasswordInput
             id="reset-confirm-password"
-            type="password"
             icon={Lock}
             autoComplete="new-password"
             aria-invalid={Boolean(errors.confirmPassword)}

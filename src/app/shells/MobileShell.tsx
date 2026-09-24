@@ -5,6 +5,7 @@ import { Avatar } from '@/components/Avatar'
 import { Fab } from '@/components/Fab'
 import { PwaUpdateBanner } from '@/components/PwaUpdateBanner'
 import { formatShortDate } from '@/lib/format'
+import { avatarUrl } from '@/lib/avatarUrl'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { useRouteHandle } from '@/app/routes/placeholder'
 import {
@@ -47,7 +48,7 @@ export type MobileShellVariant = 'employee' | 'supervisor'
 export function MobileShell({ variant }: { variant: MobileShellVariant }) {
   const location = useLocation()
   const navigate = useNavigate()
-  const { displayName } = useAuth()
+  const { displayName, profile } = useAuth()
   const handle = useRouteHandle()
 
   const rootPath = variant === 'employee' ? '/app' : '/sup'
@@ -60,7 +61,10 @@ export function MobileShell({ variant }: { variant: MobileShellVariant }) {
     <div className="flex min-h-dvh justify-center bg-bg">
       <div className="flex min-h-dvh w-full max-w-[480px] flex-col bg-surface shadow-card">
         {isGreeting ? (
-          <MobileGreetingHeader displayName={displayName} />
+          <MobileGreetingHeader
+            displayName={displayName}
+            avatarPath={profile?.avatarPath ?? null}
+          />
         ) : (
           <MobileNavbarHeader
             title={handle?.title ?? ''}
@@ -103,7 +107,14 @@ function firstName(displayName: string): string {
   return displayName.split(' ')[0] ?? displayName
 }
 
-function MobileGreetingHeader({ displayName }: { displayName: string }) {
+function MobileGreetingHeader({
+  displayName,
+  avatarPath,
+}: {
+  displayName: string
+  /** `profiles.avatar_path` propio (EMP-011). `null` sin foto cargada. */
+  avatarPath: string | null
+}) {
   return (
     <header className="shrink-0 bg-primary px-5 pt-4 pb-5 text-white">
       <div className="flex items-center gap-3">
@@ -121,7 +132,11 @@ function MobileGreetingHeader({ displayName }: { displayName: string }) {
           aria-label="Ir a mi perfil"
           className="relative ml-auto shrink-0 rounded-full outline-none after:absolute after:-inset-2 focus-visible:ring-3 focus-visible:ring-ring"
         >
-          <Avatar id="mobile-session-user" name={displayName} />
+          <Avatar
+            id="mobile-session-user"
+            name={displayName}
+            src={avatarPath ? avatarUrl(avatarPath) : null}
+          />
         </Link>
       </div>
     </header>

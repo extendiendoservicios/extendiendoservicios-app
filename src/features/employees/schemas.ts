@@ -1,0 +1,289 @@
+import { z } from 'zod'
+import type { Role } from '@/api/users'
+
+/**
+ * Esquemas zod de ADM-18 (EMP-001, EMP-003, EMP-004): repiten las
+ * restricciones que ya exige el servidor (`supabase/migrations/
+ * 0016_hardening.sql`: `dni ~ '^[0-9]+$'`, `cuil ~ '^[0-9]{11}$'`;
+ * `0006_employees.sql`: `employee_number` único; `supabase/functions/
+ * admin-users/index.ts`: email válido, contraseña de al menos 8
+ * caracteres), no las reemplazan -- el servidor vuelve a validar todo esto.
+ */
+
+/**
+ * Saca puntos, guiones y espacios: mucha gente escribe el DNI con puntos y el
+ * CUIL con guiones. Se valida y se guarda sin ellos (la base exige solo
+ * dígitos), así el alta no se frena por el formato.
+ */
+export function onlyDigits(value: string): string {
+  return value.replace(/[\s.-]/g, '')
+}
+
+/** `0016_hardening.sql`: `employees_dni_format_check`. */
+const dniSchema = z
+  .string()
+  .trim()
+  .min(1, 'Falta el DNI.')
+  .refine(
+    (value) => /^[0-9]+$/.test(onlyDigits(value)),
+    'El DNI tiene que tener solo números.',
+  )
+
+/** `0016_hardening.sql`: `employees_cuil_format_check` (opcional, 11 dígitos si se carga). */
+const cuilSchema = z
+  .string()
+  .trim()
+  .optional()
+  .refine(
+    (value) => !value || /^[0-9]{11}$/.test(onlyDigits(value)),
+    'El CUIL tiene que tener 11 números.',
+  )
+
+/**
+ * `0006_employees.sql`: `employee_number integer not null unique`. Como
+ * texto (no `z.coerce.number()`): el tipo de entrada y el de salida de
+ * `z.coerce` no coinciden (`unknown` vs `number`), lo que rompe el tipado de
+ * `zodResolver` con `useForm` -- mismo criterio que `cuit`/`cuil` en
+ * `clients/schemas.ts`, convertido a `number` recién en
+ * `commonValuesToInput`.
+ */
+const employeeNumberSchema = z
+  .string()
+  .trim()
+  .min(1, 'Indicá el legajo.')
+  .regex(/^[0-9]+$/, 'El legajo tiene que ser un número entero positivo.')
+  .refine(
+    (value) => Number(value) > 0,
+    'El legajo tiene que ser mayor que cero.',
+  )
+
+/** Cadena vacía → `null` (así no se guarda `''` en una columna opcional). */
+function emptyToNull(value: string | undefined): string | null {
+  const trimmed = value?.trim() ?? ''
+  return trimmed.length > 0 ? trimmed : null
+}
+
+/**
+ * Campos comunes a alta y edición: datos personales y laborales de P-032
+ * (nombre, apellido, DNI, CUIL, legajo, teléfono, domicilio, fecha de
+ * nacimiento, fecha de ingreso, contacto de emergencia, notas) más los dos
+ * roles que puede tener un empleado desde ADM-18 (`05` línea 67: "roles
+ * (empleado, supervisor; admin y dueño solo desde ADM-27)").
+ */
+const employeeCommonFieldsSchema = z.object({
+  firstName: z.string().trim().min(1, 'Falta el nombre.'),
+  lastName: z.string().trim().min(1, 'Falta el apellido.'),
+  dni: dniSchema,
+  cuil: cuilSchema,
+  employeeNumber: employeeNumberSchema,
+  phone: z.string().trim().optional(),
+  address: z.string().trim().optional(),
+  birthDate: z.string().trim().optional(),
+  hireDate: z.string().trim().optional(),
+  emergencyContactName: z.string().trim().optional(),
+  emergencyContactPhone: z.string().trim().optional(),
+  emergencyContactRelationship: z.string().trim().optional(),
+  notes: z.string().trim().optional(),
+  isEmployeeRole: z.boolean(),
+  isSupervisorRole: z.boolean(),
+})
+
+function refineAtLeastOneRole<
+  T extends z.ZodType<{ isEmployeeRole: boolean; isSupervisorRole: boolean }>,
+>(schema: T) {
+  return schema.refine(
+    (values) => values.isEmployeeRole || values.isSupervisorRole,
+    {
+      message: 'Elegí al menos un rol: empleado o supervisor.',
+      path: ['isEmployeeRole'],
+    },
+  )
+}
+
+/** EMP-003: alta (ADM-18). Suma el usuario (email de login y contraseña inicial). */
+export const employeeCreateSchema = refineAtLeastOneRole(
+  employeeCommonFieldsSchema.extend({
+    email: z.email('Ingresá un email válido.'),
+    password: z
+      .string()
+      .min(8, 'La contraseña tiene que tener al menos 8 caracteres.'),
+  }),
+)
+export type EmployeeCreateFormValues = z.infer<typeof employeeCreateSchema>
+
+/**
+ * EMP-004: edición (ADM-18). Sin email de login ni contraseña (`05` línea
+ * 67 / instrucción del encargo: "sin cambiar el email de login acá: eso es
+ * la acción de usuario") ni roles (cambiar roles no está en el alcance de
+ * "editar datos laborales y personales" de EMP-004; queda para una fase
+ * posterior -- ver el reporte del encargo). Suma el email de contacto
+ * (`profiles.contact_email`, editable por O/A, `04` sección 7.2).
+ */
+export const employeeEditSchema = employeeCommonFieldsSchema
+  .omit({ isEmployeeRole: true, isSupervisorRole: true })
+  .extend({
+    contactEmail: z
+      .string()
+      .trim()
+      .optional()
+      .refine(
+        (value) => !value || z.email().safeParse(value).success,
+        'Ingresá un email válido.',
+      ),
+  })
+export type EmployeeEditFormValues = z.infer<typeof employeeEditSchema>
+
+/** Roles elegidos (checkboxes) → arreglo `app_role[]` para la Edge Function. */
+export function employeeRolesFromCheckboxes(values: {
+  isEmployeeRole: boolean
+  isSupervisorRole: boolean
+}): ('employee' | 'supervisor')[] {
+  const roles: ('employee' | 'supervisor')[] = []
+  if (values.isEmployeeRole) roles.push('employee')
+  if (values.isSupervisorRole) roles.push('supervisor')
+  return roles
+}
+
+/** Normaliza los campos comunes antes de mandarlos a `src/api/employees.ts`. */
+function commonValuesToInput(
+  values: Omit<
+    z.infer<typeof employeeCommonFieldsSchema>,
+    'isEmployeeRole' | 'isSupervisorRole'
+  >,
+) {
+  return {
+    firstName: values.firstName.trim(),
+    lastName: values.lastName.trim(),
+    dni: onlyDigits(values.dni.trim()),
+    cuil: values.cuil ? emptyToNull(onlyDigits(values.cuil)) : null,
+    employeeNumber: Number(values.employeeNumber),
+    phone: emptyToNull(values.phone),
+    address: emptyToNull(values.address),
+    birthDate: emptyToNull(values.birthDate),
+    hireDate: emptyToNull(values.hireDate),
+    emergencyContactName: emptyToNull(values.emergencyContactName),
+    emergencyContactPhone: emptyToNull(values.emergencyContactPhone),
+    emergencyContactRelationship: emptyToNull(
+      values.emergencyContactRelationship,
+    ),
+    notes: emptyToNull(values.notes),
+  }
+}
+
+export function employeeCreateFormValuesToInput(
+  values: EmployeeCreateFormValues,
+) {
+  return {
+    ...commonValuesToInput(values),
+    email: values.email.trim(),
+    password: values.password,
+    roles: employeeRolesFromCheckboxes(values),
+  }
+}
+
+export function employeeEditFormValuesToInput(values: EmployeeEditFormValues) {
+  return {
+    ...commonValuesToInput(values),
+    contactEmail: emptyToNull(values.contactEmail),
+  }
+}
+
+// -------------------------------------------------------------------------
+// EMP-006: habilitación por cliente (pestaña Habilitaciones de ADM-17)
+// -------------------------------------------------------------------------
+
+export const employeeClientPermissionSchema = z.object({
+  clientId: z.string().trim().min(1, 'Elegí un cliente.'),
+})
+export type EmployeeClientPermissionFormValues = z.infer<
+  typeof employeeClientPermissionSchema
+>
+
+// -------------------------------------------------------------------------
+// EMP-007: disponibilidad declarada (pestaña Disponibilidad de ADM-17,
+// P-035, `0006_employees.sql`: `end_time > start_time`)
+// -------------------------------------------------------------------------
+
+export const employeeAvailabilitySlotSchema = z
+  .object({
+    weekday: z.string().trim().min(1, 'Elegí un día.'),
+    startTime: z.string().trim().min(1, 'Falta la hora de inicio.'),
+    endTime: z.string().trim().min(1, 'Falta la hora de fin.'),
+  })
+  .refine((values) => values.endTime > values.startTime, {
+    message: 'La hora de fin tiene que ser posterior a la de inicio.',
+    path: ['endTime'],
+  })
+export type EmployeeAvailabilitySlotFormValues = z.infer<
+  typeof employeeAvailabilitySlotSchema
+>
+
+export function employeeAvailabilitySlotFormValuesToInput(
+  values: EmployeeAvailabilitySlotFormValues,
+) {
+  return {
+    weekday: Number(values.weekday),
+    startTime: values.startTime,
+    endTime: values.endTime,
+  }
+}
+
+// -------------------------------------------------------------------------
+// EMP-008: licencias (pestaña Licencias de ADM-17, P-033: "desde"
+// obligatorio, "hasta" opcional)
+// -------------------------------------------------------------------------
+
+export const employeeLeaveSchema = z
+  .object({
+    startsOn: z.string().trim().min(1, 'Falta la fecha "desde".'),
+    endsOn: z.string().trim().optional(),
+    reason: z.string().trim().optional(),
+  })
+  .refine((values) => !values.endsOn || values.endsOn >= values.startsOn, {
+    message: 'La fecha "hasta" no puede ser anterior a la fecha "desde".',
+    path: ['endsOn'],
+  })
+export type EmployeeLeaveFormValues = z.infer<typeof employeeLeaveSchema>
+
+export function employeeLeaveFormValuesToInput(
+  values: EmployeeLeaveFormValues,
+) {
+  return {
+    startsOn: values.startsOn.trim(),
+    endsOn: emptyToNull(values.endsOn),
+    reason: emptyToNull(values.reason),
+  }
+}
+
+// -------------------------------------------------------------------------
+// Decisión de Mike (24 sep 2026): roles empleado/supervisor editables desde
+// la ficha (pestaña Datos de ADM-17), con `set_user_roles`. Owner y admin no
+// se tocan acá: se preservan tal cual (ver `EmployeeRolesDialog.tsx`).
+// -------------------------------------------------------------------------
+
+export const employeeRolesEditSchema = refineAtLeastOneRole(
+  z.object({
+    isEmployeeRole: z.boolean(),
+    isSupervisorRole: z.boolean(),
+  }),
+)
+export type EmployeeRolesEditFormValues = z.infer<
+  typeof employeeRolesEditSchema
+>
+
+/**
+ * Arma el conjunto completo de roles a mandarle a `set_user_roles`: los
+ * roles de administración que la persona ya tuviera (`owner`, `admin`) se
+ * preservan tal cual -- este diálogo ni los muestra ni los toca, siguen
+ * gestionándose en ADM-27 -- más `employee`/`supervisor` según lo que se
+ * tildó en el formulario.
+ */
+export function nextEmployeeRoles(
+  currentRoles: Role[],
+  values: { isEmployeeRole: boolean; isSupervisorRole: boolean },
+): Role[] {
+  const preservedRoles = currentRoles.filter(
+    (role) => role === 'owner' || role === 'admin',
+  )
+  return [...preservedRoles, ...employeeRolesFromCheckboxes(values)]
+}

@@ -7,7 +7,12 @@ import {
   it,
   vi,
 } from 'vitest'
-import { formatMinutes, formatShortDate, formatTime } from './format'
+import {
+  formatCalendarDate,
+  formatMinutes,
+  formatShortDate,
+  formatTime,
+} from './format'
 
 // Ancla toda la suite a una zona bien distinta de Argentina (UTC+14) para
 // probar que el resultado no depende de la zona de la máquina donde corre
@@ -44,6 +49,16 @@ describe('formatShortDate', () => {
   it('no depende de la zona horaria de la máquina', () => {
     vi.stubEnv('TZ', 'Pacific/Midway') // UTC-11, para contrastar con Kiritimati (UTC+14)
     expect(formatShortDate('2026-08-13T11:00:00Z')).toBe('jue 13 ago')
+  })
+})
+
+describe('formatCalendarDate', () => {
+  it('muestra la fecha con año, sin correrse un día por la zona horaria', () => {
+    expect(formatCalendarDate('2018-02-01')).toBe('1 feb 2018')
+  })
+
+  it('acepta un valor con hora y usa solo la parte de la fecha', () => {
+    expect(formatCalendarDate('2026-12-31T00:00:00')).toBe('31 dic 2026')
   })
 })
 

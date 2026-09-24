@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { Mail, Lock, Phone, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Field, FieldLabel, FieldError } from '@/components/ui/field'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { supabase } from '@/lib/supabase'
@@ -110,9 +111,8 @@ export default function LoginPage() {
 
         <Field data-invalid={Boolean(errors.password) || undefined}>
           <FieldLabel htmlFor="login-password">Contraseña</FieldLabel>
-          <Input
+          <PasswordInput
             id="login-password"
-            type="password"
             icon={Lock}
             autoComplete="current-password"
             aria-invalid={Boolean(errors.password)}

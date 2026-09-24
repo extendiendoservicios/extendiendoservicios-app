@@ -3,6 +3,9 @@ import ClientDetailPage from '@/pages/admin/ClientDetailPage'
 import ClientFormPage from '@/pages/admin/ClientFormPage'
 import ClientsPage from '@/pages/admin/ClientsPage'
 import CompanySettingsPage from '@/pages/admin/CompanySettingsPage'
+import EmployeeDetailPage from '@/pages/admin/EmployeeDetailPage'
+import EmployeeFormPage from '@/pages/admin/EmployeeFormPage'
+import EmployeesPage from '@/pages/admin/EmployeesPage'
 import HolidaysPage from '@/pages/admin/HolidaysPage'
 import RatingCriteriaPage from '@/pages/admin/RatingCriteriaPage'
 import SecurityEventsPage from '@/pages/admin/SecurityEventsPage'
@@ -84,30 +87,42 @@ export const adminRoutes: RouteObject[] = [
     title: 'Detalle de la supervisión',
     subtitle: 'Ver y editar una supervisión',
   }),
-  placeholderRoute({
+  {
     path: 'empleados',
-    screenId: 'ADM-16',
-    title: 'Empleados',
-    subtitle: 'Ver la dotación',
-  }),
-  placeholderRoute({
+    element: <EmployeesPage />,
+    handle: {
+      screenId: 'ADM-16',
+      title: 'Empleados',
+      subtitle: 'Ver la dotación',
+    },
+  },
+  {
     path: 'empleados/nuevo',
-    screenId: 'ADM-18',
-    title: 'Nuevo empleado',
-    subtitle: 'Alta de empleado o supervisor',
-  }),
-  placeholderRoute({
+    element: <EmployeeFormPage />,
+    handle: {
+      screenId: 'ADM-18',
+      title: 'Nuevo empleado',
+      subtitle: 'Alta de empleado o supervisor',
+    },
+  },
+  {
     path: 'empleados/:id',
-    screenId: 'ADM-17',
-    title: 'Ficha del empleado',
-    subtitle: 'Ver todo lo de una persona',
-  }),
-  placeholderRoute({
+    element: <EmployeeDetailPage />,
+    handle: {
+      screenId: 'ADM-17',
+      title: 'Ficha del empleado',
+      subtitle: 'Ver todo lo de una persona',
+    },
+  },
+  {
     path: 'empleados/:id/editar',
-    screenId: 'ADM-18',
-    title: 'Editar empleado',
-    subtitle: 'Editar datos laborales y personales',
-  }),
+    element: <EmployeeFormPage />,
+    handle: {
+      screenId: 'ADM-18',
+      title: 'Editar empleado',
+      subtitle: 'Editar datos laborales y personales',
+    },
+  },
   {
     path: 'clientes',
     element: <ClientsPage />,

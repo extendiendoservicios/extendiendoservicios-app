@@ -7,6 +7,62 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.6.0] - 2026-09-24
+
+Empleados y supervisores (F9). El dueño y los administradores dan de alta a empleados y supervisores con su usuario, gestionan su ficha completa, habilitaciones, disponibilidad y licencias, y encuentran a cualquiera desde el buscador global. Sin migraciones nuevas.
+
+### Agregado
+
+- Mostrar u ocultar la contraseña con un ojito en todos los campos de
+  contraseña (P08.6, pedido de Mike): componente `PasswordInput`, que arranca
+  siempre oculto y anuncia su estado a lectores de pantalla.
+- pgTAP de permisos por rol en empleados (P09.1, EMP-013): escrituras de
+  `employees`, habilitaciones, disponibilidad y licencias, y vistas por rol.
+- Empleados y supervisores (P09.3, EMP-001 a EMP-005): ADM-16 listado con
+  filtros por texto, rol, estado efectivo y cliente habilitado; ADM-18 alta
+  con usuario (una sola llamada a la Edge Function `create_user`, sin riesgo
+  de usuario huérfano) y edición de datos laborales y personales; ADM-17
+  ficha con la pestaña Datos completa y baja en dos pasos con motivo
+  obligatorio (revoca el acceso primero, después marca `employees.status`).
+  `createAdminUser` de `users.ts` ahora acepta datos de empleado opcionales,
+  reutilizado por el alta de ADM-18.
+- `AvatarUpload` (P09.2, EMP-011): elegir una foto, recortarla en cuadrado
+  (arrastre o teclado, con zoom), redimensionarla a 512×512 en el cliente y
+  subirla al bucket `avatars`, o quitarla. Foto en el menú de usuario de la
+  topbar, el pie de la sidebar, la cabecera del saludo móvil y COM-04.
+- `GlobalSearch` (P09.2, EMP-012, CONFIRMADO en P09.0): buscador global de
+  la topbar de `AdminShell` (solo dueño y administradores) contra
+  `v_search`, agrupado en Empleados, Clientes y Sedes, con atajo `Ctrl K`/`/`
+  y navegación por teclado.
+- Ficha del empleado (P09.4, EMP-006 a EMP-010, EMP-015, EMP-016): pestañas
+  Habilitaciones (clientes puntuales o todos), Disponibilidad (franjas por
+  día), Licencias (alta y baja lógica; la ficha muestra "De licencia" con una
+  vigente y una superpuesta se traduce a `LEAVE_OVERLAP`), y Próximos turnos,
+  Asistencia y Calificaciones con estado vacío hasta F11. "Editar roles"
+  empleado/supervisor desde la ficha, preservando dueño y administrador
+  (decisión de Mike). ADM-16 muestra por omisión solo activos y de licencia
+  (decisión de Mike).
+- Suite e2e `tests/e2e-employees/` (P09.5, EMP-014, TEST-006): alta de
+  empleado y de supervisor que entran a su vista, doble rol, baja que revoca
+  el acceso, licencias, filtro por omisión, buscador global y 390 px sin
+  scroll horizontal.
+- Documentación: `docs/features/empleados.md` (DOC-009) y la sección de
+  empleados de `docs/api.md`.
+
+### Cambiado
+
+- Los diálogos más altos que la pantalla se desplazan por dentro, sin cortar
+  los botones.
+- Las pestañas que no entran a lo ancho se desplazan dentro de su barra, sin
+  generar scroll horizontal de página.
+- La política de contenido (`public/_headers`) admite imágenes `blob:` para
+  la vista previa del recorte de la foto de perfil.
+
+### Corregido
+
+- Las fechas sin hora (nacimiento, ingreso, baja) se mostraban un día antes
+  por la zona horaria; ahora usan `formatCalendarDate`.
+
 ## [0.5.0] - 2026-09-24
 
 Clientes y sedes (F8). El dueño y los administradores dan de alta clientes con sus contactos y sedes con ubicación, y las ven en un mapa. Sin migraciones nuevas.

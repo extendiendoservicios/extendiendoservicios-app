@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { LogOut, MapPin } from 'lucide-react'
+import { AvatarUpload } from '@/components/AvatarUpload'
 import {
   Card,
   CardHeader,
@@ -12,6 +13,7 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Field, FieldLabel, FieldError } from '@/components/ui/field'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -23,14 +25,15 @@ import { formatShortDate, formatTime } from '@/lib/format'
 
 /**
  * COM-04 · Perfil propio (AUTH-007, `05` sección 3): datos propios, email
- * de contacto, teléfono, cambio de contraseña, roles, consentimiento de
- * ubicación, cerrar sesión. Nombre y email de login son de solo lectura
+ * de contacto, teléfono, foto, cambio de contraseña, roles, consentimiento
+ * de ubicación, cerrar sesión. Nombre y email de login son de solo lectura
  * (el encargo P06.3 lo remarca: "el nombre y el email de login son de
  * solo lectura") — el nombre lo escribe un administrador (ADM-27, F7), el
  * email de login solo lo cambia el dueño o un administrador (P-037).
  *
- * La foto NO va acá (EMP-011, otra fase) — la sección de arriba ya lo
- * aclara.
+ * La foto (EMP-011, P09.2) usa `AvatarUpload` con el `profileId` propio —
+ * el mismo componente que va a usar ADM-18 (front-admin) para la foto de
+ * otra persona.
  *
  * Sin `<h1>` propio: la ruta lleva `handle: {screenId: 'COM-04', title:
  * 'Mi perfil'}` (`commonRoutes.tsx`) y los dos shells ya lo muestran en su
@@ -160,6 +163,14 @@ export default function ProfilePage() {
           <CardTitle>Datos de la cuenta</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          {auth.userId && (
+            <AvatarUpload
+              profileId={auth.userId}
+              name={auth.displayName}
+              avatarPath={auth.profile?.avatarPath ?? null}
+              onChange={() => void auth.refreshProfile()}
+            />
+          )}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="profile-name">Nombre</FieldLabel>
@@ -260,9 +271,8 @@ export default function ProfilePage() {
               <FieldLabel htmlFor="profile-new-password">
                 Contraseña nueva
               </FieldLabel>
-              <Input
+              <PasswordInput
                 id="profile-new-password"
-                type="password"
                 autoComplete="new-password"
                 aria-invalid={Boolean(passwordErrors.newPassword)}
                 {...registerPassword('newPassword')}
@@ -279,9 +289,8 @@ export default function ProfilePage() {
               <FieldLabel htmlFor="profile-confirm-password">
                 Confirmar contraseña
               </FieldLabel>
-              <Input
+              <PasswordInput
                 id="profile-confirm-password"
-                type="password"
                 autoComplete="new-password"
                 aria-invalid={Boolean(passwordErrors.confirmPassword)}
                 {...registerPassword('confirmPassword')}

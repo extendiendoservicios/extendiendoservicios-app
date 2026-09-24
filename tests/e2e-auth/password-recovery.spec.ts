@@ -76,8 +76,12 @@ test('COM-02 a COM-03: recuperación de punta a punta con el enlace generado por
       page.getByRole('heading', { name: 'Elegí una contraseña nueva' }),
     ).toBeVisible()
 
-    await page.getByLabel('Contraseña nueva').fill(NUEVA_CONTRASENA)
-    await page.getByLabel('Confirmar contraseña').fill(NUEVA_CONTRASENA)
+    await page
+      .getByLabel('Contraseña nueva', { exact: true })
+      .fill(NUEVA_CONTRASENA)
+    await page
+      .getByLabel('Confirmar contraseña', { exact: true })
+      .fill(NUEVA_CONTRASENA)
     await page.getByRole('button', { name: 'Guardar contraseña' }).click()
 
     // Esta cuenta descartable no tiene ningún rol (createDisposableUser no le asigna

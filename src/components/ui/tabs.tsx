@@ -35,7 +35,12 @@ function TabsList({
     <TabsPrimitive.List
       data-slot="tabs-list"
       className={cn(
-        'flex items-center gap-[2px] border-b border-border group-data-[orientation=vertical]/tabs:flex-col group-data-[orientation=vertical]/tabs:items-start group-data-[orientation=vertical]/tabs:border-b-0',
+        // Horizontal: si las pestañas no entran (ficha de empleado en un celular),
+        // se desplazan dentro de su propia fila en vez de empujar la página.
+        // La línea de base es una sombra interior y no un borde: con
+        // `overflow-x-auto` el borde de la pestaña activa (que antes bajaba 1 px
+        // sobre el de la lista con `-mb-px`) quedaba recortado.
+        'flex max-w-full items-center gap-[2px] overflow-x-auto shadow-[inset_0_-1px_0_var(--color-border)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden group-data-[orientation=vertical]/tabs:flex-col group-data-[orientation=vertical]/tabs:items-start group-data-[orientation=vertical]/tabs:overflow-visible group-data-[orientation=vertical]/tabs:shadow-none',
         className,
       )}
       {...props}
@@ -51,7 +56,7 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        '-mb-px border-b-2 border-transparent px-[14px] py-[11px] text-[12.5px] font-semibold whitespace-nowrap text-text-3 transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border-primary data-[state=active]:text-primary-800',
+        'shrink-0 border-b-2 border-transparent px-[14px] py-[11px] text-[12.5px] font-semibold whitespace-nowrap text-text-3 transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border-primary data-[state=active]:text-primary-800',
         className,
       )}
       {...props}
