@@ -295,3 +295,43 @@ lectura: sigue sin existir una RPC para cambiarlas.
   semanal" y "quitar uno con motivo" quedan para qa-pruebas (P11.4): se
   dejaron roles accesibles y `data-testid="assign-candidate"` en las filas
   de candidatos de ADM-08 para que los pueda escribir.
+
+## ASSIGN-016 · Rendimiento del calendario mensual con 600 turnos (P11.4, verificación de qa-pruebas)
+
+Método (`tests/e2e-assignments/month-performance.spec.ts`):
+
+1. 600 turnos de fixture (20 por día × 30 días), insertados directo con la
+   clave de servicio en un cliente y una sede propios y descartables, en
+   noviembre de 2191 -- mes reservado solo para esta medición (distinto del
+   2190 que ya reserva `tests/e2e-shifts-services` para `generate_shifts`,
+   que abarca todo el sistema; acá no hace falta esa RPC porque los turnos
+   se insertan directo). Un solo `insert` de 600 filas, no 600 llamadas a
+   `create_shift`: lo que se mide es el pintado de ADM-03, no el armado del
+   fixture.
+2. Login como dueño, navegar a `/admin/planificacion?vista=mes` con un mes
+   cualquiera ya cargado, y mover el `MonthPicker` a noviembre de 2191 (con
+   los botones "Año siguiente", ~165 clics desde el año en curso).
+3. Medición en el reloj del propio navegador (`performance.now()`, no el de
+   Node, que sumaría la comunicación con Playwright): una marca justo cuando
+   la respuesta de `v_shifts_board` para ese rango de fechas llega
+   (`page.waitForResponse`), y otra cuando el primer chip de turno de ese mes
+   está visible en el DOM. La resta de las dos es el tiempo de pintado puro,
+   después de la carga de datos (que es lo que pide el criterio de F11).
+4. Umbral: menos de 1000 ms.
+
+Resultado de la corrida contra `App_dev` (25 sep 2026, build local
+`pnpm build` + `pnpm preview`, ver el reporte del encargo P11.4 para el
+detalle completo y la salida de la corrida): **PASA**, el pintado quedó
+bien por debajo de 1 s. El número exacto de esa corrida y el comando para
+reproducirla están en el reporte del encargo (no se repite acá para no
+quedar desactualizado si se vuelve a correr).
+
+Limitación de esta medición: `MAX_CHIPS_PER_DAY = 3` (ver más arriba, "ADM-03
+· Planificación · mes") ya limita a propósito cuántos `<Link>` se montan por
+día -- un mes con 600 turnos reparte en promedio 20 por día, pero el DOM
+real nunca llega a pintar más de 3 chips + "+n más" por celda. Esta
+decisión (tomada en P11.2, documentada arriba) es justamente la que permite
+cumplir el criterio de rendimiento: sin ese límite, pintar 600 `<Link>` +
+`<Badge>` reales sí podría acercarse o superar el segundo. La medición de
+ASSIGN-016 verifica el comportamiento real de la pantalla tal como quedó
+construida, no un escenario hipotético sin ese límite.
