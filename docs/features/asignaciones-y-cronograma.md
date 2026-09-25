@@ -295,3 +295,66 @@ lectura: sigue sin existir una RPC para cambiarlas.
   semanal" y "quitar uno con motivo" quedan para qa-pruebas (P11.4): se
   dejaron roles accesibles y `data-testid="assign-candidate"` en las filas
   de candidatos de ADM-08 para que los pueda escribir.
+
+## ASSIGN-016 · Rendimiento del calendario mensual con 600 turnos (P11.4, verificación de qa-pruebas)
+
+Método (`tests/e2e-assignments/month-performance.spec.ts`):
+
+1. 600 turnos de fixture (20 por día × 30 días), insertados directo con la
+   clave de servicio en un cliente y una sede propios y descartables, en
+   noviembre de 2191 -- mes reservado solo para esta medición (distinto del
+   2190 que ya reserva `tests/e2e-shifts-services` para `generate_shifts`,
+   que abarca todo el sistema; acá no hace falta esa RPC porque los turnos
+   se insertan directo). Un solo `insert` de 600 filas, no 600 llamadas a
+   `create_shift`: lo que se mide es el pintado de ADM-03, no el armado del
+   fixture.
+2. Login como dueño, navegar a `/admin/planificacion?vista=mes` con un mes
+   cualquiera ya cargado, y mover el `MonthPicker` a noviembre de 2191 (con
+   los botones "Año siguiente", ~165 clics desde el año en curso).
+3. Medición toda en el reloj del navegador (`performance.now()`), sin pasar
+   por Playwright. Inicio: `responseEnd` (Resource Timing) de la última
+   lectura de datos de ese mes. Fin: el mes completo pintado (90 chips de la
+   sede de fixture, 3 por día, y los 30 "+17 más"), detectado con un
+   `MutationObserver` y seguido de dos `requestAnimationFrame` para contar el
+   cuadro pintado. Incluye parseo, agrupado, render de React y pintado:
+   todo lo que pasa "después de la carga de datos", que es lo que pide el
+   criterio de F11.
+4. Umbral: menos de 1000 ms.
+5. Limpieza: los 600 turnos se BORRAN FÍSICAMENTE al final con la clave de
+   servicio (bypassa RLS), antes de dar de baja el cliente/sede. Son datos
+   sintéticos de rendimiento, sin valor de historial que conservar.
+
+Resultado contra `App_dev` (25 sep 2026, build local `pnpm build` +
+`vite preview`): **PASA**, 33,2 ms y 46,7 ms en dos corridas desde la última
+respuesta de datos hasta el mes completo pintado.
+
+**Corrección del orquestador en la revisión**: la primera versión medía desde
+un `performance.now()` puesto con un `evaluate` después de que Playwright
+recibía la respuesta hasta el primer chip visible. La marca de inicio llegaba
+tarde (el pintado podía haber terminado antes) y el fin no esperaba el mes
+completo: los 17-22 ms que daba no demostraban nada. Se reemplazó por el
+método de arriba.
+
+**Corrección de esta revisión (qa-pruebas, al retomar P11.4)**: la primera
+versión de este spec dejaba los 600 turnos sin borrar ("no molestan a nada
+real por estar tan lejos en el tiempo", mismo criterio que
+`tests/e2e-shifts-services`) -- válido para un cliente/sede con baja lógica,
+pero un defecto real acá: como el spec reutiliza siempre el mismo mes
+(2191-11), cada corrida sin limpiar sumaba 600 turnos más al mismo rango. Al
+retomar el encargo se encontraron **3.600 turnos acumulados** en 2191-11 (6
+corridas previas sin borrar) y la consulta a `v_shifts_board` para ese rango
+tardaba **6033 ms ella sola**, antes de que el navegador pintara nada --
+la primera corrida verificada en esta sesión, todavía con el mes
+contaminado, midió 7,7-9,6 s. Corregido a borrado físico (el encargo pide
+"creados y borrados por el propio test"), la medición volvió a los
+milisegundos de arriba.
+
+Limitación de esta medición: `MAX_CHIPS_PER_DAY = 3` (ver más arriba, "ADM-03
+· Planificación · mes") ya limita a propósito cuántos `<Link>` se montan por
+día -- un mes con 600 turnos reparte en promedio 20 por día, pero el DOM
+real nunca llega a pintar más de 3 chips + "+n más" por celda. Esta
+decisión (tomada en P11.2, documentada arriba) es justamente la que permite
+cumplir el criterio de rendimiento: sin ese límite, pintar 600 `<Link>` +
+`<Badge>` reales sí podría acercarse o superar el segundo. La medición de
+ASSIGN-016 verifica el comportamiento real de la pantalla tal como quedó
+construida, no un escenario hipotético sin ese límite.

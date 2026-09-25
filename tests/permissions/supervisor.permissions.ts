@@ -18,6 +18,13 @@ import {
 import { resolveUserId } from './helpers/admin-lookups.ts'
 import { missingEnvWarning, readPermissionsTestEnv } from './helpers/env.ts'
 import { SEED_ACCOUNTS } from './fixtures/seed-accounts.ts'
+import {
+  cleanupFixtureShift,
+  createFixtureAssignment,
+  removeFixtureAssignment,
+  createFixtureShift,
+  type FixtureShift,
+} from './helpers/assignment-fixtures.ts'
 
 const env = readPermissionsTestEnv()
 if (!env) console.warn(missingEnvWarning('supervisor.permissions.ts'))
@@ -235,6 +242,84 @@ describe.skipIf(!env)(
           .eq('id', 1)
         expect(settings.error).toBeNull()
         expect(settings.data).toHaveLength(1)
+      })
+    })
+
+    // ASSIGN-015/TEST-008 (P11.4, 08_Fases_y_Backlog.md F11): `06` sección 8 no le da a la
+    // supervisora ningún canal para asignar, quitar ni editar turnos/asignaciones -- ni siquiera
+    // sobre un turno que supervisa. Turno y asignación de fixture propios (no del seed).
+    describe('las cuatro RPC de asignaciones (06 sección 8): ninguna es para el rol supervisor', () => {
+      let fixture: FixtureShift
+      let fixtureAssignmentId: string
+      let dueno: TestClient
+
+      beforeAll(async () => {
+        // Mañana, de madrugada (03:00-04:00): horario del que casi con certeza nadie del seed
+        // tiene un turno real hoy (una franja diurna típica de limpieza sí podría chocar con
+        // `ASSIGNMENT_OVERLAP`, ya observado armando esta suite).
+        const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+          .toISOString()
+          .slice(0, 10)
+        fixture = await createFixtureShift(admin, tomorrow, '03:00', '04:00')
+        // La asignación de fixture se arma con el dueño (ver el comentario de
+        // `createFixtureAssignment`: `service_role` no puede insertar en `assignments`). Empleado
+        // dedicado (`employees[9]`, patricia.nunez), NO `empleadoDeSuEquipoId` (maria.gomez): esa
+        // persona la usa también `employee.permissions.ts` para un conteo EXACTO de sus propias
+        // asignaciones vigentes -- con los archivos de esta carpeta corriendo en paralelo (un
+        // worker de Vitest por archivo), una asignación de fixture de más sobre maria.gomez
+        // hacía fallar ese test ajeno de forma intermitente (encontrado armando esta suite, ver
+        // el reporte del encargo).
+        const ownerLogin = await loginAs(SEED_ACCOUNTS.owner)
+        dueno = ownerLogin.client
+        const fixtureEmployeeId = await resolveUserId(
+          admin,
+          SEED_ACCOUNTS.employees[9],
+        )
+        fixtureAssignmentId = await createFixtureAssignment(
+          dueno,
+          fixture.shiftId,
+          fixtureEmployeeId,
+        )
+      })
+
+      afterAll(async () => {
+        await removeFixtureAssignment(dueno, fixtureAssignmentId)
+        await dueno.auth.signOut()
+        await cleanupFixtureShift(admin, fixture)
+      })
+
+      it('no puede llamar assign_employee', async () => {
+        const { error } = await supervisora.rpc('assign_employee', {
+          p_shift_id: fixture.shiftId,
+          p_employee_id: empleadoAjenoId,
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede llamar remove_assignment, ni sobre una asignación del turno de fixture', async () => {
+        const { error } = await supervisora.rpc('remove_assignment', {
+          p_assignment_id: fixtureAssignmentId,
+          p_reason: 'e2e-perm no debería aplicarse',
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede llamar update_assignment_time', async () => {
+        const { error } = await supervisora.rpc('update_assignment_time', {
+          p_assignment_id: fixtureAssignmentId,
+          p_start: '09:00',
+          p_end: '11:00',
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede llamar update_shift_details', async () => {
+        const { error } = await supervisora.rpc('update_shift_details', {
+          p_shift_id: fixture.shiftId,
+          p_required_staff: 3,
+          p_notes: 'e2e-perm no debería aplicarse',
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
       })
     })
   },

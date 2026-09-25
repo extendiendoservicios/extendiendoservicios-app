@@ -20,6 +20,7 @@
     "test:e2e:clients-sites": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-clients-sites/playwright.clients-sites.config.ts",
     "test:e2e:employees": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-employees/playwright.employees.config.ts",
     "test:e2e:shifts-services": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-shifts-services/playwright.shifts-services.config.ts",
+    "test:e2e:assignments": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-assignments/playwright.assignments.config.ts",
     "test:permissions": "node --env-file=.env.local ./node_modules/vitest/vitest.mjs run --config tests/permissions/vitest.config.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
