@@ -81,6 +81,16 @@
 --   - `update_shift_details` devuelve la fila de `shifts` directamente (no `jsonb` con
 --     advertencias): mismo criterio que `update_shift_time`/`cancel_shift` (0023) -- no hay
 --     advertencia posible para esta operación.
+--
+-- Revisión del orquestador (P11.1):
+--   - Las cuatro RPC leen el turno con `for update`: el cupo se calcula contando asignaciones, y
+--     sin el bloqueo dos `assign_employee` simultáneos sobre el último lugar ven los dos
+--     "queda uno" y dejan el turno por encima de `required_staff`. Con el bloqueo, las
+--     operaciones sobre un mismo turno se serializan.
+--   - `assign_employee` trata como no activo a un empleado con `deleted_at` (baja lógica), aunque
+--     su `status` haya quedado en `active`.
+--   - `remove_assignment` y `update_assignment_time` rechazan un turno cancelado o finalizado
+--     (`SHIFT_CANCELLED`/`SHIFT_COMPLETED`): sus asignaciones quedan para historia (P-049).
 
 -- ---------------------------------------------------------------------------------------------
 -- 1. assign_employee(p_shift_id, p_employee_id, p_start?, p_end?) -- 04 sección 9, 06 sección 8,
@@ -109,7 +119,7 @@ declare
 begin
   perform app.require_role('owner', 'admin');
 
-  select * into v_shift from public.shifts where id = p_shift_id and deleted_at is null;
+  select * into v_shift from public.shifts where id = p_shift_id and deleted_at is null for update;
 
   if v_shift.id is null then
     raise exception using
@@ -139,7 +149,7 @@ begin
       hint = 'SHIFT_STARTED';
   end if;
 
-  select * into v_employee from public.employees where profile_id = p_employee_id;
+  select * into v_employee from public.employees where profile_id = p_employee_id and deleted_at is null;
 
   if v_employee.profile_id is null or v_employee.status <> 'active' then
     raise exception using
@@ -283,7 +293,21 @@ begin
       hint = 'ASSIGNMENT_STARTED';
   end if;
 
-  select * into v_shift from public.shifts where id = v_assignment.shift_id;
+  select * into v_shift from public.shifts where id = v_assignment.shift_id for update;
+
+  if v_shift.status = 'cancelled' then
+    raise exception using
+      errcode = 'P0001',
+      message = 'Este turno está cancelado.',
+      hint = 'SHIFT_CANCELLED';
+  end if;
+
+  if v_shift.status = 'completed' then
+    raise exception using
+      errcode = 'P0001',
+      message = 'Este turno ya terminó.',
+      hint = 'SHIFT_COMPLETED';
+  end if;
 
   if now() >= v_shift.starts_at and not app.has_capability('manage_attendance') then
     raise exception using
@@ -299,10 +323,19 @@ begin
       hint = 'REASON_REQUIRED';
   end if;
 
+  -- `removed_at is null` otra vez: otra llamada pudo quitarla mientras esta esperaba el bloqueo
+  -- del turno.
   update public.assignments
   set removed_at = now(), removed_by = auth.uid(), removed_reason = p_reason
-  where id = p_assignment_id
+  where id = p_assignment_id and removed_at is null
   returning * into v_assignment;
+
+  if not found then
+    raise exception using
+      errcode = 'P0001',
+      message = 'No encontramos esa asignación.',
+      hint = 'ASSIGNMENT_NOT_FOUND';
+  end if;
 
   select count(*) into v_remaining_count
   from public.assignments a
@@ -357,7 +390,21 @@ begin
       hint = 'ASSIGNMENT_STARTED';
   end if;
 
-  select * into v_shift from public.shifts where id = v_assignment.shift_id;
+  select * into v_shift from public.shifts where id = v_assignment.shift_id for update;
+
+  if v_shift.status = 'cancelled' then
+    raise exception using
+      errcode = 'P0001',
+      message = 'Este turno está cancelado.',
+      hint = 'SHIFT_CANCELLED';
+  end if;
+
+  if v_shift.status = 'completed' then
+    raise exception using
+      errcode = 'P0001',
+      message = 'Este turno ya terminó.',
+      hint = 'SHIFT_COMPLETED';
+  end if;
 
   if p_start is not null and p_end is not null and p_end <= p_start then
     raise exception using
@@ -412,7 +459,7 @@ declare
 begin
   perform app.require_role('owner', 'admin');
 
-  select * into v_shift from public.shifts where id = p_shift_id and deleted_at is null;
+  select * into v_shift from public.shifts where id = p_shift_id and deleted_at is null for update;
 
   if v_shift.id is null then
     raise exception using

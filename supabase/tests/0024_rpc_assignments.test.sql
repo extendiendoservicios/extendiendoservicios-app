@@ -49,7 +49,7 @@ $$;
 
 grant execute on function tests.as_user(text) to authenticated, anon;
 
-select plan(43);
+select plan(48);
 
 -- Existencia y firma --------------------------------------------------------------------------
 
@@ -552,6 +552,58 @@ prepare update_details_completed as
   select public.update_shift_details('e2400000-0000-0000-0000-000000000049', 1::smallint, null);
 
 select throws_ok('update_details_completed', 'P0001', 'Este turno ya terminó.', 'update_shift_details: turno finalizado -> SHIFT_COMPLETED');
+
+set local role postgres;
+
+-- ---------------------------------------------------------------------------------------------
+-- Revisión del orquestador (P11.1): empleado dado de baja lógica, y quitar o reprogramar en un
+-- turno cancelado o finalizado (sus asignaciones quedan para historia, P-049).
+-- ---------------------------------------------------------------------------------------------
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('e2400000-0000-0000-0000-000000000099', 'test-db024-e-dado-de-baja@example.com', jsonb_build_object('first_name', 'Dado', 'last_name', 'DeBaja'));
+
+-- status sigue en 'active', pero la fila tiene baja lógica.
+insert into public.employees (profile_id, dni, status, deleted_at) values
+  ('e2400000-0000-0000-0000-000000000099', '92400099', 'active', now());
+
+-- Asignación en el turno finalizado (0049), cargada directo: por RPC no se puede.
+insert into public.assignments (id, shift_id, employee_id) values
+  ('e2400000-0000-0000-0000-000000000149', 'e2400000-0000-0000-0000-000000000049', 'e2400000-0000-0000-0000-000000000097');
+
+select tests.as_user('test-db024-owner@example.com');
+
+prepare assign_deleted_employee as
+  select public.assign_employee('e2400000-0000-0000-0000-000000000071', 'e2400000-0000-0000-0000-000000000099');
+
+select throws_ok('assign_deleted_employee', 'P0001', 'Ese empleado no está activo.', 'assign_employee: empleado con baja lógica (status active) -> EMPLOYEE_NOT_ACTIVE');
+
+prepare remove_in_cancelled as
+  select public.remove_assignment(
+    (select id from public.assignments where shift_id = 'e2400000-0000-0000-0000-000000000053'),
+    'motivo de prueba'
+  );
+
+select throws_ok('remove_in_cancelled', 'P0001', 'Este turno está cancelado.', 'remove_assignment: turno cancelado -> SHIFT_CANCELLED (la asignación queda para historia)');
+
+prepare update_time_in_cancelled as
+  select public.update_assignment_time(
+    (select id from public.assignments where shift_id = 'e2400000-0000-0000-0000-000000000053'),
+    '09:00'::time,
+    null
+  );
+
+select throws_ok('update_time_in_cancelled', 'P0001', 'Este turno está cancelado.', 'update_assignment_time: turno cancelado -> SHIFT_CANCELLED');
+
+prepare remove_in_completed as
+  select public.remove_assignment('e2400000-0000-0000-0000-000000000149', 'motivo de prueba');
+
+select throws_ok('remove_in_completed', 'P0001', 'Este turno ya terminó.', 'remove_assignment: turno finalizado -> SHIFT_COMPLETED');
+
+prepare update_time_in_completed as
+  select public.update_assignment_time('e2400000-0000-0000-0000-000000000149', '09:00'::time, null);
+
+select throws_ok('update_time_in_completed', 'P0001', 'Este turno ya terminó.', 'update_assignment_time: turno finalizado -> SHIFT_COMPLETED');
 
 set local role postgres;
 
