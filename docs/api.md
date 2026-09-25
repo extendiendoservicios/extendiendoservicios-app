@@ -170,8 +170,41 @@ cada función como parámetro, no un trigger. A diferencia de `clients.ts`/
 | `fetchServiceDetail(id)`, `createService`, `updateService`       | `from('services')` | Embeben `clients(legal_name, trade_name)` y `sites(name)` para la cabecera de ADM-25. Días de la semana inválidos → `INVALID_WEEKDAYS`; rango horario inválido → `INVALID_TIME_RANGE`; dotación fuera de 1..10 → `VALIDATION_ERROR`. |
 | `setServiceStatus(id, status, updatedBy)`                        | `from('services')` | Solo toca `status` (SERVICE-004), aparte del formulario completo.                                                                                                                                                                    |
 
+### `shifts` (`src/api/shifts.ts`, P10.3 — SHIFT-007 a SHIFT-011)
+
+Turnos de ADM-05, ADM-07 y ADM-09. A diferencia de `clients`/`sites`/
+`services`, acá sí hay RPC propia para cada escritura
+(`0023_rpc_shifts.sql`, P10.1): `create_shift`, `generate_shifts`,
+`update_shift_time`, `cancel_shift`, `reload_shift_tasks`.
+`0012_rls_policies.sql` sección 9 confirma que `shifts` no tiene ninguna
+política de insert/update/delete directa, así que no hace falta un
+`mapWriteError` a mano como en `services.ts`: los cinco `P0001` que puede
+lanzar cada RPC ya traen `hint`/`message` listos, `fromPostgrestError` los
+deja pasar tal cual.
+
+**Contradicción con `06_API.md` sección 7** (documentada también en el
+código y en `docs/features/servicios-y-turnos.md`): esa sección lista
+"Editar notas administrativas | update `shifts.notes` | O, A" como si fuera
+una escritura directa por PostgREST, pero no existe esa política ni ninguna
+RPC para tocar `required_staff`/`notes` de un turno ya creado. `05_Pantallas_
+y_Navegacion.md` línea 41 pide que la edición de ADM-07 permita cambiar
+"franja, dotación y notas, según estado", pero con el backend ya construido
+solo se puede cambiar la franja (`update_shift_time`). Reportado al
+orquestador.
+
+| Función                                         | Canal                    | Notas                                                                                                                                                                                                                          |
+| ----------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `fetchShiftsByDate(date)`                       | `from('v_shifts_board')` | Lista del día de ADM-05, ordenada por hora. Incluye `display_status` (con los derivados `uncovered`/`upcoming`) y los cinco contadores (`assigned_count`, `present_count`, `finished_count`, `absent_count`, `delayed_count`). |
+| `fetchShiftForEdit(id)`                         | `from('v_shifts_board')` | Datos mínimos para el modo edición de ADM-07 (franja, estado, nombres de cliente/sede de solo lectura). No es el detalle completo de ADM-06 (F11).                                                                             |
+| `fetchActiveServicesCountForMonth(year, month)` | `from('services')`       | Resumen previo de ADM-09: cuenta servicios `active` vigentes en el mes. Aproximación de cliente, no repite la lógica exacta (día por día, cliente/sede activos) de `generate_shifts`.                                          |
+| `createShift(input)`                            | RPC `create_shift`       | Turno puntual (ADM-07 alta). Errores: `INVALID_TIME_RANGE`, `CLIENT_NOT_ACTIVE`, `SITE_NOT_ACTIVE`. Advertencia informativa `HOLIDAY` (no bloquea).                                                                            |
+| `generateShifts(year, month)`                   | RPC `generate_shifts`    | Generación mensual idempotente (ADM-09). Capacidad `generate_shifts`. Devuelve `{created, skipped, holidaysSkipped}`.                                                                                                          |
+| `updateShiftTime(shiftId, start, end)`          | RPC `update_shift_time`  | Único endpoint de edición de un turno existente (ADM-07 edición). Errores: `SHIFT_NOT_FOUND`, `SHIFT_CANCELLED`, `SHIFT_COMPLETED`, `INVALID_TIME_RANGE`, `SHIFT_NOT_EDITABLE`, `ASSIGNMENT_OVERLAP`.                          |
+| `cancelShift(shiftId, reason)`                  | RPC `cancel_shift`       | Diálogo de cancelación (SHIFT-011). Capacidad `cancel_shifts`. Motivo obligatorio → `CANCEL_REASON_REQUIRED`.                                                                                                                  |
+| `reloadShiftTasks(shiftId)`                     | RPC `reload_shift_tasks` | Capacidad `edit_checklists`. Sin pantalla que la use todavía (es de ADM-06, F11); se agrega igual porque `shifts.ts` es el único módulo del dominio.                                                                           |
+
 ## Próximos dominios
 
-Cada paquete de F10 en adelante agrega su sección acá (`shifts`,
-`attendance`, `supervisions`, `tasks`) siguiendo el mismo formato: función,
-canal, particularidades que no se deducen de leer el nombre.
+Cada paquete de F10 en adelante agrega su sección acá (`attendance`,
+`supervisions`, `tasks`) siguiendo el mismo formato: función, canal,
+particularidades que no se deducen de leer el nombre.

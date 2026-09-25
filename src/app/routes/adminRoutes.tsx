@@ -7,9 +7,12 @@ import EmployeeDetailPage from '@/pages/admin/EmployeeDetailPage'
 import EmployeeFormPage from '@/pages/admin/EmployeeFormPage'
 import EmployeesPage from '@/pages/admin/EmployeesPage'
 import HolidaysPage from '@/pages/admin/HolidaysPage'
+import PlanningPage from '@/pages/admin/PlanningPage'
 import RatingCriteriaPage from '@/pages/admin/RatingCriteriaPage'
 import SecurityEventsPage from '@/pages/admin/SecurityEventsPage'
 import ServiceFormPage from '@/pages/admin/ServiceFormPage'
+import ShiftFormPage from '@/pages/admin/ShiftFormPage'
+import ShiftsGeneratePage from '@/pages/admin/ShiftsGeneratePage'
 import SiteDetailPage from '@/pages/admin/SiteDetailPage'
 import SiteFormPage from '@/pages/admin/SiteFormPage'
 import UsersPage from '@/pages/admin/UsersPage'
@@ -34,36 +37,48 @@ export const adminRoutes: RouteObject[] = [
     title: 'Resumen',
     subtitle: 'Ver el estado de la operación de hoy',
   }),
-  placeholderRoute({
+  {
     path: 'planificacion',
-    screenId: 'ADM-03',
-    title: 'Planificación',
-    subtitle: 'Ver y navegar el cronograma',
-  }),
-  placeholderRoute({
+    element: <PlanningPage />,
+    handle: {
+      screenId: 'ADM-03',
+      title: 'Planificación',
+      subtitle: 'Ver y navegar el cronograma',
+    },
+  },
+  {
     path: 'turnos/nuevo',
-    screenId: 'ADM-07',
-    title: 'Nuevo turno',
-    subtitle: 'Crear un turno puntual',
-  }),
-  placeholderRoute({
+    element: <ShiftFormPage />,
+    handle: {
+      screenId: 'ADM-07',
+      title: 'Nuevo turno',
+      subtitle: 'Crear un turno puntual',
+    },
+  },
+  {
     path: 'turnos/generar',
-    screenId: 'ADM-09',
-    title: 'Generar turnos del mes',
-    subtitle: 'Ejecutar la generación mensual',
-  }),
+    element: <ShiftsGeneratePage />,
+    handle: {
+      screenId: 'ADM-09',
+      title: 'Generar turnos del mes',
+      subtitle: 'Ejecutar la generación mensual',
+    },
+  },
   placeholderRoute({
     path: 'turnos/:id',
     screenId: 'ADM-06',
     title: 'Detalle del turno',
     subtitle: 'Ver y operar sobre un turno',
   }),
-  placeholderRoute({
+  {
     path: 'turnos/:id/editar',
-    screenId: 'ADM-07',
-    title: 'Editar turno',
-    subtitle: 'Editar franja y dotación',
-  }),
+    element: <ShiftFormPage />,
+    handle: {
+      screenId: 'ADM-07',
+      title: 'Editar turno',
+      subtitle: 'Editar el horario del turno',
+    },
+  },
   placeholderRoute({
     path: 'asistencia',
     screenId: 'ADM-10',
