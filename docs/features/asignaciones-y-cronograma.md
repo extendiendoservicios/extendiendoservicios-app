@@ -318,13 +318,29 @@ Método (`tests/e2e-assignments/month-performance.spec.ts`):
    está visible en el DOM. La resta de las dos es el tiempo de pintado puro,
    después de la carga de datos (que es lo que pide el criterio de F11).
 4. Umbral: menos de 1000 ms.
+5. Limpieza: los 600 turnos se BORRAN FÍSICAMENTE al final con la clave de
+   servicio (bypassa RLS), antes de dar de baja el cliente/sede. Son datos
+   sintéticos de rendimiento, sin valor de historial que conservar.
 
 Resultado de la corrida contra `App_dev` (25 sep 2026, build local
 `pnpm build` + `pnpm preview`, ver el reporte del encargo P11.4 para el
-detalle completo y la salida de la corrida): **PASA**, el pintado quedó
-bien por debajo de 1 s. El número exacto de esa corrida y el comando para
-reproducirla están en el reporte del encargo (no se repite acá para no
-quedar desactualizado si se vuelve a correr).
+detalle completo y la salida de la corrida): **PASA**, tres corridas
+consecutivas dieron 17.7 ms, 22.5 ms y 19.7 ms desde la respuesta hasta el
+primer chip pintado -- muy por debajo del segundo.
+
+**Corrección de esta revisión (qa-pruebas, al retomar P11.4)**: la primera
+versión de este spec dejaba los 600 turnos sin borrar ("no molestan a nada
+real por estar tan lejos en el tiempo", mismo criterio que
+`tests/e2e-shifts-services`) -- válido para un cliente/sede con baja lógica,
+pero un defecto real acá: como el spec reutiliza siempre el mismo mes
+(2191-11), cada corrida sin limpiar sumaba 600 turnos más al mismo rango. Al
+retomar el encargo se encontraron **3.600 turnos acumulados** en 2191-11 (6
+corridas previas sin borrar) y la consulta a `v_shifts_board` para ese rango
+tardaba **6033 ms ella sola**, antes de que el navegador pintara nada --
+la primera corrida verificada en esta sesión, todavía con el mes
+contaminado, midió 7,7-9,6 s. Corregido a borrado físico (el encargo pide
+"creados y borrados por el propio test"), la medición volvió a los
+milisegundos de arriba.
 
 Limitación de esta medición: `MAX_CHIPS_PER_DAY = 3` (ver más arriba, "ADM-03
 · Planificación · mes") ya limita a propósito cuántos `<Link>` se montan por
