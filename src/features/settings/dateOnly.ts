@@ -1,4 +1,4 @@
-import { format } from 'date-fns'
+import { addDays, format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
 /**
@@ -52,4 +52,15 @@ export function localDateToIsoDate(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+/**
+ * Suma (o resta, con `days` negativo) días de calendario a una fecha
+ * `"yyyy-MM-dd"`, sin pasar por UTC (`addDays` de date-fns opera sobre el
+ * reloj local, igual criterio que `localDateToIsoDate`). Usada por la
+ * navegación "día anterior/siguiente" de ADM-05.
+ */
+export function addDaysToIsoDate(isoDate: string, days: number): string {
+  const { year, month, day } = parseIsoDateParts(isoDate)
+  return localDateToIsoDate(addDays(new Date(year, month - 1, day), days))
 }

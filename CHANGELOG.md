@@ -17,6 +17,27 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
   de la pestaña Servicios de ADM-21 y de la sección Servicios de ADM-22 por
   `ServiceList`, con pausar/reactivar/finalizar en línea (sin motivo
   obligatorio). `StatusBadge` suma el dominio `service`.
+- Turnos (P10.3, SHIFT-007 a SHIFT-011, SERVICE-008): `src/api/shifts.ts`
+  envuelve las cinco RPC de `0023_rpc_shifts.sql` (`create_shift`,
+  `generate_shifts`, `update_shift_time`, `cancel_shift`,
+  `reload_shift_tasks`); esquema zod y hooks de TanStack Query.
+  ADM-05 "Planificación · día" en versión mínima (lista de turnos con
+  dotación y estado, fecha navegable, polling 30 s si es hoy). ADM-07
+  "Formulario de turno" (alta puntual con aviso de feriado; edición
+  limitada a la franja horaria -- ver la nota de abajo). ADM-09 "Generar
+  turnos del mes" (resumen previo de servicios activos y feriados del mes,
+  resultado creados/omitidos/omitidos por feriado, aviso de que regenerar
+  solo crea los faltantes). Diálogo de cancelación con motivo obligatorio
+  (`CancelShiftDialog`, sobre `ConfirmDialog`), pensado para que ADM-06
+  (F11) lo reutilice. Las acciones se ocultan según `canManageShiftTime`/
+  `canGenerateShifts`/`canCancelShift` (dueño, o administrador con la
+  capacidad correspondiente).
+
+  **Nota:** la edición de ADM-07 no permite cambiar dotación ni notas de un
+  turno ya creado -- el backend no tiene ninguna RPC ni política de
+  PostgREST para eso (contradicción entre `05`/`06` y lo ya construido en
+  `App_dev`, reportada al orquestador; ver `docs/features/
+servicios-y-turnos.md`).
 
 ## [0.6.0] - 2026-09-24
 
