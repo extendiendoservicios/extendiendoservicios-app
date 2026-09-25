@@ -173,6 +173,13 @@ hoy) y permisos en `src/features/shifts/permissions.ts`
 (`canManageShiftTime`, `canGenerateShifts`, `canCancelShift` — matriz de
 `03_Plan_Maestro_Tecnico.md` sección 6 y `06_API.md` sección 7).
 
+> **Actualización P11.2 (ASSIGN-008 a ASSIGN-010):** ADM-03 (mes), ADM-04
+> (semana) y la versión completa de ADM-05 (agrupada por franja, con "abrir
+> turno") ya están construidas -- ver `docs/features/asignaciones-y-cronograma.md`. Lo
+> que sigue en esta sección describe la versión mínima de ADM-05 tal como
+> quedó en P10.3; se deja sin reescribir como registro histórico de esa
+> fase.
+
 ### ADM-05 · Planificación · día (versión mínima, SHIFT-010)
 
 `src/pages/admin/PlanningPage.tsx`, montada en `/admin/planificacion`
@@ -308,13 +315,14 @@ employeeLeaveStatus.ts`** en vez de duplicarse una vez más: ya es un
 
 ### Qué falta / para el orquestador (turnos)
 
-- La contradicción de edición de ADM-07 (dotación/notas, ver arriba) queda
-  pendiente de una decisión del backend: una RPC nueva (por ejemplo
-  `update_shift_details`) o confirmar que la Base no la necesita hasta F11.
-- ADM-06 (detalle completo del turno: asignaciones, tareas, asistencia,
-  supervisiones) y la versión completa de ADM-05 (agrupada por franja,
-  filtros de cliente/sede/estado) son de F11.
+- La contradicción de edición de ADM-07 (dotación/notas, ver arriba) ya
+  tiene RPC (`update_shift_details`, P11.1): `ShiftFormPage` (P10.3) todavía
+  no la usa -- queda para cuando ADM-06/ADM-07 completen la edición en
+  P11.3. Envuelta desde ya en `src/api/assignments.ts` (`docs/api.md`).
+- ADM-03, ADM-04 y la versión completa de ADM-05 se construyeron en P11.2
+  (`docs/features/asignaciones-y-cronograma.md`). ADM-06 (detalle completo del turno) y
+  ADM-08 (drawer "Asignar empleado") siguen siendo de P11.3.
 - `reload_shift_tasks` está envuelta en `src/api/shifts.ts` pero sin
-  pantalla que la use todavía (es de ADM-06, F11).
+  pantalla que la use todavía (es de ADM-06, P11.3).
 - e2e de "servicio → generar → lista del día → cancelar uno" (SHIFT-012)
   queda para qa-pruebas.

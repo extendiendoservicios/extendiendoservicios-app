@@ -689,6 +689,73 @@ reales de `App_dev` que también caen en ese mes. Por eso el archivo de test:
   sí es determinística sin importar los datos reales, porque una corrida inmediatamente después de
   otra siempre tiene que crear cero turnos.
 
+## RPC de asignaciones y dotación (04 sección 9, 06 sección 7 y 8, migración `0024`, ASSIGN-002 a ASSIGN-004, P11.1)
+
+Las cuatro RPC de `assign_employee`, `remove_assignment`, `update_assignment_time`,
+`update_shift_details`. Ratificado por Mike el 25 sep 2026 (P11.0, `02_Decisiones.md`): P-034
+(habilitación por cliente advierte, no bloquea; lista vacía = habilitado para todos), P-046
+(franja propia opcional por asignación), P-054 (sin límite de horizonte).
+
+| RPC                                                            | Quién                                                      | Qué hace                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| -------------------------------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `assign_employee(p_shift_id, p_employee_id, p_start?, p_end?)` | O, A (después del inicio del turno: + `manage_attendance`) | Verifica turno no cancelado/completado (`SHIFT_CANCELLED`/`SHIFT_COMPLETED`), empleado activo (`EMPLOYEE_NOT_ACTIVE`), franja propia dentro de la del turno (`ASSIGNMENT_TIME_OUT_OF_SHIFT`), que no esté ya asignado a ese turno (`ALREADY_ASSIGNED`), cupo (`SHIFT_FULL`) y superposición (exclusión gist traducida a `ASSIGNMENT_OVERLAP`). Si el turno ya empezó (`now() >= starts_at`) y quien llama no tiene `manage_attendance`, `SHIFT_STARTED`. Devuelve `jsonb`: `{"assignment": <fila>, "warnings": [...]}` con `NOT_ENABLED_FOR_CLIENT` (P-034), `OUTSIDE_AVAILABILITY` (P-035), `ON_LEAVE` (P-033) -- ninguna bloquea. Si esta asignación completa la dotación, el turno pasa de `scheduled` a `assigned`. |
+| `remove_assignment(p_assignment_id, p_reason)`                 | O, A (después del inicio del turno: + `manage_attendance`) | Baja lógica con motivo obligatorio (`REASON_REQUIRED`). `ASSIGNMENT_NOT_FOUND` si no existe o ya fue quitada. `ASSIGNMENT_STARTED` si la asignación ya tiene inicio registrado (`status in ('present','finished')`): no se quita, se cierra con `close_assignment` (F14, todavía no escrita). Si el turno ya empezó y falta `manage_attendance`, `SHIFT_STARTED` (decisión menor, simetría con `assign_employee`: el encargo P11.1 pide cubrir este caso con pgTAP para las dos RPC). Si la dotación queda incompleta, el turno vuelve de `assigned` a `scheduled`.                                                                                                                                                     |
+| `update_assignment_time(p_assignment_id, p_start?, p_end?)`    | O, A                                                       | Cambia la franja propia (P-046). Solo antes del inicio efectivo (`lower(assignments."window")`, no el estado -- una asignación puede seguir `expected` pasada su hora si nadie marcó el check-in, P-068): `ASSIGNMENT_STARTED` si ya pasó. `ASSIGNMENT_NOT_FOUND`, `INVALID_TIME_RANGE`, `ASSIGNMENT_TIME_OUT_OF_SHIFT` (fuera de la franja del turno), `ASSIGNMENT_OVERLAP` (exclusión traducida, mismo criterio que `update_shift_time`, 0023). El trigger `app.sync_assignment_window` (0007) recalcula la ventana.                                                                                                                                                                                                  |
+| `update_shift_details(p_shift_id, p_required_staff, p_notes)`  | O, A                                                       | Edita dotación y notas administrativas -- corrige `06_API.md` sección 7, que traía "editar notas: update `shifts.notes`" (`0012_rls_policies.sql` no admite escritura directa de `shifts`; pendiente anotado en `12_Registro_de_Progreso.md`, P10.3). `SHIFT_NOT_FOUND`/`SHIFT_CANCELLED`/`SHIFT_COMPLETED`. `REQUIRED_STAFF_RANGE` si `p_required_staff` no está entre 1 y 10 (evita el `check_violation` crudo de `shifts_required_staff_check`, 0007). `REQUIRED_STAFF_BELOW_ASSIGNED` si queda por debajo de los asignados vigentes. Recalcula `scheduled`/`assigned` según la nueva dotación (04 sección 6.1). Devuelve la fila de `shifts`.                                                                       |
+
+Decisiones menores (documentadas también en el reporte de la tarea):
+
+- "Después del inicio del turno" se interpreta como `now() >= shifts.starts_at` (la hora de
+  reloj), no el estado `in_progress` -- un turno puede seguir `scheduled`/`assigned` después de su
+  hora de inicio si todavía nadie registró el check-in (P-068 permite el check-in en cualquier
+  momento del día del turno).
+- `ALREADY_ASSIGNED`, `ASSIGNMENT_TIME_OUT_OF_SHIFT`, `ASSIGNMENT_NOT_FOUND`,
+  `REQUIRED_STAFF_RANGE`, `REQUIRED_STAFF_BELOW_ASSIGNED` son códigos nuevos, no estaban en `06`
+  sección 15 (se agregaron ahí, con los que ya faltaban de `0023`: `INVALID_WEEKDAYS`,
+  `SHIFT_CANCELLED`, `SHIFT_COMPLETED`, `SHIFT_NOT_EDITABLE`, `CANCEL_REASON_REQUIRED`,
+  `SHIFT_NOT_FOUND`, y también `EMPLOYEE_NOT_ACTIVE`/`NOT_ENABLED_FOR_CLIENT`/
+  `OUTSIDE_AVAILABILITY`/`ON_LEAVE`, que ya estaban nombrados en la sección 8 pero sin mensaje en
+  voseo).
+- `OUTSIDE_AVAILABILITY` no advierte si el empleado no declaró ninguna disponibilidad (mismo
+  criterio que `employee_client_permissions` vacía = habilitado para todos, P-034): "no declaró
+  nada" no es lo mismo que "nunca está disponible". El modelo no lo dice para disponibilidad, es
+  la lectura simétrica más razonable.
+- `ON_LEAVE` se evalúa contra `shift_date` (el día del turno que se está asignando), no contra
+  "hoy": sin límite de horizonte (P-054) se puede planificar cualquier mes.
+- Transiciones `scheduled ↔ assigned` (ASSIGN-004) van dentro de cada RPC, no en un trigger aparte
+  -- mismo criterio que `cancel_shift` (0023), que también actualiza `supervisions` dentro de la
+  propia función. Un trigger sobre `assignments` correría también en los `insert`/`update` de
+  `record_check_in`/`record_check_out`/`notify_*` (F13/F14, todavía no escritas), que no deberían
+  mover `shifts.status` entre `scheduled`/`assigned`.
+
+`v_shifts_board` y `v_assignments_board` (04 sección 4, ASSIGN-005): revisadas contra la sección 4
+del modelo -- ya traían los derivados que pide (`uncovered`/`upcoming` en la primera, `no_record`
+en la segunda, desde `0011_views.sql`/`0018_performance_shifts_board.sql`, DB-013/DB-024). No
+hizo falta agregar columnas ni tocar el índice de rendimiento de `0018`; se agrega cobertura
+pgTAP de esos derivados junto con las transiciones en `supabase/tests/0024_rpc_assignments.test.sql`.
+
+Detalle completo en `supabase/tests/0024_rpc_assignments.test.sql` (43 aserciones: las cuatro RPC,
+las advertencias de `assign_employee`, las transiciones `scheduled ↔ assigned`, `SHIFT_STARTED`/
+`ASSIGNMENT_STARTED` con y sin `manage_attendance`, permisos por rol, y que un turno cancelado
+conserva sus asignaciones).
+
+### Cómo se verificó sin Docker Desktop disponible (P11.1)
+
+`pnpm db:test` (`supabase test db --linked`) necesita Docker Desktop corriendo (ver
+`supabase/tests/README.md`); el 25 sep 2026, al ejecutar esta tarea, Docker Desktop no llegó a
+levantar el motor en la máquina de desarrollo (sin proceso `vmmem`/WSL2 activo tras varios
+minutos de espera). Verificación alternativa, documentada acá para que quede el rastro: se aplicó
+`0024` a `App_dev` con `supabase db push --linked` (limpio, sin `drift`), y se corrió el archivo
+de test completo con `supabase db query --linked -f ...` envuelto en una copia temporal que
+inserta cada línea de diagnóstico de pgTAP (`has_function`/`throws_ok`/`is`/`isnt`/`finish()`) en
+una tabla temporal y la selecciona al final -- `db query` normalmente solo devuelve el resultado
+del último `select` del archivo, no de cada uno. Las 43 aserciones de
+`0024_rpc_assignments.test.sql` dieron `ok`, dentro de la misma transacción con `rollback` final
+(sin dejar rastro en `App_dev`). La copia temporal no se subió al repositorio (vivió en el
+scratchpad de la sesión). **Pendiente para quien corra la suite con Docker disponible:** confirmar
+`pnpm db:test` completo (todos los `.sql` de `supabase/tests/`), que es la forma oficial y la que
+corre en CI.
+
 ## Storage: buckets `avatars` y `branding` (04 sección 7.3, migración `0014`, DB-016, ADR-016)
 
 | Bucket     | Ruta                      | Límite | Tipos                                                                               | Lectura                           | Escritura                                                      |
@@ -1184,7 +1251,10 @@ revocación y la Edge Function `admin-users`): `0020_permission_functions_active
 de revocación" y "Edge Function `admin-users`" más arriba. En F10 (P10.1, SHIFT-001 a SHIFT-005):
 `0023_rpc_shifts.sql` -- las cinco RPC de turnos (`create_shift`, `generate_shifts`,
 `update_shift_time`, `cancel_shift`, `reload_shift_tasks`), numerada `0023` porque `0013` ya lo
-usa `0013_rpc_users.sql` -- ver "RPC de turnos" más arriba.
+usa `0013_rpc_users.sql` -- ver "RPC de turnos" más arriba. En F11 (P11.1, ASSIGN-002 a
+ASSIGN-004): `0024_rpc_assignments.sql` -- las cuatro RPC de asignaciones y dotación
+(`assign_employee`, `remove_assignment`, `update_assignment_time`, `update_shift_details`) -- ver
+"RPC de asignaciones y dotación" más arriba.
 
 ## Cómo escribir una migración
 

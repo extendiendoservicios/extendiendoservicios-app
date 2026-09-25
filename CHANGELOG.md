@@ -7,6 +7,33 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.8.0] - 2026-09-25
+
+Asignaciones y cronograma (F11). La dueña arma el mes: ve los turnos en calendario, grilla semanal o lista del día, abre cada turno sin cubrir y asigna empleados, con advertencias que no bloquean. Desde el celular puede asignar desde la lista del día. Trae una migración nueva, `0024_rpc_assignments.sql`.
+
+### Agregado
+
+- RPC de asignaciones y dotación (P11.1, ASSIGN-002 a ASSIGN-006), en la migración `0024_rpc_assignments.sql`:
+  - `assign_employee`: franja propia opcional (P-046). Rechaza un turno lleno, cancelado, finalizado o ya empezado, un empleado inactivo, una asignación repetida y la superposición con otro turno (`ASSIGNMENT_OVERLAP`). Advierte sin bloquear si el empleado no está habilitado para el cliente (P-034), si está fuera de su disponibilidad o si tiene licencia.
+  - `remove_assignment`, con motivo obligatorio, y `update_assignment_time`.
+  - `update_shift_details`: dotación y notas de un turno existente. No deja bajar la dotación por debajo de los asignados.
+  - Después del inicio del turno, asignar y quitar exigen la capacidad `manage_attendance`.
+  - Las cuatro bloquean el turno mientras trabajan (`for update`), así que dos asignaciones simultáneas no superan el cupo.
+  - pgTAP: 48 aserciones nuevas.
+- Planificación (P11.2, ASSIGN-007 a ASSIGN-010), en `/admin/planificacion`:
+  - ADM-03 calendario mensual: chips con cliente · sede · franja y el color del estado, feriados, contador por día, filtros y cualquier mes. Por debajo de 1024 px, lista de días.
+  - ADM-04 grilla semanal de empleados por día, con licencias atenuadas. En celular, un empleado por vez.
+  - ADM-05 lista del día completa, agrupada por franja.
+  - Las lecturas por rango se paginan de a 1000 filas.
+- Detalle del turno y asignación (P11.3, ASSIGN-011 a ASSIGN-014, DOC-011):
+  - ADM-06 detalle del turno: panel lateral en escritorio y página completa en celular (`/admin/turnos/:id`). Muestra dotación, asignaciones, tareas y supervisiones.
+  - ADM-08 asignar empleado: búsqueda, candidatos con sus marcas (habilitado, disponible, de licencia, otros turnos del día; las superposiciones en rojo) y franja propia opcional.
+  - Quitar con motivo, cambiar la franja propia y editar dotación y notas, también desde ADM-07.
+- Pruebas (P11.4, ASSIGN-015, ASSIGN-016, TEST-008):
+  - Suite e2e `tests/e2e-assignments/`: asignar hasta completar, superposición, advertencia, turno cancelado que conserva sus asignaciones y asignación desde el celular.
+  - Permisos por API de las cuatro RPC.
+  - Un mes con 600 turnos se pinta en ADM-03 en menos de 50 ms después de la carga de datos (el criterio es 1 s).
+
 ## [0.7.0] - 2026-09-25
 
 Servicios y generación de turnos (F10). El dueño y los administradores cargan los servicios recurrentes de cada cliente y sede, generan los turnos del mes, crean turnos puntuales, cambian su franja y los cancelan con motivo. Trae una migración nueva, `0023_rpc_shifts.sql`.

@@ -38,6 +38,13 @@ Pruebas que no son unitarias (esas viven junto a cada archivo en `src/` como
   separación que `e2e-auth/` y `e2e-users/` (necesita la clave de servicio); puerto propio
   (4175), sin la restricción de CORS de `e2e-users/` porque este dominio no llama a ninguna Edge
   Function. Se corre a mano: `pnpm test:e2e:clients-sites`. Ver `tests/e2e-clients-sites/README.md`.
+- `e2e-assignments/` — e2e de asignaciones y cronograma (ASSIGN-015/ASSIGN-016/TEST-008, P11.4)
+  contra un backend real (`App_dev`): asignar hasta completar la dotación y verlo en la grilla
+  semanal, quitar con motivo, superposición rechazada con su mensaje, un turno cancelado que
+  conserva sus asignaciones, asignar desde la lista del día en celular, advertencia
+  `NOT_ENABLED_FOR_CLIENT` sin bloquear, y el rendimiento del calendario mensual con 600 turnos.
+  Puerto propio (4176): a diferencia de otras suites de backend real, no invoca ninguna Edge
+  Function. Se corre a mano: `pnpm test:e2e:assignments`. Ver `tests/e2e-assignments/README.md`.
 - `permissions/` — suite negativa por rol (cada rol intenta lo que no puede,
   por interfaz y por API directa). Primer esqueleto desde P04.7 (F4, API
   directa solamente, criterio de aceptación de la fase); la versión

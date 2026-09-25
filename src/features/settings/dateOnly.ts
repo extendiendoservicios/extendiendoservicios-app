@@ -64,3 +64,17 @@ export function addDaysToIsoDate(isoDate: string, days: number): string {
   const { year, month, day } = parseIsoDateParts(isoDate)
   return localDateToIsoDate(addDays(new Date(year, month - 1, day), days))
 }
+
+/**
+ * Día de la semana de una fecha `"yyyy-MM-dd"` (0 = domingo .. 6 = sábado),
+ * mismo criterio que `extract(dow from ...)` de Postgres (usado por
+ * `employee_availability.weekday` y por `assign_employee` en
+ * `0024_rpc_assignments.sql`) -- ASSIGN-012, para marcar "disponible ese
+ * día" en ADM-08 con la misma regla que aplica el servidor. Igual que
+ * `formatDateOnly`, arma la fecha a mano y usa el reloj local: es un día de
+ * calendario puro, sin instante asociado.
+ */
+export function weekdayOfIsoDate(isoDate: string): number {
+  const { year, month, day } = parseIsoDateParts(isoDate)
+  return new Date(year, month - 1, day).getDay()
+}

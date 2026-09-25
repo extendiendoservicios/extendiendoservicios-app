@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { CalendarClock, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -20,6 +20,7 @@ import {
   canManageShiftTime,
 } from '@/features/shifts/permissions'
 import { useShiftsByDateQuery } from '@/features/shifts/queries'
+import { groupShiftsByFranja } from '@/features/shifts/grouping'
 import { UpdatedAgo } from './UpdatedAgo'
 import { CancelShiftDialog } from './CancelShiftDialog'
 
@@ -29,17 +30,18 @@ function isoDateToDate(isoDate: string): Date {
 }
 
 /**
- * ADM-05 "Planificación · día", versión mínima (SHIFT-010, `05` línea 39):
- * lista de turnos de una fecha, ordenados por hora, con dotación y estado.
- * Fecha navegable (anterior/siguiente/selector); polling 30 s solo cuando
- * la fecha es hoy (`02_Decisiones.md` P-005).
+ * ADM-05 "Planificación · día" completa (ASSIGN-010, `05` línea 39): lista
+ * de turnos de una fecha, ordenados por hora, agrupados por franja, con
+ * dotación y estado. Fecha navegable (anterior/siguiente/selector); polling
+ * 30 s solo cuando la fecha es hoy (`02_Decisiones.md` P-005).
  *
- * Recorte a propósito (encargo P10.3): sin "abrir turno" a un detalle
- * completo -- ADM-06 es de F11, todavía es un placeholder
- * (`src/app/routes/adminRoutes.tsx`). Tampoco hay agrupación por franja ni
- * filtros de cliente/sede/estado (`05` los menciona para la versión
- * completa; acá alcanza con probar que la generación funciona, como pide el
- * encargo).
+ * "Abrir turno" navega a `/admin/turnos/:id` (ADM-06): la ruta ya existe en
+ * `src/app/routes/adminRoutes.tsx`, aunque hoy siga siendo el placeholder
+ * hasta que ADM-06 se construya en P11.3 -- el encargo pide dejar el enlace
+ * a la ruta prevista sin inventar la pantalla.
+ *
+ * Sin filtros de cliente/sede/estado (`05` línea 39 no los pide para
+ * ADM-05, a diferencia de ADM-03 y ADM-04): solo fecha navegable.
  */
 interface ShiftsDayListProps {
   date: string
@@ -56,6 +58,10 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
 
   const isToday = date === todayInBuenosAires()
   const shiftsQuery = useShiftsByDateQuery(date, isToday)
+  const franjaGroups = useMemo(
+    () => groupShiftsByFranja(shiftsQuery.data ?? []),
+    [shiftsQuery.data],
+  )
 
   const columns: DataTableColumnDef<ShiftListRow>[] = [
     {
@@ -63,10 +69,13 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
       header: 'Horario',
       meta: { card: 'title' },
       cell: ({ row }) => (
-        <span className="font-semibold text-text">
+        <Link
+          to={`/admin/turnos/${row.original.id}`}
+          className="font-semibold text-text hover:text-primary-800"
+        >
           {row.original.startTime.slice(0, 5)}–
           {row.original.endTime.slice(0, 5)}
-        </span>
+        </Link>
       ),
     },
     {
@@ -106,17 +115,17 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
         const isEditable =
           shift.status === 'scheduled' || shift.status === 'assigned'
         const isCancellable = isEditable || shift.status === 'in_progress'
-        if (!canManage) {
-          return null
-        }
         return (
           <div className="flex items-center gap-2">
-            {isEditable && (
+            <Button asChild variant="ghost" size="sm">
+              <Link to={`/admin/turnos/${shift.id}`}>Ver</Link>
+            </Button>
+            {canManage && isEditable && (
               <Button asChild variant="ghost" size="sm">
                 <Link to={`/admin/turnos/${shift.id}/editar`}>Editar</Link>
               </Button>
             )}
-            {isCancellable && canCancel && (
+            {canManage && isCancellable && canCancel && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -177,20 +186,36 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
         {formatDateOnly(date)}
       </p>
 
-      <DataTable
-        caption={`Turnos del ${formatDateOnly(date)}`}
-        columns={columns}
-        data={shiftsQuery.data ?? []}
-        getRowId={(row) => row.id}
-        isLoading={shiftsQuery.isLoading}
-        emptyState={{
-          icon: CalendarClock,
-          title: 'No hay turnos para este día',
-          description: canManage
-            ? 'Generá el mes desde "Generar turnos del mes" o creá uno puntual con "Nuevo turno".'
-            : undefined,
-        }}
-      />
+      {shiftsQuery.isLoading || franjaGroups.length === 0 ? (
+        <DataTable
+          caption={`Turnos del ${formatDateOnly(date)}`}
+          columns={columns}
+          data={[]}
+          getRowId={(row) => row.id}
+          isLoading={shiftsQuery.isLoading}
+          emptyState={{
+            icon: CalendarClock,
+            title: 'No hay turnos para este día',
+            description: canManage
+              ? 'Generá el mes desde "Generar turnos del mes" o creá uno puntual con "Nuevo turno".'
+              : undefined,
+          }}
+        />
+      ) : (
+        franjaGroups.map((group) => (
+          <div key={group.franja} className="flex flex-col gap-2">
+            <h3 className="text-[12.5px] font-semibold text-text-3">
+              Franja {group.franja}
+            </h3>
+            <DataTable
+              caption={`Turnos de la franja ${group.franja} del ${formatDateOnly(date)}`}
+              columns={columns}
+              data={group.shifts}
+              getRowId={(row) => row.id}
+            />
+          </div>
+        ))
+      )}
 
       {cancelTarget && (
         <CancelShiftDialog
