@@ -15,7 +15,10 @@ import {
   localDateToIsoDate,
 } from '@/features/settings/dateOnly'
 import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
-import { canManageShiftTime } from '@/features/shifts/permissions'
+import {
+  canCancelShift,
+  canManageShiftTime,
+} from '@/features/shifts/permissions'
 import { useShiftsByDateQuery } from '@/features/shifts/queries'
 import { UpdatedAgo } from './UpdatedAgo'
 import { CancelShiftDialog } from './CancelShiftDialog'
@@ -45,10 +48,10 @@ interface ShiftsDayListProps {
 
 function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
   const auth = useAuth()
-  const canManage = canManageShiftTime({
-    roles: auth.roles,
-    capabilities: auth.capabilities,
-  })
+  const actor = { roles: auth.roles, capabilities: auth.capabilities }
+  const canManage = canManageShiftTime(actor)
+  // "Cancelar" exige además `cancel_shifts` (06 sección 7), igual que el servidor.
+  const canCancel = canCancelShift(actor)
   const [cancelTarget, setCancelTarget] = useState<ShiftListRow | null>(null)
 
   const isToday = date === todayInBuenosAires()
@@ -113,7 +116,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
                 <Link to={`/admin/turnos/${shift.id}/editar`}>Editar</Link>
               </Button>
             )}
-            {isCancellable && (
+            {isCancellable && canCancel && (
               <Button
                 variant="ghost"
                 size="sm"

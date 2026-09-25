@@ -29,6 +29,7 @@
     "tests/e2e-users/**/*.ts",
     "tests/e2e-clients-sites/**/*.ts",
     "tests/e2e-employees/**/*.ts",
+    "tests/e2e-shifts-services/**/*.ts",
     "tests/permissions/**/*.ts",
     "scripts/**/*.ts"
   ]

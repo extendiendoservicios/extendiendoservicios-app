@@ -141,6 +141,51 @@ describe.skipIf(!env)(
         expect(error).toBeNull()
         expect(data).toEqual([])
       })
+
+      // P10.4 (08_Fases_y_Backlog.md F10): mismos casos que suma employee.permissions.ts, ahora
+      // para el rol supervisor (encargo P10.4, "sumá esos casos" a la suite de permisos).
+      const ANY_UUID = '00000000-0000-0000-0000-000000000000'
+
+      it('no puede llamar create_shift (06 sección 7: "O, A" a secas, sin rol para supervisor)', async () => {
+        const { error } = await supervisora.rpc('create_shift', {
+          p_client_id: ANY_UUID,
+          p_site_id: ANY_UUID,
+          p_date: '2190-06-01',
+          p_start: '08:00',
+          p_end: '12:00',
+          p_required_staff: 1,
+        })
+        expect(error?.hint ?? error?.message).toMatch(/FORBIDDEN/i)
+      })
+
+      it('no puede llamar generate_shifts (06 sección 6: "O; A + generate_shifts")', async () => {
+        const { error } = await supervisora.rpc('generate_shifts', {
+          p_year: 2190,
+          p_month: 6,
+        })
+        expect(error?.hint ?? error?.message).toMatch(/FORBIDDEN/i)
+      })
+
+      it('no puede llamar cancel_shift (06 sección 7: "O; A + cancel_shifts")', async () => {
+        const { error } = await supervisora.rpc('cancel_shift', {
+          p_shift_id: ANY_UUID,
+          p_reason: 'e2e-perm no debería aplicarse',
+        })
+        expect(error?.hint ?? error?.message).toMatch(/FORBIDDEN/i)
+      })
+
+      it('no puede insertar un servicio por API directa (06 sección 6: "Crear, editar | O, A")', async () => {
+        const { error } = await supervisora.from('services').insert({
+          client_id: ANY_UUID,
+          site_id: ANY_UUID,
+          name: 'e2e-perm no debería crearse',
+          weekdays: [1],
+          start_time: '08:00',
+          end_time: '12:00',
+          valid_from: '2190-06-01',
+        })
+        expect(error?.code).toBe('42501')
+      })
     })
 
     describe('lo que SÍ puede hacer', () => {

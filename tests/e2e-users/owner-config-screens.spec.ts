@@ -26,7 +26,7 @@ test.describe('USERS-018: ADM-28 a ADM-31 como dueño', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/ingresar')
     await page.getByLabel('Email').fill(SEED_ACCOUNTS.owner)
-    await page.getByLabel('Contraseña').fill(env!.seedPassword)
+    await page.getByLabel('Contraseña', { exact: true }).fill(env!.seedPassword)
     await page.getByRole('button', { name: 'Ingresar' }).click()
     await expect(page).toHaveURL(/\/admin$/)
   })

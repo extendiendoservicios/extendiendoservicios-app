@@ -171,6 +171,72 @@ describe.skipIf(!env)(
           .single()
         expect(after.data?.employee_number).toBe(before.data?.employee_number)
       })
+
+      // P10.4 (08_Fases_y_Backlog.md F10): las cinco RPC de turnos de `0023_rpc_shifts.sql`
+      // (06_API.md sección 7) no tenían ningún caso negativo en esta suite todavía -- sumados acá
+      // por TEST-007 (encargo P10.4, "si la suite de permisos por API no cubre las RPC nuevas
+      // contra cada rol, sumá esos casos"). `p_shift_id`/`p_client_id`/etc. son uuids cualquiera:
+      // `app.require_role`/`app.require_capability` cortan ANTES de mirar si esos ids existen de
+      // verdad (mismo criterio que el caso de `shifts.notes` de arriba, "cualquier uuid: el
+      // permiso falla antes de mirar la fila").
+      const ANY_UUID = '00000000-0000-0000-0000-000000000000'
+
+      it('no puede llamar create_shift (06 sección 7: "O, A" a secas, sin rol para empleado)', async () => {
+        const { error } = await empleado.rpc('create_shift', {
+          p_client_id: ANY_UUID,
+          p_site_id: ANY_UUID,
+          p_date: '2190-06-01',
+          p_start: '08:00',
+          p_end: '12:00',
+          p_required_staff: 1,
+        })
+        expect(error?.hint ?? error?.message).toMatch(/FORBIDDEN/i)
+      })
+
+      it('no puede llamar generate_shifts (06 sección 6: "O; A + generate_shifts")', async () => {
+        const { error } = await empleado.rpc('generate_shifts', {
+          p_year: 2190,
+          p_month: 6,
+        })
+        expect(error?.hint ?? error?.message).toMatch(/FORBIDDEN/i)
+      })
+
+      it('no puede llamar update_shift_time (06 sección 7: "O, A")', async () => {
+        const { error } = await empleado.rpc('update_shift_time', {
+          p_shift_id: ANY_UUID,
+          p_start: '08:00',
+          p_end: '12:00',
+        })
+        expect(error?.hint ?? error?.message).toMatch(/FORBIDDEN/i)
+      })
+
+      it('no puede llamar cancel_shift (06 sección 7: "O; A + cancel_shifts")', async () => {
+        const { error } = await empleado.rpc('cancel_shift', {
+          p_shift_id: ANY_UUID,
+          p_reason: 'e2e-perm no debería aplicarse',
+        })
+        expect(error?.hint ?? error?.message).toMatch(/FORBIDDEN/i)
+      })
+
+      it('no puede llamar reload_shift_tasks (06 sección 7: "O; A + edit_checklists")', async () => {
+        const { error } = await empleado.rpc('reload_shift_tasks', {
+          p_shift_id: ANY_UUID,
+        })
+        expect(error?.hint ?? error?.message).toMatch(/FORBIDDEN/i)
+      })
+
+      it('no puede insertar un servicio por API directa (06 sección 6: "Crear, editar | O, A")', async () => {
+        const { error } = await empleado.from('services').insert({
+          client_id: ANY_UUID,
+          site_id: ANY_UUID,
+          name: 'e2e-perm no debería crearse',
+          weekdays: [1],
+          start_time: '08:00',
+          end_time: '12:00',
+          valid_from: '2190-06-01',
+        })
+        expect(error?.code).toBe('42501')
+      })
     })
 
     describe('lo que SÍ puede hacer (contraprueba: que un "denegar todo" no pase el bloque de arriba)', () => {
