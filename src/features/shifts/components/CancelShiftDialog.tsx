@@ -51,6 +51,7 @@ function CancelShiftDialog({
       reasonLabel="Motivo de la cancelación"
       reasonPlaceholder="Por ejemplo: el cliente suspendió el servicio ese día"
       confirmLabel="Cancelar turno"
+      cancelLabel="Volver"
       variant="destructive"
       isLoading={cancelShift.isPending}
       onConfirm={(reason) => void handleConfirm(reason)}
