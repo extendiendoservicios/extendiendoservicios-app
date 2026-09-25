@@ -1,50 +1,81 @@
-import { Link, useSearchParams } from 'react-router'
-import { PlaceholderScreen } from '@/app/routes/placeholder'
+import { useNavigate, useSearchParams } from 'react-router'
+import { SegmentedControl } from '@/components/SegmentedControl'
 import { ShiftsDayList } from '@/features/shifts/components/ShiftsDayList'
+import { MonthCalendar } from '@/features/planning/components/MonthCalendar'
+import { WeekGrid } from '@/features/planning/components/WeekGrid'
 import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
 
+type Vista = 'mes' | 'semana' | 'dia'
+
+const VISTA_OPTIONS: { value: Vista; label: string }[] = [
+  { value: 'mes', label: 'Mes' },
+  { value: 'semana', label: 'Semana' },
+  { value: 'dia', label: 'Día' },
+]
+
 /**
- * `/admin/planificacion` (`05_Pantallas_y_Navegacion.md` sección 5:
- * "ADM-03 (mes) ?vista=semana → ADM-04 ?vista=dia&fecha= → ADM-05"). Esta
- * fase (P10.3) solo construye ADM-05 (SHIFT-010, versión mínima, para
- * probar la generación); ADM-03 (mes) y ADM-04 (semana por empleado) siguen
- * siendo el placeholder que ya existía -- calendario y asignaciones son de
- * F11, el encargo pide explícitamente no adelantarlos.
+ * `/admin/planificacion` (ASSIGN-008 a ASSIGN-010, `05_Pantallas_y_Navegacion.md`
+ * sección 5: "ADM-03 (mes) ?vista=semana → ADM-04 ?vista=dia&fecha= → ADM-05").
+ * Un `SegmentedControl` común arriba de las tres vistas para moverse entre
+ * ellas sin depender de un enlace suelto en cada una (decisión propia, no
+ * está en `05`: la navegación entre ADM-03/ADM-04/ADM-05 ahí solo dice a
+ * dónde van, no cómo se ve el selector).
  *
- * Decisión propia (no está en `05`): se agrega un enlace "Ver la lista de
- * turnos de hoy" en el placeholder del mes para que se pueda llegar a
- * ADM-05 sin escribir el parámetro `?vista=dia` a mano.
+ * Abrir un turno desde el calendario o la grilla semanal lleva a la lista
+ * del día de esa fecha (ADM-05) o directo al detalle (`/admin/turnos/:id`,
+ * ADM-06 -- placeholder hasta P11.3), según el encargo de ASSIGN-008/009.
  */
 export default function PlanningPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const vista = searchParams.get('vista')
+  const navigate = useNavigate()
+  const vista = (searchParams.get('vista') as Vista | null) ?? 'mes'
 
-  if (vista === 'dia') {
-    const date = searchParams.get('fecha') ?? todayInBuenosAires()
-
-    function handleDateChange(next: string) {
-      const params = new URLSearchParams(searchParams)
-      params.set('vista', 'dia')
-      params.set('fecha', next)
-      setSearchParams(params, { replace: true })
+  function goToVista(next: Vista) {
+    const params = new URLSearchParams(searchParams)
+    params.set('vista', next)
+    if (next === 'dia') {
+      params.set('fecha', searchParams.get('fecha') ?? todayInBuenosAires())
+    } else {
+      params.delete('fecha')
     }
+    setSearchParams(params, { replace: true })
+  }
 
-    return <ShiftsDayList date={date} onDateChange={handleDateChange} />
+  function handleOpenDay(date: string) {
+    const params = new URLSearchParams(searchParams)
+    params.set('vista', 'dia')
+    params.set('fecha', date)
+    setSearchParams(params, { replace: true })
+  }
+
+  function handleOpenShift(shiftId: string) {
+    void navigate(`/admin/turnos/${shiftId}`)
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <PlaceholderScreen
-        screenId="ADM-03"
-        title="Planificación"
-        subtitle="Ver y navegar el cronograma"
+    <div className="flex flex-col gap-4">
+      <SegmentedControl
+        aria-label="Vista de planificación"
+        options={VISTA_OPTIONS}
+        value={vista}
+        onValueChange={goToVista}
       />
-      <Link
-        to={`/admin/planificacion?vista=dia&fecha=${todayInBuenosAires()}`}
-        className="px-6 text-[13px] font-semibold text-primary-800 hover:underline"
-      >
-        Ver la lista de turnos de hoy (ADM-05)
-      </Link>
+
+      {vista === 'semana' && <WeekGrid onOpenShift={handleOpenShift} />}
+
+      {vista === 'dia' && (
+        <ShiftsDayList
+          date={searchParams.get('fecha') ?? todayInBuenosAires()}
+          onDateChange={(next) => {
+            const params = new URLSearchParams(searchParams)
+            params.set('vista', 'dia')
+            params.set('fecha', next)
+            setSearchParams(params, { replace: true })
+          }}
+        />
+      )}
+
+      {vista === 'mes' && <MonthCalendar onOpenDay={handleOpenDay} />}
     </div>
   )
 }

@@ -73,7 +73,7 @@ export interface ShiftListRow {
   notes: string | null
 }
 
-interface ShiftBoardRow {
+export interface ShiftBoardRow {
   id: string
   client_id: string
   client_legal_name: string
@@ -96,7 +96,13 @@ interface ShiftBoardRow {
   notes: string | null
 }
 
-function mapShiftBoardRow(row: ShiftBoardRow): ShiftListRow {
+/**
+ * Se exporta junto con `ShiftBoardRow` y `SHIFT_BOARD_SELECT` (abajo) para
+ * que `src/api/assignments.ts` (ASSIGN-007) arme el mismo `ShiftListRow` al
+ * leer `v_shifts_board` por rango de fechas (ADM-03 y ADM-05 completo):
+ * único lugar donde se traduce esa vista, sin duplicar el mapeo.
+ */
+export function mapShiftBoardRow(row: ShiftBoardRow): ShiftListRow {
   return {
     id: row.id,
     clientId: row.client_id,
@@ -120,7 +126,7 @@ function mapShiftBoardRow(row: ShiftBoardRow): ShiftListRow {
   }
 }
 
-const SHIFT_BOARD_SELECT =
+export const SHIFT_BOARD_SELECT =
   'id, client_id, client_legal_name, client_trade_name, site_id, site_name, site_city, shift_date, start_time, end_time, required_staff, status, display_status, assigned_count, present_count, finished_count, absent_count, delayed_count, generated, notes'
 
 /**
