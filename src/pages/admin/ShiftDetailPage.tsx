@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router'
+import { useLocation, useNavigate, useParams } from 'react-router'
 import {
   Sheet,
   SheetContent,
@@ -28,14 +28,22 @@ const DESKTOP_QUERY = '(min-width: 1024px)'
 export default function ShiftDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const isDesktop = useMediaQuery(DESKTOP_QUERY)
 
   if (!id) {
     return null
   }
 
+  // Volver a la vista desde la que se abrió (mes, semana o día). Si se
+  // entró por un enlace directo no hay a dónde volver (`key` 'default'): va
+  // al calendario.
   function handleClose() {
-    void navigate('/admin/planificacion')
+    if (location.key === 'default') {
+      void navigate('/admin/planificacion')
+    } else {
+      void navigate(-1)
+    }
   }
 
   if (isDesktop) {

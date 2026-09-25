@@ -654,6 +654,8 @@ export interface AssignCandidateConflict {
   siteName: string
   startTime: string
   endTime: string
+  /** Se pisa con la franja del turno: `assign_employee` va a devolver `ASSIGNMENT_OVERLAP` salvo que se use una franja propia que lo evite (P-046). */
+  overlaps: boolean
 }
 
 export interface AssignCandidate {
@@ -711,7 +713,12 @@ export async function fetchAssignCandidates(
   const { data: employeesData, error: employeesError } = await supabase
     .from('v_employees')
     .select('profile_id, first_name, last_name')
-    .eq('effective_status', 'active')
+    // El estado guardado, no `effective_status`: ese se calcula con la
+    // licencia vigente HOY, y dejaba afuera para cualquier turno futuro a
+    // quien está de licencia hoy. La licencia en la fecha del turno se
+    // muestra como marca (`onLeave`), igual que la advertencia `ON_LEAVE`.
+    .eq('status', 'active')
+    .is('deleted_at', null)
     .order('last_name', { ascending: true })
     .order('first_name', { ascending: true })
 
@@ -792,11 +799,16 @@ export async function fetchAssignCandidates(
   for (const row of (sameDayResult.data ??
     []) as unknown as SameDayAssignmentRow[]) {
     const list = conflictsByEmployee.get(row.employee_id) ?? []
+    const startTime = row.start_time ?? row.shift?.start_time ?? ''
+    const endTime = row.end_time ?? row.shift?.end_time ?? ''
     list.push({
       shiftId: row.shift_id,
       siteName: row.shift?.site?.name ?? '',
-      startTime: row.start_time ?? row.shift?.start_time ?? '',
-      endTime: row.end_time ?? row.shift?.end_time ?? '',
+      startTime,
+      endTime,
+      // Mismo día (la consulta filtra por `shift_date`) y franjas sin cruce de
+      // medianoche (`shifts_time_range_check`): alcanza con comparar horas.
+      overlaps: startTime < params.endTime && params.startTime < endTime,
     })
     conflictsByEmployee.set(row.employee_id, list)
   }
@@ -828,11 +840,16 @@ export async function fetchAssignCandidates(
     }
   })
 
-  // "Habilitados y disponibles primero" (06 sección 8): el resto queda
-  // después, en el mismo orden alfabético que ya trajo la consulta.
-  return candidates.sort((a, b) => {
-    const rankA = a.enabledForClient && a.availableThatDay && !a.onLeave ? 0 : 1
-    const rankB = b.enabledForClient && b.availableThatDay && !b.onLeave ? 0 : 1
-    return rankA - rankB
-  })
+  // "Habilitados y disponibles primero" (06 sección 8), después el resto, y
+  // al final quienes ya tienen otro turno que se pisa con este. Dentro de
+  // cada grupo, el orden alfabético que ya trajo la consulta.
+  const rank = (candidate: AssignCandidate) =>
+    candidate.conflicts.some((conflict) => conflict.overlaps)
+      ? 2
+      : candidate.enabledForClient &&
+          candidate.availableThatDay &&
+          !candidate.onLeave
+        ? 0
+        : 1
+  return candidates.sort((a, b) => rank(a) - rank(b))
 }

@@ -256,12 +256,14 @@ function AssignEmployeeSheet({
                         {candidate.conflicts.map((conflict) => (
                           <Badge
                             key={conflict.shiftId}
-                            variant="neutral"
+                            variant={conflict.overlaps ? 'danger' : 'neutral'}
                             className="text-[10.5px]"
                           >
-                            También en {conflict.siteName}{' '}
-                            {conflict.startTime.slice(0, 5)}–
-                            {conflict.endTime.slice(0, 5)}
+                            {conflict.overlaps
+                              ? 'Se superpone con'
+                              : 'También en'}{' '}
+                            {conflict.siteName} {conflict.startTime.slice(0, 5)}
+                            –{conflict.endTime.slice(0, 5)}
                           </Badge>
                         ))}
                       </div>

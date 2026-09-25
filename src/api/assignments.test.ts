@@ -580,11 +580,58 @@ describe('fetchAssignCandidates', () => {
         siteName: 'Sede Norte',
         startTime: '14:00:00',
         endTime: '18:00:00',
+        overlaps: false,
       },
     ])
     expect(candidates[1]).toEqual(
       expect.objectContaining({ employeeId: 'emp2', enabledForClient: false }),
     )
+  })
+
+  it('marca la superposición y manda a ese candidato al final', async () => {
+    fromMock
+      .mockReturnValueOnce(
+        makeChainable({
+          data: [
+            { profile_id: 'emp1', first_name: 'Ana', last_name: 'Gómez' },
+            { profile_id: 'emp2', first_name: 'Luis', last_name: 'Pérez' },
+          ],
+          error: null,
+        }),
+      )
+      // emp2 no está habilitado para el cliente (queda en el grupo del medio).
+      .mockReturnValueOnce(
+        makeChainable({
+          data: [{ employee_id: 'emp2', client_id: 'c-otro' }],
+          error: null,
+        }),
+      )
+      .mockReturnValueOnce(makeChainable({ data: [], error: null }))
+      .mockReturnValueOnce(makeChainable({ data: [], error: null }))
+      // emp1 ya trabaja de 10 a 14: se pisa con el turno de 8 a 12.
+      .mockReturnValueOnce(
+        makeChainable({
+          data: [
+            {
+              employee_id: 'emp1',
+              shift_id: 'sh-otro',
+              start_time: '10:00:00',
+              end_time: '14:00:00',
+              shift: {
+                start_time: '10:00:00',
+                end_time: '18:00:00',
+                site: { name: 'Sede Norte' },
+              },
+            },
+          ],
+          error: null,
+        }),
+      )
+
+    const candidates = await fetchAssignCandidates(BASE_PARAMS)
+
+    expect(candidates.map((c) => c.employeeId)).toEqual(['emp2', 'emp1'])
+    expect(candidates[1]?.conflicts[0]?.overlaps).toBe(true)
   })
 
   it('excluye a quienes ya están asignados a este turno, sin consultar el resto', async () => {
