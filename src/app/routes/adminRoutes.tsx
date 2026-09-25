@@ -11,6 +11,7 @@ import PlanningPage from '@/pages/admin/PlanningPage'
 import RatingCriteriaPage from '@/pages/admin/RatingCriteriaPage'
 import SecurityEventsPage from '@/pages/admin/SecurityEventsPage'
 import ServiceFormPage from '@/pages/admin/ServiceFormPage'
+import ShiftDetailPage from '@/pages/admin/ShiftDetailPage'
 import ShiftFormPage from '@/pages/admin/ShiftFormPage'
 import ShiftsGeneratePage from '@/pages/admin/ShiftsGeneratePage'
 import SiteDetailPage from '@/pages/admin/SiteDetailPage'
@@ -64,12 +65,15 @@ export const adminRoutes: RouteObject[] = [
       subtitle: 'Ejecutar la generación mensual',
     },
   },
-  placeholderRoute({
+  {
     path: 'turnos/:id',
-    screenId: 'ADM-06',
-    title: 'Detalle del turno',
-    subtitle: 'Ver y operar sobre un turno',
-  }),
+    element: <ShiftDetailPage />,
+    handle: {
+      screenId: 'ADM-06',
+      title: 'Detalle del turno',
+      subtitle: 'Ver y operar sobre un turno',
+    },
+  },
   {
     path: 'turnos/:id/editar',
     element: <ShiftFormPage />,

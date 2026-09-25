@@ -205,20 +205,16 @@ edición de dotación y notas en P11.3.
 | `cancelShift(shiftId, reason)`                  | RPC `cancel_shift`       | Diálogo de cancelación (SHIFT-011). Capacidad `cancel_shifts`. Motivo obligatorio → `CANCEL_REASON_REQUIRED`.                                                                                                                  |
 | `reloadShiftTasks(shiftId)`                     | RPC `reload_shift_tasks` | Capacidad `edit_checklists`. Sin pantalla que la use todavía (es de ADM-06, F11); se agrega igual porque `shifts.ts` es el único módulo del dominio.                                                                           |
 
-### `assignments` (`src/api/assignments.ts`, P11.2 — ASSIGN-007 a ASSIGN-010)
+### `assignments` (`src/api/assignments.ts`, P11.2 — ASSIGN-007 a ASSIGN-010; P11.3 — ASSIGN-011 a ASSIGN-013)
 
 Lecturas por rango de fechas de `v_shifts_board`/`v_assignments_board` para
 el calendario mensual (ADM-03), la grilla semanal (ADM-04) y la lista del
-día completa (ADM-05, en `src/features/shifts/`), más las cuatro RPC de
+día completa (ADM-05, en `src/features/shifts/`), el detalle de un turno
+(ADM-06) y los candidatos para asignar (ADM-08), más las cuatro RPC de
 `0024_rpc_assignments.sql` (P11.1): `assign_employee`, `remove_assignment`,
 `update_assignment_time`, `update_shift_details`. Mismo criterio que
 `shifts.ts`: las cuatro RPC ya traen `hint`/`message` listos, sin
 `mapWriteError` propio.
-
-Las pantallas de este paquete (ADM-03, ADM-04, ADM-05) son de solo lectura y
-navegación: las cuatro mutaciones quedan listas, con hooks
-(`src/features/planning/queries.ts`) y tests, para que ADM-06 (detalle del
-turno) y ADM-08 (drawer "Asignar empleado") las usen en P11.3.
 
 **Falta de columna en `v_assignments_board`** (reportado al orquestador): a
 diferencia de `v_shifts_board`, que trae `client_legal_name` y
@@ -226,14 +222,22 @@ diferencia de `v_shifts_board`, que trae `client_legal_name` y
 grilla semanal (ADM-04) muestra `client_legal_name` sin nombre de fantasía
 hasta que la vista lo sume.
 
-| Función                                               | Canal                         | Notas                                                                                                                                                                                                                                                                                 |
-| ----------------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `fetchShiftsBoardByRange(from, to, filters)`          | `from('v_shifts_board')`      | Calendario mensual (ADM-03). Filtros cliente, sede, estado mostrado por columna; filtro empleado resuelto con una consulta previa a `assignments` (ids de turno con asignación vigente de ese empleado).                                                                              |
-| `fetchAssignmentsBoardByRange(from, to, filters)`     | `from('v_assignments_board')` | Grilla semanal (ADM-04). Filtros cliente, sede.                                                                                                                                                                                                                                       |
-| `assignEmployee({shiftId, employeeId, start?, end?})` | RPC `assign_employee`         | Devuelve `{assignment, warnings}`. Advertencias `NOT_ENABLED_FOR_CLIENT`/`OUTSIDE_AVAILABILITY`/`ON_LEAVE` (no bloquean, P-034/P-035/P-033). Errores: `SHIFT_FULL`, `ASSIGNMENT_OVERLAP`, `ALREADY_ASSIGNED`, `ASSIGNMENT_TIME_OUT_OF_SHIFT`, `EMPLOYEE_NOT_ACTIVE`, `SHIFT_STARTED`. |
-| `removeAssignment(assignmentId, reason)`              | RPC `remove_assignment`       | Motivo obligatorio → `REASON_REQUIRED`. `ASSIGNMENT_STARTED` si ya tiene inicio registrado (se cierra con `close_assignment`, F14).                                                                                                                                                   |
-| `updateAssignmentTime(assignmentId, start?, end?)`    | RPC `update_assignment_time`  | Franja propia (P-046), solo antes del inicio efectivo → `ASSIGNMENT_STARTED`.                                                                                                                                                                                                         |
-| `updateShiftDetails(shiftId, requiredStaff, notes?)`  | RPC `update_shift_details`    | Dotación 1..10 (`REQUIRED_STAFF_RANGE`) y notas administrativas. Rechaza bajar la dotación por debajo de los asignados vigentes (`REQUIRED_STAFF_BELOW_ASSIGNED`).                                                                                                                    |
+**`set_assignment_notes` no existe** (reportado al orquestador, P11.3): `06`
+sección 8 la documenta ("Observación del servicio", P-062), pero
+`0024_rpc_assignments.sql` no la trae. ADM-06 muestra `assignments.notes` de
+solo lectura; no hay forma de cargarla o editarla hasta que se agregue esa
+RPC.
+
+| Función                                                                                         | Canal                                           | Notas                                                                                                                                                                                                                                                                                                                                                           |
+| ----------------------------------------------------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fetchShiftsBoardByRange(from, to, filters)`                                                    | `from('v_shifts_board')`                        | Calendario mensual (ADM-03). Filtros cliente, sede, estado mostrado por columna; filtro empleado resuelto con una consulta previa a `assignments` (ids de turno con asignación vigente de ese empleado).                                                                                                                                                        |
+| `fetchAssignmentsBoardByRange(from, to, filters)`                                               | `from('v_assignments_board')`                   | Grilla semanal (ADM-04). Filtros cliente, sede.                                                                                                                                                                                                                                                                                                                 |
+| `fetchShiftDetail(shiftId)`                                                                     | `from('shifts')` + embebidos                    | Detalle del turno (ADM-06). Un solo `select` con `clients`, `sites`, `assignments` (solo vigentes, con `employees`/`profiles` embebidos), `shift_tasks` (ordenadas por `position`) y `supervisions` (con supervisor embebido). Sin `attendance_records`/`attendance_notices` (ATT-014, F14).                                                                    |
+| `fetchAssignCandidates({shiftId, clientId, shiftDate, startTime, endTime, excludeEmployeeIds})` | `from('v_employees')` + 4 consultas en paralelo | Candidatos de ADM-08: `effective_status = 'active'`, marcas de habilitación (`employee_client_permissions`), disponibilidad (`employee_availability`, contra el día de semana y el horario del turno) y licencia (`employee_leaves`, contra `shiftDate`), más otras asignaciones vigentes del empleado ese mismo día. Ordena habilitados y disponibles primero. |
+| `assignEmployee({shiftId, employeeId, start?, end?})`                                           | RPC `assign_employee`                           | Devuelve `{assignment, warnings}`. Advertencias `NOT_ENABLED_FOR_CLIENT`/`OUTSIDE_AVAILABILITY`/`ON_LEAVE` (no bloquean, P-034/P-035/P-033). Errores: `SHIFT_FULL`, `ASSIGNMENT_OVERLAP`, `ALREADY_ASSIGNED`, `ASSIGNMENT_TIME_OUT_OF_SHIFT`, `EMPLOYEE_NOT_ACTIVE`, `SHIFT_STARTED`.                                                                           |
+| `removeAssignment(assignmentId, reason)`                                                        | RPC `remove_assignment`                         | Motivo obligatorio → `REASON_REQUIRED`. `ASSIGNMENT_STARTED` si ya tiene inicio registrado (se cierra con `close_assignment`, F14).                                                                                                                                                                                                                             |
+| `updateAssignmentTime(assignmentId, start?, end?)`                                              | RPC `update_assignment_time`                    | Franja propia (P-046), solo antes del inicio efectivo → `ASSIGNMENT_STARTED`.                                                                                                                                                                                                                                                                                   |
+| `updateShiftDetails(shiftId, requiredStaff, notes?)`                                            | RPC `update_shift_details`                      | Dotación 1..10 (`REQUIRED_STAFF_RANGE`) y notas administrativas. Rechaza bajar la dotación por debajo de los asignados vigentes (`REQUIRED_STAFF_BELOW_ASSIGNED`). Usada también desde ADM-07 en edición (ASSIGN-013).                                                                                                                                          |
 
 ## Próximos dominios
 

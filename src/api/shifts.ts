@@ -18,20 +18,16 @@ import { fromPostgrestError } from './errors'
  * `0023_rpc_shifts.sql`) ya traen `hint` en mayúsculas y `message` en
  * voseo, así que `fromPostgrestError` los deja pasar tal cual.
  *
- * Nota para el reporte del encargo (contradicción entre `06` y el backend
- * ya construido): `06_API.md` sección 7 lista además "Editar notas
- * administrativas | update `shifts.notes` | O, A" como si fuera una
- * escritura directa por PostgREST, pero `0012_rls_policies.sql` no le da a
- * `shifts` ninguna política de insert/update/delete — todas las escrituras
- * pasan por las cinco RPC de arriba, y ninguna de ellas toca `notes` ni
- * `required_staff` de un turno ya creado. `05_Pantallas_y_Navegacion.md`
- * línea 41 (ADM-07) pide que la edición permita cambiar "franja, dotación y
- * notas, según estado", pero el único endpoint de edición que existe es
- * `update_shift_time(p_shift_id, p_start, p_end)`: sin RPC (o política) para
- * dotación o notas de un turno existente, este módulo solo expone
- * `updateShiftTime`. Reportado al orquestador (ver el reporte del encargo);
- * ADM-07 en modo edición queda limitado a la franja horaria hasta que se
- * resuelva.
+ * Nota histórica (P10.3, corregida en P11.1): `06_API.md` sección 7 llegó a
+ * listar "Editar notas administrativas | update `shifts.notes` | O, A" como
+ * si fuera una escritura directa por PostgREST, pero `0012_rls_policies.sql`
+ * no le da a `shifts` ninguna política de insert/update/delete — todas las
+ * escrituras pasan por RPC. La que faltaba para dotación y notas de un turno
+ * ya creado (`update_shift_details`) se agregó en `0024_rpc_assignments.sql`
+ * (P11.1) y vive en `src/api/assignments.ts`, no acá: ver esa nota grande
+ * para el detalle. Este módulo se queda con `updateShiftTime` nada más
+ * (franja), que es lo único de `shifts` que sigue siendo del dominio
+ * "turnos" propiamente dicho.
  */
 
 export type ShiftStatus = Database['public']['Enums']['shift_status']

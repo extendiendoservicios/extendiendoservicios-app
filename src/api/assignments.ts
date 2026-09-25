@@ -6,7 +6,9 @@ import {
   SHIFT_BOARD_SELECT,
   type ShiftBoardRow,
   type ShiftListRow,
+  type ShiftStatus,
 } from './shifts'
+import { weekdayOfIsoDate } from '@/features/settings/dateOnly'
 
 /**
  * `src/api/assignments.ts` (ASSIGN-007, mismo patrón que `src/api/shifts.ts`
@@ -427,4 +429,410 @@ export async function updateShiftDetails(
     notes: row.notes,
     status: row.status,
   }
+}
+
+// -------------------------------------------------------------------------
+// 7. Detalle del turno (ADM-06, ASSIGN-011)
+// -------------------------------------------------------------------------
+
+/** Una asignación vigente del detalle del turno (ADM-06: "empleado, franja propia, estado"). */
+export interface ShiftDetailAssignment {
+  id: string
+  employeeId: string
+  employeeFirstName: string
+  employeeLastName: string
+  /** Franja propia (P-046); `null` si hereda la del turno. */
+  startTime: string | null
+  endTime: string | null
+  status: AssignmentStatus
+  notes: string | null
+}
+
+/** Una tarea del checklist copiado al turno, en lectura (ADM-06: "tareas, en lectura"; el alta es F12). */
+export interface ShiftDetailTask {
+  id: string
+  title: string
+  description: string | null
+  isRequired: boolean
+  status: Database['public']['Enums']['task_status']
+  position: number
+  notDoneReason: string | null
+}
+
+/** Una supervisión del turno, en lectura (ADM-06: "supervisiones, en lectura"; el alta es F15). */
+export interface ShiftDetailSupervision {
+  id: string
+  supervisorId: string
+  supervisorFirstName: string
+  supervisorLastName: string
+  status: Database['public']['Enums']['supervision_status']
+  assignedAt: string
+  generalNotes: string | null
+  notDoneReason: string | null
+}
+
+export interface ShiftDetail {
+  id: string
+  clientId: string
+  clientName: string
+  siteId: string
+  siteName: string
+  siteCity: string | null
+  shiftDate: string
+  startTime: string
+  endTime: string
+  /** Instante de inicio (`shifts.starts_at`, ADM-08/ADM-06: "después del inicio del turno" de `06` sección 8). */
+  startsAt: string | null
+  requiredStaff: number
+  status: ShiftStatus
+  /** `true` si viene de un servicio recurrente; `false` si es puntual (ADM-06: "origen"). */
+  fromService: boolean
+  notes: string | null
+  generated: boolean
+  /** Solo las vigentes (`removed_at is null`): las quitadas quedan para historia (P-049), no se muestran acá. */
+  assignments: ShiftDetailAssignment[]
+  tasks: ShiftDetailTask[]
+  supervisions: ShiftDetailSupervision[]
+}
+
+/**
+ * `06` sección 7: "Detalle del turno | from('shifts') + assignments (con
+ * empleado), shift_tasks, attendance_records, attendance_notices,
+ * supervisions | Un solo select con embebidos." Sin `attendance_records`/
+ * `attendance_notices` acá: ese contenido ("inicio y fin reales, avisos") es
+ * de ATT-014 (F14, depende de esta misma tarea) -- el encargo de ASSIGN-011
+ * solo pide "asignaciones vigentes (empleado, franja efectiva, estado),
+ * tareas en lectura, supervisiones en lectura, notas". Reportado al
+ * orquestador.
+ *
+ * `employees` (no `v_people_basic`) como escalón intermedio hacia
+ * `profiles`, con el `hint` de la restricción (`employees_profile_id_fkey`):
+ * `employees` tiene tres FK hacia `profiles` (`created_by`, `updated_by`,
+ * `profile_id`), así que un embed `profiles(...)` sin el `hint` sería
+ * ambiguo para PostgREST -- mismo criterio que `actor`/`target` de
+ * `src/api/settings.ts` (`security_events`).
+ */
+const SHIFT_DETAIL_SELECT = `
+  id, client_id, site_id, shift_date, start_time, end_time, required_staff, status, notes, generated, service_id, starts_at,
+  client:clients(id, legal_name, trade_name),
+  site:sites(id, name, city),
+  assignments(
+    id, employee_id, start_time, end_time, status, notes, removed_at,
+    employees(profile_id, profiles!employees_profile_id_fkey(first_name, last_name))
+  ),
+  shift_tasks(id, title, description, is_required, status, position, not_done_reason),
+  supervisions(
+    id, supervisor_id, status, assigned_at, general_notes, not_done_reason,
+    employees(profile_id, profiles!employees_profile_id_fkey(first_name, last_name))
+  )
+`
+
+interface ShiftDetailRawRow {
+  id: string
+  client_id: string
+  site_id: string
+  shift_date: string
+  start_time: string
+  end_time: string
+  required_staff: number
+  status: ShiftStatus
+  notes: string | null
+  generated: boolean
+  service_id: string | null
+  starts_at: string | null
+  client: { id: string; legal_name: string; trade_name: string | null } | null
+  site: { id: string; name: string; city: string | null } | null
+  assignments: {
+    id: string
+    employee_id: string
+    start_time: string | null
+    end_time: string | null
+    status: AssignmentStatus
+    notes: string | null
+    removed_at: string | null
+    employees: {
+      profile_id: string
+      profiles: { first_name: string; last_name: string } | null
+    } | null
+  }[]
+  shift_tasks: {
+    id: string
+    title: string
+    description: string | null
+    is_required: boolean
+    status: Database['public']['Enums']['task_status']
+    position: number
+    not_done_reason: string | null
+  }[]
+  supervisions: {
+    id: string
+    supervisor_id: string
+    status: Database['public']['Enums']['supervision_status']
+    assigned_at: string
+    general_notes: string | null
+    not_done_reason: string | null
+    employees: {
+      profile_id: string
+      profiles: { first_name: string; last_name: string } | null
+    } | null
+  }[]
+}
+
+export async function fetchShiftDetail(shiftId: string): Promise<ShiftDetail> {
+  const { data, error } = await supabase
+    .from('shifts')
+    .select(SHIFT_DETAIL_SELECT)
+    .eq('id', shiftId)
+    .is('deleted_at', null)
+    .single()
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+
+  const row = data as unknown as ShiftDetailRawRow
+  return {
+    id: row.id,
+    clientId: row.client_id,
+    clientName: row.client?.trade_name ?? row.client?.legal_name ?? '',
+    siteId: row.site_id,
+    siteName: row.site?.name ?? '',
+    siteCity: row.site?.city ?? null,
+    shiftDate: row.shift_date,
+    startTime: row.start_time,
+    endTime: row.end_time,
+    startsAt: row.starts_at,
+    requiredStaff: row.required_staff,
+    status: row.status,
+    fromService: row.service_id != null,
+    notes: row.notes,
+    generated: row.generated,
+    assignments: row.assignments
+      .filter((a) => a.removed_at == null)
+      .map((a) => ({
+        id: a.id,
+        employeeId: a.employee_id,
+        employeeFirstName: a.employees?.profiles?.first_name ?? '',
+        employeeLastName: a.employees?.profiles?.last_name ?? '',
+        startTime: a.start_time,
+        endTime: a.end_time,
+        status: a.status,
+        notes: a.notes,
+      })),
+    tasks: row.shift_tasks
+      .slice()
+      .sort((a, b) => a.position - b.position)
+      .map((t) => ({
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        isRequired: t.is_required,
+        status: t.status,
+        position: t.position,
+        notDoneReason: t.not_done_reason,
+      })),
+    supervisions: row.supervisions.map((s) => ({
+      id: s.id,
+      supervisorId: s.supervisor_id,
+      supervisorFirstName: s.employees?.profiles?.first_name ?? '',
+      supervisorLastName: s.employees?.profiles?.last_name ?? '',
+      status: s.status,
+      assignedAt: s.assigned_at,
+      generalNotes: s.general_notes,
+      notDoneReason: s.not_done_reason,
+    })),
+  }
+}
+
+// -------------------------------------------------------------------------
+// 8. Candidatos para asignar (ADM-08, ASSIGN-012)
+// -------------------------------------------------------------------------
+
+/** Otra asignación vigente del mismo empleado ese día (ADM-08: "ya asignado en otro turno del día, con horario"). */
+export interface AssignCandidateConflict {
+  shiftId: string
+  siteName: string
+  startTime: string
+  endTime: string
+}
+
+export interface AssignCandidate {
+  employeeId: string
+  firstName: string
+  lastName: string
+  /** `true` si no tiene restricciones cargadas, o si el cliente del turno está entre las habilitadas (P-034: lista vacía = habilitado para todos). */
+  enabledForClient: boolean
+  /** Mismo criterio para `employee_availability` (P-035, sin filas = sin restricción). */
+  availableThatDay: boolean
+  /** Licencia vigente el día del turno (P-033; `06` sección 8 la evalúa contra `shift_date`, no contra hoy). */
+  onLeave: boolean
+  conflicts: AssignCandidateConflict[]
+}
+
+export interface AssignCandidatesParams {
+  shiftId: string
+  clientId: string
+  shiftDate: string
+  /** Franja del turno (no la propia de la asignación, que todavía no existe): referencia de "disponible ese día y hora". */
+  startTime: string
+  endTime: string
+  /** Empleados con una asignación vigente en ESTE turno: se excluyen de la lista (ya asignados, `06` sección 8: `ALREADY_ASSIGNED`). */
+  excludeEmployeeIds: string[]
+}
+
+interface SameDayAssignmentRow {
+  employee_id: string
+  shift_id: string
+  start_time: string | null
+  end_time: string | null
+  shift: {
+    start_time: string
+    end_time: string
+    site: { name: string } | null
+  } | null
+}
+
+/**
+ * Candidatos de `v_employees` para ADM-08 (`06` sección 8: "Candidatos para
+ * asignar | from('v_employees').eq('effective_status','active') +
+ * habilitaciones y disponibilidad embebidas | El cliente ordena: habilitados
+ * y disponibles primero; marca advertencias"). `effective_status = 'active'`
+ * ya excluye a quien está de licencia HOY (`0011_views.sql`): si alguien
+ * empieza una licencia recién la semana que viene, no aparece como candidato
+ * ni para un turno de hoy ni para uno de esa semana que viene, aunque el
+ * turno caiga fuera de su licencia -- esa es la regla que pide `06`
+ * literalmente (compararla contra `shift_date` en vez de "hoy" es cosa de
+ * `assign_employee`, no de este listado). Reportado al orquestador como
+ * limitación menor.
+ */
+export async function fetchAssignCandidates(
+  params: AssignCandidatesParams,
+): Promise<AssignCandidate[]> {
+  const { data: employeesData, error: employeesError } = await supabase
+    .from('v_employees')
+    .select('profile_id, first_name, last_name')
+    .eq('effective_status', 'active')
+    .order('last_name', { ascending: true })
+    .order('first_name', { ascending: true })
+
+  if (employeesError) {
+    throw fromPostgrestError(employeesError)
+  }
+
+  const candidateRows = (employeesData ?? []).filter(
+    (row) => !params.excludeEmployeeIds.includes(row.profile_id as string),
+  )
+  if (candidateRows.length === 0) {
+    return []
+  }
+  const employeeIds = candidateRows.map((row) => row.profile_id as string)
+  const weekday = weekdayOfIsoDate(params.shiftDate)
+
+  const [permissionsResult, availabilityResult, leavesResult, sameDayResult] =
+    await Promise.all([
+      supabase
+        .from('employee_client_permissions')
+        .select('employee_id, client_id')
+        .in('employee_id', employeeIds),
+      supabase
+        .from('employee_availability')
+        .select('employee_id, weekday, start_time, end_time')
+        .in('employee_id', employeeIds),
+      supabase
+        .from('employee_leaves')
+        .select('employee_id')
+        .in('employee_id', employeeIds)
+        .is('deleted_at', null)
+        .lte('starts_on', params.shiftDate)
+        .or(`ends_on.is.null,ends_on.gte.${params.shiftDate}`),
+      supabase
+        .from('assignments')
+        .select(
+          'employee_id, shift_id, start_time, end_time, shift:shifts(start_time, end_time, site:sites(name))',
+        )
+        .in('employee_id', employeeIds)
+        .eq('shift_date', params.shiftDate)
+        .neq('shift_id', params.shiftId)
+        .is('removed_at', null),
+    ])
+
+  for (const result of [
+    permissionsResult,
+    availabilityResult,
+    leavesResult,
+    sameDayResult,
+  ]) {
+    if (result.error) {
+      throw fromPostgrestError(result.error)
+    }
+  }
+
+  const clientIdsByEmployee = new Map<string, string[]>()
+  for (const row of permissionsResult.data ?? []) {
+    const list = clientIdsByEmployee.get(row.employee_id) ?? []
+    list.push(row.client_id)
+    clientIdsByEmployee.set(row.employee_id, list)
+  }
+
+  const availabilityByEmployee = new Map<
+    string,
+    { weekday: number; start_time: string; end_time: string }[]
+  >()
+  for (const row of availabilityResult.data ?? []) {
+    const list = availabilityByEmployee.get(row.employee_id) ?? []
+    list.push(row)
+    availabilityByEmployee.set(row.employee_id, list)
+  }
+
+  const onLeaveEmployeeIds = new Set(
+    (leavesResult.data ?? []).map((row) => row.employee_id),
+  )
+
+  const conflictsByEmployee = new Map<string, AssignCandidateConflict[]>()
+  for (const row of (sameDayResult.data ??
+    []) as unknown as SameDayAssignmentRow[]) {
+    const list = conflictsByEmployee.get(row.employee_id) ?? []
+    list.push({
+      shiftId: row.shift_id,
+      siteName: row.shift?.site?.name ?? '',
+      startTime: row.start_time ?? row.shift?.start_time ?? '',
+      endTime: row.end_time ?? row.shift?.end_time ?? '',
+    })
+    conflictsByEmployee.set(row.employee_id, list)
+  }
+
+  const candidates: AssignCandidate[] = candidateRows.map((row) => {
+    const employeeId = row.profile_id as string
+    const enabledClientIds = clientIdsByEmployee.get(employeeId)
+    const enabledForClient =
+      enabledClientIds == null || enabledClientIds.includes(params.clientId)
+
+    const availabilitySlots = availabilityByEmployee.get(employeeId)
+    const availableThatDay =
+      availabilitySlots == null ||
+      availabilitySlots.some(
+        (slot) =>
+          slot.weekday === weekday &&
+          slot.start_time <= params.startTime &&
+          slot.end_time >= params.endTime,
+      )
+
+    return {
+      employeeId,
+      firstName: row.first_name as string,
+      lastName: row.last_name as string,
+      enabledForClient,
+      availableThatDay,
+      onLeave: onLeaveEmployeeIds.has(employeeId),
+      conflicts: conflictsByEmployee.get(employeeId) ?? [],
+    }
+  })
+
+  // "Habilitados y disponibles primero" (06 sección 8): el resto queda
+  // después, en el mismo orden alfabético que ya trajo la consulta.
+  return candidates.sort((a, b) => {
+    const rankA = a.enabledForClient && a.availableThatDay && !a.onLeave ? 0 : 1
+    const rankB = b.enabledForClient && b.availableThatDay && !b.onLeave ? 0 : 1
+    return rankA - rankB
+  })
 }
