@@ -274,7 +274,12 @@ describe.skipIf(!env)(
         // forma de fijar una hora concreta "ya pasada" sin depender de a qué hora se ejecuta el
         // test. Un minuto de franja (no todo el día): minimiza el riesgo de solaparse con un
         // turno real de la persona elegida más abajo.
-        const today = new Date().toISOString().slice(0, 10)
+        // Fecha de HOY en Argentina (offset fijo -03:00, ADR-019), no en UTC: entre las 21:00 y
+        // las 24:00 de Argentina `toISOString()` ya da el día siguiente, y un turno de mañana a
+        // las 00:00 todavía no empezó.
+        const today = new Date(Date.now() - 3 * 60 * 60 * 1000)
+          .toISOString()
+          .slice(0, 10)
         fixture = await createFixtureShift(admin, today, '00:00', '00:01')
 
         otroEmpleadoParaAsignarId = await resolveUserId(

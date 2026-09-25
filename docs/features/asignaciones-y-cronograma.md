@@ -311,22 +311,29 @@ Método (`tests/e2e-assignments/month-performance.spec.ts`):
 2. Login como dueño, navegar a `/admin/planificacion?vista=mes` con un mes
    cualquiera ya cargado, y mover el `MonthPicker` a noviembre de 2191 (con
    los botones "Año siguiente", ~165 clics desde el año en curso).
-3. Medición en el reloj del propio navegador (`performance.now()`, no el de
-   Node, que sumaría la comunicación con Playwright): una marca justo cuando
-   la respuesta de `v_shifts_board` para ese rango de fechas llega
-   (`page.waitForResponse`), y otra cuando el primer chip de turno de ese mes
-   está visible en el DOM. La resta de las dos es el tiempo de pintado puro,
-   después de la carga de datos (que es lo que pide el criterio de F11).
+3. Medición toda en el reloj del navegador (`performance.now()`), sin pasar
+   por Playwright. Inicio: `responseEnd` (Resource Timing) de la última
+   lectura de datos de ese mes. Fin: el mes completo pintado (90 chips de la
+   sede de fixture, 3 por día, y los 30 "+17 más"), detectado con un
+   `MutationObserver` y seguido de dos `requestAnimationFrame` para contar el
+   cuadro pintado. Incluye parseo, agrupado, render de React y pintado:
+   todo lo que pasa "después de la carga de datos", que es lo que pide el
+   criterio de F11.
 4. Umbral: menos de 1000 ms.
 5. Limpieza: los 600 turnos se BORRAN FÍSICAMENTE al final con la clave de
    servicio (bypassa RLS), antes de dar de baja el cliente/sede. Son datos
    sintéticos de rendimiento, sin valor de historial que conservar.
 
-Resultado de la corrida contra `App_dev` (25 sep 2026, build local
-`pnpm build` + `pnpm preview`, ver el reporte del encargo P11.4 para el
-detalle completo y la salida de la corrida): **PASA**, tres corridas
-consecutivas dieron 17.7 ms, 22.5 ms y 19.7 ms desde la respuesta hasta el
-primer chip pintado -- muy por debajo del segundo.
+Resultado contra `App_dev` (25 sep 2026, build local `pnpm build` +
+`vite preview`): **PASA**, 33,2 ms y 46,7 ms en dos corridas desde la última
+respuesta de datos hasta el mes completo pintado.
+
+**Corrección del orquestador en la revisión**: la primera versión medía desde
+un `performance.now()` puesto con un `evaluate` después de que Playwright
+recibía la respuesta hasta el primer chip visible. La marca de inicio llegaba
+tarde (el pintado podía haber terminado antes) y el fin no esperaba el mes
+completo: los 17-22 ms que daba no demostraban nada. Se reemplazó por el
+método de arriba.
 
 **Corrección de esta revisión (qa-pruebas, al retomar P11.4)**: la primera
 versión de este spec dejaba los 600 turnos sin borrar ("no molestan a nada

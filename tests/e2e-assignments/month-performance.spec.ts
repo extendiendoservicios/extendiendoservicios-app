@@ -10,16 +10,14 @@
 //      rendimiento de esta suite, distinto de 2190 (`tests/e2e-shifts-services`) y de 2191-05
 //      (usado por otros specs de esta carpeta para fechas cercanas a hoy... en rigor esos usan
 //      fechas relativas a hoy, no 2191: este mes queda solo para este spec).
-//   2. Login como dueño, navegar a `/admin/planificacion?vista=mes`, mover el `MonthPicker` a
-//      noviembre de 2191 (con un mes cualquiera intermedio ya cargado, así el `waitForResponse`
-//      del paso 3 solo captura la carga del mes que importa).
-//   3. Medir en el propio navegador, con `performance.now()`, desde que la respuesta de
-//      `v_shifts_board` para ESE rango de fechas llega (evento `load` del `Response` de
-//      `fetch`, capturado con `page.on('response')` más un `performance.mark` inyectado antes de
-//      navegar) hasta que el primer chip de turno del mes está pintado en el DOM (`page.locator`
-//      resuelto, medido también con `performance.now()` desde la página) -- la resta de las dos
-//      marcas es el tiempo de pintado puro, sin la latency de red ni el tiempo de Playwright
-//      entre process, que no es lo que pide el criterio ("después de la carga de datos").
+//   2. Login como dueño, navegar a `/admin/planificacion?vista=mes` (un mes cualquiera ya
+//      cargado) y recién después saltar a noviembre de 2191 con el `MonthPicker`.
+//   3. Medir todo en el reloj del navegador (`performance.now()`), sin pasar por Playwright:
+//      inicio = `responseEnd` (Resource Timing) de la última lectura de datos de ese mes; fin =
+//      el mes completo pintado (90 chips de la sede de fixture -- 3 por día, el máximo de
+//      `MonthCalendar` -- y los 30 "+17 más"), detectado con un `MutationObserver` y seguido de
+//      dos `requestAnimationFrame` para contar el cuadro pintado. Mide lo que pide el criterio
+//      ("después de la carga de datos"): parseo, agrupado, render de React y pintado.
 //   4. Umbral: menos de 1000 ms (criterio de aceptación de F11).
 //   5. Limpieza: los 600 turnos se BORRAN FÍSICAMENTE al final (el encargo de P11.4 pide
 //      explícitamente "creados y borrados por el propio test"). Son datos sintéticos de
@@ -112,47 +110,84 @@ test.describe('ASSIGN-016: un mes con 600 turnos se pinta en menos de 1 s', () =
 
       const elapsedMs =
         await test.step('salta a noviembre de 2191 y mide el pintado', async () => {
-          // Marca de arranque en el reloj del propio navegador (no el de Node, que sumaría el
-          // costo de la comunicación con Playwright a la medición).
-          await page.evaluate(() => {
-            ;(window as unknown as { __perfMark?: number }).__perfMark = 0
-          })
-
-          const responsePromise = page.waitForResponse(
-            (response) =>
-              response.url().includes('v_shifts_board') &&
-              response
-                .url()
-                .includes(
-                  `${PERF_YEAR}-${String(PERF_MONTH).padStart(2, '0')}`,
-                ),
+          // Todo se mide en el reloj del propio navegador, sin idas y vueltas con Playwright
+          // en el medio (un `evaluate` después de `waitForResponse` llega tarde: el pintado
+          // puede haber terminado antes de poner la marca de inicio).
+          //
+          // Fin: un `MutationObserver` que espera el mes COMPLETO pintado -- 3 chips por día
+          // (`MAX_CHIPS_PER_DAY` de `MonthCalendar`) en los 30 días = 90 chips de la sede de
+          // fixture, más 30 botones "+17 más" -- y después dos `requestAnimationFrame` para
+          // incluir el cuadro pintado, no solo el DOM armado.
+          const expectedChips = DAYS_IN_MONTH * 3
+          const hiddenLabel = `+${SHIFTS_PER_DAY - 3} más`
+          await page.evaluate(
+            ({ siteName, expectedChips, hiddenLabel, daysInMonth }) => {
+              const w = window as unknown as { __paintedAt?: Promise<number> }
+              w.__paintedAt = new Promise<number>((resolve) => {
+                const isDone = () =>
+                  Array.from(
+                    document.querySelectorAll('a[href^="/admin/turnos/"]'),
+                  ).filter((a) => a.getAttribute('title')?.includes(siteName))
+                    .length === expectedChips &&
+                  Array.from(document.querySelectorAll('button')).filter(
+                    (b) => b.textContent?.trim() === hiddenLabel,
+                  ).length === daysInMonth
+                const finish = () =>
+                  requestAnimationFrame(() =>
+                    requestAnimationFrame(() => resolve(performance.now())),
+                  )
+                const observer = new MutationObserver(() => {
+                  if (isDone()) {
+                    observer.disconnect()
+                    finish()
+                  }
+                })
+                observer.observe(document.body, {
+                  childList: true,
+                  subtree: true,
+                  characterData: true,
+                })
+              })
+            },
+            {
+              siteName: site.name,
+              expectedChips,
+              hiddenLabel,
+              daysInMonth: DAYS_IN_MONTH,
+            },
           )
 
           await pickFarMonth(page, 'Elegir mes', PERF_YEAR, PERF_MONTH)
 
-          const response = await responsePromise
-          expect(response.ok()).toBe(true)
-          await page.evaluate(() => {
-            ;(window as unknown as { __perfMark: number }).__perfMark =
-              performance.now()
-          })
-
-          // Primer chip de turno de este mes pintado en el DOM (el nombre de la sede fixture es
-          // único en esta corrida).
-          await page
-            .getByRole('link', { name: new RegExp(site.name) })
-            .first()
-            .waitFor({ state: 'visible' })
-
-          return page.evaluate(() => {
-            const mark = (window as unknown as { __perfMark: number })
-              .__perfMark
-            return performance.now() - mark
-          })
+          // Inicio: `responseEnd` (Resource Timing) de la ÚLTIMA respuesta de datos de este mes
+          // -- los turnos de `v_shifts_board` y cualquier otra lectura del mismo rango, como
+          // feriados o asignaciones --, en el mismo reloj que la marca de fin.
+          const monthKey = `${PERF_YEAR}-${String(PERF_MONTH).padStart(2, '0')}`
+          return page.evaluate(async (monthKey) => {
+            const paintedAt = await (
+              window as unknown as { __paintedAt: Promise<number> }
+            ).__paintedAt
+            const dataEntries = performance
+              .getEntriesByType('resource')
+              .filter(
+                (entry) =>
+                  entry.name.includes('/rest/v1/') &&
+                  entry.name.includes(monthKey),
+              ) as PerformanceResourceTiming[]
+            if (dataEntries.length === 0) {
+              throw new Error(
+                'No se registró ninguna lectura de datos del mes medido.',
+              )
+            }
+            const dataLoadedAt = Math.max(
+              ...dataEntries.map((entry) => entry.responseEnd),
+            )
+            return paintedAt - dataLoadedAt
+          }, monthKey)
         })
 
       console.log(
-        `[ASSIGN-016] Calendario mensual con ${TOTAL_SHIFTS} turnos: ${elapsedMs.toFixed(1)} ms desde la respuesta hasta el primer chip pintado.`,
+        `[ASSIGN-016] Calendario mensual con ${TOTAL_SHIFTS} turnos: ${elapsedMs.toFixed(1)} ms desde la última respuesta de datos hasta el mes completo pintado.`,
       )
       expect(elapsedMs).toBeLessThan(1000)
     } finally {
