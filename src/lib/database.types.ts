@@ -2820,6 +2820,15 @@ export type Database = {
         Args: { p_profile_id: string }
         Returns: undefined
       }
+      assign_employee: {
+        Args: {
+          p_employee_id: string
+          p_end?: string
+          p_shift_id: string
+          p_start?: string
+        }
+        Returns: Json
+      }
       cancel_shift: {
         Args: { p_reason: string; p_shift_id: string }
         Returns: {
@@ -2920,6 +2929,33 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      remove_assignment: {
+        Args: { p_assignment_id: string; p_reason: string }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          end_time: string | null
+          id: string
+          notes: string | null
+          removed_at: string | null
+          removed_by: string | null
+          removed_reason: string | null
+          shift_date: string
+          shift_id: string
+          start_time: string | null
+          status: Database["public"]["Enums"]["assignment_status"]
+          updated_at: string | null
+          updated_by: string | null
+          window: unknown
+        }
+        SetofOptions: {
+          from: "*"
+          to: "assignments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       set_admin_capability: {
         Args: {
           p_capability: Database["public"]["Enums"]["admin_capability"]
@@ -2946,6 +2982,66 @@ export type Database = {
           p_roles: Database["public"]["Enums"]["app_role"][]
         }
         Returns: Database["public"]["Enums"]["app_role"][]
+      }
+      update_assignment_time: {
+        Args: { p_assignment_id: string; p_end?: string; p_start?: string }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          end_time: string | null
+          id: string
+          notes: string | null
+          removed_at: string | null
+          removed_by: string | null
+          removed_reason: string | null
+          shift_date: string
+          shift_id: string
+          start_time: string | null
+          status: Database["public"]["Enums"]["assignment_status"]
+          updated_at: string | null
+          updated_by: string | null
+          window: unknown
+        }
+        SetofOptions: {
+          from: "*"
+          to: "assignments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_shift_details: {
+        Args: { p_notes?: string; p_required_staff: number; p_shift_id: string }
+        Returns: {
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          checklist_template_id: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          end_time: string
+          ends_at: string | null
+          generated: boolean
+          id: string
+          notes: string | null
+          required_staff: number
+          service_id: string | null
+          shift_date: string
+          site_id: string
+          start_time: string
+          starts_at: string | null
+          status: Database["public"]["Enums"]["shift_status"]
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "shifts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       update_shift_time: {
         Args: { p_end: string; p_shift_id: string; p_start: string }
