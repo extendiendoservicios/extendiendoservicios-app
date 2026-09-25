@@ -12,6 +12,10 @@ import {
 } from '@/features/clients/queries'
 import { ClientContactsPanel } from '@/features/clients/components/ClientContactsPanel'
 import { ChangeClientStatusDialog } from '@/features/clients/components/ChangeClientStatusDialog'
+import {
+  NewServiceButton,
+  ServiceList,
+} from '@/features/services/components/ServiceList'
 
 const TABS = ['sedes', 'contactos', 'servicios', 'tareas'] as const
 type ClientDetailTab = (typeof TABS)[number]
@@ -22,12 +26,15 @@ function isClientDetailTab(value: string | null): value is ClientDetailTab {
 
 /**
  * ADM-21 "Cliente · detalle" (CLIENT-004, `05` línea 75): cabecera con
- * estado y pestañas Sedes, Contactos, Servicios (placeholder hasta F10) y
- * Tareas (enlace a ADM-26).
+ * estado y pestañas Sedes, Contactos, Servicios y Tareas (enlace a ADM-26).
  *
  * El alta y el detalle de sede (ADM-22, ADM-23) son de SITE-001 a SITE-003
  * (P08.4, `src/pages/admin/SiteDetailPage.tsx`/`SiteFormPage.tsx`): la
- * pestaña Sedes solo lista y enlaza a esas rutas.
+ * pestaña Sedes solo lista y enlaza a esas rutas. La pestaña Servicios
+ * (SERVICE-003, P10.2) es de `ServiceList`/`NewServiceButton`
+ * (`src/features/services/components/ServiceList.tsx`); el botón "Nuevo
+ * servicio" pasa `?cliente=` a ADM-25 (decisión propia, no documentada en
+ * `05` sección 5 — ver el reporte del encargo).
  */
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -174,10 +181,12 @@ export default function ClientDetailPage() {
         </TabsContent>
 
         <TabsContent value="servicios" className="pt-3">
-          <EmptyState
-            title="Todavía no hay servicios para mostrar"
-            description="Los servicios del cliente se van a ver acá cuando esté habilitada la gestión de servicios."
-          />
+          <div className="flex flex-col gap-3">
+            <div className="flex justify-end">
+              <NewServiceButton clientId={client.id} />
+            </div>
+            <ServiceList clientId={client.id} />
+          </div>
         </TabsContent>
 
         <TabsContent value="tareas" className="pt-3">

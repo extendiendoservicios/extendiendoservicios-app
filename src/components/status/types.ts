@@ -45,6 +45,8 @@ export type ClientStatus = 'active' | 'suspended' | 'closed'
 
 export type SiteStatus = 'active' | 'inactive'
 
+export type ServiceStatus = 'active' | 'paused' | 'ended'
+
 export type UserAccountStatus = 'activo' | 'desactivado'
 
 export type StatusDomain =
@@ -55,6 +57,7 @@ export type StatusDomain =
   | 'employee'
   | 'client'
   | 'site'
+  | 'service'
   | 'user'
 
 /** Variantes visuales de `Badge`/`StatusBadge` (`07` sección 3). */

@@ -63,6 +63,10 @@ const cases: Array<[StatusBadgeInput, string, string]> = [
   // Sede
   [{ domain: 'site', status: 'active' }, 'Activa', 'success'],
   [{ domain: 'site', status: 'inactive' }, 'Inactiva', 'neutral'],
+  // Servicio
+  [{ domain: 'service', status: 'active' }, 'Activo', 'success'],
+  [{ domain: 'service', status: 'paused' }, 'Pausado', 'warning'],
+  [{ domain: 'service', status: 'ended' }, 'Finalizado', 'neutral'],
   // Usuario
   [{ domain: 'user', status: 'activo' }, 'Activo', 'success'],
   [{ domain: 'user', status: 'desactivado' }, 'Desactivado', 'neutral'],

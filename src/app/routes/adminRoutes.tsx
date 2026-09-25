@@ -9,6 +9,7 @@ import EmployeesPage from '@/pages/admin/EmployeesPage'
 import HolidaysPage from '@/pages/admin/HolidaysPage'
 import RatingCriteriaPage from '@/pages/admin/RatingCriteriaPage'
 import SecurityEventsPage from '@/pages/admin/SecurityEventsPage'
+import ServiceFormPage from '@/pages/admin/ServiceFormPage'
 import SiteDetailPage from '@/pages/admin/SiteDetailPage'
 import SiteFormPage from '@/pages/admin/SiteFormPage'
 import UsersPage from '@/pages/admin/UsersPage'
@@ -186,18 +187,24 @@ export const adminRoutes: RouteObject[] = [
       subtitle: 'Editar datos de la sede',
     },
   },
-  placeholderRoute({
+  {
     path: 'servicios/nuevo',
-    screenId: 'ADM-25',
-    title: 'Nuevo servicio',
-    subtitle: 'Crear un servicio recurrente',
-  }),
-  placeholderRoute({
+    element: <ServiceFormPage />,
+    handle: {
+      screenId: 'ADM-25',
+      title: 'Nuevo servicio',
+      subtitle: 'Crear un servicio recurrente',
+    },
+  },
+  {
     path: 'servicios/:id/editar',
-    screenId: 'ADM-25',
-    title: 'Editar servicio',
-    subtitle: 'Editar un servicio recurrente',
-  }),
+    element: <ServiceFormPage />,
+    handle: {
+      screenId: 'ADM-25',
+      title: 'Editar servicio',
+      subtitle: 'Editar un servicio recurrente',
+    },
+  },
   placeholderRoute({
     path: 'tareas',
     screenId: 'ADM-26',
