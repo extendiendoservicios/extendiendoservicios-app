@@ -21,8 +21,12 @@ export function shiftFranjaKey(
 export function groupShiftsByFranja(
   shifts: ShiftListRow[],
 ): { franja: string; shifts: ShiftListRow[] }[] {
-  const sorted = [...shifts].sort((a, b) =>
-    a.startTime.localeCompare(b.startTime),
+  // Por inicio y después por fin: si solo se ordena por inicio, 08:00–12:00,
+  // 08:00–13:00 y otra 08:00–12:00 quedan intercaladas y la franja se repite.
+  const sorted = [...shifts].sort(
+    (a, b) =>
+      a.startTime.localeCompare(b.startTime) ||
+      a.endTime.localeCompare(b.endTime),
   )
   const groups: { franja: string; shifts: ShiftListRow[] }[] = []
   for (const shift of sorted) {

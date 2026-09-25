@@ -12,7 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { StatusBadge } from '@/components/status'
+import { getStatusMeta } from '@/components/status'
+import { Badge } from '@/components/ui/badge'
 import type { ShiftStatus as BadgeShiftStatus } from '@/components/status'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { useAuth } from '@/features/auth/AuthProvider'
@@ -270,21 +271,27 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
                     )}
                   </div>
                   <div className="flex flex-col gap-1">
-                    {visible.map((shift) => (
-                      <span
-                        key={shift.id}
-                        className="truncate rounded bg-secondary/60 px-1.5 py-0.5 text-[10.5px] font-medium"
-                      >
-                        <StatusBadge
-                          domain="shift"
-                          status={shift.displayStatus as BadgeShiftStatus}
-                          className="mr-1 inline-flex align-middle"
-                        />
-                        <span className="align-middle">
-                          {shiftChipLabel(shift)}
-                        </span>
-                      </span>
-                    ))}
+                    {visible.map((shift) => {
+                      // `05` ADM-03: el chip dice cliente · sede · franja y el
+                      // estado va en el color. Una insignia completa adentro
+                      // ocupaba todo el ancho de la celda y cortaba el texto.
+                      const meta = getStatusMeta({
+                        domain: 'shift',
+                        status: shift.displayStatus as BadgeShiftStatus,
+                      })
+                      const label = shiftChipLabel(shift)
+                      return (
+                        <Badge
+                          key={shift.id}
+                          variant={meta.variant}
+                          title={`${meta.label} · ${label}`}
+                          className="block w-full min-w-0 truncate rounded px-1.5 py-0.5 text-[10.5px] font-medium"
+                        >
+                          <span className="sr-only">{meta.label}: </span>
+                          {label}
+                        </Badge>
+                      )
+                    })}
                     {hiddenCount > 0 && (
                       <span className="text-[10.5px] font-semibold text-text-3">
                         +{hiddenCount} más

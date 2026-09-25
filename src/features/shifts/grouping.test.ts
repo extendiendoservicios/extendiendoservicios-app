@@ -36,6 +36,18 @@ describe('shiftFranjaKey', () => {
 })
 
 describe('groupShiftsByFranja', () => {
+  it('no repite una franja cuando otra con el mismo inicio queda en el medio', () => {
+    const shifts = [
+      makeShift({ id: 'a', startTime: '08:00:00', endTime: '12:00:00' }),
+      makeShift({ id: 'b', startTime: '08:00:00', endTime: '13:00:00' }),
+      makeShift({ id: 'c', startTime: '08:00:00', endTime: '12:00:00' }),
+    ]
+
+    const franjas = groupShiftsByFranja(shifts).map((group) => group.franja)
+
+    expect(franjas).toEqual(['08:00–12:00', '08:00–13:00'])
+  })
+
   it('agrupa turnos consecutivos con la misma franja y ordena por hora', () => {
     const shifts = [
       makeShift({ id: 's2', startTime: '14:00:00', endTime: '18:00:00' }),

@@ -34,6 +34,49 @@ export type AssignEmployeeWarning =
   'NOT_ENABLED_FOR_CLIENT' | 'OUTSIDE_AVAILABILITY' | 'ON_LEAVE'
 
 // -------------------------------------------------------------------------
+// 0. Paginado de las lecturas por rango
+// -------------------------------------------------------------------------
+
+/**
+ * `supabase/config.toml` fija `max_rows = 1000`: PostgREST corta ahí sin
+ * avisar. Un mes con 60 clientes y franjas de mañana y tarde puede pasar
+ * ese número, y el calendario mostraría el mes incompleto. Se pide de a
+ * páginas hasta que una vuelva incompleta. `build` arma la consulta de
+ * nuevo en cada vuelta (el builder de PostgREST no se reutiliza) y tiene
+ * que ordenar por una clave única al final, para que las páginas no se
+ * pisen ni salteen filas.
+ */
+export const RANGE_PAGE_SIZE = 1000
+
+interface PageQuery<T> {
+  range: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{
+    data: T[] | null
+    error: Parameters<typeof fromPostgrestError>[0] | null
+  }>
+}
+
+async function fetchAllPages<T>(build: () => PageQuery<T>): Promise<T[]> {
+  const rows: T[] = []
+  for (let offset = 0; ; offset += RANGE_PAGE_SIZE) {
+    const { data, error } = await build().range(
+      offset,
+      offset + RANGE_PAGE_SIZE - 1,
+    )
+    if (error) {
+      throw fromPostgrestError(error)
+    }
+    const page = data ?? []
+    rows.push(...page)
+    if (page.length < RANGE_PAGE_SIZE) {
+      return rows
+    }
+  }
+}
+
+// -------------------------------------------------------------------------
 // 1. Lecturas por rango de fechas (ADM-03, ADM-05 completa)
 // -------------------------------------------------------------------------
 
@@ -68,32 +111,33 @@ export async function fetchShiftsBoardByRange(
     }
   }
 
-  let query = supabase
-    .from('v_shifts_board')
-    .select(SHIFT_BOARD_SELECT)
-    .gte('shift_date', from)
-    .lte('shift_date', to)
-    .order('shift_date', { ascending: true })
-    .order('start_time', { ascending: true })
+  const employeeShiftIds = shiftIdsForEmployee
+  const rows = await fetchAllPages(() => {
+    let query = supabase
+      .from('v_shifts_board')
+      .select(SHIFT_BOARD_SELECT)
+      .gte('shift_date', from)
+      .lte('shift_date', to)
 
-  if (filters.clientId) {
-    query = query.eq('client_id', filters.clientId)
-  }
-  if (filters.siteId) {
-    query = query.eq('site_id', filters.siteId)
-  }
-  if (filters.status) {
-    query = query.eq('display_status', filters.status)
-  }
-  if (shiftIdsForEmployee) {
-    query = query.in('id', shiftIdsForEmployee)
-  }
+    if (filters.clientId) {
+      query = query.eq('client_id', filters.clientId)
+    }
+    if (filters.siteId) {
+      query = query.eq('site_id', filters.siteId)
+    }
+    if (filters.status) {
+      query = query.eq('display_status', filters.status)
+    }
+    if (employeeShiftIds) {
+      query = query.in('id', employeeShiftIds)
+    }
 
-  const { data, error } = await query
-  if (error) {
-    throw fromPostgrestError(error)
-  }
-  return (data ?? []).map((row) => mapShiftBoardRow(row as ShiftBoardRow))
+    return query
+      .order('shift_date', { ascending: true })
+      .order('start_time', { ascending: true })
+      .order('id', { ascending: true })
+  })
+  return rows.map((row) => mapShiftBoardRow(row as ShiftBoardRow))
 }
 
 /** Ids de turno con una asignación vigente (`removed_at is null`) de ese empleado en el rango. Auxiliar del filtro "empleado" de ADM-03. */
@@ -200,28 +244,26 @@ export async function fetchAssignmentsBoardByRange(
   to: string,
   filters: AssignmentsBoardRangeFilters = {},
 ): Promise<AssignmentBoardRow[]> {
-  let query = supabase
-    .from('v_assignments_board')
-    .select(ASSIGNMENT_BOARD_SELECT)
-    .gte('shift_date', from)
-    .lte('shift_date', to)
-    .order('shift_date', { ascending: true })
-    .order('effective_start_time', { ascending: true })
+  const rows = await fetchAllPages(() => {
+    let query = supabase
+      .from('v_assignments_board')
+      .select(ASSIGNMENT_BOARD_SELECT)
+      .gte('shift_date', from)
+      .lte('shift_date', to)
 
-  if (filters.clientId) {
-    query = query.eq('client_id', filters.clientId)
-  }
-  if (filters.siteId) {
-    query = query.eq('site_id', filters.siteId)
-  }
+    if (filters.clientId) {
+      query = query.eq('client_id', filters.clientId)
+    }
+    if (filters.siteId) {
+      query = query.eq('site_id', filters.siteId)
+    }
 
-  const { data, error } = await query
-  if (error) {
-    throw fromPostgrestError(error)
-  }
-  return (data ?? []).map((row) =>
-    mapAssignmentBoardRow(row as AssignmentBoardRawRow),
-  )
+    return query
+      .order('shift_date', { ascending: true })
+      .order('effective_start_time', { ascending: true })
+      .order('id', { ascending: true })
+  })
+  return rows.map((row) => mapAssignmentBoardRow(row as AssignmentBoardRawRow))
 }
 
 // -------------------------------------------------------------------------

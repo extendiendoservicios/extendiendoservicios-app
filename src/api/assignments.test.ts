@@ -20,6 +20,7 @@ function makeChainable<T>(result: PostgrestResult<T>) {
     lte: () => chain,
     in: () => chain,
     order: () => chain,
+    range: () => chain,
     then: (
       resolve: (value: PostgrestResult<T>) => void,
       reject?: (reason: unknown) => void,
@@ -75,6 +76,27 @@ const SHIFT_BOARD_ROW = {
 }
 
 describe('fetchShiftsBoardByRange', () => {
+  it('pide de a páginas hasta traer el mes entero (max_rows = 1000)', async () => {
+    const fullPage = Array.from({ length: 1000 }, (_, i) => ({
+      ...SHIFT_BOARD_ROW,
+      id: `sh-${i}`,
+    }))
+    fromMock
+      .mockReturnValueOnce(makeChainable({ data: fullPage, error: null }))
+      .mockReturnValueOnce(
+        makeChainable({
+          data: [{ ...SHIFT_BOARD_ROW, id: 'sh-1000' }],
+          error: null,
+        }),
+      )
+
+    const result = await fetchShiftsBoardByRange('2026-10-01', '2026-10-31')
+
+    expect(fromMock).toHaveBeenCalledTimes(2)
+    expect(result).toHaveLength(1001)
+    expect(result[1000]?.id).toBe('sh-1000')
+  })
+
   it('arma ShiftListRow[] a partir de v_shifts_board entre dos fechas', async () => {
     fromMock.mockReturnValue(
       makeChainable({ data: [SHIFT_BOARD_ROW], error: null }),
