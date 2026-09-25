@@ -7,37 +7,38 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.7.0] - 2026-09-25
+
+Servicios y generación de turnos (F10). El dueño y los administradores cargan los servicios recurrentes de cada cliente y sede, generan los turnos del mes, crean turnos puntuales, cambian su franja y los cancelan con motivo. Trae una migración nueva, `0023_rpc_shifts.sql`.
+
 ### Agregado
 
+- RPC de turnos (P10.1, SHIFT-001 a SHIFT-006), en la migración `0023_rpc_shifts.sql`:
+  - `create_shift`: turno puntual, con advertencia `HOLIDAY`.
+  - `generate_shifts(año, mes)`: idempotente. Respeta días, vigencia, feriados (`works_on_holidays`) y el estado del servicio, del cliente y de la sede.
+  - `update_shift_time`: recalcula las ventanas. Si las asignaciones se superponen, devuelve `ASSIGNMENT_OVERLAP` en lugar del `23P01` crudo.
+  - `cancel_shift`: motivo obligatorio. Cancela las supervisiones asignadas y conserva las asignaciones.
+  - `reload_shift_tasks`.
+  - Las funciones que crean turnos copian el checklist vigente: el de la sede y, si no hay, el del cliente.
+  - pgTAP de las cinco RPC y de las restricciones y la RLS de `services` (SERVICE-005).
+  - Un mes de 240 servicios (5632 turnos) se genera en unos 6 s.
 - Servicios recurrentes (P10.2, SERVICE-001 a SERVICE-004, SERVICE-006):
-  `src/api/services.ts`, esquema zod y hooks; ADM-25 (alta y edición, cliente
-  y sede editables con `Combobox`, días de la semana, franja, dotación,
-  vigencia con `DatePicker`, "Trabaja los feriados" marcado por defecto,
-  horas mensuales informativas, estado y notas); reemplaza los placeholders
-  de la pestaña Servicios de ADM-21 y de la sección Servicios de ADM-22 por
-  `ServiceList`, con pausar/reactivar/finalizar en línea (sin motivo
-  obligatorio). `StatusBadge` suma el dominio `service`.
-- Turnos (P10.3, SHIFT-007 a SHIFT-011, SERVICE-008): `src/api/shifts.ts`
-  envuelve las cinco RPC de `0023_rpc_shifts.sql` (`create_shift`,
-  `generate_shifts`, `update_shift_time`, `cancel_shift`,
-  `reload_shift_tasks`); esquema zod y hooks de TanStack Query.
-  ADM-05 "Planificación · día" en versión mínima (lista de turnos con
-  dotación y estado, fecha navegable, polling 30 s si es hoy). ADM-07
-  "Formulario de turno" (alta puntual con aviso de feriado; edición
-  limitada a la franja horaria -- ver la nota de abajo). ADM-09 "Generar
-  turnos del mes" (resumen previo de servicios activos y feriados del mes,
-  resultado creados/omitidos/omitidos por feriado, aviso de que regenerar
-  solo crea los faltantes). Diálogo de cancelación con motivo obligatorio
-  (`CancelShiftDialog`, sobre `ConfirmDialog`), pensado para que ADM-06
-  (F11) lo reutilice. Las acciones se ocultan según `canManageShiftTime`/
-  `canGenerateShifts`/`canCancelShift` (dueño, o administrador con la
-  capacidad correspondiente).
+  - ADM-25: alta y edición, con días, franja, dotación, vigencia, "Trabaja los feriados" marcado por defecto (P-050), horas mensuales informativas, estado y notas.
+  - Lista de servicios en la ficha del cliente y en la de la sede. Se pueden pausar, reactivar y finalizar.
+- Turnos (P10.3, SHIFT-007 a SHIFT-011, SERVICE-008):
+  - ADM-05 "Planificación · día", versión mínima: turnos del día con dotación y estado, fecha navegable, actualización cada 30 s si es hoy.
+  - ADM-07: turno puntual con aviso de feriado. En la edición solo se cambia la franja: la dotación y las notas llegan en F11, con `update_shift_details`.
+  - ADM-09 "Generar turnos del mes": resumen previo y resultado.
+  - Diálogo de cancelación con motivo obligatorio.
+  - Las acciones se muestran según la capacidad: `generate_shifts` y `cancel_shifts`.
+- Pruebas (P10.4, SERVICE-007, SHIFT-012, TEST-007):
+  - Suite e2e `tests/e2e-shifts-services/`, que genera un mes reservado y lejano, porque la generación abarca todo el sistema.
+  - Casos de empleado y supervisor contra las RPC de turnos en la suite de permisos por API.
 
-  **Nota:** la edición de ADM-07 no permite cambiar dotación ni notas de un
-  turno ya creado -- el backend no tiene ninguna RPC ni política de
-  PostgREST para eso (contradicción entre `05`/`06` y lo ya construido en
-  `App_dev`, reportada al orquestador; ver `docs/features/
-servicios-y-turnos.md`).
+### Corregido
+
+- Las suites e2e `e2e-clients-sites` y `e2e-users` fallaban enteras desde el `PasswordInput`: `getByLabel('Contraseña')` también encontraba el botón "Mostrar contraseña".
+- `resolveUserId`, de la suite de permisos, solo leía la primera página de usuarios.
 
 ## [0.6.0] - 2026-09-24
 
