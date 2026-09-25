@@ -9,17 +9,23 @@ import { MapView } from '@/components/map'
 import { useSiteDetailQuery } from '@/features/sites/queries'
 import { ChangeSiteStatusDialog } from '@/features/sites/components/ChangeSiteStatusDialog'
 import { SiteInfo } from '@/features/sites/components/SiteInfo'
+import {
+  NewServiceButton,
+  ServiceList,
+} from '@/features/services/components/ServiceList'
 
 /**
  * ADM-22 "Sede · detalle" (SITE-002, `05` línea 76): cabecera con estado y
  * secciones (datos y restricciones con `SiteInfo`, mapa, servicios,
  * plantilla de tareas, próximos turnos). Sin pestañas, a diferencia de
  * ADM-21: `05` describe ADM-22 como una lista de secciones, no como
- * pestañas separadas, y acá ninguna sección tiene contenido pesado que
- * convenga ocultar hasta que se la elija (servicios y próximos turnos
- * quedan vacíos hasta F10 y P08.6/P08.7). Esto además evita el problema de
- * `MapView` dentro de una pestaña oculta (`invalidateSize`, ver el reporte
- * del encargo): acá el mapa está siempre montado.
+ * pestañas separadas, y acá ninguna sección tiene contenido tan pesado
+ * como para convenir ocultarla hasta que se la elija. Esto además evita el
+ * problema de `MapView` dentro de una pestaña oculta (`invalidateSize`, ver
+ * el reporte del encargo de P08.4): acá el mapa está siempre montado.
+ * Servicios (SERVICE-003, P10.2) usa `ServiceList`/`NewServiceButton`
+ * (`src/features/services/components/ServiceList.tsx`), igual que la
+ * pestaña Servicios de ADM-21; próximos turnos queda vacío hasta P11.
  */
 export default function SiteDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -107,11 +113,11 @@ export default function SiteDetailPage() {
       </div>
 
       <div className="rounded-lg border border-border bg-surface p-5">
-        <h3 className="mb-3 text-[13px] font-semibold text-text">Servicios</h3>
-        <EmptyState
-          title="Todavía no hay servicios para mostrar"
-          description="Los servicios de esta sede se van a ver acá cuando esté habilitada la gestión de servicios."
-        />
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h3 className="text-[13px] font-semibold text-text">Servicios</h3>
+          <NewServiceButton siteId={site.id} />
+        </div>
+        <ServiceList siteId={site.id} />
       </div>
 
       <div className="rounded-lg border border-border bg-surface p-5">

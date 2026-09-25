@@ -628,6 +628,67 @@ de administrador." respectivamente.
 
 Detalle completo en `supabase/tests/0013_rpc_users.test.sql` (25 aserciones).
 
+## RPC de turnos (04 sección 9, 06 sección 7, migración `0023`, SHIFT-001 a SHIFT-005, P10.1)
+
+Las cinco RPC de `create_shift`, `generate_shifts`, `update_shift_time`, `cancel_shift`,
+`reload_shift_tasks`. El plan nombraba este archivo `0013_rpc_shifts.sql` (04 sección 11), pero
+ese número ya lo usa `0013_rpc_users.sql` desde P04.5 (las migraciones no reservan números,
+decisión del 21 sep 2026); toma el siguiente libre, `0023`. Viven en `public` (no `app`):
+`supabase/config.toml` solo expone `public`/`graphql_public` a PostgREST.
+
+Dos auxiliares internos en `app` (uso exclusivo de estas RPC, `execute` revocado a
+`public`/`anon`/`authenticated`, mismo criterio que `app.log_security_event`):
+
+| Función                                              | Qué hace                                                                                                                                                                                                                                                          |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app.checklist_template_for(p_client_id, p_site_id)` | Devuelve el `id` de la plantilla vigente: la de la sede si existe, si no la del cliente, `null` si no hay ninguna (P-058).                                                                                                                                        |
+| `app.copy_checklist_to_shift(p_shift_id)`            | Reemplaza `shift_tasks` del turno por los ítems de la plantilla vigente (borra e inserta de nuevo) y fija `shifts.checklist_template_id` (P-061, ADR-011). La usan `create_shift`, `generate_shifts` y `reload_shift_tasks` para no triplicar la lógica de copia. |
+
+| RPC                                                                                                       | Quién                    | Qué hace                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| --------------------------------------------------------------------------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `create_shift(p_client_id, p_site_id, p_date, p_start, p_end, p_required_staff, p_service_id?, p_notes?)` | O, A                     | Turno puntual o manual (P-045). `CLIENT_NOT_ACTIVE`/`SITE_NOT_ACTIVE` si el cliente o la sede no están activos; `INVALID_TIME_RANGE` si `end <= start`. Copia el checklist vigente. Devuelve `jsonb`: `{"shift": <fila>, "warnings": [...]}`; `"HOLIDAY"` (informativo, no bloquea) si la fecha es feriado.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `generate_shifts(p_year, p_month)`                                                                        | O; A + `generate_shifts` | Genera los turnos faltantes del mes para los servicios `active` vigentes con cliente y sede activos: respeta `weekdays`, vigencia, feriados (`works_on_holidays`) y la unicidad `(service_id, shift_date)`; nunca toca un turno existente (P-044, ADR-010). Copia el checklist en cada turno creado. Idempotente. Devuelve `jsonb`: `{"created", "skipped", "holidays_skipped"}` (enteros). Opera sobre **todos** los servicios activos del sistema para ese año/mes, sin filtro por cliente (06 sección 6) -- ver "Rendimiento" más abajo sobre cómo se midió con `App_dev` en uso.                                                                                                                                                                                                                                                                |
+| `update_shift_time(p_shift_id, p_start, p_end)`                                                           | O, A                     | Cambia la franja de un turno (04 sección 6.1). Permitido en `scheduled`/`assigned` (cambia inicio y fin); en `in_progress` solo el fin (si `p_start` difiere del actual, `SHIFT_NOT_EDITABLE`); nunca en `completed`/`cancelled` (`SHIFT_COMPLETED`/`SHIFT_CANCELLED`). `INVALID_TIME_RANGE` si `end <= start`. El trigger `app.sync_assignment_window` (0007) recalcula la ventana de las asignaciones vigentes; si eso deja a un empleado con dos asignaciones superpuestas, Postgres dispara `exclusion_violation` (`23P01`) sobre `assignments_no_overlap` -- la RPC lo anticipa con un bloque `exception when exclusion_violation` y lo traduce a `ASSIGNMENT_OVERLAP` con mensaje en voseo (pendiente anotado desde P04.4, verificado en vivo el 21 sep 2026, ver "Pendiente" de `12_Registro_de_Progreso.md`). Devuelve la fila de `shifts`. |
+| `cancel_shift(p_shift_id, p_reason)`                                                                      | O; A + `cancel_shifts`   | Motivo obligatorio (`CANCEL_REASON_REQUIRED`); `SHIFT_CANCELLED`/`SHIFT_COMPLETED` si ya está en ese estado. Cancela las supervisiones `assigned`/`in_progress` de ese turno. Las asignaciones **no** se tocan: quedan para historia (P-049). Devuelve la fila de `shifts`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `reload_shift_tasks(p_shift_id)`                                                                          | O; A + `edit_checklists` | Reemplaza las tareas del turno por las de la plantilla vigente (ADR-011). Solo si el turno sigue `scheduled`/`assigned` (si no, `SHIFT_NOT_EDITABLE`). Devuelve `setof shift_tasks` (mismo criterio que `set_user_roles`, 0013, para operaciones que reemplazan un conjunto de filas, no una única "fila afectada").                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+
+Decisiones menores (06 sección 15 no traía mensaje en voseo para varios de estos códigos, mismo
+caso que `ROLE_REQUIRES_EMPLOYEE`/`ADMIN_ROLE_REQUIRED` en `0013_rpc_users.sql`): se redactaron
+`SHIFT_CANCELLED` ("Este turno está cancelado."), `SHIFT_COMPLETED` ("Este turno ya terminó."),
+`SHIFT_NOT_EDITABLE` ("El turno ya está en curso: solo se puede cambiar la hora de fin." /
+"Este turno no admite ese cambio en su estado actual.", según el caso), `CANCEL_REASON_REQUIRED`
+("Indicá el motivo.") y `SHIFT_NOT_FOUND` ("No encontramos ese turno." -- ni siquiera está en la
+lista de códigos de `06` sección 7, pero hace falta uno para "ese turno no existe"; mismo hint que
+ya usaba `app.sync_assignment_window`, 0007).
+
+Detalle completo en `supabase/tests/0023_rpc_shifts.test.sql` (40 aserciones: `create_shift`,
+`update_shift_time` incluida la traducción de `ASSIGNMENT_OVERLAP`, `cancel_shift`,
+`reload_shift_tasks`, permisos por rol) y `supabase/tests/0023_rpc_shifts_generate.test.sql`
+(17 aserciones: `generate_shifts`, ver más abajo por qué no fija los totales exactos del sistema).
+`supabase/tests/0023_service_005.test.sql` (SERVICE-005, 6 aserciones) completa lo que
+`0007`/`0012` no cubrían de `services`: la FK compuesta funciona de verdad (no solo existe en el
+catálogo) y la RLS de escritura niega a supervisor y empleado.
+
+### Por qué los pgTAP de `generate_shifts` no fijan los totales exactos del sistema
+
+`generate_shifts` opera sobre **todos** los servicios `active` vigentes del sistema para el
+año/mes pedido, sin filtro por cliente (06 sección 6, sin límite de horizonte, P-054). `App_dev`
+también es el proyecto de staging con datos reales de uso (`12_Registro_de_Progreso.md`, sección
+"Pendiente"): si existe algún servicio real con `valid_to` abierto (vigencia sin fin), también
+genera turnos para cualquier mes futuro, incluido el 2199 que usan los tests. Se comprobó en vivo:
+una primera versión de los tests, con los totales de `created`/`skipped`/`holidays_skipped`
+fijados a mano para las fixtures del archivo, falló porque `generate_shifts(2199, 3)` devolvió
+`created: 373` en lugar de los `37` esperados solo de la fixture -- la diferencia son servicios
+reales de `App_dev` que también caen en ese mes. Por eso el archivo de test:
+
+- fija con exactitud los conteos **por `service_id`** de la fixture (no dependen de datos ajenos);
+- para el total del sistema, verifica un **mínimo** (`cmp_ok(created, '>=', 37, ...)`) y la
+  **consistencia interna** (la cantidad de filas nuevas en `shifts` para el mes coincide
+  exactamente con `created`, sin importar cuántas sean);
+- para la segunda corrida (idempotencia), verifica que `created = 0` exactamente -- esa aserción
+  sí es determinística sin importar los datos reales, porque una corrida inmediatamente después de
+  otra siempre tiene que crear cero turnos.
+
 ## Storage: buckets `avatars` y `branding` (04 sección 7.3, migración `0014`, DB-016, ADR-016)
 
 | Bucket     | Ruta                      | Límite | Tipos                                                                               | Lectura                           | Escritura                                                      |
@@ -881,6 +942,24 @@ Scan` sobre tablas grandes):**
 - `v_clients` (listado completo con conteos): `Seq Scan on clients` (6 filas, correcto para un
   listado completo) más `Index Scan` sobre `sites_client_id_idx`/`services_client_id_idx`.
 
+### `generate_shifts`: mes típico en menos de 10 segundos (criterio de F10, P10.1)
+
+Medición pedida por `08_Fases_y_Backlog.md` (F10, criterio de aceptación): "un mes típico del
+relevamiento (60 clientes, varias sedes, franjas mañana y tarde) se genera en menos de 10
+segundos". Se armó un fixture ad hoc (no quedó en el repositorio: se corrió dentro de una
+transacción con `rollback` contra `App_dev`, mismo patrón que las mediciones de DB-024) con **60
+clientes, 2 sedes por cliente y 2 servicios por sede** (mañana 08–12, tarde 14–18, lunes a
+viernes) -- **240 servicios** en total, cada uno con una plantilla de checklist propia de 5 ítems
+por cliente (60 plantillas). `generate_shifts(2199, 4)` (abril, 22 días hábiles) creó **5632
+turnos** (con su copia de checklist cada uno; el excedente sobre los 5280 esperados de la fixture,
+240 × 22, son servicios reales de `App_dev` que también caen en ese mes -- ver la nota sobre
+`generate_shifts` en la sección "RPC de turnos" más arriba) en **6,06 segundos**
+(`clock_timestamp()` antes y después de la llamada, medido con `App_dev` en uso normal, sin
+ventana de mantenimiento). Dentro del margen de 10 segundos que pide el criterio de aceptación.
+No hizo falta ningún índice adicional para esta RPC: usa `shifts_service_id_shift_date_key`
+(0007, unicidad parcial ya existente) para el chequeo de "ya existe" y los índices de `clients`/
+`sites` por `client_id` (0005) para los `join` de cliente/sede activos.
+
 ## Ventana de revocación (migraciones `0020`, `0022`, P07.1)
 
 Decisión de Mike del 23 sep 2026 (ver `12_Registro_de_Progreso.md`), alternativa **(b) + (a)**
@@ -1102,7 +1181,10 @@ registra el inicio de sesión en `security_events` -- ver "Registro del inicio d
 arriba. En F7 (P07.1), sin tarea `DB-0xx` propia (encargo explícito de Mike sobre la ventana de
 revocación y la Edge Function `admin-users`): `0020_permission_functions_active_check.sql`,
 `0021_admin_revoke_user_sessions.sql` y `0022_own_row_policies_active_check.sql` -- ver "Ventana
-de revocación" y "Edge Function `admin-users`" más arriba.
+de revocación" y "Edge Function `admin-users`" más arriba. En F10 (P10.1, SHIFT-001 a SHIFT-005):
+`0023_rpc_shifts.sql` -- las cinco RPC de turnos (`create_shift`, `generate_shifts`,
+`update_shift_time`, `cancel_shift`, `reload_shift_tasks`), numerada `0023` porque `0013` ya lo
+usa `0013_rpc_users.sql` -- ver "RPC de turnos" más arriba.
 
 ## Cómo escribir una migración
 

@@ -47,7 +47,9 @@ test.describe('USERS-018: el dueño crea un administrador y ajusta sus capacidad
       await test.step('el dueño crea un administrador desde ADM-27', async () => {
         await page.goto('/ingresar')
         await page.getByLabel('Email').fill(SEED_ACCOUNTS.owner)
-        await page.getByLabel('Contraseña').fill(env!.seedPassword)
+        await page
+          .getByLabel('Contraseña', { exact: true })
+          .fill(env!.seedPassword)
         await page.getByRole('button', { name: 'Ingresar' }).click()
         await expect(page).toHaveURL(/\/admin$/)
 
@@ -114,7 +116,9 @@ test.describe('USERS-018: el dueño crea un administrador y ajusta sus capacidad
         await test.step('primer ingreso del administrador, con todas las capacidades activas', async () => {
           await adminPage.goto('/ingresar')
           await adminPage.getByLabel('Email').fill(email)
-          await adminPage.getByLabel('Contraseña').fill(password)
+          await adminPage
+            .getByLabel('Contraseña', { exact: true })
+            .fill(password)
           await adminPage.getByRole('button', { name: 'Ingresar' }).click()
           await expect(adminPage).toHaveURL(/\/admin$/)
 
@@ -229,7 +233,9 @@ test.describe('USERS-018: el dueño crea un administrador y ajusta sus capacidad
         await test.step('segundo ingreso: ya no ve ninguna acción que exigía manage_users', async () => {
           await secondAdminPage.goto('/ingresar')
           await secondAdminPage.getByLabel('Email').fill(email)
-          await secondAdminPage.getByLabel('Contraseña').fill(password)
+          await secondAdminPage
+            .getByLabel('Contraseña', { exact: true })
+            .fill(password)
           await secondAdminPage
             .getByRole('button', { name: 'Ingresar' })
             .click()

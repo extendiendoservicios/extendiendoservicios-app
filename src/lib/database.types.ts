@@ -2820,6 +2820,56 @@ export type Database = {
         Args: { p_profile_id: string }
         Returns: undefined
       }
+      cancel_shift: {
+        Args: { p_reason: string; p_shift_id: string }
+        Returns: {
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          checklist_template_id: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          end_time: string
+          ends_at: string | null
+          generated: boolean
+          id: string
+          notes: string | null
+          required_staff: number
+          service_id: string | null
+          shift_date: string
+          site_id: string
+          start_time: string
+          starts_at: string | null
+          status: Database["public"]["Enums"]["shift_status"]
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "shifts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_shift: {
+        Args: {
+          p_client_id: string
+          p_date: string
+          p_end: string
+          p_notes?: string
+          p_required_staff: number
+          p_service_id?: string
+          p_site_id: string
+          p_start: string
+        }
+        Returns: Json
+      }
+      generate_shifts: {
+        Args: { p_month: number; p_year: number }
+        Returns: Json
+      }
       mark_changes_seen: {
         Args: never
         Returns: {
@@ -2843,6 +2893,31 @@ export type Database = {
           to: "profiles"
           isOneToOne: true
           isSetofReturn: false
+        }
+      }
+      reload_shift_tasks: {
+        Args: { p_shift_id: string }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_required: boolean
+          not_done_reason: string | null
+          position: number
+          shift_id: string
+          status: Database["public"]["Enums"]["task_status"]
+          status_changed_at: string | null
+          status_changed_by: string | null
+          title: string
+          updated_at: string | null
+          updated_by: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "shift_tasks"
+          isOneToOne: false
+          isSetofReturn: true
         }
       }
       set_admin_capability: {
@@ -2871,6 +2946,39 @@ export type Database = {
           p_roles: Database["public"]["Enums"]["app_role"][]
         }
         Returns: Database["public"]["Enums"]["app_role"][]
+      }
+      update_shift_time: {
+        Args: { p_end: string; p_shift_id: string; p_start: string }
+        Returns: {
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          checklist_template_id: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          end_time: string
+          ends_at: string | null
+          generated: boolean
+          id: string
+          notes: string | null
+          required_staff: number
+          service_id: string | null
+          shift_date: string
+          site_id: string
+          start_time: string
+          starts_at: string | null
+          status: Database["public"]["Enums"]["shift_status"]
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "shifts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
     }
     Enums: {
