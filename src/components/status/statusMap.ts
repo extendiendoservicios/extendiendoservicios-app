@@ -3,6 +3,7 @@ import type {
   BadgeVariant,
   ClientStatus,
   EmployeeStatus,
+  ServiceStatus,
   ShiftStatus,
   SiteStatus,
   SupervisionStatus,
@@ -73,6 +74,21 @@ const SITE_STATUS_MAP: Record<SiteStatus, StatusMeta> = {
   inactive: { variant: 'neutral', label: 'Inactiva' },
 }
 
+/**
+ * `04_Modelo_de_Datos.md` sección 3: "service_status | active, paused,
+ * ended | Activo, Pausado, Finalizado". Agregada en SERVICE-003 (P10.2):
+ * `07_Design_System.md` sección 3 no tenía una fila para servicios (todas
+ * las demás tablas del modelo sí la tienen) — variante elegida por
+ * analogía con Cliente (`active`/`suspended`/`closed` → éxito/warning/
+ * neutral), señalado en el reporte del encargo para que lo confirme
+ * front-plataforma y lo sume a `07`.
+ */
+const SERVICE_STATUS_MAP: Record<ServiceStatus, StatusMeta> = {
+  active: { variant: 'success', label: 'Activo' },
+  paused: { variant: 'warning', label: 'Pausado' },
+  ended: { variant: 'neutral', label: 'Finalizado' },
+}
+
 const USER_STATUS_MAP: Record<UserAccountStatus, StatusMeta> = {
   activo: { variant: 'success', label: 'Activo' },
   desactivado: { variant: 'neutral', label: 'Desactivado' },
@@ -92,6 +108,7 @@ export type StatusBadgeInput =
   | { domain: 'employee'; status: EmployeeStatus }
   | { domain: 'client'; status: ClientStatus }
   | { domain: 'site'; status: SiteStatus }
+  | { domain: 'service'; status: ServiceStatus }
   | { domain: 'user'; status: UserAccountStatus }
 
 /**
@@ -120,6 +137,8 @@ export function getStatusMeta(input: StatusBadgeInput): StatusMeta {
       return CLIENT_STATUS_MAP[input.status]
     case 'site':
       return SITE_STATUS_MAP[input.status]
+    case 'service':
+      return SERVICE_STATUS_MAP[input.status]
     case 'user':
       return USER_STATUS_MAP[input.status]
   }

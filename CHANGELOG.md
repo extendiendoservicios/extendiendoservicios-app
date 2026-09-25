@@ -7,6 +7,17 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+### Agregado
+
+- Servicios recurrentes (P10.2, SERVICE-001 a SERVICE-004, SERVICE-006):
+  `src/api/services.ts`, esquema zod y hooks; ADM-25 (alta y edición, cliente
+  y sede editables con `Combobox`, días de la semana, franja, dotación,
+  vigencia con `DatePicker`, "Trabaja los feriados" marcado por defecto,
+  horas mensuales informativas, estado y notas); reemplaza los placeholders
+  de la pestaña Servicios de ADM-21 y de la sección Servicios de ADM-22 por
+  `ServiceList`, con pausar/reactivar/finalizar en línea (sin motivo
+  obligatorio). `StatusBadge` suma el dominio `service`.
+
 ## [0.6.0] - 2026-09-24
 
 Empleados y supervisores (F9). El dueño y los administradores dan de alta a empleados y supervisores con su usuario, gestionan su ficha completa, habilitaciones, disponibilidad y licencias, y encuentran a cualquiera desde el buscador global. Sin migraciones nuevas.

@@ -151,9 +151,27 @@ función como parámetro, no un trigger.
 | `fetchSitesForMap(filters)`                       | `from('sites')`   | Para ADM-24: trae todas las sedes vigentes del cliente filtrado, con y sin coordenadas (el filtrado por coordenadas lo hace la pantalla, para poder avisar cuántas quedaron afuera del mapa).                                                      |
 | `fetchClientFilterOptions()`                      | `from('clients')` | Opciones del filtro "Cliente" del mapa de sedes: todos los clientes vigentes, sin filtrar por `status`.                                                                                                                                            |
 
+### `services` (`src/api/services.ts`, P10.2 — SERVICE-001 a SERVICE-004, SERVICE-006)
+
+Servicios recurrentes de ADM-25 y las listas de servicios de ADM-21 y
+ADM-22. Igual que `clients`/`sites`: sin RPC propia (`06_API.md` sección 6,
+todo `insert/update`/`update status` directo por PostgREST); `mapWriteError`
+traduce a mano los checks de `services` (`services_weekdays_check`,
+`services_time_range_check`, `services_required_staff_check`,
+`0007_services_shifts_assignments.sql`); `created_by`/`updated_by` los pasa
+cada función como parámetro, no un trigger. A diferencia de `clients.ts`/
+`sites.ts`, no hay `CLIENT_NOT_ACTIVE`/`SITE_NOT_ACTIVE` en la escritura de
+`services`: esos códigos solo los devuelven `generate_shifts`/`create_shift`
+(P10.1/P10.3, fuera de este paquete).
+
+| Función                                                          | Canal              | Notas                                                                                                                                                                                                                                |
+| ---------------------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `fetchServicesByClient(clientId)`, `fetchServicesBySite(siteId)` | `from('services')` | Para la pestaña Servicios de ADM-21 y la sección Servicios de ADM-22. Embeben `sites(name)`.                                                                                                                                         |
+| `fetchServiceDetail(id)`, `createService`, `updateService`       | `from('services')` | Embeben `clients(legal_name, trade_name)` y `sites(name)` para la cabecera de ADM-25. Días de la semana inválidos → `INVALID_WEEKDAYS`; rango horario inválido → `INVALID_TIME_RANGE`; dotación fuera de 1..10 → `VALIDATION_ERROR`. |
+| `setServiceStatus(id, status, updatedBy)`                        | `from('services')` | Solo toca `status` (SERVICE-004), aparte del formulario completo.                                                                                                                                                                    |
+
 ## Próximos dominios
 
-Cada paquete de F8 en adelante agrega su sección acá (`employees`,
-`shifts`, `attendance`, `supervisions`, `tasks`) siguiendo el mismo
-formato: función, canal, particularidades que no se deducen de leer el
-nombre.
+Cada paquete de F10 en adelante agrega su sección acá (`shifts`,
+`attendance`, `supervisions`, `tasks`) siguiendo el mismo formato: función,
+canal, particularidades que no se deducen de leer el nombre.

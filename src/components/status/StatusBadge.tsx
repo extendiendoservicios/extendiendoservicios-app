@@ -3,8 +3,9 @@ import { getStatusMeta, type StatusBadgeInput } from './statusMap'
 
 /**
  * StatusBadge (DS-007): único componente para mostrar el estado de un turno,
- * asignación, tarea, supervisión, empleado, cliente, sede o usuario, sobre
- * el mapa de `statusMap.ts` (`07_Design_System.md` sección 3).
+ * asignación, tarea, supervisión, empleado, cliente, sede, servicio o
+ * usuario, sobre el mapa de `statusMap.ts` (`07_Design_System.md` sección
+ * 3).
  */
 export type StatusBadgeProps = StatusBadgeInput & { className?: string }
 
