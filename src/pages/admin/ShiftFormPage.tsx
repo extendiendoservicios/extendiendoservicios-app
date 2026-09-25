@@ -28,12 +28,14 @@ import {
   useUpdateShiftTimeMutation,
 } from '@/features/shifts/queries'
 import {
+  shiftEditFormSchema,
+  shiftEditFormValuesToInputs,
   shiftFormSchema,
   shiftFormValuesToCreateInput,
-  shiftTimeFormSchema,
+  type ShiftEditFormValues,
   type ShiftFormValues,
-  type ShiftTimeFormValues,
 } from '@/features/shifts/schemas'
+import { useUpdateShiftDetailsMutation } from '@/features/planning/queries'
 
 /** `"YYYY-MM-DD"` → `Date` para `DatePicker` (mismo criterio que `ServiceFormPage`). */
 function isoDateToDate(isoDate: string | undefined): Date | undefined {
@@ -43,16 +45,14 @@ function isoDateToDate(isoDate: string | undefined): Date | undefined {
 /**
  * ADM-07 "Formulario de turno" (SHIFT-008, `05` línea 41): alta puntual
  * (`/admin/turnos/nuevo`, con `?fecha=` opcional desde ADM-05) y edición
- * de franja (`/admin/turnos/:id/editar`).
+ * (`/admin/turnos/:id/editar`).
  *
- * En edición, `05` línea 41 pide "franja, dotación y notas, según estado",
- * pero el único endpoint que existe hoy para tocar un turno ya creado es
- * `update_shift_time` (franja nada más) -- `0012_rls_policies.sql` no le da
- * a `shifts` ninguna política de escritura directa y no hay otra RPC para
- * dotación o notas (`06_API.md` sección 7, contradicción documentada en el
- * comentario de `src/api/shifts.ts` y en el reporte del encargo). Por eso
- * el modo edición solo deja tocar el horario; cliente, sede, fecha,
- * dotación y notas quedan de solo lectura.
+ * En edición, `05` línea 41 pide "franja, dotación y notas, según estado":
+ * hasta P11.2 solo existía `update_shift_time` (franja); `update_shift_details`
+ * llegó en P11.1 (`0024_rpc_assignments.sql`) y cierra el pendiente que
+ * dejaba anotado `12_Registro_de_Progreso.md` (ASSIGN-013, P11.3) -- el
+ * formulario llama a las dos RPC al guardar. Cliente, sede y fecha siguen de
+ * solo lectura en edición (no hay endpoint para cambiarlas).
  */
 export default function ShiftFormPage() {
   const { id } = useParams<{ id: string }>()
@@ -326,29 +326,44 @@ function EditShiftTimeForm({
   const updateShiftTime = useUpdateShiftTimeMutation(
     shiftQuery.data?.shiftDate ?? '',
   )
+  const updateShiftDetails = useUpdateShiftDetailsMutation()
+  const isSaving = updateShiftTime.isPending || updateShiftDetails.isPending
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<ShiftTimeFormValues>({
-    resolver: zodResolver(shiftTimeFormSchema),
+  } = useForm<ShiftEditFormValues>({
+    resolver: zodResolver(shiftEditFormSchema),
     values: shiftQuery.data
       ? {
           startTime: shiftQuery.data.startTime.slice(0, 5),
           endTime: shiftQuery.data.endTime.slice(0, 5),
+          requiredStaff: String(shiftQuery.data.requiredStaff),
+          notes: shiftQuery.data.notes ?? '',
         }
       : undefined,
   })
 
-  async function onSubmit(values: ShiftTimeFormValues) {
+  // Franja (`update_shift_time`) y dotación/notas (`update_shift_details`)
+  // son dos RPC separadas (`06` sección 7, ASSIGN-013): un solo formulario
+  // las llama a las dos, así la persona no tiene que guardar dos veces.
+  async function onSubmit(values: ShiftEditFormValues) {
+    const inputs = shiftEditFormValuesToInputs(values)
     try {
-      await updateShiftTime.mutateAsync({
-        shiftId: id,
-        start: values.startTime,
-        end: values.endTime,
-      })
-      toast.success('Actualizamos el horario del turno.')
+      await Promise.all([
+        updateShiftTime.mutateAsync({
+          shiftId: id,
+          start: inputs.time.start,
+          end: inputs.time.end,
+        }),
+        updateShiftDetails.mutateAsync({
+          shiftId: id,
+          requiredStaff: inputs.details.requiredStaff,
+          notes: inputs.details.notes,
+        }),
+      ])
+      toast.success('Actualizamos el turno.')
       void navigate(
         `/admin/planificacion?vista=dia&fecha=${shiftQuery.data?.shiftDate ?? ''}`,
       )
@@ -404,8 +419,8 @@ function EditShiftTimeForm({
           <StatusBadge domain="shift" status={shift.status} />
         </div>
         <p className="text-[12.5px] text-text-3">
-          Cliente, sede, fecha, dotación y notas no se pueden editar desde acá:
-          solo el horario del turno.
+          Cliente, sede y fecha no se pueden editar desde acá: solo el horario,
+          la dotación y las notas del turno.
         </p>
       </div>
 
@@ -415,7 +430,7 @@ function EditShiftTimeForm({
           <AlertDescription>
             Este turno está{' '}
             {shift.status === 'cancelled' ? 'cancelado' : 'finalizado'}: ya no
-            admite cambios de horario.
+            admite cambios.
           </AlertDescription>
         </Alert>
       ) : (
@@ -458,17 +473,36 @@ function EditShiftTimeForm({
                 <FieldError>{errors.endTime.message}</FieldError>
               )}
             </Field>
+            <Field data-invalid={Boolean(errors.requiredStaff) || undefined}>
+              <FieldLabel htmlFor="shift-required-staff">Dotación</FieldLabel>
+              <Input
+                id="shift-required-staff"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={10}
+                aria-invalid={Boolean(errors.requiredStaff)}
+                {...register('requiredStaff')}
+              />
+              {errors.requiredStaff && (
+                <FieldError>{errors.requiredStaff.message}</FieldError>
+              )}
+            </Field>
+            <Field className="sm:col-span-2">
+              <FieldLabel htmlFor="shift-notes">Notas</FieldLabel>
+              <Textarea id="shift-notes" rows={3} {...register('notes')} />
+            </Field>
           </div>
 
           <div className="flex gap-2">
-            <Button type="submit" loading={updateShiftTime.isPending}>
+            <Button type="submit" loading={isSaving}>
               Guardar cambios
             </Button>
             <Button
               type="button"
               variant="ghost"
               onClick={() => void navigate(-1)}
-              disabled={updateShiftTime.isPending}
+              disabled={isSaving}
             >
               Volver
             </Button>

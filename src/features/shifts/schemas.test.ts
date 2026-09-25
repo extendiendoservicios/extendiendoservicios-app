@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  shiftEditFormSchema,
+  shiftEditFormValuesToInputs,
   shiftFormSchema,
   shiftFormValuesToCreateInput,
   shiftTimeFormSchema,
@@ -97,5 +99,52 @@ describe('shiftTimeFormSchema', () => {
       endTime: '08:00',
     })
     expect(result.success).toBe(false)
+  })
+})
+
+describe('shiftEditFormSchema', () => {
+  const VALID_EDIT_VALUES = {
+    startTime: '08:00',
+    endTime: '12:00',
+    requiredStaff: '3',
+    notes: '',
+  }
+
+  it('acepta franja, dotación y notas válidas', () => {
+    const result = shiftEditFormSchema.safeParse(VALID_EDIT_VALUES)
+    expect(result.success).toBe(true)
+  })
+
+  it('rechaza una dotación fuera de 1..10', () => {
+    const result = shiftEditFormSchema.safeParse({
+      ...VALID_EDIT_VALUES,
+      requiredStaff: '0',
+    })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe('shiftEditFormValuesToInputs', () => {
+  it('separa la franja de la dotación y las notas, y recorta el texto', () => {
+    const inputs = shiftEditFormValuesToInputs({
+      startTime: '08:00',
+      endTime: '12:00',
+      requiredStaff: '4',
+      notes: '  Llevar insumos  ',
+    })
+    expect(inputs).toEqual({
+      time: { start: '08:00', end: '12:00' },
+      details: { requiredStaff: 4, notes: 'Llevar insumos' },
+    })
+  })
+
+  it('deja notas en null cuando viene vacío', () => {
+    const inputs = shiftEditFormValuesToInputs({
+      startTime: '08:00',
+      endTime: '12:00',
+      requiredStaff: '4',
+      notes: '',
+    })
+    expect(inputs.details.notes).toBeNull()
   })
 })

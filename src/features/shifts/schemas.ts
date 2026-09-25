@@ -51,10 +51,11 @@ export function shiftFormValuesToCreateInput(values: ShiftFormValues) {
 }
 
 /**
- * Edición de ADM-07 (SHIFT-008): solo franja horaria, el único cambio que
- * admite `update_shift_time` (ver la nota grande de `src/api/shifts.ts`
- * sobre la contradicción con `05` línea 41 -- cliente, sede, dotación y
- * notas no se pueden editar hoy).
+ * Edición de ADM-07 (SHIFT-008, franja) más dotación y notas (ASSIGN-013,
+ * `12_Registro_de_Progreso.md` sección "Pendiente": la RPC `update_shift_details`
+ * que faltaba llegó en P11.1 -- ver `src/api/assignments.ts`). Franja va a
+ * `update_shift_time`, dotación y notas a `update_shift_details`: dos RPC
+ * separadas, un solo formulario.
  */
 export const shiftTimeFormSchema = z
   .object({
@@ -67,3 +68,28 @@ export const shiftTimeFormSchema = z
   })
 
 export type ShiftTimeFormValues = z.infer<typeof shiftTimeFormSchema>
+
+/** Igual que `shiftTimeFormSchema`, con dotación y notas agregadas (ASSIGN-013). */
+export const shiftEditFormSchema = z
+  .object({
+    startTime: z.string().trim().min(1, 'Falta la hora de inicio.'),
+    endTime: z.string().trim().min(1, 'Falta la hora de fin.'),
+    requiredStaff: requiredStaffSchema,
+    notes: z.string().trim().optional(),
+  })
+  .refine((values) => values.endTime > values.startTime, {
+    message: 'La hora de fin tiene que ser posterior a la de inicio.',
+    path: ['endTime'],
+  })
+
+export type ShiftEditFormValues = z.infer<typeof shiftEditFormSchema>
+
+export function shiftEditFormValuesToInputs(values: ShiftEditFormValues) {
+  return {
+    time: { start: values.startTime, end: values.endTime },
+    details: {
+      requiredStaff: Number(values.requiredStaff),
+      notes: values.notes?.trim() ? values.notes.trim() : null,
+    },
+  }
+}

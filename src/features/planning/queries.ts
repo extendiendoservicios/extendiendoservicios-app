@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as assignmentsApi from '@/api/assignments'
 import type {
+  AssignCandidatesParams,
   AssignEmployeeInput,
   AssignmentsBoardRangeFilters,
   ShiftsBoardRangeFilters,
@@ -41,6 +42,10 @@ export const planningKeys = {
     to: string,
     filters: AssignmentsBoardRangeFilters,
   ) => [...planningKeys.all, 'assignmentsBoard', from, to, filters] as const,
+  shiftDetail: (shiftId: string) =>
+    [...planningKeys.all, 'shiftDetail', shiftId] as const,
+  assignCandidates: (params: AssignCandidatesParams) =>
+    [...planningKeys.all, 'assignCandidates', params] as const,
 }
 
 /** Calendario mensual (ADM-03): `v_shifts_board` entre `from` y `to`. */
@@ -134,5 +139,37 @@ export function useUpdateShiftDetailsMutation() {
       notes?: string | null
     }) => assignmentsApi.updateShiftDetails(shiftId, requiredStaff, notes),
     onSuccess: () => invalidatePlanningAndShifts(queryClient),
+  })
+}
+
+/** Detalle del turno (ADM-06, ASSIGN-011). Sin polling: ADM-06 no está en la lista de `05` sección 0/2 que lo pide. */
+export function useShiftDetailQuery(shiftId: string | undefined) {
+  return useQuery({
+    queryKey: planningKeys.shiftDetail(shiftId ?? ''),
+    queryFn: () => assignmentsApi.fetchShiftDetail(shiftId as string),
+    enabled: shiftId != null,
+    staleTime: LIST_STALE_TIME_MS,
+  })
+}
+
+/** Candidatos de ADM-08 (ASSIGN-012): solo mientras el drawer de asignar está abierto (`enabled`). */
+export function useAssignCandidatesQuery(
+  params: AssignCandidatesParams | undefined,
+) {
+  return useQuery({
+    queryKey: planningKeys.assignCandidates(
+      params ?? {
+        shiftId: '',
+        clientId: '',
+        shiftDate: '',
+        startTime: '',
+        endTime: '',
+        excludeEmployeeIds: [],
+      },
+    ),
+    queryFn: () =>
+      assignmentsApi.fetchAssignCandidates(params as AssignCandidatesParams),
+    enabled: params != null,
+    staleTime: LIST_STALE_TIME_MS,
   })
 }

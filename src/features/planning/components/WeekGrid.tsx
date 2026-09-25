@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router'
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/IconButton'
@@ -23,11 +24,6 @@ import { formatDateOnly } from '@/features/settings/dateOnly'
 
 const DESKTOP_QUERY = '(min-width: 1024px)'
 
-interface WeekGridProps {
-  /** Navega a ADM-06 (placeholder hasta P11.3): `PlanningPage` no cambia de `?vista=` acá, solo de ruta. */
-  onOpenShift: (shiftId: string) => void
-}
-
 /**
  * ADM-04 "Planificación · semana por empleado" (ASSIGN-009, `05` línea 38):
  * grilla empleados × 7 días, una tarjeta por asignación con sede y franja
@@ -36,11 +32,14 @@ interface WeekGridProps {
  * atenuados. Filtros cliente, sede, texto. Semana anterior y siguiente.
  * Sin arrastre (P-055, módulo G).
  *
+ * Cada tarjeta es un enlace directo a `/admin/turnos/:id` (ADM-06,
+ * ASSIGN-011).
+ *
  * Debajo de 1024 px (`05` sección 7: "Grilla semanal → un empleado por vez
  * con selector"): se elige un empleado con un `Combobox` y se ve su semana
  * como una lista vertical de 7 días.
  */
-function WeekGrid({ onOpenShift }: WeekGridProps) {
+function WeekGrid() {
   const isDesktop = useMediaQuery(DESKTOP_QUERY)
   const today = todayInBuenosAires()
 
@@ -206,19 +205,16 @@ function WeekGrid({ onOpenShift }: WeekGridProps) {
                           ) : (
                             <div className="flex flex-col gap-1">
                               {dayAssignments.map((assignment) => (
-                                <button
+                                <Link
                                   key={assignment.id}
-                                  type="button"
-                                  onClick={() =>
-                                    onOpenShift(assignment.shiftId)
-                                  }
+                                  to={`/admin/turnos/${assignment.shiftId}`}
                                   className="rounded bg-primary-100 px-1.5 py-1 text-left text-[11px] font-medium text-primary-800 outline-none hover:bg-primary-100/80 focus-visible:ring-3 focus-visible:ring-ring"
                                 >
                                   {assignment.siteName}
                                   <br />
                                   {assignment.startTime.slice(0, 5)}–
                                   {assignment.endTime.slice(0, 5)}
-                                </button>
+                                </Link>
                               ))}
                             </div>
                           )}
@@ -263,16 +259,15 @@ function WeekGrid({ onOpenShift }: WeekGridProps) {
                     ) : (
                       <div className="flex flex-col gap-1 pt-1">
                         {dayAssignments.map((assignment) => (
-                          <button
+                          <Link
                             key={assignment.id}
-                            type="button"
-                            onClick={() => onOpenShift(assignment.shiftId)}
+                            to={`/admin/turnos/${assignment.shiftId}`}
                             className="text-left text-[13px] font-medium text-primary-800"
                           >
                             {assignment.siteName} ·{' '}
                             {assignment.startTime.slice(0, 5)}–
                             {assignment.endTime.slice(0, 5)}
-                          </button>
+                          </Link>
                         ))}
                       </div>
                     )}

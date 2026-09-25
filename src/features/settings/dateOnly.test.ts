@@ -4,6 +4,7 @@ import {
   formatDateOnly,
   formatDateOnlyWithYear,
   localDateToIsoDate,
+  weekdayOfIsoDate,
 } from './dateOnly'
 
 /**
@@ -39,5 +40,13 @@ describe('addDaysToIsoDate', () => {
 
   it('resta días cruzando de año', () => {
     expect(addDaysToIsoDate('2026-01-01', -1)).toBe('2025-12-31')
+  })
+})
+
+describe('weekdayOfIsoDate', () => {
+  it('mismo criterio que extract(dow from ...) de Postgres: 0 domingo .. 6 sábado', () => {
+    expect(weekdayOfIsoDate('2026-01-01')).toBe(4) // jueves
+    expect(weekdayOfIsoDate('2026-01-04')).toBe(0) // domingo
+    expect(weekdayOfIsoDate('2026-01-05')).toBe(1) // lunes
   })
 })

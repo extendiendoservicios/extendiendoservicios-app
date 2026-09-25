@@ -1,14 +1,14 @@
-# Planificación y asignaciones (F11 · P11.2)
+# Planificación y asignaciones (F11 · P11.2, P11.3)
 
-`08_Fases_y_Backlog.md` F11 "Asignaciones y cronograma". Este paquete
-(P11.2, ASSIGN-007 a ASSIGN-010) construye la capa de datos de asignaciones
-y las tres vistas de solo lectura del cronograma: calendario mensual
-(ADM-03), grilla semanal por empleado (ADM-04) y la versión completa de la
-lista del día (ADM-05, que ya tenía una versión mínima desde P10.3, ver
-`docs/features/servicios-y-turnos.md`). El detalle del turno (ADM-06) y el
-drawer "Asignar empleado" (ADM-08) son de P11.3: acá se dejan la API, los
-esquemas y los hooks de las cuatro RPC de asignaciones, listos para que esas
-pantallas los usen.
+`08_Fases_y_Backlog.md` F11 "Asignaciones y cronograma". P11.2
+(ASSIGN-007 a ASSIGN-010) construyó la capa de datos de asignaciones y las
+tres vistas de solo lectura del cronograma: calendario mensual (ADM-03),
+grilla semanal por empleado (ADM-04) y la versión completa de la lista del
+día (ADM-05, que ya tenía una versión mínima desde P10.3, ver
+`docs/features/servicios-y-turnos.md`). Este paquete (P11.3, ASSIGN-011 a
+ASSIGN-014) agrega el detalle del turno (ADM-06, en drawer y en página) y el
+drawer "Asignar empleado" (ADM-08), con las cuatro RPC de asignaciones ya
+conectadas a pantalla.
 
 La base es P11.1 (`supabase/migrations/0024_rpc_assignments.sql`, todavía en
 el PR #63 sin fusionar al momento de este paquete): las cuatro RPC
@@ -155,18 +155,143 @@ ADM-03 sin editar la URL a mano.
   asigna el calendario y la grilla a `features/planning` -- mover `ShiftsDayList`
   entero hubiera sido un cambio más grande de lo que pide este paquete.
 
+## ADM-06 · Detalle del turno (`ShiftDetail`, ASSIGN-011, ASSIGN-013)
+
+`src/features/planning/components/ShiftDetail.tsx`: el contenido de ADM-06,
+igual en drawer (escritorio) y en página (móvil, ver más abajo). Un solo
+`select` con embebidos sobre `shifts` (`fetchShiftDetail`, `06` sección 7):
+cliente, sede, franja, estado, origen (servicio o puntual, según
+`service_id`), asignaciones vigentes (`removed_at is null`, con franja
+efectiva y estado), tareas ordenadas por posición (lectura; el alta es
+TASK-006/F12) y supervisiones (lectura; el alta es SUP-012/F15).
+
+Acciones (todas detrás de `canManageAssignments`/`canManageAssignmentsAfterStart`,
+`src/features/planning/permissions.ts`):
+
+- **Asignar empleado**: abre `AssignEmployeeSheet` (ADM-08, ver abajo).
+  Deshabilitado y con un texto explicando el motivo cuando la dotación ya
+  está completa.
+- **Quitar una asignación**: `RemoveAssignmentDialog`, reutiliza
+  `ConfirmDialog` (motivo obligatorio, mismo criterio que `CancelShiftDialog`).
+- **Franja propia de una asignación**: `AssignmentTimeDialog`
+  (`update_assignment_time`); las dos horas en blanco vuelve a heredar la del
+  turno (P-046).
+- **Editar dotación y notas del turno**: `ShiftDetailsDialog`
+  (`update_shift_details`, cierra el pendiente de
+  `12_Registro_de_Progreso.md` que señalaba P11.2).
+
+**Explicación en vez de fallo silencioso** (regla del encargo): `06` sección
+8 exige `manage_attendance` para asignar/quitar después de la hora de inicio
+del turno (`shifts.starts_at`, no el estado `in_progress` -- P-068 permite
+el check-in en cualquier momento del día). Si el turno ya empezó y quien
+mira no tiene esa capacidad, un `Alert` lo dice antes de que aparezcan los
+botones deshabilitados, en vez de dejar que la RPC devuelva `SHIFT_STARTED`
+sin contexto.
+
+## ADM-08 · Asignar empleado (`AssignEmployeeSheet`, ASSIGN-012)
+
+Sin ruta propia (`adminRoutes.tsx` ya lo documentaba desde P11.2): un
+`Sheet` que se abre desde `ShiftDetail` con el turno ya cargado. Candidatos
+de `fetchAssignCandidates` (`06` sección 8): `v_employees` con
+`effective_status = 'active'`, sin los ya asignados a este turno, con tres
+marcas por candidato --
+
+- **Habilitado para el cliente**: `employee_client_permissions` sin filas
+  para esa persona = habilitado para todos (P-034); si tiene alguna, hace
+  falta que el cliente del turno esté entre ellas.
+- **Disponible ese día y hora**: mismo criterio con `employee_availability`
+  (P-035): sin filas = sin restricción; si tiene, alguna franja del día de
+  la semana del turno tiene que cubrir su horario completo.
+- **De licencia**: `employee_leaves` vigente el día del turno (P-033,
+  contra `shift_date`, no contra "hoy" -- P-054 permite planificar sin
+  límite de horizonte).
+
+Además, **"ya asignado en otro turno del día, con horario"** (`05` línea 42):
+otras asignaciones vigentes de la persona ese mismo día, con sede y franja
+efectiva, no bloquean nada (`assign_employee` solo rechaza el solapamiento
+de horario con `ASSIGNMENT_OVERLAP`), es solo información para decidir.
+
+**Orden**: habilitados y disponibles primero (`06` sección 8), el resto
+después, alfabético dentro de cada grupo (`Array.prototype.sort` es
+estable). Búsqueda por nombre, cliente-side sobre la lista ya traída (la
+dotación es chica).
+
+**Franja propia opcional** (P-046) y **advertencias sin bloquear** (P-033,
+P-034, P-035, ratificadas): al confirmar, `assign_employee` siempre crea la
+asignación; si devuelve advertencias, el panel se queda abierto mostrándolas
+en un `Alert` en vez de cerrarse enseguida, para que no pasen inadvertidas
+-- la asignación ya existe de cualquier manera. Los errores de dominio
+(`SHIFT_FULL`, `ASSIGNMENT_OVERLAP`, `ALREADY_ASSIGNED`, `SHIFT_STARTED`,
+etc.) se muestran con el `message` del servidor, tal cual (regla común de la
+capa).
+
+## ADM-07 · Dotación y notas de un turno existente (ASSIGN-013)
+
+`ShiftFormPage.tsx` en modo edición cierra el pendiente de
+`12_Registro_de_Progreso.md`: ahora, además de la franja
+(`update_shift_time`), el formulario tiene los campos de dotación y notas
+(`update_shift_details`), con un solo botón "Guardar cambios" que llama a
+las dos RPC (`shiftEditFormSchema`/`shiftEditFormValuesToInputs`,
+`src/features/shifts/schemas.ts`). Cliente, sede y fecha siguen de solo
+lectura: sigue sin existir una RPC para cambiarlas.
+
+## Responsive (ASSIGN-014)
+
+- **ADM-06 en drawer y en página**: `src/pages/admin/ShiftDetailPage.tsx`
+  (`/admin/turnos/:id`) decide con `useMediaQuery('(min-width: 1024px)')`:
+  en escritorio envuelve `ShiftDetail` en un `Sheet` de 452 px (`07` sección
+  2.4); por debajo de 1024 px, en una página normal dentro de `AdminShell`.
+  **Decisión propia, documentada acá**: como `src/app/router.tsx` no tiene
+  un mecanismo de "location de fondo" (`background location`, patrón común
+  de React Router para modales con URL propia), entrar por un enlace directo
+  en escritorio muestra el drawer igual, pero sin el calendario/grilla/lista
+  detrás (la sidebar y la topbar de `AdminShell` sí quedan visibles). Si Mike
+  quiere el overlay real sobre la pantalla anterior, hace falta ese cambio de
+  arquitectura en `router.tsx`, fuera del alcance de un paquete de dominio.
+- **Desde el calendario, la grilla y la lista del día**: cada chip del mes
+  (`MonthCalendar`), cada tarjeta de la grilla (`WeekGrid`) y cada fila de
+  la lista del día (`ShiftsDayList`) son ahora enlaces directos a
+  `/admin/turnos/:id` (antes, la grilla semanal llamaba a un callback
+  `onOpenShift` que sólo navegaba; se simplificó a un `Link` para poder
+  abrir en pestaña nueva y que el navegador maneje el historial). El número
+  de día del calendario mensual sigue abriendo la lista de ese día (ADM-05).
+- **ADM-08 sin ruta propia**: el `Sheet` de `AssignEmployeeSheet` se ajusta
+  solo a pantalla completa por debajo de 768 px (comportamiento ya
+  construido en `components/ui/sheet.tsx`) -- una milla de diferencia con el
+  quiebre de 1024 px del resto de la pantalla, pre-existente del componente
+  compartido, no de este paquete.
+- Se probó que ADM-05 en celular permite asignar: tocar una fila navega a
+  ADM-06 en página completa, y desde ahí "Asignar empleado" abre el `Sheet`
+  a pantalla completa (criterio de aceptación de F11: "en celular puede
+  asignar desde la lista del día").
+
 ## Qué falta / para el orquestador
 
-- ADM-06 (detalle del turno: asignaciones, tareas, supervisiones, notas) y
-  ADM-08 (drawer "Asignar empleado", con las advertencias de `assign_employee`
-  antes de confirmar, P-034/P-035/P-033) son de P11.3: la API, los esquemas
-  y los hooks de las cuatro mutaciones ya están listos y con tests acá.
+- **`set_assignment_notes` no existe en el backend**: `06` sección 8 lo
+  documenta ("Observación del servicio", P-062, canal E/O/A), pero
+  `0024_rpc_assignments.sql` solo trae las cuatro RPC de este dominio. ADM-06
+  muestra la observación de cada asignación si ya tiene una (`assignments.notes`,
+  de solo lectura), pero no hay forma de cargarla o editarla desde la
+  interfaz hasta que esa RPC se agregue. Reportado, sin bloquear el resto del
+  paquete.
+- **Sin registro de asistencia en ADM-06 todavía**: `05` línea 40 pide
+  "inicio y fin reales, avisos" por asignación, pero eso es ATT-014 (F14,
+  depende de esta misma tarea según `08_Fases_y_Backlog.md`) -- no está en el
+  alcance de ASSIGN-011. `attendance_records`/`attendance_notices` no se
+  embeben en el `select` de `fetchShiftDetail` por ese motivo.
+- **`effective_status = 'active'` de `v_employees` compara contra "hoy", no
+  contra la fecha del turno**: un empleado con una licencia que arranca la
+  semana que viene no aparece como candidato para NINGÚN turno, ni siquiera
+  uno de dentro de dos meses que cae fuera de esa licencia. `06` sección 8
+  pide literalmente ese filtro para el listado de candidatos (a diferencia
+  de la advertencia `ON_LEAVE` de `assign_employee`, que sí compara contra
+  `shift_date`); se dejó tal cual lo pide el plan, señalado como limitación
+  menor.
 - Falta de columna en `v_assignments_board` (`client_trade_name`, ver
-  arriba): a decidir si se agrega a la vista o si ADM-04 se queda con la
-  razón social.
+  arriba, de P11.2): sigue sin resolverse.
 - Medición formal del criterio de rendimiento de F11 (mes con 600 turnos en
-  menos de 1 s) es de P11.4; este paquete solo diseñó pensando en eso (tope
-  de 3 chips por día, agrupado memoizado).
+  menos de 1 s) sigue pendiente de P11.4.
 - e2e de "asignar dos empleados desde el calendario", "ver la grilla
-  semanal" y "quitar uno con motivo" quedan para qa-pruebas, después de
-  P11.3 (necesitan ADM-06/ADM-08 para asignar/quitar de verdad).
+  semanal" y "quitar uno con motivo" quedan para qa-pruebas (P11.4): se
+  dejaron roles accesibles y `data-testid="assign-candidate"` en las filas
+  de candidatos de ADM-08 para que los pueda escribir.

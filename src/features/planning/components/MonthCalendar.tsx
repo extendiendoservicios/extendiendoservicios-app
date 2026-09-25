@@ -245,15 +245,17 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
               const hiddenCount = dayShifts.length - visible.length
 
               return (
-                <button
+                <div
                   key={day.date}
-                  type="button"
-                  onClick={() => onOpenDay(day.date)}
-                  className={`flex min-h-28 flex-col gap-1 border-b border-r border-border p-2 text-left align-top outline-none last:border-r-0 hover:bg-bg focus-visible:ring-3 focus-visible:ring-ring ${
+                  className={`flex min-h-28 flex-col gap-1 border-b border-r border-border p-2 align-top last:border-r-0 ${
                     day.isCurrentMonth ? '' : 'bg-secondary/20 text-text-3'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => onOpenDay(day.date)}
+                    className="flex items-center justify-between rounded outline-none focus-visible:ring-3 focus-visible:ring-ring"
+                  >
                     <span
                       className={`text-[12.5px] font-semibold ${isToday ? 'rounded-full bg-primary px-[7px] py-[1px] text-white' : ''}`}
                     >
@@ -269,36 +271,48 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
                         {dayShifts.length}
                       </span>
                     )}
-                  </div>
+                  </button>
                   <div className="flex flex-col gap-1">
                     {visible.map((shift) => {
                       // `05` ADM-03: el chip dice cliente · sede · franja y el
                       // estado va en el color. Una insignia completa adentro
                       // ocupaba todo el ancho de la celda y cortaba el texto.
+                      // Cada chip es un enlace directo al turno (ADM-06,
+                      // ASSIGN-011): el número de día de arriba sigue abriendo
+                      // la lista del día completa (ADM-05).
                       const meta = getStatusMeta({
                         domain: 'shift',
                         status: shift.displayStatus as BadgeShiftStatus,
                       })
                       const label = shiftChipLabel(shift)
                       return (
-                        <Badge
+                        <Link
                           key={shift.id}
-                          variant={meta.variant}
+                          to={`/admin/turnos/${shift.id}`}
                           title={`${meta.label} · ${label}`}
-                          className="block w-full min-w-0 truncate rounded px-1.5 py-0.5 text-[10.5px] font-medium"
+                          className="block w-full min-w-0 truncate rounded outline-none focus-visible:ring-3 focus-visible:ring-ring"
                         >
-                          <span className="sr-only">{meta.label}: </span>
-                          {label}
-                        </Badge>
+                          <Badge
+                            variant={meta.variant}
+                            className="block w-full min-w-0 truncate rounded px-1.5 py-0.5 text-[10.5px] font-medium"
+                          >
+                            <span className="sr-only">{meta.label}: </span>
+                            {label}
+                          </Badge>
+                        </Link>
                       )
                     })}
                     {hiddenCount > 0 && (
-                      <span className="text-[10.5px] font-semibold text-text-3">
+                      <button
+                        type="button"
+                        onClick={() => onOpenDay(day.date)}
+                        className="text-left text-[10.5px] font-semibold text-text-3 outline-none focus-visible:ring-3 focus-visible:ring-ring"
+                      >
                         +{hiddenCount} más
-                      </span>
+                      </button>
                     )}
                   </div>
-                </button>
+                </div>
               )
             })}
           </div>

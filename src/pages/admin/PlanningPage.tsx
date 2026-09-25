@@ -1,4 +1,4 @@
-import { useNavigate, useSearchParams } from 'react-router'
+import { useSearchParams } from 'react-router'
 import { SegmentedControl } from '@/components/SegmentedControl'
 import { ShiftsDayList } from '@/features/shifts/components/ShiftsDayList'
 import { MonthCalendar } from '@/features/planning/components/MonthCalendar'
@@ -21,13 +21,13 @@ const VISTA_OPTIONS: { value: Vista; label: string }[] = [
  * está en `05`: la navegación entre ADM-03/ADM-04/ADM-05 ahí solo dice a
  * dónde van, no cómo se ve el selector).
  *
- * Abrir un turno desde el calendario o la grilla semanal lleva a la lista
- * del día de esa fecha (ADM-05) o directo al detalle (`/admin/turnos/:id`,
- * ADM-06 -- placeholder hasta P11.3), según el encargo de ASSIGN-008/009.
+ * Abrir un turno lleva directo al detalle (`/admin/turnos/:id`, ADM-06,
+ * ASSIGN-011): un enlace propio en cada chip del calendario, cada tarjeta de
+ * la grilla semanal y cada fila de la lista del día. El número de día del
+ * calendario sigue abriendo la lista de ese día (ADM-05).
  */
 export default function PlanningPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const navigate = useNavigate()
   const vista = (searchParams.get('vista') as Vista | null) ?? 'mes'
 
   function goToVista(next: Vista) {
@@ -48,10 +48,6 @@ export default function PlanningPage() {
     setSearchParams(params, { replace: true })
   }
 
-  function handleOpenShift(shiftId: string) {
-    void navigate(`/admin/turnos/${shiftId}`)
-  }
-
   return (
     <div className="flex flex-col gap-4">
       <SegmentedControl
@@ -61,7 +57,7 @@ export default function PlanningPage() {
         onValueChange={goToVista}
       />
 
-      {vista === 'semana' && <WeekGrid onOpenShift={handleOpenShift} />}
+      {vista === 'semana' && <WeekGrid />}
 
       {vista === 'dia' && (
         <ShiftsDayList
