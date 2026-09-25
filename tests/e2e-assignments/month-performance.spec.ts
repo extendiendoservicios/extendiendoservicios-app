@@ -21,6 +21,17 @@
 //      marcas es el tiempo de pintado puro, sin la latency de red ni el tiempo de Playwright
 //      entre process, que no es lo que pide el criterio ("después de la carga de datos").
 //   4. Umbral: menos de 1000 ms (criterio de aceptación de F11).
+//   5. Limpieza: los 600 turnos se BORRAN FÍSICAMENTE al final (el encargo de P11.4 pide
+//      explícitamente "creados y borrados por el propio test"). Son datos sintéticos de
+//      rendimiento, no una asignación ni un cliente/sede real con historial que conservar (esos
+//      sí quedan con baja lógica, ver `cleanupDisposableClient`) -- y sin este borrado, cada
+//      corrida deja 600 turnos más en el mismo mes 2191-11, así que la corrida siguiente mide un
+//      mes cada vez más poblado: hallazgo real de esta revisión (ver el reporte del encargo), NO
+//      el diseño original de P11.4 (que los dejaba, "no molestan a nada real por estar tan lejos
+//      en el tiempo" -- cierto para un cliente/sede cerrados, falso para este spec en particular,
+//      que reutiliza el MISMO mes en cada corrida). El `service_role` puede borrar `shifts` sin
+//      problema: bypassa RLS (la tabla no tiene política de `delete`, pero eso rige para
+//      `authenticated`, no para el rol de la clave de servicio).
 //
 // Resultado de esta corrida: ver el reporte del encargo (P11.4) y
 // docs/features/asignaciones-y-cronograma.md.
@@ -145,6 +156,21 @@ test.describe('ASSIGN-016: un mes con 600 turnos se pinta en menos de 1 s', () =
       )
       expect(elapsedMs).toBeLessThan(1000)
     } finally {
+      // Borrado físico de los 600 turnos de fixture ANTES de cerrar el cliente/sede (ver el
+      // comentario de arriba): sin esto, el mes 2191-11 acumula 600 turnos más por corrida y deja
+      // de representar "un mes con 600 turnos" a partir de la segunda vez que se corre la suite.
+      // Sin `throw` acá: lanzar dentro de un `finally` puede tapar el resultado real del test
+      // (`no-unsafe-finally`) -- si el borrado falla, queda bien visible en la consola de
+      // Playwright igual, y el mes 2191-11 sigue disponible para revisar a mano.
+      const { error: deleteError } = await admin
+        .from('shifts')
+        .delete()
+        .eq('client_id', client.id)
+      if (deleteError) {
+        console.error(
+          `[ASSIGN-016] No se pudieron borrar los 600 turnos de fixture en la limpieza: ${deleteError.message}`,
+        )
+      }
       await cleanupDisposableClient(admin, client.id)
     }
   })

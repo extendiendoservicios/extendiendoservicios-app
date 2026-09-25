@@ -244,3 +244,42 @@ export async function markShiftCancelledDirectly(
     )
   }
 }
+
+/**
+ * Libera directo (clave de servicio) la asignación de un turno YA cancelado, después de haber
+ * comprobado que sobrevivió a la cancelación (ese es el punto del test, ver
+ * `cancelled-shift-keeps-assignments.spec.ts`): `remove_assignment` rechaza esto con
+ * `SHIFT_CANCELLED` (`0024_rpc_assignments.sql`), así que la limpieza no puede pasar por la RPC.
+ *
+ * Es seguro hacerlo directo, sin tocar el schema `app`: el trigger `app.sync_assignment_window`
+ * (`0007_services_shifts_assignments.sql`) es `before insert or update OF shift_id, start_time,
+ * end_time` -- column-specific -- y acá solo se tocan `removed_at`/`removed_by`/`removed_reason`,
+ * así que el trigger ni siquiera se dispara (a diferencia del `insert` que documenta
+ * `createFixtureAssignment` en `tests/permissions/helpers/assignment-fixtures.ts`, que sí choca
+ * con "permission denied for schema app").
+ *
+ * Sin esto, cada corrida de la suite (y la suite corre al menos tres veces seguidas, TEST-029)
+ * dejaría una asignación vigente sobre una persona real del seed en una fecha cercana a hoy, sin
+ * ninguna acción del dominio que la libere -- distinto de los turnos del mes lejano de
+ * `month-performance.spec.ts`, que no molestan a nada real por estar tan lejos en el tiempo.
+ */
+export async function releaseAssignmentAfterCancelledShift(
+  admin: SupabaseClient,
+  assignmentId: string,
+  removedByProfileId: string,
+): Promise<void> {
+  const { error } = await admin
+    .from('assignments')
+    .update({
+      removed_at: new Date().toISOString(),
+      removed_by: removedByProfileId,
+      removed_reason:
+        'E2E-P114: limpieza tras comprobar que la asignación sobrevive a la cancelación del turno (ASSIGN-015)',
+    })
+    .eq('id', assignmentId)
+  if (error) {
+    throw new Error(
+      `No se pudo liberar la asignación de fixture en la limpieza: ${error.message}`,
+    )
+  }
+}

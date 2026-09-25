@@ -49,16 +49,20 @@ test.describe('ASSIGN-015: asignar hasta completar dotación, ver en la grilla s
         requiredStaff: 2,
       },
     )
-    // Dos candidatos sin conflicto real ese día (ni licencia, ni otra asignación): un nombre
-    // fijo (`María Gómez`) podía tener una licencia o un turno real justo esa fecha, hacía
-    // fallar la asignación con una advertencia o un error que este spec no está probando
-    // (encontrado armando esta suite, ver el reporte del encargo).
-    const firstEmployee = await pickSafeEmployee(admin, shiftDate)
-    const secondEmployee = await pickSafeEmployee(admin, shiftDate, [
-      firstEmployee.id,
-    ])
 
     try {
+      // Dos candidatos sin conflicto real ese día (ni licencia, ni otra asignación): un nombre
+      // fijo (`María Gómez`) podía tener una licencia o un turno real justo esa fecha, hacía
+      // fallar la asignación con una advertencia o un error que este spec no está probando
+      // (encontrado armando esta suite, ver el reporte del encargo). Dentro del `try`: si no
+      // encuentra candidato libre, el `finally` igual limpia el cliente/sede ya creados
+      // (corrección del qa-pruebas que retoma el encargo: antes esta llamada estaba ANTES del
+      // `try` y una excepción acá dejaba el cliente/sede sin limpiar, ver el reporte).
+      const firstEmployee = await pickSafeEmployee(admin, shiftDate)
+      const secondEmployee = await pickSafeEmployee(admin, shiftDate, [
+        firstEmployee.id,
+      ])
+
       await loginAs(page, SEED_ACCOUNTS.owner, env!.seedPassword, /\/admin$/)
 
       await test.step('ADM-03: abre el turno sin cubrir (0/2) desde el calendario mensual', async () => {

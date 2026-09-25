@@ -17,11 +17,13 @@ import {
   createDisposableShift,
   createDisposableSite,
   getAdminClient,
+  releaseShiftAssignments,
 } from './helpers/adminClient.ts'
 import { addDaysInBuenosAires } from './helpers/nearDates.ts'
 import { loginAs } from './helpers/login.ts'
 import { expectNoHorizontalScroll } from './helpers/noHorizontalScroll.ts'
 import { expectAssignSuccessToast } from './helpers/assignToast.ts'
+import { pickSafeEmployee } from './helpers/pickSafeEmployee.ts'
 import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
 
 const env = readE2eAssignmentsEnv()
@@ -48,8 +50,15 @@ test.describe('ASSIGN-015: asignar desde la lista del día en celular (390 px)',
         requiredStaff: 1,
       },
     )
-
     try {
+      // Empleado sin conflicto real en esa franja: un nombre fijo ("Lucía Torres") puede tener una
+      // asignación real que se superponga en el seed de `App_dev` (encontrado armando esta suite:
+      // Lucía tiene un turno recurrente real que se superpone con 08:00-12:00 varios días
+      // seguidos, ver el reporte del encargo P11.4). Dentro del `try`: si no encuentra candidato
+      // libre, el `finally` igual limpia el cliente/sede ya creados (corrección del qa-pruebas
+      // que retoma el encargo, ver el reporte).
+      const employee = await pickSafeEmployee(admin, shiftDate)
+
       await loginAs(page, SEED_ACCOUNTS.owner, env!.seedPassword, /\/admin$/)
 
       await test.step('ADM-05 (día) en 390 px: sin scroll horizontal, entra al turno con "Ver"', async () => {
@@ -72,13 +81,17 @@ test.describe('ASSIGN-015: asignar desde la lista del día en celular (390 px)',
         await page.getByRole('button', { name: 'Asignar empleado' }).click()
         await page
           .getByTestId('assign-candidate')
-          .filter({ hasText: 'Lucía Torres' })
+          .filter({ hasText: employee.fullName })
           .click()
         await page.getByRole('button', { name: 'Asignar' }).click()
         await expectAssignSuccessToast(page)
         await expect(page.getByText('Dotación: 1/1')).toBeVisible()
       })
     } finally {
+      // Ahora usa un empleado real elegido con `pickSafeEmployee`: sin liberar la asignación,
+      // quedaría vigente en `shiftDate` de corrida en corrida (mismo criterio que
+      // `assign-until-full-and-remove.spec.ts`).
+      await releaseShiftAssignments(admin, shift.id)
       await cleanupDisposableClient(admin, client.id)
     }
   })

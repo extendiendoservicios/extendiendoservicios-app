@@ -64,23 +64,38 @@ puerto 4176.
 - `cancelled-shift-keeps-assignments.spec.ts` (ASSIGN-015 punto 3) — arma la asignación con
   `assign_employee` real y cancela con `cancel_shift`: la asignación queda vigente
   (`removed_at` nulo) para historial. Cierra el pendiente que `tests/e2e-shifts-services`
-  (P10.4) no pudo probar porque `assign_employee` todavía no existía.
+  (P10.4) no pudo probar porque `assign_employee` todavía no existía. Limpieza propia: como
+  `remove_assignment` rechaza el turno cancelado con `SHIFT_CANCELLED` (es justo lo que este
+  spec comprueba), la asignación se libera directo con la clave de servicio DESPUÉS de la
+  comprobación (`releaseAssignmentAfterCancelledShift`, ver el comentario en
+  `helpers/adminClient.ts`), para no dejar a un empleado real del seed con una asignación
+  vigente en la fecha de fixture de corrida en corrida.
 - `mobile-day-list-assign.spec.ts` (ASSIGN-015 punto 4, proyecto `mobile`) — desde ADM-05 en 390
   px, entra a un turno con "Ver" y asigna un empleado desde la página completa de ADM-06, sin
   scroll horizontal.
 - `month-performance.spec.ts` (ASSIGN-016) — 600 turnos en un mes lejano reservado (2191-11),
   medición con `performance.now()` del navegador entre la respuesta de `v_shifts_board` y el
-  primer chip pintado. Método y resultado también documentados en
+  primer chip pintado. Los 600 turnos se BORRAN FÍSICAMENTE al final (ver "Independencia y
+  limpieza" más abajo). Método y resultado también documentados en
   `docs/features/asignaciones-y-cronograma.md`.
 
 ## Independencia y limpieza
 
 Prefijo `E2E-P114` en la razón social del cliente y el nombre de la sede, distinto del de las
 demás suites de backend real. Sin borrado físico salvo la fila de `employee_client_permissions`
-que crea `overlap-and-warning.spec.ts` (tabla sin baja lógica, ver el comentario ahí). Los 600
-turnos de `month-performance.spec.ts` quedan en la tabla, fechados en 2191: no hay ninguna acción
-del dominio que los borre y, tan lejos en el tiempo, no molestan a nada real (mismo criterio que
-`tests/e2e-shifts-services`).
+que crea `overlap-and-warning.spec.ts` (tabla sin baja lógica, ver el comentario ahí) y los 600
+turnos de `month-performance.spec.ts`.
+
+**Corrección de esta revisión (qa-pruebas, al retomar P11.4)**: el diseño original dejaba esos 600
+turnos en la tabla ("no molestan a nada real por estar tan lejos en el tiempo", mismo criterio que
+`tests/e2e-shifts-services`) -- válido para un cliente/sede con baja lógica, pero un defecto real
+para ESTE spec en particular: como reutiliza siempre el mismo mes (2191-11), cada corrida sin
+borrar sumaba 600 turnos más al mismo rango de fechas, y la corrida siguiente medía un mes cada
+vez más poblado (encontrado en vivo: 6 corridas sin limpiar dejaron 3.600 turnos en 2191-11, y la
+consulta a `v_shifts_board` para ese rango pasó de un resultado rápido a **6033 ms** ella sola,
+antes de que el navegador pintara nada). El encargo de P11.4 pide explícitamente "creados y
+borrados por el propio test": ahora `month-performance.spec.ts` borra sus 600 turnos con la clave
+de servicio (bypassa RLS) en el `finally`, antes de cerrar el cliente/sede.
 
 ## Qué no cubre (para el orquestador)
 
