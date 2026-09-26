@@ -239,8 +239,40 @@ RPC.
 | `updateAssignmentTime(assignmentId, start?, end?)`                                              | RPC `update_assignment_time`                    | Franja propia (P-046), solo antes del inicio efectivo → `ASSIGNMENT_STARTED`.                                                                                                                                                                                                                                                                                   |
 | `updateShiftDetails(shiftId, requiredStaff, notes?)`                                            | RPC `update_shift_details`                      | Dotación 1..10 (`REQUIRED_STAFF_RANGE`) y notas administrativas. Rechaza bajar la dotación por debajo de los asignados vigentes (`REQUIRED_STAFF_BELOW_ASSIGNED`). Usada también desde ADM-07 en edición (ASSIGN-013).                                                                                                                                          |
 
+### `checklists` (`src/api/checklists.ts`, P12.2 — TASK-003 a TASK-005)
+
+Plantillas de tareas por cliente y por sede (ADM-26, ADM-21, ADM-22). Igual
+que `clients.ts`: la lectura y edición de `checklist_templates`/
+`checklist_template_items` es directa por PostgREST, sin RPC propia salvo
+`clone_checklist_template` (crea la plantilla de una sede copiando los
+ítems de la del cliente, P-058). `mapWriteError` traduce un `23505` (dos
+plantillas para el mismo cliente/sede) a `TEMPLATE_EXISTS`.
+
+| Función                                                      | Canal                              | Notas                                                                                                                                                                                                                                                                                                                                        |
+| ------------------------------------------------------------ | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fetchChecklistTemplate(clientId, siteId)`                   | `from('checklist_templates')`      | `siteId` `null` = plantilla del cliente. Devuelve `null` si todavía no existe (no es un error).                                                                                                                                                                                                                                              |
+| `createClientTemplate(clientId, createdBy)`                  | `insert` en `checklist_templates`  | Nombre fijo `"Plantilla de tareas"`, sin pedirlo en un formulario (decisión propia, mismo criterio que `clone_checklist_template` en el servidor, que tampoco pide uno nuevo).                                                                                                                                                               |
+| `cloneChecklistTemplate(clientId, siteId)`                   | RPC `clone_checklist_template`     | Errores en voseo: `CLIENT_NOT_ACTIVE`, `SITE_NOT_ACTIVE`, `SITE_TEMPLATE_EXISTS`, `CLIENT_TEMPLATE_NOT_FOUND`.                                                                                                                                                                                                                               |
+| `fetchTemplateItems(templateId)`                             | `from('checklist_template_items')` | Vigentes (`deleted_at is null`), ordenados por `position`.                                                                                                                                                                                                                                                                                   |
+| `createTemplateItem(templateId, position, input, createdBy)` | `insert`                           | `position` la calcula quien llama (siguiente libre de la lista ya cargada, mismo criterio que `nextPosition` de `RatingCriteriaPage`).                                                                                                                                                                                                       |
+| `updateTemplateItem(id, input, updatedBy)`                   | `update`                           | Título, descripción, `isRequired`. No toca `position`.                                                                                                                                                                                                                                                                                       |
+| `deactivateTemplateItem(id, updatedBy)`                      | `update` (`deleted_at`)            | Baja lógica, con confirmación en pantalla (sin motivo obligatorio: no está en la lista de `07` sección 2.4 que sí lo exige).                                                                                                                                                                                                                 |
+| `reorderTemplateItems(items, updatedBy)`                     | `upsert` (una sola llamada)        | **Importante**: un solo `upsert` con todas las filas, no varios `update` sueltos -- la unicidad `(template_id, position)` es `deferrable initially deferred` (`0008_checklists_tasks.sql`), pero PostgREST abre una transacción por request, así que un intercambio de posiciones hecho con dos `update` separados chocaría contra sí mismo. |
+
+### `tasks` (`src/api/tasks.ts`, P12.2 — TASK-003)
+
+La tarea ya copiada a un turno (`shift_tasks`), a diferencia de
+`checklists.ts` (plantillas). `reloadShiftTasks` ya existía en
+`src/api/shifts.ts` desde SHIFT-007 (F10); se reexporta acá para que ADM-06
+tenga un solo punto de importación, sin duplicar la RPC.
+
+| Función                                     | Canal                    | Notas                                                                                                                                                                                                 |
+| ------------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `updateTaskStatus(taskId, status, reason?)` | RPC `update_task_status` | `reason` obligatorio si `status` es `not_done` (si no, `REASON_REQUIRED`). Dueño y administrador pueden en cualquier momento del turno (P-063); errores `TASK_NOT_FOUND`, `TASK_LOCKED`, `FORBIDDEN`. |
+| `reloadShiftTasks(shiftId)`                 | RPC `reload_shift_tasks` | Reexportada desde `src/api/shifts.ts`. Ahora sí tiene pantalla que la usa: el botón "Recargar tareas" de ADM-06 (TASK-006).                                                                           |
+
 ## Próximos dominios
 
 Cada paquete de F10 en adelante agrega su sección acá (`attendance`,
-`supervisions`, `tasks`) siguiendo el mismo formato: función, canal,
+`supervisions`) siguiendo el mismo formato: función, canal,
 particularidades que no se deducen de leer el nombre.

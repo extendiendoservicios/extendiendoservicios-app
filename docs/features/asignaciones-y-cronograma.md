@@ -162,8 +162,10 @@ igual en drawer (escritorio) y en página (móvil, ver más abajo). Un solo
 `select` con embebidos sobre `shifts` (`fetchShiftDetail`, `06` sección 7):
 cliente, sede, franja, estado, origen (servicio o puntual, según
 `service_id`), asignaciones vigentes (`removed_at is null`, con franja
-efectiva y estado), tareas ordenadas por posición (lectura; el alta es
-TASK-006/F12) y supervisiones (lectura; el alta es SUP-012/F15).
+efectiva y estado), tareas ordenadas por posición (edición de estado y
+"Recargar tareas" desde P12.2, TASK-006 -- ver
+`docs/features/checklists-y-tareas.md`) y supervisiones (lectura; el alta es
+SUP-012/F15).
 
 Acciones (todas detrás de `canManageAssignments`/`canManageAssignmentsAfterStart`,
 `src/features/planning/permissions.ts`):

@@ -4,6 +4,7 @@ import {
   CalendarClock,
   ClipboardList,
   Pencil,
+  RefreshCw,
   ShieldCheck,
   UserPlus,
   Users,
@@ -17,13 +18,17 @@ import { StatusBadge } from '@/components/status'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { formatDateOnly } from '@/features/settings/dateOnly'
 import type { ShiftDetailAssignment } from '@/api/assignments'
+import { canEditChecklists } from '@/features/checklists/permissions'
 import {
   canManageAssignments,
   canManageAssignmentsAfterStart,
+  canManageTasks,
 } from '@/features/planning/permissions'
 import { useShiftDetailQuery } from '@/features/planning/queries'
+import { AdminTaskList } from './AdminTaskList'
 import { AssignEmployeeSheet } from './AssignEmployeeSheet'
 import { AssignmentTimeDialog } from './AssignmentTimeDialog'
+import { ReloadTasksDialog } from './ReloadTasksDialog'
 import { RemoveAssignmentDialog } from './RemoveAssignmentDialog'
 import { ShiftDetailsDialog } from './ShiftDetailsDialog'
 
@@ -44,11 +49,14 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
   const actor = { roles: auth.roles, capabilities: auth.capabilities }
   const canManage = canManageAssignments(actor)
   const canManageAfterStart = canManageAssignmentsAfterStart(actor)
+  const canEditTasks = canManageTasks(actor)
+  const canReloadChecklist = canEditChecklists(actor)
 
   const shiftQuery = useShiftDetailQuery(shiftId)
 
   const [isAssignOpen, setAssignOpen] = useState(false)
   const [isDetailsOpen, setDetailsOpen] = useState(false)
+  const [isReloadOpen, setReloadOpen] = useState(false)
   const [removeTarget, setRemoveTarget] =
     useState<ShiftDetailAssignment | null>(null)
   const [timeTarget, setTimeTarget] = useState<ShiftDetailAssignment | null>(
@@ -85,6 +93,11 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
   const isEditable =
     shift.status !== 'cancelled' && shift.status !== 'completed'
   const remainingSlots = shift.requiredStaff - shift.assignments.length
+  // "Solo en turnos no empezados" (regla del encargo): `reload_shift_tasks`
+  // (0025_rpc_tasks.sql) exige `status in (scheduled, assigned)`.
+  const canReloadTasksNow =
+    canReloadChecklist &&
+    (shift.status === 'scheduled' || shift.status === 'assigned')
 
   return (
     <div className="flex flex-col gap-5">
@@ -207,31 +220,41 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
       </section>
 
       <section className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5">
-        <h3 className="flex items-center gap-2 text-[13px] font-semibold text-text">
-          <ClipboardList aria-hidden="true" className="size-4 text-text-3" />
-          Tareas
-        </h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="flex items-center gap-2 text-[13px] font-semibold text-text">
+            <ClipboardList aria-hidden="true" className="size-4 text-text-3" />
+            Tareas
+          </h3>
+          {canReloadTasksNow && shift.tasks.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={RefreshCw}
+              onClick={() => setReloadOpen(true)}
+            >
+              Recargar tareas
+            </Button>
+          )}
+        </div>
         {shift.tasks.length === 0 ? (
-          <p className="text-[12px] text-text-3">
-            Este turno no tiene un checklist copiado.
-          </p>
+          <EmptyState
+            icon={ClipboardList}
+            title="Este turno no tiene tareas cargadas"
+            description={
+              canReloadTasksNow
+                ? 'Puede ser que se haya creado antes de que existiera una plantilla de tareas. Usá «Recargar tareas» para copiarlas ahora.'
+                : 'Puede ser que se haya creado antes de que existiera una plantilla de tareas para este cliente o esta sede.'
+            }
+            action={
+              canReloadTasksNow ? (
+                <Button size="sm" onClick={() => setReloadOpen(true)}>
+                  Recargar tareas
+                </Button>
+              ) : undefined
+            }
+          />
         ) : (
-          <ul className="flex flex-col gap-2">
-            {shift.tasks.map((task) => (
-              <li
-                key={task.id}
-                className="flex items-center justify-between gap-2 rounded-md border border-border p-3"
-              >
-                <span className="text-[12.5px] text-text">
-                  {task.title}
-                  {task.isRequired && (
-                    <span className="text-text-3"> · obligatoria</span>
-                  )}
-                </span>
-                <StatusBadge domain="task" status={task.status} />
-              </li>
-            ))}
-          </ul>
+          <AdminTaskList tasks={shift.tasks} canManage={canEditTasks} />
         )}
       </section>
 
@@ -321,6 +344,14 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
               setTimeTarget(null)
             }
           }}
+        />
+      )}
+
+      {canReloadTasksNow && (
+        <ReloadTasksDialog
+          shiftId={shift.id}
+          open={isReloadOpen}
+          onOpenChange={setReloadOpen}
         />
       )}
     </div>
