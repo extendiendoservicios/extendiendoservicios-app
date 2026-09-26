@@ -2862,6 +2862,27 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      clone_checklist_template: {
+        Args: { p_client_id: string; p_site_id: string }
+        Returns: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          is_active: boolean
+          name: string
+          site_id: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "checklist_templates"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_shift: {
         Args: {
           p_client_id: string
@@ -3072,6 +3093,35 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "shifts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_task_status: {
+        Args: {
+          p_reason?: string
+          p_status: Database["public"]["Enums"]["task_status"]
+          p_task_id: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_required: boolean
+          not_done_reason: string | null
+          position: number
+          shift_id: string
+          status: Database["public"]["Enums"]["task_status"]
+          status_changed_at: string | null
+          status_changed_by: string | null
+          title: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "shift_tasks"
           isOneToOne: true
           isSetofReturn: false
         }
