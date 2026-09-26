@@ -1,14 +1,16 @@
 import { useParams } from 'react-router'
-import { Camera, MapPin, Navigation, Phone, PhoneOff } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 import { PersonCell } from '@/components/PersonCell'
 import { TaskList } from '@/components/TaskList'
 import { StatusBadge } from '@/components/status'
 import { formatMinutes } from '@/lib/format'
 import { avatarUrl } from '@/lib/avatarUrl'
 import { useAuth } from '@/features/auth/AuthProvider'
+import {
+  SiteInfo,
+  type SiteInfoData,
+} from '@/features/sites/components/SiteInfo'
 import {
   useMyDayQuery,
   useShiftPeersQuery,
@@ -27,6 +29,18 @@ import {
  * hoy y los próximos 7 días (P-093), así que no hace falta una consulta
  * aparte solo para el detalle — evita mantener dos formas de leer la misma
  * fila.
+ *
+ * La parte de "sede" (dirección, enlace a mapas, horario del edificio,
+ * instrucciones de acceso, restricciones, contacto) se arma con `SiteInfo`
+ * (SITE-010, ya compartido con `ADM-22`, `src/pages/admin/SiteDetailPage.tsx`)
+ * en vez de repetir esas tarjetas a mano: es la dependencia que pide
+ * MOB-EMP-004 en `08_Fases_y_Backlog.md`, y evita mantener dos veces la
+ * misma lógica de "abrir en el mapa"/restricciones. OJO: `v_my_day` (04
+ * sección 4) no trae `city`/`latitude`/`longitude` de la sede (a diferencia
+ * de `v_assignments_board`, que sí expone `site_city`) — se le pasan en
+ * `null`, y `buildMapsUrl` (`src/features/sites/mapsLink.ts`) cae solo a
+ * buscar por dirección de texto en vez de coordenadas exactas. Documentado
+ * como falta menor del backend en el reporte de este paquete.
  */
 export default function ServiceDetailPage() {
   const { assignmentId } = useParams<{ assignmentId: string }>()
@@ -55,18 +69,25 @@ export default function ServiceDetailPage() {
     )
   }
 
-  const mapsHref = assignment.siteAddress
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-        `${assignment.siteName} ${assignment.siteAddress}`,
-      )}`
-    : null
-  const telHref = assignment.siteContactPhone
-    ? `tel:${assignment.siteContactPhone.replace(/[^0-9+]/g, '')}`
-    : null
   const durationMinutes = minutesBetween(
     assignment.startTime,
     assignment.endTime,
   )
+  const siteInfo: SiteInfoData = {
+    address: assignment.siteAddress ?? assignment.siteName,
+    // `v_my_day` no trae ciudad ni coordenadas de la sede (ver el comentario
+    // grande de arriba): `buildMapsUrl` cae a buscar por texto.
+    city: null,
+    latitude: null,
+    longitude: null,
+    contactName: assignment.siteContactName,
+    contactPhone: assignment.siteContactPhone,
+    accessInstructions: assignment.accessInstructions,
+    buildingHours: assignment.buildingHours,
+    phoneRestricted: assignment.phoneRestricted,
+    photosNotAllowed: assignment.photosNotAllowed,
+    restrictionsNotes: assignment.restrictionsNotes,
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -78,22 +99,7 @@ export default function ServiceDetailPage() {
           </div>
           <StatusBadge domain="assignment" status={assignment.status} />
         </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          {assignment.siteAddress && (
-            <a
-              href={mapsHref ?? undefined}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-2 text-[13px] font-medium text-primary underline-offset-2 hover:underline"
-            >
-              <MapPin aria-hidden="true" className="size-4 shrink-0" />
-              {assignment.siteAddress}
-              <Navigation
-                aria-hidden="true"
-                className="ml-auto size-4 shrink-0"
-              />
-            </a>
-          )}
+        <CardContent>
           <p className="text-[13px] text-text-2">
             {formatTimeOfDay(assignment.startTime)}–
             {formatTimeOfDay(assignment.endTime)}
@@ -104,69 +110,17 @@ export default function ServiceDetailPage() {
               </span>
             )}
           </p>
-          {assignment.buildingHours && (
-            <p className="text-[11.5px] text-text-3">
-              Horario del edificio: {assignment.buildingHours}
-            </p>
-          )}
-          {(assignment.phoneRestricted || assignment.photosNotAllowed) && (
-            <div className="flex flex-wrap gap-2">
-              {assignment.phoneRestricted && (
-                <Badge variant="warning">
-                  <PhoneOff aria-hidden="true" className="size-3" />
-                  Uso de teléfono restringido
-                </Badge>
-              )}
-              {assignment.photosNotAllowed && (
-                <Badge variant="warning">
-                  <Camera aria-hidden="true" className="size-3" />
-                  No se permiten fotos
-                </Badge>
-              )}
-            </div>
-          )}
-          {assignment.restrictionsNotes && (
-            <p className="text-[11.5px] text-text-3">
-              {assignment.restrictionsNotes}
-            </p>
-          )}
         </CardContent>
       </Card>
 
-      {assignment.accessInstructions && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Instrucciones de acceso</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-[13px] text-text-2">
-              {assignment.accessInstructions}
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {(assignment.siteContactName || assignment.siteContactPhone) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Contacto de la sede</CardTitle>
-          </CardHeader>
-          <CardContent className="flex items-center justify-between gap-2">
-            <p className="text-[13px] text-text-2">
-              {assignment.siteContactName ?? 'Sin nombre cargado'}
-            </p>
-            {telHref && (
-              <a
-                href={telHref}
-                className="flex min-h-11 items-center gap-2 text-[13px] font-semibold text-primary"
-              >
-                <Phone aria-hidden="true" className="size-4" />
-                {assignment.siteContactPhone}
-              </a>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader>
+          <CardTitle>Sede</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SiteInfo site={siteInfo} />
+        </CardContent>
+      </Card>
 
       {peers && peers.length > 0 && (
         <Card>

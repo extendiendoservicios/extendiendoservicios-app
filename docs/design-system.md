@@ -1939,12 +1939,20 @@ que "Asistencia de hoy").
 
 La asignación sale de la caché de `useMyDayQuery` por `assignmentId` (no una
 consulta aparte: `v_my_day` ya está acotada a "mis" asignaciones de hoy y
-los próximos 7 días, evita mantener dos formas de leer la misma fila).
-Enlace a mapas (`https://www.google.com/maps/search/?api=1&query=...`, sin
-`MapView` embebido: `05` pide un enlace, no un mapa) y `tel:` para el
-contacto de la sede, compañeros con `PersonCell`, tareas previstas con
-`TaskList` en modo `readOnly` (EMP-08, la pantalla que las deja marcar, es
-de P13.3).
+los próximos 7 días, evita mantener dos formas de leer la misma fila). La
+parte de "sede" (dirección con enlace a mapas, horario del edificio,
+instrucciones de acceso, restricciones y contacto con `tel:`) se arma con el
+componente compartido `SiteInfo` (SITE-010,
+`src/features/sites/components/SiteInfo.tsx`, ya usado por `ADM-22`,
+`src/pages/admin/SiteDetailPage.tsx`) en vez de repetir esas tarjetas a
+mano: es la dependencia que pide MOB-EMP-004 en `08_Fases_y_Backlog.md`.
+**Falta menor del backend, para reportar**: `v_my_day` (04 sección 4) no
+expone `city`/`latitude`/`longitude` de la sede (a diferencia de
+`v_assignments_board`, que sí trae `site_city`) — se le pasan en `null` a
+`SiteInfo`, así que `buildMapsUrl` cae a buscar por el texto de la
+dirección en vez de coordenadas exactas. Compañeros con `PersonCell`, tareas
+previstas con `TaskList` en modo `readOnly` (EMP-08, la pantalla que las
+deja marcar, es de P13.3).
 
 ### EMP-13 · `MorePage` (MOB-EMP-013)
 
