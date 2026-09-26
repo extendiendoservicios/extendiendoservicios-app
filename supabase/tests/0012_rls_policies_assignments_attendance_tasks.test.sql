@@ -1,5 +1,6 @@
--- pgTAP de la migración 0012_rls_policies.sql (DB-014), parte 3: assignments (select + update de
--- notes propia), attendance_records, attendance_notices, checklist_templates,
+-- pgTAP de la migración 0012_rls_policies.sql (DB-014), parte 3: assignments (select; el update
+-- directo de notes que probaba esta sección quedó revocado por 0026_rpc_attendance.sql, ATT-002 --
+-- ver esa sección más abajo), attendance_records, attendance_notices, checklist_templates,
 -- checklist_template_items, shift_tasks. Las demás tablas están en 0012_rls_policies.test.sql,
 -- 0012_rls_policies_clients_sites_services_shifts.test.sql y
 -- 0012_rls_policies_supervisions_ratings_settings.test.sql.
@@ -150,33 +151,39 @@ select is(
 
 set local role postgres;
 
--- Update de notes propia: E1 puede sobre la propia (turno no completed); no puede sobre la de E2.
+-- Update de notes por PostgREST: desde 0026_rpc_attendance.sql (ATT-002) la única vía de
+-- escritura de esta columna es la RPC set_assignment_notes -- la política
+-- assignments_update_own_notes y el grant update (notes) que esta migración (0012/0017) había
+-- dejado preparados quedaron revocados por 0026 (ver el comentario de esa migración). Los tres
+-- casos de acá (propia, ajena, turno completed) dan los mismos "permission denied", ya no "0 filas
+-- afectadas": se mantienen los tres, documentando que ninguno pasa por RLS -- corta antes, en el
+-- ACL de la tabla.
 select tests.as_user('test-db014c-empleado1@example.com');
 
-select lives_ok(
-  $$update public.assignments set notes = 'nota propia' where id = 'c2300000-0000-0000-0000-000000000051'$$,
-  'assignments: empleado 1 puede actualizar notes de su propia asignación (turno no completed)'
+prepare c2300000_update_own as
+  update public.assignments set notes = 'nota propia' where id = 'c2300000-0000-0000-0000-000000000051';
+
+select throws_ok(
+  'c2300000_update_own', '42501', null,
+  'assignments: empleado 1 ya no puede actualizar notes directo, ni siquiera la propia (0026, ATT-002: RPC set_assignment_notes)'
 );
 
-create temporary table c2300000_update_probe (n int) on commit drop;
+set local role postgres;
+select tests.as_user('test-db014c-empleado1@example.com');
 
-with upd as (
-  update public.assignments set notes = 'nota ajena'
-  where id = 'c2300000-0000-0000-0000-000000000052'
-  returning 1
-)
-insert into c2300000_update_probe select count(*) from upd;
+prepare c2300000_update_ajena as
+  update public.assignments set notes = 'nota ajena' where id = 'c2300000-0000-0000-0000-000000000052';
 
-select is(
-  (select n from c2300000_update_probe),
-  0,
-  'assignments: empleado 1 NO puede actualizar notes de la asignación de su compañero (0 filas afectadas)'
+select throws_ok(
+  'c2300000_update_ajena', '42501', null,
+  'assignments: empleado 1 tampoco puede actualizar notes de la asignación de su compañero'
 );
 
 set local role postgres;
 
--- Turno completed: ni siquiera la propia notes se puede tocar (04 sección 7.2: "mientras el
--- turno no esté completed").
+-- Turno completed: mismo resultado (permission denied), ya no hace falta el fixture de un turno
+-- completed para distinguir el caso -- pero se deja para no perder la cobertura del escenario
+-- (04 sección 7.2: la RPC set_assignment_notes es la que ahora exige "turno no completed" para E).
 insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_time, required_staff, status)
 values ('c2300000-0000-0000-0000-000000000043', 'c2300000-0000-0000-0000-000000000001', 'c2300000-0000-0000-0000-000000000011', current_date - 1, '08:00', '16:00', 1, 'completed');
 
@@ -185,19 +192,12 @@ values ('c2300000-0000-0000-0000-000000000054', 'c2300000-0000-0000-0000-0000000
 
 select tests.as_user('test-db014c-empleado1@example.com');
 
-create temporary table c2300000_update_probe_2 (n int) on commit drop;
+prepare c2300000_update_completed as
+  update public.assignments set notes = 'demasiado tarde' where id = 'c2300000-0000-0000-0000-000000000054';
 
-with upd as (
-  update public.assignments set notes = 'demasiado tarde'
-  where id = 'c2300000-0000-0000-0000-000000000054'
-  returning 1
-)
-insert into c2300000_update_probe_2 select count(*) from upd;
-
-select is(
-  (select n from c2300000_update_probe_2),
-  0,
-  'assignments: empleado 1 no puede actualizar notes de su propia asignación si el turno ya está completed'
+select throws_ok(
+  'c2300000_update_completed', '42501', null,
+  'assignments: empleado 1 tampoco puede actualizar notes directo aunque sea la propia y el turno esté completed'
 );
 
 set local role postgres;
