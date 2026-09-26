@@ -45,23 +45,11 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,
-    // Los specs de tests/e2e/, tests/e2e-auth/, tests/e2e-users/, tests/e2e-clients-sites/,
-    // tests/e2e-employees/, tests/e2e-shifts-services/, tests/e2e-assignments/ y
-    // tests/e2e-checklists/ son de Playwright, no de Vitest.
+    // Todas las carpetas tests/e2e*/ son de Playwright, no de Vitest (un patrón en vez de una
+    // lista: P13.4 sumó tests/e2e-employee-shift/ y la lista la dejó afuera y rompió el CI).
     // supabase/functions/**/*.test.ts es Deno (USERS-006, P07.1): usa imports `npm:`/`jsr:` y
     // globals (`Deno.serve`) que Vite no puede resolver -- se corre con `deno test`, no acá (ver
     // `supabase/functions/README.md`).
-    exclude: [
-      'node_modules/**',
-      'tests/e2e/**',
-      'tests/e2e-auth/**',
-      'tests/e2e-users/**',
-      'tests/e2e-clients-sites/**',
-      'tests/e2e-employees/**',
-      'tests/e2e-shifts-services/**',
-      'tests/e2e-assignments/**',
-      'tests/e2e-checklists/**',
-      'supabase/functions/**',
-    ],
+    exclude: ['node_modules/**', 'tests/e2e*/**', 'supabase/functions/**'],
   },
 })
