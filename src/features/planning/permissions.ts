@@ -40,3 +40,15 @@ export function canManageAssignmentsAfterStart(
       actor.capabilities.includes('manage_attendance'))
   )
 }
+
+/**
+ * `update_task_status` desde ADM-06 (TASK-006, `0025_rpc_tasks.sql`:
+ * `app.is_admin()` -- owner o CUALQUIER administrador, sin capacidad
+ * puntual, en cualquier momento del turno, P-063). Hoy coincide con
+ * `canManageAssignments`, pero es una regla propia del servidor (no
+ * comparte código con `assign_employee`): se deja como función aparte para
+ * que un cambio futuro de una no arrastre a la otra por accidente.
+ */
+export function canManageTasks(actor: AssignmentsScreenActor): boolean {
+  return isOwner(actor) || actor.roles.includes('admin')
+}

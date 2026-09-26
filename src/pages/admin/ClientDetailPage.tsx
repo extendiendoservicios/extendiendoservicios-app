@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
+import { Link, useParams, useSearchParams } from 'react-router'
 import { Building2, Pencil, Plus, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -12,6 +12,7 @@ import {
 } from '@/features/clients/queries'
 import { ClientContactsPanel } from '@/features/clients/components/ClientContactsPanel'
 import { ChangeClientStatusDialog } from '@/features/clients/components/ChangeClientStatusDialog'
+import { ClientTemplateSummary } from '@/features/checklists/components/ClientTemplateSummary'
 import {
   NewServiceButton,
   ServiceList,
@@ -38,7 +39,6 @@ function isClientDetailTab(value: string | null): value is ClientDetailTab {
  */
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [isChangeStatusOpen, setChangeStatusOpen] = useState(false)
 
@@ -190,21 +190,7 @@ export default function ClientDetailPage() {
         </TabsContent>
 
         <TabsContent value="tareas" className="pt-3">
-          <EmptyState
-            title="Plantilla de tareas del cliente"
-            description="Las tareas de este cliente se definen en Plantillas de tareas."
-            action={
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  void navigate(`/admin/tareas?cliente=${client.id}`)
-                }
-              >
-                Ir a plantillas de tareas
-              </Button>
-            }
-          />
+          <ClientTemplateSummary clientId={client.id} />
         </TabsContent>
       </Tabs>
 

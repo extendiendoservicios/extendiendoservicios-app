@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useParams } from 'react-router'
 import { Building2, Pencil, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -9,6 +9,7 @@ import { MapView } from '@/components/map'
 import { useSiteDetailQuery } from '@/features/sites/queries'
 import { ChangeSiteStatusDialog } from '@/features/sites/components/ChangeSiteStatusDialog'
 import { SiteInfo } from '@/features/sites/components/SiteInfo'
+import { SiteTemplateSummary } from '@/features/checklists/components/SiteTemplateSummary'
 import {
   NewServiceButton,
   ServiceList,
@@ -29,7 +30,6 @@ import {
  */
 export default function SiteDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
   const [isChangeStatusOpen, setChangeStatusOpen] = useState(false)
 
   const siteQuery = useSiteDetailQuery(id)
@@ -124,19 +124,7 @@ export default function SiteDetailPage() {
         <h3 className="mb-3 text-[13px] font-semibold text-text">
           Plantilla de tareas
         </h3>
-        <EmptyState
-          title="Plantilla de tareas de la sede"
-          description="Definila en Plantillas de tareas, o dejá que la sede use la del cliente."
-          action={
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => void navigate(`/admin/tareas?sede=${site.id}`)}
-            >
-              Ir a plantillas de tareas
-            </Button>
-          }
-        />
+        <SiteTemplateSummary clientId={site.clientId} siteId={site.id} />
       </div>
 
       <div className="rounded-lg border border-border bg-surface p-5">

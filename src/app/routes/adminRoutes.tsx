@@ -16,6 +16,7 @@ import ShiftFormPage from '@/pages/admin/ShiftFormPage'
 import ShiftsGeneratePage from '@/pages/admin/ShiftsGeneratePage'
 import SiteDetailPage from '@/pages/admin/SiteDetailPage'
 import SiteFormPage from '@/pages/admin/SiteFormPage'
+import TaskTemplatesPage from '@/pages/admin/TaskTemplatesPage'
 import UsersPage from '@/pages/admin/UsersPage'
 import { placeholderRoute } from './placeholder'
 
@@ -224,12 +225,15 @@ export const adminRoutes: RouteObject[] = [
       subtitle: 'Editar un servicio recurrente',
     },
   },
-  placeholderRoute({
+  {
     path: 'tareas',
-    screenId: 'ADM-26',
-    title: 'Plantillas de tareas',
-    subtitle: 'Definir checklists por cliente y por sede',
-  }),
+    element: <TaskTemplatesPage />,
+    handle: {
+      screenId: 'ADM-26',
+      title: 'Plantillas de tareas',
+      subtitle: 'Definir checklists por cliente y por sede',
+    },
+  },
   {
     path: 'configuracion/usuarios',
     element: <UsersPage />,
