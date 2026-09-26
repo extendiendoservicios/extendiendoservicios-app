@@ -8,6 +8,7 @@ import { OptionCard } from '@/components/OptionCard'
 import { EmptyState } from '@/components/EmptyState'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { useOnlineStatus } from '@/features/employee/useOnlineStatus'
+import { hasDeclinedLocation } from '@/features/employee/locationChoice'
 import { useMyDayQuery } from '@/features/employee/queries'
 import type { MyDayAssignment } from '@/api/myDay'
 
@@ -100,9 +101,12 @@ export default function ClockTabPage() {
     )
   }
 
-  const hasLocationConsent = auth.profile?.locationConsentAt != null
+  // Con el consentimiento dado o la negativa recordada, se sigue al registro
+  // (sin ubicación en el segundo caso, P-091).
+  const locationDecided =
+    auth.profile?.locationConsentAt != null || hasDeclinedLocation(auth.userId)
 
-  if (!hasLocationConsent) {
+  if (!locationDecided) {
     return (
       <ConsentNeeded
         assignment={selected}

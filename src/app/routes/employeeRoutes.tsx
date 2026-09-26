@@ -24,7 +24,7 @@ export const employeeRoutes: RouteObject[] = [
     handle: {
       screenId: 'EMP-03',
       title: 'Hoy',
-      subtitle: 'Ver la jornada de hoy y los próximos días',
+      subtitle: 'Tu jornada de hoy y los próximos días',
     },
   },
   {
@@ -33,7 +33,7 @@ export const employeeRoutes: RouteObject[] = [
     handle: {
       screenId: 'EMP-04',
       title: 'Detalle del servicio',
-      subtitle: 'Saber dónde, cuándo y qué hacer',
+      subtitle: 'Dónde, cuándo y qué hacer',
     },
   },
   {
@@ -42,7 +42,7 @@ export const employeeRoutes: RouteObject[] = [
     handle: {
       screenId: 'EMP-14',
       title: 'Fichar',
-      subtitle: 'Registrar inicio (EMP-05) o ir al servicio en curso (EMP-07)',
+      subtitle: 'Registrá el inicio o seguí tu servicio en curso',
     },
   },
   {
@@ -51,44 +51,44 @@ export const employeeRoutes: RouteObject[] = [
     handle: {
       screenId: 'EMP-06',
       title: 'Consentimiento de ubicación',
-      subtitle: 'Explicar y pedir permiso',
+      subtitle: 'Tu ubicación al registrar',
     },
   },
   placeholderRoute({
     path: 'en-curso/:assignmentId',
     screenId: 'EMP-07',
     title: 'Servicio en curso',
-    subtitle: 'Seguir el servicio activo',
+    subtitle: 'Tu servicio activo',
   }),
   placeholderRoute({
     path: 'en-curso/:assignmentId/tareas',
     screenId: 'EMP-08',
     title: 'Tareas',
-    subtitle: 'Marcar el estado de cada tarea',
+    subtitle: 'Marcá cada tarea',
   }),
   placeholderRoute({
     path: 'en-curso/:assignmentId/observaciones',
     screenId: 'EMP-09',
     title: 'Observaciones',
-    subtitle: 'Cargar la observación del servicio',
+    subtitle: 'Contá cómo fue el servicio',
   }),
   placeholderRoute({
     path: 'en-curso/:assignmentId/finalizar',
     screenId: 'EMP-10',
     title: 'Finalizar servicio',
-    subtitle: 'Fichar el fin',
+    subtitle: 'Registrá el fin',
   }),
   placeholderRoute({
     path: 'resumen/:assignmentId',
     screenId: 'EMP-11',
     title: 'Resumen del servicio',
-    subtitle: 'Comprobante del turno',
+    subtitle: 'Comprobante del servicio',
   }),
   placeholderRoute({
     path: 'avisar',
     screenId: 'EMP-12',
     title: 'Avisar demora o ausencia',
-    subtitle: 'Avisar antes del turno',
+    subtitle: 'Avisá antes del servicio',
   }),
   {
     path: 'mas',
@@ -96,7 +96,7 @@ export const employeeRoutes: RouteObject[] = [
     handle: {
       screenId: 'EMP-13',
       title: 'Más',
-      subtitle: 'Acceso a perfil y opciones',
+      subtitle: 'Tu perfil y opciones',
     },
   },
 ]

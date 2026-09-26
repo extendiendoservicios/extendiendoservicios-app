@@ -5,6 +5,7 @@ import { getCurrentPositionSafe } from '@/lib/geolocation'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { useCompanySettingsQuery } from '@/features/settings/queries'
 import { useOnlineStatus } from '@/features/employee/useOnlineStatus'
+import { rememberLocationDeclined } from '@/features/employee/locationChoice'
 import { LocationConsentScreen } from '@/features/employee/components/LocationConsentScreen'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
@@ -68,6 +69,7 @@ export default function LocationConsentPage() {
   }
 
   function handleSkip() {
+    rememberLocationDeclined(auth.userId)
     goBackToFichar()
   }
 

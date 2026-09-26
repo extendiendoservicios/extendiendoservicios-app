@@ -45,7 +45,9 @@ function TaskList({
   onUndo,
   className,
 }: TaskListProps) {
-  const nextTaskId = getNextTaskId(tasks)
+  // En solo lectura no hay "siguiente" que marcar: sin resaltado ni
+  // "tocá para marcar".
+  const nextTaskId = readOnly ? undefined : getNextTaskId(tasks)
 
   return (
     <div className={cn('flex flex-col divide-y divide-border', className)}>
