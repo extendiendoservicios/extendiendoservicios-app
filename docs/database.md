@@ -756,6 +756,55 @@ scratchpad de la sesión). **Pendiente para quien corra la suite con Docker disp
 `pnpm db:test` completo (todos los `.sql` de `supabase/tests/`), que es la forma oficial y la que
 corre en CI.
 
+## RPC de tareas y checklists (04 sección 6.3 y 9, 06 sección 9, migración `0025`, TASK-001, F12 · Checklists y tareas, P12.1)
+
+`clone_checklist_template` y `update_task_status`. `create_shift`, `generate_shifts` y
+`reload_shift_tasks` (que copian y recargan el checklist del turno) ya se habían escrito en
+`0023_rpc_shifts.sql` (F10); este paquete no las toca.
+
+| RPC                                                  | Quién                                                                   | Qué hace                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ---------------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `clone_checklist_template(p_client_id, p_site_id)`   | O; A + `edit_checklists`                                                | Crea la plantilla propia de una sede copiando los ítems (mismo orden y obligatoriedad) de la plantilla del cliente (P-058). `CLIENT_NOT_ACTIVE`/`SITE_NOT_ACTIVE` si el cliente o la sede no existen, no están activos o la sede no pertenece al cliente (mismo criterio que `create_shift`, 0023). `SITE_TEMPLATE_EXISTS` (código nuevo) si la sede ya tiene su propia plantilla. `CLIENT_TEMPLATE_NOT_FOUND` (código nuevo) si el cliente todavía no tiene una plantilla propia (`site_id is null`) para copiar. Devuelve la fila de `checklist_templates` nueva.                                                                                                |
+| `update_task_status(p_task_id, p_status, p_reason?)` | E (asignación propia `present` en el turno de la tarea); O, A (siempre) | Cambia el estado de una tarea (04 sección 6.3). `TASK_NOT_FOUND` (código nuevo) si no existe. Empleado: necesita una asignación vigente (`removed_at is null`) en el turno de la tarea con `status = 'present'` -- la ventana entre `record_check_in` y `record_check_out` (F13, P-063); si no, `TASK_LOCKED`. Cualquier otro rol sin permiso (supervisor incluido): `FORBIDDEN`. `not_done` exige motivo (`REASON_REQUIRED`); `not_done_reason` se limpia al salir de `not_done`. Completa `status_changed_at`/`status_changed_by`. Sin validación de "transición inválida": 04 sección 6.3 permite moverse libremente entre los cuatro estados de `task_status`. |
+
+Decisiones menores (documentadas también en el reporte de la tarea):
+
+- El permiso de `clone_checklist_template` es exactamente `app.require_capability('edit_checklists')`
+  (el owner siempre tiene todas las capacidades, `app.has_capability`, 0003/0020) -- mismo criterio
+  que `reload_shift_tasks` (0023).
+- `CLIENT_TEMPLATE_NOT_FOUND` no exige `is_active = true` en la plantilla del cliente: una
+  plantilla desactivada sigue siendo "la plantilla del cliente" para copiar (`is_active` es un
+  estado de presentación, no una baja lógica; 04 sección 2.4 los distingue de `deleted_at`).
+- `SITE_TEMPLATE_EXISTS` se verifica ANTES del insert, en vez de dejar que la unicidad parcial de
+  `0008` (`checklist_templates_client_site_key`) lo capture como `23505` crudo -- mismo criterio
+  que el resto de las RPC del proyecto.
+- La plantilla nueva copia el `name` de la del cliente tal cual, sin sufijo ("(sede)" o similar):
+  el modelo no pide un nombre distinto; la pantalla de administración (fuera de este paquete)
+  decide cómo mostrarla.
+- `update_task_status` no tiene una única llamada a `require_role`/`require_capability` porque el
+  permiso depende de datos (06 sección 9: "E con asignación propia `present`, O, A"): la función
+  arma su propia rama (`app.is_admin()` siempre puede; `app.has_role('employee')` requiere la
+  asignación `present`; cualquier otro caso corta con `FORBIDDEN` antes de llegar a `TASK_LOCKED`,
+  que es específicamente "sos empleado pero no es tu ventana", no "no tenés ningún permiso").
+- Reordenar ítems de una plantilla en un solo lote (06 sección 9: "Reordenar: update de `position`
+  en lote") ya funciona sin RPC nueva: la unicidad `(template_id, position)` de
+  `checklist_template_items` nació `deferrable initially deferred` en `0008` (para exactamente este
+  caso), así que un `update` con `case` que intercambia la posición de dos ítems, o un upsert en
+  lote por PostgREST, no falla a mitad de camino. Verificado con pgTAP en
+  `0008_checklists_tasks.test.sql` (ya existía) y con las RLS/grants de `edit_checklists` sobre
+  `checklist_templates`/`checklist_template_items` (`0012`/`0017`, sin cambios necesarios en este
+  paquete).
+- "Una plantilla por cliente y una por sede", "la copia al turno usa la de la sede si existe, si no
+  la del cliente" y "`reload_shift_tasks` solo en turnos no empezados" ya tenían pgTAP propio desde
+  F4/F10 (`0008_checklists_tasks.test.sql`, `0023_rpc_shifts.test.sql`); no se repiten en este
+  paquete. Sí se agregó el que faltaba: "cambiar la plantilla no altera turnos existentes" (P-061),
+  en `0025_rpc_tasks.test.sql`.
+
+Detalle completo en `supabase/tests/0025_rpc_tasks.test.sql` (30 aserciones: las dos RPC, sus
+códigos de error, permisos por rol -- owner, admin con y sin `edit_checklists`, supervisor,
+empleado con asignación `present`/sin asignación/con asignación ya finalizada -- y la prueba de
+P-061 sobre `create_shift`).
+
 ## Storage: buckets `avatars` y `branding` (04 sección 7.3, migración `0014`, DB-016, ADR-016)
 
 | Bucket     | Ruta                      | Límite | Tipos                                                                               | Lectura                           | Escritura                                                      |
@@ -1254,7 +1303,9 @@ de revocación" y "Edge Function `admin-users`" más arriba. En F10 (P10.1, SHIF
 usa `0013_rpc_users.sql` -- ver "RPC de turnos" más arriba. En F11 (P11.1, ASSIGN-002 a
 ASSIGN-004): `0024_rpc_assignments.sql` -- las cuatro RPC de asignaciones y dotación
 (`assign_employee`, `remove_assignment`, `update_assignment_time`, `update_shift_details`) -- ver
-"RPC de asignaciones y dotación" más arriba.
+"RPC de asignaciones y dotación" más arriba. En F12 (P12.1, TASK-001):
+`0025_rpc_tasks.sql` -- `clone_checklist_template` y `update_task_status` -- ver "RPC de tareas y
+checklists" más arriba.
 
 ## Cómo escribir una migración
 
