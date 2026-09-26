@@ -66,6 +66,36 @@ describe.skipIf(!env)(
         })
         expect(error?.code).toBe('42501')
       })
+
+      // MOB-EMP-017/TEST-010 (P13.4, 08_Fases_y_Backlog.md F13, `06` sección 10): sin sesión, sin
+      // ningún grant de ejecución sobre estas tres RPC (mismo motivo que `mark_changes_seen` de
+      // arriba) -- corta antes de mirar el id de la asignación, con cualquier uuid alcanza.
+      const ANY_UUID = '00000000-0000-0000-0000-000000000000'
+
+      it('no puede llamar record_check_in', async () => {
+        const anon = createAnonClient()
+        const { error } = await anon.rpc('record_check_in', {
+          p_assignment_id: ANY_UUID,
+        })
+        expect(error?.code).toBe('42501')
+      })
+
+      it('no puede llamar record_check_out', async () => {
+        const anon = createAnonClient()
+        const { error } = await anon.rpc('record_check_out', {
+          p_assignment_id: ANY_UUID,
+        })
+        expect(error?.code).toBe('42501')
+      })
+
+      it('no puede llamar set_assignment_notes', async () => {
+        const anon = createAnonClient()
+        const { error } = await anon.rpc('set_assignment_notes', {
+          p_assignment_id: ANY_UUID,
+          p_notes: 'e2e-perm no debería aplicarse',
+        })
+        expect(error?.code).toBe('42501')
+      })
     })
   },
 )

@@ -399,5 +399,58 @@ describe.skipIf(!env)(
         expect(error?.hint).toBe('FORBIDDEN')
       })
     })
+
+    // MOB-EMP-017/TEST-010 (P13.4, 08_Fases_y_Backlog.md F13, `06` sección 10): las tres RPC de
+    // asistencia del empleado (`record_check_in`, `record_check_out`, `set_assignment_notes`) no
+    // listan al supervisor entre los roles con permiso, ni siquiera sobre una asignación de
+    // alguien de su propio equipo -- el pgTAP de `0026_rpc_attendance.sql` (P13.1) ya prueba esto
+    // mismo a nivel de función; acá interesa la vía real de PostgREST con JWT (encargo P13.4).
+    describe('asistencia (F13): record_check_in, record_check_out y set_assignment_notes, ninguna es para el supervisor', () => {
+      let fixture: FixtureShift
+      let fixtureAssignmentId: string
+      let dueno: TestClient
+
+      beforeAll(async () => {
+        const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+          .toISOString()
+          .slice(0, 10)
+        fixture = await createFixtureShift(admin, tomorrow, '15:00', '16:00')
+        const ownerLogin = await loginAs(SEED_ACCOUNTS.owner)
+        dueno = ownerLogin.client
+        fixtureAssignmentId = await createFixtureAssignment(
+          dueno,
+          fixture.shiftId,
+          empleadoDeSuEquipoId,
+        )
+      })
+
+      afterAll(async () => {
+        await removeFixtureAssignment(dueno, fixtureAssignmentId)
+        await dueno.auth.signOut()
+        await cleanupFixtureShift(admin, fixture)
+      })
+
+      it('no puede llamar record_check_in, aunque sea de alguien de su equipo', async () => {
+        const { error } = await supervisora.rpc('record_check_in', {
+          p_assignment_id: fixtureAssignmentId,
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede llamar record_check_out', async () => {
+        const { error } = await supervisora.rpc('record_check_out', {
+          p_assignment_id: fixtureAssignmentId,
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede llamar set_assignment_notes', async () => {
+        const { error } = await supervisora.rpc('set_assignment_notes', {
+          p_assignment_id: fixtureAssignmentId,
+          p_notes: 'e2e-perm no debería aplicarse',
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+    })
   },
 )

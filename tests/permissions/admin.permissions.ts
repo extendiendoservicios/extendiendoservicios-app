@@ -604,5 +604,66 @@ describe.skipIf(!env)(
         expect(data?.status).toBe('done')
       })
     })
+
+    // MOB-EMP-017/TEST-010 (P13.4, 08_Fases_y_Backlog.md F13, `06` sección 10): `record_check_in`
+    // y `record_check_out` son "E (propia)" a secas -- ni siquiera la administradora con las 7
+    // capacidades puede registrar el inicio o el fin de otra persona. `set_assignment_notes` sí
+    // es "E (propia, turno no completado), O, A": la administradora puede cargar la observación
+    // de una asignación ajena. El pgTAP de `0026_rpc_attendance.sql` (P13.1) ya prueba esto mismo
+    // a nivel de función; acá interesa la vía real de PostgREST con JWT (encargo P13.4).
+    describe('asistencia (F13): no registra inicio/fin ajenos, sí puede escribir la observación', () => {
+      let fixture: FixtureShift
+      let fixtureAssignmentId: string
+      let empleadoAsistenciaId: string
+
+      beforeAll(async () => {
+        const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+          .toISOString()
+          .slice(0, 10)
+        fixture = await createFixtureShift(admin, tomorrow, '17:00', '18:00')
+        empleadoAsistenciaId = await resolveUserId(
+          admin,
+          SEED_ACCOUNTS.employees[2],
+        )
+        fixtureAssignmentId = await createFixtureAssignment(
+          administradora,
+          fixture.shiftId,
+          empleadoAsistenciaId,
+        )
+      })
+
+      afterAll(async () => {
+        await removeFixtureAssignment(administradora, fixtureAssignmentId)
+        await cleanupFixtureShift(admin, fixture)
+      })
+
+      it('no puede llamar record_check_in sobre una asignación ajena', async () => {
+        const { error } = await administradora.rpc('record_check_in', {
+          p_assignment_id: fixtureAssignmentId,
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede llamar record_check_out sobre una asignación ajena', async () => {
+        const { error } = await administradora.rpc('record_check_out', {
+          p_assignment_id: fixtureAssignmentId,
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('sí puede escribir la observación de esa asignación ajena (set_assignment_notes)', async () => {
+        const { data, error } = await administradora.rpc(
+          'set_assignment_notes',
+          {
+            p_assignment_id: fixtureAssignmentId,
+            p_notes: 'E2E-P114-PERM: observación cargada por administración',
+          },
+        )
+        expect(error).toBeNull()
+        expect(data?.notes).toBe(
+          'E2E-P114-PERM: observación cargada por administración',
+        )
+      })
+    })
   },
 )
