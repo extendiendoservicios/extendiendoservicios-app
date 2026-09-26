@@ -222,11 +222,13 @@ diferencia de `v_shifts_board`, que trae `client_legal_name` y
 grilla semanal (ADM-04) muestra `client_legal_name` sin nombre de fantasía
 hasta que la vista lo sume.
 
-**`set_assignment_notes` no existe** (reportado al orquestador, P11.3): `06`
-sección 8 la documenta ("Observación del servicio", P-062), pero
-`0024_rpc_assignments.sql` no la trae. ADM-06 muestra `assignments.notes` de
-solo lectura; no hay forma de cargarla o editarla hasta que se agregue esa
-RPC.
+**`set_assignment_notes` ya existe** (resuelto en P13.1, `0026_rpc_attendance.sql`
+-- esta nota quedó desactualizada desde P11.3, cuando todavía no se había
+escrito): la función vive en `src/api/attendance.ts` (`setAssignmentNotes`),
+la usa el empleado desde EMP-09 (`docs/features/app-del-empleado.md`, P13.3).
+ADM-06 (esta sección) sigue mostrando `assignments.notes` de solo lectura --
+no hay pantalla administrativa que la edite todavía, pero ya no es porque la
+RPC no exista.
 
 | Función                                                                                         | Canal                                           | Notas                                                                                                                                                                                                                                                                                                                                                           |
 | ----------------------------------------------------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

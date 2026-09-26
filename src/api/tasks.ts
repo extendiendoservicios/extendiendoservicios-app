@@ -36,6 +36,8 @@ export interface ShiftTask {
   isRequired: boolean
   status: TaskStatus
   notDoneReason: string | null
+  /** Cuándo cambió de estado por última vez (la hora de "Completada"). */
+  statusChangedAt: string | null
 }
 
 function mapTaskRow(
@@ -50,7 +52,30 @@ function mapTaskRow(
     isRequired: row.is_required,
     status: row.status,
     notDoneReason: row.not_done_reason,
+    statusChangedAt: row.status_changed_at,
   }
+}
+
+/**
+ * Tareas previstas de un turno, en lectura (EMP-04, `06` sección 9: "Tareas
+ * de un turno | from('shift_tasks').eq('shift_id').order('position') | O,
+ * A, S, E (sus turnos)"). Se agrega acá en vez de en `src/api/myDay.ts`
+ * porque el mapeo de una fila de `shift_tasks` ya vive en este módulo
+ * (`mapTaskRow`) — reusarlo evita mantener dos veces la misma forma.
+ */
+export async function fetchShiftTasksReadOnly(
+  shiftId: string,
+): Promise<ShiftTask[]> {
+  const { data, error } = await supabase
+    .from('shift_tasks')
+    .select('*')
+    .eq('shift_id', shiftId)
+    .order('position', { ascending: true })
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data ?? []).map(mapTaskRow)
 }
 
 /**

@@ -767,6 +767,57 @@ corre en CI.
 | `clone_checklist_template(p_client_id, p_site_id)`   | O; A + `edit_checklists`                                                | Crea la plantilla propia de una sede copiando los ítems (mismo orden y obligatoriedad) de la plantilla del cliente (P-058). `CLIENT_NOT_ACTIVE`/`SITE_NOT_ACTIVE` si el cliente o la sede no existen, no están activos o la sede no pertenece al cliente (mismo criterio que `create_shift`, 0023). `SITE_TEMPLATE_EXISTS` (código nuevo) si la sede ya tiene su propia plantilla. `CLIENT_TEMPLATE_NOT_FOUND` (código nuevo) si el cliente todavía no tiene una plantilla propia (`site_id is null`) para copiar. Devuelve la fila de `checklist_templates` nueva.                                                                                                |
 | `update_task_status(p_task_id, p_status, p_reason?)` | E (asignación propia `present` en el turno de la tarea); O, A (siempre) | Cambia el estado de una tarea (04 sección 6.3). `TASK_NOT_FOUND` (código nuevo) si no existe. Empleado: necesita una asignación vigente (`removed_at is null`) en el turno de la tarea con `status = 'present'` -- la ventana entre `record_check_in` y `record_check_out` (F13, P-063); si no, `TASK_LOCKED`. Cualquier otro rol sin permiso (supervisor incluido): `FORBIDDEN`. `not_done` exige motivo (`REASON_REQUIRED`); `not_done_reason` se limpia al salir de `not_done`. Completa `status_changed_at`/`status_changed_by`. Sin validación de "transición inválida": 04 sección 6.3 permite moverse libremente entre los cuatro estados de `task_status`. |
 
+## RPC de asistencia del empleado y observación (04 sección 6.1, 6.2, 9, 06 sección 8 y 10, migración `0026`, ATT-001, ATT-002, F13 · App del empleado, P13.1)
+
+`record_check_in`, `record_check_out` y `set_assignment_notes`. Las RPC de avisos y de asistencia
+administrativa (`notify_delay`, `notify_absence`, `admin_record_attendance`, `close_assignment`)
+son F14, todavía no escritas.
+
+| RPC                                                              | Quién                                            | Qué hace                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ---------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `record_check_in(p_assignment_id, p_lat?, p_lng?, p_accuracy?)`  | E (propia)                                       | Inserta `check_in` con `now()` (P-066). `ASSIGNMENT_NOT_FOUND` si no existe o fue quitada; `NOT_YOUR_ASSIGNMENT` si es de otro empleado; `SHIFT_CANCELLED`/`SHIFT_COMPLETED` según el turno; `NOT_TODAY` si `shifts.shift_date <> app.today()` (P-068: en cualquier momento del día del turno, sin ventanas); `COORDINATES_INCOMPLETE`/`COORDINATES_OUT_OF_RANGE` (códigos nuevos, ver más abajo) para la ubicación opcional (P-067, ADR-009); `ALREADY_CHECKED_IN` si ya había un `check_in`. Asignación (`expected`/`delay_notified`/`absence_notified`) → `present`; turno (`scheduled`/`assigned`) → `in_progress` con el primer inicio del turno.                                                                                                                     |
+| `record_check_out(p_assignment_id, p_lat?, p_lng?, p_accuracy?)` | E (propia)                                       | Inserta `check_out` con `now()`. `ASSIGNMENT_NOT_FOUND`, `NOT_YOUR_ASSIGNMENT`, `SHIFT_CANCELLED`, `NOT_CHECKED_IN` si no hay `check_in` previo, `ALREADY_CHECKED_OUT` si ya había `check_out`, mismas `COORDINATES_*` que el inicio. **Sin `NOT_TODAY`**: P-069 (sin cierre automático a fin de día) permite cerrar un turno de hoy un día después, así que el fin no se compara contra `app.today()`. Asignación → `finished`; turno → `completed` solo cuando **ninguna** asignación vigente del turno queda fuera de `finished`/`absence_notified` (04 sección 6.1) -- un turno con dos empleados no se completa hasta que el segundo también cierre o avise ausencia.                                                                                                 |
+| `set_assignment_notes(p_assignment_id, p_notes)`                 | E (propia, turno no `completed`); O, A (siempre) | Observación del servicio, una por asignación (P-062, ratificado el 26 sep 2026, P13.0). `ASSIGNMENT_NOT_FOUND` si no existe. Empleado sobre asignación ajena, o cualquier otro rol (supervisor incluido): `FORBIDDEN`; empleado con el turno ya `completed`: `SHIFT_COMPLETED`. Texto vacío o solo espacios se guarda como `null`; por encima de 2000 caracteres, `NOTES_TOO_LONG` (código nuevo, también hay un `check` en la tabla como defensa en profundidad). Reemplaza el mecanismo de escritura directa por PostgREST que habían dejado preparado `0012_rls_policies.sql`/`0017_grants.sql` (política `assignments_update_own_notes` y `grant update (notes)`): esta migración los revoca, `set_assignment_notes` queda como única vía de escritura de esa columna. |
+
+Decisiones menores (documentadas también en el reporte de la tarea):
+
+- Coordenadas: "todas o ninguna" (`COORDINATES_INCOMPLETE`, código nuevo) y rangos físicos de un
+  GPS -- latitud -90..90, longitud -180..180, precisión >= 0 (`COORDINATES_OUT_OF_RANGE`, código
+  nuevo): `06_API.md` no listaba estos dos códigos, el modelo solo da el tipo de las columnas
+  (`numeric(9,6)`/`numeric(7,1)`), no un rango.
+- `SHIFT_COMPLETED` se agrega como guarda extra en `record_check_in`, aunque `06` sección 10 solo
+  pide "turno no cancelado" para esa RPC: defensa en profundidad, por simetría con el resto de las
+  RPC del proyecto (nunca debería darse en la práctica, porque un turno pasa a `completed` recién
+  cuando todas sus asignaciones vigentes ya están `finished`/`absence_notified`).
+- "Fin posterior al inicio" (04 sección 6.2) no se verifica con una comparación explícita: los dos
+  instantes los pone `now()` del servidor (P-066) en momentos distintos de la sesión, así que el
+  fin es, por construcción, posterior salvo que el reloj del servidor retroceda entre una llamada y
+  la otra -- caso que ninguna otra RPC de este proyecto contempla.
+- `set_assignment_notes` usa el mismo árbol de permisos que `update_task_status` (0025): admin
+  siempre puede; empleado solo sobre su propia asignación vigente; cualquier otro caso (incluido el
+  empleado sobre una asignación ajena) corta con `FORBIDDEN`, no con `NOT_YOUR_ASSIGNMENT` (que
+  queda reservado para `record_check_in`/`record_check_out`, donde la propiedad de la asignación es
+  la única condición de la RPC).
+- Tope de 2000 caracteres para `assignments.notes`: decisión menor, el modelo (P-062) solo pide "un
+  campo de texto" sin acotar el largo.
+
+`v_my_day` (04 sección 4, ATT-003): ya existía desde `0011_views.sql` con casi todo lo que pide `08`
+F13 (sede, cliente, franja efectiva, estado de asignación y de turno, tareas resumidas, observación,
+`changed_since_last_seen`, próximos 7 días); esta migración le agrega `check_in_at`/`check_out_at`
+(`create or replace view`, columnas nuevas al final) porque hasta ahora no existía ninguna RPC que
+generara esos registros. `mark_changes_seen()` ya existía desde `0013_rpc_users.sql` (fase 4) y
+sigue igual.
+
+Detalle completo en `supabase/tests/0026_rpc_attendance.test.sql` (49 aserciones: las dos RPC de
+asistencia con y sin ubicación, todos los rechazos, las transiciones de asignación y de turno
+-- incluido un turno con dos empleados que no se completa hasta que el segundo también cierra --,
+`set_assignment_notes` por rol y con el turno completed, `v_my_day` por rol con los 7 días y
+`changed_since_last_seen` antes y después de `mark_changes_seen`, y que el empleado no puede
+escribir `attendance_records` ni `assignments.notes` directo por PostgREST). También se actualizaron
+dos tests de `0012`/`0017` que asumían el mecanismo de escritura directa de `notes` que esta
+migración reemplaza (`0012_rls_policies_assignments_attendance_tasks.test.sql`,
+`0017_grants.test.sql`).
+
 Decisiones menores (documentadas también en el reporte de la tarea):
 
 - El permiso de `clone_checklist_template` es exactamente `app.require_capability('edit_checklists')`

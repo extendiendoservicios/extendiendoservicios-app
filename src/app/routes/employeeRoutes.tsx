@@ -1,4 +1,14 @@
 import type { RouteObject } from 'react-router'
+import TodayPage from '@/pages/app/TodayPage'
+import ServiceDetailPage from '@/pages/app/ServiceDetailPage'
+import ClockTabPage from '@/pages/app/ClockTabPage'
+import LocationConsentPage from '@/pages/app/LocationConsentPage'
+import InProgressPage from '@/pages/app/InProgressPage'
+import TasksPage from '@/pages/app/TasksPage'
+import NotesPage from '@/pages/app/NotesPage'
+import FinishPage from '@/pages/app/FinishPage'
+import SummaryPage from '@/pages/app/SummaryPage'
+import MorePage from '@/pages/app/MorePage'
 import { placeholderRoute } from './placeholder'
 
 /**
@@ -8,72 +18,105 @@ import { placeholderRoute } from './placeholder'
  * con EMP-14 (el mapa de navegación de `05` sección 6 los muestra como un
  * único nodo, "EMP-14 Fichar (tab) → EMP-05 | EMP-07" — la pantalla real
  * decide ahí mismo si registra el inicio o redirige a "en curso").
+ * `ClockTabPage` resuelve esa decisión completa, botón real de "Registrar
+ * inicio" incluido (`record_check_in`, MOB-EMP-007): ver el comentario
+ * grande de ese archivo.
  */
 export const employeeRoutes: RouteObject[] = [
-  placeholderRoute({
+  {
     index: true,
-    screenId: 'EMP-03',
-    title: 'Hoy',
-    subtitle: 'Ver la jornada de hoy y los próximos días',
-  }),
-  placeholderRoute({
+    element: <TodayPage />,
+    handle: {
+      screenId: 'EMP-03',
+      title: 'Hoy',
+      subtitle: 'Tu jornada de hoy y los próximos días',
+    },
+  },
+  {
     path: 'servicio/:assignmentId',
-    screenId: 'EMP-04',
-    title: 'Detalle del servicio',
-    subtitle: 'Saber dónde, cuándo y qué hacer',
-  }),
-  placeholderRoute({
+    element: <ServiceDetailPage />,
+    handle: {
+      screenId: 'EMP-04',
+      title: 'Detalle del servicio',
+      subtitle: 'Dónde, cuándo y qué hacer',
+    },
+  },
+  {
     path: 'fichar',
-    screenId: 'EMP-14',
-    title: 'Fichar',
-    subtitle: 'Registrar inicio (EMP-05) o ir al servicio en curso (EMP-07)',
-  }),
-  placeholderRoute({
+    element: <ClockTabPage />,
+    handle: {
+      screenId: 'EMP-14',
+      title: 'Fichar',
+      subtitle: 'Registrá el inicio o seguí tu servicio en curso',
+    },
+  },
+  {
     path: 'fichar/consentimiento',
-    screenId: 'EMP-06',
-    title: 'Consentimiento de ubicación',
-    subtitle: 'Explicar y pedir permiso',
-  }),
-  placeholderRoute({
+    element: <LocationConsentPage />,
+    handle: {
+      screenId: 'EMP-06',
+      title: 'Consentimiento de ubicación',
+      subtitle: 'Tu ubicación al registrar',
+    },
+  },
+  {
     path: 'en-curso/:assignmentId',
-    screenId: 'EMP-07',
-    title: 'Servicio en curso',
-    subtitle: 'Seguir el servicio activo',
-  }),
-  placeholderRoute({
+    element: <InProgressPage />,
+    handle: {
+      screenId: 'EMP-07',
+      title: 'Servicio en curso',
+      subtitle: 'Tu servicio activo',
+    },
+  },
+  {
     path: 'en-curso/:assignmentId/tareas',
-    screenId: 'EMP-08',
-    title: 'Tareas',
-    subtitle: 'Marcar el estado de cada tarea',
-  }),
-  placeholderRoute({
+    element: <TasksPage />,
+    handle: {
+      screenId: 'EMP-08',
+      title: 'Tareas',
+      subtitle: 'Marcá cada tarea',
+    },
+  },
+  {
     path: 'en-curso/:assignmentId/observaciones',
-    screenId: 'EMP-09',
-    title: 'Observaciones',
-    subtitle: 'Cargar la observación del servicio',
-  }),
-  placeholderRoute({
+    element: <NotesPage />,
+    handle: {
+      screenId: 'EMP-09',
+      title: 'Observaciones',
+      subtitle: 'Contá cómo fue el servicio',
+    },
+  },
+  {
     path: 'en-curso/:assignmentId/finalizar',
-    screenId: 'EMP-10',
-    title: 'Finalizar servicio',
-    subtitle: 'Fichar el fin',
-  }),
-  placeholderRoute({
+    element: <FinishPage />,
+    handle: {
+      screenId: 'EMP-10',
+      title: 'Finalizar servicio',
+      subtitle: 'Registrá el fin',
+    },
+  },
+  {
     path: 'resumen/:assignmentId',
-    screenId: 'EMP-11',
-    title: 'Resumen del servicio',
-    subtitle: 'Comprobante del turno',
-  }),
+    element: <SummaryPage />,
+    handle: {
+      screenId: 'EMP-11',
+      title: 'Resumen del servicio',
+      subtitle: 'Comprobante del servicio',
+    },
+  },
   placeholderRoute({
     path: 'avisar',
     screenId: 'EMP-12',
     title: 'Avisar demora o ausencia',
-    subtitle: 'Avisar antes del turno',
+    subtitle: 'Avisá antes del servicio',
   }),
-  placeholderRoute({
+  {
     path: 'mas',
-    screenId: 'EMP-13',
-    title: 'Más',
-    subtitle: 'Acceso a perfil y opciones',
-  }),
+    element: <MorePage />,
+    handle: {
+      screenId: 'EMP-13',
+      title: 'Más',
+      subtitle: 'Tu perfil y opciones',
+    },
+  },
 ]

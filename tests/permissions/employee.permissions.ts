@@ -356,7 +356,13 @@ describe.skipIf(!env)(
           .eq('id', empleadoId)
       })
 
-      it('edita la nota de una asignación propia con turno todavía no completado (04 sección 7.2: "assignments | ... E: update de notes propia mientras el turno no esté completed")', async () => {
+      // Actualizado en P13.4 (MOB-EMP-017/TEST-010): desde `0026_rpc_attendance.sql` (P13.1),
+      // `notes` se escribe SOLO por `set_assignment_notes` -- la migración le sacó a propósito la
+      // política `assignments_update_own_notes` y el `grant update (notes)` que este caso probaba
+      // hasta P12 (ver el reporte de P13.1: "se quitaron... `notes` se escribe solo por la RPC").
+      // Un `update` directo sobre esa columna ahora tiene que rechazarse con `42501`, no con éxito
+      // silencioso ni con 0 filas -- eso mismo se agrega como caso negativo más abajo.
+      it('edita la nota de una asignación propia con turno todavía no completado, por set_assignment_notes (06 sección 10, P-062)', async () => {
         const propias = await admin
           .from('assignments')
           .select('id, shift_id')
@@ -386,19 +392,36 @@ describe.skipIf(!env)(
         if (!candidata) return
 
         const nota = 'e2e-perm nota de prueba'
-        const { data, error } = await empleado
-          .from('assignments')
-          .update({ notes: nota })
-          .eq('id', candidata.id)
-          .select()
+        const { data, error } = await empleado.rpc('set_assignment_notes', {
+          p_assignment_id: candidata.id,
+          p_notes: nota,
+        })
         expect(error).toBeNull()
-        expect(data?.[0]?.notes).toBe(nota)
+        expect(data?.notes).toBe(nota)
 
         // Limpieza.
-        await empleado
+        await empleado.rpc('set_assignment_notes', {
+          p_assignment_id: candidata.id,
+          p_notes: '',
+        })
+      })
+
+      it('un update directo de assignments.notes ya no funciona (42501): la única vía de escritura es set_assignment_notes', async () => {
+        const propias = await admin
           .from('assignments')
-          .update({ notes: null })
-          .eq('id', candidata.id)
+          .select('id')
+          .eq('employee_id', empleadoId)
+          .is('removed_at', null)
+          .limit(1)
+          .single()
+        expect(propias.data).toBeDefined()
+        if (!propias.data) return
+
+        const { error } = await empleado
+          .from('assignments')
+          .update({ notes: 'e2e-perm no debería aplicarse' })
+          .eq('id', propias.data.id)
+        expect(error?.code).toBe('42501')
       })
 
       it('llama mark_changes_seen() sobre sí mismo', async () => {

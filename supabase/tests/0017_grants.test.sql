@@ -90,11 +90,15 @@ select ok(
   'authenticated: sí tiene select en shifts'
 );
 
+-- El grant `update (notes)` que probaba esta sección quedó revocado por 0026_rpc_attendance.sql
+-- (ATT-002): la escritura de assignments.notes pasa ahora, exclusivamente, por la RPC
+-- set_assignment_notes -- assignments queda sin ningún privilegio de UPDATE directo para
+-- authenticated, igual que el resto de columnas de esa tabla (04 sección 7.2: "RPC").
 select is(
   (select coalesce(array_agg(column_name::text order by column_name::text), array[]::text[]) from information_schema.column_privileges
     where table_schema = 'public' and table_name = 'assignments' and grantee = 'authenticated' and privilege_type = 'UPDATE'),
-  array['notes'],
-  'authenticated: en assignments, update solo de la columna notes'
+  array[]::text[],
+  'authenticated: en assignments, sin ningún update directo (0026 revocó update (notes), ATT-002)'
 );
 
 -- 3. execute de las RPC de 0013 -----------------------------------------------------------------

@@ -1,6 +1,6 @@
 {
   "name": "extendiendoservicios-app",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -22,6 +22,7 @@
     "test:e2e:shifts-services": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-shifts-services/playwright.shifts-services.config.ts",
     "test:e2e:assignments": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-assignments/playwright.assignments.config.ts",
     "test:e2e:checklists": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-checklists/playwright.checklists.config.ts",
+    "test:e2e:employee-shift": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-employee-shift/playwright.employee-shift.config.ts",
     "test:permissions": "node --env-file=.env.local ./node_modules/vitest/vitest.mjs run --config tests/permissions/vitest.config.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
