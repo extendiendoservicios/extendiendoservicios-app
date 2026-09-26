@@ -36,6 +36,13 @@ import {
   removeFixtureAssignment,
   type FixtureShift,
 } from './helpers/assignment-fixtures.ts'
+import {
+  cleanupFixtureChecklistClient,
+  createFixtureChecklistClient,
+  createFixtureShiftTask,
+  deleteFixtureShiftTask,
+  type FixtureChecklistClient,
+} from './helpers/checklist-fixtures.ts'
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -340,6 +347,261 @@ describe.skipIf(!env)(
           p_reason: 'e2e-perm no debería aplicarse sin manage_attendance',
         })
         expect(error?.hint).toBe('SHIFT_STARTED')
+      })
+    })
+
+    // TASK-008/TEST-009 (P12.3, 08_Fases_y_Backlog.md F12): `checklist_templates`/
+    // `checklist_template_items` (O, A + edit_checklists escriben), `clone_checklist_template`,
+    // `update_task_status` (siempre para O/A, no depende de ninguna capacidad puntual) y
+    // `reload_shift_tasks` (capacidad y turno editable). andrea.rios (única admin del seed) tiene
+    // las 7 capacidades: el caso "A SIN edit_checklists" necesita un administrador descartable con
+    // esa capacidad puntual deshabilitada -- mismo criterio que el bloque SHIFT_STARTED de arriba
+    // (P11.4), ahora deshabilitando `edit_checklists` en vez de `manage_attendance`.
+    describe('checklists y tareas (F12, TEST-009)', () => {
+      const ALL_CAPABILITIES = [
+        'manage_users',
+        'cancel_shifts',
+        'edit_ratings',
+        'edit_checklists',
+        'manage_attendance',
+        'generate_shifts',
+        'manage_supervisions',
+      ] as const
+
+      let limitedAdminProfileId: string
+      let limitedAdmin: TestClient
+      let checklistClient: FixtureChecklistClient
+      let clientTemplateId: string
+      // Turno dedicado a `update_task_status`: nunca se le llama `reload_shift_tasks`, para que
+      // la tarea de fixture no desaparezca antes de que los dos tests de abajo la usen (`copy_
+      // checklist_to_shift`, invocado por esa RPC, reemplaza TODAS las tareas del turno).
+      let taskShift: FixtureShift
+      let taskId: string
+      // Turno aparte, dedicado a `reload_shift_tasks` (sin ninguna tarea propia: alcanza con que
+      // exista y esté `scheduled`/`completed` para probar la capacidad y el estado).
+      let reloadableShift: FixtureShift
+      let notEditableShift: FixtureShift
+
+      beforeAll(async () => {
+        const email = `e2e-perm-admin-sin-checklists-${Date.now()}@extendiendoservicios.com`
+        const password = `${process.env.SEED_DEV_PASSWORD}Aa1`
+        const { data: created, error: createError } =
+          await admin.auth.admin.createUser({
+            email,
+            password,
+            email_confirm: true,
+            user_metadata: {
+              first_name: 'E2E',
+              last_name: `Perm Admin Sin Checklists ${Date.now()}`,
+            },
+          })
+        if (createError || !created.user) {
+          throw new Error(
+            `No se pudo crear el administrador descartable: ${createError?.message}`,
+          )
+        }
+        limitedAdminProfileId = created.user.id
+
+        const { error: roleError } = await admin.from('user_roles').insert({
+          profile_id: limitedAdminProfileId,
+          role: 'admin',
+          granted_by: null,
+        })
+        if (roleError) {
+          throw new Error(
+            `No se pudo asignar el rol admin: ${roleError.message}`,
+          )
+        }
+
+        const { error: capsError } = await admin
+          .from('admin_capabilities')
+          .insert(
+            ALL_CAPABILITIES.map((capability) => ({
+              profile_id: limitedAdminProfileId,
+              capability,
+              enabled: capability !== 'edit_checklists', // la única deshabilitada a propósito.
+              updated_by: null,
+            })),
+          )
+        if (capsError) {
+          throw new Error(
+            `No se pudieron cargar las capacidades: ${capsError.message}`,
+          )
+        }
+
+        const anonClient = createAnonClient()
+        const { error: loginError } = await anonClient.auth.signInWithPassword({
+          email,
+          password,
+        })
+        if (loginError) {
+          throw new Error(
+            `No se pudo iniciar sesión con el administrador descartable: ${loginError.message}`,
+          )
+        }
+        limitedAdmin = anonClient
+
+        checklistClient = await createFixtureChecklistClient(admin)
+
+        const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+          .toISOString()
+          .slice(0, 10)
+        taskShift = await createFixtureShift(admin, tomorrow, '05:00', '06:00')
+        taskId = await createFixtureShiftTask(
+          admin,
+          taskShift.shiftId,
+          'update-status',
+        )
+
+        reloadableShift = await createFixtureShift(
+          admin,
+          tomorrow,
+          '06:30',
+          '07:30',
+        )
+
+        notEditableShift = await createFixtureShift(
+          admin,
+          tomorrow,
+          '08:00',
+          '09:00',
+        )
+        const { error: statusError } = await admin
+          .from('shifts')
+          .update({ status: 'completed' })
+          .eq('id', notEditableShift.shiftId)
+        if (statusError) {
+          throw new Error(
+            `No se pudo forzar el turno de fixture a completed: ${statusError.message}`,
+          )
+        }
+      })
+
+      afterAll(async () => {
+        await limitedAdmin.auth.signOut()
+        await deleteFixtureShiftTask(admin, taskId)
+        await cleanupFixtureShift(admin, taskShift)
+        await cleanupFixtureShift(admin, reloadableShift)
+        await cleanupFixtureShift(admin, notEditableShift)
+        await cleanupFixtureChecklistClient(admin, checklistClient)
+        await admin.auth.admin.updateUserById(limitedAdminProfileId, {
+          ban_duration: '876000h',
+        })
+        await admin
+          .from('profiles')
+          .update({ is_active: false, deleted_at: new Date().toISOString() })
+          .eq('id', limitedAdminProfileId)
+      })
+
+      it('con edit_checklists, crea la plantilla del cliente por API directa (04 sección 7.2: "checklist_templates... O, A con edit_checklists")', async () => {
+        const { data, error } = await administradora
+          .from('checklist_templates')
+          .insert({
+            client_id: checklistClient.clientId,
+            site_id: null,
+            name: 'E2E-P123-PERM Plantilla del cliente',
+          })
+          .select('id, client_id')
+          .single()
+        expect(error).toBeNull()
+        expect(data?.client_id).toBe(checklistClient.clientId)
+        clientTemplateId = data!.id
+      })
+
+      it('con edit_checklists, agrega un ítem a esa plantilla', async () => {
+        const { data, error } = await administradora
+          .from('checklist_template_items')
+          .insert({
+            template_id: clientTemplateId,
+            position: 0,
+            title: 'E2E-P123-PERM ítem',
+            is_required: true,
+          })
+          .select('id')
+          .single()
+        expect(error).toBeNull()
+        expect(data?.id).toBeDefined()
+      })
+
+      it('con edit_checklists, clona la plantilla del cliente para una sede (clone_checklist_template, P-058)', async () => {
+        const { data, error } = await administradora.rpc(
+          'clone_checklist_template',
+          {
+            p_client_id: checklistClient.clientId,
+            p_site_id: checklistClient.siteForCloneId,
+          },
+        )
+        expect(error).toBeNull()
+        expect(data?.site_id).toBe(checklistClient.siteForCloneId)
+      })
+
+      it('update_task_status: el administrador cambia el estado de cualquier tarea, sin depender de ninguna capacidad', async () => {
+        const { data, error } = await administradora.rpc('update_task_status', {
+          p_task_id: taskId,
+          p_status: 'in_progress',
+        })
+        expect(error).toBeNull()
+        expect(data?.status).toBe('in_progress')
+      })
+
+      it('reload_shift_tasks: con edit_checklists y turno scheduled, la RPC no falla', async () => {
+        const { error } = await administradora.rpc('reload_shift_tasks', {
+          p_shift_id: reloadableShift.shiftId,
+        })
+        expect(error).toBeNull()
+      })
+
+      it('reload_shift_tasks: turno no editable (completed) responde SHIFT_NOT_EDITABLE', async () => {
+        const { error } = await administradora.rpc('reload_shift_tasks', {
+          p_shift_id: notEditableShift.shiftId,
+        })
+        expect(error?.hint).toBe('SHIFT_NOT_EDITABLE')
+      })
+
+      it('sin edit_checklists, NO puede insertar una plantilla (RLS)', async () => {
+        const { error } = await limitedAdmin
+          .from('checklist_templates')
+          .insert({
+            client_id: checklistClient.clientId,
+            site_id: checklistClient.siteWithoutTemplateId,
+            name: 'e2e-perm no debería crearse',
+          })
+        expect(error?.code).toBe('42501')
+      })
+
+      it('sin edit_checklists, NO puede agregar un ítem a una plantilla existente (RLS)', async () => {
+        const { error } = await limitedAdmin
+          .from('checklist_template_items')
+          .insert({
+            template_id: clientTemplateId,
+            position: 1,
+            title: 'e2e-perm no debería crearse',
+          })
+        expect(error?.code).toBe('42501')
+      })
+
+      it('sin edit_checklists, NO puede llamar clone_checklist_template (FORBIDDEN)', async () => {
+        const { error } = await limitedAdmin.rpc('clone_checklist_template', {
+          p_client_id: checklistClient.clientId,
+          p_site_id: checklistClient.siteWithoutTemplateId,
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('sin edit_checklists, NO puede llamar reload_shift_tasks (FORBIDDEN)', async () => {
+        const { error } = await limitedAdmin.rpc('reload_shift_tasks', {
+          p_shift_id: reloadableShift.shiftId,
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('sin edit_checklists, SÍ puede llamar update_task_status (no depende de esa capacidad)', async () => {
+        const { data, error } = await limitedAdmin.rpc('update_task_status', {
+          p_task_id: taskId,
+          p_status: 'done',
+        })
+        expect(error).toBeNull()
+        expect(data?.status).toBe('done')
       })
     })
   },
