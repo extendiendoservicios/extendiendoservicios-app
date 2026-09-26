@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as myDayApi from '@/api/myDay'
 import * as attendanceApi from '@/api/attendance'
-import { fetchShiftTasksReadOnly } from '@/api/tasks'
+import {
+  fetchShiftTasksReadOnly,
+  updateTaskStatus,
+  type TaskStatus,
+} from '@/api/tasks'
 import type { GeolocationCoords } from '@/lib/geolocation'
 
 /**
@@ -63,6 +67,45 @@ export function useShiftTasksReadOnlyQuery(shiftId: string) {
     queryKey: employeeKeys.shiftTasks(shiftId),
     queryFn: () => fetchShiftTasksReadOnly(shiftId),
     enabled: Boolean(shiftId),
+  })
+}
+
+/**
+ * EMP-08: las mismas tareas del turno, pero como fuente para la pantalla
+ * que las deja marcar (`fetchShiftTasksReadOnly` alcanza para las dos
+ * lecturas -- la única RPC de escritura es `update_task_status`, más abajo).
+ */
+export function useShiftTasksQuery(shiftId: string) {
+  return useQuery({
+    queryKey: employeeKeys.shiftTasks(shiftId),
+    queryFn: () => fetchShiftTasksReadOnly(shiftId),
+    enabled: Boolean(shiftId),
+  })
+}
+
+/**
+ * EMP-08: cambia el estado de una tarea (`06` sección 9,
+ * `update_task_status`). Invalida las tareas del turno y `myDay` (el
+ * progreso `tasksDone`/`tasksTotal` de EMP-03/EMP-07 sale de ahí).
+ */
+export function useUpdateTaskStatusMutation(shiftId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      taskId,
+      status,
+      reason,
+    }: {
+      taskId: string
+      status: TaskStatus
+      reason?: string
+    }) => updateTaskStatus(taskId, status, reason),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: employeeKeys.shiftTasks(shiftId),
+      })
+      void queryClient.invalidateQueries({ queryKey: employeeKeys.myDay() })
+    },
   })
 }
 

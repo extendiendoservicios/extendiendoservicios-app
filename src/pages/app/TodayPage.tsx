@@ -11,6 +11,7 @@ import {
   useMarkChangesSeenMutation,
   useMyDayQuery,
 } from '@/features/employee/queries'
+import { InstallBanner } from '@/features/employee/components/InstallBanner'
 
 /**
  * EMP-03 · Hoy (MOB-EMP-002, MOB-EMP-003, `06` sección 10, P-092, P-093):
@@ -62,6 +63,7 @@ export default function TodayPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <InstallBanner />
       {changes.length > 0 && <ChangesBlock changes={changes} />}
 
       {today.length === 0 ? (
