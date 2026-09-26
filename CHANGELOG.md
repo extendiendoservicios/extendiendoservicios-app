@@ -7,6 +7,35 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.10.0] - 2026-09-26
+
+App del empleado (F13). Desde el celular, el empleado ve su día y los próximos siete, abre el detalle de cada servicio, registra el inicio y el fin con la hora del servidor y la ubicación opcional, marca las tareas, deja su observación y ve el resumen al terminar. La app se instala en Android y avisa cuando no hay conexión. Trae una migración nueva, `0026_rpc_attendance.sql`.
+
+### Agregado
+
+- RPC de asistencia (P13.1, ATT-001 a ATT-004), en la migración `0026_rpc_attendance.sql`:
+  - `record_check_in` y `record_check_out`: hora del servidor y ubicación opcional (completa o nada, P-067). El inicio solo se registra el día del turno; el fin, también después (P-069). La asignación pasa a presente y después a finalizada. El turno pasa a en curso y a completado cuando no queda ninguna asignación abierta.
+  - `set_assignment_notes`: una observación por empleado en cada turno (P-062), con un máximo de 2000 caracteres. La escritura directa de `assignments.notes` se cerró: queda solo la RPC.
+  - `v_my_day` suma la hora de inicio y de fin registradas.
+  - pgTAP: 49 aserciones nuevas.
+- Pantallas del empleado (P13.2 y P13.3, MOB-EMP-002 a MOB-EMP-016, ATT-005, ATT-006, DOC-013):
+  - Hoy: servicio destacado, otros de hoy, próximos días y "Cambios desde tu última visita".
+  - Detalle del servicio con la sede, los compañeros, las tareas y la observación.
+  - Fichar: consentimiento de ubicación con el texto de la empresa (P-091, P-108). Si la persona sigue sin ubicación, el celular lo recuerda y el registro funciona igual.
+  - Servicio en curso con cronómetro, tareas con motivo para "no realizada", observación, finalizar con avisos de tareas pendientes y salida anticipada, y resumen.
+  - Más: perfil, supervisión si corresponde, instalar la app y cerrar sesión.
+  - Banner de instalación e indicador de sin conexión, que deshabilita lo que guarda datos.
+  - Guía técnica en `docs/features/app-del-empleado.md`.
+- Pruebas (P13.4 y P13.5, MOB-EMP-017, MOB-EMP-018, TEST-010):
+  - Suite e2e `tests/e2e-employee-shift/` a 390 px: turno completo con y sin geolocalización, sin conexión y la pantalla Hoy.
+  - Permisos por API de las tres RPC nuevas.
+  - Guía para la prueba en un Android real (`docs/testing/prueba-android-empleado.md`), hecha el 26 sep en un Android 14 con Chrome 154.
+
+### Corregido
+
+- El banner de instalación no aparecía si la persona entraba por el inicio de sesión: el aviso de Chrome ahora se captura al arrancar la app (#79).
+- Vitest excluye todas las carpetas `tests/e2e*`; una suite e2e nueva ya no rompe el CI.
+
 ## [0.9.0] - 2026-09-26
 
 Checklists y tareas (F12). El dueño y los administradores con la capacidad `edit_checklists` arman la plantilla de tareas de cada cliente y, si una sede necesita otra cosa, una plantilla propia copiada de la del cliente. Cada turno nuevo copia la plantilla vigente de su sede o de su cliente, y el administrador marca las tareas desde el detalle del turno. Trae una migración nueva, `0025_rpc_tasks.sql`.
