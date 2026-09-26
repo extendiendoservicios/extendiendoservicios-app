@@ -13,25 +13,21 @@ PR #82, todavía sin fusionar al momento de este paquete, aplicada en
 `notify_absence`, y las columnas nuevas de `v_assignments_board`/`v_my_day`
 (origen y responsable de cada registro, último aviso).
 
-**Trabajo en paralelo con P14.2** (front-movil, en otro worktree): ese
-paquete construye `src/api/notices.ts` (aviso desde la app del empleado) y
-la lista de motivos del lado del empleado. Este paquete usa en cambio:
+**Módulos que usa este paquete:**
 
 - `src/api/attendance.ts` (ya existía desde P13.1/P13.2): se le agregan
   `adminRecordAttendance`, `closeAssignment` y las lecturas de
   `v_assignments_board`/`attendance_records`/`attendance_notices` para
   ADM-06, ADM-10 y ADM-12.
-- `src/api/adminNotices.ts` (archivo nuevo, propio y mínimo): `notifyDelayOnBehalf`/
-  `notifyAbsenceOnBehalf`, mismas RPC `notify_delay`/`notify_absence` que
-  usa (o va a usar) `src/api/notices.ts` del otro paquete, para el uso "en
-  nombre del empleado". El orquestador unifica los dos módulos al integrar.
-- `src/features/attendance/reasonLabels.ts`: etiquetas de `absence_reason`/
-  `notice_kind`/`attendance_source`/`attendance_kind`, con un comentario
-  `// TODO(P14.2): unificar con la lista compartida` -- front-movil arma su
-  propia lista de motivos para la pantalla del empleado; el orquestador
-  las junta en un solo archivo al integrar las dos ramas.
+- `src/api/notices.ts` (P14.2): `notifyDelay`/`notifyAbsence`, las mismas
+  funciones que usa la app del empleado. La RPC distingue si llama el
+  empleado o la administración.
+- `src/lib/absenceReasons.ts` (P14.2): motivos de ausencia con sus
+  etiquetas, compartidos con la app del empleado.
+- `src/features/attendance/reasonLabels.ts`: etiquetas de `notice_kind`,
+  `attendance_source` y `attendance_kind`.
 
-Ver `docs/api.md` secciones "attendance" y "adminNotices" para la tabla
+Ver `docs/api.md` secciones "attendance" y "notices" para la tabla
 completa de funciones.
 
 ## `src/features/attendance/`
@@ -88,10 +84,10 @@ para esa asignación) y un formulario propio por tipo de acción:
   y motivo obligatorio. Llama `adminRecordAttendance('check_in'|'check_out', ...)`
   o `closeAssignment(...)` según la acción elegida.
 - **Demora** (`NotifyDelayForm`): minutos (1 a 600) y motivo opcional.
-  Llama `notifyDelayOnBehalf`.
+  Llama `notifyDelay`.
 - **Ausencia** (`NotifyAbsenceForm`): motivo (`Select` con
   `ABSENCE_REASON_LABELS`) y detalle (obligatorio solo si el motivo es
-  "Otro"). Llama `notifyAbsenceOnBehalf`.
+  "Otro"). Llama `notifyAbsence`.
 
 Los errores del servidor se muestran tal cual (`error.message`, regla común
 de la capa): `AT_OUT_OF_RANGE`, `INVALID_TIME_RANGE`, `REASON_REQUIRED`,
@@ -175,11 +171,9 @@ pantalla.
   agregaron a `src/api/attendance.ts`** (no un archivo nuevo): así lo pidió
   el encargo, para no duplicar el módulo que ya usa el empleado (P13.1/
   P13.2) -- ver la nota grande al principio de ese archivo.
-- **`src/api/adminNotices.ts` es un archivo nuevo y aislado** (no
-  `src/api/notices.ts`, que crea P14.2 en paralelo): instrucción explícita
-  del orquestador para evitar una dependencia cruzada entre dos ramas que
-  se editan al mismo tiempo. Se duplica la llamada a `notify_delay`/
-  `notify_absence` en vez de importar el módulo del otro paquete.
+- **El aviso en nombre del empleado usa `src/api/notices.ts`**, el mismo
+  módulo que la app del empleado (unificado por el orquestador al integrar
+  P14.2 y P14.3).
 - **`datetime-local` en vez de `TimeInput`** para la hora de ADM-11 (ver
   arriba, `dateTimeLocal.ts`).
 - **El filtro de sede de ADM-10 se arma con las sedes de la fecha elegida**,
@@ -191,9 +185,5 @@ pantalla.
 
 ## Qué revisar / para el orquestador
 
-- **P14.2 tiene que unificar `reasonLabels.ts`** (este paquete) con la
-  lista de motivos que arme para la pantalla del empleado, y
-  `adminNotices.ts` con `notices.ts` -- ver el comentario `TODO(P14.2)` y
-  las notas de arriba.
 - **Sin e2e**: quedan para qa-pruebas (P14.4), con la misma capacidad
   `manage_attendance` y los mismos seeds de F14.1.

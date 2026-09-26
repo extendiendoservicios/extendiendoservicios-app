@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as attendanceApi from '@/api/attendance'
 import type { AttendanceBoardFilters, AttendanceKind } from '@/api/attendance'
-import * as adminNoticesApi from '@/api/adminNotices'
-import type { AbsenceReason } from '@/api/adminNotices'
+import * as noticesApi from '@/api/notices'
+import type { AbsenceReason } from '@/lib/absenceReasons'
 import { planningKeys } from '@/features/planning/queries'
 import { shiftsKeys } from '@/features/shifts/queries'
 
@@ -166,8 +166,7 @@ export function useAdminNotifyDelayMutation() {
       assignmentId: string
       minutes: number
       reasonText?: string
-    }) =>
-      adminNoticesApi.notifyDelayOnBehalf(assignmentId, minutes, reasonText),
+    }) => noticesApi.notifyDelay(assignmentId, minutes, reasonText),
     onSuccess: () => invalidateAttendanceAndBoards(queryClient),
   })
 }
@@ -184,12 +183,7 @@ export function useAdminNotifyAbsenceMutation() {
       assignmentId: string
       reasonCode: AbsenceReason
       reasonText?: string
-    }) =>
-      adminNoticesApi.notifyAbsenceOnBehalf(
-        assignmentId,
-        reasonCode,
-        reasonText,
-      ),
+    }) => noticesApi.notifyAbsence(assignmentId, reasonCode, reasonText),
     onSuccess: () => invalidateAttendanceAndBoards(queryClient),
   })
 }

@@ -131,12 +131,8 @@ export async function setAssignmentNotes(
  * migración `0027_rpc_notices_admin_attendance.sql`. `admin_record_attendance`
  * y `close_assignment` (ADM-11, `06` sección 10) y las lecturas de
  * `v_assignments_board` para ADM-06 (ATT-014), ADM-10 (ATT-011/ATT-012) y
- * ADM-12 (ATT-013). Front-movil (P14.2, en paralelo) usa este mismo archivo
- * para `record_check_in`/`record_check_out`/`set_assignment_notes` de
- * arriba, pero no toca nada de acá para abajo: el aviso en nombre del
- * empleado (`notify_delay`/`notify_absence`) vive aparte, en
- * `src/api/adminNotices.ts`, para no pisar el módulo `src/api/notices.ts`
- * que crea ese paquete (instrucción del orquestador).
+ * ADM-12 (ATT-013). El aviso de demora o ausencia, propio o en nombre del
+ * empleado, está en `src/api/notices.ts`.
  */
 
 export type AttendanceSource = Database['public']['Enums']['attendance_source']

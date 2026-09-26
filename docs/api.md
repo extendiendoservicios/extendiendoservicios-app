@@ -248,9 +248,8 @@ Empieza en P13.1/P13.2 (`record_check_in`, `record_check_out`,
 EMP-09 del empleado -- sección nunca agregada acá, se completa ahora de
 paso) y se extiende en P14.3 con `admin_record_attendance`/
 `close_assignment` (`0027_rpc_notices_admin_attendance.sql`) y las lecturas
-de `v_assignments_board` para ADM-06, ADM-10 y ADM-12. `src/api/adminNotices.ts`
-(abajo) es un archivo aparte, para el aviso de demora/ausencia en nombre
-del empleado.
+de `v_assignments_board` para ADM-06, ADM-10 y ADM-12. El aviso de demora o
+ausencia está en `src/api/notices.ts` (abajo).
 
 | Función                                                  | Canal                                                       | Notas                                                                                                                                                                                                                                                 |
 | -------------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -266,18 +265,17 @@ del empleado.
 | `fetchEmployeePhonesByIds(employeeIds)`                  | `from('v_employees')`                                       | Para "llamar" (`tel:`) desde ADM-10; `v_assignments_board` no trae el teléfono.                                                                                                                                                                       |
 | `fetchPeopleNamesByIds(profileIds)`                      | `from('v_people_basic')`                                    | Resuelve `recorded_by`/`reported_by` (ids) a nombre y apellido, para "lo cargó `<nombre>`" (ATT-014).                                                                                                                                                 |
 
-### `adminNotices` (`src/api/adminNotices.ts`, P14.3 — ATT-010, ABS-008)
+### `notices` (`src/api/notices.ts`, P14.2 y P14.3 — ABS-004, ABS-008)
 
-`notifyDelayOnBehalf`/`notifyAbsenceOnBehalf`: mismas RPC `notify_delay`/
-`notify_absence` que usa (o va a usar) `src/api/notices.ts` del lado del
-empleado (P14.2, en paralelo) -- archivo propio y mínimo para el uso "en
-nombre del empleado" desde ADM-11, para no generar una dependencia cruzada
-entre los dos paquetes mientras se desarrollan en ramas distintas (el
-orquestador unifica los dos módulos al integrar). `notifyDelayOnBehalf`:
-solo antes del inicio efectivo, sin excepción (P-072). `notifyAbsenceOnBehalf`:
-antes o después del inicio efectivo mientras no haya inicio registrado
-(P-073, ratificado el 26 sep 2026); motivo obligatorio, texto obligatorio si
-es `other`.
+`notifyDelay(assignmentId, minutes, reasonText?)` y
+`notifyAbsence(assignmentId, reasonCode, reasonText?)`, sobre las RPC
+`notify_delay` y `notify_absence`. Las usan el empleado desde EMP-12 y el
+dueño o el administrador con `manage_attendance` desde ADM-11, en nombre del
+empleado: la RPC decide según quién llama. La demora es solo antes del inicio
+efectivo, con minutos de 1 a 600 (P-072). La ausencia exige motivo, y texto si
+es `other`; en nombre del empleado se acepta también después del inicio
+mientras no haya inicio registrado (P14.0). Los motivos con sus etiquetas
+están en `src/lib/absenceReasons.ts`.
 
 ### `checklists` (`src/api/checklists.ts`, P12.2 — TASK-003 a TASK-005)
 
