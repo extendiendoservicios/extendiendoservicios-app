@@ -1,4 +1,9 @@
 import type { RouteObject } from 'react-router'
+import TodayPage from '@/pages/app/TodayPage'
+import ServiceDetailPage from '@/pages/app/ServiceDetailPage'
+import ClockTabPage from '@/pages/app/ClockTabPage'
+import LocationConsentPage from '@/pages/app/LocationConsentPage'
+import MorePage from '@/pages/app/MorePage'
 import { placeholderRoute } from './placeholder'
 
 /**
@@ -8,32 +13,47 @@ import { placeholderRoute } from './placeholder'
  * con EMP-14 (el mapa de navegación de `05` sección 6 los muestra como un
  * único nodo, "EMP-14 Fichar (tab) → EMP-05 | EMP-07" — la pantalla real
  * decide ahí mismo si registra el inicio o redirige a "en curso").
+ * `ClockTabPage` (P13.2) ya resuelve esa decisión completa salvo el botón
+ * real de "Registrar inicio" (`record_check_in`, P13.3): ver el comentario
+ * grande de ese archivo.
  */
 export const employeeRoutes: RouteObject[] = [
-  placeholderRoute({
+  {
     index: true,
-    screenId: 'EMP-03',
-    title: 'Hoy',
-    subtitle: 'Ver la jornada de hoy y los próximos días',
-  }),
-  placeholderRoute({
+    element: <TodayPage />,
+    handle: {
+      screenId: 'EMP-03',
+      title: 'Hoy',
+      subtitle: 'Ver la jornada de hoy y los próximos días',
+    },
+  },
+  {
     path: 'servicio/:assignmentId',
-    screenId: 'EMP-04',
-    title: 'Detalle del servicio',
-    subtitle: 'Saber dónde, cuándo y qué hacer',
-  }),
-  placeholderRoute({
+    element: <ServiceDetailPage />,
+    handle: {
+      screenId: 'EMP-04',
+      title: 'Detalle del servicio',
+      subtitle: 'Saber dónde, cuándo y qué hacer',
+    },
+  },
+  {
     path: 'fichar',
-    screenId: 'EMP-14',
-    title: 'Fichar',
-    subtitle: 'Registrar inicio (EMP-05) o ir al servicio en curso (EMP-07)',
-  }),
-  placeholderRoute({
+    element: <ClockTabPage />,
+    handle: {
+      screenId: 'EMP-14',
+      title: 'Fichar',
+      subtitle: 'Registrar inicio (EMP-05) o ir al servicio en curso (EMP-07)',
+    },
+  },
+  {
     path: 'fichar/consentimiento',
-    screenId: 'EMP-06',
-    title: 'Consentimiento de ubicación',
-    subtitle: 'Explicar y pedir permiso',
-  }),
+    element: <LocationConsentPage />,
+    handle: {
+      screenId: 'EMP-06',
+      title: 'Consentimiento de ubicación',
+      subtitle: 'Explicar y pedir permiso',
+    },
+  },
   placeholderRoute({
     path: 'en-curso/:assignmentId',
     screenId: 'EMP-07',
@@ -70,10 +90,13 @@ export const employeeRoutes: RouteObject[] = [
     title: 'Avisar demora o ausencia',
     subtitle: 'Avisar antes del turno',
   }),
-  placeholderRoute({
+  {
     path: 'mas',
-    screenId: 'EMP-13',
-    title: 'Más',
-    subtitle: 'Acceso a perfil y opciones',
-  }),
+    element: <MorePage />,
+    handle: {
+      screenId: 'EMP-13',
+      title: 'Más',
+      subtitle: 'Acceso a perfil y opciones',
+    },
+  },
 ]

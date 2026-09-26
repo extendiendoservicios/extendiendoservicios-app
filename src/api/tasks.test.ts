@@ -15,7 +15,26 @@ vi.mock('@/lib/supabase', () => ({
   supabase: { from: fromMock, rpc: rpcMock },
 }))
 
-const { updateTaskStatus, reloadShiftTasks } = await import('./tasks')
+const { updateTaskStatus, reloadShiftTasks, fetchShiftTasksReadOnly } =
+  await import('./tasks')
+
+interface PostgrestResult<T> {
+  data: T | null
+  error: { message: string; code?: string; hint?: string } | null
+}
+
+function makeChainable<T>(result: PostgrestResult<T>) {
+  const chain: Record<string, unknown> = {
+    select: () => chain,
+    eq: () => chain,
+    order: () => chain,
+    then: (
+      resolve: (value: PostgrestResult<T>) => void,
+      reject?: (reason: unknown) => void,
+    ) => Promise.resolve(result).then(resolve, reject),
+  }
+  return chain
+}
 
 beforeEach(() => {
   fromMock.mockReset()
@@ -93,5 +112,26 @@ describe('reloadShiftTasks', () => {
     expect(rpcMock).toHaveBeenCalledWith('reload_shift_tasks', {
       p_shift_id: 'shift-1',
     })
+  })
+})
+
+describe('fetchShiftTasksReadOnly', () => {
+  it('trae las tareas del turno ordenadas por posición (EMP-04)', async () => {
+    fromMock.mockReturnValue(makeChainable({ data: [TASK_ROW], error: null }))
+
+    const tasks = await fetchShiftTasksReadOnly('shift-1')
+
+    expect(fromMock).toHaveBeenCalledWith('shift_tasks')
+    expect(tasks).toEqual([
+      expect.objectContaining({ id: 'task-1', title: 'Barrer el salón' }),
+    ])
+  })
+
+  it('propaga el error traducido si la consulta falla', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({ data: null, error: { message: 'boom', code: '500' } }),
+    )
+
+    await expect(fetchShiftTasksReadOnly('shift-1')).rejects.toThrow()
   })
 })
