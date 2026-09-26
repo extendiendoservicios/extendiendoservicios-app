@@ -82,12 +82,17 @@ test.describe('TASK-009: ADM-26 y las tareas de ADM-06 en 390 px', () => {
         await expect(page.getByText('Limpiar vidrios')).toBeVisible()
         await expectNoHorizontalScroll(page)
 
-        await page
-          .getByRole('combobox', { name: 'Estado de "Limpiar vidrios"' })
-          .click()
+        const statusSelect = page.getByRole('combobox', {
+          name: 'Estado de "Limpiar vidrios"',
+        })
+        await statusSelect.click()
         await page
           .getByRole('option', { name: 'Realizada', exact: true })
           .click()
+        // Espera a que el `Select` refleje el nuevo valor (la mutación es asíncrona: sin esto, la
+        // lectura por API de más abajo corre antes de que `update_task_status` termine —
+        // encontrado corriendo esta suite, ver el reporte del encargo).
+        await expect(statusSelect).toContainText('Realizada')
         await expectNoHorizontalScroll(page)
 
         const tasks = await fetchShiftTasks(admin, shiftId)

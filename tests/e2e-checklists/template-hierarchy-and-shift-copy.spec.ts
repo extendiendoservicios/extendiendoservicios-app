@@ -46,12 +46,24 @@ async function addChecklistItem(
     await page.getByLabel('Tarea opcional', { exact: false }).check()
   }
   await page.getByRole('button', { name: 'Guardar' }).click()
-  await expect(page.getByText('Agregamos el ítem.')).toBeVisible()
+  // `.last()`: los toasts anteriores (sonner) pueden seguir en el DOM mientras se desvanecen —
+  // con varios ítems agregados en el mismo test, "Agregamos el ítem." queda duplicado un
+  // instante (encontrado corriendo esta suite, ver el reporte del encargo).
+  await expect(page.getByText('Agregamos el ítem.').last()).toBeVisible()
 }
 
-/** Compara el orden visible de los títulos de ítems de la plantilla abierta en ADM-26. */
+/**
+ * Compara el orden visible de los títulos de ítems de la plantilla abierta en ADM-26.
+ * `page.getByRole('listitem')` a secas también matchea los toasts (sonner los renderiza como
+ * `<li>`) y los ítems del menú lateral ("Resumen", etc., `<li class="list-none">`) — se filtra a
+ * los `<li>` que tienen el botón "Editar" de `ChecklistItemsEditor` (`aria-label='Editar "..."'`),
+ * que solo existe en las filas de esta lista (encontrado corriendo esta suite, ver el reporte del
+ * encargo).
+ */
 async function expectItemOrder(page: Page, titles: string[]): Promise<void> {
-  const items = page.getByRole('listitem')
+  const items = page
+    .locator('li')
+    .filter({ has: page.getByRole('button', { name: /^Editar "/ }) })
   await expect(items).toHaveCount(titles.length)
   for (let i = 0; i < titles.length; i++) {
     await expect(items.nth(i)).toContainText(titles[i])
@@ -98,7 +110,7 @@ test.describe('TASK-008: jerarquía de plantillas (cliente/sede) y copia a los t
           .getByRole('button', { name: 'Crear plantilla del cliente' })
           .click()
         await expect(
-          page.getByText('Creamos la plantilla del cliente.'),
+          page.getByText('Creamos la plantilla del cliente.').last(),
         ).toBeVisible()
 
         await addChecklistItem(page, 'Barrer', { optional: false })
@@ -124,7 +136,7 @@ test.describe('TASK-008: jerarquía de plantillas (cliente/sede) y copia a los t
           })
           .click()
         await expect(
-          page.getByText('Creamos la plantilla propia de la sede.'),
+          page.getByText('Creamos la plantilla propia de la sede.').last(),
         ).toBeVisible()
         await expect(
           page.getByText('Plantilla propia de la sede'),
@@ -157,7 +169,7 @@ test.describe('TASK-008: jerarquía de plantillas (cliente/sede) y copia a los t
         await page.getByLabel('Desde').fill('08:00')
         await page.getByLabel('Hasta').fill('12:00')
         await page.getByRole('button', { name: 'Crear turno' }).click()
-        await expect(page.getByText('Creamos el turno.')).toBeVisible()
+        await expect(page.getByText('Creamos el turno.').last()).toBeVisible()
         shiftWithOwnId = await findShiftId(
           admin,
           siteWithOwn.id,
@@ -199,7 +211,7 @@ test.describe('TASK-008: jerarquía de plantillas (cliente/sede) y copia a los t
         await page.getByLabel('Desde').fill('08:00')
         await page.getByLabel('Hasta').fill('12:00')
         await page.getByRole('button', { name: 'Crear turno' }).click()
-        await expect(page.getByText('Creamos el turno.')).toBeVisible()
+        await expect(page.getByText('Creamos el turno.').last()).toBeVisible()
         shiftWithoutOwnId = await findShiftId(
           admin,
           siteWithoutOwn.id,
@@ -245,7 +257,7 @@ test.describe('TASK-008: jerarquía de plantillas (cliente/sede) y copia a los t
           .last()
           .click()
         await expect(
-          page.getByText('Recargamos las tareas del turno.'),
+          page.getByText('Recargamos las tareas del turno.').last(),
         ).toBeVisible()
 
         const tasks = await fetchShiftTasks(admin, shiftWithoutOwnId)
