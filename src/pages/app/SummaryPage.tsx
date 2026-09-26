@@ -88,6 +88,10 @@ export default function SummaryPage() {
                 status: task.status,
                 isRequired: task.isRequired,
                 notDoneReason: task.notDoneReason ?? undefined,
+                completedAt:
+                  task.status === 'done'
+                    ? (task.statusChangedAt ?? undefined)
+                    : undefined,
               }))}
               readOnly
             />

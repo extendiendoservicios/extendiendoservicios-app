@@ -36,6 +36,8 @@ export interface ShiftTask {
   isRequired: boolean
   status: TaskStatus
   notDoneReason: string | null
+  /** Cuándo cambió de estado por última vez (la hora de "Completada"). */
+  statusChangedAt: string | null
 }
 
 function mapTaskRow(
@@ -50,6 +52,7 @@ function mapTaskRow(
     isRequired: row.is_required,
     status: row.status,
     notDoneReason: row.not_done_reason,
+    statusChangedAt: row.status_changed_at,
   }
 }
 

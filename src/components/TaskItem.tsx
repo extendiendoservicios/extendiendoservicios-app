@@ -91,11 +91,11 @@ function TaskItem({
     <div
       className={cn(
         'flex items-start gap-[11px] py-[11px]',
-        // ".task.next" (ds2.css): resaltada, sin el negative-margin bleed
-        // del mockup (asume un padding de contenedor fijo; acá el fondo y el
-        // radio quedan autocontenidos para que el componente sirva en
-        // cualquier contenedor — ver reporte, decisión menor).
-        isNext && 'rounded-sm bg-primary-50 px-[11px]',
+        // ".task.next" (ds2.css): resaltada, con el margen negativo del
+        // mockup para que el casillero quede alineado con los demás ítems
+        // (sin él, la fila resaltada quedaba corrida 11 px). Todos los
+        // contenedores actuales tienen al menos 14 px de padding lateral.
+        isNext && '-mx-[11px] rounded-sm bg-primary-50 px-[11px]',
         className,
       )}
     >
@@ -103,7 +103,7 @@ function TaskItem({
         type="button"
         role="checkbox"
         aria-checked={isDone}
-        aria-label={getCheckboxLabel(status, title)}
+        aria-label={getCheckboxLabel(status, title, readOnly)}
         disabled={readOnly}
         onClick={handleCheckboxClick}
         className={cn(
@@ -183,7 +183,21 @@ function TaskItem({
   )
 }
 
-function getCheckboxLabel(status: TaskStatus, title: string): string {
+function getCheckboxLabel(
+  status: TaskStatus,
+  title: string,
+  readOnly: boolean,
+): string {
+  if (readOnly) {
+    // En solo lectura el lector de pantalla no debe invitar a tocar.
+    const label = {
+      done: 'completada',
+      not_done: 'no realizada',
+      in_progress: 'en curso',
+      pending: 'pendiente',
+    }[status]
+    return `"${title}" ${label}`
+  }
   if (status === 'done') {
     return `"${title}" completada. Tocá para deshacer.`
   }

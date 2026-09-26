@@ -102,6 +102,10 @@ export default function TasksPage() {
             status: task.status,
             isRequired: task.isRequired,
             notDoneReason: task.notDoneReason ?? undefined,
+            completedAt:
+              task.status === 'done'
+                ? (task.statusChangedAt ?? undefined)
+                : undefined,
           }))}
           readOnly={!editable}
           onComplete={(id) => void handleChange(id, 'done')}

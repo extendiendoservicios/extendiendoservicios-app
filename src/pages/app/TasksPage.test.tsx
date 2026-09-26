@@ -58,6 +58,7 @@ function task(overrides: Partial<ShiftTask>): ShiftTask {
     isRequired: true,
     status: 'pending',
     notDoneReason: null,
+    statusChangedAt: null,
     ...overrides,
   }
 }
@@ -128,7 +129,7 @@ describe('TasksPage (EMP-08)', () => {
 
     expect(screen.getByText(/no registraste el inicio/i)).toBeInTheDocument()
     expect(
-      screen.getByRole('checkbox', { name: /marcar "barrer el hall"/i }),
+      screen.getByRole('checkbox', { name: /"barrer el hall" pendiente/i }),
     ).toBeDisabled()
   })
 
@@ -149,7 +150,7 @@ describe('TasksPage (EMP-08)', () => {
 
     expect(screen.getByText(/sin conexión/i)).toBeInTheDocument()
     expect(
-      screen.getByRole('checkbox', { name: /marcar "barrer el hall"/i }),
+      screen.getByRole('checkbox', { name: /"barrer el hall" pendiente/i }),
     ).toBeDisabled()
   })
 })

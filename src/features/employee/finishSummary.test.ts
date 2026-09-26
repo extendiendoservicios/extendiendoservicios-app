@@ -17,6 +17,7 @@ function task(overrides: Partial<ShiftTask>): ShiftTask {
     isRequired: true,
     status: 'pending',
     notDoneReason: null,
+    statusChangedAt: null,
     ...overrides,
   }
 }
