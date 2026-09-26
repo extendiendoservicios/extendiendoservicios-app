@@ -138,11 +138,14 @@ set local role postgres;
 
 -- avatars: lectura pública (anon y authenticated); en este punto hay 2 objetos (foto.jpg del
 -- empleado1, foto-admin-2.jpg del empleado2 subido por el admin) --------------------------------
+-- Se cuentan solo los objetos de esta prueba (prefijo de sus usuarios): App_dev tiene fotos
+-- reales y un conteo del bucket entero se rompía apenas alguien subía una (26 sep 2026).
 
 set local role anon;
 
 select is(
-  (select count(*)::int from storage.objects where bucket_id = 'avatars'),
+  (select count(*)::int from storage.objects
+    where bucket_id = 'avatars' and name like 'c4100000-0000-0000-0000-%'),
   2,
   'avatars: anon puede leer (lectura pública, 04 sección 7.3)'
 );
@@ -152,7 +155,8 @@ set local role postgres;
 select tests.as_user('test-db016-empleado2@example.com');
 
 select is(
-  (select count(*)::int from storage.objects where bucket_id = 'avatars'),
+  (select count(*)::int from storage.objects
+    where bucket_id = 'avatars' and name like 'c4100000-0000-0000-0000-%'),
   2,
   'avatars: cualquier autenticado puede leer, aunque el archivo sea de otra persona (lectura pública)'
 );
@@ -208,7 +212,7 @@ set local role postgres;
 set local role anon;
 
 select is(
-  (select count(*)::int from storage.objects where bucket_id = 'branding'),
+  (select count(*)::int from storage.objects where bucket_id = 'branding' and name = 'logo.png'),
   1,
   'branding: anon puede leer (lectura pública)'
 );
