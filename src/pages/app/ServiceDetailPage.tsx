@@ -145,7 +145,7 @@ export default function ServiceDetailPage() {
           <CardHeader>
             <CardTitle>Tareas previstas</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="in-data-[variant=flush]:px-[14px]">
             <TaskList
               tasks={tasks.map((task) => ({
                 id: task.id,
