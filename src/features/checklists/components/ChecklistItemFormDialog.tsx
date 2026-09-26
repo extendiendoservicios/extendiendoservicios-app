@@ -108,8 +108,8 @@ function ChecklistItemFormDialog({
         <DialogHeader>
           <DialogTitle>{item ? 'Editar ítem' : 'Nuevo ítem'}</DialogTitle>
           <DialogDescription>
-            Una tarea del checklist que se copia a cada turno nuevo (P-061:
-            cambiarla acá no modifica los turnos ya generados).
+            Una tarea del checklist que se copia a cada turno nuevo. Cambiarla
+            acá no modifica los turnos ya generados.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -154,7 +154,7 @@ function ChecklistItemFormDialog({
                 })
               }
             />
-            Ítem opcional (por defecto es obligatoria)
+            Tarea opcional (si no la marcás, es obligatoria)
           </label>
 
           <DialogFooter className="mt-2">

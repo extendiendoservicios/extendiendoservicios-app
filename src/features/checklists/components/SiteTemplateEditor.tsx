@@ -87,9 +87,8 @@ function SiteTemplateEditor({
       <Alert variant="info">
         <Info />
         <AlertDescription>
-          Cambiar esta plantilla no modifica los turnos ya generados (P-061).
-          Para actualizar un turno puntual, usá «Recargar tareas» desde su
-          detalle.
+          Cambiar esta plantilla no modifica los turnos ya generados. Para
+          actualizar un turno puntual, usá «Recargar tareas» desde su detalle.
         </AlertDescription>
       </Alert>
       <ChecklistItemsEditor templateId={siteTemplate.id} canEdit={canEdit} />
