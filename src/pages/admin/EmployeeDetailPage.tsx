@@ -19,6 +19,7 @@ import { avatarUrl } from '@/lib/avatarUrl'
 import { formatCalendarDate } from '@/lib/format'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { ROLE_LABELS } from '@/features/auth/session'
+import { EmployeeAttendanceHistoryTab } from '@/features/attendance/components/EmployeeAttendanceHistoryTab'
 import {
   ResetEmployeePasswordDialog,
   SignOutEmployeeDialog,
@@ -56,8 +57,8 @@ function isEmployeeDetailTab(value: string | null): value is EmployeeDetailTab {
  * Próximos turnos (EMP-009) y Calificaciones (EMP-010) quedan con su estado
  * vacío y un enlace preparado -- los turnos llegan en una fase posterior de
  * asignaciones y las calificaciones con supervisiones (ver el reporte del
- * encargo). Asistencia (ADM-12) también queda con su estado vacío: el
- * historial llega junto con el registro de asistencia.
+ * encargo). Asistencia (ADM-12, ATT-013, P14.3) ya está completa:
+ * `EmployeeAttendanceHistoryTab` (`src/features/attendance/components/`).
  */
 export default function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -233,10 +234,7 @@ export default function EmployeeDetailPage() {
         </TabsContent>
 
         <TabsContent value="asistencia" className="pt-3">
-          <EmptyState
-            title="Todavía no hay asistencia para mostrar"
-            description="El historial de inicios y fines de esta persona se va a ver acá."
-          />
+          <EmployeeAttendanceHistoryTab profileId={employee.profileId} />
         </TabsContent>
 
         <TabsContent value="calificaciones" className="pt-3">
