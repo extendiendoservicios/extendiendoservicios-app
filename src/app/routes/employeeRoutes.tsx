@@ -3,6 +3,11 @@ import TodayPage from '@/pages/app/TodayPage'
 import ServiceDetailPage from '@/pages/app/ServiceDetailPage'
 import ClockTabPage from '@/pages/app/ClockTabPage'
 import LocationConsentPage from '@/pages/app/LocationConsentPage'
+import InProgressPage from '@/pages/app/InProgressPage'
+import TasksPage from '@/pages/app/TasksPage'
+import NotesPage from '@/pages/app/NotesPage'
+import FinishPage from '@/pages/app/FinishPage'
+import SummaryPage from '@/pages/app/SummaryPage'
 import MorePage from '@/pages/app/MorePage'
 import { placeholderRoute } from './placeholder'
 
@@ -13,8 +18,8 @@ import { placeholderRoute } from './placeholder'
  * con EMP-14 (el mapa de navegación de `05` sección 6 los muestra como un
  * único nodo, "EMP-14 Fichar (tab) → EMP-05 | EMP-07" — la pantalla real
  * decide ahí mismo si registra el inicio o redirige a "en curso").
- * `ClockTabPage` (P13.2) ya resuelve esa decisión completa salvo el botón
- * real de "Registrar inicio" (`record_check_in`, P13.3): ver el comentario
+ * `ClockTabPage` resuelve esa decisión completa, botón real de "Registrar
+ * inicio" incluido (`record_check_in`, MOB-EMP-007): ver el comentario
  * grande de ese archivo.
  */
 export const employeeRoutes: RouteObject[] = [
@@ -54,36 +59,51 @@ export const employeeRoutes: RouteObject[] = [
       subtitle: 'Tu ubicación al registrar',
     },
   },
-  placeholderRoute({
+  {
     path: 'en-curso/:assignmentId',
-    screenId: 'EMP-07',
-    title: 'Servicio en curso',
-    subtitle: 'Tu servicio activo',
-  }),
-  placeholderRoute({
+    element: <InProgressPage />,
+    handle: {
+      screenId: 'EMP-07',
+      title: 'Servicio en curso',
+      subtitle: 'Tu servicio activo',
+    },
+  },
+  {
     path: 'en-curso/:assignmentId/tareas',
-    screenId: 'EMP-08',
-    title: 'Tareas',
-    subtitle: 'Marcá cada tarea',
-  }),
-  placeholderRoute({
+    element: <TasksPage />,
+    handle: {
+      screenId: 'EMP-08',
+      title: 'Tareas',
+      subtitle: 'Marcá cada tarea',
+    },
+  },
+  {
     path: 'en-curso/:assignmentId/observaciones',
-    screenId: 'EMP-09',
-    title: 'Observaciones',
-    subtitle: 'Contá cómo fue el servicio',
-  }),
-  placeholderRoute({
+    element: <NotesPage />,
+    handle: {
+      screenId: 'EMP-09',
+      title: 'Observaciones',
+      subtitle: 'Contá cómo fue el servicio',
+    },
+  },
+  {
     path: 'en-curso/:assignmentId/finalizar',
-    screenId: 'EMP-10',
-    title: 'Finalizar servicio',
-    subtitle: 'Registrá el fin',
-  }),
-  placeholderRoute({
+    element: <FinishPage />,
+    handle: {
+      screenId: 'EMP-10',
+      title: 'Finalizar servicio',
+      subtitle: 'Registrá el fin',
+    },
+  },
+  {
     path: 'resumen/:assignmentId',
-    screenId: 'EMP-11',
-    title: 'Resumen del servicio',
-    subtitle: 'Comprobante del servicio',
-  }),
+    element: <SummaryPage />,
+    handle: {
+      screenId: 'EMP-11',
+      title: 'Resumen del servicio',
+      subtitle: 'Comprobante del servicio',
+    },
+  },
   placeholderRoute({
     path: 'avisar',
     screenId: 'EMP-12',
