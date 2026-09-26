@@ -138,8 +138,12 @@ test.describe('TASK-008: jerarquía de plantillas (cliente/sede) y copia a los t
         await expect(
           page.getByText('Creamos la plantilla propia de la sede.').last(),
         ).toBeVisible()
+        // `exact: true`: sin esto, `getByText` también matchea el toast todavía visible
+        // ("Creamos la plantilla propia de la sede.", que contiene la misma frase) -- "strict
+        // mode violation" (encontrado corriendo esta suite varias veces seguidas, ver el reporte
+        // del encargo).
         await expect(
-          page.getByText('Plantilla propia de la sede'),
+          page.getByText('Plantilla propia de la sede', { exact: true }),
         ).toBeVisible()
         // La copia trae los mismos ítems, mismo orden, que la del cliente en este momento.
         await expectItemOrder(page, ['Barrer', 'Trapear', 'Sacar la basura'])
