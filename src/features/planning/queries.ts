@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as assignmentsApi from '@/api/assignments'
+import * as tasksApi from '@/api/tasks'
 import type {
   AssignCandidatesParams,
   AssignEmployeeInput,
   AssignmentsBoardRangeFilters,
   ShiftsBoardRangeFilters,
 } from '@/api/assignments'
+import type { TaskStatus } from '@/api/tasks'
 import { shiftsKeys } from '@/features/shifts/queries'
 
 /**
@@ -149,6 +151,32 @@ export function useShiftDetailQuery(shiftId: string | undefined) {
     queryFn: () => assignmentsApi.fetchShiftDetail(shiftId as string),
     enabled: shiftId != null,
     staleTime: LIST_STALE_TIME_MS,
+  })
+}
+
+/** `update_task_status` desde ADM-06 (TASK-006): invalida el detalle del turno igual que las otras mutaciones de este archivo. */
+export function useUpdateTaskStatusMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      taskId,
+      status,
+      reason,
+    }: {
+      taskId: string
+      status: TaskStatus
+      reason?: string
+    }) => tasksApi.updateTaskStatus(taskId, status, reason),
+    onSuccess: () => invalidatePlanningAndShifts(queryClient),
+  })
+}
+
+/** `reload_shift_tasks` desde ADM-06 (TASK-006): reemplaza las tareas del turno por las de la plantilla vigente. */
+export function useReloadShiftTasksMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (shiftId: string) => tasksApi.reloadShiftTasks(shiftId),
+    onSuccess: () => invalidatePlanningAndShifts(queryClient),
   })
 }
 
