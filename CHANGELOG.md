@@ -7,6 +7,24 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.9.0] - 2026-09-26
+
+Checklists y tareas (F12). El dueño y los administradores con la capacidad `edit_checklists` arman la plantilla de tareas de cada cliente y, si una sede necesita otra cosa, una plantilla propia copiada de la del cliente. Cada turno nuevo copia la plantilla vigente de su sede o de su cliente, y el administrador marca las tareas desde el detalle del turno. Trae una migración nueva, `0025_rpc_tasks.sql`.
+
+### Agregado
+
+- RPC de tareas (P12.1, TASK-001 y TASK-002), en la migración `0025_rpc_tasks.sql`:
+  - `clone_checklist_template`: crea la plantilla propia de una sede copiando los ítems de la del cliente, en el mismo orden y con su obligatoriedad (P-058). Avisa si la sede ya tiene una o si el cliente no tiene ninguna.
+  - `update_task_status`: el dueño y los administradores cambian el estado siempre; el empleado, solo mientras está presente en ese turno (P-063). "No realizada" exige motivo.
+  - pgTAP: 30 aserciones nuevas, incluido que cambiar la plantilla no altera los turnos ya creados (P-061).
+- Plantillas y tareas (P12.2, TASK-003 a TASK-007, TASK-009, DOC-012):
+  - ADM-26 plantillas de tareas, en `/admin/tareas`: plantilla del cliente y, por sede, "usa la del cliente" o propia. Ítems con alta, edición, orden con flechas, obligatoria u opcional y baja con confirmación. Sin `edit_checklists`, solo lectura.
+  - ADM-06: cambio de estado de cada tarea y "Recargar tareas" en turnos que no empezaron.
+  - ADM-21 y ADM-22: resumen de la plantilla y enlace a ADM-26.
+- Pruebas (P12.3, TASK-008, TEST-009):
+  - Suite e2e `tests/e2e-checklists/`: jerarquía cliente y sede, copia exacta al turno, recarga y cambio de estado, también a 390 px.
+  - Permisos por API de plantillas, ítems y las tres RPC.
+
 ## [0.8.0] - 2026-09-25
 
 Asignaciones y cronograma (F11). La dueña arma el mes: ve los turnos en calendario, grilla semanal o lista del día, abre cada turno sin cubrir y asigna empleados, con advertencias que no bloquean. Desde el celular puede asignar desde la lista del día. Trae una migración nueva, `0024_rpc_assignments.sql`.
