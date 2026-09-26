@@ -2435,6 +2435,8 @@ export type Database = {
           assignment_id: string | null
           building_hours: string | null
           changed_since_last_seen: boolean | null
+          check_in_at: string | null
+          check_out_at: string | null
           client_id: string | null
           client_legal_name: string | null
           client_trade_name: string | null
@@ -2925,6 +2927,60 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      record_check_in: {
+        Args: {
+          p_accuracy?: number
+          p_assignment_id: string
+          p_lat?: number
+          p_lng?: number
+        }
+        Returns: {
+          accuracy_m: number | null
+          assignment_id: string
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["attendance_kind"]
+          latitude: number | null
+          longitude: number | null
+          reason: string | null
+          recorded_at: string
+          recorded_by: string | null
+          source: Database["public"]["Enums"]["attendance_source"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "attendance_records"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      record_check_out: {
+        Args: {
+          p_accuracy?: number
+          p_assignment_id: string
+          p_lat?: number
+          p_lng?: number
+        }
+        Returns: {
+          accuracy_m: number | null
+          assignment_id: string
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["attendance_kind"]
+          latitude: number | null
+          longitude: number | null
+          reason: string | null
+          recorded_at: string
+          recorded_by: string | null
+          source: Database["public"]["Enums"]["attendance_source"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "attendance_records"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       reload_shift_tasks: {
         Args: { p_shift_id: string }
         Returns: {
@@ -2993,6 +3049,33 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "admin_capabilities"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_assignment_notes: {
+        Args: { p_assignment_id: string; p_notes: string }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          end_time: string | null
+          id: string
+          notes: string | null
+          removed_at: string | null
+          removed_by: string | null
+          removed_reason: string | null
+          shift_date: string
+          shift_id: string
+          start_time: string | null
+          status: Database["public"]["Enums"]["assignment_status"]
+          updated_at: string | null
+          updated_by: string | null
+          window: unknown
+        }
+        SetofOptions: {
+          from: "*"
+          to: "assignments"
           isOneToOne: true
           isSetofReturn: false
         }
