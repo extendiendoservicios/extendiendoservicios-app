@@ -1,12 +1,14 @@
 import { useEffect, useRef } from 'react'
 import { Link } from 'react-router'
-import { Bell, CalendarX, MapPin } from 'lucide-react'
+import { AlertTriangle, Bell, CalendarX, MapPin } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { EmptyState } from '@/components/EmptyState'
 import { StatusBadge } from '@/components/status'
 import { formatCalendarDate } from '@/lib/format'
 import { isRelevantChange, type MyDayAssignment } from '@/api/myDay'
+import { getNoticeMessage } from '@/features/employee/notice'
+import { isNotifiable } from '@/features/employee/notifyCandidates'
 import {
   useMarkChangesSeenMutation,
   useMyDayQuery,
@@ -60,11 +62,25 @@ export default function TodayPage() {
   const changes = data.filter(isRelevantChange)
   const featured = pickFeatured(today)
   const others = today.filter((a) => a.assignmentId !== featured?.assignmentId)
+  const canNotify = data.some(isNotifiable)
 
   return (
     <div className="flex flex-col gap-4">
       <InstallBanner />
       {changes.length > 0 && <ChangesBlock changes={changes} />}
+
+      {/* EMP-12 (MOB-EMP-020): acceso desde Hoy, visible mientras haya al
+          menos un servicio que todavía se pueda avisar (sin inicio
+          registrado, sin ausencia ya avisada — `isNotifiable`). */}
+      {canNotify && (
+        <Link
+          to="/app/avisar"
+          className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-surface px-3 text-[12.5px] font-semibold text-primary-800"
+        >
+          <AlertTriangle aria-hidden="true" className="size-[15px]" />
+          Avisar demora o ausencia
+        </Link>
+      )}
 
       {today.length === 0 ? (
         <EmptyState
@@ -150,6 +166,7 @@ function ServiceCard({
   assignment: MyDayAssignment
   featured?: boolean
 }) {
+  const notice = getNoticeMessage(assignment)
   return (
     <Link to={`/app/servicio/${assignment.assignmentId}`} className="block">
       <Card variant={featured ? 'hero' : 'default'}>
@@ -175,6 +192,12 @@ function ServiceCard({
             {formatTimeOfDay(assignment.startTime)}–
             {formatTimeOfDay(assignment.endTime)}
           </p>
+          {notice && (
+            <p className="text-[11.5px] font-semibold text-warning-800">
+              {notice.text}
+              {notice.byAdmin && ' Lo cargó la administración.'}
+            </p>
+          )}
         </CardContent>
       </Card>
     </Link>

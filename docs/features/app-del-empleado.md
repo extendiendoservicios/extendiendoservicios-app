@@ -1,13 +1,16 @@
-# App del empleado: jornada, inicio y fin, tareas, observaciones (F13)
+# App del empleado: jornada, inicio y fin, tareas, observaciones (F13, F14)
 
 `08_Fases_y_Backlog.md` F13 "App del empleado: jornada, inicio y fin, tareas,
 observaciones". P13.1 (ATT-001 a ATT-004, `supabase/migrations/0026_rpc_attendance.sql`)
 y P13.2 (Hoy, detalle del servicio, Fichar, consentimiento, Más) ya estaban
-en `develop`. Este paquete (P13.3, MOB-EMP-007 a MOB-EMP-012, MOB-EMP-014,
-MOB-EMP-015) completa el turno de punta a punta: registrar el inicio, seguir
+en `develop`. El paquete P13.3 (MOB-EMP-007 a MOB-EMP-012, MOB-EMP-014,
+MOB-EMP-015) completó el turno de punta a punta: registrar el inicio, seguir
 el servicio en curso, marcar tareas, cargar una observación, registrar el fin
 y ver el resumen -- más el banner de instalación (COM-06) y el indicador de
-"sin conexión".
+"sin conexión". P14.2 (ABS-004, ABS-005, ABS-009, MOB-EMP-020, este paquete)
+suma EMP-12 "Avisar demora o ausencia", sobre las RPC `notify_delay`/
+`notify_absence` de `supabase/migrations/0027_rpc_notices_admin_attendance.sql`
+(P14.1) -- ver la sección propia más abajo.
 
 ## Mapa de pantallas y rutas
 
@@ -36,8 +39,11 @@ botón real de "Registrar inicio".
 
 ```
 expected ──(record_check_in)──> present ──(record_check_out)──> finished
-   │                                │
-   └─(notify_delay/absence, F14)    └─(update_task_status: solo mientras `present`)
+   │  │                             │
+   │  └─(notify_absence)──> absence_notified (no libera el cupo, el admin decide)
+   └─(notify_delay)──> delay_notified ──(notify_absence)──> absence_notified
+                           │
+                           └(update_task_status: solo mientras `present`, sin cambios acá)
 ```
 
 - **`canEditTasks`** (`src/features/employee/attendanceWindow.ts`): la
@@ -109,6 +115,51 @@ expected ──(record_check_in)──> present ──(record_check_out)──> 
   todavía no llegó a ese instante, se muestra el aviso "Vas a registrar la
   salida antes del horario previsto", también informativo.
 
+## Avisar demora o ausencia (EMP-12, MOB-EMP-020, ABS-004, ABS-005, ABS-009, P14.2)
+
+- **`src/api/notices.ts`** (ABS-004): `notifyDelay`/`notifyAbsence` sobre
+  `notify_delay`/`notify_absence` (`06` sección 11). Mismo patrón que
+  `src/api/attendance.ts`: `hint`/`message` ya vienen armados del servidor,
+  `fromPostgrestError` alcanza sin un mapeo propio. Interfaz pública que
+  también usa `front-admin` (P14.3, ADM-10/ADM-11): `notifyDelay`,
+  `notifyAbsence`, `AttendanceNotice`, `NoticeKind`, `NoticeErrorHint`.
+- **`src/lib/absenceReasons.ts`** (ABS-009): la lista de motivos de ausencia
+  (`illness`, `procedure`, `personal`, `transport`, `other`), en voseo,
+  compartida entre `front-movil` y `front-admin` -- ningún módulo la
+  duplica.
+- **`src/features/employee/notifyCandidates.ts`**: qué asignaciones se
+  pueden avisar (`isNotifiable`: sin inicio registrado y sin una ausencia ya
+  avisada) y qué tipos de aviso corresponde ofrecer para cada una
+  (`availableNoticeKinds`: solo ausencia si ya avisó una demora, P-072/P-073
+  "se puede pasar de demora a ausencia, pero no repetir el mismo aviso").
+- **`src/features/employee/notifySchemas.ts`**: esquemas zod que repiten
+  las reglas de la base (minutos 1..600, motivo obligatorio y texto
+  obligatorio si es "otro") como defensa en profundidad, no la reemplazan.
+- **`src/features/employee/notice.ts`** (ABS-005): `getNoticeMessage`
+  arma "Avisaste una demora de 15 min"/"Avisaste que no vas: enfermedad"
+  a partir de las columnas `last_notice_*` de `v_my_day` (0027), solo
+  mientras el estado de la asignación siga siendo `delay_notified`/
+  `absence_notified` (el aviso todavía tiene efecto) -- se muestra en
+  `TodayPage` (tarjetas de EMP-03) y en `ServiceDetailPage` (EMP-04), con
+  "Lo cargó la administración." si `last_notice_source = 'admin'`.
+- **`src/pages/app/NotifyPage.tsx`** (EMP-12, `/app/avisar`): selector del
+  servicio (solo si no llega preseleccionado por `?asignacion=`, que ponen
+  EMP-04 y EMP-13), tipo de aviso, minutos u motivo, confirmación y
+  resultado -- un único componente con un `step` local (mismo criterio que
+  `LocationConsentPage`/`FinishPage`) y una pila de pasos ya recorridos para
+  que "Atrás" no dependa de si se saltearon pasos. `TOO_LATE_TO_NOTIFY` y el
+  resto de los errores de la RPC se muestran tal cual (`ApiError.message`),
+  sin repetir la cuenta de "¿ya pasó la hora?" con el reloj del dispositivo.
+- Acceso a EMP-12: desde Hoy (un enlace visible mientras haya al menos un
+  servicio avisable), desde el detalle (con la asignación ya preseleccionada,
+  visible solo si esa asignación en particular se puede avisar) y desde Más
+  (siempre, sin preselección) -- `05` fila EMP-12.
+- **`ServiceDetailPage`** además usa `site_city`/`site_latitude`/
+  `site_longitude` de `v_my_day` (0027) para el enlace "Abrir en el mapa"
+  con coordenadas exactas: el pendiente que había quedado anotado desde
+  P13.2 (esas columnas no existían todavía en `v_my_day`) se resuelve en
+  este mismo paquete.
+
 ## Sin conexión (MOB-EMP-015)
 
 `useOnlineStatus` (de P13.2) se usa en las cuatro pantallas que escriben:
@@ -121,6 +172,8 @@ expected ──(record_check_in)──> present ──(record_check_out)──> 
   sin conexión, ninguna de las dos condiciones alcanza para editar).
 - **EMP-09**: banner, textarea y botón "Guardar" deshabilitados.
 - **EMP-10**: banner y botón "Registrar fin" deshabilitado.
+- **EMP-12** (P14.2): banner y botón "Confirmar aviso" deshabilitado en el
+  paso de confirmación.
 
 Sin cola ni sincronización (fuera de la Base, módulo C): al volver la
 conexión, la persona vuelve a intentar la acción a mano.
@@ -188,7 +241,13 @@ montaje hasta esa fase.
 7. Probar el registro de inicio y de fin **negando el permiso de ubicación**
    del navegador (o sin conceder el consentimiento): el registro tiene que
    completarse igual.
-8. Tests automatizados: `pnpm test` corre las suites unitarias de esta
-   vía (`src/features/employee/*.test.ts(x)`, `src/pages/app/*.test.tsx`).
-   El flujo completo de punta a punta (con geolocalización simulada) es de
-   `qa-pruebas` (MOB-EMP-017, P13.4).
+8. Con un turno de hoy **sin iniciar** y antes de la hora de inicio, entrar a
+   "Avisar demora o ausencia" desde Hoy, desde el detalle del servicio (con
+   la asignación ya preseleccionada) y desde Más: avisar una demora (con
+   minutos) y, en otra asignación, una ausencia (con motivo de la lista);
+   verificar que Hoy y el detalle muestran el aviso vigente. Repetir después
+   de la hora de inicio y verificar el mensaje claro de `TOO_LATE_TO_NOTIFY`.
+9. Tests automatizados: `pnpm test` corre las suites unitarias de esta
+   vía (`src/features/employee/*.test.ts(x)`, `src/pages/app/*.test.tsx`,
+   `src/api/notices.test.ts`). El flujo completo de punta a punta (con
+   geolocalización simulada) es de `qa-pruebas` (MOB-EMP-017, P13.4/P14.4).
