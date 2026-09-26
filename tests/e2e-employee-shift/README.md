@@ -29,12 +29,8 @@ Desde `app/`, con `.env.local` completo (las mismas cuatro variables que el rest
 backend real):
 
 ```bash
-pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-employee-shift/playwright.employee-shift.config.ts
+pnpm test:e2e:employee-shift
 ```
-
-(No hay script propio en `package.json` todavía — a diferencia de las demás suites de esta
-carpeta, que sí tienen su `test:e2e:<nombre>`. Se pide en el reporte de esta tarea: agregar
-`"test:e2e:employee-shift"` con el mismo patrón.)
 
 Puerto 5173 (mismo que `tests/e2e-users/`/`tests/e2e-employees/`): no se puede correr en paralelo
 con `pnpm dev` en la misma máquina.

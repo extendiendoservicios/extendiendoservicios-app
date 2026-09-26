@@ -13,13 +13,12 @@ de pruebas, donde no pasa nada si algo sale mal.
 
 ## Antes de empezar
 
-Pedile esto al orquestador (o a quien te haya dado esta guía) ANTES de
-arrancar:
+Pedile esto a Claude ANTES de arrancar:
 
-- [ ] Un usuario de prueba con rol empleado, con su email y su contraseña
-      anotados acá abajo (no los compartas con nadie más):
-  - Email: ****\*\*****\_\_\_****\*\*****
-  - Contraseña: ****\*\*****\_\_\_****\*\*****
+- [ ] El email de un usuario de prueba con rol empleado. La contraseña la
+      tenés vos o te la pasa quien administra las cuentas: **no la escribas
+      en este archivo** (el repositorio es público). Si imprimís la guía,
+      anotala a mano en el papel.
 - [ ] Confirmación de que ese usuario tiene, para el día en que hagas la
       prueba, **un servicio de hoy** cargado (un cliente, una sede, un
       horario) con al menos dos tareas cargadas (para poder marcar una como
@@ -186,5 +185,5 @@ problema, con la mayor cantidad de detalle posible.
 - Versión de Chrome: ****\*\*\*\*****\_\_\_****\*\*\*\*****
 - Fecha en que hiciste la prueba: ****\*\*\*\*****\_\_\_****\*\*\*\*****
 
-Cuando termines, avisá al orquestador con esta planilla completa (todas las
+Cuando termines, avisale a Claude con esta planilla completa (todas las
 casillas marcadas o explicadas, y la tabla de problemas si hubo alguno).
