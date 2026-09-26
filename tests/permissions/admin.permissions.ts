@@ -665,5 +665,222 @@ describe.skipIf(!env)(
         )
       })
     })
+
+    // ABS-002/ATT-007 (P14.1, 08_Fases_y_Backlog.md F14, `06` sección 10 y 11): las cuatro RPC
+    // nuevas son "O; A + manage_attendance" a secas (sin variante "propia" para admin, a
+    // diferencia de notify_delay/notify_absence del lado del empleado, cubiertas en
+    // employee.permissions.ts). Mismo criterio que el bloque SHIFT_STARTED de arriba: un
+    // administrador descartable SIN manage_attendance para el negativo, y `administradora` (las 7
+    // capacidades) para el positivo "en nombre".
+    describe('avisos y asistencia administrativa (F14): FORBIDDEN sin manage_attendance, en nombre con ella', () => {
+      const ALL_CAPABILITIES = [
+        'manage_users',
+        'cancel_shifts',
+        'edit_ratings',
+        'edit_checklists',
+        'manage_attendance',
+        'generate_shifts',
+        'manage_supervisions',
+      ] as const
+
+      let limitedAdminProfileId: string
+      let limitedAdmin: TestClient
+      let fixture: FixtureShift
+      let fixtureAssignmentId: string
+      let empleadoAvisosId: string
+      // admin_record_attendance/close_assignment validan que p_at (por defecto now()) esté entre
+      // las 0:00 del día del turno y "ahora" (AT_OUT_OF_RANGE, P14.0): con un turno de MAÑANA esa
+      // franja todavía no empieza (las 0:00 de mañana son posteriores a "ahora"), así que necesitan
+      // una fixture de turno de HOY aparte -- notify_delay/notify_absence, en cambio, sí necesitan
+      // un turno que no haya empezado, por eso siguen sobre la fixture de mañana de arriba.
+      let fixtureToday: FixtureShift
+      let fixtureTodayAssignmentId: string
+      let empleadoAsistenciaId: string
+
+      beforeAll(async () => {
+        const email = `e2e-perm-admin-sin-asistencia-f14-${Date.now()}@extendiendoservicios.com`
+        const password = `${process.env.SEED_DEV_PASSWORD}Aa1`
+        const { data: created, error: createError } =
+          await admin.auth.admin.createUser({
+            email,
+            password,
+            email_confirm: true,
+            user_metadata: {
+              first_name: 'E2E',
+              last_name: `Perm Admin Sin Asistencia F14 ${Date.now()}`,
+            },
+          })
+        if (createError || !created.user) {
+          throw new Error(
+            `No se pudo crear el administrador descartable: ${createError?.message}`,
+          )
+        }
+        limitedAdminProfileId = created.user.id
+
+        const { error: roleError } = await admin.from('user_roles').insert({
+          profile_id: limitedAdminProfileId,
+          role: 'admin',
+          granted_by: null,
+        })
+        if (roleError) {
+          throw new Error(
+            `No se pudo asignar el rol admin: ${roleError.message}`,
+          )
+        }
+
+        const { error: capsError } = await admin
+          .from('admin_capabilities')
+          .insert(
+            ALL_CAPABILITIES.map((capability) => ({
+              profile_id: limitedAdminProfileId,
+              capability,
+              enabled: capability !== 'manage_attendance',
+              updated_by: null,
+            })),
+          )
+        if (capsError) {
+          throw new Error(
+            `No se pudieron cargar las capacidades: ${capsError.message}`,
+          )
+        }
+
+        const anonClient = createAnonClient()
+        const { error: loginError } = await anonClient.auth.signInWithPassword({
+          email,
+          password,
+        })
+        if (loginError) {
+          throw new Error(
+            `No se pudo iniciar sesión con el administrador descartable: ${loginError.message}`,
+          )
+        }
+        limitedAdmin = anonClient
+
+        const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+          .toISOString()
+          .slice(0, 10)
+        fixture = await createFixtureShift(admin, tomorrow, '19:00', '20:00')
+        empleadoAvisosId = await resolveUserId(
+          admin,
+          SEED_ACCOUNTS.employees[3],
+        )
+        // La fixture se arma con `administradora` (sí tiene manage_attendance): `service_role` no
+        // puede insertar en `assignments` directo (ver el comentario de `createFixtureAssignment`).
+        fixtureAssignmentId = await createFixtureAssignment(
+          administradora,
+          fixture.shiftId,
+          empleadoAvisosId,
+        )
+
+        // Turno de HOY (Argentina, mismo truco de "-3 horas" que el bloque SHIFT_STARTED de
+        // arriba) para admin_record_attendance/close_assignment -- ver el comentario de
+        // `fixtureToday` más arriba.
+        const today = new Date(Date.now() - 3 * 60 * 60 * 1000)
+          .toISOString()
+          .slice(0, 10)
+        fixtureToday = await createFixtureShift(admin, today, '06:00', '07:00')
+        empleadoAsistenciaId = await resolveUserId(
+          admin,
+          SEED_ACCOUNTS.employees[4],
+        )
+        fixtureTodayAssignmentId = await createFixtureAssignment(
+          administradora,
+          fixtureToday.shiftId,
+          empleadoAsistenciaId,
+        )
+      })
+
+      afterAll(async () => {
+        // La asignación de `fixtureToday` termina `finished` (el test de `close_assignment` de
+        // más abajo la cierra): `remove_assignment` la rechazaría con `ASSIGNMENT_STARTED`
+        // (`status in ('present','finished')`, `0024_rpc_assignments.sql`) -- se libera con un
+        // `update` directo, mismo criterio que la limpieza de `update_task_status` en
+        // `employee.permissions.ts`.
+        await admin
+          .from('assignments')
+          .update({
+            removed_at: new Date().toISOString(),
+            removed_by: limitedAdminProfileId,
+            removed_reason:
+              'E2E-P114-PERM: limpieza de la asignación de fixture F14',
+          })
+          .eq('id', fixtureTodayAssignmentId)
+        await cleanupFixtureShift(admin, fixtureToday)
+        await removeFixtureAssignment(administradora, fixtureAssignmentId)
+        await limitedAdmin.auth.signOut()
+        await cleanupFixtureShift(admin, fixture)
+        await admin.auth.admin.updateUserById(limitedAdminProfileId, {
+          ban_duration: '876000h',
+        })
+        await admin
+          .from('profiles')
+          .update({ is_active: false, deleted_at: new Date().toISOString() })
+          .eq('id', limitedAdminProfileId)
+      })
+
+      it('FORBIDDEN: notify_delay sin manage_attendance', async () => {
+        const { error } = await limitedAdmin.rpc('notify_delay', {
+          p_assignment_id: fixtureAssignmentId,
+          p_minutes: 15,
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('FORBIDDEN: notify_absence sin manage_attendance', async () => {
+        const { error } = await limitedAdmin.rpc('notify_absence', {
+          p_assignment_id: fixtureAssignmentId,
+          p_reason_code: 'illness',
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('FORBIDDEN: admin_record_attendance sin manage_attendance', async () => {
+        const { error } = await limitedAdmin.rpc('admin_record_attendance', {
+          p_assignment_id: fixtureTodayAssignmentId,
+          p_kind: 'check_in',
+          p_reason: 'e2e-perm no debería aplicarse',
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('FORBIDDEN: close_assignment sin manage_attendance', async () => {
+        const { error } = await limitedAdmin.rpc('close_assignment', {
+          p_assignment_id: fixtureTodayAssignmentId,
+          p_reason: 'e2e-perm no debería aplicarse',
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('con manage_attendance, avisa demora en nombre del empleado (reported_by la administradora)', async () => {
+        const { data, error } = await administradora.rpc('notify_delay', {
+          p_assignment_id: fixtureAssignmentId,
+          p_minutes: 20,
+        })
+        expect(error).toBeNull()
+        expect(data?.minutes_late).toBe(20)
+      })
+
+      it('con manage_attendance, registra el inicio en nombre del empleado (admin_record_attendance)', async () => {
+        const { data, error } = await administradora.rpc(
+          'admin_record_attendance',
+          {
+            p_assignment_id: fixtureTodayAssignmentId,
+            p_kind: 'check_in',
+            p_reason: 'E2E-P114-PERM: inicio cargado por administración',
+          },
+        )
+        expect(error).toBeNull()
+        expect(data?.kind).toBe('check_in')
+      })
+
+      it('con manage_attendance, cierra la asignación en nombre del empleado (close_assignment)', async () => {
+        const { data, error } = await administradora.rpc('close_assignment', {
+          p_assignment_id: fixtureTodayAssignmentId,
+          p_reason: 'E2E-P114-PERM: cierre manual cargado por administración',
+        })
+        expect(error).toBeNull()
+        expect(data?.kind).toBe('check_out')
+      })
+    })
   },
 )
