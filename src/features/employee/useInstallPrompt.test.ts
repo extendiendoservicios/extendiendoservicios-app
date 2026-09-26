@@ -1,6 +1,10 @@
 import { act, renderHook } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useInstallPrompt } from './useInstallPrompt'
+import {
+  resetInstallPromptForTests,
+  startInstallPromptCapture,
+} from '@/lib/installPrompt'
 
 function makeBeforeInstallPromptEvent() {
   const event = new Event('beforeinstallprompt', {
@@ -15,6 +19,21 @@ function makeBeforeInstallPromptEvent() {
 }
 
 describe('useInstallPrompt', () => {
+  beforeEach(() => {
+    startInstallPromptCapture()
+  })
+  afterEach(() => {
+    resetInstallPromptForTests()
+  })
+
+  it('ve el aviso aunque haya llegado antes de montar el componente', () => {
+    act(() => {
+      window.dispatchEvent(makeBeforeInstallPromptEvent())
+    })
+    const { result } = renderHook(() => useInstallPrompt())
+    expect(result.current.available).toBe(true)
+  })
+
   it('empieza sin disponibilidad, hasta que el navegador dispara beforeinstallprompt', () => {
     const { result } = renderHook(() => useInstallPrompt())
     expect(result.current.available).toBe(false)

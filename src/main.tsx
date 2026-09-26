@@ -7,11 +7,16 @@ import { PwaUpdateProvider } from '@/app/PwaUpdateProvider'
 import { AuthProvider } from '@/features/auth/AuthProvider'
 import { queryClient } from '@/lib/queryClient'
 import { initSentry } from '@/lib/sentry'
+import { startInstallPromptCapture } from '@/lib/installPrompt'
 import { Toaster } from '@/components/ui/sonner'
 import '@/styles/globals.css'
 
 // INFRA-021: no hace nada si falta VITE_SENTRY_DSN (ver src/lib/sentry.ts).
 initSentry()
+
+// COM-06: el aviso de instalación de Chrome llega una sola vez y temprano;
+// se captura antes de montar React (ver src/lib/installPrompt.ts).
+startInstallPromptCapture()
 
 const rootElement = document.getElementById('root')
 if (!rootElement) {
