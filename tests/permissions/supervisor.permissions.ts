@@ -452,5 +452,70 @@ describe.skipIf(!env)(
         expect(error?.hint).toBe('FORBIDDEN')
       })
     })
+
+    // ABS-002/ATT-007 (P14.1, 08_Fases_y_Backlog.md F14, `06` sección 10 y 11): ninguna de las
+    // cuatro RPC nuevas lista al supervisor entre los roles con permiso, ni siquiera "en nombre"
+    // (esa vía es solo O; A + manage_attendance) ni sobre alguien de su propio equipo. Mismo
+    // criterio que el bloque de asistencia de F13 de arriba: acá interesa la vía real de
+    // PostgREST con JWT, el pgTAP de `0027_rpc_notices_admin_attendance.sql` ya prueba esto mismo
+    // a nivel de función.
+    describe('avisos y asistencia administrativa (F14): ninguna de las cuatro RPC es para el supervisor', () => {
+      let fixture: FixtureShift
+      let fixtureAssignmentId: string
+      let dueno: TestClient
+
+      beforeAll(async () => {
+        const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+          .toISOString()
+          .slice(0, 10)
+        fixture = await createFixtureShift(admin, tomorrow, '20:00', '21:00')
+        const ownerLogin = await loginAs(SEED_ACCOUNTS.owner)
+        dueno = ownerLogin.client
+        fixtureAssignmentId = await createFixtureAssignment(
+          dueno,
+          fixture.shiftId,
+          empleadoDeSuEquipoId,
+        )
+      })
+
+      afterAll(async () => {
+        await removeFixtureAssignment(dueno, fixtureAssignmentId)
+        await dueno.auth.signOut()
+        await cleanupFixtureShift(admin, fixture)
+      })
+
+      it('no puede llamar notify_delay', async () => {
+        const { error } = await supervisora.rpc('notify_delay', {
+          p_assignment_id: fixtureAssignmentId,
+          p_minutes: 15,
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede llamar notify_absence', async () => {
+        const { error } = await supervisora.rpc('notify_absence', {
+          p_assignment_id: fixtureAssignmentId,
+          p_reason_code: 'illness',
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede llamar admin_record_attendance', async () => {
+        const { error } = await supervisora.rpc('admin_record_attendance', {
+          p_assignment_id: fixtureAssignmentId,
+          p_kind: 'check_in',
+          p_reason: 'e2e-perm no debería aplicarse',
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede llamar close_assignment', async () => {
+        const { error } = await supervisora.rpc('close_assignment', {
+          p_assignment_id: fixtureAssignmentId,
+          p_reason: 'e2e-perm no debería aplicarse',
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+    })
   },
 )

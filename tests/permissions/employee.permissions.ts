@@ -618,5 +618,96 @@ describe.skipIf(!env)(
         expect(data?.status).toBe('done')
       })
     })
+
+    // ABS-002/ATT-007 (P14.1, 08_Fases_y_Backlog.md F14, `06` sección 10 y 11): `notify_delay` y
+    // `notify_absence` sí son "E (propia)" -- a diferencia de las cuatro RPC de asignaciones y de
+    // `admin_record_attendance`/`close_assignment`, que siguen sin ningún canal para el rol
+    // employee (ni siquiera sobre la propia asignación). Turno de mañana de madrugada (antes del
+    // inicio efectivo, condición de las dos RPC de aviso), mismo criterio horario que el resto de
+    // esta carpeta para no chocar con un turno real del seed.
+    describe('avisos (F14): notify_delay y notify_absence son propios; admin_record_attendance y close_assignment, de nadie', () => {
+      let fixture: FixtureShift
+      let ajenaFixture: FixtureShift
+      let fixtureAssignmentId: string
+      let fixtureAssignmentAjenaId: string
+      let dueno: TestClient
+
+      beforeAll(async () => {
+        const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+          .toISOString()
+          .slice(0, 10)
+        fixture = await createFixtureShift(admin, tomorrow, '04:00', '05:00')
+        const ownerLogin = await loginAs(SEED_ACCOUNTS.owner)
+        dueno = ownerLogin.client
+        fixtureAssignmentId = await createFixtureAssignment(
+          dueno,
+          fixture.shiftId,
+          empleadoId,
+        )
+
+        const otroFixture = await createFixtureShift(
+          admin,
+          tomorrow,
+          '05:30',
+          '06:30',
+        )
+        fixtureAssignmentAjenaId = await createFixtureAssignment(
+          dueno,
+          otroFixture.shiftId,
+          otroEmpleadoId,
+        )
+        ajenaFixture = otroFixture
+      })
+
+      afterAll(async () => {
+        await removeFixtureAssignment(dueno, fixtureAssignmentAjenaId)
+        await cleanupFixtureShift(admin, ajenaFixture)
+        await removeFixtureAssignment(dueno, fixtureAssignmentId)
+        await dueno.auth.signOut()
+        await cleanupFixtureShift(admin, fixture)
+      })
+
+      it('avisa demora sobre su propia asignación, antes del inicio efectivo', async () => {
+        const { data, error } = await empleado.rpc('notify_delay', {
+          p_assignment_id: fixtureAssignmentId,
+          p_minutes: 15,
+        })
+        expect(error).toBeNull()
+        expect(data?.minutes_late).toBe(15)
+      })
+
+      it('NOT_YOUR_ASSIGNMENT: no puede avisar demora sobre una asignación ajena', async () => {
+        const { error } = await empleado.rpc('notify_delay', {
+          p_assignment_id: fixtureAssignmentAjenaId,
+          p_minutes: 10,
+        })
+        expect(error?.hint).toBe('NOT_YOUR_ASSIGNMENT')
+      })
+
+      it('NOT_YOUR_ASSIGNMENT: no puede avisar ausencia sobre una asignación ajena', async () => {
+        const { error } = await empleado.rpc('notify_absence', {
+          p_assignment_id: fixtureAssignmentAjenaId,
+          p_reason_code: 'illness',
+        })
+        expect(error?.hint).toBe('NOT_YOUR_ASSIGNMENT')
+      })
+
+      it('no tiene ningún canal para admin_record_attendance, ni sobre su propia asignación', async () => {
+        const { error } = await empleado.rpc('admin_record_attendance', {
+          p_assignment_id: fixtureAssignmentId,
+          p_kind: 'check_in',
+          p_reason: 'e2e-perm no debería aplicarse',
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no tiene ningún canal para close_assignment', async () => {
+        const { error } = await empleado.rpc('close_assignment', {
+          p_assignment_id: fixtureAssignmentId,
+          p_reason: 'e2e-perm no debería aplicarse',
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+    })
   },
 )

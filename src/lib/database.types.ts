@@ -2181,7 +2181,15 @@ export type Database = {
       v_assignments_board: {
         Row: {
           check_in_at: string | null
+          check_in_recorded_by: string | null
+          check_in_source:
+            | Database["public"]["Enums"]["attendance_source"]
+            | null
           check_out_at: string | null
+          check_out_recorded_by: string | null
+          check_out_source:
+            | Database["public"]["Enums"]["attendance_source"]
+            | null
           client_id: string | null
           client_legal_name: string | null
           created_at: string | null
@@ -2196,6 +2204,17 @@ export type Database = {
           employee_id: string | null
           employee_last_name: string | null
           id: string | null
+          last_notice_at: string | null
+          last_notice_kind: Database["public"]["Enums"]["notice_kind"] | null
+          last_notice_minutes_late: number | null
+          last_notice_reason_code:
+            | Database["public"]["Enums"]["absence_reason"]
+            | null
+          last_notice_reason_text: string | null
+          last_notice_reported_by: string | null
+          last_notice_source:
+            | Database["public"]["Enums"]["attendance_source"]
+            | null
           minutes_early_leave: number | null
           minutes_late: number | null
           notes: string | null
@@ -2278,6 +2297,48 @@ export type Database = {
           {
             foreignKeyName: "assignments_updated_by_fkey"
             columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_people_basic"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_notices_reported_by_fkey"
+            columns: ["last_notice_reported_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_notices_reported_by_fkey"
+            columns: ["last_notice_reported_by"]
+            isOneToOne: false
+            referencedRelation: "v_people_basic"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_out_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_in_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_out_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_people_basic"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "v_people_basic"
             referencedColumns: ["profile_id"]
@@ -2436,7 +2497,15 @@ export type Database = {
           building_hours: string | null
           changed_since_last_seen: boolean | null
           check_in_at: string | null
+          check_in_recorded_by: string | null
+          check_in_source:
+            | Database["public"]["Enums"]["attendance_source"]
+            | null
           check_out_at: string | null
+          check_out_recorded_by: string | null
+          check_out_source:
+            | Database["public"]["Enums"]["attendance_source"]
+            | null
           client_id: string | null
           client_legal_name: string | null
           client_trade_name: string | null
@@ -2445,6 +2514,17 @@ export type Database = {
           effective_start_time: string | null
           effective_starts_at: string | null
           is_today: boolean | null
+          last_notice_at: string | null
+          last_notice_kind: Database["public"]["Enums"]["notice_kind"] | null
+          last_notice_minutes_late: number | null
+          last_notice_reason_code:
+            | Database["public"]["Enums"]["absence_reason"]
+            | null
+          last_notice_reason_text: string | null
+          last_notice_reported_by: string | null
+          last_notice_source:
+            | Database["public"]["Enums"]["attendance_source"]
+            | null
           notes: string | null
           phone_restricted: boolean | null
           photos_not_allowed: boolean | null
@@ -2453,9 +2533,12 @@ export type Database = {
           shift_id: string | null
           shift_status: Database["public"]["Enums"]["shift_status"] | null
           site_address: string | null
+          site_city: string | null
           site_contact_name: string | null
           site_contact_phone: string | null
           site_id: string | null
+          site_latitude: number | null
+          site_longitude: number | null
           site_name: string | null
           status: Database["public"]["Enums"]["assignment_status"] | null
           tasks_done: number | null
@@ -2475,6 +2558,48 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_shifts_board"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_notices_reported_by_fkey"
+            columns: ["last_notice_reported_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_notices_reported_by_fkey"
+            columns: ["last_notice_reported_by"]
+            isOneToOne: false
+            referencedRelation: "v_people_basic"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_in_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_out_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_in_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_people_basic"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_out_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_people_basic"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "shifts_client_id_fkey"
@@ -2818,6 +2943,33 @@ export type Database = {
       }
     }
     Functions: {
+      admin_record_attendance: {
+        Args: {
+          p_assignment_id: string
+          p_at?: string
+          p_kind: Database["public"]["Enums"]["attendance_kind"]
+          p_reason?: string
+        }
+        Returns: {
+          accuracy_m: number | null
+          assignment_id: string
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["attendance_kind"]
+          latitude: number | null
+          longitude: number | null
+          reason: string | null
+          recorded_at: string
+          recorded_by: string | null
+          source: Database["public"]["Enums"]["attendance_source"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "attendance_records"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       admin_revoke_user_sessions: {
         Args: { p_profile_id: string }
         Returns: undefined
@@ -2885,6 +3037,28 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      close_assignment: {
+        Args: { p_assignment_id: string; p_at?: string; p_reason: string }
+        Returns: {
+          accuracy_m: number | null
+          assignment_id: string
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["attendance_kind"]
+          latitude: number | null
+          longitude: number | null
+          reason: string | null
+          recorded_at: string
+          recorded_by: string | null
+          source: Database["public"]["Enums"]["attendance_source"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "attendance_records"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_shift: {
         Args: {
           p_client_id: string
@@ -2923,6 +3097,54 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "profiles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      notify_absence: {
+        Args: {
+          p_assignment_id: string
+          p_reason_code: Database["public"]["Enums"]["absence_reason"]
+          p_reason_text?: string
+        }
+        Returns: {
+          assignment_id: string
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["notice_kind"]
+          minutes_late: number | null
+          reason_code: Database["public"]["Enums"]["absence_reason"] | null
+          reason_text: string | null
+          reported_by: string | null
+          source: Database["public"]["Enums"]["attendance_source"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "attendance_notices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      notify_delay: {
+        Args: {
+          p_assignment_id: string
+          p_minutes: number
+          p_reason_text?: string
+        }
+        Returns: {
+          assignment_id: string
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["notice_kind"]
+          minutes_late: number | null
+          reason_code: Database["public"]["Enums"]["absence_reason"] | null
+          reason_text: string | null
+          reported_by: string | null
+          source: Database["public"]["Enums"]["attendance_source"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "attendance_notices"
           isOneToOne: true
           isSetofReturn: false
         }
