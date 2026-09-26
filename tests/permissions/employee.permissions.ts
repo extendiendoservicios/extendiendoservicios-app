@@ -32,6 +32,10 @@ import {
   createFixtureShift,
   type FixtureShift,
 } from './helpers/assignment-fixtures.ts'
+import {
+  createFixtureShiftTask,
+  deleteFixtureShiftTask,
+} from './helpers/checklist-fixtures.ts'
 
 const env = readPermissionsTestEnv()
 if (!env) console.warn(missingEnvWarning('employee.permissions.ts'))
@@ -228,6 +232,39 @@ describe.skipIf(!env)(
       it('no puede llamar reload_shift_tasks (06 sección 7: "O; A + edit_checklists")', async () => {
         const { error } = await empleado.rpc('reload_shift_tasks', {
           p_shift_id: ANY_UUID,
+        })
+        expect(error?.hint ?? error?.message).toMatch(/FORBIDDEN/i)
+      })
+
+      // TASK-008/TEST-009 (P12.3, 08_Fases_y_Backlog.md F12): `checklist_templates`/
+      // `checklist_template_items` no tienen ninguna política de escritura para el empleado (04
+      // sección 7.2: "O, A con edit_checklists"), y `clone_checklist_template` exige esa misma
+      // capacidad (`app.require_capability`, que ya corta antes de mirar el rol) -- ningún
+      // empleado la tiene nunca.
+      it('no puede insertar una plantilla de tareas por API directa (04 sección 7.2: "checklist_templates... O, A con edit_checklists")', async () => {
+        const { error } = await empleado.from('checklist_templates').insert({
+          client_id: ANY_UUID,
+          site_id: null,
+          name: 'e2e-perm no debería crearse',
+        })
+        expect(error?.code).toBe('42501')
+      })
+
+      it('no puede insertar un ítem de plantilla por API directa', async () => {
+        const { error } = await empleado
+          .from('checklist_template_items')
+          .insert({
+            template_id: ANY_UUID,
+            position: 0,
+            title: 'e2e-perm no debería crearse',
+          })
+        expect(error?.code).toBe('42501')
+      })
+
+      it('no puede llamar clone_checklist_template (06 sección 9: "O; A + edit_checklists")', async () => {
+        const { error } = await empleado.rpc('clone_checklist_template', {
+          p_client_id: ANY_UUID,
+          p_site_id: ANY_UUID,
         })
         expect(error?.hint ?? error?.message).toMatch(/FORBIDDEN/i)
       })
@@ -439,6 +476,123 @@ describe.skipIf(!env)(
           p_notes: 'e2e-perm no debería aplicarse',
         })
         expect(error?.hint).toBe('FORBIDDEN')
+      })
+    })
+
+    // TASK-008/TEST-009 (P12.3, 08_Fases_y_Backlog.md F12): `update_task_status` es la única RPC
+    // de este dominio donde el empleado SÍ tiene un canal, acotado a su propia ventana (04 sección
+    // 6.3, P-063: asignación vigente en `present` en el turno de la tarea). Dos turnos de fixture
+    // propios: uno sin ninguna asignación de maria.gomez (TASK_LOCKED) y otro con una asignación
+    // suya forzada a `present` con la clave de servicio -- `record_check_in` todavía no existe
+    // (F13) -- tocando solo la columna `status` (no dispara el trigger `column-specific`
+    // `app.sync_assignment_window`, mismo criterio que `releaseAssignmentAfterCancelledShift` de
+    // `tests/e2e-assignments/helpers/adminClient.ts`). Por el mismo motivo, la limpieza libera esa
+    // asignación con un `update` directo (`remove_assignment` la rechazaría con
+    // `ASSIGNMENT_STARTED`: `status in ('present','finished')`, `0024_rpc_assignments.sql`).
+    describe('update_task_status (F12): TASK_LOCKED sin asignación present, éxito con ella', () => {
+      let lockedShift: FixtureShift
+      let lockedTaskId: string
+      let presentShift: FixtureShift
+      let presentTaskId: string
+      let presentAssignmentId: string
+      let dueno: TestClient
+      let duenoId: string
+
+      beforeAll(async () => {
+        const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+          .toISOString()
+          .slice(0, 10)
+        lockedShift = await createFixtureShift(
+          admin,
+          tomorrow,
+          '10:00',
+          '11:00',
+        )
+        lockedTaskId = await createFixtureShiftTask(
+          admin,
+          lockedShift.shiftId,
+          'locked',
+        )
+
+        // Madrugada (02:00-03:00): horario del que casi con certeza nadie del seed tiene un
+        // turno real hoy (mismo criterio que el resto de esta carpeta) -- acá importa de verdad
+        // porque esta asignación SÍ es real (`assign_employee`), a diferencia de `lockedShift`
+        // (sin ninguna asignación): una franja diurna típica de limpieza ya chocó con
+        // `ASSIGNMENT_OVERLAP`/"turno real" corriendo esta suite (ver el reporte del encargo).
+        presentShift = await createFixtureShift(
+          admin,
+          tomorrow,
+          '02:00',
+          '03:00',
+        )
+        presentTaskId = await createFixtureShiftTask(
+          admin,
+          presentShift.shiftId,
+          'present',
+        )
+
+        const ownerLogin = await loginAs(SEED_ACCOUNTS.owner)
+        dueno = ownerLogin.client
+        duenoId = ownerLogin.userId
+        presentAssignmentId = await createFixtureAssignment(
+          dueno,
+          presentShift.shiftId,
+          empleadoId,
+        )
+        const { error: statusError } = await admin
+          .from('assignments')
+          .update({ status: 'present' })
+          .eq('id', presentAssignmentId)
+        if (statusError) {
+          throw new Error(
+            `No se pudo forzar la asignación a present: ${statusError.message}`,
+          )
+        }
+      })
+
+      afterAll(async () => {
+        // `removed_by` es obligatorio junto con `removed_at` (check de la tabla,
+        // `0007_services_shifts_assignments.sql`): sin él, el `update` fallaba en silencio (no se
+        // revisaba el error acá) y la asignación quedaba vigente de corrida en corrida -- la
+        // siguiente chocaba con "el empleado ya tiene otro turno en ese horario"
+        // (`ASSIGNMENT_OVERLAP`, encontrado corriendo esta suite tres veces seguidas, ver el
+        // reporte del encargo).
+        const { error: releaseError } = await admin
+          .from('assignments')
+          .update({
+            removed_at: new Date().toISOString(),
+            removed_by: duenoId,
+            removed_reason:
+              'e2e-perm: limpieza de la asignación forzada a present',
+          })
+          .eq('id', presentAssignmentId)
+        if (releaseError) {
+          throw new Error(
+            `No se pudo liberar la asignación de fixture en la limpieza: ${releaseError.message}`,
+          )
+        }
+        await dueno.auth.signOut()
+        await deleteFixtureShiftTask(admin, lockedTaskId)
+        await deleteFixtureShiftTask(admin, presentTaskId)
+        await cleanupFixtureShift(admin, lockedShift)
+        await cleanupFixtureShift(admin, presentShift)
+      })
+
+      it('TASK_LOCKED: sin ninguna asignación vigente en ese turno', async () => {
+        const { error } = await empleado.rpc('update_task_status', {
+          p_task_id: lockedTaskId,
+          p_status: 'in_progress',
+        })
+        expect(error?.hint).toBe('TASK_LOCKED')
+      })
+
+      it('con una asignación vigente en present, cambia el estado de la tarea de ESE turno', async () => {
+        const { data, error } = await empleado.rpc('update_task_status', {
+          p_task_id: presentTaskId,
+          p_status: 'done',
+        })
+        expect(error).toBeNull()
+        expect(data?.status).toBe('done')
       })
     })
   },

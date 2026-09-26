@@ -25,6 +25,10 @@ import {
   createFixtureShift,
   type FixtureShift,
 } from './helpers/assignment-fixtures.ts'
+import {
+  createFixtureShiftTask,
+  deleteFixtureShiftTask,
+} from './helpers/checklist-fixtures.ts'
 
 const env = readPermissionsTestEnv()
 if (!env) console.warn(missingEnvWarning('supervisor.permissions.ts'))
@@ -193,6 +197,45 @@ describe.skipIf(!env)(
         })
         expect(error?.code).toBe('42501')
       })
+
+      // TASK-008/TEST-009 (P12.3, 08_Fases_y_Backlog.md F12): `06` sección 9 no le da a la
+      // supervisora ningún canal sobre plantillas ni tareas -- ni siquiera de lectura de la
+      // plantilla ("O, A" a secas); las tres RPC del dominio cortan con FORBIDDEN antes de mirar
+      // nada más (`app.require_capability`/rama `else` de `update_task_status`).
+      it('no puede insertar una plantilla de tareas por API directa', async () => {
+        const { error } = await supervisora.from('checklist_templates').insert({
+          client_id: ANY_UUID,
+          site_id: null,
+          name: 'e2e-perm no debería crearse',
+        })
+        expect(error?.code).toBe('42501')
+      })
+
+      it('no puede insertar un ítem de plantilla por API directa', async () => {
+        const { error } = await supervisora
+          .from('checklist_template_items')
+          .insert({
+            template_id: ANY_UUID,
+            position: 0,
+            title: 'e2e-perm no debería crearse',
+          })
+        expect(error?.code).toBe('42501')
+      })
+
+      it('no puede llamar clone_checklist_template', async () => {
+        const { error } = await supervisora.rpc('clone_checklist_template', {
+          p_client_id: ANY_UUID,
+          p_site_id: ANY_UUID,
+        })
+        expect(error?.hint ?? error?.message).toMatch(/FORBIDDEN/i)
+      })
+
+      it('no puede llamar reload_shift_tasks', async () => {
+        const { error } = await supervisora.rpc('reload_shift_tasks', {
+          p_shift_id: ANY_UUID,
+        })
+        expect(error?.hint ?? error?.message).toMatch(/FORBIDDEN/i)
+      })
     })
 
     describe('lo que SÍ puede hacer', () => {
@@ -318,6 +361,40 @@ describe.skipIf(!env)(
           p_shift_id: fixture.shiftId,
           p_required_staff: 3,
           p_notes: 'e2e-perm no debería aplicarse',
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+    })
+
+    // TASK-008/TEST-009 (P12.3, 08_Fases_y_Backlog.md F12): `update_task_status` no lista al
+    // supervisor entre los roles con permiso (`06` sección 9: "E (asignación propia present), O,
+    // A") -- la función va directo a la rama `else` y corta con FORBIDDEN, NO con TASK_LOCKED (ese
+    // código es específicamente "sos empleado pero no es tu ventana", `0025_rpc_tasks.sql`).
+    describe('update_task_status (F12): FORBIDDEN, no TASK_LOCKED', () => {
+      let fixture: FixtureShift
+      let taskId: string
+
+      beforeAll(async () => {
+        const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+          .toISOString()
+          .slice(0, 10)
+        fixture = await createFixtureShift(admin, tomorrow, '13:00', '14:00')
+        taskId = await createFixtureShiftTask(
+          admin,
+          fixture.shiftId,
+          'supervisor',
+        )
+      })
+
+      afterAll(async () => {
+        await deleteFixtureShiftTask(admin, taskId)
+        await cleanupFixtureShift(admin, fixture)
+      })
+
+      it('FORBIDDEN, no TASK_LOCKED', async () => {
+        const { error } = await supervisora.rpc('update_task_status', {
+          p_task_id: taskId,
+          p_status: 'in_progress',
         })
         expect(error?.hint).toBe('FORBIDDEN')
       })
