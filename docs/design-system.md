@@ -1840,6 +1840,158 @@ sí venga de un origen ya permitido (`https://*.supabase.co`). Se agregó
 `blob:` a `public/_headers` y a `docs/deployment.md` sección 10.3; no hizo
 falta tocar ningún otro archivo de CSP.
 
+## Hoy, Fichar y consentimiento de ubicación del empleado (F13, P13.2)
+
+Primer paquete de la vía móvil del empleado con pantallas reales (hasta acá
+`/app/*` eran todas `placeholderRoute`): EMP-03 (Hoy), EMP-04 (detalle del
+servicio), EMP-14 (Fichar, tab), EMP-06 (consentimiento de ubicación) y
+EMP-13 (Más). Cubre ATT-005, ATT-006, MOB-EMP-002 a MOB-EMP-006, MOB-EMP-013
+y MOB-EMP-016. `EMP-05`/`EMP-07` a `EMP-12` (registrar inicio, en curso,
+tareas, observaciones, finalizar, resumen, avisar demora o ausencia) quedan
+para P13.3 — sus rutas siguen siendo `placeholderRoute`.
+
+### `src/api/myDay.ts`, `src/api/attendance.ts` (ATT-005)
+
+- `fetchMyDay()`: toda `v_my_day` (la vista ya filtra "mi" día, hoy y los
+  próximos 7 días, `0011_views.sql`), mapeada a `MyDayAssignment[]`.
+- **La regla real de `changed_since_last_seen`** (P-092): la vista se
+  enciende también por acciones DEL PROPIO empleado (su check-in, su
+  check-out, su observación, sus tareas — todas tocan
+  `assignments.updated_at`, confirmado en el reporte de P13.1). Mostrarla
+  tal cual haría que alguien viera "cambios" en un servicio que él mismo
+  ya empezó. `isRelevantChange(assignment)` es la función que hay que usar
+  para pintar el bloque "Cambios desde tu última visita": `changed &&
+checkInAt == null`. Una vez que el inicio quedó registrado, cualquier
+  cambio posterior de esa asignación deja de ser una novedad para ese
+  bloque.
+- `markChangesSeen()`: llama a `mark_changes_seen` — SIEMPRE después de leer
+  `v_my_day`, nunca antes (si se invirtiera el orden, la propia lectura
+  podría no traer más el cambio que la persona vino a ver).
+  `useMarkChangesSeenMutation` (`src/features/employee/queries.ts`) no
+  invalida `myDay` en `onSuccess` a propósito, por el mismo motivo: la
+  pantalla ya montada no tiene que perder de golpe el bloque que acaba de
+  mostrar.
+- `fetchShiftPeers(shiftId, selfProfileId)`: dos consultas (ids de
+  `assignments` vigentes del turno, después `v_people_basic` con esos ids)
+  porque `v_people_basic` no sabe nada de turnos — dos pasos en vez de un
+  embed, sobre tablas separadas por RLS (`assignments_select_employee` vía
+  `app.shares_shift`, `0012_rls_policies.sql`).
+- `src/api/tasks.ts` sumó `fetchShiftTasksReadOnly(shiftId)` (sin tocar las
+  firmas existentes de TASK-003): las tareas previstas de EMP-04, en
+  lectura, reusando `mapTaskRow`.
+- `src/api/attendance.ts`: `recordCheckIn`, `recordCheckOut`,
+  `setAssignmentNotes` sobre las tres RPC de `0026_rpc_attendance.sql`.
+  Completo y con tests aunque ninguna pantalla de este paquete las llame
+  todavía (las usa P13.3): mismo patrón sin `mapWriteError` propio que
+  `assignments.ts`/`tasks.ts` (las RPC ya devuelven `message` en español).
+  **Decisión deliberada**: el tipo `AttendanceRecord` que exponen NO incluye
+  latitud, longitud ni precisión, aunque el servidor las devuelva — así es
+  imposible mostrarlas por accidente en ninguna pantalla (ADR-009: "no se
+  muestran en ninguna pantalla de la Base").
+
+### `src/lib/geolocation.ts` (ATT-006)
+
+`getCurrentPositionSafe(timeoutMs = 6000)`: nunca rechaza. Sin la API, con
+el permiso denegado, con el sensor fallando, con un `throw` síncrono raro
+del navegador o sin respuesta a tiempo (timeout propio, además del de la
+propia API, para el caso — visto en algunos navegadores — de que ninguno de
+los dos callbacks se llame nunca), siempre resuelve `null`. El registro de
+inicio/fin (P13.3) llama a esta función y sigue adelante sea cual sea el
+resultado (ADR-009, P-067, P-091).
+
+### EMP-06 · `LocationConsentScreen` + `LocationConsentPage`
+
+`src/features/employee/components/LocationConsentScreen.tsx` es puro (sin
+`supabase`, sin `useAuth`, sin navegación): texto de la empresa (con sus
+saltos de línea, `whitespace-pre-line`) o el de reserva si está vacío, y los
+dos botones. Se separó así a propósito para poder reusarlo en SUP-04 (F15,
+"con consentimiento de ubicación como EMP-06 si corresponde", `05` fila
+SUP-04) sin duplicar el texto ni los dos botones — la pantalla de
+supervisor de F15 solo va a necesitar su propio wrapper de datos, igual que
+`LocationConsentPage.tsx` (`src/pages/app/`) es el wrapper del empleado:
+guarda `location_consent_at`, RECIÉN DESPUÉS pide el permiso del navegador
+(`getCurrentPositionSafe`, se descarta el resultado — el pedido real de
+posición para fichar es de P13.3, esto solo dispara el diálogo del
+navegador en el momento que pide `05`), y vuelve a `/app/fichar` con la
+misma asignación elegida (`?asignacion=`).
+
+### EMP-14 · `ClockTabPage` (MOB-EMP-005)
+
+Resuelve toda la lógica de "a dónde apunta el botón Fichar" que pide `05`
+(en curso → EMP-07; nada por fichar → mensaje; un pendiente → sigue directo;
+más de uno → elegir con `OptionCard`/`RadioGroup`, mismo patrón que
+`/dev/design`; sin consentimiento → EMP-06 primero) salvo el botón real de
+"Registrar inicio": ahí deja un marcador simple (`RegisterStartPlaceholder`)
+con el servicio ya resuelto y el botón deshabilitado, "Disponible en la
+próxima entrega" — el marcador que pide el encargo para no rehacer esta
+lógica de branching en P13.3.
+
+### EMP-03 · `TodayPage` (MOB-EMP-002, MOB-EMP-003)
+
+Tarjeta destacada (`pickFeatured`: el servicio en curso; si no hay, el
+próximo por empezar; si ya están todos cerrados, el último de la lista, para
+que la tarjeta nunca quede vacía habiendo servicios hoy), el resto de hoy,
+"Próximos días" en lista simple y el estado vacío "No tenés servicios hoy".
+Polling de 30 s (`useMyDayQuery`, `02_Decisiones.md` P-005: mismo criterio
+que "Asistencia de hoy").
+
+### EMP-04 · `ServiceDetailPage` (MOB-EMP-004)
+
+La asignación sale de la caché de `useMyDayQuery` por `assignmentId` (no una
+consulta aparte: `v_my_day` ya está acotada a "mis" asignaciones de hoy y
+los próximos 7 días, evita mantener dos formas de leer la misma fila).
+Enlace a mapas (`https://www.google.com/maps/search/?api=1&query=...`, sin
+`MapView` embebido: `05` pide un enlace, no un mapa) y `tel:` para el
+contacto de la sede, compañeros con `PersonCell`, tareas previstas con
+`TaskList` en modo `readOnly` (EMP-08, la pantalla que las deja marcar, es
+de P13.3).
+
+### EMP-13 · `MorePage` (MOB-EMP-013)
+
+Perfil (`/perfil`, COM-04), "Avisar demora o ausencia" SIEMPRE visible pero
+deshabilitada con una etiqueta "Próximamente" (EMP-12 es F14; se decidió no
+ocultarla del todo para no dar la impresión de que no existe o de que hay un
+error), "Supervisión" solo con el rol (acceso cruzado, P-122), "Instalar la
+app" solo si `useInstallPrompt` (`src/features/employee/useInstallPrompt.ts`,
+envoltorio de `beforeinstallprompt`/`appinstalled`) la ofrece — el banner de
+COM-06 es P13.3, que puede reusar el mismo hook — y cerrar sesión.
+
+### MOB-EMP-016 (escritorio a 480 px)
+
+Ya resuelto por `MobileShell` desde P05.4 (`max-w-[480px]`, ver el
+comentario de ese componente): ninguna pantalla de este paquete necesitó
+nada propio para eso.
+
+### `useOnlineStatus` (regla común "sin conexión")
+
+`src/features/employee/useOnlineStatus.ts`: mismo patrón que
+`useMediaQuery` (`useSyncExternalStore` sobre `online`/`offline` de
+`window`). Se usa en EMP-06 (deshabilita los dos botones sin conexión) y en
+el marcador de EMP-05 dentro de `ClockTabPage`. Vive en `src/features/employee/`
+y no en `src/hooks/` (no es mío en este encargo) — si otra vía lo necesita
+después, conviene subirlo, pedido a front-plataforma.
+
+### Tests
+
+`src/api/myDay.test.ts`, `src/api/attendance.test.ts`, la suma a
+`src/api/tasks.test.ts`, `src/lib/geolocation.test.ts`,
+`src/features/employee/useOnlineStatus.test.ts`,
+`src/features/employee/useInstallPrompt.test.ts`,
+`src/features/employee/components/LocationConsentScreen.test.tsx` y
+`src/pages/app/MorePage.test.tsx` y `src/pages/app/TodayPage.test.ts`
+(`pickFeatured`, exportada para poder probarla sin montar la pantalla).
+`TodayPage`, `ServiceDetailPage` y `ClockTabPage` no tienen un test de
+COMPONENTE completo (dependen de
+`useMyDayQuery`/`useShiftPeersQuery`/`useShiftTasksReadOnlyQuery` con
+TanStack Query, y no hay todavía en el repo un arnés de
+`QueryClientProvider` + mock de `src/api/` para pantallas de este tipo —
+ninguna pantalla anterior con datos de dominio en `src/features/*/queries.ts`
+lo tiene tampoco): la lógica que sí tenía valor probar por separado
+(`isRelevantChange` en `myDay.test.ts`, `pickFeatured` en
+`TodayPage.test.ts`) ya está cubierta. Reportado al orquestador como
+pendiente menor si se quiere ese arnés común para las próximas pantallas de
+P13.3.
+
 ## Cómo ver los componentes
 
 `pnpm dev` y abrir `http://localhost:5173/dev/design`. Para recorrer
