@@ -492,9 +492,19 @@ select throws_ok('admin_attendance_antes_del_dia', 'P0001', 'La hora tiene que e
 -- misma transacción now() es constante (nota de 0026_rpc_attendance.test.sql) -- si acá se dejara
 -- el check_in en null (= now()) y el check_out feliz de más abajo también en null, los dos
 -- registros quedarían con el MISMO instante y el check_out fallaría con INVALID_TIME_RANGE (fin no
--- posterior al inicio) en vez de aceptarse.
+-- posterior al inicio) en vez de aceptarse. Entre las 0:00 y las 2:00 de Argentina, "ahora - 2 h"
+-- cae en el día anterior y AT_OUT_OF_RANGE lo rechazaría: ahí se usa el punto medio entre las 0:00
+-- de hoy y "ahora" (deja margen para el check_out "anterior al inicio" de más abajo).
 select is(
-  (public.admin_record_attendance('e2700000-0000-0000-0000-00000000030e', 'check_in', now() - interval '2 hours', 'Se olvidó el teléfono')).kind::text,
+  (public.admin_record_attendance(
+    'e2700000-0000-0000-0000-00000000030e',
+    'check_in',
+    greatest(
+      now() - interval '2 hours',
+      (date_trunc('day', now() at time zone 'America/Argentina/Buenos_Aires') at time zone 'America/Argentina/Buenos_Aires') + (now() - (date_trunc('day', now() at time zone 'America/Argentina/Buenos_Aires') at time zone 'America/Argentina/Buenos_Aires')) / 2
+    ),
+    'Se olvidó el teléfono'
+  )).kind::text,
   'check_in',
   'admin_record_attendance: check_in feliz'
 );
@@ -527,13 +537,14 @@ select tests.as_user('test-db027-admin-con-cap@example.com');
 prepare admin_attendance_doble_in as select public.admin_record_attendance('e2700000-0000-0000-0000-00000000030e', 'check_in', null, 'Motivo');
 select throws_ok('admin_attendance_doble_in', 'P0001', 'Ya registraste el inicio.', 'admin_record_attendance: doble check_in -> ALREADY_CHECKED_IN');
 
--- INVALID_TIME_RANGE: check_out antes del check_in ya registrado.
+-- INVALID_TIME_RANGE: check_out antes del check_in ya registrado (5 minutos antes, o menos si el
+-- check_in quedó cerca de las 0:00: nunca antes de las 0:00, que daría AT_OUT_OF_RANGE).
 set local role postgres;
 select set_config('t27.check_in_at', (select recorded_at::text from public.attendance_records where assignment_id = 'e2700000-0000-0000-0000-00000000030e' and kind = 'check_in'), false);
 select tests.as_user('test-db027-admin-con-cap@example.com');
 
 prepare admin_attendance_fin_antes_del_inicio as
-  select public.admin_record_attendance('e2700000-0000-0000-0000-00000000030e', 'check_out', current_setting('t27.check_in_at')::timestamptz - interval '5 minutes', 'Motivo');
+  select public.admin_record_attendance('e2700000-0000-0000-0000-00000000030e', 'check_out', current_setting('t27.check_in_at')::timestamptz - least(interval '5 minutes', (current_setting('t27.check_in_at')::timestamptz - (date_trunc('day', now() at time zone 'America/Argentina/Buenos_Aires') at time zone 'America/Argentina/Buenos_Aires')) / 2), 'Motivo');
 select throws_ok('admin_attendance_fin_antes_del_inicio', 'P0001', 'La hora de fin tiene que ser posterior a la de inicio.', 'admin_record_attendance: check_out anterior al check_in -> INVALID_TIME_RANGE');
 
 -- Feliz: check_out en nombre -> turno completed (única asignación vigente).
