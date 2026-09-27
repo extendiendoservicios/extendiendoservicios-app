@@ -474,6 +474,8 @@ export interface AttendanceEvent {
   kind: AttendanceKind | NoticeKind
   /** Solo para un registro (`attendance_records`): el instante real de inicio o fin. */
   recordedAt?: string
+  /** Solo para un registro cargado por administración: el motivo (P-075). */
+  adminReason?: string | null
   /** Solo para un aviso de demora (`attendance_notices`). */
   minutesLate?: number | null
   /** Solo para un aviso de ausencia (`attendance_notices`). */
@@ -501,7 +503,7 @@ export async function fetchAttendanceTimeline(
     supabase
       .from('attendance_records')
       .select(
-        'id, assignment_id, kind, recorded_at, source, recorded_by, created_at',
+        'id, assignment_id, kind, recorded_at, source, recorded_by, reason, created_at',
       )
       .in('assignment_id', assignmentIds),
     supabase
@@ -535,6 +537,7 @@ export async function fetchAttendanceTimeline(
       reportedBy: row.recorded_by,
       kind: isAttendanceKind(row.kind) ? row.kind : 'check_in',
       recordedAt: row.recorded_at,
+      adminReason: row.reason,
     })
   }
   for (const row of noticesResult.data ?? []) {

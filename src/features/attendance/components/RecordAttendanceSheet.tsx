@@ -187,6 +187,7 @@ function RecordCheckForm({
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm<RecordAttendanceFormValues>({
     resolver: zodResolver(recordAttendanceSchema),
@@ -194,6 +195,15 @@ function RecordCheckForm({
   })
 
   async function onSubmit(values: RecordAttendanceFormValues) {
+    // Mismo rango que exige el servidor (AT_OUT_OF_RANGE): desde las 0:00 del
+    // día del turno hasta este momento (no el "ahora" congelado al montar).
+    if (values.at < minValue || values.at > toDateTimeLocal()) {
+      setError('at', {
+        message:
+          'La hora tiene que estar entre las 0:00 del día del turno y este momento.',
+      })
+      return
+    }
     const at = dateTimeLocalToIso(values.at)
     try {
       if (action === 'close') {

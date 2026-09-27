@@ -35,6 +35,14 @@ function noticeLabel(row: AttendanceBoardRow): string {
     return '—'
   }
   const kindLabel = NOTICE_KIND_LABELS[row.lastNoticeKind]
+  const text = row.lastNoticeReasonText?.trim()
+  if (
+    row.lastNoticeKind === 'absence' &&
+    row.lastNoticeReasonCode === 'other' &&
+    text
+  ) {
+    return `${kindLabel}: "${text}"`
+  }
   if (row.lastNoticeKind === 'absence' && row.lastNoticeReasonCode) {
     return `${kindLabel}: ${ABSENCE_REASON_LABELS[row.lastNoticeReasonCode]}`
   }

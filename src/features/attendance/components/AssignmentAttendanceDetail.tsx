@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Timeline, type TimelineItem } from '@/components/Timeline'
 import { formatMinutes, formatTime } from '@/lib/format'
+import { absenceReasonLabel } from '@/lib/absenceReasons'
 import type { AttendanceEvent, AttendanceBoardRow } from '@/api/attendance'
 import type { PersonName } from '@/api/attendance'
 import {
@@ -33,14 +34,36 @@ function whoRecorded(
   source: 'employee_app' | 'admin',
   recordedBy: string | null,
   peopleNames: Map<string, PersonName>,
+  what: 'record' | 'notice' = 'record',
 ): string {
   if (source === 'employee_app') {
-    return 'marcó desde la app'
+    return what === 'notice' ? 'avisó desde la app' : 'marcó desde la app'
   }
   const person = recordedBy ? peopleNames.get(recordedBy) : undefined
   return person
     ? `lo cargó ${person.firstName} ${person.lastName}`
     : 'lo cargó administración'
+}
+
+/** Minutos o motivo del aviso y el texto libre, si lo hay ("Otro" muestra solo el texto). */
+function noticeDetail(event: AttendanceEvent): string[] {
+  const text = event.reasonText?.trim()
+  const quoted = text ? `"${text}"` : null
+  if (event.kind === 'delay') {
+    return [
+      event.minutesLate != null
+        ? `${formatMinutes(event.minutesLate)} de demora`
+        : null,
+      quoted,
+    ].filter((part): part is string => Boolean(part))
+  }
+  if (event.reasonCode === 'other' && quoted) {
+    return [quoted]
+  }
+  return [
+    event.reasonCode ? absenceReasonLabel(event.reasonCode) : null,
+    quoted,
+  ].filter((part): part is string => Boolean(part))
 }
 
 function eventToTimelineItem(
@@ -51,21 +74,22 @@ function eventToTimelineItem(
     return {
       id: event.id,
       title: `${ATTENDANCE_KIND_LABELS[event.kind]} — ${whoRecorded(event.source, event.reportedBy, peopleNames)}`,
-      description: event.recordedAt ? formatTime(event.recordedAt) : undefined,
+      description: [
+        event.recordedAt ? formatTime(event.recordedAt) : null,
+        event.adminReason ? `Motivo: ${event.adminReason}` : null,
+      ]
+        .filter(Boolean)
+        .join(' · '),
       variant: 'ok',
     }
   }
   const label = NOTICE_KIND_LABELS[event.kind]
-  const detail =
-    event.kind === 'delay'
-      ? event.minutesLate != null
-        ? `${formatMinutes(event.minutesLate)} de demora`
-        : undefined
-      : (event.reasonText ?? undefined)
   return {
     id: event.id,
-    title: `Aviso de ${label.toLowerCase()} — ${whoRecorded(event.source, event.reportedBy, peopleNames)}`,
-    description: detail ?? formatTime(event.createdAt),
+    title: `Aviso de ${label.toLowerCase()} — ${whoRecorded(event.source, event.reportedBy, peopleNames, 'notice')}`,
+    description: [formatTime(event.createdAt), ...noticeDetail(event)].join(
+      ' · ',
+    ),
     variant: event.kind === 'absence' ? 'crit' : 'on',
   }
 }
