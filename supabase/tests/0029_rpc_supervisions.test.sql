@@ -844,8 +844,12 @@ select throws_ok(
   'rate_employee: supervisión assigned -> SUPERVISION_NOT_ACTIVE'
 );
 
--- Inicia la supervisión 102 para poder calificar (in_progress).
+-- Inicia la supervisión 102 para poder calificar (in_progress). También registra el fin: el turno
+-- 102 termina a las 13:00 y, sin fin registrado, el plazo de P-083 vencería si el test corre
+-- después de esa hora. Con el fin en now() (constante en la transacción), el plazo queda abierto
+-- a cualquier hora.
 select public.supervision_check_in((select id from e2900000_sup_ids where label = '102'));
+select public.supervision_check_out((select id from e2900000_sup_ids where label = '102'));
 
 -- ASSIGNMENT_NOT_FOUND.
 prepare rate_assignment_not_found as
