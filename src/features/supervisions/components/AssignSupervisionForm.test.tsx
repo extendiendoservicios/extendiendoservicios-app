@@ -115,5 +115,12 @@ describe('AssignSupervisionForm', () => {
         ),
       ).toBeInTheDocument()
     })
+    // Ya quedó creada: no se puede volver a asignar, solo ir al detalle.
+    expect(
+      screen.queryByRole('button', { name: 'Asignar supervisión' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Ver supervisión' }),
+    ).toBeInTheDocument()
   })
 })

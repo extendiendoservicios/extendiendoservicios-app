@@ -21,6 +21,9 @@ import { RateEmployeeDialog } from './RateEmployeeDialog'
 
 /** `cancel_supervision`/`mark_supervision_not_done` (`0029`): solo `assigned`/`in_progress`. */
 const EDITABLE_STATUSES = new Set(['assigned', 'in_progress'])
+// `rate_employee` solo acepta supervisiones en curso o completadas
+// (SUPERVISION_NOT_ACTIVE): en las demás no se ofrece calificar.
+const RATEABLE_STATUSES = new Set(['in_progress', 'completed'])
 
 /**
  * ADM-15 "Supervisión · detalle" (SUP-011, `05` línea 59): cabecera (turno,
@@ -70,6 +73,7 @@ function SupervisionDetail({ supervisionId }: SupervisionDetailProps) {
 
   const { detail, employeeRatings } = result
   const isEditable = EDITABLE_STATUSES.has(detail.status)
+  const isRateable = RATEABLE_STATUSES.has(detail.status)
 
   return (
     <div className="flex flex-col gap-5">
@@ -181,13 +185,13 @@ function SupervisionDetail({ supervisionId }: SupervisionDetailProps) {
             {employeeRatings.map((employeeRating) => (
               <li
                 key={employeeRating.assignmentId}
-                className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-2 rounded-md border border-border p-3"
               >
                 <PersonCell
                   id={employeeRating.employeeId}
                   name={`${employeeRating.employeeFirstName} ${employeeRating.employeeLastName}`}
                 />
-                <div className="flex flex-col items-start gap-1 sm:items-end">
+                <div className="flex flex-col items-start gap-1">
                   {employeeRating.rating ? (
                     <>
                       <StarRating
@@ -214,7 +218,7 @@ function SupervisionDetail({ supervisionId }: SupervisionDetailProps) {
                   ) : (
                     <p className="text-[12px] text-text-3">Sin calificar</p>
                   )}
-                  {canEditRatings && (
+                  {canEditRatings && isRateable && (
                     <Button
                       variant="ghost"
                       size="sm"

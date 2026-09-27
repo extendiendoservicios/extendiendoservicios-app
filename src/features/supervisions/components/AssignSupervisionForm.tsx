@@ -64,6 +64,9 @@ function AssignSupervisionForm({
   const [date, setDate] = useState(initialDate ?? todayInBuenosAires())
   const [shiftId, setShiftId] = useState(initialShiftId ?? '')
   const [supervisorId, setSupervisorId] = useState('')
+  // Id de la supervisión ya creada cuando volvió con advertencias: el panel
+  // queda abierto para leerlas, pero no se puede volver a asignar.
+  const [assignedId, setAssignedId] = useState<string | null>(null)
   const [lastWarnings, setLastWarnings] = useState<SupervisionWarning[] | null>(
     null,
   )
@@ -95,7 +98,8 @@ function AssignSupervisionForm({
         // abierto para que la advertencia se vea antes de cerrar (misma
         // regla que `AssignEmployeeSheet`).
         setLastWarnings(result.warnings)
-        toast.warning('Asignamos igual, con una advertencia: revisala abajo.')
+        setAssignedId(result.supervision.id)
+        toast.warning('Asignamos igual, con una advertencia: revisá el aviso.')
       } else {
         toast.success('Asignamos al supervisor.')
         void navigate(`/admin/supervisiones/${result.supervision.id}`, {
@@ -192,16 +196,31 @@ function AssignSupervisionForm({
       </Field>
 
       <div className="flex justify-end gap-2 border-t border-border pt-4">
-        <Button variant="ghost" onClick={onDone}>
-          Cancelar
-        </Button>
-        <Button
-          disabled={!shiftId || !supervisorId}
-          loading={assignSupervision.isPending}
-          onClick={() => void handleSubmit()}
-        >
-          Asignar supervisión
-        </Button>
+        {assignedId ? (
+          <Button
+            onClick={() => {
+              void navigate(`/admin/supervisiones/${assignedId}`, {
+                replace: true,
+              })
+              onDone()
+            }}
+          >
+            Ver supervisión
+          </Button>
+        ) : (
+          <>
+            <Button variant="ghost" onClick={onDone}>
+              Cancelar
+            </Button>
+            <Button
+              disabled={!shiftId || !supervisorId}
+              loading={assignSupervision.isPending}
+              onClick={() => void handleSubmit()}
+            >
+              Asignar supervisión
+            </Button>
+          </>
+        )}
       </div>
     </div>
   )
