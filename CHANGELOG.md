@@ -7,6 +7,31 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.11.0] - 2026-09-27
+
+Avisos, demoras y asistencia administrativa (F14). El empleado avisa desde el celular que llega tarde o que no va. La administración sigue la asistencia del día, registra el inicio, el fin o un aviso en nombre del empleado con motivo y hora editable, y cierra asignaciones sin fin. Trae dos migraciones nuevas, `0027_rpc_notices_admin_attendance.sql` y `0028_v_my_day_own_actions.sql`.
+
+### Agregado
+
+- RPC de avisos y asistencia administrativa (P14.1, ABS-002, ATT-007), en la migración `0027_rpc_notices_admin_attendance.sql`:
+  - `notify_delay` (minutos obligatorios, de 1 a 600, P-072) y `notify_absence` (motivo obligatorio, con texto si es "Otro", P-073): el empleado avisa antes de la hora de inicio; la administración también puede hacerlo después, mientras no haya inicio registrado.
+  - `admin_record_attendance` y `close_assignment`: inicio, fin y cierre manual en nombre del empleado, con motivo obligatorio (P-075) y hora editable desde las 0:00 del día del turno hasta el momento de la carga, nunca futura.
+  - `v_assignments_board` y `v_my_day` suman el origen de cada registro y el último aviso.
+  - pgTAP: 67 aserciones nuevas.
+- Avisos del empleado (P14.2, ABS-004, ABS-005, ABS-009, MOB-EMP-020): pantalla "Avisar" desde Hoy, el detalle del servicio y Más, con confirmación. Hoy muestra el aviso vigente y si lo cargó la administración.
+- Asistencia administrativa (P14.3, ATT-010 a ATT-014, ABS-006, ABS-008, ATT-016, ABS-010):
+  - Asistencia de hoy (`/admin/asistencia`): tabla en escritorio y tarjetas en el celular, con filtros por estado, cliente y sede, y los estados "Sin registro" y "Salida anticipada".
+  - Registrar en nombre del empleado: inicio, fin, cierre, demora y ausencia.
+  - Detalle del turno: inicio y fin reales con quién los cargó, y una línea de tiempo de avisos y registros con hora y motivo.
+  - Historial de asistencia en la ficha del empleado.
+  - Guía técnica en `docs/features/asistencia-y-avisos.md`.
+- Pruebas (P14.4, ABS-007, ATT-015, TEST-011): suite e2e `tests/e2e-avisos-asistencia/` para el empleado a 390 px y para la administración en escritorio y en el celular.
+
+### Corregido
+
+- "Cambios desde tu última visita" ya no aparece por las acciones del propio empleado: aviso, inicio, fin u observación. Migración `0028_v_my_day_own_actions.sql` (#84).
+- Las pruebas pgTAP `0011` y `0027` fallaban según la hora a la que corría el CI (cerca de la medianoche de Argentina).
+
 ## [0.10.0] - 2026-09-26
 
 App del empleado (F13). Desde el celular, el empleado ve su día y los próximos siete, abre el detalle de cada servicio, registra el inicio y el fin con la hora del servidor y la ubicación opcional, marca las tareas, deja su observación y ve el resumen al terminar. La app se instala en Android y avisa cuando no hay conexión. Trae una migración nueva, `0026_rpc_attendance.sql`.
