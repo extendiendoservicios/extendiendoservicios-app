@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
 import { fromPostgrestError } from './errors'
+import type { AbsenceReason } from '@/lib/absenceReasons'
 
 /**
  * `src/api/myDay.ts` (ATT-005, `06_API.md` sección 10): la pantalla Hoy del
@@ -66,6 +67,28 @@ export interface MyDayAssignment {
   changedSinceLastSeen: boolean
   checkInAt: string | null
   checkOutAt: string | null
+  /** Ciudad y coordenadas de la sede (0027, pendiente de P13.2): para "Abrir en el mapa" con coordenadas exactas en vez de solo la dirección de texto. */
+  siteCity: string | null
+  siteLatitude: number | null
+  siteLongitude: number | null
+  /** Origen y responsable del inicio y del fin (0027, P-075): `employee_app`/propio uid, o `admin`/quien lo cargó en su nombre. `null` si todavía no hay registro. */
+  checkInSource: Database['public']['Enums']['attendance_source'] | null
+  checkInRecordedBy: string | null
+  checkOutSource: Database['public']['Enums']['attendance_source'] | null
+  checkOutRecordedBy: string | null
+  /**
+   * Último aviso propio de esta asignación (`attendance_notices`, 0027):
+   * `null` en todos los campos si nunca avisó nada. `lastNoticeSource` dice
+   * si lo cargó la administración en su nombre (ABS-005, "Lo cargó la
+   * administración").
+   */
+  lastNoticeKind: Database['public']['Enums']['notice_kind'] | null
+  lastNoticeMinutesLate: number | null
+  lastNoticeReasonCode: AbsenceReason | null
+  lastNoticeReasonText: string | null
+  lastNoticeReportedBy: string | null
+  lastNoticeSource: Database['public']['Enums']['attendance_source'] | null
+  lastNoticeAt: string | null
 }
 
 interface MyDayRawRow {
@@ -98,6 +121,20 @@ interface MyDayRawRow {
   changed_since_last_seen: boolean
   check_in_at: string | null
   check_out_at: string | null
+  site_city: string | null
+  site_latitude: number | null
+  site_longitude: number | null
+  check_in_source: Database['public']['Enums']['attendance_source'] | null
+  check_in_recorded_by: string | null
+  check_out_source: Database['public']['Enums']['attendance_source'] | null
+  check_out_recorded_by: string | null
+  last_notice_kind: Database['public']['Enums']['notice_kind'] | null
+  last_notice_minutes_late: number | null
+  last_notice_reason_code: AbsenceReason | null
+  last_notice_reason_text: string | null
+  last_notice_reported_by: string | null
+  last_notice_source: Database['public']['Enums']['attendance_source'] | null
+  last_notice_at: string | null
 }
 
 function mapMyDayRow(row: MyDayRawRow): MyDayAssignment {
@@ -130,6 +167,20 @@ function mapMyDayRow(row: MyDayRawRow): MyDayAssignment {
     changedSinceLastSeen: row.changed_since_last_seen,
     checkInAt: row.check_in_at,
     checkOutAt: row.check_out_at,
+    siteCity: row.site_city,
+    siteLatitude: row.site_latitude,
+    siteLongitude: row.site_longitude,
+    checkInSource: row.check_in_source,
+    checkInRecordedBy: row.check_in_recorded_by,
+    checkOutSource: row.check_out_source,
+    checkOutRecordedBy: row.check_out_recorded_by,
+    lastNoticeKind: row.last_notice_kind,
+    lastNoticeMinutesLate: row.last_notice_minutes_late,
+    lastNoticeReasonCode: row.last_notice_reason_code,
+    lastNoticeReasonText: row.last_notice_reason_text,
+    lastNoticeReportedBy: row.last_notice_reported_by,
+    lastNoticeSource: row.last_notice_source,
+    lastNoticeAt: row.last_notice_at,
   }
 }
 

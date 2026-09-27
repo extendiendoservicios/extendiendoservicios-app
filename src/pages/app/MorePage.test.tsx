@@ -7,8 +7,8 @@ import type { AuthContextValue } from '@/features/auth/AuthProvider'
 import * as installPromptModule from '@/features/employee/useInstallPrompt'
 
 /**
- * EMP-13 (MOB-EMP-013): la fila "Avisar demora o ausencia" siempre
- * deshabilitada (EMP-12 es F14), "Supervisión" solo con el rol, "Instalar
+ * EMP-13 (MOB-EMP-013, MOB-EMP-020): la fila "Avisar demora o ausencia"
+ * lleva a EMP-12 (`/app/avisar`), "Supervisión" solo con el rol, "Instalar
  * la app" solo si `useInstallPrompt` la ofrece.
  */
 function authValue(overrides: Partial<AuthContextValue>): AuthContextValue {
@@ -40,7 +40,7 @@ function renderMorePage() {
 }
 
 describe('MorePage (EMP-13)', () => {
-  it('siempre muestra "Mi perfil" y "Cerrar sesión", y "Avisar demora o ausencia" deshabilitado', () => {
+  it('siempre muestra "Mi perfil", "Avisar demora o ausencia" (con enlace a EMP-12) y "Cerrar sesión"', () => {
     vi.spyOn(authModule, 'useAuth').mockReturnValue(authValue({}))
     vi.spyOn(installPromptModule, 'useInstallPrompt').mockReturnValue({
       available: false,
@@ -51,8 +51,8 @@ describe('MorePage (EMP-13)', () => {
 
     expect(screen.getByText('Mi perfil')).toBeInTheDocument()
     expect(screen.getByText('Cerrar sesión')).toBeInTheDocument()
-    expect(screen.getByText('Avisar demora o ausencia')).toBeInTheDocument()
-    expect(screen.getByText('Próximamente')).toBeInTheDocument()
+    const noticeLink = screen.getByText('Avisar demora o ausencia').closest('a')
+    expect(noticeLink).toHaveAttribute('href', '/app/avisar')
     expect(screen.queryByText('Supervisión')).not.toBeInTheDocument()
     expect(screen.queryByText('Instalar la app')).not.toBeInTheDocument()
   })
