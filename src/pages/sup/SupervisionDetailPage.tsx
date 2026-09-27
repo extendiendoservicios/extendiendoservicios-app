@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router'
-import { PlayCircle } from 'lucide-react'
+import { PlayCircle, StopCircle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -24,9 +24,10 @@ import {
  * sección 12): cliente, sede (reusa `SiteInfo`, SITE-010, mismo componente
  * que EMP-04), franja, empleados asignados con su estado de asistencia e
  * inicio real, tareas del turno en solo lectura y la guía de criterios de
- * calificación. El botón "Registrar inicio de supervisión" lleva a SUP-04
- * sin importar si ya se registró el inicio (esa pantalla decide qué mostrar
- * según el estado); no se ofrece con la supervisión ya cerrada o cancelada.
+ * calificación. El botón lleva a SUP-04 y dice lo que falta: "Registrar
+ * inicio" sin inicio, "Registrar fin" con inicio y sin fin, y no aparece con
+ * los dos registrados (cerrar es SUP-06, P15.5) ni con la supervisión cerrada
+ * o cancelada. La cabecera muestra las horas ya registradas.
  *
  * Los criterios que se muestran son los guardados al iniciar
  * (`criteriaSnapshot`, P-087) si la supervisión ya empezó, o los vigentes
@@ -75,7 +76,14 @@ export default function SupervisionDetailPage() {
   }
 
   const criteria = supervision.criteriaSnapshot ?? vigentCriteria ?? []
-  const canRegister = ['assigned', 'in_progress'].includes(supervision.status)
+  const isOpen = ['assigned', 'in_progress'].includes(supervision.status)
+  const nextStep = !isOpen
+    ? null
+    : supervision.checkInAt == null
+      ? 'start'
+      : supervision.checkOutAt == null
+        ? 'finish'
+        : null
 
   return (
     <div className="flex flex-col gap-4">
@@ -92,6 +100,13 @@ export default function SupervisionDetailPage() {
             {formatTimeOfDay(supervision.startTime)}–
             {formatTimeOfDay(supervision.endTime)}
           </p>
+          {supervision.checkInAt && (
+            <p className="text-[12px] text-text-3">
+              Iniciada a las {formatTime(new Date(supervision.checkInAt))}
+              {supervision.checkOutAt &&
+                ` · Finalizada a las ${formatTime(new Date(supervision.checkOutAt))}`}
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -155,11 +170,20 @@ export default function SupervisionDetailPage() {
         </Card>
       )}
 
-      {canRegister && (
+      {nextStep && (
         <Button asChild size="mobile" className="mt-2">
           <Link to={`/sup/supervisiones/${supervision.id}/registro`}>
-            <PlayCircle aria-hidden="true" />
-            Registrar inicio de supervisión
+            {nextStep === 'start' ? (
+              <>
+                <PlayCircle aria-hidden="true" />
+                Registrar inicio de supervisión
+              </>
+            ) : (
+              <>
+                <StopCircle aria-hidden="true" />
+                Registrar fin de supervisión
+              </>
+            )}
           </Link>
         </Button>
       )}

@@ -561,14 +561,18 @@ export function useSupervisionShiftTasksQuery(shiftId: string) {
   })
 }
 
+/**
+ * Devuelve la promesa de la recarga: los `onSuccess` la devuelven para que la
+ * mutación siga "pendiente" (botón ocupado) hasta tener el estado nuevo. Si
+ * no, entre la respuesta de la RPC y la recarga el botón queda habilitado y
+ * un segundo toque responde, por ejemplo, ALREADY_STARTED. El detalle
+ * (`detail(id)`) cuelga de `all`, así que una sola invalidación alcanza.
+ */
 function invalidateSupervisionCaches(
   queryClient: ReturnType<typeof useQueryClient>,
-  supervisionId: string,
+  _supervisionId: string,
 ) {
-  void queryClient.invalidateQueries({ queryKey: mySupervisionsKeys.all })
-  void queryClient.invalidateQueries({
-    queryKey: mySupervisionsKeys.detail(supervisionId),
-  })
+  return queryClient.invalidateQueries({ queryKey: mySupervisionsKeys.all })
 }
 
 /** SUP-04: registrar el inicio. Invalida todas las listas y el detalle (el estado cambió a `in_progress`). */

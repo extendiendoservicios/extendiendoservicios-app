@@ -133,6 +133,47 @@ describe('SupervisionDetailPage (SUP-03)', () => {
     expect(link).toHaveAttribute('href', '/sup/supervisiones/sv1/registro')
   })
 
+  it('con inicio y sin fin ofrece "Registrar fin"; con los dos, ningún registro', () => {
+    const tasks = vi
+      .spyOn(mySupervisionsModule, 'useSupervisionShiftTasksQuery')
+      .mockReturnValue({ data: [] } as never)
+    vi.spyOn(
+      mySupervisionsModule,
+      'useVigentRatingCriteriaQuery',
+    ).mockReturnValue({ data: [] } as never)
+    const query = vi
+      .spyOn(mySupervisionsModule, 'useMySupervisionQuery')
+      .mockReturnValue({
+        data: supervision({
+          status: 'in_progress',
+          checkInAt: '2026-09-27T11:05:00Z',
+        }),
+        isLoading: false,
+        isError: false,
+      } as never)
+
+    const { unmount } = renderDetail()
+    expect(screen.getByText('Registrar fin de supervisión')).toBeInTheDocument()
+    expect(
+      screen.queryByText('Registrar inicio de supervisión'),
+    ).not.toBeInTheDocument()
+    unmount()
+
+    query.mockReturnValue({
+      data: supervision({
+        status: 'in_progress',
+        checkInAt: '2026-09-27T11:05:00Z',
+        checkOutAt: '2026-09-27T12:00:00Z',
+      }),
+      isLoading: false,
+      isError: false,
+    } as never)
+    renderDetail()
+    expect(screen.queryByText(/Registrar (inicio|fin)/)).not.toBeInTheDocument()
+    expect(screen.getByText(/Finalizada a las/)).toBeInTheDocument()
+    expect(tasks).toHaveBeenCalled()
+  })
+
   it('no ofrece el registro cuando la supervisión ya está completada', () => {
     vi.spyOn(mySupervisionsModule, 'useMySupervisionQuery').mockReturnValue({
       data: supervision({ status: 'completed' }),
