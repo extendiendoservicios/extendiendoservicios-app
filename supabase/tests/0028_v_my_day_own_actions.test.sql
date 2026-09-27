@@ -50,15 +50,15 @@ $$;
 
 grant execute on function tests.as_user(text) to authenticated, anon;
 
--- Ancla futura ("dentro de 3 horas", turno que todavía no empezó, misma técnica que 0027) y la
--- fecha de hoy en Argentina (para el turno de inicio/fin propio, que record_check_in exige que
--- sea "de hoy").
+-- Ancla futura: mañana de 10:00 a 11:00 (hora de Argentina), un turno que todavía no empezó.
+-- Antes era "dentro de 3 horas" y fallaba entre las 20:00 y las 21:00 de Argentina: el fin caía
+-- pasada la medianoche (shifts_time_range_check) y el "+ 1 hora" de más abajo también cruzaba.
 create temporary table t28_anchors on commit drop as
 select
-  (now() + interval '3 hours') as future_instant,
-  ((now() + interval '3 hours') at time zone 'America/Argentina/Buenos_Aires')::date as future_date,
-  ((now() + interval '3 hours') at time zone 'America/Argentina/Buenos_Aires')::time as future_start,
-  (((now() + interval '3 hours') at time zone 'America/Argentina/Buenos_Aires')::time + interval '1 hour')::time as future_end;
+  app.local_ts(app.today() + 1, '10:00'::time) as future_instant,
+  app.today() + 1 as future_date,
+  '10:00'::time as future_start,
+  '11:00'::time as future_end;
 
 -- Varias llamadas de más abajo se hacen como authenticated (vía tests.as_user) y necesitan leer
 -- esta tabla temporal (por ejemplo, para armar los parámetros de update_shift_time).
