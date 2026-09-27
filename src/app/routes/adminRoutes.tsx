@@ -1,4 +1,5 @@
 import type { RouteObject } from 'react-router'
+import AssignSupervisionPage from '@/pages/admin/AssignSupervisionPage'
 import AttendanceTodayPage from '@/pages/admin/AttendanceTodayPage'
 import ClientDetailPage from '@/pages/admin/ClientDetailPage'
 import ClientFormPage from '@/pages/admin/ClientFormPage'
@@ -17,6 +18,8 @@ import ShiftFormPage from '@/pages/admin/ShiftFormPage'
 import ShiftsGeneratePage from '@/pages/admin/ShiftsGeneratePage'
 import SiteDetailPage from '@/pages/admin/SiteDetailPage'
 import SiteFormPage from '@/pages/admin/SiteFormPage'
+import SupervisionDetailPage from '@/pages/admin/SupervisionDetailPage'
+import SupervisionsPage from '@/pages/admin/SupervisionsPage'
 import TaskTemplatesPage from '@/pages/admin/TaskTemplatesPage'
 import UsersPage from '@/pages/admin/UsersPage'
 import { placeholderRoute } from './placeholder'
@@ -94,24 +97,33 @@ export const adminRoutes: RouteObject[] = [
       subtitle: 'Seguir en vivo quién está, quién avisó y quién no registró',
     },
   },
-  placeholderRoute({
+  {
     path: 'supervisiones',
-    screenId: 'ADM-13',
-    title: 'Supervisiones',
-    subtitle: 'Consultar supervisiones y calificaciones',
-  }),
-  placeholderRoute({
+    element: <SupervisionsPage />,
+    handle: {
+      screenId: 'ADM-13',
+      title: 'Supervisiones',
+      subtitle: 'Consultar supervisiones y calificaciones',
+    },
+  },
+  {
     path: 'supervisiones/nueva',
-    screenId: 'ADM-14',
-    title: 'Asignar supervisión',
-    subtitle: 'Elegir turno y supervisor',
-  }),
-  placeholderRoute({
+    element: <AssignSupervisionPage />,
+    handle: {
+      screenId: 'ADM-14',
+      title: 'Asignar supervisión',
+      subtitle: 'Elegir turno y supervisor',
+    },
+  },
+  {
     path: 'supervisiones/:id',
-    screenId: 'ADM-15',
-    title: 'Detalle de la supervisión',
-    subtitle: 'Ver y editar una supervisión',
-  }),
+    element: <SupervisionDetailPage />,
+    handle: {
+      screenId: 'ADM-15',
+      title: 'Detalle de la supervisión',
+      subtitle: 'Ver y editar una supervisión',
+    },
+  },
   {
     path: 'empleados',
     element: <EmployeesPage />,
