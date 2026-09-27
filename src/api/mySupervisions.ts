@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
 import { fromPostgrestError } from './errors'
 import type { AssignmentStatus } from './assignments'
+import { fetchShiftTasksReadOnly } from './tasks'
 import type { GeolocationCoords } from '@/lib/geolocation'
 import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
 
@@ -541,6 +542,22 @@ export function useVigentRatingCriteriaQuery() {
     queryKey: mySupervisionsKeys.criteria(),
     queryFn: fetchVigentRatingCriteria,
     staleTime: 5 * 60_000,
+  })
+}
+
+/**
+ * SUP-03: las tareas del turno supervisado, en lectura ("`06` sección 9:
+ * O, A, S, E (sus turnos)" -- el supervisor de ese turno también puede leer
+ * `shift_tasks`, mismo acceso que ya usa `ServiceDetailPage` del empleado
+ * con `fetchShiftTasksReadOnly`, `src/api/tasks.ts`). Sin mutación: SUP-03
+ * las muestra siempre en solo lectura, marcarlas es cosa del empleado
+ * (EMP-08).
+ */
+export function useSupervisionShiftTasksQuery(shiftId: string) {
+  return useQuery({
+    queryKey: [...mySupervisionsKeys.all, 'shiftTasks', shiftId] as const,
+    queryFn: () => fetchShiftTasksReadOnly(shiftId),
+    enabled: Boolean(shiftId),
   })
 }
 
