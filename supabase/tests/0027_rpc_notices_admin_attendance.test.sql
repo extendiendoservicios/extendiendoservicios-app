@@ -75,11 +75,17 @@ select
   (now() - interval '3 hours') as past_instant,
   ((now() - interval '3 hours') at time zone 'America/Argentina/Buenos_Aires')::date as past_date,
   ((now() - interval '3 hours') at time zone 'America/Argentina/Buenos_Aires')::time as past_start,
-  (((now() - interval '3 hours') at time zone 'America/Argentina/Buenos_Aires')::time + interval '1 hour')::time as past_end,
+  -- Fin = inicio + 1 hora, recortado a las 23:59:59 si cruzaría la medianoche
+  -- (shifts_time_range_check exige end_time > start_time).
+  case when ((now() - interval '3 hours') at time zone 'America/Argentina/Buenos_Aires')::time >= '23:00'::time then '23:59:59'::time
+       else (((now() - interval '3 hours') at time zone 'America/Argentina/Buenos_Aires')::time + interval '1 hour')::time end as past_end,
   (now() + interval '3 hours') as future_instant,
   ((now() + interval '3 hours') at time zone 'America/Argentina/Buenos_Aires')::date as future_date,
   ((now() + interval '3 hours') at time zone 'America/Argentina/Buenos_Aires')::time as future_start,
-  (((now() + interval '3 hours') at time zone 'America/Argentina/Buenos_Aires')::time + interval '1 hour')::time as future_end,
+  -- Fin = inicio + 1 hora, recortado a las 23:59:59 si cruzaría la medianoche
+  -- (shifts_time_range_check exige end_time > start_time).
+  case when ((now() + interval '3 hours') at time zone 'America/Argentina/Buenos_Aires')::time >= '23:00'::time then '23:59:59'::time
+       else (((now() + interval '3 hours') at time zone 'America/Argentina/Buenos_Aires')::time + interval '1 hour')::time end as future_end,
   -- Fecha de HOY (Argentina): para las fixtures de admin_record_attendance/close_assignment que
   -- no dependen de "antes/después del inicio" (esa RPC no lo verifica) sino solo de que las 0:00
   -- del día del turno queden ANTES de "ahora" -- con `future_date` alcanzaría casi siempre, pero
@@ -731,6 +737,15 @@ select is(
 );
 
 -- Origen del registro: check_in cargado por admin_record_attendance queda visible en la vista.
+-- Los avisos de arriba necesitan un turno que todavía no empezó (future_date), pero
+-- admin_record_attendance exige que las 0:00 del día del turno ya hayan pasado: si la ancla
+-- futura cruzó a mañana (CI corriendo después de las 21:00 de Argentina), ninguna hora cumple las
+-- dos cosas. Se pasa el turno a today_date antes de registrar el inicio.
+update public.shifts
+set shift_date = t.today_date
+from t27_anchors t
+where id = 'e2700000-0000-0000-0000-000000000215';
+
 select tests.as_user('test-db027-admin-con-cap@example.com');
 select public.admin_record_attendance('e2700000-0000-0000-0000-000000000315', 'check_in', null, 'Cargado por administración');
 
