@@ -309,8 +309,36 @@ tenga un solo punto de importación, sin duplicar la RPC.
 | `updateTaskStatus(taskId, status, reason?)` | RPC `update_task_status` | `reason` obligatorio si `status` es `not_done` (si no, `REASON_REQUIRED`). Dueño y administrador pueden en cualquier momento del turno (P-063); errores `TASK_NOT_FOUND`, `TASK_LOCKED`, `FORBIDDEN`. |
 | `reloadShiftTasks(shiftId)`                 | RPC `reload_shift_tasks` | Reexportada desde `src/api/shifts.ts`. Ahora sí tiene pantalla que la usa: el botón "Recargar tareas" de ADM-06 (TASK-006).                                                                           |
 
+### `supervisions` (`src/api/supervisions.ts`, P15.3 — SUP-008 a SUP-011)
+
+Vía de administración de supervisiones (ADM-13, ADM-14, ADM-15), sobre
+`0029_rpc_supervisions.sql`. `supervision_check_in`/`supervision_check_out`/
+`complete_supervision` son "S (propia)": las usa la app del supervisor
+(`src/api/mySupervisions.ts`, de front-movil), no este módulo.
+
+| Función                                         | Canal                                            | Notas                                                                                                                                                                                                                                              |
+| ----------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fetchSupervisionsAdmin(filters?)`              | `from('v_supervisions_admin')`                   | ADM-13, pestaña "Supervisiones". Filtros empleado (resuelto antes vía `ratings`), supervisor, cliente, sede, rango de fechas, estado. O, A.                                                                                                        |
+| `fetchSupervisionDetail(id)`                    | `v_supervisions_admin` + `assignments`/`ratings` | ADM-15: cabecera con franja, criterios y contadores, más una fila por cada asignación vigente del turno (calificación si existe, con quién y cuándo la editó por última vez).                                                                      |
+| `fetchSupervisorCandidates()`                   | `from('v_employees')`                            | ADM-14: personas con rol `supervisor`, activas (perfil y `employees.status`), mismos tres chequeos que hace `assign_supervision` del lado del servidor.                                                                                            |
+| `assignSupervision(shiftId, supervisorId)`      | RPC `assign_supervision`                         | ADM-14. O; A + `manage_supervisions`. `SHIFT_NOT_FOUND`, `SHIFT_NOT_SUPERVISABLE` (turno cancelado o completado), `SUPERVISOR_ROLE_REQUIRED`, `ALREADY_ASSIGNED`. Devuelve `{ supervision, warnings }`: `SUPERVISES_OWN_SHIFT` no bloquea (P15.0). |
+| `cancelSupervision(supervisionId, reason)`      | RPC `cancel_supervision`                         | ADM-15. O; A + `manage_supervisions`. Motivo obligatorio → `CANCEL_REASON_REQUIRED`. Solo `assigned`/`in_progress` → `SUPERVISION_NOT_EDITABLE`.                                                                                                   |
+| `markSupervisionNotDone(supervisionId, reason)` | RPC `mark_supervision_not_done`                  | ADM-15. S (propia, `NOT_YOUR_SUPERVISION` si es de otro supervisor); O, A sin capacidad adicional. Motivo obligatorio → `REASON_REQUIRED`.                                                                                                         |
+
+### `ratings` (`src/api/ratings.ts`, P15.3 — SUP-008, SUP-011)
+
+Calificaciones ya cargadas (pestaña "Calificaciones" de ADM-13 y
+"Calificaciones recibidas" de ADM-17) y la edición administrativa de ADM-15.
+Los criterios de calificación (`fetchRatingCriteria`, ADM-30) viven en
+`src/api/settings.ts` desde USERS-015, no se duplican acá.
+
+| Función                                                          | Canal               | Notas                                                                                                                                                                                                                                                                                                                          |
+| ---------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `fetchRatings(filters?)`                                         | `from('ratings')`   | Filtros por empleado, supervisor, sede y rango de fechas, resueltos en el cliente (decisión propia, ver el reporte del encargo). O, A -- el empleado no ve esta tabla por ninguna vía (P-084, RLS de `0012`).                                                                                                                  |
+| `rateEmployee({ supervisionId, assignmentId, score, comment? })` | RPC `rate_employee` | Upsert (una fila por asignación). S (propia, dentro del plazo de P-083: hasta el fin del turno o de la supervisión, lo que ocurra último); O, A + `edit_ratings` (siempre, sin ventana). `SUPERVISION_NOT_ACTIVE`, `ASSIGNMENT_NOT_IN_SHIFT`, `SELF_RATING_NOT_ALLOWED` (CB-13), `SCORE_OUT_OF_RANGE`, `RATING_WINDOW_CLOSED`. |
+
 ## Próximos dominios
 
-Cada paquete de F10 en adelante agrega su sección acá (`supervisions`,
-`myDay`) siguiendo el mismo formato: función, canal, particularidades que
-no se deducen de leer el nombre.
+Cada paquete de F10 en adelante agrega su sección acá (`myDay`) siguiendo
+el mismo formato: función, canal, particularidades que no se deducen de
+leer el nombre.
