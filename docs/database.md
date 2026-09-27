@@ -509,7 +509,7 @@ Agrega `app.today()` (`() returns date` `stable`), auxiliar nuevo que no está e
 | `v_employees`          | `employees` join `profiles`                                                                                       | `effective_status` = `on_leave` si hay una `employee_leaves` vigente hoy (`deleted_at is null`, `starts_on <= hoy <= coalesce(ends_on, hoy)`), si no `employees.status`. `roles`: `array_agg` de `user_roles.role` (orden del enum, no alfabético: `owner, admin, supervisor, employee`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `v_shifts_board`       | `shifts` join `clients`/`sites`, conteos de `assignments`                                                         | `assigned_count`/`present_count`/`finished_count`/`absent_count`/`delayed_count` sobre asignaciones vigentes (`removed_at is null`). `display_status`: `uncovered` si `status not in (in_progress, completed, cancelled)` y `assigned_count < required_staff` y (`now() > starts_at` o hay alguna asignación vigente `absence_notified`); `upcoming` si `status in (scheduled, assigned)` y `starts_at` está entre ahora y ahora + 2 horas; si no, el `status` real. La fórmula exacta de `uncovered` es una decisión de implementación (04 la describe en prosa, sin álgebra booleana) documentada en el comentario de la migración.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `v_assignments_board`  | `assignments` join `shifts`/`clients`/`sites`/`profiles`, `attendance_records`, `attendance_notices`              | Franja efectiva: `coalesce(start_time/end_time, turno)` y `lower/upper(assignments."window")`. `display_status = no_record` si `status in (expected, delay_notified)` y ya pasó el inicio efectivo (P-071). `minutes_late`/`minutes_early_leave` (P-076): minutos entre el registro y la hora efectiva, solo si el registro llegó después del inicio (o antes del fin, para early leave) -- `minutes_late` no está en `02_Decisiones.md`, se implementó por simetría con `minutes_early_leave`, que sí. Incluye asignaciones quitadas (`removed_at not null`): la fila queda para historia (04 sección 2.3), quien consuma la vista filtra si las quiere. Desde `0027` (F14, P14.1): `check_in_source`/`check_in_recorded_by`, `check_out_source`/`check_out_recorded_by` (origen y responsable de cada registro, `employee_app`/propio o `admin`/quien lo cargó en nombre, P-075) y `last_notice_kind`/`last_notice_minutes_late`/`last_notice_reason_code`/`last_notice_reason_text`/`last_notice_reported_by`/`last_notice_source`/`last_notice_at` (el aviso más reciente de la asignación por `created_at`, `null` si nunca avisó nada) -- columnas nuevas al final, para ADM-06/ADM-10/ADM-11. |
-| `v_my_day`             | `assignments` propias (`employee_id = auth.uid()` en la definición, no solo por RLS) de hoy y los próximos 7 días | `is_today`, `tasks_total`/`tasks_done` (conteo de `shift_tasks`), `changed_since_last_seen` (P-092): compara `greatest(coalesce(updated_at, created_at))` de la asignación y del turno contra `profiles.last_seen_changes_at` (`coalesce` con `-infinity` si nunca abrió Hoy: todo se marca como cambiado). Desde `0026` (F13, ATT-003): `check_in_at`/`check_out_at`. Desde `0027` (F14, P14.1): `site_city`/`site_latitude`/`site_longitude` (pendiente anotado desde P13.2), y los mismos `check_in_source`/`check_in_recorded_by`/`check_out_source`/`check_out_recorded_by`/`last_notice_*` de `v_assignments_board` (para "Avisaste demora de 15 min", P14.2) -- columnas nuevas al final.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `v_my_day`             | `assignments` propias (`employee_id = auth.uid()` en la definición, no solo por RLS) de hoy y los próximos 7 días | `is_today`, `tasks_total`/`tasks_done` (conteo de `shift_tasks`), `changed_since_last_seen` (P-092): compara, por separado, el último cambio de la asignación y el del turno contra `profiles.last_seen_changes_at` (`coalesce` con `-infinity` si nunca abrió Hoy: todo se marca como cambiado) -- desde `0028` (P14.2) IGNORA el cambio si `updated_by` de esa fila es el mismo `employee_id` de la asignación (ver sección propia más abajo). Desde `0026` (F13, ATT-003): `check_in_at`/`check_out_at`. Desde `0027` (F14, P14.1): `site_city`/`site_latitude`/`site_longitude` (pendiente anotado desde P13.2), y los mismos `check_in_source`/`check_in_recorded_by`/`check_out_source`/`check_out_recorded_by`/`last_notice_*` de `v_assignments_board` (para "Avisaste demora de 15 min", P14.2) -- columnas nuevas al final.                                                                                                                                                                                                                                                                                                                                                                |
 | `v_supervisions_admin` | `supervisions` join `shifts`/`clients`/`sites`/`profiles`                                                         | `ratings_count`, `ratings_avg` (`numeric(3,2)`, promedio simple del turno -- P-088: los promedios por empleado son módulo F).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `v_my_supervisions`    | `supervisions` propias (`supervisor_id = auth.uid()` en la definición)                                            | `assigned_employees`: `jsonb` con los empleados asignados vigentes del turno (id, nombre, estado).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `v_public_branding`    | `company_settings` (fila `id = 1`)                                                                                | Solo `name`, `logo_path`, `support_phone` (04 sección 7.2): no expone `location_consent_text` ni `updated_by`/`updated_at`. Única vía de `anon` hacia `company_settings`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -911,6 +911,61 @@ cuatro RPC, todos sus códigos de error, permisos por rol -- owner, admin con y 
 `manage_attendance`, supervisor, empleado propio y ajeno --, el aviso en nombre antes y después del
 inicio, un turno que cruza la medianoche en la carga (`admin_record_attendance` sobre un turno de
 ayer a la noche), y los derivados nuevos de `v_assignments_board`/`v_my_day`).
+
+## `v_my_day`: acciones propias no encienden el aviso de cambios (P14.2, migración `0028`)
+
+Corrección chica de F14, detectada en la revisión visual de P14.2: María avisaba su propia demora
+(`notify_delay`) y, al volver a la pantalla Hoy, aparecía el cartel "Cambios desde tu última
+visita" (P-092) -- pensado para avisar lo que cambió **otra** persona (administración), no las
+propias acciones del empleado.
+
+**Diagnóstico.** `changed_since_last_seen` comparaba `greatest(coalesce(updated_at, created_at))`
+de la asignación y del turno contra `profiles.last_seen_changes_at`, sin mirar quién hizo el
+cambio. Casi todas las RPC que tocan `assignments` ya ponían `updated_by = auth.uid()` (herencia de
+`0025`/`0026`), pero dos huecos lo rompían:
+
+- Ninguna RPC ponía `updated_by` en `shifts`. En particular, `app.start_shift_if_needed`/
+  `app.complete_shift_if_done` (0027) -- que disparan `record_check_in`/`record_check_out`, propios
+  o en nombre -- dejaban la transición de estado del turno sin dueño.
+- `update_assignment_time` (0024) era la única RPC que tocaba `assignments` sin fijar `updated_by`:
+  la columna quedaba con lo que hubiera dejado una llamada anterior sobre la misma fila.
+
+**Corrección.** `0028_v_my_day_own_actions.sql`:
+
+1. `create or replace view public.v_my_day`, misma lista y orden de columnas que `0027`:
+   `changed_since_last_seen` pasa a evaluar la asignación y el turno por separado y, para cada una,
+   IGNORA el cambio si `updated_by` de esa fila es igual a `employee_id` (P-092 es "avisame lo que
+   cambió otra persona"). Una asignación nueva sigue contando siempre por `created_at` (ninguna RPC
+   del empleado inserta una asignación).
+2. Para que el `updated_by` de `shifts` sea confiable, se agrega `updated_by = auth.uid()` en
+   `app.start_shift_if_needed`/`app.complete_shift_if_done` (pedido explícito del encargo) y,
+   porque `update_shift_time` (0023) y `update_shift_details` (0024) pueden seguir tocando la fila
+   DESPUÉS de que el turno ya está `in_progress` (es decir, después del primer check-in de
+   alguien), también ahí -- si no, un cambio de administración posterior a ese primer check-in
+   quedaría atribuido, por arrastre, a quien hizo el check-in. El resto de las RPC que tocan
+   `shifts` (`assign_employee`, `remove_assignment`, `reload_shift_tasks`) solo actualizan la fila
+   mientras el turno sigue `scheduled`/`assigned` -- antes de cualquier check-in -- así que no
+   corren ese riesgo y no se tocan.
+3. Se agrega `updated_by = auth.uid()` en `update_assignment_time` (0024), el único hueco del lado
+   de `assignments`.
+
+**Límite conocido, aceptado, no resuelto acá** (documentado en el comentario de la migración; no
+se agrega ninguna tabla ni columna nueva): `updated_at`/`updated_by` son una sola pareja de
+columnas por fila, así que solo recuerdan el ÚLTIMO cambio y quién lo hizo. Si administración
+cambia algo de un turno (por ejemplo, lo reprograma) y ANTES de que el empleado abra Hoy y vea ese
+cambio hace una acción propia que también toca esa misma fila de `shifts` (el primer check-in del
+turno), la fila queda con `updated_by` = ese empleado y el cartel se apaga para él, aunque el
+cambio de administración nunca le llegó a mostrar ese cartel puntual. La información en sí **no**
+se pierde -- `v_my_day` siempre devuelve el horario/las notas vigentes, nunca una copia vieja --
+se pierde solo el cartel puntual, para ese empleado, en esa ventana acotada. Alternativa para
+cerrarlo del todo, si se prioriza en una tarea aparte: una columna nueva (por ejemplo
+`shifts.admin_changed_at`) que solo actualicen las RPC administrativas de turnos, incorporada al
+cálculo de forma independiente de `updated_by`/`updated_at`.
+
+Detalle completo en `supabase/tests/0028_v_my_day_own_actions.test.sql` (14 aserciones: aviso,
+inicio, fin y observación propios no encienden el aviso; reprogramar, editar notas del turno y
+asignar a alguien nuevo sí lo encienden; y el caso de arrastre de `update_assignment_time` después
+de una acción propia anterior sobre la misma fila).
 
 ## Storage: buckets `avatars` y `branding` (04 sección 7.3, migración `0014`, DB-016, ADR-016)
 
@@ -1417,7 +1472,9 @@ checklists" más arriba. En F13 (P13.1, ATT-001, ATT-002): `0026_rpc_attendance.
 empleado y observación" más arriba. En F14 (P14.1, ABS-002, ATT-007):
 `0027_rpc_notices_admin_attendance.sql` -- `notify_delay`, `notify_absence`,
 `admin_record_attendance` y `close_assignment`, más las columnas nuevas de `v_assignments_board`/
-`v_my_day` -- ver "RPC de avisos y asistencia administrativa" más arriba.
+`v_my_day` -- ver "RPC de avisos y asistencia administrativa" más arriba. Corrección chica de F14
+(P14.2, revisión visual, sin tarea `DB-0xx` propia): `0028_v_my_day_own_actions.sql` -- ver
+"`v_my_day`: acciones propias no encienden el aviso de cambios (P14.2)" más arriba.
 
 ## Cómo escribir una migración
 
