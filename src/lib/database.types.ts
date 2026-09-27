@@ -2641,9 +2641,19 @@ export type Database = {
           not_done_reason: string | null
           shift_date: string | null
           shift_id: string | null
+          site_access_instructions: string | null
           site_address: string | null
+          site_building_hours: string | null
+          site_city: string | null
+          site_contact_name: string | null
+          site_contact_phone: string | null
           site_id: string | null
+          site_latitude: number | null
+          site_longitude: number | null
           site_name: string | null
+          site_phone_restricted: boolean | null
+          site_photos_not_allowed: boolean | null
+          site_restrictions_notes: string | null
           start_time: string | null
           starts_at: string | null
           status: Database["public"]["Enums"]["supervision_status"] | null
@@ -2854,12 +2864,16 @@ export type Database = {
         Row: {
           assigned_at: string | null
           assigned_by: string | null
+          assigned_employees_count: number | null
           cancel_reason: string | null
           check_in_at: string | null
           check_out_at: string | null
           client_id: string | null
           client_legal_name: string | null
           created_at: string | null
+          criteria_snapshot: Json | null
+          end_time: string | null
+          ends_at: string | null
           general_notes: string | null
           id: string | null
           not_done_reason: string | null
@@ -2869,6 +2883,8 @@ export type Database = {
           shift_id: string | null
           site_id: string | null
           site_name: string | null
+          start_time: string | null
+          starts_at: string | null
           status: Database["public"]["Enums"]["supervision_status"] | null
           supervisor_first_name: string | null
           supervisor_id: string | null
@@ -2983,6 +2999,10 @@ export type Database = {
         }
         Returns: Json
       }
+      assign_supervision: {
+        Args: { p_shift_id: string; p_supervisor_id: string }
+        Returns: Json
+      }
       cancel_shift: {
         Args: { p_reason: string; p_shift_id: string }
         Returns: {
@@ -3012,6 +3032,31 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "shifts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      cancel_supervision: {
+        Args: { p_reason: string; p_supervision_id: string }
+        Returns: {
+          assigned_at: string
+          assigned_by: string | null
+          cancel_reason: string | null
+          created_at: string
+          created_by: string | null
+          criteria_snapshot: Json | null
+          general_notes: string | null
+          id: string
+          not_done_reason: string | null
+          shift_id: string
+          status: Database["public"]["Enums"]["supervision_status"]
+          supervisor_id: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "supervisions"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -3059,6 +3104,31 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      complete_supervision: {
+        Args: { p_general_notes?: string; p_supervision_id: string }
+        Returns: {
+          assigned_at: string
+          assigned_by: string | null
+          cancel_reason: string | null
+          created_at: string
+          created_by: string | null
+          criteria_snapshot: Json | null
+          general_notes: string | null
+          id: string
+          not_done_reason: string | null
+          shift_id: string
+          status: Database["public"]["Enums"]["supervision_status"]
+          supervisor_id: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "supervisions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_shift: {
         Args: {
           p_client_id: string
@@ -3097,6 +3167,31 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "profiles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      mark_supervision_not_done: {
+        Args: { p_reason: string; p_supervision_id: string }
+        Returns: {
+          assigned_at: string
+          assigned_by: string | null
+          cancel_reason: string | null
+          created_at: string
+          created_by: string | null
+          criteria_snapshot: Json | null
+          general_notes: string | null
+          id: string
+          not_done_reason: string | null
+          shift_id: string
+          status: Database["public"]["Enums"]["supervision_status"]
+          supervisor_id: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "supervisions"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -3145,6 +3240,31 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "attendance_notices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      rate_employee: {
+        Args: {
+          p_assignment_id: string
+          p_comment?: string
+          p_score: number
+          p_supervision_id: string
+        }
+        Returns: {
+          assignment_id: string
+          comment: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          score: number
+          supervision_id: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ratings"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -3308,6 +3428,54 @@ export type Database = {
           p_roles: Database["public"]["Enums"]["app_role"][]
         }
         Returns: Database["public"]["Enums"]["app_role"][]
+      }
+      supervision_check_in: {
+        Args: {
+          p_accuracy?: number
+          p_lat?: number
+          p_lng?: number
+          p_supervision_id: string
+        }
+        Returns: {
+          accuracy_m: number | null
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["attendance_kind"]
+          latitude: number | null
+          longitude: number | null
+          recorded_at: string
+          supervision_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "supervision_attendance"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      supervision_check_out: {
+        Args: {
+          p_accuracy?: number
+          p_lat?: number
+          p_lng?: number
+          p_supervision_id: string
+        }
+        Returns: {
+          accuracy_m: number | null
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["attendance_kind"]
+          latitude: number | null
+          longitude: number | null
+          recorded_at: string
+          supervision_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "supervision_attendance"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       update_assignment_time: {
         Args: { p_assignment_id: string; p_end?: string; p_start?: string }
