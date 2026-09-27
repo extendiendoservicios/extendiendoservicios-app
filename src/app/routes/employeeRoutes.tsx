@@ -9,7 +9,7 @@ import NotesPage from '@/pages/app/NotesPage'
 import FinishPage from '@/pages/app/FinishPage'
 import SummaryPage from '@/pages/app/SummaryPage'
 import MorePage from '@/pages/app/MorePage'
-import { placeholderRoute } from './placeholder'
+import NotifyPage from '@/pages/app/NotifyPage'
 
 /**
  * Rutas de `/app` (DS-015), `05_Pantallas_y_Navegacion.md` sección 5.
@@ -104,12 +104,15 @@ export const employeeRoutes: RouteObject[] = [
       subtitle: 'Comprobante del servicio',
     },
   },
-  placeholderRoute({
+  {
     path: 'avisar',
-    screenId: 'EMP-12',
-    title: 'Avisar demora o ausencia',
-    subtitle: 'Avisá antes del servicio',
-  }),
+    element: <NotifyPage />,
+    handle: {
+      screenId: 'EMP-12',
+      title: 'Avisar demora o ausencia',
+      subtitle: 'Avisá antes del servicio',
+    },
+  },
   {
     path: 'mas',
     element: <MorePage />,

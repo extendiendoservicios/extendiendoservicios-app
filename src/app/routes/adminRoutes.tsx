@@ -1,4 +1,5 @@
 import type { RouteObject } from 'react-router'
+import AttendanceTodayPage from '@/pages/admin/AttendanceTodayPage'
 import ClientDetailPage from '@/pages/admin/ClientDetailPage'
 import ClientFormPage from '@/pages/admin/ClientFormPage'
 import ClientsPage from '@/pages/admin/ClientsPage'
@@ -84,12 +85,15 @@ export const adminRoutes: RouteObject[] = [
       subtitle: 'Editar el horario del turno',
     },
   },
-  placeholderRoute({
+  {
     path: 'asistencia',
-    screenId: 'ADM-10',
-    title: 'Asistencia de hoy',
-    subtitle: 'Seguir en vivo quién está, quién avisó y quién no registró',
-  }),
+    element: <AttendanceTodayPage />,
+    handle: {
+      screenId: 'ADM-10',
+      title: 'Asistencia de hoy',
+      subtitle: 'Seguir en vivo quién está, quién avisó y quién no registró',
+    },
+  },
   placeholderRoute({
     path: 'supervisiones',
     screenId: 'ADM-13',

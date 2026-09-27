@@ -19,6 +19,13 @@ import { useAuth } from '@/features/auth/AuthProvider'
 import { formatDateOnly } from '@/features/settings/dateOnly'
 import type { ShiftDetailAssignment } from '@/api/assignments'
 import { canEditChecklists } from '@/features/checklists/permissions'
+import { AssignmentAttendanceDetail } from '@/features/attendance/components/AssignmentAttendanceDetail'
+import { canManageAttendance } from '@/features/attendance/permissions'
+import {
+  useAttendanceTimelineQuery,
+  useAssignmentsAttendanceQuery,
+  usePeopleNamesQuery,
+} from '@/features/attendance/queries'
 import {
   canManageAssignments,
   canManageAssignmentsAfterStart,
@@ -51,8 +58,32 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
   const canManageAfterStart = canManageAssignmentsAfterStart(actor)
   const canEditTasks = canManageTasks(actor)
   const canReloadChecklist = canEditChecklists(actor)
+  const canManageAttendanceNow = canManageAttendance(actor)
 
   const shiftQuery = useShiftDetailQuery(shiftId)
+  // Inicio y fin reales, quién y cómo se registraron, y los avisos
+  // (ATT-014, ABS-006): se piden en cuanto se conocen los ids de las
+  // asignaciones vigentes, sin esperar a los primeros `return` de abajo
+  // (las reglas de hooks no permiten llamarlos condicionalmente).
+  const assignmentIds = shiftQuery.data?.assignments.map((a) => a.id) ?? []
+  const attendanceQuery = useAssignmentsAttendanceQuery(assignmentIds)
+  const timelineQuery = useAttendanceTimelineQuery(assignmentIds)
+  const recordedByIds = (attendanceQuery.data ?? []).flatMap((row) =>
+    [row.checkInRecordedBy, row.checkOutRecordedBy].filter(
+      (id): id is string => id != null,
+    ),
+  )
+  const reportedByIds = Array.from(timelineQuery.data?.values() ?? []).flatMap(
+    (events) =>
+      events
+        .filter((event) => event.source === 'admin')
+        .map((event) => event.reportedBy)
+        .filter((id): id is string => id != null),
+  )
+  const peopleNamesQuery = usePeopleNamesQuery([
+    ...recordedByIds,
+    ...reportedByIds,
+  ])
 
   const [isAssignOpen, setAssignOpen] = useState(false)
   const [isDetailsOpen, setDetailsOpen] = useState(false)
@@ -181,38 +212,54 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
             {shift.assignments.map((assignment) => (
               <li
                 key={assignment.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3"
+                className="flex flex-col gap-2 rounded-md border border-border p-3"
               >
-                <PersonCell
-                  id={assignment.employeeId}
-                  name={`${assignment.employeeFirstName} ${assignment.employeeLastName}`}
-                  subtitle={
-                    assignment.startTime && assignment.endTime
-                      ? `Franja propia: ${assignment.startTime.slice(0, 5)}–${assignment.endTime.slice(0, 5)}`
-                      : `Franja del turno: ${shift.startTime.slice(0, 5)}–${shift.endTime.slice(0, 5)}`
-                  }
-                />
-                <div className="flex flex-wrap items-center gap-2">
-                  <StatusBadge domain="assignment" status={assignment.status} />
-                  {canAssignNow && isEditable && (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setTimeTarget(assignment)}
-                      >
-                        Franja propia
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setRemoveTarget(assignment)}
-                      >
-                        Quitar
-                      </Button>
-                    </>
-                  )}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <PersonCell
+                    id={assignment.employeeId}
+                    name={`${assignment.employeeFirstName} ${assignment.employeeLastName}`}
+                    subtitle={
+                      assignment.startTime && assignment.endTime
+                        ? `Franja propia: ${assignment.startTime.slice(0, 5)}–${assignment.endTime.slice(0, 5)}`
+                        : `Franja del turno: ${shift.startTime.slice(0, 5)}–${shift.endTime.slice(0, 5)}`
+                    }
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge
+                      domain="assignment"
+                      status={assignment.status}
+                    />
+                    {canAssignNow && isEditable && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setTimeTarget(assignment)}
+                        >
+                          Franja propia
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setRemoveTarget(assignment)}
+                        >
+                          Quitar
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
+                <AssignmentAttendanceDetail
+                  assignmentId={assignment.id}
+                  employeeName={`${assignment.employeeFirstName} ${assignment.employeeLastName}`}
+                  shiftDate={shift.shiftDate}
+                  attendance={attendanceQuery.data?.find(
+                    (row) => row.id === assignment.id,
+                  )}
+                  events={timelineQuery.data?.get(assignment.id) ?? []}
+                  peopleNames={peopleNamesQuery.data ?? new Map()}
+                  canManage={canManageAttendanceNow}
+                />
               </li>
             ))}
           </ul>

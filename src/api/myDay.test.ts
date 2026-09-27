@@ -72,6 +72,20 @@ const MY_DAY_ROW = {
   changed_since_last_seen: true,
   check_in_at: null,
   check_out_at: null,
+  site_city: 'San Isidro',
+  site_latitude: -34.47,
+  site_longitude: -58.5,
+  check_in_source: null,
+  check_in_recorded_by: null,
+  check_out_source: null,
+  check_out_recorded_by: null,
+  last_notice_kind: null,
+  last_notice_minutes_late: null,
+  last_notice_reason_code: null,
+  last_notice_reason_text: null,
+  last_notice_reported_by: null,
+  last_notice_source: null,
+  last_notice_at: null,
 }
 
 describe('fetchMyDay', () => {
@@ -88,6 +102,10 @@ describe('fetchMyDay', () => {
         startTime: '08:00:00',
         changedSinceLastSeen: true,
         checkInAt: null,
+        siteCity: 'San Isidro',
+        siteLatitude: -34.47,
+        siteLongitude: -58.5,
+        lastNoticeKind: null,
       }),
     ])
   })
@@ -163,6 +181,20 @@ function baseAssignment() {
     changedSinceLastSeen: false,
     checkInAt: null,
     checkOutAt: null,
+    siteCity: null,
+    siteLatitude: null,
+    siteLongitude: null,
+    checkInSource: null,
+    checkInRecordedBy: null,
+    checkOutSource: null,
+    checkOutRecordedBy: null,
+    lastNoticeKind: null,
+    lastNoticeMinutesLate: null,
+    lastNoticeReasonCode: null,
+    lastNoticeReasonText: null,
+    lastNoticeReportedBy: null,
+    lastNoticeSource: null,
+    lastNoticeAt: null,
   }
 }
 

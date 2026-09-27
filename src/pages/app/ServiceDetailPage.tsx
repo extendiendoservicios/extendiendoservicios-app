@@ -1,12 +1,16 @@
-import { useParams } from 'react-router'
+import { Link, useParams } from 'react-router'
+import { AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
 import { PersonCell } from '@/components/PersonCell'
 import { TaskList } from '@/components/TaskList'
 import { StatusBadge } from '@/components/status'
 import { formatMinutes } from '@/lib/format'
 import { avatarUrl } from '@/lib/avatarUrl'
 import { useAuth } from '@/features/auth/AuthProvider'
+import { getNoticeMessage } from '@/features/employee/notice'
+import { isNotifiable } from '@/features/employee/notifyCandidates'
 import {
   SiteInfo,
   type SiteInfoData,
@@ -35,12 +39,18 @@ import {
  * (SITE-010, ya compartido con `ADM-22`, `src/pages/admin/SiteDetailPage.tsx`)
  * en vez de repetir esas tarjetas a mano: es la dependencia que pide
  * MOB-EMP-004 en `08_Fases_y_Backlog.md`, y evita mantener dos veces la
- * misma lógica de "abrir en el mapa"/restricciones. OJO: `v_my_day` (04
- * sección 4) no trae `city`/`latitude`/`longitude` de la sede (a diferencia
- * de `v_assignments_board`, que sí expone `site_city`) — se le pasan en
- * `null`, y `buildMapsUrl` (`src/features/sites/mapsLink.ts`) cae solo a
- * buscar por dirección de texto en vez de coordenadas exactas. Documentado
- * como falta menor del backend en el reporte de este paquete.
+ * misma lógica de "abrir en el mapa"/restricciones. `v_my_day` ya trae
+ * `site_city`/`site_latitude`/`site_longitude` desde la migración 0027
+ * (P14.1, pendiente que venía anotado desde P13.2): `buildMapsUrl`
+ * (`src/features/sites/mapsLink.ts`) usa las coordenadas exactas cuando
+ * están cargadas, y solo cae a buscar por dirección de texto si la sede no
+ * las tiene.
+ *
+ * El aviso vigente (ABS-005, "Avisaste una demora de 15 min") sale de
+ * `getNoticeMessage` (`src/features/employee/notice.ts`, compartido con
+ * `TodayPage`); el acceso a EMP-12 (MOB-EMP-020) se ofrece con la
+ * asignación ya preseleccionada (`?asignacion=`) mientras `isNotifiable`
+ * diga que todavía se puede avisar.
  */
 export default function ServiceDetailPage() {
   const { assignmentId } = useParams<{ assignmentId: string }>()
@@ -73,13 +83,12 @@ export default function ServiceDetailPage() {
     assignment.startTime,
     assignment.endTime,
   )
+  const notice = getNoticeMessage(assignment)
   const siteInfo: SiteInfoData = {
     address: assignment.siteAddress ?? assignment.siteName,
-    // `v_my_day` no trae ciudad ni coordenadas de la sede (ver el comentario
-    // grande de arriba): `buildMapsUrl` cae a buscar por texto.
-    city: null,
-    latitude: null,
-    longitude: null,
+    city: assignment.siteCity,
+    latitude: assignment.siteLatitude,
+    longitude: assignment.siteLongitude,
     contactName: assignment.siteContactName,
     contactPhone: assignment.siteContactPhone,
     accessInstructions: assignment.accessInstructions,
@@ -99,7 +108,7 @@ export default function ServiceDetailPage() {
           </div>
           <StatusBadge domain="assignment" status={assignment.status} />
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-[10px]">
           <p className="text-[13px] text-text-2">
             {formatTimeOfDay(assignment.startTime)}–
             {formatTimeOfDay(assignment.endTime)}
@@ -110,6 +119,19 @@ export default function ServiceDetailPage() {
               </span>
             )}
           </p>
+          {notice && (
+            <Alert variant="warn">
+              <AlertDescription>{notice.text}</AlertDescription>
+            </Alert>
+          )}
+          {isNotifiable(assignment) && (
+            <Button asChild size="md" variant="ghost">
+              <Link to={`/app/avisar?asignacion=${assignment.assignmentId}`}>
+                <AlertTriangle aria-hidden="true" />
+                Avisar demora o ausencia
+              </Link>
+            </Button>
+          )}
         </CardContent>
       </Card>
 
