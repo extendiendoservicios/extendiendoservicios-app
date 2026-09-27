@@ -79,6 +79,7 @@ import { Combobox } from '@/components/Combobox'
 import { ToggleRow } from '@/components/ToggleRow'
 import { OptionCard } from '@/components/OptionCard'
 import { SegmentedControl } from '@/components/SegmentedControl'
+import { StarRating } from '@/components/StarRating'
 import { Stepper } from '@/components/Stepper'
 import { WeekdayPicker } from '@/components/WeekdayPicker'
 import { TimeInput } from '@/components/TimeInput'
@@ -490,6 +491,10 @@ function DesignPage() {
   const [mobileSegmentedValue, setMobileSegmentedValue] =
     React.useState<(typeof MOBILE_SEGMENTED_OPTIONS)[number]['value']>('delay')
   const [stepperValue, setStepperValue] = React.useState(5)
+  const [starRatingValue, setStarRatingValue] = React.useState<number | null>(3)
+  const [starRatingEmptyValue, setStarRatingEmptyValue] = React.useState<
+    number | null
+  >(null)
   const [weekdays, setWeekdays] = React.useState<number[]>([1, 3, 5])
   const [comboboxValue, setComboboxValue] = React.useState<string>()
   const [optionValue, setOptionValue] = React.useState('propio')
@@ -857,6 +862,40 @@ function DesignPage() {
         </Row>
         <Row label="TimeInput">
           <TimeInput defaultValue="08:00" />
+        </Row>
+      </Section>
+
+      <Section title="StarRating">
+        <Row label="Editable">
+          <StarRating
+            value={starRatingValue}
+            onValueChange={setStarRatingValue}
+            aria-label="Calificación"
+          />
+        </Row>
+        <Row label="Editable, sin calificar todavía">
+          <StarRating
+            value={starRatingEmptyValue}
+            onValueChange={setStarRatingEmptyValue}
+            aria-label="Calificación"
+          />
+        </Row>
+        <Row label="Editable, deshabilitado">
+          <StarRating
+            value={4}
+            onValueChange={() => {}}
+            disabled
+            aria-label="Calificación"
+          />
+        </Row>
+        <Row label="Solo lectura">
+          <StarRating value={4} readOnly />
+        </Row>
+        <Row label="Solo lectura, chica (tabla)">
+          <StarRating value={5} readOnly size="sm" />
+        </Row>
+        <Row label="Solo lectura, sin calificar">
+          <StarRating value={null} readOnly />
         </Row>
       </Section>
 
