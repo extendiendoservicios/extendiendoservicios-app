@@ -188,7 +188,14 @@ select
   'c1500000-0000-0000-0000-000000000011',
   (target at time zone 'America/Argentina/Buenos_Aires')::date,
   (target at time zone 'America/Argentina/Buenos_Aires')::time,
-  ((target + interval '2 hours') at time zone 'America/Argentina/Buenos_Aires')::time,
+  -- El fin se recorta a las 23:59:59 si +2 horas cruza la medianoche (shifts_time_range_check exige
+  -- end_time > start_time en el mismo día); display_status = upcoming solo depende del inicio.
+  case
+    when ((target + interval '2 hours') at time zone 'America/Argentina/Buenos_Aires')::date
+         > (target at time zone 'America/Argentina/Buenos_Aires')::date
+      then '23:59:59'::time
+    else ((target + interval '2 hours') at time zone 'America/Argentina/Buenos_Aires')::time
+  end,
   1
 from (select now() + interval '1 hour' as target) t;
 
