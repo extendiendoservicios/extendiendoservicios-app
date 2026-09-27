@@ -4,14 +4,14 @@ import SupervisorTodayPage from '@/pages/sup/TodayPage'
 import SupervisionsPage from '@/pages/sup/SupervisionsPage'
 import SupervisionDetailPage from '@/pages/sup/SupervisionDetailPage'
 import SupervisionAttendancePage from '@/pages/sup/SupervisionAttendancePage'
+import SupervisorMorePage from '@/pages/sup/MorePage'
 
 /**
  * Rutas de `/sup` (DS-015), `05_Pantallas_y_Navegacion.md` sección 5.
  *
- * SUP-02, SUP-03, SUP-04 y SUP-07 son de este paquete (P15.4, MOB-SUP-002 a
- * MOB-SUP-005): el resto sigue como placeholder hasta que se construya cada
- * pantalla (SUP-09 más adelante en este mismo paquete; SUP-05/06/08 en
- * P15.5).
+ * SUP-02, SUP-03, SUP-04, SUP-07 y SUP-09 son de este paquete (P15.4,
+ * MOB-SUP-002 a MOB-SUP-005 y MOB-SUP-009): SUP-05, SUP-06 y SUP-08 quedan
+ * como placeholder para P15.5 (calificar, cerrar e historial).
  */
 export const supervisorRoutes: RouteObject[] = [
   {
@@ -68,10 +68,13 @@ export const supervisorRoutes: RouteObject[] = [
     title: 'Historial',
     subtitle: 'Consultar las supervisiones que ya cargó',
   }),
-  placeholderRoute({
+  {
     path: 'mas',
-    screenId: 'SUP-09',
-    title: 'Más',
-    subtitle: 'Perfil y opciones',
-  }),
+    element: <SupervisorMorePage />,
+    handle: {
+      screenId: 'SUP-09',
+      title: 'Más',
+      subtitle: 'Perfil y opciones',
+    },
+  },
 ]
