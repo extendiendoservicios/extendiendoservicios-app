@@ -19,6 +19,15 @@ export interface NoticeMessage {
   byAdmin: boolean
 }
 
+/** Motivo de la ausencia para la frase: el texto propio si eligió "Otro", si no la etiqueta. */
+function absenceReasonForSentence(assignment: MyDayAssignment): string {
+  const text = assignment.lastNoticeReasonText?.trim()
+  if (assignment.lastNoticeReasonCode === 'other' && text) {
+    return `"${text}"`
+  }
+  return absenceReasonLabel(assignment.lastNoticeReasonCode!).toLowerCase()
+}
+
 export function getNoticeMessage(
   assignment: MyDayAssignment,
 ): NoticeMessage | null {
@@ -30,7 +39,9 @@ export function getNoticeMessage(
     assignment.lastNoticeMinutesLate != null
   ) {
     return {
-      text: `Avisaste una demora de ${assignment.lastNoticeMinutesLate} min.`,
+      text: byAdmin
+        ? `La administración registró que llegás ${assignment.lastNoticeMinutesLate} min tarde.`
+        : `Avisaste una demora de ${assignment.lastNoticeMinutesLate} min.`,
       byAdmin,
     }
   }
@@ -41,7 +52,9 @@ export function getNoticeMessage(
     assignment.lastNoticeReasonCode != null
   ) {
     return {
-      text: `Avisaste que no vas: ${absenceReasonLabel(assignment.lastNoticeReasonCode)}.`,
+      text: byAdmin
+        ? `La administración registró que no vas: ${absenceReasonForSentence(assignment)}.`
+        : `Avisaste que no vas: ${absenceReasonForSentence(assignment)}.`,
       byAdmin,
     }
   }

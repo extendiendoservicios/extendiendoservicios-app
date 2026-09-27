@@ -121,10 +121,7 @@ export default function ServiceDetailPage() {
           </p>
           {notice && (
             <Alert variant="warn">
-              <AlertDescription>
-                {notice.text}
-                {notice.byAdmin && ' Lo cargó la administración.'}
-              </AlertDescription>
+              <AlertDescription>{notice.text}</AlertDescription>
             </Alert>
           )}
           {isNotifiable(assignment) && (

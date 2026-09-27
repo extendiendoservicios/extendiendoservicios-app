@@ -195,7 +195,6 @@ function ServiceCard({
           {notice && (
             <p className="text-[11.5px] font-semibold text-warning-800">
               {notice.text}
-              {notice.byAdmin && ' Lo cargó la administración.'}
             </p>
           )}
         </CardContent>

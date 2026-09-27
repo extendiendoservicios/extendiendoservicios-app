@@ -176,7 +176,7 @@ describe('NotifyPage (EMP-12)', () => {
     fireEvent.click(screen.getByText('Continuar'))
 
     expect(
-      screen.getByText('Vas a avisar que no vas: Enfermedad.'),
+      screen.getByText('Vas a avisar que no vas: enfermedad.'),
     ).toBeInTheDocument()
     await act(async () => {
       fireEvent.click(screen.getByText('Confirmar aviso'))

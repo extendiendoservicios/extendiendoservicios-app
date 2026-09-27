@@ -78,7 +78,7 @@ describe('getNoticeMessage', () => {
       }),
     )
     expect(message).toEqual({
-      text: 'Avisaste que no vas: Enfermedad.',
+      text: 'Avisaste que no vas: enfermedad.',
       byAdmin: false,
     })
   })
@@ -92,7 +92,25 @@ describe('getNoticeMessage', () => {
         lastNoticeSource: 'admin',
       }),
     )
-    expect(message?.byAdmin).toBe(true)
+    expect(message).toEqual({
+      text: 'La administración registró que no vas: problema de transporte.',
+      byAdmin: true,
+    })
+  })
+
+  it('usa el texto propio cuando el motivo es "Otro"', () => {
+    const message = getNoticeMessage(
+      baseAssignment({
+        status: 'absence_notified',
+        lastNoticeKind: 'absence',
+        lastNoticeReasonCode: 'other',
+        lastNoticeReasonText: 'Tengo que cuidar a mi hijo',
+        lastNoticeSource: 'employee_app',
+      }),
+    )
+    expect(message?.text).toBe(
+      'Avisaste que no vas: "Tengo que cuidar a mi hijo".',
+    )
   })
 
   it('no muestra nada si la asignación ya no está en el estado del aviso (por ejemplo, ya presente)', () => {

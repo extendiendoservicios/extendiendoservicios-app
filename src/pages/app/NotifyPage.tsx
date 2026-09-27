@@ -16,6 +16,7 @@ import type { MyDayAssignment } from '@/api/myDay'
 import { formatCalendarDate } from '@/lib/format'
 import {
   ABSENCE_REASON_OPTIONS,
+  absenceReasonLabel,
   absenceReasonRequiresText,
   type AbsenceReason,
 } from '@/lib/absenceReasons'
@@ -525,7 +526,9 @@ function ConfirmStep({
         <p className="mt-2 text-[13px] text-text-2">
           {kind === 'delay'
             ? `Vas a avisar una demora de ${minutes} min.`
-            : `Vas a avisar que no vas: ${reasonCode ? ABSENCE_REASON_OPTIONS.find((o) => o.value === reasonCode)?.label : ''}.`}
+            : reasonCode && reasonCode !== 'other'
+              ? `Vas a avisar que no vas: ${absenceReasonLabel(reasonCode).toLowerCase()}.`
+              : 'Vas a avisar que no vas.'}
         </p>
         {reasonText && (
           <p className="text-[12px] text-text-3">"{reasonText}"</p>
