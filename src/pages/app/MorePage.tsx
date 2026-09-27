@@ -9,22 +9,13 @@ import {
   User,
 } from 'lucide-react'
 import { cn } from 'cn'
-import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { useInstallPrompt } from '@/features/employee/useInstallPrompt'
 
 /**
  * EMP-13 · Más (MOB-EMP-013, P-122): acceso a perfil (COM-04), avisar
- * demora o ausencia (EMP-12), supervisión si tiene ese rol (acceso
- * cruzado), instalar la app (COM-06) y cerrar sesión.
- *
- * EMP-12 es de F14 (`08_Fases_y_Backlog.md`, este paquete es P13.2): la
- * fila queda VISIBLE pero deshabilitada, con una etiqueta "Próximamente",
- * en vez de ocultarla del todo. Decisión menor: ocultarla dejaría a quien
- * ya la conoce (o la busca porque la vio en el mockup) pensando que no
- * existe o que hay un error; una fila deshabilitada con esa etiqueta dice
- * "ya viene" sin sugerir que hay algo roto ni permitir que alguien la use a
- * medio construir.
+ * demora o ausencia (EMP-12, MOB-EMP-020), supervisión si tiene ese rol
+ * (acceso cruzado), instalar la app (COM-06) y cerrar sesión.
  */
 export default function MorePage() {
   const auth = useAuth()
@@ -36,10 +27,9 @@ export default function MorePage() {
       <div className="overflow-hidden rounded-xl border border-border bg-surface">
         <MoreRow to="/perfil" icon={User} label="Mi perfil" />
         <MoreRow
+          to="/app/avisar"
           icon={AlertTriangle}
           label="Avisar demora o ausencia"
-          disabled
-          trailing={<Badge variant="neutral">Próximamente</Badge>}
         />
         {isSupervisor && (
           <MoreRow to="/sup" icon={Shield} label="Supervisión" />

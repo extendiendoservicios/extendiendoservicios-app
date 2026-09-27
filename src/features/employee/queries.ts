@@ -1,12 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as myDayApi from '@/api/myDay'
 import * as attendanceApi from '@/api/attendance'
+import * as noticesApi from '@/api/notices'
 import {
   fetchShiftTasksReadOnly,
   updateTaskStatus,
   type TaskStatus,
 } from '@/api/tasks'
 import type { GeolocationCoords } from '@/lib/geolocation'
+import type { AbsenceReason } from '@/lib/absenceReasons'
 
 /**
  * Hooks de TanStack Query de EMP-03 y EMP-04 (ATT-005, MOB-EMP-002 a
@@ -141,6 +143,51 @@ export function useRecordCheckOutMutation() {
       assignmentId: string
       coords: GeolocationCoords | null
     }) => attendanceApi.recordCheckOut(assignmentId, coords),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: employeeKeys.myDay() })
+    },
+  })
+}
+
+/**
+ * EMP-12: avisar una demora (`06` sección 11, `notify_delay`, ABS-004). La
+ * asignación pasa a `delay_notified` — se invalida `myDay` para que Hoy y
+ * el detalle reflejen el nuevo estado y el aviso vigente (ABS-005).
+ */
+export function useNotifyDelayMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      assignmentId,
+      minutes,
+      reasonText,
+    }: {
+      assignmentId: string
+      minutes: number
+      reasonText?: string
+    }) => noticesApi.notifyDelay(assignmentId, minutes, reasonText),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: employeeKeys.myDay() })
+    },
+  })
+}
+
+/**
+ * EMP-12: avisar una ausencia (`06` sección 11, `notify_absence`, ABS-004).
+ * La asignación pasa a `absence_notified`, sin liberar el cupo (P-073).
+ */
+export function useNotifyAbsenceMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      assignmentId,
+      reasonCode,
+      reasonText,
+    }: {
+      assignmentId: string
+      reasonCode: AbsenceReason
+      reasonText?: string
+    }) => noticesApi.notifyAbsence(assignmentId, reasonCode, reasonText),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: employeeKeys.myDay() })
     },
