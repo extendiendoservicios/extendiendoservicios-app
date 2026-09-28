@@ -25,10 +25,13 @@ import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
  * necesita SUP-03 (`06` sección 13: "Criterios vigentes | O, A, S") vive acá
  * porque `ratings.ts` todavía no existe y este paquete no lo crea.
  *
- * Deja preparados (tipados, con su hook, sin pantalla que los use todavía)
- * los accesos de SUP-05/SUP-06/SUP-08, que construye P15.5: `rateEmployee`,
- * `completeSupervision`, `markSupervisionNotDone`, `fetchMySupervisionsByStatus`
- * (para el historial).
+ * P15.5 (MOB-SUP-006 a MOB-SUP-008, MOB-SUP-011) agrega lo que faltaba para
+ * SUP-05 (calificar), SUP-06 (cerrar) y SUP-08 (historial): las
+ * asignaciones del turno con su `assignment_id` (`fetchSupervisionAssignments`),
+ * la foto de las personas (`fetchPeopleAvatars`, `v_people_basic`), las
+ * calificaciones ya cargadas (`fetchSupervisionRatings`) y el cálculo de la
+ * ventana de edición del supervisor (`isRatingWindowClosed`/`canRateNow`,
+ * P-083, MOB-SUP-011).
  */
 
 export type SupervisionStatus =
@@ -484,7 +487,192 @@ function mapMySupervisionShallowRpcResult(data: {
 }
 
 // -------------------------------------------------------------------------
-// 5. Hooks de TanStack Query (MOB-SUP-002 a MOB-SUP-005; MOB-SUP-011 y
+// 5. Asignaciones, fotos y calificaciones cargadas del turno supervisado
+//    (SUP-03/SUP-05, P15.5): completa lo que `v_my_supervisions` no trae --
+//    `assigned_employees` no incluye `assignment_id` (lo pide `rate_employee`,
+//    `06` sección 13) ni foto (`v_people_basic`, P-103, "personal
+//    supervisado" es uno de los dos usos documentados de la vista en
+//    `0011_views.sql`); las calificaciones ya cargadas viven en `ratings`
+//    (política `ratings_select_own_supervision`, `0012_rls_policies.sql`).
+// -------------------------------------------------------------------------
+
+/** Une `employeeId` con el `assignmentId` que pide `rate_employee` (SUP-05, `06` sección 13). */
+export interface SupervisionAssignment {
+  assignmentId: string
+  employeeId: string
+}
+
+/**
+ * Las asignaciones vigentes del turno supervisado. Consulta directa a
+ * `assignments` (política `assignments_select_supervisor`,
+ * `app.supervises_shift(shift_id)`, `0012_rls_policies.sql`): la misma tabla
+ * que ya lee `v_my_supervisions` para armar `assigned_employees`, pero acá
+ * hace falta la columna `id` (el `assignment_id`), que la vista no expone.
+ */
+export async function fetchSupervisionAssignments(
+  shiftId: string,
+): Promise<SupervisionAssignment[]> {
+  const { data, error } = await supabase
+    .from('assignments')
+    .select('id, employee_id')
+    .eq('shift_id', shiftId)
+    .is('removed_at', null)
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data ?? []).map((row) => ({
+    assignmentId: row.id,
+    employeeId: row.employee_id,
+  }))
+}
+
+/**
+ * Foto de un grupo de personas (`v_people_basic`, P-103). Devuelve un mapa
+ * `profileId -> avatarPath` (`null` si no tiene foto cargada); las
+ * `profileId` que no aparecen en el resultado son las que la RLS de
+ * `profiles` no deja ver desde esta cuenta.
+ */
+export async function fetchPeopleAvatars(
+  profileIds: string[],
+): Promise<Record<string, string | null>> {
+  if (profileIds.length === 0) return {}
+  const { data, error } = await supabase
+    .from('v_people_basic')
+    .select('profile_id, avatar_path')
+    .in('profile_id', profileIds)
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  const result: Record<string, string | null> = {}
+  for (const row of data ?? []) {
+    if (row.profile_id == null) continue
+    result[row.profile_id] = row.avatar_path
+  }
+  return result
+}
+
+/** Una calificación ya cargada (SUP-03: "con su calificación si existe"; SUP-05: prellenar al editar). */
+export interface SupervisionRating {
+  id: string
+  assignmentId: string
+  score: number
+  comment: string | null
+}
+
+/** Las calificaciones cargadas de una supervisión propia. */
+export async function fetchSupervisionRatings(
+  supervisionId: string,
+): Promise<SupervisionRating[]> {
+  const { data, error } = await supabase
+    .from('ratings')
+    .select('id, assignment_id, score, comment')
+    .eq('supervision_id', supervisionId)
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    assignmentId: row.assignment_id,
+    score: row.score,
+    comment: row.comment,
+  }))
+}
+
+// -------------------------------------------------------------------------
+// 6. Ventana de edición de la calificación (MOB-SUP-011, P-083 ratificada
+//    el 27 sep 2026 en P15.0): mismo cálculo que hace `rate_employee` en
+//    `0029_rpc_supervisions.sql` ("now() > greatest(fin previsto del turno,
+//    fin registrado de la supervisión)"), repetido en el cliente para no
+//    ofrecer "Calificar" fuera de plazo (la RPC vuelve a verificarlo con
+//    `RATING_WINDOW_CLOSED` si algo se escapa, por ejemplo un reloj mal
+//    puesto en el teléfono). Solo aplica a la rama del supervisor: el dueño
+//    y el administrador con `edit_ratings` no tienen ventana y no pasan por
+//    esta pantalla (SUP-05 es exclusiva de la vía `/sup`).
+// -------------------------------------------------------------------------
+
+export function isRatingWindowClosed(
+  supervision: MySupervision,
+  now: Date = new Date(),
+): boolean {
+  const shiftEndsAt = supervision.endsAt ? new Date(supervision.endsAt) : null
+  const checkOutAt = supervision.checkOutAt
+    ? new Date(supervision.checkOutAt)
+    : null
+  const deadline =
+    shiftEndsAt && checkOutAt
+      ? new Date(Math.max(shiftEndsAt.getTime(), checkOutAt.getTime()))
+      : (shiftEndsAt ?? checkOutAt)
+  if (!deadline) return false
+  return now.getTime() > deadline.getTime()
+}
+
+/**
+ * `true` si el supervisor puede calificar (o editar) ahora mismo: la
+ * supervisión tiene que estar `in_progress` o `completed`
+ * (`SUPERVISION_NOT_ACTIVE` en cualquier otro estado, `06` sección 13) y el
+ * plazo de P-083 todavía no cerró.
+ */
+export function canRateNow(
+  supervision: MySupervision,
+  now: Date = new Date(),
+): boolean {
+  return (
+    (supervision.status === 'in_progress' ||
+      supervision.status === 'completed') &&
+    !isRatingWindowClosed(supervision, now)
+  )
+}
+
+// -------------------------------------------------------------------------
+// 7bis. Resumen de calificaciones por lote (SUP-08, `05` fila SUP-08: "lista
+//    de completadas y no realizadas... con sede y puntajes") -- una sola
+//    consulta para toda la lista del historial, en vez de una por fila.
+// -------------------------------------------------------------------------
+
+export interface SupervisionRatingsSummary {
+  supervisionId: string
+  ratedCount: number
+  /** Promedio de los puntajes cargados, `null` si todavía no hay ninguno. */
+  averageScore: number | null
+}
+
+/** El resumen de calificaciones de un grupo de supervisiones propias (SUP-08). */
+export async function fetchRatingsSummaryBySupervisionIds(
+  supervisionIds: string[],
+): Promise<SupervisionRatingsSummary[]> {
+  if (supervisionIds.length === 0) return []
+  const { data, error } = await supabase
+    .from('ratings')
+    .select('supervision_id, score')
+    .in('supervision_id', supervisionIds)
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  const scoresBySupervision = new Map<string, number[]>()
+  for (const row of data ?? []) {
+    const scores = scoresBySupervision.get(row.supervision_id) ?? []
+    scores.push(row.score)
+    scoresBySupervision.set(row.supervision_id, scores)
+  }
+  return supervisionIds.map((supervisionId) => {
+    const scores = scoresBySupervision.get(supervisionId) ?? []
+    return {
+      supervisionId,
+      ratedCount: scores.length,
+      averageScore:
+        scores.length > 0
+          ? scores.reduce((sum, score) => sum + score, 0) / scores.length
+          : null,
+    }
+  })
+}
+
+// -------------------------------------------------------------------------
+// 7. Hooks de TanStack Query (MOB-SUP-002 a MOB-SUP-005; MOB-SUP-011 y
 //    MOB-SUP-006/007/008 en P15.5) -- en este mismo archivo, ver el
 //    comentario grande del principio.
 // -------------------------------------------------------------------------
@@ -640,6 +828,44 @@ export function useCompleteSupervisionMutation() {
     }) => completeSupervision(supervisionId, generalNotes),
     onSuccess: (_, { supervisionId }) =>
       invalidateSupervisionCaches(queryClient, supervisionId),
+  })
+}
+
+/** SUP-03/SUP-05: las asignaciones vigentes del turno, para vincular `employeeId` con `assignmentId`. Sin polling (cambia poco mientras dura el turno). */
+export function useSupervisionAssignmentsQuery(shiftId: string) {
+  return useQuery({
+    queryKey: [...mySupervisionsKeys.all, 'assignments', shiftId] as const,
+    queryFn: () => fetchSupervisionAssignments(shiftId),
+    enabled: Boolean(shiftId),
+  })
+}
+
+/** SUP-05: la foto de un grupo de personas (`v_people_basic`). */
+export function usePeopleAvatarsQuery(profileIds: string[]) {
+  const key = profileIds.slice().sort()
+  return useQuery({
+    queryKey: [...mySupervisionsKeys.all, 'avatars', ...key] as const,
+    queryFn: () => fetchPeopleAvatars(profileIds),
+    enabled: profileIds.length > 0,
+  })
+}
+
+/** SUP-03/SUP-05: las calificaciones ya cargadas de una supervisión propia. */
+export function useSupervisionRatingsQuery(supervisionId: string) {
+  return useQuery({
+    queryKey: [...mySupervisionsKeys.all, 'ratings', supervisionId] as const,
+    queryFn: () => fetchSupervisionRatings(supervisionId),
+    enabled: Boolean(supervisionId),
+  })
+}
+
+/** SUP-08: el resumen de calificaciones de toda la lista del historial, en una sola consulta. Sin polling (lista de supervisiones ya cerradas). */
+export function useHistoryRatingsSummaryQuery(supervisionIds: string[]) {
+  const key = supervisionIds.slice().sort()
+  return useQuery({
+    queryKey: [...mySupervisionsKeys.all, 'ratingsSummary', ...key] as const,
+    queryFn: () => fetchRatingsSummaryBySupervisionIds(supervisionIds),
+    enabled: supervisionIds.length > 0,
   })
 }
 
