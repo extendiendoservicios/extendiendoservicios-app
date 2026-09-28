@@ -627,6 +627,51 @@ export function canRateNow(
 }
 
 // -------------------------------------------------------------------------
+// 7bis. Resumen de calificaciones por lote (SUP-08, `05` fila SUP-08: "lista
+//    de completadas y no realizadas... con sede y puntajes") -- una sola
+//    consulta para toda la lista del historial, en vez de una por fila.
+// -------------------------------------------------------------------------
+
+export interface SupervisionRatingsSummary {
+  supervisionId: string
+  ratedCount: number
+  /** Promedio de los puntajes cargados, `null` si todavía no hay ninguno. */
+  averageScore: number | null
+}
+
+/** El resumen de calificaciones de un grupo de supervisiones propias (SUP-08). */
+export async function fetchRatingsSummaryBySupervisionIds(
+  supervisionIds: string[],
+): Promise<SupervisionRatingsSummary[]> {
+  if (supervisionIds.length === 0) return []
+  const { data, error } = await supabase
+    .from('ratings')
+    .select('supervision_id, score')
+    .in('supervision_id', supervisionIds)
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  const scoresBySupervision = new Map<string, number[]>()
+  for (const row of data ?? []) {
+    const scores = scoresBySupervision.get(row.supervision_id) ?? []
+    scores.push(row.score)
+    scoresBySupervision.set(row.supervision_id, scores)
+  }
+  return supervisionIds.map((supervisionId) => {
+    const scores = scoresBySupervision.get(supervisionId) ?? []
+    return {
+      supervisionId,
+      ratedCount: scores.length,
+      averageScore:
+        scores.length > 0
+          ? scores.reduce((sum, score) => sum + score, 0) / scores.length
+          : null,
+    }
+  })
+}
+
+// -------------------------------------------------------------------------
 // 7. Hooks de TanStack Query (MOB-SUP-002 a MOB-SUP-005; MOB-SUP-011 y
 //    MOB-SUP-006/007/008 en P15.5) -- en este mismo archivo, ver el
 //    comentario grande del principio.
@@ -811,6 +856,16 @@ export function useSupervisionRatingsQuery(supervisionId: string) {
     queryKey: [...mySupervisionsKeys.all, 'ratings', supervisionId] as const,
     queryFn: () => fetchSupervisionRatings(supervisionId),
     enabled: Boolean(supervisionId),
+  })
+}
+
+/** SUP-08: el resumen de calificaciones de toda la lista del historial, en una sola consulta. Sin polling (lista de supervisiones ya cerradas). */
+export function useHistoryRatingsSummaryQuery(supervisionIds: string[]) {
+  const key = supervisionIds.slice().sort()
+  return useQuery({
+    queryKey: [...mySupervisionsKeys.all, 'ratingsSummary', ...key] as const,
+    queryFn: () => fetchRatingsSummaryBySupervisionIds(supervisionIds),
+    enabled: supervisionIds.length > 0,
   })
 }
 

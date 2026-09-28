@@ -1,20 +1,19 @@
 import type { RouteObject } from 'react-router'
-import { placeholderRoute } from './placeholder'
 import SupervisorTodayPage from '@/pages/sup/TodayPage'
 import SupervisionsPage from '@/pages/sup/SupervisionsPage'
 import SupervisionDetailPage from '@/pages/sup/SupervisionDetailPage'
 import SupervisionAttendancePage from '@/pages/sup/SupervisionAttendancePage'
 import RateEmployeePage from '@/pages/sup/RateEmployeePage'
 import CloseSupervisionPage from '@/pages/sup/CloseSupervisionPage'
+import HistoryPage from '@/pages/sup/HistoryPage'
 import SupervisorMorePage from '@/pages/sup/MorePage'
 
 /**
  * Rutas de `/sup` (DS-015), `05_Pantallas_y_Navegacion.md` sección 5.
  *
  * SUP-02, SUP-03, SUP-04, SUP-07 y SUP-09 son de P15.4 (MOB-SUP-002 a
- * MOB-SUP-005 y MOB-SUP-009). SUP-05 y SUP-06 son de este paquete (P15.5,
- * MOB-SUP-006/007): SUP-08 (historial) queda como placeholder hasta que ese
- * mismo paquete lo complete.
+ * MOB-SUP-005 y MOB-SUP-009). SUP-05, SUP-06 y SUP-08 son de este paquete
+ * (P15.5, MOB-SUP-006/007/008).
  */
 export const supervisorRoutes: RouteObject[] = [
   {
@@ -71,12 +70,15 @@ export const supervisorRoutes: RouteObject[] = [
       subtitle: 'Completar o marcar no realizada',
     },
   },
-  placeholderRoute({
+  {
     path: 'historial',
-    screenId: 'SUP-08',
-    title: 'Historial',
-    subtitle: 'Consultar las supervisiones que ya cargó',
-  }),
+    element: <HistoryPage />,
+    handle: {
+      screenId: 'SUP-08',
+      title: 'Historial',
+      subtitle: 'Consultar las supervisiones que ya cargó',
+    },
+  },
   {
     path: 'mas',
     element: <SupervisorMorePage />,
