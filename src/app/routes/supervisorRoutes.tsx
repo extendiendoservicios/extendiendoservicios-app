@@ -1,32 +1,55 @@
 import type { RouteObject } from 'react-router'
 import { placeholderRoute } from './placeholder'
+import SupervisorTodayPage from '@/pages/sup/TodayPage'
+import SupervisionsPage from '@/pages/sup/SupervisionsPage'
+import SupervisionDetailPage from '@/pages/sup/SupervisionDetailPage'
+import SupervisionAttendancePage from '@/pages/sup/SupervisionAttendancePage'
+import SupervisorMorePage from '@/pages/sup/MorePage'
 
-/** Rutas de `/sup` (DS-015), `05_Pantallas_y_Navegacion.md` sección 5. */
+/**
+ * Rutas de `/sup` (DS-015), `05_Pantallas_y_Navegacion.md` sección 5.
+ *
+ * SUP-02, SUP-03, SUP-04, SUP-07 y SUP-09 son de este paquete (P15.4,
+ * MOB-SUP-002 a MOB-SUP-005 y MOB-SUP-009): SUP-05, SUP-06 y SUP-08 quedan
+ * como placeholder para P15.5 (calificar, cerrar e historial).
+ */
 export const supervisorRoutes: RouteObject[] = [
-  placeholderRoute({
+  {
     index: true,
-    screenId: 'SUP-02',
-    title: 'Hoy',
-    subtitle: 'Ver las supervisiones del día',
-  }),
-  placeholderRoute({
+    element: <SupervisorTodayPage />,
+    handle: {
+      screenId: 'SUP-02',
+      title: 'Hoy',
+      subtitle: 'Tus supervisiones del día',
+    },
+  },
+  {
     path: 'supervisiones',
-    screenId: 'SUP-07',
-    title: 'Supervisiones',
-    subtitle: 'Todas las asignadas pendientes',
-  }),
-  placeholderRoute({
+    element: <SupervisionsPage />,
+    handle: {
+      screenId: 'SUP-07',
+      title: 'Supervisiones',
+      subtitle: 'Todas las asignadas pendientes',
+    },
+  },
+  {
     path: 'supervisiones/:id',
-    screenId: 'SUP-03',
-    title: 'Detalle de la supervisión',
-    subtitle: 'Ver servicio, sede y personal a supervisar',
-  }),
-  placeholderRoute({
+    element: <SupervisionDetailPage />,
+    handle: {
+      screenId: 'SUP-03',
+      title: 'Detalle de la supervisión',
+      subtitle: 'Servicio, sede y personal a supervisar',
+    },
+  },
+  {
     path: 'supervisiones/:id/registro',
-    screenId: 'SUP-04',
-    title: 'Inicio y fin de supervisión',
-    subtitle: 'Registrar la jornada en la sede',
-  }),
+    element: <SupervisionAttendancePage />,
+    handle: {
+      screenId: 'SUP-04',
+      title: 'Inicio y fin de supervisión',
+      subtitle: 'Registrá la jornada en la sede',
+    },
+  },
   placeholderRoute({
     path: 'supervisiones/:id/calificar/:assignmentId',
     screenId: 'SUP-05',
@@ -45,10 +68,13 @@ export const supervisorRoutes: RouteObject[] = [
     title: 'Historial',
     subtitle: 'Consultar las supervisiones que ya cargó',
   }),
-  placeholderRoute({
+  {
     path: 'mas',
-    screenId: 'SUP-09',
-    title: 'Más',
-    subtitle: 'Perfil y opciones',
-  }),
+    element: <SupervisorMorePage />,
+    handle: {
+      screenId: 'SUP-09',
+      title: 'Más',
+      subtitle: 'Perfil y opciones',
+    },
+  },
 ]
