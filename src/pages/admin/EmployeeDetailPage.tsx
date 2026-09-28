@@ -5,7 +5,6 @@ import {
   KeyRound,
   LogOut,
   Pencil,
-  Star,
   User,
   UserX,
 } from 'lucide-react'
@@ -28,6 +27,7 @@ import {
 import { EmployeeAvailabilityTab } from '@/features/employees/components/EmployeeAvailabilityTab'
 import { EmployeeClientPermissionsTab } from '@/features/employees/components/EmployeeClientPermissionsTab'
 import { EmployeeLeavesTab } from '@/features/employees/components/EmployeeLeavesTab'
+import { EmployeeRatingsTab } from '@/features/employees/components/EmployeeRatingsTab'
 import { EmployeeRolesDialog } from '@/features/employees/components/EmployeeRolesDialog'
 import {
   canEditEmployee,
@@ -54,11 +54,12 @@ function isEmployeeDetailTab(value: string | null): value is EmployeeDetailTab {
  * ADM-17 "Empleado · ficha" (`05` línea 66): cabecera (foto, nombre,
  * legajo, roles, estado efectivo) y las siete pestañas. Datos, Habilitaciones
  * (EMP-006), Disponibilidad (EMP-007) y Licencias (EMP-008) están completas;
- * Próximos turnos (EMP-009) y Calificaciones (EMP-010) quedan con su estado
- * vacío y un enlace preparado -- los turnos llegan en una fase posterior de
- * asignaciones y las calificaciones con supervisiones (ver el reporte del
- * encargo). Asistencia (ADM-12, ATT-013, P14.3) ya está completa:
- * `EmployeeAttendanceHistoryTab` (`src/features/attendance/components/`).
+ * Próximos turnos (EMP-009) queda con su estado vacío y un enlace preparado
+ * -- los turnos llegan en una fase posterior de asignaciones (ver el reporte
+ * del encargo). Asistencia (ADM-12, ATT-013, P14.3) y Calificaciones
+ * recibidas (SUP-012, `05` línea 66: "lista, solo admin") ya están
+ * completas: `EmployeeAttendanceHistoryTab`/`EmployeeRatingsTab`
+ * (`src/features/attendance/`, `src/features/employees/components/`).
  */
 export default function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -238,11 +239,7 @@ export default function EmployeeDetailPage() {
         </TabsContent>
 
         <TabsContent value="calificaciones" className="pt-3">
-          <EmptyState
-            icon={Star}
-            title="Todavía no hay calificaciones para mostrar"
-            description="Las calificaciones recibidas por esta persona se van a ver acá."
-          />
+          <EmployeeRatingsTab profileId={employee.profileId} />
         </TabsContent>
       </Tabs>
 

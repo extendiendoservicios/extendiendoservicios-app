@@ -32,6 +32,7 @@ import {
   canManageTasks,
 } from '@/features/planning/permissions'
 import { useShiftDetailQuery } from '@/features/planning/queries'
+import { canManageSupervisions } from '@/features/supervisions/permissions'
 import { AdminTaskList } from './AdminTaskList'
 import { AssignEmployeeSheet } from './AssignEmployeeSheet'
 import { AssignmentTimeDialog } from './AssignmentTimeDialog'
@@ -42,7 +43,8 @@ import { ShiftDetailsDialog } from './ShiftDetailsDialog'
 /**
  * ADM-06 "Detalle del turno" (ASSIGN-011, `05` línea 40): cabecera, dotación
  * (con edición ASSIGN-013), asignaciones vigentes (con asignar/quitar/franja
- * propia), tareas y supervisiones en lectura (el alta es F12/F15) y notas
+ * propia), tareas, supervisiones (lista con botón "Asignar supervisión",
+ * SUP-012, `05` línea 40: "assign_supervision (ADM-14)") y notas
  * administrativas. `ShiftDetailPage` decide si esto se ve en un drawer o en
  * una página completa (ASSIGN-014); acá el contenido es el mismo para las
  * dos variantes.
@@ -59,6 +61,7 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
   const canEditTasks = canManageTasks(actor)
   const canReloadChecklist = canEditChecklists(actor)
   const canManageAttendanceNow = canManageAttendance(actor)
+  const canAssignSupervision = canManageSupervisions(actor)
 
   const shiftQuery = useShiftDetailQuery(shiftId)
   // Inicio y fin reales, quién y cómo se registraron, y los avisos
@@ -306,10 +309,22 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
       </section>
 
       <section className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5">
-        <h3 className="flex items-center gap-2 text-[13px] font-semibold text-text">
-          <ShieldCheck aria-hidden="true" className="size-4 text-text-3" />
-          Supervisiones
-        </h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="flex items-center gap-2 text-[13px] font-semibold text-text">
+            <ShieldCheck aria-hidden="true" className="size-4 text-text-3" />
+            Supervisiones
+          </h3>
+          {isEditable && canAssignSupervision && (
+            <Button asChild variant="ghost" size="sm" icon={ShieldCheck}>
+              <Link
+                to="/admin/supervisiones/nueva"
+                state={{ shiftId: shift.id, shiftDate: shift.shiftDate }}
+              >
+                Asignar supervisión
+              </Link>
+            </Button>
+          )}
+        </div>
         {shift.supervisions.length === 0 ? (
           <p className="text-[12px] text-text-3">
             Este turno no tiene supervisión asignada.
@@ -321,10 +336,15 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
                 key={supervision.id}
                 className="flex items-center justify-between gap-2 rounded-md border border-border p-3"
               >
-                <PersonCell
-                  id={supervision.supervisorId}
-                  name={`${supervision.supervisorFirstName} ${supervision.supervisorLastName}`}
-                />
+                <Link
+                  to={`/admin/supervisiones/${supervision.id}`}
+                  className="min-w-0"
+                >
+                  <PersonCell
+                    id={supervision.supervisorId}
+                    name={`${supervision.supervisorFirstName} ${supervision.supervisorLastName}`}
+                  />
+                </Link>
                 <StatusBadge domain="supervision" status={supervision.status} />
               </li>
             ))}
