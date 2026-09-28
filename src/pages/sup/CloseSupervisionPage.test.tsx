@@ -159,7 +159,7 @@ describe('CloseSupervisionPage (SUP-06)', () => {
       screen.getByText('Calificaste a 0 de 1 empleado.'),
     ).toBeInTheDocument()
     expect(
-      screen.getByText(/Faltan 1 empleado por calificar/),
+      screen.getByText(/Falta 1 empleado por calificar/),
     ).toBeInTheDocument()
 
     fireEvent.click(

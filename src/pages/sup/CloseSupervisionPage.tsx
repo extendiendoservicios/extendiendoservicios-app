@@ -169,10 +169,9 @@ export default function CloseSupervisionPage() {
             {missing > 0 && (
               <Alert variant="warn">
                 <AlertDescription>
-                  Faltan {missing}{' '}
                   {missing === 1
-                    ? 'empleado por calificar'
-                    : 'empleados por calificar'}
+                    ? 'Falta 1 empleado por calificar'
+                    : `Faltan ${missing} empleados por calificar`}
                   . Podés completar igual.
                 </AlertDescription>
               </Alert>

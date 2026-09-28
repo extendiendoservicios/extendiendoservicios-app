@@ -76,7 +76,7 @@ export const supervisorRoutes: RouteObject[] = [
     handle: {
       screenId: 'SUP-08',
       title: 'Historial',
-      subtitle: 'Consultar las supervisiones que ya cargó',
+      subtitle: 'Las supervisiones que ya cerraste',
     },
   },
   {
