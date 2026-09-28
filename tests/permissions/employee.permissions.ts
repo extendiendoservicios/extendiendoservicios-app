@@ -36,6 +36,11 @@ import {
   createFixtureShiftTask,
   deleteFixtureShiftTask,
 } from './helpers/checklist-fixtures.ts'
+import {
+  cleanupFixtureSupervision,
+  createFixtureSupervision,
+  type FixtureSupervision,
+} from './helpers/supervision-fixtures.ts'
 
 const env = readPermissionsTestEnv()
 if (!env) console.warn(missingEnvWarning('employee.permissions.ts'))
@@ -705,6 +710,115 @@ describe.skipIf(!env)(
         const { error } = await empleado.rpc('close_assignment', {
           p_assignment_id: fixtureAssignmentId,
           p_reason: 'e2e-perm no debería aplicarse',
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+    })
+
+    // MOB-SUP-014/TEST-012 (P15.6, 08_Fases_y_Backlog.md F15, CB-15, `06` secciones 12 y 13): el
+    // empleado no ve `supervision_attendance` (además de `supervisions`/`ratings`, ya cubiertos
+    // más arriba en este archivo desde P04.7/P10.4) ni tiene ningún canal en las siete RPC de
+    // `0029_rpc_supervisions.sql`. `assign_supervision`/`cancel_supervision`/`supervision_check_in`/
+    // `supervision_check_out`/`complete_supervision` cortan con FORBIDDEN ANTES de buscar la fila
+    // (`app.require_capability`/`app.require_role` como primera línea): un uuid cualquiera alcanza.
+    // `mark_supervision_not_done` y `rate_employee` buscan la fila PRIMERO -- con un uuid
+    // cualquiera dan `SUPERVISION_NOT_FOUND`, no `FORBIDDEN`, así que necesitan una supervisión de
+    // fixture real (de otro supervisor, no del empleado bajo prueba) para probar el rechazo de
+    // verdad.
+    describe('supervisiones y calificaciones (F15): supervision_attendance sin filas, ninguna de las siete RPC es para el rol employee', () => {
+      const ANY_UUID = '00000000-0000-0000-0000-000000000000'
+      let fixture: FixtureSupervision
+      let dueno: TestClient
+
+      beforeAll(async () => {
+        const real = await admin
+          .from('supervision_attendance')
+          .select('id', { count: 'exact', head: true })
+        expect(real.count ?? 0).toBeGreaterThan(0)
+
+        const ownerLogin = await loginAs(SEED_ACCOUNTS.owner)
+        dueno = ownerLogin.client
+        const supervisorId = await resolveUserId(
+          admin,
+          SEED_ACCOUNTS.supervisors[0],
+        )
+        const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+          .toISOString()
+          .slice(0, 10)
+        fixture = await createFixtureSupervision(
+          admin,
+          dueno,
+          tomorrow,
+          '21:00',
+          '22:00',
+          supervisorId,
+        )
+      })
+
+      afterAll(async () => {
+        await cleanupFixtureSupervision(dueno, fixture)
+        await dueno.auth.signOut()
+        await cleanupFixtureShift(admin, fixture)
+      })
+
+      it('CB-15: no lee ninguna fila de supervision_attendance, aunque existan registros reales (04 sección 7.2, P-084)', async () => {
+        const { data, error } = await empleado
+          .from('supervision_attendance')
+          .select('*')
+        expect(error).toBeNull()
+        expect(data).toEqual([])
+      })
+
+      it('no puede llamar assign_supervision (06 sección 12: "O; A + manage_supervisions")', async () => {
+        const { error } = await empleado.rpc('assign_supervision', {
+          p_shift_id: ANY_UUID,
+          p_supervisor_id: empleadoId,
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede llamar cancel_supervision', async () => {
+        const { error } = await empleado.rpc('cancel_supervision', {
+          p_supervision_id: ANY_UUID,
+          p_reason: 'e2e-perm no debería aplicarse',
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede llamar supervision_check_in (06 sección 12: "S (propia)", sin rol para employee)', async () => {
+        const { error } = await empleado.rpc('supervision_check_in', {
+          p_supervision_id: ANY_UUID,
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede llamar supervision_check_out', async () => {
+        const { error } = await empleado.rpc('supervision_check_out', {
+          p_supervision_id: ANY_UUID,
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede llamar complete_supervision', async () => {
+        const { error } = await empleado.rpc('complete_supervision', {
+          p_supervision_id: ANY_UUID,
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede llamar mark_supervision_not_done sobre una supervisión real de otro supervisor', async () => {
+        const { error } = await empleado.rpc('mark_supervision_not_done', {
+          p_supervision_id: fixture.supervisionId,
+          p_reason: 'e2e-perm no debería aplicarse',
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede llamar rate_employee sobre una supervisión real de otro supervisor', async () => {
+        const { error } = await empleado.rpc('rate_employee', {
+          p_supervision_id: fixture.supervisionId,
+          p_assignment_id: ANY_UUID,
+          p_score: 5,
         })
         expect(error?.hint).toBe('FORBIDDEN')
       })

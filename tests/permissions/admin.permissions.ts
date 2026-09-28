@@ -43,6 +43,11 @@ import {
   deleteFixtureShiftTask,
   type FixtureChecklistClient,
 } from './helpers/checklist-fixtures.ts'
+import {
+  cleanupFixtureSupervision,
+  createFixtureSupervision,
+  type FixtureSupervision,
+} from './helpers/supervision-fixtures.ts'
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -880,6 +885,236 @@ describe.skipIf(!env)(
         })
         expect(error).toBeNull()
         expect(data?.kind).toBe('check_out')
+      })
+    })
+
+    // SUP-013/MOB-SUP-014/TEST-012 (P15.6, 08_Fases_y_Backlog.md F15, `06` secciones 12 y 13):
+    // andrea.rios (las 7 capacidades) puede asignar, cancelar y calificar sin la ventana de
+    // P-083 (edit_ratings); mark_supervision_not_done no exige ninguna capacidad para O/A
+    // (`0029`, comentario de la RPC) -- se prueba con un administrador SIN manage_supervisions
+    // para confirmar que ese caso puntual sí funciona igual, a diferencia de assign/cancel.
+    describe('supervisiones y calificaciones (F15): con las capacidades, sin ellas FORBIDDEN', () => {
+      const ALL_CAPABILITIES = [
+        'manage_users',
+        'cancel_shifts',
+        'edit_ratings',
+        'edit_checklists',
+        'manage_attendance',
+        'generate_shifts',
+        'manage_supervisions',
+      ] as const
+
+      let limitedAdminProfileId: string
+      let limitedAdmin: TestClient
+      let supervisorId: string
+      let fixture: FixtureSupervision
+      let fixtureAssignmentId: string
+      let employeeToRateId: string
+
+      beforeAll(async () => {
+        const email = `e2e-perm-admin-sin-supervisiones-${Date.now()}@extendiendoservicios.com`
+        const password = `${process.env.SEED_DEV_PASSWORD}Aa1`
+        const { data: created, error: createError } =
+          await admin.auth.admin.createUser({
+            email,
+            password,
+            email_confirm: true,
+            user_metadata: {
+              first_name: 'E2E',
+              last_name: `Perm Admin Sin Supervisiones ${Date.now()}`,
+            },
+          })
+        if (createError || !created.user) {
+          throw new Error(
+            `No se pudo crear el administrador descartable: ${createError?.message}`,
+          )
+        }
+        limitedAdminProfileId = created.user.id
+
+        const { error: roleError } = await admin.from('user_roles').insert({
+          profile_id: limitedAdminProfileId,
+          role: 'admin',
+          granted_by: null,
+        })
+        if (roleError) {
+          throw new Error(
+            `No se pudo asignar el rol admin: ${roleError.message}`,
+          )
+        }
+
+        const { error: capsError } = await admin
+          .from('admin_capabilities')
+          .insert(
+            ALL_CAPABILITIES.map((capability) => ({
+              profile_id: limitedAdminProfileId,
+              capability,
+              // Sin manage_supervisions NI edit_ratings: las dos capacidades de este bloque.
+              enabled:
+                capability !== 'manage_supervisions' &&
+                capability !== 'edit_ratings',
+              updated_by: null,
+            })),
+          )
+        if (capsError) {
+          throw new Error(
+            `No se pudieron cargar las capacidades: ${capsError.message}`,
+          )
+        }
+
+        const anonClient = createAnonClient()
+        const { error: loginError } = await anonClient.auth.signInWithPassword({
+          email,
+          password,
+        })
+        if (loginError) {
+          throw new Error(
+            `No se pudo iniciar sesión con el administrador descartable: ${loginError.message}`,
+          )
+        }
+        limitedAdmin = anonClient
+
+        supervisorId = await resolveUserId(admin, SEED_ACCOUNTS.supervisors[0])
+        employeeToRateId = await resolveUserId(
+          admin,
+          SEED_ACCOUNTS.employees[5],
+        )
+        const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+          .toISOString()
+          .slice(0, 10)
+        // Fixture asignada con `administradora` (las 7 capacidades): quien crea la supervisión
+        // de fixture necesita manage_supervisions, que `limitedAdmin` no tiene a propósito.
+        fixture = await createFixtureSupervision(
+          admin,
+          administradora,
+          tomorrow,
+          '23:00',
+          '23:59',
+          supervisorId,
+        )
+        fixtureAssignmentId = await createFixtureAssignment(
+          administradora,
+          fixture.shiftId,
+          employeeToRateId,
+        )
+        // La supervisión pasa a in_progress/completed a mano (columna, no RPC: `supervision_check_in`
+        // exige rol supervisor, ninguna cuenta de este archivo lo tiene) para poder probar
+        // `rate_employee` -- mismo criterio que `update_task_status` en `employee.permissions.ts`
+        // ("forzar la asignación a present con la clave de servicio").
+        const { error: statusError } = await admin
+          .from('supervisions')
+          .update({ status: 'in_progress' })
+          .eq('id', fixture.supervisionId)
+        if (statusError) {
+          throw new Error(
+            `No se pudo forzar la supervisión de fixture a in_progress: ${statusError.message}`,
+          )
+        }
+      })
+
+      afterAll(async () => {
+        await removeFixtureAssignment(administradora, fixtureAssignmentId)
+        // La cancelación queda a cargo de `administradora` (tiene manage_supervisions):
+        // `cleanupFixtureSupervision` llama `cancel_supervision`, que exige esa capacidad.
+        await cleanupFixtureSupervision(administradora, fixture)
+        await limitedAdmin.auth.signOut()
+        await cleanupFixtureShift(admin, fixture)
+        await admin.auth.admin.updateUserById(limitedAdminProfileId, {
+          ban_duration: '876000h',
+        })
+        await admin
+          .from('profiles')
+          .update({ is_active: false, deleted_at: new Date().toISOString() })
+          .eq('id', limitedAdminProfileId)
+      })
+
+      it('sin manage_supervisions, NO puede llamar assign_supervision', async () => {
+        const { error } = await limitedAdmin.rpc('assign_supervision', {
+          p_shift_id: fixture.shiftId,
+          p_supervisor_id: supervisorId,
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('sin manage_supervisions, NO puede llamar cancel_supervision sobre la fixture', async () => {
+        const { error } = await limitedAdmin.rpc('cancel_supervision', {
+          p_supervision_id: fixture.supervisionId,
+          p_reason: 'e2e-perm no debería aplicarse',
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('sin edit_ratings (ni rol supervisor), NO puede llamar rate_employee', async () => {
+        const { error } = await limitedAdmin.rpc('rate_employee', {
+          p_supervision_id: fixture.supervisionId,
+          p_assignment_id: fixtureAssignmentId,
+          p_score: 4,
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('mark_supervision_not_done NO exige manage_supervisions: un admin sin esa capacidad la cancela igual (0029)', async () => {
+        // Se prueba y se revierte en el mismo caso (vuelve a assigned/in_progress no aplica: una
+        // vez not_done queda terminal) -- por eso este caso corre último y la limpieza de arriba
+        // ya no depende del estado in_progress.
+        const { data, error } = await limitedAdmin.rpc(
+          'mark_supervision_not_done',
+          {
+            p_supervision_id: fixture.supervisionId,
+            p_reason:
+              'E2E-P114-PERM: admin sin manage_supervisions, RPC sin capacidad adicional (0029)',
+          },
+        )
+        expect(error).toBeNull()
+        expect(data?.status).toBe('not_done')
+      })
+
+      it('con edit_ratings, andrea.rios edita la calificación (rate_employee) de otro turno con las 7 capacidades', async () => {
+        // Turno y supervisión propios (no el de arriba, ya en not_done): SUPERVISION_NOT_ACTIVE
+        // rechazaría un rate_employee sobre una supervisión ya cerrada. Horario DISTINTO al de
+        // la fixture de arriba (21:30-22:30, no 23:00-23:59): `employeeToRateId` sigue asignado a
+        // la primera hasta el `afterAll` de este describe, así que una franja igual chocaría con
+        // ASSIGNMENT_OVERLAP (hallazgo propio armando este caso).
+        const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+          .toISOString()
+          .slice(0, 10)
+        const second = await createFixtureSupervision(
+          admin,
+          administradora,
+          tomorrow,
+          '21:30',
+          '22:30',
+          supervisorId,
+        )
+        const secondAssignmentId = await createFixtureAssignment(
+          administradora,
+          second.shiftId,
+          employeeToRateId,
+        )
+        try {
+          const { data, error } = await administradora.rpc('rate_employee', {
+            p_supervision_id: second.supervisionId,
+            p_assignment_id: secondAssignmentId,
+            p_score: 5,
+            p_comment: 'E2E-P114-PERM: calificación cargada por administración',
+          })
+          expect(error).toBeNull()
+          expect(data?.score).toBe(5)
+        } finally {
+          await removeFixtureAssignment(administradora, secondAssignmentId)
+          await cleanupFixtureSupervision(administradora, second)
+          await cleanupFixtureShift(admin, second)
+        }
+      })
+
+      it('lee supervision_attendance completo (todas las filas, no solo las de una supervisión propia)', async () => {
+        const { count, error } = await administradora
+          .from('supervision_attendance')
+          .select('id', { count: 'exact', head: true })
+        const esperado = await admin
+          .from('supervision_attendance')
+          .select('id', { count: 'exact', head: true })
+        expect(error).toBeNull()
+        expect(count).toBe(esperado.count)
       })
     })
   },
