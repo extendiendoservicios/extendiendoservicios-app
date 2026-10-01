@@ -4,6 +4,7 @@ import AttendanceTodayPage from '@/pages/admin/AttendanceTodayPage'
 import ClientDetailPage from '@/pages/admin/ClientDetailPage'
 import ClientFormPage from '@/pages/admin/ClientFormPage'
 import ClientsPage from '@/pages/admin/ClientsPage'
+import Dashboard from '@/pages/admin/Dashboard'
 import CompanySettingsPage from '@/pages/admin/CompanySettingsPage'
 import EmployeeDetailPage from '@/pages/admin/EmployeeDetailPage'
 import EmployeeFormPage from '@/pages/admin/EmployeeFormPage'
@@ -22,7 +23,6 @@ import SupervisionDetailPage from '@/pages/admin/SupervisionDetailPage'
 import SupervisionsPage from '@/pages/admin/SupervisionsPage'
 import TaskTemplatesPage from '@/pages/admin/TaskTemplatesPage'
 import UsersPage from '@/pages/admin/UsersPage'
-import { placeholderRoute } from './placeholder'
 
 /**
  * Rutas de `/admin` (DS-015), `05_Pantallas_y_Navegacion.md` sección 5. Los
@@ -37,12 +37,15 @@ import { placeholderRoute } from './placeholder'
  * sección 5.
  */
 export const adminRoutes: RouteObject[] = [
-  placeholderRoute({
+  {
     index: true,
-    screenId: 'ADM-02',
-    title: 'Resumen',
-    subtitle: 'Ver el estado de la operación de hoy',
-  }),
+    element: <Dashboard />,
+    handle: {
+      screenId: 'ADM-02',
+      title: 'Resumen',
+      subtitle: 'Ver el estado de la operación de hoy',
+    },
+  },
   {
     path: 'planificacion',
     element: <PlanningPage />,
