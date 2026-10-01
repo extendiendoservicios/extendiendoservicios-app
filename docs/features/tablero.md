@@ -87,13 +87,20 @@ dato más viejo de los dos principales.
 ## Responsive (D29)
 
 Por debajo de 1024 px: KPIs en dos columnas (la quinta tarjeta ocupa el ancho
-completo), bloque de atención en una columna, y `DataTable` se dibuja como
-lista de tarjetas (`RowCard`). Sin scroll horizontal a 390 px.
+completo), bloque de atención en una columna con las primeras 5 alertas y
+un botón "Ver las N" para el resto, y `DataTable` se dibuja como lista de
+tarjetas (`RowCard`) con las acciones al pie (`card: 'actions'`). Sin scroll
+horizontal a 390 px. En escritorio se muestran todas las alertas.
 
 ## Decisiones tomadas
 
 - **Cinco KPIs**, uno por cada ítem de `05` línea 36; "avisos" suma
-  ausencias y demoras y detalla cada una.
+  ausencias y demoras y detalla cada una (confirmado por Mike el 1 oct 2026,
+  para mantener el 2 × 2 de D29).
+- **Cinco alertas en celular** (Mike, 1 oct 2026): con muchas alertas,
+  "Servicios de hoy" quedaba muy abajo.
+- **Nombre del cliente**: `v_assignments_board` trae solo la razón social; el
+  tablero usa el nombre de fantasía del turno para no mostrar dos nombres.
 - **"Próximos"** cuenta turnos `scheduled`/`assigned` que empiezan en los
   próximos 120 minutos (ventana cerrada en 2 h), calculado en el cliente con
   `now` en vez de leer `display_status = upcoming`, para que sea testeable.

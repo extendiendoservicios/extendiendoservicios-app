@@ -1,11 +1,29 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { computeAttention } from '../attention'
 import { computeKpis } from '../kpis'
 import { NOW, makeAssignment, makeShift } from '../fixtures'
 import { AttentionBlock } from './AttentionBlock'
 import { DashboardKpis } from './DashboardKpis'
+
+/** Simula el ancho de pantalla para `useMediaQuery` (1024 px). */
+function mockDesktopViewport(isDesktop: boolean) {
+  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches: isDesktop,
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }))
+}
+
+beforeEach(() => {
+  mockDesktopViewport(true)
+})
 
 describe('DashboardKpis', () => {
   it('muestra los conteos en cero sin pintarlos como alarma', () => {
@@ -76,6 +94,40 @@ describe('AttentionBlock', () => {
     expect(
       screen.getByRole('link', { name: 'Abrir turno' }),
     ).toBeInTheDocument()
+  })
+
+  describe('con más de 5 alertas', () => {
+    const manyShifts = Array.from({ length: 7 }, (_, index) =>
+      makeShift({ id: `s${index}` }),
+    )
+    const manyAssignments = manyShifts.map((shift, index) =>
+      makeAssignment({
+        id: `a${index}`,
+        shiftId: shift.id,
+        employeeId: `e${index}`,
+        employeeFirstName: `Persona${index}`,
+        status: 'expected',
+        displayStatus: 'no_record',
+      }),
+    )
+    const manyItems = computeAttention(manyShifts, manyAssignments, NOW)
+
+    it('en celular muestra 5 y despliega el resto con "Ver las N"', () => {
+      mockDesktopViewport(false)
+      renderBlock({ items: manyItems })
+      expect(screen.getAllByText(/no registró el inicio/)).toHaveLength(5)
+      fireEvent.click(screen.getByRole('button', { name: 'Ver las 7' }))
+      expect(screen.getAllByText(/no registró el inicio/)).toHaveLength(7)
+      expect(
+        screen.getByRole('button', { name: 'Ver menos' }),
+      ).toBeInTheDocument()
+    })
+
+    it('en escritorio muestra todas, sin botón', () => {
+      renderBlock({ items: manyItems })
+      expect(screen.getAllByText(/no registró el inicio/)).toHaveLength(7)
+      expect(screen.queryByRole('button', { name: /Ver las/ })).toBeNull()
+    })
   })
 
   it('sin alertas dice que todo está en orden', () => {

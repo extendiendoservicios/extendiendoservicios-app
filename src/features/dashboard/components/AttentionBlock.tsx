@@ -1,5 +1,8 @@
+import { useState } from 'react'
 import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { cn } from 'cn'
+import { Button } from '@/components/ui/button'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { formatMinutes } from '@/lib/format'
 import { shiftFranjaLabel } from '../labels'
 import type { AttentionItem, AttentionKind } from '../attention'
@@ -15,6 +18,13 @@ const KIND_META: Record<
   absence: { title: 'avisó que no va', severity: 'warn' },
   uncovered: { title: 'Turno sin cubrir', severity: 'crit' },
 }
+
+/**
+ * En celular (< 1024 px) se muestran las primeras alertas, que ya vienen
+ * ordenadas por urgencia, para no enterrar "Servicios de hoy" (decisión de
+ * Mike, 1 oct 2026). En escritorio se muestran todas.
+ */
+const MOBILE_VISIBLE_ITEMS = 5
 
 function describeItem(item: AttentionItem): { title: string; detail: string } {
   const meta = KIND_META[item.kind]
@@ -62,6 +72,12 @@ function AttentionBlock({
   onRecord,
   onAssign,
 }: AttentionBlockProps) {
+  const isDesktop = useMediaQuery('(min-width: 1024px)')
+  const [isExpanded, setIsExpanded] = useState(false)
+  const isCollapsible = !isDesktop && items.length > MOBILE_VISIBLE_ITEMS
+  const visibleItems =
+    isCollapsible && !isExpanded ? items.slice(0, MOBILE_VISIBLE_ITEMS) : items
+
   return (
     <section
       aria-label="Requiere atención"
@@ -86,61 +102,76 @@ function AttentionBlock({
           No hay nada pendiente: la operación de hoy está en orden.
         </p>
       ) : (
-        <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {items.map((item) => {
-            const { title, detail } = describeItem(item)
-            const severity = KIND_META[item.kind].severity
-            const phone = item.assignment
-              ? phones?.get(item.assignment.employeeId)
-              : undefined
-            const showAssign =
-              canAssign(item.shiftId) &&
-              item.shift != null &&
-              (item.kind === 'absence' ||
-                item.kind === 'uncovered' ||
-                item.kind === 'noRecord')
-            return (
-              <li
-                key={item.key}
-                className={cn(
-                  'flex flex-col gap-2 rounded-lg border p-3',
-                  severity === 'crit'
-                    ? 'border-danger-border bg-danger-bg'
-                    : 'border-warning-border bg-warning-bg',
-                )}
-              >
-                <div
+        <>
+          <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {visibleItems.map((item) => {
+              const { title, detail } = describeItem(item)
+              const severity = KIND_META[item.kind].severity
+              const phone = item.assignment
+                ? phones?.get(item.assignment.employeeId)
+                : undefined
+              const showAssign =
+                canAssign(item.shiftId) &&
+                item.shift != null &&
+                (item.kind === 'absence' ||
+                  item.kind === 'uncovered' ||
+                  item.kind === 'noRecord')
+              return (
+                <li
+                  key={item.key}
                   className={cn(
-                    'flex items-start gap-2',
+                    'flex flex-col gap-2 rounded-lg border p-3',
                     severity === 'crit'
-                      ? 'text-danger-800'
-                      : 'text-warning-800',
+                      ? 'border-danger-border bg-danger-bg'
+                      : 'border-warning-border bg-warning-bg',
                   )}
                 >
-                  <AlertTriangle
-                    aria-hidden="true"
-                    className="mt-[2px] size-4 shrink-0"
-                  />
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-semibold">{title}</p>
-                    <p className="text-[12px] text-text-2">{detail}</p>
+                  <div
+                    className={cn(
+                      'flex items-start gap-2',
+                      severity === 'crit'
+                        ? 'text-danger-800'
+                        : 'text-warning-800',
+                    )}
+                  >
+                    <AlertTriangle
+                      aria-hidden="true"
+                      className="mt-[2px] size-4 shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-semibold">{title}</p>
+                      <p className="text-[12px] text-text-2">{detail}</p>
+                    </div>
                   </div>
-                </div>
-                <RowActions
-                  shiftId={item.shiftId}
-                  phone={phone}
-                  onRecord={canRecord(item) ? () => onRecord(item) : undefined}
-                  onAssign={showAssign ? () => onAssign(item) : undefined}
-                  assignLabel={
-                    item.kind === 'uncovered'
-                      ? 'Asignar empleado'
-                      : 'Asignar reemplazo'
-                  }
-                />
-              </li>
-            )
-          })}
-        </ul>
+                  <RowActions
+                    shiftId={item.shiftId}
+                    phone={phone}
+                    onRecord={
+                      canRecord(item) ? () => onRecord(item) : undefined
+                    }
+                    onAssign={showAssign ? () => onAssign(item) : undefined}
+                    assignLabel={
+                      item.kind === 'uncovered'
+                        ? 'Asignar empleado'
+                        : 'Asignar reemplazo'
+                    }
+                  />
+                </li>
+              )
+            })}
+          </ul>
+          {isCollapsible && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-3 w-full"
+              aria-expanded={isExpanded}
+              onClick={() => setIsExpanded((value) => !value)}
+            >
+              {isExpanded ? 'Ver menos' : `Ver las ${items.length}`}
+            </Button>
+          )}
+        </>
       )}
     </section>
   )
