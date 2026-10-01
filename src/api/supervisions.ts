@@ -380,17 +380,24 @@ export async function fetchSupervisorCandidates(): Promise<
     .eq('status', 'active')
     .eq('profile_is_active', true)
     .is('deleted_at', null)
-    .order('last_name', { ascending: true })
-    .order('first_name', { ascending: true })
 
   if (error) {
     throw fromPostgrestError(error)
   }
-  return (data ?? []).map((row) => ({
-    profileId: row.profile_id as string,
-    firstName: row.first_name as string,
-    lastName: row.last_name as string,
-  }))
+  // ADM-14 muestra "Nombre Apellido": se ordena por ese mismo texto, con las
+  // reglas del español (acentos y ñ), y no por apellido en la base.
+  return (data ?? [])
+    .map((row) => ({
+      profileId: row.profile_id as string,
+      firstName: row.first_name as string,
+      lastName: row.last_name as string,
+    }))
+    .sort((a, b) =>
+      `${a.firstName} ${a.lastName}`.localeCompare(
+        `${b.firstName} ${b.lastName}`,
+        'es',
+      ),
+    )
 }
 
 // -------------------------------------------------------------------------
