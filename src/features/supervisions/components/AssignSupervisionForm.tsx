@@ -102,10 +102,10 @@ function AssignSupervisionForm({
         toast.warning('Asignamos igual, con una advertencia: revisá el aviso.')
       } else {
         toast.success('Asignamos al supervisor.')
+        // Sin `onDone()`: su `navigate(-1)` pisaría este `replace`.
         void navigate(`/admin/supervisiones/${result.supervision.id}`, {
           replace: true,
         })
-        onDone()
       }
     } catch (error) {
       toast.error(
@@ -202,7 +202,6 @@ function AssignSupervisionForm({
               void navigate(`/admin/supervisiones/${assignedId}`, {
                 replace: true,
               })
-              onDone()
             }}
           >
             Ver supervisión

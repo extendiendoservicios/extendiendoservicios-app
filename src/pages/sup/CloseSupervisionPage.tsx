@@ -59,6 +59,9 @@ export default function CloseSupervisionPage() {
   const [reason, setReason] = useState('')
   const [fieldError, setFieldError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  // Al cerrar desde acá, la consulta se revalida con el estado nuevo antes
+  // de `navigate('/sup')`: la guarda de abajo no debe mandarla al detalle.
+  const [closing, setClosing] = useState(false)
 
   if (isLoading) {
     return (
@@ -74,7 +77,7 @@ export default function CloseSupervisionPage() {
       </Alert>
     )
   }
-  if (CLOSED_STATUSES.has(supervision.status)) {
+  if (CLOSED_STATUSES.has(supervision.status) && !closing) {
     return <Navigate to={`/sup/supervisiones/${supervision.id}`} replace />
   }
 
@@ -91,6 +94,7 @@ export default function CloseSupervisionPage() {
 
   async function handleComplete() {
     setSubmitError(null)
+    setClosing(true)
     try {
       await complete.mutateAsync({
         supervisionId: supervision!.id,
@@ -98,6 +102,7 @@ export default function CloseSupervisionPage() {
       })
       void navigate('/sup', { replace: true })
     } catch (mutationError) {
+      setClosing(false)
       setSubmitError(
         isApiError(mutationError)
           ? mutationError.message
@@ -113,6 +118,7 @@ export default function CloseSupervisionPage() {
       setFieldError('Indicá el motivo.')
       return
     }
+    setClosing(true)
     try {
       await markNotDone.mutateAsync({
         supervisionId: supervision!.id,
@@ -120,6 +126,7 @@ export default function CloseSupervisionPage() {
       })
       void navigate('/sup', { replace: true })
     } catch (mutationError) {
+      setClosing(false)
       setSubmitError(
         isApiError(mutationError)
           ? mutationError.message

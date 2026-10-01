@@ -226,16 +226,8 @@ test.describe('MOB-SUP-013: app del supervisor, turno completo con geolocalizaci
         await page
           .getByRole('button', { name: 'Completar supervisión' })
           .click()
-        // DEFECTO (ver el informe de este encargo): `handleComplete` (`CloseSupervisionPage.tsx`)
-        // navega a `/sup` después de completar, pero en la práctica la página queda en el
-        // detalle (`/sup/supervisiones/{id}`) -- la propia pantalla de cierre se redirige sola a
-        // ese detalle apenas `supervision.status` pasa a `completed` (guarda
-        // `CLOSED_STATUSES`/`<Navigate>`), carrera que parece ganarle al `navigate('/sup')`
-        // explícito. La supervisión sí queda completada (se verifica contra la Base, no contra la
-        // URL): no se bloquea el resto de la prueba por este defecto.
-        await expect(page).toHaveURL(
-          new RegExp(`/sup/supervisiones/${supervisionAId}$`),
-        )
+        // Vuelve a "Hoy" (SUP-02) y la supervisión queda completada en la base.
+        await expect(page).toHaveURL(/\/sup$/)
         expect(await fetchSupervisionStatus(admin, supervisionAId)).toBe(
           'completed',
         )
@@ -251,10 +243,7 @@ test.describe('MOB-SUP-013: app del supervisor, turno completo con geolocalizaci
         await page
           .getByRole('button', { name: 'Marcar como no realizada' })
           .click()
-        // Mismo defecto que el paso anterior: queda en el detalle, no en `/sup`.
-        await expect(page).toHaveURL(
-          new RegExp(`/sup/supervisiones/${supervisionBId}$`),
-        )
+        await expect(page).toHaveURL(/\/sup$/)
         expect(await fetchSupervisionStatus(admin, supervisionBId)).toBe(
           'not_done',
         )

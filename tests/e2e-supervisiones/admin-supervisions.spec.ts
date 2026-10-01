@@ -161,19 +161,7 @@ test.describe('SUP-013: administración de supervisiones (ADM-13 a ADM-15)', () 
         })
         await expect(verButton).toBeVisible()
         await verButton.click()
-        // DEFECTO (ver el informe de este encargo): "Ver supervisión" no entra al detalle --
-        // vuelve al listado (ADM-13). `AssignSupervisionForm.tsx` navega a
-        // `/admin/supervisiones/{id}` con `replace:true` y LUEGO llama `onDone()`
-        // (`AssignSupervisionPage.handleClose`), que hace `navigate(-1)` porque
-        // `location.key !== 'default'` (se entró por un enlace, no por una URL directa) -- ese
-        // `navigate(-1)` pisa el `replace` anterior y vuelve al listado en vez de quedarse en el
-        // detalle. Seguimos por el listado, que sí lleva al detalle por su propio enlace: no hace
-        // que el resto de la prueba dependa de este defecto.
-        await expect(page).toHaveURL(/\/admin\/supervisiones$/)
-        const row = page.getByRole('row', {
-          name: new RegExp(`${client.legalName}.*${site.name}.*09:00–10:00`),
-        })
-        await row.getByRole('link').click()
+        // "Ver supervisión" entra directo al detalle de la supervisión recién creada.
         await expect(page).toHaveURL(/\/admin\/supervisiones\/[^/]+$/)
         warningSupervisionId = page.url().split('/supervisiones/')[1]
       })
