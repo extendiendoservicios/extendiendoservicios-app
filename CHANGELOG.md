@@ -7,6 +7,30 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.12.0] - 2026-10-01
+
+Supervisiones y calificaciones (F15). La administración asigna un supervisor a un turno y sigue cada supervisión. El supervisor, desde el celular, ve sus supervisiones del día, registra el inicio y el fin en la sede con la ubicación opcional, califica con estrellas y comentario a cada empleado, cierra la supervisión o la marca como no realizada, y consulta su historial. Trae una migración nueva, `0029_rpc_supervisions.sql`.
+
+### Agregado
+
+- RPC de supervisiones y calificaciones (P15.1, SUP-002 a SUP-007), en la migración `0029_rpc_supervisions.sql`:
+  - `assign_supervision` y `cancel_supervision` (dueño, o administrador con `manage_supervisions`). Si el supervisor también trabaja en ese turno, se advierte y se guarda igual.
+  - `supervision_check_in` y `supervision_check_out`, con la hora del servidor y la ubicación opcional.
+  - `rate_employee`: de 1 a 5 estrellas con comentario. El supervisor edita hasta lo último entre el fin del turno y el fin registrado (P-083); el dueño y el administrador con `edit_ratings`, siempre. Nadie puede calificarse a sí mismo (CB-13).
+  - `complete_supervision` y `mark_supervision_not_done` (con motivo obligatorio).
+  - `v_supervisions_admin` y `v_my_supervisions`.
+  - pgTAP: 77 aserciones nuevas.
+- Componente `StarRating` para calificar y mostrar puntajes (P15.2, DS).
+- Supervisiones en administración (P15.3, SUP-008 a SUP-012): listado con filtros, asignar supervisión (también desde el detalle del turno), detalle con inicio, fin, criterios y calificaciones, edición de calificaciones, cancelar y marcar como no realizada. Guía técnica en `docs/features/supervisiones.md`.
+- App del supervisor en el celular (P15.4 y P15.5, MOB-SUP-002 a MOB-SUP-012 y MOB-SUP-016): Hoy con los próximos días, detalle, registro de inicio y fin, calificar y editar, cerrar con aviso de empleados sin calificar, "No se pudo realizar" e historial.
+- Pruebas (P15.6, SUP-013, MOB-SUP-013, MOB-SUP-014): suite e2e `tests/e2e-supervisiones/` para la administración en escritorio y el supervisor a 390 px, con y sin ubicación, y supervisiones y calificaciones en la suite de permisos por API.
+
+### Corregido
+
+- "Marcar como no realizada" ya no exige `manage_supervisions` al administrador, igual que la base (#94).
+- "Ver supervisión", después de asignar, abre el detalle en vez de volver al listado; y cerrar una supervisión desde el celular vuelve a Hoy (#95).
+- La suite de permisos ya no depende de qué turnos arme el seed cada día, y la prueba pgTAP `0028` ya no falla según la hora del CI.
+
 ## [0.11.0] - 2026-09-27
 
 Avisos, demoras y asistencia administrativa (F14). El empleado avisa desde el celular que llega tarde o que no va. La administración sigue la asistencia del día, registra el inicio, el fin o un aviso en nombre del empleado con motivo y hora editable, y cierra asignaciones sin fin. Trae dos migraciones nuevas, `0027_rpc_notices_admin_attendance.sql` y `0028_v_my_day_own_actions.sql`.
