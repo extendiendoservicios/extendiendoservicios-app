@@ -4,10 +4,13 @@
 // lo que no" (encargo P04.7). Tratamiento representativo, no exhaustivo (igual que
 // employee.permissions.ts): la suite completa es TEST-019 (F18).
 //
-// Supervisora principal: paula.lemos, que en el seed actual supervisa dos turnos, ambos con
-// maria.gomez como única empleada asignada (verificado en el reporte de esta tarea) -- por eso
-// maria.gomez hace de "su equipo" acá. "Otra supervisora" (ajena): noelia.vera. "Empleado fuera
-// de su equipo": juan.perez.
+// Supervisora principal: paula.lemos, que en el seed actual supervisa turnos con maria.gomez
+// entre sus empleadas asignadas (verificado en el reporte de esta tarea) -- por eso maria.gomez
+// hace de "su equipo" acá. "Otra supervisora" (ajena): noelia.vera. "Empleado fuera de su
+// equipo": se calcula en tiempo de ejecución con `findEmployeeWithoutSharedShifts`
+// (helpers/team-lookups.ts), no un email fijo (`juan.perez`) -- el seed genera turnos recurrentes
+// relativos a "hoy", así que quién integra el equipo de paula.lemos cambia según el día de la
+// semana en que corra la suite (hallazgo del reporte de pausa de P15.6).
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
@@ -29,6 +32,15 @@ import {
   createFixtureShiftTask,
   deleteFixtureShiftTask,
 } from './helpers/checklist-fixtures.ts'
+import {
+  cleanupFixtureSupervision,
+  createFixtureSupervision,
+  type FixtureSupervision,
+} from './helpers/supervision-fixtures.ts'
+import {
+  fetchSupervisedShiftIds,
+  findEmployeeWithoutSharedShifts,
+} from './helpers/team-lookups.ts'
 
 const env = readPermissionsTestEnv()
 if (!env) console.warn(missingEnvWarning('supervisor.permissions.ts'))
@@ -47,15 +59,23 @@ describe.skipIf(!env)(
       const login = await loginAs(SEED_ACCOUNTS.supervisors[0]) // paula.lemos
       supervisora = login.client
       supervisoraId = login.userId
-      // Los dos ids se resuelven acá, una sola vez (no dentro de cada `it`): con los cuatro
-      // archivos de esta carpeta corriendo en paralelo, reconsultar `auth.admin.listUsers()`
-      // repetidas veces multiplica las llamadas concurrentes a la Admin API sin necesidad -- ver
-      // el reporte de esta tarea para el falso positivo intermitente que motivó este cambio.
-      empleadoAjenoId = await resolveUserId(admin, SEED_ACCOUNTS.employees[1]) // juan.perez
+      // Los ids se resuelven acá, una sola vez (no dentro de cada `it`): con los cuatro archivos
+      // de esta carpeta corriendo en paralelo, reconsultar `auth.admin.listUsers()` repetidas
+      // veces multiplica las llamadas concurrentes a la Admin API sin necesidad -- ver el
+      // reporte de esta tarea para el falso positivo intermitente que motivó este cambio.
       empleadoDeSuEquipoId = await resolveUserId(
         admin,
         SEED_ACCOUNTS.employees[0],
       ) // maria.gomez
+      const turnosSupervisadosHoy = await fetchSupervisedShiftIds(
+        admin,
+        supervisoraId,
+      )
+      empleadoAjenoId = await findEmployeeWithoutSharedShifts(
+        admin,
+        turnosSupervisadosHoy,
+        empleadoDeSuEquipoId,
+      )
     })
 
     afterAll(async () => {
@@ -515,6 +535,107 @@ describe.skipIf(!env)(
           p_reason: 'e2e-perm no debería aplicarse',
         })
         expect(error?.hint).toBe('FORBIDDEN')
+      })
+    })
+
+    // MOB-SUP-014/TEST-012 (P15.6, 08_Fases_y_Backlog.md F15, `06` secciones 12 y 13): una
+    // supervisión de OTRO supervisor (noelia.vera, ajena a paula.lemos) -- ninguna de las siete
+    // RPC de `0029_rpc_supervisions.sql` deja tocarla, ni `assign_supervision`/
+    // `cancel_supervision` (esos dos exigen `manage_supervisions`, que este supervisor no tiene
+    // por ser supervisor a secas: FORBIDDEN antes de mirar de quién es la supervisión).
+    describe('supervisión ajena (F15): NOT_YOUR_SUPERVISION o FORBIDDEN según la RPC', () => {
+      const ANY_UUID = '00000000-0000-0000-0000-000000000000'
+      let fixture: FixtureSupervision
+      let dueno: TestClient
+      let ajenoSupervisorId: string
+
+      beforeAll(async () => {
+        const ownerLogin = await loginAs(SEED_ACCOUNTS.owner)
+        dueno = ownerLogin.client
+        ajenoSupervisorId = await resolveUserId(
+          admin,
+          SEED_ACCOUNTS.supervisors[1], // noelia.vera, ajena a paula.lemos
+        )
+        const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+          .toISOString()
+          .slice(0, 10)
+        fixture = await createFixtureSupervision(
+          admin,
+          dueno,
+          tomorrow,
+          '22:15',
+          '23:15',
+          ajenoSupervisorId,
+        )
+      })
+
+      afterAll(async () => {
+        await cleanupFixtureSupervision(dueno, fixture)
+        await dueno.auth.signOut()
+        await cleanupFixtureShift(admin, fixture)
+      })
+
+      it('no puede llamar assign_supervision (sin manage_supervisions)', async () => {
+        const { error } = await supervisora.rpc('assign_supervision', {
+          p_shift_id: fixture.shiftId,
+          p_supervisor_id: supervisoraId,
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede llamar cancel_supervision sobre la supervisión ajena (sin manage_supervisions)', async () => {
+        const { error } = await supervisora.rpc('cancel_supervision', {
+          p_supervision_id: fixture.supervisionId,
+          p_reason: 'e2e-perm no debería aplicarse',
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('NOT_YOUR_SUPERVISION: supervision_check_in sobre la supervisión ajena', async () => {
+        const { error } = await supervisora.rpc('supervision_check_in', {
+          p_supervision_id: fixture.supervisionId,
+        })
+        expect(error?.hint).toBe('NOT_YOUR_SUPERVISION')
+      })
+
+      it('NOT_YOUR_SUPERVISION: supervision_check_out sobre la supervisión ajena', async () => {
+        const { error } = await supervisora.rpc('supervision_check_out', {
+          p_supervision_id: fixture.supervisionId,
+        })
+        expect(error?.hint).toBe('NOT_YOUR_SUPERVISION')
+      })
+
+      it('NOT_YOUR_SUPERVISION: complete_supervision sobre la supervisión ajena', async () => {
+        const { error } = await supervisora.rpc('complete_supervision', {
+          p_supervision_id: fixture.supervisionId,
+        })
+        expect(error?.hint).toBe('NOT_YOUR_SUPERVISION')
+      })
+
+      it('NOT_YOUR_SUPERVISION: mark_supervision_not_done sobre la supervisión ajena', async () => {
+        const { error } = await supervisora.rpc('mark_supervision_not_done', {
+          p_supervision_id: fixture.supervisionId,
+          p_reason: 'e2e-perm no debería aplicarse',
+        })
+        expect(error?.hint).toBe('NOT_YOUR_SUPERVISION')
+      })
+
+      it('NOT_YOUR_SUPERVISION: rate_employee sobre la supervisión ajena', async () => {
+        const { error } = await supervisora.rpc('rate_employee', {
+          p_supervision_id: fixture.supervisionId,
+          p_assignment_id: ANY_UUID,
+          p_score: 5,
+        })
+        expect(error?.hint).toBe('NOT_YOUR_SUPERVISION')
+      })
+
+      it('no lee supervision_attendance de la supervisión ajena (0012: RLS por supervisor_id)', async () => {
+        const { data, error } = await supervisora
+          .from('supervision_attendance')
+          .select('*')
+          .eq('supervision_id', fixture.supervisionId)
+        expect(error).toBeNull()
+        expect(data).toEqual([])
       })
     })
   },

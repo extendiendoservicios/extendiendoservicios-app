@@ -13,8 +13,11 @@
 // asignación propia) lo deja como estaba al final de cada test.
 //
 // Empleado principal: maria.gomez (SEED_ACCOUNTS.employees[0]). "Otro empleado" (ajeno, sin
-// turnos en común -- verificado en el reporte de esta tarea: el seed actual da un turno por
-// asignación, así que ningún par de empleados comparte turno hoy): juan.perez.
+// turnos en común con ella hoy): se calcula en tiempo de ejecución con
+// `findEmployeeWithoutSharedShifts` (helpers/team-lookups.ts), no un email fijo -- el seed genera
+// turnos recurrentes relativos a "hoy", así que qué par de empleados comparte turno cambia según
+// el día de la semana en que corra la suite (hallazgo del reporte de pausa de P15.6: con
+// `juan.perez` fijo, la suite fallaba los días en que el seed sí lo junta con maria.gomez).
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
@@ -36,6 +39,15 @@ import {
   createFixtureShiftTask,
   deleteFixtureShiftTask,
 } from './helpers/checklist-fixtures.ts'
+import {
+  cleanupFixtureSupervision,
+  createFixtureSupervision,
+  type FixtureSupervision,
+} from './helpers/supervision-fixtures.ts'
+import {
+  fetchVigentShiftIds,
+  findEmployeeWithoutSharedShifts,
+} from './helpers/team-lookups.ts'
 
 const env = readPermissionsTestEnv()
 if (!env) console.warn(missingEnvWarning('employee.permissions.ts'))
@@ -53,7 +65,12 @@ describe.skipIf(!env)(
       const login = await loginAs(SEED_ACCOUNTS.employees[0])
       empleado = login.client
       empleadoId = login.userId
-      otroEmpleadoId = await resolveUserId(admin, SEED_ACCOUNTS.employees[1])
+      const misTurnosDeHoy = await fetchVigentShiftIds(admin, empleadoId)
+      otroEmpleadoId = await findEmployeeWithoutSharedShifts(
+        admin,
+        misTurnosDeHoy,
+        empleadoId,
+      )
     })
 
     afterAll(async () => {
@@ -302,14 +319,29 @@ describe.skipIf(!env)(
         expect(data).toHaveLength(1)
       })
 
-      it('RB-X02: lee exactamente sus propias asignaciones vigentes, ni una de más ni una de menos', async () => {
+      it('RB-X02: lee exactamente las asignaciones que la RLS le permite (04 sección 7.2, P-103: propias + compañeros del mismo turno), ni una de más ni una de menos', async () => {
         const mine = await empleado.from('assignments').select('id')
         expect(mine.error).toBeNull()
+
+        // `expected` reproduce la regla de la RLS (P-103), no solo "sus propias filas": el
+        // empleado también ve las asignaciones de sus compañeros en los turnos donde él mismo
+        // está asignado -- filtrar `expected` únicamente por `employee_id = empleadoId` daba un
+        // falso negativo cada vez que el seed lo junta con un compañero hoy (hallazgo del reporte
+        // de pausa de P15.6).
+        const misTurnos = await admin
+          .from('assignments')
+          .select('shift_id')
+          .eq('employee_id', empleadoId)
+          .is('removed_at', null)
+        const misTurnosIds = (
+          (misTurnos.data ?? []) as { shift_id: string }[]
+        ).map((r) => r.shift_id)
+        expect(misTurnosIds.length).toBeGreaterThan(0)
 
         const expected = await admin
           .from('assignments')
           .select('id')
-          .eq('employee_id', empleadoId)
+          .in('shift_id', misTurnosIds)
           .is('removed_at', null)
 
         const mineRows = (mine.data ?? []) as { id: string }[]
@@ -317,9 +349,6 @@ describe.skipIf(!env)(
         const mineIds = new Set(mineRows.map((r) => r.id))
         const expectedIds = new Set(expectedRows.map((r) => r.id))
         expect(mineIds).toEqual(expectedIds)
-        // Si esto diera 0, el caso de arriba (mineIds === expectedIds con ambos vacíos) no
-        // probaría nada: confirma que el empleado de prueba tiene asignaciones reales en el seed.
-        expect(mineIds.size).toBeGreaterThan(0)
       })
 
       it('lee los feriados (04 sección 7.2: "holidays | Todos autenticados.")', async () => {
@@ -705,6 +734,115 @@ describe.skipIf(!env)(
         const { error } = await empleado.rpc('close_assignment', {
           p_assignment_id: fixtureAssignmentId,
           p_reason: 'e2e-perm no debería aplicarse',
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+    })
+
+    // MOB-SUP-014/TEST-012 (P15.6, 08_Fases_y_Backlog.md F15, CB-15, `06` secciones 12 y 13): el
+    // empleado no ve `supervision_attendance` (además de `supervisions`/`ratings`, ya cubiertos
+    // más arriba en este archivo desde P04.7/P10.4) ni tiene ningún canal en las siete RPC de
+    // `0029_rpc_supervisions.sql`. `assign_supervision`/`cancel_supervision`/`supervision_check_in`/
+    // `supervision_check_out`/`complete_supervision` cortan con FORBIDDEN ANTES de buscar la fila
+    // (`app.require_capability`/`app.require_role` como primera línea): un uuid cualquiera alcanza.
+    // `mark_supervision_not_done` y `rate_employee` buscan la fila PRIMERO -- con un uuid
+    // cualquiera dan `SUPERVISION_NOT_FOUND`, no `FORBIDDEN`, así que necesitan una supervisión de
+    // fixture real (de otro supervisor, no del empleado bajo prueba) para probar el rechazo de
+    // verdad.
+    describe('supervisiones y calificaciones (F15): supervision_attendance sin filas, ninguna de las siete RPC es para el rol employee', () => {
+      const ANY_UUID = '00000000-0000-0000-0000-000000000000'
+      let fixture: FixtureSupervision
+      let dueno: TestClient
+
+      beforeAll(async () => {
+        const real = await admin
+          .from('supervision_attendance')
+          .select('id', { count: 'exact', head: true })
+        expect(real.count ?? 0).toBeGreaterThan(0)
+
+        const ownerLogin = await loginAs(SEED_ACCOUNTS.owner)
+        dueno = ownerLogin.client
+        const supervisorId = await resolveUserId(
+          admin,
+          SEED_ACCOUNTS.supervisors[0],
+        )
+        const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+          .toISOString()
+          .slice(0, 10)
+        fixture = await createFixtureSupervision(
+          admin,
+          dueno,
+          tomorrow,
+          '21:00',
+          '22:00',
+          supervisorId,
+        )
+      })
+
+      afterAll(async () => {
+        await cleanupFixtureSupervision(dueno, fixture)
+        await dueno.auth.signOut()
+        await cleanupFixtureShift(admin, fixture)
+      })
+
+      it('CB-15: no lee ninguna fila de supervision_attendance, aunque existan registros reales (04 sección 7.2, P-084)', async () => {
+        const { data, error } = await empleado
+          .from('supervision_attendance')
+          .select('*')
+        expect(error).toBeNull()
+        expect(data).toEqual([])
+      })
+
+      it('no puede llamar assign_supervision (06 sección 12: "O; A + manage_supervisions")', async () => {
+        const { error } = await empleado.rpc('assign_supervision', {
+          p_shift_id: ANY_UUID,
+          p_supervisor_id: empleadoId,
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede llamar cancel_supervision', async () => {
+        const { error } = await empleado.rpc('cancel_supervision', {
+          p_supervision_id: ANY_UUID,
+          p_reason: 'e2e-perm no debería aplicarse',
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede llamar supervision_check_in (06 sección 12: "S (propia)", sin rol para employee)', async () => {
+        const { error } = await empleado.rpc('supervision_check_in', {
+          p_supervision_id: ANY_UUID,
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede llamar supervision_check_out', async () => {
+        const { error } = await empleado.rpc('supervision_check_out', {
+          p_supervision_id: ANY_UUID,
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede llamar complete_supervision', async () => {
+        const { error } = await empleado.rpc('complete_supervision', {
+          p_supervision_id: ANY_UUID,
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede llamar mark_supervision_not_done sobre una supervisión real de otro supervisor', async () => {
+        const { error } = await empleado.rpc('mark_supervision_not_done', {
+          p_supervision_id: fixture.supervisionId,
+          p_reason: 'e2e-perm no debería aplicarse',
+        })
+        expect(error?.hint).toBe('FORBIDDEN')
+      })
+
+      it('no puede llamar rate_employee sobre una supervisión real de otro supervisor', async () => {
+        const { error } = await empleado.rpc('rate_employee', {
+          p_supervision_id: fixture.supervisionId,
+          p_assignment_id: ANY_UUID,
+          p_score: 5,
         })
         expect(error?.hint).toBe('FORBIDDEN')
       })
