@@ -7,6 +7,31 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.13.0] - 2026-10-01
+
+Tablero operativo (F16). El resumen de la administración (ADM-02) muestra en un vistazo qué pasa hoy: los números del día, lo que requiere atención con sus acciones directas y la tabla de servicios, y se actualiza solo cada 30 segundos. Sin migraciones.
+
+### Agregado
+
+- Tablero del día en `/admin` (P16.1, DASH-001 a DASH-007, DASH-010):
+  - Cinco KPIs: turnos de hoy (con clientes y sedes), presentes, próximos en 2 horas, sin registro y avisos (ausencias y demoras en una tarjeta).
+  - "Requiere atención", ordenado por urgencia: sin registro pasada la hora de inicio, en curso pasada la hora de fin, ausencia avisada y turno sin cubrir. Acciones: abrir turno, registrar en nombre de, asignar reemplazo o empleado, y llamar. En el celular muestra las 5 primeras y un botón "Ver las N".
+  - "Servicios de hoy" con filtro por franja y las mismas acciones.
+  - Actualización cada 30 segundos con el indicador "Actualizado hace…", y supervisiones de hoy como bloque secundario.
+  - Versión para celular: KPIs de dos en dos, tarjetas y sin scroll horizontal.
+  - Guía técnica en `docs/features/tablero.md`.
+- `DataTable` suma el lugar `card: 'actions'`, que pone los botones en una fila propia al pie de cada tarjeta.
+- Pruebas (P16.2, DASH-008, DASH-009, TEST-013): suite e2e `tests/e2e-tablero/` (escenario de alertas, acciones, 390 px y permisos), prueba de rendimiento con 24 turnos y 40 asignaciones (máximo medido 856 ms, contra el límite de 1,5 s) y unitarios de bordes del cálculo.
+
+### Corregido
+
+- En Asistencia (ADM-10) en el celular, los botones de cada tarjeta aplastaban el nombre del empleado y se salían de la tarjeta (#98).
+- El selector de supervisores de ADM-14 queda en orden alfabético por nombre (#100).
+
+### Cambiado
+
+- El CI tiene 25 minutos de límite en lugar de 15 (#100).
+
 ## [0.12.0] - 2026-10-01
 
 Supervisiones y calificaciones (F15). La administración asigna un supervisor a un turno y sigue cada supervisión. El supervisor, desde el celular, ve sus supervisiones del día, registra el inicio y el fin en la sede con la ubicación opcional, califica con estrellas y comentario a cada empleado, cierra la supervisión o la marca como no realizada, y consulta su historial. Trae una migración nueva, `0029_rpc_supervisions.sql`.
