@@ -4,10 +4,13 @@
 // lo que no" (encargo P04.7). Tratamiento representativo, no exhaustivo (igual que
 // employee.permissions.ts): la suite completa es TEST-019 (F18).
 //
-// Supervisora principal: paula.lemos, que en el seed actual supervisa dos turnos, ambos con
-// maria.gomez como única empleada asignada (verificado en el reporte de esta tarea) -- por eso
-// maria.gomez hace de "su equipo" acá. "Otra supervisora" (ajena): noelia.vera. "Empleado fuera
-// de su equipo": juan.perez.
+// Supervisora principal: paula.lemos, que en el seed actual supervisa turnos con maria.gomez
+// entre sus empleadas asignadas (verificado en el reporte de esta tarea) -- por eso maria.gomez
+// hace de "su equipo" acá. "Otra supervisora" (ajena): noelia.vera. "Empleado fuera de su
+// equipo": se calcula en tiempo de ejecución con `findEmployeeWithoutSharedShifts`
+// (helpers/team-lookups.ts), no un email fijo (`juan.perez`) -- el seed genera turnos recurrentes
+// relativos a "hoy", así que quién integra el equipo de paula.lemos cambia según el día de la
+// semana en que corra la suite (hallazgo del reporte de pausa de P15.6).
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
@@ -34,6 +37,10 @@ import {
   createFixtureSupervision,
   type FixtureSupervision,
 } from './helpers/supervision-fixtures.ts'
+import {
+  fetchSupervisedShiftIds,
+  findEmployeeWithoutSharedShifts,
+} from './helpers/team-lookups.ts'
 
 const env = readPermissionsTestEnv()
 if (!env) console.warn(missingEnvWarning('supervisor.permissions.ts'))
@@ -52,15 +59,23 @@ describe.skipIf(!env)(
       const login = await loginAs(SEED_ACCOUNTS.supervisors[0]) // paula.lemos
       supervisora = login.client
       supervisoraId = login.userId
-      // Los dos ids se resuelven acá, una sola vez (no dentro de cada `it`): con los cuatro
-      // archivos de esta carpeta corriendo en paralelo, reconsultar `auth.admin.listUsers()`
-      // repetidas veces multiplica las llamadas concurrentes a la Admin API sin necesidad -- ver
-      // el reporte de esta tarea para el falso positivo intermitente que motivó este cambio.
-      empleadoAjenoId = await resolveUserId(admin, SEED_ACCOUNTS.employees[1]) // juan.perez
+      // Los ids se resuelven acá, una sola vez (no dentro de cada `it`): con los cuatro archivos
+      // de esta carpeta corriendo en paralelo, reconsultar `auth.admin.listUsers()` repetidas
+      // veces multiplica las llamadas concurrentes a la Admin API sin necesidad -- ver el
+      // reporte de esta tarea para el falso positivo intermitente que motivó este cambio.
       empleadoDeSuEquipoId = await resolveUserId(
         admin,
         SEED_ACCOUNTS.employees[0],
       ) // maria.gomez
+      const turnosSupervisadosHoy = await fetchSupervisedShiftIds(
+        admin,
+        supervisoraId,
+      )
+      empleadoAjenoId = await findEmployeeWithoutSharedShifts(
+        admin,
+        turnosSupervisadosHoy,
+        empleadoDeSuEquipoId,
+      )
     })
 
     afterAll(async () => {

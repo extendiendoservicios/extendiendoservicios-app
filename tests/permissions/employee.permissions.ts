@@ -13,8 +13,11 @@
 // asignación propia) lo deja como estaba al final de cada test.
 //
 // Empleado principal: maria.gomez (SEED_ACCOUNTS.employees[0]). "Otro empleado" (ajeno, sin
-// turnos en común -- verificado en el reporte de esta tarea: el seed actual da un turno por
-// asignación, así que ningún par de empleados comparte turno hoy): juan.perez.
+// turnos en común con ella hoy): se calcula en tiempo de ejecución con
+// `findEmployeeWithoutSharedShifts` (helpers/team-lookups.ts), no un email fijo -- el seed genera
+// turnos recurrentes relativos a "hoy", así que qué par de empleados comparte turno cambia según
+// el día de la semana en que corra la suite (hallazgo del reporte de pausa de P15.6: con
+// `juan.perez` fijo, la suite fallaba los días en que el seed sí lo junta con maria.gomez).
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
@@ -41,6 +44,10 @@ import {
   createFixtureSupervision,
   type FixtureSupervision,
 } from './helpers/supervision-fixtures.ts'
+import {
+  fetchVigentShiftIds,
+  findEmployeeWithoutSharedShifts,
+} from './helpers/team-lookups.ts'
 
 const env = readPermissionsTestEnv()
 if (!env) console.warn(missingEnvWarning('employee.permissions.ts'))
@@ -58,7 +65,12 @@ describe.skipIf(!env)(
       const login = await loginAs(SEED_ACCOUNTS.employees[0])
       empleado = login.client
       empleadoId = login.userId
-      otroEmpleadoId = await resolveUserId(admin, SEED_ACCOUNTS.employees[1])
+      const misTurnosDeHoy = await fetchVigentShiftIds(admin, empleadoId)
+      otroEmpleadoId = await findEmployeeWithoutSharedShifts(
+        admin,
+        misTurnosDeHoy,
+        empleadoId,
+      )
     })
 
     afterAll(async () => {
@@ -307,14 +319,29 @@ describe.skipIf(!env)(
         expect(data).toHaveLength(1)
       })
 
-      it('RB-X02: lee exactamente sus propias asignaciones vigentes, ni una de más ni una de menos', async () => {
+      it('RB-X02: lee exactamente las asignaciones que la RLS le permite (04 sección 7.2, P-103: propias + compañeros del mismo turno), ni una de más ni una de menos', async () => {
         const mine = await empleado.from('assignments').select('id')
         expect(mine.error).toBeNull()
+
+        // `expected` reproduce la regla de la RLS (P-103), no solo "sus propias filas": el
+        // empleado también ve las asignaciones de sus compañeros en los turnos donde él mismo
+        // está asignado -- filtrar `expected` únicamente por `employee_id = empleadoId` daba un
+        // falso negativo cada vez que el seed lo junta con un compañero hoy (hallazgo del reporte
+        // de pausa de P15.6).
+        const misTurnos = await admin
+          .from('assignments')
+          .select('shift_id')
+          .eq('employee_id', empleadoId)
+          .is('removed_at', null)
+        const misTurnosIds = (
+          (misTurnos.data ?? []) as { shift_id: string }[]
+        ).map((r) => r.shift_id)
+        expect(misTurnosIds.length).toBeGreaterThan(0)
 
         const expected = await admin
           .from('assignments')
           .select('id')
-          .eq('employee_id', empleadoId)
+          .in('shift_id', misTurnosIds)
           .is('removed_at', null)
 
         const mineRows = (mine.data ?? []) as { id: string }[]
@@ -322,9 +349,6 @@ describe.skipIf(!env)(
         const mineIds = new Set(mineRows.map((r) => r.id))
         const expectedIds = new Set(expectedRows.map((r) => r.id))
         expect(mineIds).toEqual(expectedIds)
-        // Si esto diera 0, el caso de arriba (mineIds === expectedIds con ambos vacíos) no
-        // probaría nada: confirma que el empleado de prueba tiene asignaciones reales en el seed.
-        expect(mineIds.size).toBeGreaterThan(0)
       })
 
       it('lee los feriados (04 sección 7.2: "holidays | Todos autenticados.")', async () => {

@@ -1090,6 +1090,18 @@ describe.skipIf(!env)(
           second.shiftId,
           employeeToRateId,
         )
+        // `rate_employee` exige SUPERVISION_NOT_ACTIVE => in_progress o completed, incluso para
+        // O/A con `edit_ratings` (comentario de `rate_employee`, 0029): mismo forzado a mano que
+        // la fixture de arriba (línea ~1003), faltaba acá y el RPC cortaba con SUPERVISION_NOT_ACTIVE.
+        const { error: statusError } = await admin
+          .from('supervisions')
+          .update({ status: 'in_progress' })
+          .eq('id', second.supervisionId)
+        if (statusError) {
+          throw new Error(
+            `No se pudo forzar la segunda supervisión de fixture a in_progress: ${statusError.message}`,
+          )
+        }
         try {
           const { data, error } = await administradora.rpc('rate_employee', {
             p_supervision_id: second.supervisionId,
