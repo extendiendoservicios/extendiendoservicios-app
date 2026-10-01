@@ -112,6 +112,96 @@ describe('computeAttention', () => {
   })
 })
 
+describe('computeAttention (bordes)', () => {
+  const overdueBase = {
+    shiftStatus: 'in_progress' as const,
+    status: 'present' as const,
+    displayStatus: 'present' as const,
+    startsAt: at('07:00'),
+    checkInAt: at('07:02'),
+  }
+
+  it('en curso pasada la hora de fin: justo a la hora de fin todavía no es alerta, un minuto después sí', () => {
+    const atTheEnd = makeAssignment({ ...overdueBase, endsAt: at('11:00') })
+    expect(computeAttention([], [atTheEnd], NOW)).toEqual([])
+
+    const oneMinutePast = makeAssignment({
+      ...overdueBase,
+      endsAt: at('10:59'),
+    })
+    const items = computeAttention([], [oneMinutePast], NOW)
+    expect(items.map((item) => item.kind)).toEqual(['overdue'])
+    expect(items[0]?.minutesSince).toBe(1)
+  })
+
+  it('una asignación terminada (con fin registrado) no es alerta aunque haya pasado su hora de fin', () => {
+    const finished = makeAssignment({
+      shiftStatus: 'in_progress',
+      status: 'finished',
+      displayStatus: 'finished',
+      endsAt: at('10:00'),
+      checkInAt: at('08:00'),
+      checkOutAt: at('10:00'),
+    })
+    expect(computeAttention([], [finished], NOW)).toEqual([])
+  })
+
+  it('un turno cancelado no genera "sin cubrir" ni ausencia', () => {
+    const shifts = [
+      makeShift({
+        id: 's1',
+        status: 'cancelled',
+        displayStatus: 'cancelled',
+        assignedCount: 0,
+      }),
+    ]
+    const assignments = [
+      makeAssignment({
+        shiftId: 's1',
+        shiftStatus: 'cancelled',
+        status: 'absence_notified',
+      }),
+    ]
+    expect(computeAttention(shifts, assignments, NOW)).toEqual([])
+  })
+
+  it('dentro de una misma categoría va primero la que hace más que espera', () => {
+    const assignments = [
+      makeAssignment({
+        id: 'a-reciente',
+        startsAt: at('10:30'),
+        displayStatus: 'no_record',
+      }),
+      makeAssignment({
+        id: 'a-vieja',
+        startsAt: at('08:00'),
+        displayStatus: 'no_record',
+      }),
+    ]
+    const items = computeAttention([], assignments, NOW)
+    expect(items.map((item) => item.assignment?.id)).toEqual([
+      'a-vieja',
+      'a-reciente',
+    ])
+    expect(items.map((item) => item.minutesSince)).toEqual([180, 30])
+  })
+
+  it('el turno sin cubrir cuenta los minutos desde su hora de inicio', () => {
+    const shifts = [
+      makeShift({
+        id: 's1',
+        status: 'scheduled',
+        displayStatus: 'uncovered',
+        assignedCount: 0,
+        startTime: '09:30:00',
+      }),
+    ]
+    const items = computeAttention(shifts, [], NOW)
+    expect(items.map((item) => item.kind)).toEqual(['uncovered'])
+    expect(items[0]?.minutesSince).toBe(90)
+  })
+})
+
 describe('filtro por franja', () => {
   const rows = [
     makeAssignment({ id: 'a1' }),
