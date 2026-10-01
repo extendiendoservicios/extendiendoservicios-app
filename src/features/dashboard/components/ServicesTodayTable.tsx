@@ -120,7 +120,7 @@ function ServicesTodayTable({
     {
       id: 'actions',
       header: 'Acciones',
-      meta: { card: 'trailing' },
+      meta: { card: 'actions' },
       cell: ({ row }) => {
         const assignable =
           canAssign(row.original.shiftId) &&

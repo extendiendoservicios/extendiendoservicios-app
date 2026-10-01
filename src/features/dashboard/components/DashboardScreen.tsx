@@ -63,7 +63,18 @@ function DashboardScreen() {
   })
 
   const shifts = useMemo(() => shiftsQuery.data ?? [], [shiftsQuery.data])
-  const assignments = useMemo(() => boardQuery.data ?? [], [boardQuery.data])
+  // `v_assignments_board` solo trae la razón social; el resto del tablero
+  // muestra el nombre de fantasía del turno. Se toma el del turno para que
+  // un mismo cliente no aparezca con dos nombres distintos.
+  const assignments = useMemo(() => {
+    const clientNameByShift = new Map(
+      shifts.map((shift) => [shift.id, shift.clientName]),
+    )
+    return (boardQuery.data ?? []).map((row) => {
+      const clientName = clientNameByShift.get(row.shiftId)
+      return clientName ? { ...row, clientName } : row
+    })
+  }, [boardQuery.data, shifts])
 
   const employeeIds = useMemo(
     () => Array.from(new Set(assignments.map((row) => row.employeeId))),
