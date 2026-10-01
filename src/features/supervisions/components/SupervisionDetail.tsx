@@ -13,6 +13,7 @@ import type { SupervisionEmployeeRating } from '@/api/supervisions'
 import {
   canEditRatingsAlways,
   canManageSupervisions,
+  canMarkSupervisionNotDone,
 } from '@/features/supervisions/permissions'
 import { useSupervisionDetailQuery } from '@/features/supervisions/queries'
 import { CancelSupervisionDialog } from './CancelSupervisionDialog'
@@ -42,6 +43,8 @@ function SupervisionDetail({ supervisionId }: SupervisionDetailProps) {
   const auth = useAuth()
   const actor = { roles: auth.roles, capabilities: auth.capabilities }
   const canManage = canManageSupervisions(actor)
+  // `mark_supervision_not_done` no exige `manage_supervisions` (`06` sección 12).
+  const canMarkNotDone = canMarkSupervisionNotDone(actor)
   const canEditRatings = canEditRatingsAlways(actor)
 
   const detailQuery = useSupervisionDetailQuery(supervisionId)
@@ -117,24 +120,28 @@ function SupervisionDetail({ supervisionId }: SupervisionDetailProps) {
             Motivo: {detail.notDoneReason}
           </p>
         )}
-        {canManage && isEditable && (
+        {(canMarkNotDone || canManage) && isEditable && (
           <div className="flex flex-wrap gap-2 pt-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={ClipboardX}
-              onClick={() => setNotDoneOpen(true)}
-            >
-              Marcar como no realizada
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={Ban}
-              onClick={() => setCancelOpen(true)}
-            >
-              Cancelar supervisión
-            </Button>
+            {canMarkNotDone && (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={ClipboardX}
+                onClick={() => setNotDoneOpen(true)}
+              >
+                Marcar como no realizada
+              </Button>
+            )}
+            {canManage && (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={Ban}
+                onClick={() => setCancelOpen(true)}
+              >
+                Cancelar supervisión
+              </Button>
+            )}
           </div>
         )}
       </div>
