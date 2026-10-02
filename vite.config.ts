@@ -150,5 +150,29 @@ export default defineConfig({
     // 'hidden': el JS publicado no lleva el comentario `sourceMappingURL` hacia un `.map` que
     // se borra después de subirlo. Sentry no lo necesita: asocia cada archivo por debug ID.
     sourcemap: sentryAuthToken ? 'hidden' : false,
+    // RESP-010 / P17.4.1: las librerías de terceros casi no cambian entre despliegues, y el
+    // código propio sí. Separadas del chunk de entrada, el navegador (y el service worker) solo
+    // vuelve a bajar el chunk propio cuando se publica una versión nueva; las librerías siguen
+    // en caché con el mismo nombre (el hash depende del contenido). Solo las más pesadas
+    // del arranque (React y Supabase): el resto de las dependencias sigue a Rolldown, que las agrupa según quién
+    // las usa (así las que solo usa administración no viajan al celular).
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: 'vendor-react',
+              test: /node_modules\/(react|react-dom|scheduler|react-router)\//,
+              priority: 30,
+            },
+            {
+              name: 'vendor-supabase',
+              test: /node_modules\/@supabase\//,
+              priority: 20,
+            },
+          ],
+        },
+      },
+    },
   },
 })

@@ -1,28 +1,5 @@
 import type { RouteObject } from 'react-router'
-import AssignSupervisionPage from '@/pages/admin/AssignSupervisionPage'
-import AttendanceTodayPage from '@/pages/admin/AttendanceTodayPage'
-import ClientDetailPage from '@/pages/admin/ClientDetailPage'
-import ClientFormPage from '@/pages/admin/ClientFormPage'
-import ClientsPage from '@/pages/admin/ClientsPage'
-import Dashboard from '@/pages/admin/Dashboard'
-import CompanySettingsPage from '@/pages/admin/CompanySettingsPage'
-import EmployeeDetailPage from '@/pages/admin/EmployeeDetailPage'
-import EmployeeFormPage from '@/pages/admin/EmployeeFormPage'
-import EmployeesPage from '@/pages/admin/EmployeesPage'
-import HolidaysPage from '@/pages/admin/HolidaysPage'
-import PlanningPage from '@/pages/admin/PlanningPage'
-import RatingCriteriaPage from '@/pages/admin/RatingCriteriaPage'
-import SecurityEventsPage from '@/pages/admin/SecurityEventsPage'
-import ServiceFormPage from '@/pages/admin/ServiceFormPage'
-import ShiftDetailPage from '@/pages/admin/ShiftDetailPage'
-import ShiftFormPage from '@/pages/admin/ShiftFormPage'
-import ShiftsGeneratePage from '@/pages/admin/ShiftsGeneratePage'
-import SiteDetailPage from '@/pages/admin/SiteDetailPage'
-import SiteFormPage from '@/pages/admin/SiteFormPage'
-import SupervisionDetailPage from '@/pages/admin/SupervisionDetailPage'
-import SupervisionsPage from '@/pages/admin/SupervisionsPage'
-import TaskTemplatesPage from '@/pages/admin/TaskTemplatesPage'
-import UsersPage from '@/pages/admin/UsersPage'
+import { lazyPage } from './lazyPage'
 
 /**
  * Rutas de `/admin` (DS-015), `05_Pantallas_y_Navegacion.md` sección 5. Los
@@ -39,7 +16,7 @@ import UsersPage from '@/pages/admin/UsersPage'
 export const adminRoutes: RouteObject[] = [
   {
     index: true,
-    element: <Dashboard />,
+    ...lazyPage(() => import('@/pages/admin/Dashboard')),
     handle: {
       screenId: 'ADM-02',
       title: 'Resumen',
@@ -48,7 +25,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'planificacion',
-    element: <PlanningPage />,
+    ...lazyPage(() => import('@/pages/admin/PlanningPage')),
     handle: {
       screenId: 'ADM-03',
       title: 'Planificación',
@@ -57,7 +34,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'turnos/nuevo',
-    element: <ShiftFormPage />,
+    ...lazyPage(() => import('@/pages/admin/ShiftFormPage')),
     handle: {
       screenId: 'ADM-07',
       title: 'Nuevo turno',
@@ -66,7 +43,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'turnos/generar',
-    element: <ShiftsGeneratePage />,
+    ...lazyPage(() => import('@/pages/admin/ShiftsGeneratePage')),
     handle: {
       screenId: 'ADM-09',
       title: 'Generar turnos del mes',
@@ -75,7 +52,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'turnos/:id',
-    element: <ShiftDetailPage />,
+    ...lazyPage(() => import('@/pages/admin/ShiftDetailPage')),
     handle: {
       screenId: 'ADM-06',
       title: 'Detalle del turno',
@@ -84,7 +61,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'turnos/:id/editar',
-    element: <ShiftFormPage />,
+    ...lazyPage(() => import('@/pages/admin/ShiftFormPage')),
     handle: {
       screenId: 'ADM-07',
       title: 'Editar turno',
@@ -93,7 +70,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'asistencia',
-    element: <AttendanceTodayPage />,
+    ...lazyPage(() => import('@/pages/admin/AttendanceTodayPage')),
     handle: {
       screenId: 'ADM-10',
       title: 'Asistencia de hoy',
@@ -102,7 +79,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'supervisiones',
-    element: <SupervisionsPage />,
+    ...lazyPage(() => import('@/pages/admin/SupervisionsPage')),
     handle: {
       screenId: 'ADM-13',
       title: 'Supervisiones',
@@ -111,7 +88,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'supervisiones/nueva',
-    element: <AssignSupervisionPage />,
+    ...lazyPage(() => import('@/pages/admin/AssignSupervisionPage')),
     handle: {
       screenId: 'ADM-14',
       title: 'Asignar supervisión',
@@ -120,7 +97,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'supervisiones/:id',
-    element: <SupervisionDetailPage />,
+    ...lazyPage(() => import('@/pages/admin/SupervisionDetailPage')),
     handle: {
       screenId: 'ADM-15',
       title: 'Detalle de la supervisión',
@@ -129,7 +106,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'empleados',
-    element: <EmployeesPage />,
+    ...lazyPage(() => import('@/pages/admin/EmployeesPage')),
     handle: {
       screenId: 'ADM-16',
       title: 'Empleados',
@@ -138,7 +115,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'empleados/nuevo',
-    element: <EmployeeFormPage />,
+    ...lazyPage(() => import('@/pages/admin/EmployeeFormPage')),
     handle: {
       screenId: 'ADM-18',
       title: 'Nuevo empleado',
@@ -147,7 +124,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'empleados/:id',
-    element: <EmployeeDetailPage />,
+    ...lazyPage(() => import('@/pages/admin/EmployeeDetailPage')),
     handle: {
       screenId: 'ADM-17',
       title: 'Ficha del empleado',
@@ -156,7 +133,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'empleados/:id/editar',
-    element: <EmployeeFormPage />,
+    ...lazyPage(() => import('@/pages/admin/EmployeeFormPage')),
     handle: {
       screenId: 'ADM-18',
       title: 'Editar empleado',
@@ -165,7 +142,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'clientes',
-    element: <ClientsPage />,
+    ...lazyPage(() => import('@/pages/admin/ClientsPage')),
     handle: {
       screenId: 'ADM-19',
       title: 'Clientes',
@@ -174,7 +151,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'clientes/nuevo',
-    element: <ClientFormPage />,
+    ...lazyPage(() => import('@/pages/admin/ClientFormPage')),
     handle: {
       screenId: 'ADM-20',
       title: 'Nuevo cliente',
@@ -183,7 +160,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'clientes/:id',
-    element: <ClientDetailPage />,
+    ...lazyPage(() => import('@/pages/admin/ClientDetailPage')),
     handle: {
       screenId: 'ADM-21',
       title: 'Detalle del cliente',
@@ -192,7 +169,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'clientes/:id/editar',
-    element: <ClientFormPage />,
+    ...lazyPage(() => import('@/pages/admin/ClientFormPage')),
     handle: {
       screenId: 'ADM-20',
       title: 'Editar cliente',
@@ -201,7 +178,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'sedes/:id',
-    element: <SiteDetailPage />,
+    ...lazyPage(() => import('@/pages/admin/SiteDetailPage')),
     handle: {
       screenId: 'ADM-22',
       title: 'Detalle de la sede',
@@ -210,7 +187,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'sedes/nueva',
-    element: <SiteFormPage />,
+    ...lazyPage(() => import('@/pages/admin/SiteFormPage')),
     handle: {
       screenId: 'ADM-23',
       title: 'Nueva sede',
@@ -219,7 +196,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'sedes/:id/editar',
-    element: <SiteFormPage />,
+    ...lazyPage(() => import('@/pages/admin/SiteFormPage')),
     handle: {
       screenId: 'ADM-23',
       title: 'Editar sede',
@@ -228,7 +205,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'servicios/nuevo',
-    element: <ServiceFormPage />,
+    ...lazyPage(() => import('@/pages/admin/ServiceFormPage')),
     handle: {
       screenId: 'ADM-25',
       title: 'Nuevo servicio',
@@ -237,7 +214,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'servicios/:id/editar',
-    element: <ServiceFormPage />,
+    ...lazyPage(() => import('@/pages/admin/ServiceFormPage')),
     handle: {
       screenId: 'ADM-25',
       title: 'Editar servicio',
@@ -246,7 +223,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'tareas',
-    element: <TaskTemplatesPage />,
+    ...lazyPage(() => import('@/pages/admin/TaskTemplatesPage')),
     handle: {
       screenId: 'ADM-26',
       title: 'Plantillas de tareas',
@@ -255,7 +232,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'configuracion/usuarios',
-    element: <UsersPage />,
+    ...lazyPage(() => import('@/pages/admin/UsersPage')),
     handle: {
       screenId: 'ADM-27',
       title: 'Usuarios y roles',
@@ -264,7 +241,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'configuracion/empresa',
-    element: <CompanySettingsPage />,
+    ...lazyPage(() => import('@/pages/admin/CompanySettingsPage')),
     handle: {
       screenId: 'ADM-28',
       title: 'Empresa',
@@ -273,7 +250,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'configuracion/feriados',
-    element: <HolidaysPage />,
+    ...lazyPage(() => import('@/pages/admin/HolidaysPage')),
     handle: {
       screenId: 'ADM-29',
       title: 'Feriados',
@@ -282,7 +259,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'configuracion/criterios',
-    element: <RatingCriteriaPage />,
+    ...lazyPage(() => import('@/pages/admin/RatingCriteriaPage')),
     handle: {
       screenId: 'ADM-30',
       title: 'Criterios de calificación',
@@ -291,7 +268,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'configuracion/seguridad',
-    element: <SecurityEventsPage />,
+    ...lazyPage(() => import('@/pages/admin/SecurityEventsPage')),
     handle: {
       screenId: 'ADM-31',
       title: 'Eventos de seguridad',

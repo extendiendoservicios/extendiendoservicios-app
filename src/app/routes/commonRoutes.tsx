@@ -7,8 +7,8 @@ import LoginPage from '@/pages/auth/LoginPage'
 import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage'
 import ResetPasswordPage from '@/pages/auth/ResetPasswordPage'
 import NoAccessPage from '@/pages/auth/NoAccessPage'
-import ProfilePage from '@/pages/common/ProfilePage'
 import { RouteFallback } from './RouteFallback'
+import { lazyPage } from './lazyPage'
 import type { RouteHandle } from './placeholder'
 
 /**
@@ -17,7 +17,7 @@ import type { RouteHandle } from './placeholder'
  * público (nadie tiene sesión todavía cuando las ve, o la sesión ya no
  * sirve) y no llevan ningún shell — cada una arma su propia tarjeta
  * centrada con `AuthScreenLayout` (`src/pages/auth/AuthScreenLayout.tsx`).
- * Sin `React.lazy`: son las primeras pantallas que ve cualquiera sin
+ * Sin carga diferida: son las primeras pantallas que ve cualquiera sin
  * sesión (empezando por `/ingresar`, a donde `/` redirige, `router.tsx`),
  * así que no hay ningún ahorro real en diferirlas — a diferencia de
  * `AdminShell`/`MobileShell` (`lazyShells.tsx`), que sí conviene no bajar
@@ -75,7 +75,11 @@ export const commonRoutes: RouteObject[] = [
       </RequireRole>
     ),
     children: [
-      { path: 'perfil', element: <ProfilePage />, handle: profileHandle },
+      {
+        path: 'perfil',
+        ...lazyPage(() => import('@/pages/common/ProfilePage')),
+        handle: profileHandle,
+      },
     ],
   },
 ]
