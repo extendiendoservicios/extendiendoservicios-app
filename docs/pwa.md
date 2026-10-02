@@ -236,6 +236,9 @@ este documento no afirma que ningún modelo concreto haya sido probado.
    (sacarla de las apps recientes) y abrirla de nuevo suele disparar el chequeo.
 3. Si sigue igual: borrar los datos del sitio o desinstalar y reinstalar (más abajo).
 
+Para saber qué versión tenés abierta: al pie de **Más** (en la compu, al pie de la barra lateral)
+dice "Versión x.y.z" (ADR-020).
+
 **Aparece una pantalla de error al navegar, o la app se recargó sola una vez**
 
 Se publicó una versión mientras la app estaba abierta. La recarga única (arriba) lo resuelve; si el
