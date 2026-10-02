@@ -28,6 +28,7 @@ import {
 import { useEditingField } from '@/hooks/useEditingField'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { InstallBanner } from '@/components/InstallBanner'
+import { AppVersion } from '@/components/AppVersion'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { ROLE_LABELS } from '@/features/auth/session'
 import { brandingLogoUrl, useBranding } from '@/features/auth/useBranding'
@@ -210,6 +211,7 @@ export function AdminShell({
               </Link>
             ))}
           </nav>
+          <AppVersion className="pb-[calc(16px+var(--safe-bottom))]" />
         </SheetContent>
       </Sheet>
     </div>
@@ -328,6 +330,9 @@ function AdminSidebar({
               </div>
             )}
           </div>
+          {!collapsed && (
+            <AppVersion className="mt-2 text-left px-2 text-white/60" />
+          )}
         </div>
       </aside>
     </TooltipProvider>

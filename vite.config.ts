@@ -28,7 +28,7 @@ const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN
 // (sin la barra del navegador -- `display: 'standalone'`, no `'fullscreen'`, que además
 // ocultaría la barra de estado del celular) y service worker que cachea solo la aplicación,
 // nunca datos. Detalle completo de cada decisión en docs/design-system.md, sección "PWA"
-// (el documento dedicado, docs/pwa.md, llega recién con RESP-012/DOC-017 en F17).
+// y en docs/pwa.md (RESP-012).
 const pwaPlugin = VitePWA({
   // 'generateSW' (default): Workbox arma el service worker a partir del build, sin escribir
   // ninguno a mano -- no hace falta la estrategia 'injectManifest' porque esta entrega no

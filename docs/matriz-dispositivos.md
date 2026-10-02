@@ -2,7 +2,7 @@
 
 Planilla de la prueba manual de la aplicación en tres teléfonos de verdad: **dos Android** (Android 8 o superior, con Chrome) y **un iPhone** (iOS 16.4 o superior, con Safari). La completa **Mike**, sin necesidad de saber de programación: cada punto dice qué tocar, qué tiene que pasar, y hay un lugar para marcar **OK** o **Falla** por teléfono.
 
-Es la parte de dispositivos reales de la suite responsive (TEST-014; ver `tests/README.md`). Complementa a las guías por rol de `docs/testing/` (`prueba-android-empleado.md`, MOB-EMP-018), que profundizan en el flujo del empleado en Android.
+Es la parte de dispositivos reales de la suite responsive (TEST-014; ver `tests/README.md`). Cómo funcionan la instalación y las actualizaciones que se prueban acá está en [`pwa.md`](pwa.md), y qué cambia en cada ancho de pantalla en [`features/responsive.md`](features/responsive.md). Complementa a las guías por rol de `docs/testing/` (`prueba-android-empleado.md`, MOB-EMP-018), que profundizan en el flujo del empleado en Android.
 
 Dirección para probar: **https://dev.extendiendoservicios.com** (entorno de prueba; no pasa nada si algo sale mal).
 
