@@ -8,17 +8,20 @@ import {
 } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/IconButton'
-import { useInstallPrompt } from '@/features/employee/useInstallPrompt'
+import { useInstallPrompt } from '@/hooks/useInstallPrompt'
 import {
   dismissInstallBanner,
   isInstallBannerDismissed,
-} from '@/features/employee/installBannerDismiss'
+} from '@/lib/installBannerDismiss'
 
 /**
  * `InstallBanner` (COM-06, MOB-EMP-014, `05` fila COM-06): "Banner discreto
- * en EMP-03 y SUP-02 la primera vez; instrucciones para Android (Chrome) e
- * iOS (Safari)". Este paquete monta el banner en EMP-03 (`TodayPage`) --
- * SUP-02 (Hoy del supervisor) todavía no existe (F15).
+ * en EMP-03, SUP-02 y ADM-02 la primera vez; instrucciones para Android
+ * (Chrome) e iOS (Safari)". Lo montan `TodayPage` del empleado y del
+ * supervisor y, desde RESP-004 (decisión de Mike del 26 sep 2026), el
+ * `AdminShell` en el inicio de administración, solo en celular. Vive en
+ * `src/components/` (y no en `features/employee/`) porque lo comparten las
+ * tres vías.
  *
  * Dos variantes según el navegador, porque solo Chrome/Android disparan
  * `beforeinstallprompt` (`useInstallPrompt`, ver el comentario grande de ese
@@ -32,7 +35,7 @@ import {
  * `navigator.standalone` en iOS) ni si la persona ya la cerró hace menos de
  * siete días (`installBannerDismiss.ts`).
  */
-export function InstallBanner() {
+export function InstallBanner({ className }: { className?: string } = {}) {
   const { available, promptInstall } = useInstallPrompt()
   // Estado inicial perezoso (no un efecto): esta es una SPA que solo corre
   // en el navegador, `window`/`localStorage` ya están disponibles en el
@@ -56,7 +59,7 @@ export function InstallBanner() {
   }
 
   return (
-    <Alert variant="info">
+    <Alert variant="info" className={className}>
       <Download aria-hidden="true" />
       <div className="min-w-0 flex-1">
         <AlertTitle>Instalá la aplicación</AlertTitle>

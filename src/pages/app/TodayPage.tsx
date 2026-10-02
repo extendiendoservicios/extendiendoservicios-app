@@ -13,7 +13,7 @@ import {
   useMarkChangesSeenMutation,
   useMyDayQuery,
 } from '@/features/employee/queries'
-import { InstallBanner } from '@/features/employee/components/InstallBanner'
+import { InstallBanner } from '@/components/InstallBanner'
 
 /**
  * EMP-03 · Hoy (MOB-EMP-002, MOB-EMP-003, `06` sección 10, P-092, P-093):

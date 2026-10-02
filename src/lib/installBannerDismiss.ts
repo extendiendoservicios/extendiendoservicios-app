@@ -1,5 +1,5 @@
 /**
- * `src/features/employee/installBannerDismiss.ts` (COM-06, MOB-EMP-014,
+ * `src/lib/installBannerDismiss.ts` (COM-06, MOB-EMP-014,
  * `05` fila COM-06: "Banner discreto... la primera vez"). Recuerda en este
  * dispositivo que la persona cerró el banner de instalación, para que no
  * vuelva a aparecer en cada visita -- pero tampoco desaparezca para

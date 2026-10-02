@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import SupervisorMorePage from './MorePage'
 import * as authModule from '@/features/auth/AuthProvider'
 import type { AuthContextValue } from '@/features/auth/AuthProvider'
-import * as installPromptModule from '@/features/employee/useInstallPrompt'
+import * as installPromptModule from '@/hooks/useInstallPrompt'
 
 /**
  * SUP-09 (MOB-SUP-009, MOB-SUP-010): "Mis servicios" (acceso cruzado a

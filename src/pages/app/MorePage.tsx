@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { cn } from 'cn'
 import { useAuth } from '@/features/auth/AuthProvider'
-import { useInstallPrompt } from '@/features/employee/useInstallPrompt'
+import { useInstallPrompt } from '@/hooks/useInstallPrompt'
 
 /**
  * EMP-13 · Más (MOB-EMP-013, P-122): acceso a perfil (COM-04), avisar
