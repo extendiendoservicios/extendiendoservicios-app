@@ -151,15 +151,19 @@ export default function LoginPage() {
             aria-hidden="true"
             className="size-[15px] shrink-0 text-text-3"
           />
-          Si no podés entrar, comunicate con Administración al{' '}
-          <span className="whitespace-nowrap">
-            <a
-              href={`tel:${branding.supportPhone.replace(/[^\d+]/g, '')}`}
-              className="font-semibold text-text"
-            >
-              {branding.supportPhone}
-            </a>
-            .
+          {/* Un solo bloque de texto: como hijos directos del `flex`, la frase
+              y el número quedaban en columnas separadas. */}
+          <span>
+            Si no podés entrar, comunicate con Administración al{' '}
+            <span className="whitespace-nowrap">
+              <a
+                href={`tel:${branding.supportPhone.replace(/[^\d+]/g, '')}`}
+                className="font-semibold text-text"
+              >
+                {branding.supportPhone}
+              </a>
+              .
+            </span>
           </span>
         </p>
       )}
