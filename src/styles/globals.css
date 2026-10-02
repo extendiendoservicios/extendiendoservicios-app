@@ -126,3 +126,16 @@ body {
     transition: none !important;
   }
 }
+
+/* Zoom de Leaflet (RESP-003, P17.3): 30 px de serie; en celular, 44 px de
+   objetivo táctil como el resto de los controles. */
+@media (max-width: 767.98px) {
+  /* Más específico que `.leaflet-touch .leaflet-bar a`: `leaflet.css` se
+     importa desde el componente, después de este archivo. */
+  .leaflet-container.leaflet-touch .leaflet-bar a,
+  .leaflet-container .leaflet-bar a {
+    width: 44px;
+    height: 44px;
+    line-height: 44px;
+  }
+}

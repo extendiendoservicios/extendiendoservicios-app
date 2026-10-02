@@ -262,7 +262,7 @@ function WeekGrid() {
                           <Link
                             key={assignment.id}
                             to={`/admin/turnos/${assignment.shiftId}`}
-                            className="text-left text-[13px] font-medium text-primary-800"
+                            className="flex min-h-11 items-center text-left text-[13px] font-medium text-primary-800"
                           >
                             {assignment.siteName} ·{' '}
                             {assignment.startTime.slice(0, 5)}–
