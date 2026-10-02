@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { describe, expect, it } from 'vitest'
-import { lazyPage } from './lazyPage'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { lazyPage, reloadAfterChunkError } from './lazyPage'
 
 describe('lazyPage', () => {
   it('carga la pantalla bajo demanda y conserva el handle de la ruta', async () => {
@@ -24,5 +24,23 @@ describe('lazyPage', () => {
       screenId: 'X-02',
       title: 'Pantalla',
     })
+  })
+})
+
+describe('reloadAfterChunkError', () => {
+  afterEach(() => {
+    sessionStorage.clear()
+    vi.restoreAllMocks()
+  })
+
+  it('recarga una sola vez dentro de la ventana', () => {
+    const reload = vi.fn()
+    vi.spyOn(window, 'location', 'get').mockReturnValue({
+      ...window.location,
+      reload,
+    })
+    expect(reloadAfterChunkError()).toBe(true)
+    expect(reloadAfterChunkError()).toBe(false)
+    expect(reload).toHaveBeenCalledTimes(1)
   })
 })

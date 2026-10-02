@@ -19,8 +19,39 @@ export function lazyPage(
 ): Pick<RouteObject, 'lazy'> {
   return {
     lazy: async () => {
-      const module = await load()
-      return { Component: module.default }
+      try {
+        const module = await load()
+        return { Component: module.default }
+      } catch (error) {
+        if (reloadAfterChunkError()) {
+          // La recarga ya está en marcha: no hace falta mostrar el error.
+          return new Promise<never>(() => {})
+        }
+        throw error
+      }
     },
   }
+}
+
+const RELOAD_KEY = 'es:chunk-reload-at'
+/** Ventana para no recargar en bucle si el chunk falta de verdad. */
+const RELOAD_WINDOW_MS = 30_000
+
+/**
+ * Si alguien tiene la app abierta durante un despliegue, los chunks de la
+ * versión anterior dejan de existir en el servidor y la navegación siguiente
+ * falla al importarlos. Se recarga la página una vez para tomar la versión
+ * nueva; si vuelve a fallar dentro de `RELOAD_WINDOW_MS`, se deja pasar el
+ * error. Devuelve `true` si recargó.
+ */
+export function reloadAfterChunkError(): boolean {
+  try {
+    const last = Number(sessionStorage.getItem(RELOAD_KEY) ?? 0)
+    if (Date.now() - last < RELOAD_WINDOW_MS) return false
+    sessionStorage.setItem(RELOAD_KEY, String(Date.now()))
+  } catch {
+    return false
+  }
+  window.location.reload()
+  return true
 }
