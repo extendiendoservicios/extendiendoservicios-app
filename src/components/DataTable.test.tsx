@@ -143,4 +143,26 @@ describe('DataTable — menos de 1024 px (RowCard)', () => {
     expect(screen.getByText('Alfa')).toBeInTheDocument()
     expect(screen.getAllByText('Horario').length).toBeGreaterThan(0)
   })
+
+  it("las acciones (`card: 'actions'`) van al pie de la tarjeta, después de los datos", () => {
+    mockDesktopViewport(false)
+    const columns: DataTableColumnDef<DemoRow>[] = [
+      ...COLUMNS,
+      {
+        id: 'actions',
+        header: 'Acciones',
+        meta: { card: 'actions' },
+        cell: ({ row }) => (
+          <button type="button">Abrir {row.original.name}</button>
+        ),
+      },
+    ]
+    render(<DataTable columns={columns} data={DATA} caption="Demo" />)
+
+    const button = screen.getByRole('button', { name: 'Abrir Bravo' })
+    const hour = screen.getByText('09:00')
+    expect(
+      hour.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
 })

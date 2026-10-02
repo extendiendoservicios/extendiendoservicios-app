@@ -211,7 +211,7 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
     {
       id: 'actions',
       header: 'Acciones',
-      meta: { card: 'trailing' },
+      meta: { card: 'actions' },
       cell: ({ row }) => {
         const rowActions = getAvailableAttendanceActions({
           shiftStatus: row.original.shiftStatus,

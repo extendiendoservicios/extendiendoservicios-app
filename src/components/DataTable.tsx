@@ -67,8 +67,10 @@ interface DataTableColumnMeta {
   /**
    * Qué lugar ocupa esta columna en la tarjeta `RowCard` (< 1024 px).
    * Sin indicar (o `'hidden'`), la columna no aparece en la tarjeta.
+   * `'trailing'` es para algo corto al lado del título (un estado, un
+   * botón); `'actions'` va en una fila propia al pie, para varios botones.
    */
-  card?: 'title' | 'subtitle' | 'trailing' | 'meta' | 'hidden'
+  card?: 'title' | 'subtitle' | 'trailing' | 'meta' | 'actions' | 'hidden'
   /** Etiqueta que se muestra antes del valor cuando `card` es `'meta'`. */
   cardLabel?: string
 }
@@ -362,6 +364,9 @@ function RowCard<TData>({
   const metaCells = cells.filter(
     (cell) => getColumnMeta(cell.column.columnDef)?.card === 'meta',
   )
+  const actionsCell = cells.find(
+    (cell) => getColumnMeta(cell.column.columnDef)?.card === 'actions',
+  )
 
   return (
     <div
@@ -410,6 +415,14 @@ function RowCard<TData>({
             )
           })}
         </dl>
+      )}
+      {actionsCell && (
+        <div className="mt-[10px] border-t border-border pt-[10px]">
+          {flexRender(
+            actionsCell.column.columnDef.cell,
+            actionsCell.getContext(),
+          )}
+        </div>
       )}
     </div>
   )

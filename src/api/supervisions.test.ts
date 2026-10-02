@@ -220,6 +220,29 @@ describe('fetchSupervisorCandidates', () => {
       { profileId: 'sup-emp1', firstName: 'Marta', lastName: 'Ríos' },
     ])
   })
+
+  it('ordena por "Nombre Apellido", como se muestra en ADM-14', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: [
+          { profile_id: 'p1', first_name: 'Paula', last_name: 'Lemos' },
+          { profile_id: 'p2', first_name: 'Noelia', last_name: 'Vera' },
+          { profile_id: 'p3', first_name: 'Carlos', last_name: 'Medina' },
+          { profile_id: 'p4', first_name: 'Ángela', last_name: 'Sosa' },
+        ],
+        error: null,
+      }),
+    )
+
+    const candidates = await fetchSupervisorCandidates()
+
+    expect(candidates.map((c) => c.firstName)).toEqual([
+      'Ángela',
+      'Carlos',
+      'Noelia',
+      'Paula',
+    ])
+  })
 })
 
 describe('assignSupervision', () => {

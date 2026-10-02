@@ -35,6 +35,7 @@
     "tests/e2e-employee-shift/**/*.ts",
     "tests/e2e-avisos-asistencia/**/*.ts",
     "tests/e2e-supervisiones/**/*.ts",
+    "tests/e2e-tablero/**/*.ts",
     "tests/permissions/**/*.ts",
     "scripts/**/*.ts"
   ]
