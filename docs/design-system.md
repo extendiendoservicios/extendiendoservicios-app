@@ -966,9 +966,9 @@ public/icons/apple-touch-icon-180x180.png  ídem, 180×180
 `vite.config.ts` agrega `VitePWA(...)` (`vite-plugin-pwa` 1.3.0 — peer
 `vite: "^3 || ^4 || ^5 || ^6 || ^7 || ^8"`, compatible con Vite 8 sin forzar
 nada; publicada el 5 may 2026, muy por delante de cualquier
-`minimumReleaseAge` de pnpm). Documentación completa de responsive/PWA
-(Lighthouse, dispositivos reales) llega con RESP-012/DOC-017 en F17
-(`docs/pwa.md`, todavía no existe); acá solo las decisiones de este
+`minimumReleaseAge` de pnpm). La explicación de uso y mantenimiento (instalación, actualización, sin conexión,
+problemas frecuentes) está en [`pwa.md`](pwa.md) y el comportamiento responsive en
+[`features/responsive.md`](features/responsive.md); acá solo las decisiones de este
 paquete y de RESP-009 (aviso de actualización, adelantado de F17 a antes
 del primer pase a producción — ver el reporte del encargo P06.5 para el
 motivo).
