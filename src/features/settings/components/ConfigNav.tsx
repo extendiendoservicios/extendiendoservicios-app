@@ -66,7 +66,7 @@ function ConfigNav({ roles }: { roles: Role[] }) {
               to={item.path}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                '-mb-px border-b-2 border-transparent px-[14px] py-[11px] text-[12.5px] font-semibold whitespace-nowrap text-text-3 transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring',
+                '-mb-px border-b-2 border-transparent px-[14px] py-[11px] max-md:py-3 text-[12.5px] font-semibold whitespace-nowrap text-text-3 transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring',
                 active && 'border-primary text-primary-800',
               )}
             >

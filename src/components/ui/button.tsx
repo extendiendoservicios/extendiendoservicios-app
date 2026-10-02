@@ -45,8 +45,8 @@ const buttonVariants = cva(
         link: 'border-transparent bg-transparent text-primary-800 underline-offset-4 hover:underline',
       },
       size: {
-        sm: "h-auto rounded-md px-[11px] py-[5px] text-[11px] max-md:min-h-11 [&_svg:not([class*='size-'])]:size-[15px]",
-        md: "h-auto rounded-md px-[15px] py-2 text-[12.5px] max-md:min-h-11 [&_svg:not([class*='size-'])]:size-[15px]",
+        sm: "h-auto rounded-md px-[11px] py-[5px] text-[11px] max-md:min-h-11 max-md:min-w-11 [&_svg:not([class*='size-'])]:size-[15px]",
+        md: "h-auto rounded-md px-[15px] py-2 text-[12.5px] max-md:min-h-11 max-md:min-w-11 [&_svg:not([class*='size-'])]:size-[15px]",
         mobile:
           "h-auto w-full rounded-lg px-[15px] py-[15px] text-[15px] [&_svg:not([class*='size-'])]:size-[18px]",
         icon: "size-[34px] rounded-md p-0 [&_svg:not([class*='size-'])]:size-4",
@@ -57,7 +57,8 @@ const buttonVariants = cva(
       {
         variant: 'link',
         size: ['sm', 'md', 'mobile'],
-        class: 'h-auto w-auto rounded-none p-0 text-xs max-md:min-h-0',
+        class:
+          'h-auto w-auto rounded-none p-0 text-xs max-md:min-h-0 max-md:min-w-0',
       },
     ],
     defaultVariants: {
