@@ -3,7 +3,9 @@
 Revisión responsive de la plataforma (RESP-003, RESP-005, RESP-006, RESP-007, P17.2,
 `08_Fases_y_Backlog.md` F17, RB-X01), contra un backend real (`App_dev`). Mismo criterio que las demás
 suites de backend real: en su propia carpeta porque necesita `SUPABASE_SERVICE_ROLE_KEY` para armar y
-limpiar los datos (prefijo `E2E-P172`), y fuera del CI.
+limpiar los datos (prefijo `E2E-P172`), y fuera del CI. Es una de las tres capas de la suite responsive
+(TEST-014): las otras son Lighthouse (`tests/lighthouse/`) y la planilla de dispositivos reales
+(`docs/matriz-dispositivos.md`); el panorama está en `tests/README.md`.
 
 ## Qué cubre cada archivo
 

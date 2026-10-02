@@ -50,6 +50,18 @@ Pruebas que no son unitarias (esas viven junto a cada archivo en `src/` como
   sin cubrir, acciones del tablero, versión de 390 px (D29), permisos y rendimiento con 24 turnos y
   40 asignaciones. Las franjas son fijas dentro del día del turno (no dependen de la hora en que
   corre). Puerto 5173. Se corre a mano: `pnpm test:e2e:tablero`. Ver `tests/e2e-tablero/README.md`.
+- `e2e-responsive/` y `lighthouse/` — **suite responsive (TEST-014, F17, RB-X01)**. Tres capas que
+  se complementan; cada una tiene su detalle en su propio README (no se repite acá):
+
+  | Capa                               | Qué comprueba                                                                                                                                                                                                                                                                               | Dónde / cómo                                                                                                                    |
+  | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+  | Capturas por viewport (Playwright) | Las pantallas de administración a 390, 768, 1024, 1366 y 1440 px (las 20 principales a los cinco): sin scroll horizontal, tabbar o sidebar según el ancho, tarjetas en vez de tablas, objetivos táctiles de 44 px, área segura en `/app` y `/sup`. Guarda una captura por pantalla y ancho. | `e2e-responsive/`; `pnpm test:e2e:responsive`; capturas en `test-results/responsive-capturas/`. Ver `e2e-responsive/README.md`. |
+  | Lighthouse (staging)               | Accesibilidad >= 90, rendimiento y buenas prácticas de referencia, e instalabilidad de la PWA (a mano, porque Lighthouse 12+ ya no trae la categoría PWA), en celular y escritorio.                                                                                                         | `lighthouse/`; `pnpm test:lighthouse`; informes en `test-results/lighthouse/`. Ver `lighthouse/README.md`.                      |
+  | Dispositivos reales                | Instalación, pantalla completa, sesión por rol, fichaje con ubicación, teclado, área segura, rotación, aviso de versión nueva y sin conexión, en dos Android y un iPhone.                                                                                                                   | Planilla `docs/matriz-dispositivos.md` (RESP-011); la completa Mike.                                                            |
+
+  Orden recomendado en una revisión: primero las capturas (rápidas y locales), después Lighthouse
+  sobre staging ya desplegado, y por último la planilla en los teléfonos.
+
 - `permissions/` — suite negativa por rol (cada rol intenta lo que no puede,
   por interfaz y por API directa). Primer esqueleto desde P04.7 (F4, API
   directa solamente, criterio de aceptación de la fase); la versión

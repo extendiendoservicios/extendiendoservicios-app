@@ -139,10 +139,19 @@ async function enfriar(context: BrowserContext, page: Page) {
     }
     for (const k of await caches.keys()) await caches.delete(k)
   })
+  await page.goto('about:blank')
+  await limpiarCacheHttp(context, page)
+}
+
+/**
+ * Vacía la caché HTTP del navegador. Con sesión, Lighthouse no la limpia (`disableStorageReset`),
+ * así que se hace antes de cada corrida: si no, la segunda y la tercera salen "tibias" y más
+ * rápidas que la primera.
+ */
+async function limpiarCacheHttp(context: BrowserContext, page: Page) {
   const cdp = await context.newCDPSession(page)
   await cdp.send('Network.clearBrowserCache')
   await cdp.detach()
-  await page.goto('about:blank')
 }
 
 function fallosDeAccesibilidad(lhr: Lhr): FalloAccesibilidad[] {
@@ -330,7 +339,7 @@ async function main() {
   }
 
   try {
-    if (escenario && solo.some((s) => s !== 'login')) {
+    if (escenario && solo.some((s) => s === 'emp' || s === 'sup')) {
       console.log('Armando cuentas y datos descartables E2E-P174...')
       await escenario.armar()
     }
@@ -363,6 +372,7 @@ async function main() {
             console.log(
               `Midiendo ${PANTALLAS[pantalla].id} · ${modo} · corrida ${corrida}...`,
             )
+            if (pantalla !== 'login') await limpiarCacheHttp(ctx, page)
             const r = await medir(
               base,
               pantalla,
