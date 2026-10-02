@@ -7,6 +7,34 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.14.0] - 2026-10-02
+
+Responsive y PWA (F17). Toda la administración se usa desde un celular de 390 px sin scroll horizontal, los controles tienen 44 px para tocarlos con el dedo, la app respeta la muesca y la barra de inicio de los teléfonos, y cada pantalla se descarga recién cuando se abre. Sin migraciones.
+
+### Agregado
+
+- Navegadores soportados (P17.1, RESP-002): Chrome 111 o superior (Android 8 o superior) y Safari 16.4 o superior (iPhone), en `browserslist` y en `build.target`. P-090 ratificado; el piso de iPhone pasa de iOS 15 a 16.4 porque Tailwind 4 lo exige.
+- Tabbar de administración con "Más" marcado cuando la pantalla es una de sus secciones (P17.1, RESP-004).
+- Área segura y teclado virtual (P17.1, RESP-008): `viewport-fit=cover`, cabeceras, tabbar y `ActionBar` crecen con la muesca y la barra de inicio; la tabbar se oculta mientras se escribe en un celular.
+- Banner "Instalá la aplicación" también para dueño y administradores en el inicio, en celular (P17.1, COM-06).
+- Suite `tests/e2e-responsive/` (P17.2, RESP-003, RESP-005 a RESP-007): pantallas de administración a 390, 768, 1024, 1366 y 1440 px, estructura móvil, objetivos táctiles y pasada por empleado y supervisor con área segura.
+- Pestañas que no entran a lo ancho: degradé del lado con contenido oculto y la pestaña elegida centrada (P17.3).
+- `pnpm test:lighthouse` sobre staging con comprobación de instalabilidad, y la planilla de prueba en teléfonos `docs/matriz-dispositivos.md` (P17.4, RESP-010, RESP-011, TEST-014).
+- Número de versión visible al pie de "Más" y de la barra lateral (ADR-020, P17.6).
+- Documentación: `docs/pwa.md` y `docs/features/responsive.md` (P17.6, RESP-012, DOC-017).
+
+### Cambiado
+
+- Todos los controles miden 44 px de área de toque por debajo de 768 px: botones, campos, selectores, casillas, interruptores, `SegmentedControl`, enlaces chicos y el zoom del mapa (P17.3). `IconButtonGroup` separa los `IconButton` vecinos.
+- Carga diferida por pantalla y librerías separadas (P17.4.1): la descarga inicial pasa de 1.105 kB a 237 kB. Si alguien navega con la app abierta durante un despliegue, se recarga sola una vez.
+- Los paneles que abre una acción ocupan toda la pantalla en el celular y quedan como panel lateral en tablet.
+
+### Corregido
+
+- En el login, la frase de soporte y el número de teléfono quedaban en columnas separadas en el celular.
+- La lista "Servicios de hoy" del tablero ya no salta al llegar los datos (CLS de 0,31 a 0,01).
+- El avatar de empleado y supervisor se anuncia como "Mi perfil, nombre" y el login tiene su región principal (accesibilidad).
+
 ## [0.13.0] - 2026-10-01
 
 Tablero operativo (F16). El resumen de la administración (ADM-02) muestra en un vistazo qué pasa hoy: los números del día, lo que requiere atención con sus acciones directas y la tabla de servicios, y se actualiza solo cada 30 segundos. Sin migraciones.
