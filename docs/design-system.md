@@ -2062,3 +2062,16 @@ P13.3.
 `pnpm dev` y abrir `http://localhost:5173/dev/design`. Para recorrer
 `AdminShell`/`MobileShell` con un rol simulado, `http://localhost:5173/dev/rol`
 (DS-015). Ninguna de las dos existe en el build de producción.
+
+## Objetivos táctiles de 44 px en celular (RESP-003, P17.3)
+
+Por debajo de 768 px todos los controles tienen 44 px de área de toque; desde 768 px no cambia nada.
+
+- `Button` `sm` y `md` crecen de verdad (`max-md:min-h-11 min-w-11`); el `link` en línea queda afuera. No se usa `::after` porque en tarjetas los botones quedan pegados y el vecino lo recorta.
+- `Input`, `PasswordInput` (el ojo mide 44 px de ancho), `SelectTrigger`, `Combobox` (usa `Button`) y las opciones de `SegmentedControl`: `max-md:min-h-11`.
+- `Checkbox` y `Switch`: `::after` invisible más margen vertical (14 y 11 px) para que las filas apiladas no se tapen. `ToggleRow` quita su relleno vertical en celular.
+- `IconButton` sigue con `::after` (34 px visibles). Dos o más juntos van dentro de `IconButtonGroup` (10 px de separación en celular, 4 px desde 768 px).
+- `AvatarUpload`: la cámara de "Cambiar foto de perfil" suma un `::after` de 44 px.
+- `TabsList` y `ConfigNav` se deslizan de costado con degradé solo del lado con contenido oculto, y centran la pestaña elegida al montar y al cambiar (`ScrollFades.tsx`, `useScrollFades` y `ScrollFadeEdges`). `TabsList` acepta `fadeClassName` (por omisión `from-bg`; usá `from-surface` sobre tarjetas).
+- Los `Sheet` de acción miden 452 px en tablet y ocupan toda la pantalla solo en celular (decisión de Mike, 2 oct 2026).
+- `RowCard` lleva `data-slot="row-card"`.
