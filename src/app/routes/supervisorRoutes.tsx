@@ -1,12 +1,5 @@
 import type { RouteObject } from 'react-router'
-import SupervisorTodayPage from '@/pages/sup/TodayPage'
-import SupervisionsPage from '@/pages/sup/SupervisionsPage'
-import SupervisionDetailPage from '@/pages/sup/SupervisionDetailPage'
-import SupervisionAttendancePage from '@/pages/sup/SupervisionAttendancePage'
-import RateEmployeePage from '@/pages/sup/RateEmployeePage'
-import CloseSupervisionPage from '@/pages/sup/CloseSupervisionPage'
-import HistoryPage from '@/pages/sup/HistoryPage'
-import SupervisorMorePage from '@/pages/sup/MorePage'
+import { lazyPage } from './lazyPage'
 
 /**
  * Rutas de `/sup` (DS-015), `05_Pantallas_y_Navegacion.md` sección 5.
@@ -18,7 +11,7 @@ import SupervisorMorePage from '@/pages/sup/MorePage'
 export const supervisorRoutes: RouteObject[] = [
   {
     index: true,
-    element: <SupervisorTodayPage />,
+    ...lazyPage(() => import('@/pages/sup/TodayPage')),
     handle: {
       screenId: 'SUP-02',
       title: 'Hoy',
@@ -27,7 +20,7 @@ export const supervisorRoutes: RouteObject[] = [
   },
   {
     path: 'supervisiones',
-    element: <SupervisionsPage />,
+    ...lazyPage(() => import('@/pages/sup/SupervisionsPage')),
     handle: {
       screenId: 'SUP-07',
       title: 'Supervisiones',
@@ -36,7 +29,7 @@ export const supervisorRoutes: RouteObject[] = [
   },
   {
     path: 'supervisiones/:id',
-    element: <SupervisionDetailPage />,
+    ...lazyPage(() => import('@/pages/sup/SupervisionDetailPage')),
     handle: {
       screenId: 'SUP-03',
       title: 'Detalle de la supervisión',
@@ -45,7 +38,7 @@ export const supervisorRoutes: RouteObject[] = [
   },
   {
     path: 'supervisiones/:id/registro',
-    element: <SupervisionAttendancePage />,
+    ...lazyPage(() => import('@/pages/sup/SupervisionAttendancePage')),
     handle: {
       screenId: 'SUP-04',
       title: 'Inicio y fin de supervisión',
@@ -54,7 +47,7 @@ export const supervisorRoutes: RouteObject[] = [
   },
   {
     path: 'supervisiones/:id/calificar/:assignmentId',
-    element: <RateEmployeePage />,
+    ...lazyPage(() => import('@/pages/sup/RateEmployeePage')),
     handle: {
       screenId: 'SUP-05',
       title: 'Calificar empleado',
@@ -63,7 +56,7 @@ export const supervisorRoutes: RouteObject[] = [
   },
   {
     path: 'supervisiones/:id/cerrar',
-    element: <CloseSupervisionPage />,
+    ...lazyPage(() => import('@/pages/sup/CloseSupervisionPage')),
     handle: {
       screenId: 'SUP-06',
       title: 'Cerrar supervisión',
@@ -72,7 +65,7 @@ export const supervisorRoutes: RouteObject[] = [
   },
   {
     path: 'historial',
-    element: <HistoryPage />,
+    ...lazyPage(() => import('@/pages/sup/HistoryPage')),
     handle: {
       screenId: 'SUP-08',
       title: 'Historial',
@@ -81,7 +74,7 @@ export const supervisorRoutes: RouteObject[] = [
   },
   {
     path: 'mas',
-    element: <SupervisorMorePage />,
+    ...lazyPage(() => import('@/pages/sup/MorePage')),
     handle: {
       screenId: 'SUP-09',
       title: 'Más',

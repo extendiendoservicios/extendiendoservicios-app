@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Users } from 'lucide-react'
+import { cn } from 'cn'
 import {
   Select,
   SelectContent,
@@ -143,7 +144,12 @@ function ServicesTodayTable({
   return (
     <section
       aria-label="Servicios de hoy"
-      className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 shadow-card"
+      className={cn(
+        'flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 shadow-card',
+        // Reserva alto mientras carga (CLS de ADM-02, P17.4.1): el esqueleto
+        // son pocas filas y la tabla real suele ser bastante más alta.
+        isLoading && 'min-h-[28rem]',
+      )}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">

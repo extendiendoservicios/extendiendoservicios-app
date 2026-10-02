@@ -3,7 +3,9 @@ import { lazy } from 'react'
 /**
  * `AdminShell`/`MobileShell` diferidos con `React.lazy` (DS-015: "Carga
  * diferida por vía... para que el celular no descargue el código de
- * administración"). Un único punto de definición, usado tanto por
+ * administración"). Las pantallas de cada vía se difieren aparte, con la
+ * propiedad `lazy` de sus rutas (`routes/lazyPage.ts`, P17.4.1): este archivo
+ * cubre solo los shells. Un único punto de definición, usado tanto por
  * `router.tsx` (`/admin`, `/app`, `/sup`) como por `commonRoutes.tsx`
  * (`/perfil`, que elige el shell según el rol en tiempo de ejecución): si
  * cada archivo hiciera su propio `lazy(() => import(...))` del mismo

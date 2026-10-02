@@ -141,9 +141,15 @@ function MobileGreetingHeader({
         {/* Avatar de 28 px; el `::after` lleva el área táctil a 44 px (`07`). */}
         <Link
           to="/perfil"
-          aria-label="Ir a mi perfil"
           className="relative ml-auto shrink-0 rounded-full outline-none after:absolute after:-inset-2 focus-visible:ring-3 focus-visible:ring-ring"
         >
+          {/* Nombre accesible por contenido, sin `aria-label` (WCAG 2.5.3,
+              "Etiqueta en el nombre"): las iniciales visibles son decorativas
+              (`aria-hidden` en `Avatar`) y el nombre accesible sale de
+              "Mi perfil, " + el nombre completo que `Avatar` ya trae oculto
+              para lectores. Con un `aria-label` que no contenga las iniciales
+              visibles, quien maneja por voz no podría decir lo que ve. */}
+          <span className="sr-only">Mi perfil, </span>
           <Avatar
             id="mobile-session-user"
             name={displayName}
