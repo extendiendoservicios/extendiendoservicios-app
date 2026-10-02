@@ -4,6 +4,7 @@ import { cn } from 'cn'
 import { Avatar } from '@/components/Avatar'
 import { Fab } from '@/components/Fab'
 import { PwaUpdateBanner } from '@/components/PwaUpdateBanner'
+import { useEditingField } from '@/hooks/useEditingField'
 import { formatShortDate } from '@/lib/format'
 import { avatarUrl } from '@/lib/avatarUrl'
 import { useAuth } from '@/features/auth/AuthProvider'
@@ -50,6 +51,8 @@ export function MobileShell({ variant }: { variant: MobileShellVariant }) {
   const navigate = useNavigate()
   const { displayName, profile } = useAuth()
   const handle = useRouteHandle()
+  // Teclado virtual abierto (RESP-008): la tabbar se oculta mientras se escribe.
+  const editing = useEditingField()
 
   const rootPath = variant === 'employee' ? '/app' : '/sup'
   const tabItems =
@@ -89,13 +92,22 @@ export function MobileShell({ variant }: { variant: MobileShellVariant }) {
                 alguien puede estar a mitad de fichar o de cargar algo --
                 el peor momento para un aviso, aunque sea uno que no
                 interrumpe. */}
-            <PwaUpdateBanner className="sticky bottom-[74px] z-20" />
-            <MobileTabbar
-              variant={variant}
-              items={tabItems}
-              pathname={location.pathname}
-              rootPath={rootPath}
+            <PwaUpdateBanner
+              className={cn(
+                'sticky z-20',
+                editing
+                  ? 'bottom-4'
+                  : 'bottom-[calc(var(--tabbar-h)+var(--safe-bottom)+8px)]',
+              )}
             />
+            {!editing && (
+              <MobileTabbar
+                variant={variant}
+                items={tabItems}
+                pathname={location.pathname}
+                rootPath={rootPath}
+              />
+            )}
           </>
         )}
       </div>
@@ -116,7 +128,7 @@ function MobileGreetingHeader({
   avatarPath: string | null
 }) {
   return (
-    <header className="shrink-0 bg-primary px-5 pt-4 pb-5 text-white">
+    <header className="shrink-0 bg-primary px-5 pt-[calc(16px+var(--safe-top))] pb-5 text-white">
       <div className="flex items-center gap-3">
         <div className="min-w-0">
           <p className="text-[20px] font-bold tracking-[-0.4px]">
@@ -155,7 +167,7 @@ function MobileNavbarHeader({
   onBack: () => void
 }) {
   return (
-    <header className="sticky top-0 z-20 flex min-h-[56px] shrink-0 items-center gap-3 bg-primary px-4 py-[9px] text-white">
+    <header className="sticky top-0 z-20 flex min-h-[calc(56px+var(--safe-top))] shrink-0 items-center gap-3 bg-primary px-4 pt-[calc(9px+var(--safe-top))] pb-[9px] text-white">
       {showBack && (
         <button
           type="button"
@@ -194,8 +206,7 @@ function MobileTabbar({
 
   return (
     <nav
-      className="sticky bottom-0 z-20 flex h-[66px] shrink-0 items-center border-t border-border bg-surface px-1"
-      style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}
+      className="tabbar-safe sticky bottom-0 z-20 flex shrink-0 items-center border-t border-border bg-surface"
       aria-label="Navegación principal"
     >
       {variant === 'employee' && first && second ? (
@@ -234,7 +245,7 @@ function TabLink({ item, active }: { item: MobileNavItem; active: boolean }) {
       to={item.path}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'flex min-h-11 flex-1 flex-col items-center gap-1 pt-2 text-[10px] font-semibold text-text-3',
+        'flex min-h-11 flex-1 flex-col items-center gap-1 pt-2 text-[10px] font-semibold text-text-3 outline-none focus-visible:ring-3 focus-visible:ring-ring',
         active && 'text-primary',
       )}
     >

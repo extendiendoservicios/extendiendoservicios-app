@@ -139,6 +139,12 @@ export default defineConfig({
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(pkg.version),
   },
   build: {
+    // RESP-002 / P-090: Chrome en Android 8 o superior (Safari iOS como compatibilidad
+    // secundaria). Mismo piso que `browserslist` de package.json: Chrome 111 y Safari 16.4,
+    // que es lo que exige Tailwind CSS 4 (`@layer`, `@property`, `color-mix()`). Es también el
+    // valor de `'baseline-widely-available'` de Vite 8; se declara explícito para que el piso
+    // no cambie sin que alguien lo decida cuando Vite actualice su valor por omisión.
+    target: ['chrome111', 'safari16.4'],
     // Solo se generan si se van a subir a Sentry (arriba). Sin SENTRY_AUTH_TOKEN no hace falta
     // pagar el costo de generarlos, y no queda ningún `.map` que pueda terminar publicado.
     // 'hidden': el JS publicado no lleva el comentario `sourceMappingURL` hacia un `.map` que

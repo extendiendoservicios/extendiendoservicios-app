@@ -109,6 +109,15 @@
   --mobile-px: 16px;
   --tabbar-h: 66px;
 
+  /* Área segura del dispositivo (RESP-008): con `viewport-fit=cover` en
+   * index.html, el contenido llega hasta los bordes y estos valores dejan de
+   * ser 0 en los celulares con muesca o barra de inicio. Los shells los suman
+   * a sus alturas fijas en vez de restarlos. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+
   /* ---------- Tipografía ---------- */
   --font-sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
 

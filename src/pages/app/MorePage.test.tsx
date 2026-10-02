@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import MorePage from './MorePage'
 import * as authModule from '@/features/auth/AuthProvider'
 import type { AuthContextValue } from '@/features/auth/AuthProvider'
-import * as installPromptModule from '@/features/employee/useInstallPrompt'
+import * as installPromptModule from '@/hooks/useInstallPrompt'
 
 /**
  * EMP-13 (MOB-EMP-013, MOB-EMP-020): la fila "Avisar demora o ausencia"

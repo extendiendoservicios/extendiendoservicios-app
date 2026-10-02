@@ -1551,10 +1551,67 @@ Correcciones (detalle en `CHANGELOG.md`):
   `sr-only`. Al agregar un componente de shadcn, traducir "Close",
   "Search…" y similares.
 
-Queda para F17 (RESP): el `index.html` no tiene `viewport-fit=cover`, así
-que hoy `env(safe-area-inset-bottom)` vale 0. Si se agrega, el tabbar de
-66 px de alto fijo tiene que crecer con el área segura; si no, los ítems
-quedan apretados en los iPhone con barra de inicio.
+### Área segura, teclado virtual y objetivos táctiles (RESP-004, RESP-008)
+
+- **`viewport-fit=cover`** en `index.html`: el contenido llega a los bordes
+  y `env(safe-area-inset-*)` deja de valer 0 en los celulares con muesca o
+  barra de inicio. Los cuatro valores están como variables en
+  `tokens.css`: `--safe-top`, `--safe-right`, `--safe-bottom`,
+  `--safe-left`.
+- **Tabbar** (`AdminShell`, `MobileShell`): la utilidad `tabbar-safe`
+  (`globals.css`) le da `min-height: var(--tabbar-h) + var(--safe-bottom)` y
+  `padding-bottom: max(6px, var(--safe-bottom))`. Con área segura 0 mide
+  66 px como siempre; en un iPhone con barra de inicio crece en vez de
+  apretar los ítems. Los avisos que se apoyan sobre ella
+  (`PwaUpdateBanner`) usan `bottom-[calc(var(--tabbar-h)+var(--safe-bottom)+8px)]`.
+- **Cabeceras**: la topbar de `AdminShell` y las dos cabeceras teal de
+  `MobileShell` suman `--safe-top` a su alto y a su padding superior.
+  `AdminShell` aplica `--safe-left`/`--safe-right` a todo el shell
+  (teléfono en horizontal, con muesca al costado). `ActionBar` los aplica
+  a su padding.
+- **Teclado virtual**: tres piezas, la más simple que cubre los dos
+  navegadores. (1) `interactive-widget=resizes-content` en el viewport:
+  en Chrome/Android el teclado achica el viewport de layout y la
+  `ActionBar` (sticky al pie) queda arriba del teclado sin tapar el campo.
+  Safari/iOS lo ignora y desplaza el campo a la vista por su cuenta.
+  (2) `scroll-padding-bottom` en `html`: al enfocar un campo, el navegador
+  lo deja por encima de las barras fijas. (3) `useEditingField()`
+  (`src/hooks/`): en dispositivos táctiles, mientras el foco está en un
+  campo de texto, la tabbar se oculta para no robarle espacio al
+  formulario (en administración la tabbar está en todas las pantallas,
+  formularios incluidos). No se usó `visualViewport`: no hace falta con lo
+  anterior y se comporta distinto en Chrome y Safari.
+- **Objetivo táctil de `IconButton` y `Stepper`**: por debajo de 768 px un
+  `::after` transparente de 6 px por lado lleva el área de toque de 34 a
+  44 px sin cambiar cómo se ve. Se corrige en el componente, no por
+  pantalla; el `Stepper` lo hereda porque usa `IconButton`.
+
+### Navegadores soportados (RESP-002, P-090)
+
+Chrome en Android 8 o superior (Safari en iOS como compatibilidad
+secundaria). `browserslist` (`package.json`) y `build.target`
+(`vite.config.ts`) declaran el mismo piso: **Chrome 111 y Safari 16.4**, no
+Chrome 87 / Safari 15. Motivo: el CSS que emite Tailwind CSS 4 usa
+`@layer`, `@property` y `color-mix()` (62 usos en el build), que ni Chrome 87
+ni Safari 15 resuelven; bajar el piso no se resuelve con configuración.
+Chrome en Android 8 se actualiza por Play Store, así que el piso real de un
+Android 8 con Chrome al día queda por encima de 111. Safari/iOS anterior a
+16.4 (iOS 15 y 16.0 a 16.3) queda fuera de lo garantizado.
+
+### Tabbar de administración (RESP-004)
+
+`ADMIN_TABBAR_ITEMS` (Hoy, Planificar, Asistencia, Supervisiones) más el
+botón "Más", que abre un `Sheet` inferior con `ADMIN_MORE_ITEMS`
+(Empleados, Clientes y sedes, Tareas, Configuración): las ocho secciones de
+P-121 quedan alcanzables a 390 px sin scroll horizontal. "Más" se marca
+activo cuando la pantalla actual es una de sus secciones.
+
+### `InstallBanner` (COM-06) en administración
+
+Vive en `src/components/InstallBanner.tsx` (con `useInstallPrompt` en
+`src/hooks/` e `installBannerDismiss` en `src/lib/`). `AdminShell` lo
+monta arriba del contenido solo en `/admin` y solo por debajo de 1024 px
+(decisión de Mike del 26 sep 2026). Acepta `className`.
 
 ## Mapas: `MapView` y `MapPicker` (SITE-004/SITE-005, P08.2)
 
@@ -1960,7 +2017,7 @@ Perfil (`/perfil`, COM-04), "Avisar demora o ausencia" SIEMPRE visible pero
 deshabilitada con una etiqueta "Próximamente" (EMP-12 es F14; se decidió no
 ocultarla del todo para no dar la impresión de que no existe o de que hay un
 error), "Supervisión" solo con el rol (acceso cruzado, P-122), "Instalar la
-app" solo si `useInstallPrompt` (`src/features/employee/useInstallPrompt.ts`,
+app" solo si `useInstallPrompt` (`src/hooks/useInstallPrompt.ts`,
 envoltorio de `beforeinstallprompt`/`appinstalled`) la ofrece — el banner de
 COM-06 es P13.3, que puede reusar el mismo hook — y cerrar sesión.
 
@@ -1984,7 +2041,7 @@ después, conviene subirlo, pedido a front-plataforma.
 `src/api/myDay.test.ts`, `src/api/attendance.test.ts`, la suma a
 `src/api/tasks.test.ts`, `src/lib/geolocation.test.ts`,
 `src/features/employee/useOnlineStatus.test.ts`,
-`src/features/employee/useInstallPrompt.test.ts`,
+`src/hooks/useInstallPrompt.test.ts`,
 `src/features/employee/components/LocationConsentScreen.test.tsx` y
 `src/pages/app/MorePage.test.tsx` y `src/pages/app/TodayPage.test.ts`
 (`pickFeatured`, exportada para poder probarla sin montar la pantalla).

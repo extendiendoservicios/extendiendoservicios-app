@@ -7,7 +7,7 @@ import { StatusBadge } from '@/components/status'
 import { formatCalendarDate } from '@/lib/format'
 import { useMySupervisionsUpcomingQuery } from '@/api/mySupervisions'
 import type { MySupervision } from '@/api/mySupervisions'
-import { InstallBanner } from '@/features/employee/components/InstallBanner'
+import { InstallBanner } from '@/components/InstallBanner'
 
 /**
  * SUP-02 · Hoy (MOB-SUP-002, `06` sección 12, `05` fila SUP-02): las

@@ -10,6 +10,12 @@ import { Button } from '@/components/ui/button'
  * Sin texto visible: `aria-label` es obligatorio (accesibilidad, `07`
  * sección 5). El ícono se pasa como componente (no como `children`) para
  * mantener la misma forma que `Button`.
+ *
+ * Objetivo táctil (`07`: ≥ 44 px en móvil): por debajo de 768 px un `::after`
+ * transparente agranda el área de toque a 44×44 sin cambiar cómo se ve (el
+ * botón tiene un borde de 1 px, así que el `::after`, que parte del borde
+ * interno de 32 px, necesita 6 px por lado). Con mouse, en `md` o más, mide
+ * 34 px como en el mockup.
  */
 function IconButton({
   icon: Icon,
@@ -26,7 +32,10 @@ function IconButton({
       variant={variant}
       size="icon"
       aria-label={ariaLabel}
-      className={cn(className)}
+      className={cn(
+        'relative max-md:after:absolute max-md:after:-inset-[6px]',
+        className,
+      )}
       {...props}
     >
       <Icon />

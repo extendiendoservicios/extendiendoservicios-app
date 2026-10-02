@@ -8,7 +8,7 @@ import { IconButton } from '@/components/IconButton'
  * otros contadores acotados.
  *
  * Accesibilidad: los botones son `IconButton` (34×34, ya con foco visible y
- * objetivo táctil ≥ 44 px lo cubre el propio botón); se deshabilitan en los
+ * el objetivo táctil de 44 px en móvil lo da el propio `IconButton`); se deshabilitan en los
  * límites y el valor se anuncia con `aria-live` al cambiar.
  */
 interface StepperProps {
