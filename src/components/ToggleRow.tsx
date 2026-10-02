@@ -25,7 +25,8 @@ function ToggleRow({
   return (
     <div
       className={cn(
-        'flex items-center gap-3 border-b border-border py-[11px] last:border-b-0',
+        // En celular el `Switch` ya aporta 11 px de margen vertical (toque de 44 px).
+        'flex items-center gap-3 border-b border-border py-[11px] last:border-b-0 max-md:py-0',
         className,
       )}
     >

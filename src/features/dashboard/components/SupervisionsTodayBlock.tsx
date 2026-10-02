@@ -26,7 +26,7 @@ function SupervisionsTodayBlock({
         </h2>
         <Link
           to="/admin/supervisiones"
-          className="text-[12.5px] font-medium text-primary-800 hover:underline"
+          className="inline-flex items-center text-[12.5px] font-medium text-primary-800 hover:underline max-md:min-h-11"
         >
           Ver todas
         </Link>

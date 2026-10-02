@@ -18,6 +18,12 @@ import { Loader2 } from 'lucide-react'
  * `--r-sm` (8, `07` sección 4). `.m-btn` usa `var(--r)` (12) directamente en
  * el mockup, sin normalizar.
  *
+ * Objetivo táctil (RESP-003, P17.3): por debajo de 768 px los tamaños `sm` y
+ * `md` crecen de verdad hasta 44 px de alto (`max-md:min-h-11`), no con un
+ * `::after`: en tarjetas y barras de acciones los botones quedan pegados y un
+ * `::after` se recorta con el vecino (el mismo problema de `IconButton`). El
+ * `link` (texto en línea) queda afuera. En 768 px o más no cambia nada.
+ *
  * Los tamaños `icon`/`icon-sm` no son parte de la API pública del design
  * system (no están en la tabla de `07`): son los que ya usan por dentro los
  * componentes de shadcn instalados en DS-002 (`calendar`, `dialog`, `sheet`)
@@ -39,8 +45,8 @@ const buttonVariants = cva(
         link: 'border-transparent bg-transparent text-primary-800 underline-offset-4 hover:underline',
       },
       size: {
-        sm: "h-auto rounded-md px-[11px] py-[5px] text-[11px] [&_svg:not([class*='size-'])]:size-[15px]",
-        md: "h-auto rounded-md px-[15px] py-2 text-[12.5px] [&_svg:not([class*='size-'])]:size-[15px]",
+        sm: "h-auto rounded-md px-[11px] py-[5px] text-[11px] max-md:min-h-11 max-md:min-w-11 [&_svg:not([class*='size-'])]:size-[15px]",
+        md: "h-auto rounded-md px-[15px] py-2 text-[12.5px] max-md:min-h-11 max-md:min-w-11 [&_svg:not([class*='size-'])]:size-[15px]",
         mobile:
           "h-auto w-full rounded-lg px-[15px] py-[15px] text-[15px] [&_svg:not([class*='size-'])]:size-[18px]",
         icon: "size-[34px] rounded-md p-0 [&_svg:not([class*='size-'])]:size-4",
@@ -51,7 +57,8 @@ const buttonVariants = cva(
       {
         variant: 'link',
         size: ['sm', 'md', 'mobile'],
-        class: 'h-auto w-auto rounded-none p-0 text-xs',
+        class:
+          'h-auto w-auto rounded-none p-0 text-xs max-md:min-h-0 max-md:min-w-0',
       },
     ],
     defaultVariants: {

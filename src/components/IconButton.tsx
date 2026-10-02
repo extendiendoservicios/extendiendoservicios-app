@@ -43,4 +43,20 @@ function IconButton({
   )
 }
 
-export { IconButton }
+/**
+ * Grupo de acciones con `IconButton` (P17.3): en celular deja 10 px entre
+ * botones, que es lo que necesitan los `::after` de 44 px para no pisarse
+ * (34 + 10 = 44 de paso). Desde 768 px el espacio es el de siempre (4 px).
+ * Usalo siempre que haya dos o más `IconButton` pegados.
+ */
+function IconButtonGroup({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot="icon-button-group"
+      className={cn('flex items-center gap-[10px] md:gap-1', className)}
+      {...props}
+    />
+  )
+}
+
+export { IconButton, IconButtonGroup }
