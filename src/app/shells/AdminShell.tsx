@@ -25,7 +25,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { useEditingField } from '@/hooks/useEditingField'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { InstallBanner } from '@/components/InstallBanner'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { ROLE_LABELS } from '@/features/auth/session'
 import { brandingLogoUrl, useBranding } from '@/features/auth/useBranding'
@@ -79,6 +81,8 @@ export function AdminShell({
   const isSidebarExpanded = useMediaQuery('(min-width: 1280px)')
   const showSidebar = useMediaQuery('(min-width: 1024px)')
   const showTabbar = !showSidebar
+  // Teclado virtual abierto (RESP-008): la tabbar se oculta mientras se escribe.
+  const editing = useEditingField()
 
   // `AdminShell` solo se monta dentro de `RequireRole allow={['owner', 'admin']}`
   // (`router.tsx`), así que acá siempre hay al menos uno de los dos.
@@ -95,7 +99,7 @@ export function AdminShell({
   }
 
   return (
-    <div className="flex min-h-dvh bg-bg">
+    <div className="flex min-h-dvh bg-bg pr-[var(--safe-right)] pl-[var(--safe-left)]">
       {showSidebar && (
         <AdminSidebar
           collapsed={!isSidebarExpanded}
@@ -113,7 +117,7 @@ export function AdminShell({
           `<main>` no es un contenedor de scroll y cualquier `sticky` de una
           pantalla se ancla a la ventana. */}
       <div className="flex min-h-dvh min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-[64px] shrink-0 items-center gap-[18px] border-b border-border bg-surface px-4 lg:px-[26px]">
+        <header className="sticky top-0 z-20 flex h-[calc(64px+var(--safe-top))] shrink-0 items-center gap-[18px] border-b border-border bg-surface px-4 pt-[var(--safe-top)] lg:px-[26px]">
           <div className="min-w-0">
             <h1 className="truncate text-[17px] font-semibold tracking-[-0.25px] text-text">
               {handle?.title ?? 'Extendiendo Servicios'}
@@ -156,6 +160,12 @@ export function AdminShell({
         </header>
 
         <main className="flex-1 px-4 py-4 lg:px-[26px] lg:py-[22px]">
+          {/* COM-06: el dueño y los administradores también ven el banner de
+              instalación, solo en celular (por debajo de 1024 px) y solo en
+              el inicio (`/admin`). Decisión de Mike del 26 sep 2026. */}
+          {showTabbar && location.pathname === '/admin' && (
+            <InstallBanner className="mb-4" />
+          )}
           <Outlet />
         </main>
 
@@ -165,11 +175,13 @@ export function AdminShell({
         <PwaUpdateBanner
           className={cn(
             'sticky z-20',
-            showTabbar ? 'bottom-[74px]' : 'bottom-4',
+            showTabbar && !editing
+              ? 'bottom-[calc(var(--tabbar-h)+var(--safe-bottom)+8px)]'
+              : 'bottom-4',
           )}
         />
 
-        {showTabbar && (
+        {showTabbar && !editing && (
           <AdminTabbar
             pathname={location.pathname}
             onMore={() => setMoreOpen(true)}
@@ -183,7 +195,7 @@ export function AdminShell({
             <SheetTitle>Más</SheetTitle>
           </SheetHeader>
           <nav
-            className="flex flex-col gap-1 px-6 pb-6"
+            className="flex flex-col gap-1 px-6 pb-[calc(24px+var(--safe-bottom))]"
             aria-label="Más secciones"
           >
             {ADMIN_MORE_ITEMS.map((item) => (
@@ -392,10 +404,14 @@ function AdminTabbar({
   pathname: string
   onMore: () => void
 }) {
+  // "Más" se marca activo cuando la pantalla actual es una de sus secciones
+  // (Empleados, Clientes y sedes, Tareas, Configuración).
+  const moreActive = ADMIN_MORE_ITEMS.some((item) =>
+    isAdminNavItemActive(pathname, item),
+  )
   return (
     <nav
-      className="sticky bottom-0 z-20 flex h-[66px] shrink-0 items-center border-t border-border bg-surface px-1 pb-[6px]"
-      style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}
+      className="tabbar-safe sticky bottom-0 z-20 flex shrink-0 items-center border-t border-border bg-surface"
       aria-label="Navegación principal"
     >
       {ADMIN_TABBAR_ITEMS.map((item) => {
@@ -406,7 +422,7 @@ function AdminTabbar({
             to={item.path}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              'flex min-h-11 flex-1 flex-col items-center gap-1 pt-2 text-[10px] font-semibold text-text-3',
+              'flex min-h-11 flex-1 flex-col items-center gap-1 pt-2 text-[10px] font-semibold text-text-3 outline-none focus-visible:ring-3 focus-visible:ring-ring',
               active && 'text-primary',
             )}
           >
@@ -418,7 +434,11 @@ function AdminTabbar({
       <button
         type="button"
         onClick={onMore}
-        className="flex min-h-11 flex-1 flex-col items-center gap-1 pt-2 text-[10px] font-semibold text-text-3"
+        aria-haspopup="dialog"
+        className={cn(
+          'flex min-h-11 flex-1 flex-col items-center gap-1 pt-2 text-[10px] font-semibold text-text-3 outline-none focus-visible:ring-3 focus-visible:ring-ring',
+          moreActive && 'text-primary',
+        )}
       >
         <MoreHorizontal aria-hidden="true" className="size-[21px]" />
         Más

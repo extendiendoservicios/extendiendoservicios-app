@@ -74,6 +74,24 @@ body,
   height: 100%;
 }
 
+/* Teclado virtual (RESP-008): cuando una barra fija al pie (tabbar o
+   `ActionBar`) está presente, el navegador al enfocar un campo lo desplaza
+   hasta el borde de la ventana, justo debajo de esa barra. Este margen de
+   desplazamiento deja al campo por encima de ella. */
+html {
+  scroll-padding-bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 80px);
+}
+
+/* Barra inferior de navegación (RESP-004/RESP-008): 66 px de contenido más el
+   área segura, así que crece en los iPhone con barra de inicio en vez de
+   apretar los ítems. Con área segura 0 mide lo mismo que antes (66 px). */
+@utility tabbar-safe {
+  min-height: calc(var(--tabbar-h) + var(--safe-bottom));
+  padding-bottom: max(6px, var(--safe-bottom));
+  padding-left: max(4px, var(--safe-left));
+  padding-right: max(4px, var(--safe-right));
+}
+
 /* Color y fondo explícitos: sin ellos, el texto sin clase hereda el color
    por defecto del navegador, que con `color-scheme: dark` era blanco. */
 body {

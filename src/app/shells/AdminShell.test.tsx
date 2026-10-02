@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Branding } from '@/features/auth/useBranding'
+import * as installPromptModule from '@/hooks/useInstallPrompt'
 import { AdminShell } from './AdminShell'
 
 // `AdminShell` lee `useAuth()` (nombre, rol, cerrar sesión): estos tests
@@ -65,7 +66,9 @@ function mockViewportWidth(widthPx: number) {
     const minWidthMatch = /min-width:\s*(\d+)px/.exec(query)
     const minWidth = minWidthMatch?.[1] ? Number(minWidthMatch[1]) : 0
     return {
-      matches: widthPx >= minWidth,
+      // `display-mode: standalone` (app ya instalada) no es una consulta de
+      // ancho: acá nunca coincide, para que `InstallBanner` pueda mostrarse.
+      matches: query.includes('display-mode') ? false : widthPx >= minWidth,
       media: query,
       onchange: null,
       addEventListener: vi.fn(),
@@ -80,7 +83,7 @@ function mockViewportWidth(widthPx: number) {
 // `AdminShell` lee el título/subtítulo con `useRouteHandle` (`useMatches`),
 // que solo existe dentro de un router de datos (`RouterProvider`) — un
 // `<MemoryRouter><Routes>` simple no alcanza acá.
-function renderAdminShell() {
+function renderAdminShell(initialPath = '/admin') {
   const router = createMemoryRouter(
     [
       {
@@ -91,10 +94,20 @@ function renderAdminShell() {
             element: <p>Resumen operativo</p>,
             handle: { screenId: 'ADM-02', title: 'Resumen' },
           },
+          {
+            path: '/admin/empleados',
+            element: <p>Listado de empleados</p>,
+            handle: { screenId: 'ADM-14', title: 'Empleados' },
+          },
+          {
+            path: '/admin/asistencia',
+            element: <p>Asistencia de hoy</p>,
+            handle: { screenId: 'ADM-10', title: 'Asistencia' },
+          },
         ],
       },
     ],
-    { initialEntries: ['/admin'] },
+    { initialEntries: [initialPath] },
   )
   return render(<RouterProvider router={router} />)
 }
@@ -205,5 +218,126 @@ describe('AdminShell — menos de 1024 px', () => {
     expect(screen.getByRole('link', { name: /Hoy/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Planificar/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Más' })).toBeInTheDocument()
+  })
+
+  it('"Más" abre el menú con el resto de las secciones, así todas quedan alcanzables', () => {
+    mockViewportWidth(390)
+    renderAdminShell()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Más' }))
+
+    const menu = screen.getByRole('navigation', { name: 'Más secciones' })
+    const hrefs = Array.from(menu.querySelectorAll('a')).map((a) =>
+      a.getAttribute('href'),
+    )
+    expect(hrefs).toEqual([
+      '/admin/empleados',
+      '/admin/clientes',
+      '/admin/tareas',
+      '/admin/configuracion/usuarios',
+    ])
+  })
+
+  it('las ocho secciones de P-121 se alcanzan entre la tabbar y "Más"', () => {
+    mockViewportWidth(390)
+    renderAdminShell()
+
+    // Antes de abrir el menú: el diálogo marca el resto de la página como
+    // oculta para la tecnología asistiva y ya no se la puede consultar.
+    const tabbar = screen.getByRole('navigation', {
+      name: 'Navegación principal',
+    })
+    const tabbarHrefs = Array.from(tabbar.querySelectorAll('a')).map((a) =>
+      a.getAttribute('href'),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Más' }))
+
+    const sections = [
+      ...tabbarHrefs,
+      ...Array.from(
+        screen
+          .getByRole('navigation', { name: 'Más secciones' })
+          .querySelectorAll('a'),
+      ).map((a) => a.getAttribute('href')),
+    ].map((href) => href?.split('?')[0])
+    expect(sections).toEqual([
+      '/admin',
+      '/admin/planificacion',
+      '/admin/asistencia',
+      '/admin/supervisiones',
+      '/admin/empleados',
+      '/admin/clientes',
+      '/admin/tareas',
+      '/admin/configuracion/usuarios',
+    ])
+  })
+
+  it('"Más" se marca activo cuando la pantalla es una de sus secciones', () => {
+    mockViewportWidth(390)
+    renderAdminShell('/admin/empleados')
+
+    expect(screen.getByRole('button', { name: 'Más' }).className).toContain(
+      'text-primary',
+    )
+    expect(screen.getByRole('link', { name: /Hoy/ }).className).not.toContain(
+      'text-primary',
+    )
+  })
+
+  it('la tabbar crece con el área segura (RESP-008)', () => {
+    mockViewportWidth(390)
+    renderAdminShell()
+
+    expect(
+      screen.getByRole('navigation', { name: 'Navegación principal' }),
+    ).toHaveClass('tabbar-safe')
+  })
+})
+
+describe('AdminShell — banner de instalación (COM-06)', () => {
+  function mockInstallable() {
+    vi.spyOn(installPromptModule, 'useInstallPrompt').mockReturnValue({
+      available: true,
+      promptInstall: vi.fn(),
+    })
+  }
+
+  afterEach(() => {
+    window.localStorage.clear()
+  })
+
+  it('aparece en el inicio de administración en celular', () => {
+    mockViewportWidth(390)
+    mockInstallable()
+    renderAdminShell('/admin')
+
+    expect(screen.getByText('Instalá la aplicación')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Instalar' })).toBeInTheDocument()
+  })
+
+  it('no aparece en otras pantallas de administración', () => {
+    mockViewportWidth(390)
+    mockInstallable()
+    renderAdminShell('/admin/asistencia')
+
+    expect(screen.queryByText('Instalá la aplicación')).not.toBeInTheDocument()
+  })
+
+  it('no aparece en escritorio (1024 px o más)', () => {
+    mockViewportWidth(1440)
+    mockInstallable()
+    renderAdminShell('/admin')
+
+    expect(screen.queryByText('Instalá la aplicación')).not.toBeInTheDocument()
+  })
+
+  it('"Ahora no" lo oculta', () => {
+    mockViewportWidth(390)
+    mockInstallable()
+    renderAdminShell('/admin')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ahora no' }))
+
+    expect(screen.queryByText('Instalá la aplicación')).not.toBeInTheDocument()
   })
 })
