@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { cn } from 'cn'
 import { Tabs as TabsPrimitive } from 'radix-ui'
+import { ScrollFadeEdges, useScrollFades } from '@/components/ScrollFades'
 
 /**
  * Tabs (DS-011): `07` sección 2.3 — "subrayado teal 2 px, texto 12.5 px"
@@ -29,22 +30,31 @@ function Tabs({
 
 function TabsList({
   className,
+  fadeClassName,
   ...props
-}: React.ComponentProps<typeof TabsPrimitive.List>) {
+}: React.ComponentProps<typeof TabsPrimitive.List> & {
+  /** Color de fondo de los degradés de los bordes (`from-bg` por omisión). */
+  fadeClassName?: string
+}) {
+  const { ref, fades } = useScrollFades<HTMLDivElement>()
   return (
-    <TabsPrimitive.List
-      data-slot="tabs-list"
-      className={cn(
-        // Horizontal: si las pestañas no entran (ficha de empleado en un celular),
-        // se desplazan dentro de su propia fila en vez de empujar la página.
-        // La línea de base es una sombra interior y no un borde: con
-        // `overflow-x-auto` el borde de la pestaña activa (que antes bajaba 1 px
-        // sobre el de la lista con `-mb-px`) quedaba recortado.
-        'flex max-w-full items-center gap-[2px] overflow-x-auto shadow-[inset_0_-1px_0_var(--color-border)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden group-data-[orientation=vertical]/tabs:flex-col group-data-[orientation=vertical]/tabs:items-start group-data-[orientation=vertical]/tabs:overflow-visible group-data-[orientation=vertical]/tabs:shadow-none',
-        className,
-      )}
-      {...props}
-    />
+    <div className="relative max-w-full group-data-[orientation=vertical]/tabs:contents">
+      <TabsPrimitive.List
+        ref={ref}
+        data-slot="tabs-list"
+        className={cn(
+          // Horizontal: si las pestañas no entran (ficha de empleado en un celular),
+          // se desplazan dentro de su propia fila en vez de empujar la página.
+          // La línea de base es una sombra interior y no un borde: con
+          // `overflow-x-auto` el borde de la pestaña activa (que antes bajaba 1 px
+          // sobre el de la lista con `-mb-px`) quedaba recortado.
+          'flex max-w-full items-center gap-[2px] overflow-x-auto shadow-[inset_0_-1px_0_var(--color-border)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden group-data-[orientation=vertical]/tabs:flex-col group-data-[orientation=vertical]/tabs:items-start group-data-[orientation=vertical]/tabs:overflow-visible group-data-[orientation=vertical]/tabs:shadow-none',
+          className,
+        )}
+        {...props}
+      />
+      <ScrollFadeEdges fades={fades} fadeClassName={fadeClassName} />
+    </div>
   )
 }
 

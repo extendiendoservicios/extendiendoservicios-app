@@ -176,7 +176,7 @@ export function defineScreenSuite(
               }
               if (screen.list) {
                 const cards = await page
-                  .locator('main div.shadow-card[class*="p-[14px]"]')
+                  .locator('main [data-slot="row-card"]')
                   .count()
                 if (cards === 0) {
                   note(

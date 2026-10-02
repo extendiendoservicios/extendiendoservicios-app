@@ -83,7 +83,7 @@ test.describe('RESP-005: listas como tarjetas (RowCard) en móvil, tabla desde 1
         try {
           const tables = await page.locator('main table:visible').count()
           const cards = await page
-            .locator('main div.shadow-card[class*="p-[14px]"]')
+            .locator('main [data-slot="row-card"]')
             .count()
           if (width < 1024) {
             if (tables > 0) {
@@ -97,9 +97,7 @@ test.describe('RESP-005: listas como tarjetas (RowCard) en móvil, tabla desde 1
           const wide = await page.evaluate(
             () =>
               Array.from(
-                document.querySelectorAll(
-                  'main div.shadow-card[class*="p-[14px]"]',
-                ),
+                document.querySelectorAll('main [data-slot="row-card"]'),
               ).filter(
                 (el) =>
                   el.getBoundingClientRect().right > window.innerWidth + 0.5,

@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router'
 import { cn } from 'cn'
 import type { Role } from '@/api/users'
+import { ScrollFadeEdges, useScrollFades } from '@/components/ScrollFades'
 import { canViewOwnerOnlyConfig } from '@/features/settings/permissions'
 
 /**
@@ -48,28 +49,34 @@ function ConfigNav({ roles }: { roles: Role[] }) {
     (item) => !item.ownerOnly || isOwnerViewer,
   )
 
+  const { ref, fades } = useScrollFades<HTMLElement>()
+
   return (
-    <nav
-      aria-label="Secciones de configuración"
-      className="flex items-center gap-[2px] overflow-x-auto overflow-y-hidden border-b [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-border"
-    >
-      {items.map((item) => {
-        const active = location.pathname === item.path
-        return (
-          <Link
-            key={item.path}
-            to={item.path}
-            aria-current={active ? 'page' : undefined}
-            className={cn(
-              '-mb-px border-b-2 border-transparent px-[14px] py-[11px] text-[12.5px] font-semibold whitespace-nowrap text-text-3 transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring',
-              active && 'border-primary text-primary-800',
-            )}
-          >
-            {item.label}
-          </Link>
-        )
-      })}
-    </nav>
+    <div className="relative">
+      <nav
+        ref={ref}
+        aria-label="Secciones de configuración"
+        className="flex items-center gap-[2px] overflow-x-auto overflow-y-hidden border-b [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-border"
+      >
+        {items.map((item) => {
+          const active = location.pathname === item.path
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              aria-current={active ? 'page' : undefined}
+              className={cn(
+                '-mb-px border-b-2 border-transparent px-[14px] py-[11px] text-[12.5px] font-semibold whitespace-nowrap text-text-3 transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring',
+                active && 'border-primary text-primary-800',
+              )}
+            >
+              {item.label}
+            </Link>
+          )
+        })}
+      </nav>
+      <ScrollFadeEdges fades={fades} />
+    </div>
   )
 }
 

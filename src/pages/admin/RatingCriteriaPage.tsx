@@ -12,7 +12,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DataTable, type DataTableColumnDef } from '@/components/DataTable'
-import { IconButton } from '@/components/IconButton'
+import { IconButton, IconButtonGroup } from '@/components/IconButton'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { isApiError } from '@/api/errors'
 import type { RatingCriterion } from '@/api/settings'
@@ -146,7 +146,7 @@ export default function RatingCriteriaPage() {
         const criterion = row.original
         const isOpen = criterion.validTo == null
         return (
-          <div className="flex items-center gap-1">
+          <IconButtonGroup className="shrink-0">
             {isOpen && (
               <>
                 <IconButton
@@ -173,7 +173,7 @@ export default function RatingCriteriaPage() {
                 />
               </>
             )}
-          </div>
+          </IconButtonGroup>
         )
       },
     },

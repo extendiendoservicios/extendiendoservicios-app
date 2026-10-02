@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { IconButton } from '@/components/IconButton'
+import { IconButton, IconButtonGroup } from '@/components/IconButton'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { isApiError } from '@/api/errors'
@@ -157,7 +157,7 @@ function ChecklistItemsEditor({
                 )}
               </div>
               {canEdit && (
-                <div className="flex shrink-0 items-center gap-1">
+                <IconButtonGroup className="shrink-0">
                   <IconButton
                     icon={ArrowUp}
                     aria-label={`Subir "${item.title}"`}
@@ -182,7 +182,7 @@ function ChecklistItemsEditor({
                     aria-label={`Dar de baja "${item.title}"`}
                     onClick={() => setItemToDeactivate(item)}
                   />
-                </div>
+                </IconButtonGroup>
               )}
             </li>
           ))}
