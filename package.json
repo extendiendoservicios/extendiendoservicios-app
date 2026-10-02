@@ -31,6 +31,7 @@
     "test:e2e:employee-shift": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-employee-shift/playwright.employee-shift.config.ts",
     "test:e2e:avisos-asistencia": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-avisos-asistencia/playwright.avisos-asistencia.config.ts",
     "test:e2e:tablero": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-tablero/playwright.tablero.config.ts",
+    "test:e2e:responsive": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-responsive/playwright.responsive.config.ts",
     "test:e2e:supervisiones": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-supervisiones/playwright.supervisiones.config.ts",
     "test:permissions": "node --env-file=.env.local ./node_modules/vitest/vitest.mjs run --config tests/permissions/vitest.config.ts",
     "format": "prettier --write .",
