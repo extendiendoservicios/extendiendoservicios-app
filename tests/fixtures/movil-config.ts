@@ -30,6 +30,9 @@ export function configMovil(testMatch: string): PlaywrightTestConfig {
     retries: 0,
     reporter: [['list'], ['html', { open: 'never' }]],
     timeout: 120_000,
+    // Red de seguridad: si algo se cuelga (se vio una vez un WebKit que no cerraba), la corrida
+    // termina sola en vez de quedar esperando para siempre. Las dos suites tardan unos 12 minutos.
+    globalTimeout: 30 * 60_000,
     expect: { timeout: 10_000 },
     use: {
       baseURL: E2E_BASE_URL,
