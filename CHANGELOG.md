@@ -7,6 +7,13 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+### Agregado
+
+- Prueba de restauración de respaldos revisada contra el estado actual y ensayada en Docker (TEST-024): el volcado se inspecciona antes de tocar nada, se comparan las filas de cada tabla, las claves foráneas y los permisos (sin el `GRANT ALL` por defecto de Supabase), se simula una sesión de dueño con el hook de Auth y la RLS, y el resultado queda resumido con tiempos en la pestaña Summary de la corrida.
+- `pnpm db:recuperar-dev` (`scripts/recuperar-app-dev.ts`): deja a `App_dev` utilizable después de la prueba de restauración, validando cada paso.
+- `scripts/ensayo-restauracion-local.sh`: ensayo completo de respaldo, restauración y recuperación en Docker, sin credenciales.
+- Guía `docs/restore-test.md`: clic por clic, qué ver en cada paso, recuperación de `App_dev` y plantilla de acta.
+
 ## [0.14.0] - 2026-10-02
 
 Responsive y PWA (F17). Toda la administración se usa desde un celular de 390 px sin scroll horizontal, los controles tienen 44 px para tocarlos con el dedo, la app respeta la muesca y la barra de inicio de los teléfonos, y cada pantalla se descarga recién cuando se abre. Sin migraciones.

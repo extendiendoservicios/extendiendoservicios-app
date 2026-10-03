@@ -12,31 +12,32 @@ real, GitHub Pages desactivado, y `restore-test.yml`, INFRA-024; corregida
 y validada el 23 sep 2026 en `fix/TEST-024-restore-sequence` la secuencia
 de restauración de `scripts/restore-from-r2.sh` (sección 6.3); ampliada el
 23 sep 2026 en `ci/TEST-004-deno` con los tests Deno de las Edge Functions
-dentro de `ci.yml` (cierre de TEST-004, sección 2)).
+dentro de `ci.yml` (cierre de TEST-004, sección 2); revisada y ampliada el
+3 oct 2026 en `test/TEST-024-restauracion` la restauración de prueba
+(sección 6.3, TEST-024)).
 
 ## 1. Los seis workflows
 
 `.github/workflows/` tiene los cinco workflows de `03` sección 3.7 más
 `restore-test.yml` (TEST-024, agregado en P03.7, ver sección 6.3).
 
-| Workflow                | Dispara                                                        | Qué hace                                                                                                                    | Estado                                                                                                                                                                          |
-| ----------------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ci.yml`                | Pull Request a `develop` o `main`                              | Instala, lintea, tipa, formatea, testea, construye y corre e2e (chromium)                                                   | Activo desde P03.3; verificación obligatoria de `develop` y `main` desde P03.6                                                                                                  |
-| `deploy-staging.yml`    | Push a `develop`, o `workflow_dispatch`                        | Migra `App_dev`, construye con variables de staging, publica en Pages, smoke test                                           | Activo desde P03.6 (`STAGING_DEPLOY_ENABLED=true`); primera corrida real verificada                                                                                             |
-| `deploy-production.yml` | Push a `main`                                                  | Volcado a R2, migra `App`, construye con variables de producción, publica, smoke test                                       | Activo desde P03.6 (`PRODUCTION_DEPLOY_ENABLED=true`), con aprobación de Mike en `production`                                                                                   |
-| `backup.yml`            | Cron diario 03:00 Argentina (06:00 UTC), o `workflow_dispatch` | `pg_dump` cifrado de `App` a R2, retención 30 diarios / 12 mensuales (ADR-015)                                              | Activo desde P03.7 (`BACKUP_ENABLED=true`); primer respaldo real verificado (sección 6.2)                                                                                       |
-| `keepalive.yml`         | Cron semanal (lunes 12:00 UTC), o `workflow_dispatch`          | Consulta trivial a `App_dev` para evitar la pausa por inactividad (ADR-014)                                                 | Activo desde P03.2 (INFRA-019); disparado a mano y verificado en P03.6                                                                                                          |
-| `restore-test.yml`      | Solo `workflow_dispatch`, con confirmación explícita           | Restaura un respaldo de R2 en `App_dev` (`public` + usuarios de `auth`), verifica y borra todo antes de terminar (TEST-024) | Escrito en P03.7, secuencia corregida y validada en Docker el 23 sep 2026, sin correr contra recursos remotos todavía: recién cuando `App` tenga las tablas de F4 (sección 6.3) |
+| Workflow                | Dispara                                                        | Qué hace                                                                                                                    | Estado                                                                                                                                                                                                                                                                      |
+| ----------------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ci.yml`                | Pull Request a `develop` o `main`                              | Instala, lintea, tipa, formatea, testea, construye y corre e2e (chromium)                                                   | Activo desde P03.3; verificación obligatoria de `develop` y `main` desde P03.6                                                                                                                                                                                              |
+| `deploy-staging.yml`    | Push a `develop`, o `workflow_dispatch`                        | Migra `App_dev`, construye con variables de staging, publica en Pages, smoke test                                           | Activo desde P03.6 (`STAGING_DEPLOY_ENABLED=true`); primera corrida real verificada                                                                                                                                                                                         |
+| `deploy-production.yml` | Push a `main`                                                  | Volcado a R2, migra `App`, construye con variables de producción, publica, smoke test                                       | Activo desde P03.6 (`PRODUCTION_DEPLOY_ENABLED=true`), con aprobación de Mike en `production`                                                                                                                                                                               |
+| `backup.yml`            | Cron diario 03:00 Argentina (06:00 UTC), o `workflow_dispatch` | `pg_dump` cifrado de `App` a R2, retención 30 diarios / 12 mensuales (ADR-015)                                              | Activo desde P03.7 (`BACKUP_ENABLED=true`); primer respaldo real verificado (sección 6.2)                                                                                                                                                                                   |
+| `keepalive.yml`         | Cron semanal (lunes 12:00 UTC), o `workflow_dispatch`          | Consulta trivial a `App_dev` para evitar la pausa por inactividad (ADR-014)                                                 | Activo desde P03.2 (INFRA-019); disparado a mano y verificado en P03.6                                                                                                                                                                                                      |
+| `restore-test.yml`      | Solo `workflow_dispatch`, con confirmación explícita           | Restaura un respaldo de R2 en `App_dev` (`public` + usuarios de `auth`), verifica y borra todo antes de terminar (TEST-024) | Escrito en P03.7, secuencia validada en Docker el 23 sep 2026 y revisada contra las 29 migraciones y ensayada de nuevo en Docker el 3 oct 2026 (TEST-024); **la corrida real contra `App_dev` la dispara Mike en una ventana sin e2e**, ver `restore-test.md` (sección 6.3) |
 
 Los primeros cinco ya corrieron de verdad contra recursos remotos (staging,
 producción, R2 y `App_dev`): detalle y números de corrida en
-`12_Registro_de_Progreso.md`. Solo `restore-test.yml` sigue "escrito y
-validado, sin ejecutar" (sección 6.3): además de la razón operativa (recién
-tiene sentido correrlo cuando exista algo real que restaurar, F4),
-`workflow_dispatch` solo aparece como opción en la pestaña **Actions** de
-GitHub para workflows que ya existen en la rama por defecto (`main`) -- así
-que ni siquiera se podría disparar desde la interfaz hasta que este archivo
-llegue ahí con un pase futuro (sección 13).
+`12_Registro_de_Progreso.md`. Solo `restore-test.yml` sigue sin correr contra
+recursos remotos (sección 6.3): borra y recarga `App_dev`, así que lo dispara
+Mike a mano en una ventana en la que nadie lo use (las suites e2e también
+escriben ahí). Desde el pase 0.14.0 el archivo ya existe en `main` y el botón
+"Run workflow" está disponible (sección 13); la guía clic por clic es
+[`restore-test.md`](restore-test.md).
 
 ## 2. `ci.yml` (INFRA-015)
 
@@ -308,14 +309,47 @@ system trigger`), y confirmado que en Supabase el rol `postgres` **no** es super
 > los números de las dos rondas de validación, en el reporte de la tarea
 > `fix/TEST-024-restore-sequence`.
 
+**Estado (3 oct 2026, TEST-024, P18.5).** La restauración de prueba se revisó contra
+el estado actual (29 migraciones, la Edge Function `admin-users`, los buckets de Storage, el
+hook de Auth y `jwt_expiry = 900`), se amplió la verificación y se ensayó de punta a punta en
+Docker con un Supabase local propio. **La guía para correrla, con el acta y la recuperación de
+`App_dev`, está en [`restore-test.md`](restore-test.md)**; esta sección es el diseño. Lo nuevo:
+
+- **El volcado se inspecciona antes de tocar nada**: tiene que traer los usuarios, las
+  migraciones, el hook de Auth, los triggers de `auth.users` y `auth.sessions`, los buckets y las
+  seis políticas de Storage, y las mismas políticas RLS de `public` que `App_dev`.
+- **Las columnas de `auth.users`/`auth.identities` del volcado tienen que existir en `App_dev`**
+  (Supabase actualiza Auth por proyecto; si difieren, la carga fallaría a mitad de camino).
+- **Estructura y permisos con comprobaciones, no con la suposición**
+  (`scripts/lib/verificar-estructura.sql`): RLS en todas las tablas, `anon` solo con `select`
+  sobre `v_public_branding`, `authenticated` sin `TRUNCATE`/`TRIGGER`/`REFERENCES` (el `GRANT ALL`
+  por defecto de Supabase), las diez tablas "RPC" sin escritura directa, privilegios por defecto,
+  `search_path` fijo en las funciones `security definer`, hook y triggers de `auth`, buckets y
+  políticas de Storage. Se corre antes y después, más una **huella** de todos los permisos
+  (`scripts/lib/huella-permisos.sql`) que tiene que ser idéntica.
+- **Filas de cada tabla contra el volcado**, no solo la cantidad de tablas.
+- **Claves foráneas sin huérfanas y sesión simulada** (`scripts/lib/verificar-datos.sql`): con
+  `session_replication_role = replica` Postgres no comprueba las claves foráneas al cargar, así
+  que se comprueban después; y una persona dueña o administradora, con el token que arma el hook
+  de Auth real, tiene que ver con RLS las mismas filas que ve el dueño de las tablas. Si el
+  respaldo no tiene usuarios (hoy, `App` no tiene), queda `OMITIDA`.
+- **Resumen con tiempos** en la salida y en la pestaña **Summary** de la corrida de GitHub: es el
+  insumo del acta.
+- **Modo `--archivo <ruta>`** para restaurar un volcado local (ensayos y restauraciones a mano), y
+  **`scripts/recuperar-app-dev.ts`** para dejar `App_dev` utilizable después.
+- **`main` ya tiene el workflow** (pase 0.14.0): el botón "Run workflow" existe; la versión que
+  corre es la de la rama que se elija en el desplegable.
+- **Condición de uso: `App_dev` y `App` con las mismas migraciones** (paso 0b). Como `App_dev`
+  recibe cada migración al fusionar en `develop` y `App` recién en el pase a `main`, conviene
+  correrla justo después de un pase.
+
+Las secciones siguientes conservan la historia de las decisiones y de los defectos corregidos.
+
 **Decisión de Mike:** la restauración de prueba es un workflow de GitHub
-(así los secretos de R2/Supabase nunca salen de Actions) y se ejecuta
-cuando `App` (producción) ya tenga las tablas de F4 — hoy `supabase/migrations`
-no tiene ninguna, así que no habría nada real que restaurar. `restore-test.yml`
-queda escrito, validado y listo en P03.7, pero **no corre todavía**: pasa a
-`main` con un pase futuro y se dispara a mano recién entonces (además,
-`workflow_dispatch` solo aparece en la pestaña **Actions** de GitHub para
-workflows que ya existen en la rama por defecto — sección 13).
+(así los secretos de R2/Supabase nunca salen de Actions). Se escribió y validó en P03.7 con
+`App` todavía sin tablas y se corre recién cuando hay algo real que restaurar (F18, y otra vez
+antes de F20 con la carga inicial). Para dispararlo hace falta que el archivo exista en `main`
+(sección 13): desde el pase 0.14.0 ya está.
 
 **Solo `App_dev`.** Ni el workflow ni el script leen `SUPABASE_DB_URL_PROD`
 en ningún lado: estructuralmente no pueden apuntar a `App` (producción) ni
@@ -353,15 +387,18 @@ reemplazan sus filas (`DELETE` + `INSERT` vía `pg_restore --data-only`). El
 `pg_dump` de `backup.yml` sigue siendo completo (todos los esquemas): el
 recorte es solo al restaurar.
 
-**Secuencia** (validada de punta a punta, ver el recuadro de arriba; el
-detalle completo está en los comentarios de `scripts/restore-from-r2.sh`):
+**Secuencia** (validada de punta a punta, ver el recuadro de arriba y el ensayo del 3 oct 2026 en
+[`restore-test.md`](restore-test.md) sección 11; el detalle completo está en los comentarios de
+`scripts/restore-from-r2.sh`):
 
-0. Verifica que `App_dev` tenga las mismas migraciones aplicadas que el
-   volcado (`supabase_migrations.schema_migrations`, la tabla de control
-   de la CLI de Supabase) — si no coinciden, **aborta antes de tocar
-   nada**, con un mensaje claro. Esto es lo que garantiza que la
-   ESTRUCTURA de `public` es idéntica en los dos lados: el resto de la
-   secuencia confía en eso para no tener que recrear nada.
+0. Comprobaciones previas, **antes de tocar nada** (si alguna falla, `App_dev` queda intacto):
+   a. el volcado es un respaldo completo (usuarios, migraciones, hook, triggers de `auth`,
+   buckets, políticas de Storage y de `public`); b. `App_dev` tiene las mismas migraciones
+   aplicadas que el volcado (`supabase_migrations.schema_migrations`, la tabla de control de la
+   CLI) — esto es lo que garantiza que la ESTRUCTURA de `public` es idéntica en los dos lados y
+   que el resto de la secuencia no tenga que recrear nada; c. las columnas de `auth.users` y
+   `auth.identities` del volcado existen en `App_dev`; d. la estructura y los permisos de
+   `App_dev` son los esperados, y se toma la huella de permisos.
 1. Vacía `public` (`TRUNCATE ... CASCADE`) por si `App_dev` tenía datos de
    antes. `TRUNCATE` no necesita `session_replication_role` ni deshabilitar
    nada: alcanza con ser dueño de la tabla, y `CASCADE` ya se encarga de
@@ -383,15 +420,18 @@ detalle completo está en los comentarios de `scripts/restore-from-r2.sh`):
    `session_replication_role = replica` fijado en esa misma conexión: ni
    los triggers de usuario ni los internos de las claves foráneas se
    disparan, así que el orden de carga entre tablas no importa.
-4. Verifica (cantidad de tablas del volcado contra las de `App_dev`, más
-   filas por tabla) — nunca contenido.
+4. Verifica, solo cantidades y nombres de objetos (nunca contenido): filas de cada tabla contra el
+   volcado, claves foráneas sin huérfanas (`replica` no las comprueba al cargar), estructura y
+   permisos otra vez, huella de permisos idéntica a la de antes, y sesión simulada de una persona
+   dueña o administradora (hook de Auth y RLS).
 5. **Limpieza, siempre** (por un `trap` de bash: corre aunque cualquiera de
    los pasos de arriba falle): vacía `public` y borra los usuarios de auth
-   restaurados, y confirma que quedaron vacíos. El workflow además corre
+   restaurados, y confirma que quedaron vacíos; después imprime el resumen. El workflow además corre
    un paso `if: always()` aparte (`scripts/restore-from-r2.sh
 --confirmar-vacio`) como segunda confirmación independiente, visible en
    el log de la corrida. Validado forzando una falla a mitad de camino
-   (después del paso 1): la limpieza dejó `App_dev` vacío igual.
+   (después del paso 1, y de nuevo el 3 oct 2026 en la carga de `public`): la limpieza dejó
+   `App_dev` vacío igual.
 
 Cada paso de la secuencia corre en su propia transacción (`begin`/`commit`
 explícito en los bloques de `psql`, incluidos los que arman
@@ -410,26 +450,19 @@ conexión) no serviría de nada. Por eso los pasos 2 y 3 arman el `SET` más el
 SQL que genera `pg_restore -f -` y lo mandan todo por la misma tubería a un
 único `psql`, que abre una sola conexión para las dos cosas.
 
-**Ningún dato personal se imprime en ningún log.** La verificación (paso 6)
-y la limpieza (paso 7) solo cuentan filas (números); nunca hacen `SELECT *`
-ni imprimen contenido de ninguna tabla ni de `auth.users`/`auth.identities`.
+**Ningún dato personal se imprime en ningún log.** La verificación (paso 4)
+y la limpieza (paso 5) solo cuentan filas (números) y nombran objetos de la base; nunca hacen
+`SELECT *` ni imprimen contenido de ninguna tabla ni de `auth.users`/`auth.identities`. El
+resumen de la pestaña Summary tiene la misma regla.
 
-**Permisos del rol `postgres` sobre `auth`, sin confirmar.** La
-documentación pública de Supabase describe a `postgres` (el rol que usa
-este script, vía el Session pooler) como _"the default Postgres role. This
-has admin privileges"_, pero no confirma ni niega privilegios de
-`INSERT`/`DELETE` sobre `auth.users`/`auth.identities` — y en otra página
-recomienda explícitamente no escribir en `auth.users` a mano ("may change
-at any time", usar la Auth Admin API en su lugar). No se pudo confirmar
-esto en vivo (esta capa no inicia sesión en ningún servicio). El diseño de
-arriba está pensado para fallar rápido y sin dejar nada a medias si el
-permiso no está (cada paso en su propia transacción, limpieza que corre
-siempre). **Antes de la primera corrida real** (después de F4), Mike puede
-confirmarlo sin arriesgar nada, desde el SQL Editor de `App_dev`. La
-consulta pide cada permiso por separado (`has_table_privilege` con una
-lista de privilegios separados por coma, como `'INSERT, DELETE'`, devuelve
-`true` si el rol tiene CUALQUIERA de los dos, no los dos a la vez — no
-sirve para confirmar que están los dos):
+**Permisos del rol `postgres` sobre `auth`: confirmados el 19 sep 2026.** La documentación
+pública de Supabase describe a `postgres` como _"the default Postgres role. This has admin
+privileges"_ y no dice nada de `INSERT`/`DELETE` sobre `auth.users`/`auth.identities` (en otra
+página recomienda no escribir ahí a mano: "may change at any time"). Se comprobó en `App_dev` con
+la consulta de abajo, que pide **cada permiso por separado** (`has_table_privilege` con una lista
+como `'INSERT, DELETE'` devuelve `true` si el rol tiene CUALQUIERA de los dos, no sirve para
+confirmar los dos): los cuatro dieron `true`. El ensayo local del 3 oct 2026, con un `postgres`
+sin superusuario como el de Supabase, también pudo borrar y cargar esas tablas.
 
 ```sql
 select has_table_privilege('postgres', 'auth.users', 'INSERT') as auth_users_insert,
@@ -438,31 +471,24 @@ select has_table_privilege('postgres', 'auth.users', 'INSERT') as auth_users_ins
        has_table_privilege('postgres', 'auth.identities', 'DELETE') as auth_identities_delete;
 ```
 
-Los cuatro tienen que dar `true`.
+Si algún día alguno diera `false` (Supabase cambió permisos), el paso 2 falla con un error de
+permisos claro y la limpieza deja `App_dev` vacío; la alternativa, que no está construida, es
+recrear los usuarios con la Auth Admin API en vez de SQL directo.
 
-Si alguno de los dos da `false`, el paso 2 de la secuencia va a fallar con
-un error de permisos claro (y la limpieza igual va a dejar `App_dev`
-vacío) — en ese caso, la alternativa (no construida en este encargo) es
-recrear los usuarios con la Auth Admin API en vez de SQL directo, que
-exige un script bastante más grande.
+**Después de la prueba: `App_dev` queda vacío, a propósito.** Ni el seed de prueba que tuviera
+antes, ni las cuentas fijas de las suites e2e, ni los datos restaurados sobreviven a una corrida
+de `restore-test.yml`. Volver a dejarlo utilizable es un paso aparte, que no hace este workflow
+(mezclar "restaurar un respaldo real" con "volver a poner datos ficticios" en el mismo mecanismo
+sería confuso y más difícil de auditar): `pnpm db:recuperar-dev`
+(`scripts/recuperar-app-dev.ts`) aplica las migraciones que falten, comprueba Auth, crea los
+usuarios de prueba, carga `supabase/seed.sql`, corre el setup de las cuentas fijas de P18.1 y
+valida cada paso. Paso a paso en [`restore-test.md`](restore-test.md) sección 8.
 
-**Después de la prueba: `App_dev` queda vacío, a propósito.** Ni el seed de
-prueba que tuviera antes ni los datos restaurados sobreviven a una corrida
-de `restore-test.yml`. Volver a cargar datos de prueba es un paso aparte:
-correr de nuevo el seed de `App_dev` contra ese proyecto (desde F4,
-`scripts/seed-dev.ts` según `README.md`/`scripts/README.md`; hasta que F4
-exista, no hay seed que restaurar). No lo hace este workflow ni este
-script: mezclar "restaurar un respaldo real" con "volver a poner datos
-ficticios" en el mismo mecanismo sería confuso y más difícil de auditar.
-
-**Verificación con resultado claro:** después de restaurar (antes de
-limpiar), el script compara la cantidad de tablas que lista `pg_restore -l
---schema=public` contra la cantidad de tablas que efectivamente quedaron en
-`information_schema.tables` de `App_dev` (esquema `public`) — si no
-coinciden, el script termina en error. Además imprime, tabla por tabla, un
-`SELECT count(*)` real (no una estimación de `pg_stat_user_tables`), más el
-conteo de `auth.users`/`auth.identities` — siempre números, nunca
-contenido.
+**Verificación con resultado claro.** Cada comprobación imprime `[OK]`, `[FALLA]` u `[OMITIDA]`
+y queda registrada; si alguna da `[FALLA]` el script termina en error (la limpieza corre igual).
+Todo vuelve resumido, con los tiempos por etapa, al final de la salida y en la pestaña Summary
+de la corrida (`$GITHUB_STEP_SUMMARY`). Los ejemplos del resumen y la plantilla de acta están en
+[`restore-test.md`](restore-test.md) sección 9.
 
 Uso (workflow, cuando corresponda dispararlo):
 
@@ -491,6 +517,10 @@ SUPABASE_DB_URL_DEV=<...> R2_ACCESS_KEY_ID=<...> R2_SECRET_ACCESS_KEY=<...> \
 SUPABASE_DB_URL_DEV=<...> R2_ACCESS_KEY_ID=<...> R2_SECRET_ACCESS_KEY=<...> \
   R2_BUCKET=es-backups CLOUDFLARE_ACCOUNT_ID=<...> BACKUP_PASSPHRASE=<...> \
   scripts/restore-from-r2.sh --ultimo restaurar-app-dev
+
+# 2c. O restaurar un volcado local (.dump, o .dump.gpg con BACKUP_PASSPHRASE) sin pasar por R2;
+#     es lo que usa scripts/ensayo-restauracion-local.sh
+SUPABASE_DB_URL_DEV=<...> scripts/restore-from-r2.sh --archivo ./respaldo.dump restaurar-app-dev
 
 # 3. Confirmar que App_dev quedó vacío (la corrida de arriba ya limpia sola; esto es una
 #    segunda confirmación independiente, por ejemplo si algo se cortó antes de la limpieza)
@@ -777,8 +807,8 @@ anotado también en `docs/environments.md`.
 ## 12. Qué falta para que esto corra de verdad
 
 **Estado al cierre de F3 (P03.7).** Todo lo de la sección 1 corrió de verdad
-contra un proyecto remoto salvo `restore-test.yml` (sección 6.3, pendiente
-de F4 a propósito). En orden:
+contra un proyecto remoto salvo `restore-test.yml` (sección 6.3; su corrida
+real quedó para F18, TEST-024). En orden:
 
 - P03.5 (Mike): tokens con permisos mínimos (Cloudflare, R2, Sentry) y todos
   los secretos de GitHub y de cada `environment` cargados
@@ -794,11 +824,12 @@ de F4 a propósito). En orden:
   workflows, `docs/environments.md` sección 7), interruptor de respaldo
   activado y primer respaldo real verificado (sección 6.2), y
   `restore-test.yml` escrito y listo, sin ejecutar todavía (sección 6.3).
-  Hecho, con esa única restauración real pendiente de F4.
+  Hecho, con esa única restauración real pendiente.
 
 Lo único que queda pendiente del alcance de F3 es disparar `restore-test.yml`
-por primera vez, y eso es a propósito (sección 6.3): recién tiene sentido
-cuando `App` tenga datos reales de F4 para restaurar en `App_dev`.
+por primera vez, y eso es a propósito (sección 6.3): se corre en F18
+(TEST-024), con el acta de [`restore-test.md`](restore-test.md) sección 9, y
+se repite antes de F20 con la carga inicial.
 
 ## 13. Pase de `develop` a `main` y `workflow_dispatch` desde `main`
 
@@ -835,6 +866,8 @@ hasta que llegue a `main`. Esto ya se comprobó en la práctica en P03.6:
 `keepalive.yml` se había fusionado en `develop` en P03.2, pero recién pudo
 dispararse a mano una vez que el primer pase `develop → main` lo llevó
 también a la rama por defecto — el orquestador lo disparó desde `main`
-apenas se pudo (la consulta a `App_dev` anduvo). Es exactamente lo que le
-pasa hoy a `restore-test.yml` (sección 6.3): existe en `develop` desde
-P03.7, pero no se puede disparar hasta que un pase futuro lo lleve a `main`.
+apenas se pudo (la consulta a `App_dev` anduvo). Le pasó lo mismo a
+`restore-test.yml` (sección 6.3) entre P03.7 y el pase 0.14.0: ahora ya está en
+`main` y el botón aparece. Recordá que corre la versión del archivo de la rama
+que se elija en el desplegable "Use workflow from": una mejora que solo está en
+`develop` se prueba eligiendo `develop`.
