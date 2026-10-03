@@ -216,15 +216,11 @@ Qué hace, en orden, y qué tenés que ver:
 | 2. Auth                   | Lee `/auth/v1/settings` y comprueba que el proveedor de email esté encendido. **No corre `config push` solo**: puede apagarlo (`environments.md`). | `[OK] auth_proveedor_email`. Si falla, corregilo a mano antes de seguir. |
 | 3. Usuarios               | `scripts/seed-dev.ts` crea las 14 cuentas por la Admin API. **La cuenta del dueño (`extserviciosapp@gmail.com`) vuelve con `SEED_DEV_PASSWORD`.**  | `[OK] usuarios_de_auth`: 14 usuarios.                                    |
 | 4. Datos                  | Corre `supabase/seed.sql` (empresa, roles, clientes, sedes, servicios, turnos…).                                                                   | `[OK] datos_del_seed`.                                                   |
-| 5. Cuentas fijas de P18.1 | Corre el comando que arma las cuentas de las suites e2e. **Todavía no existe** (`tests/fixtures/` no está en `develop`).                           | `[PENDIENTE] fixtures_p18_1`, ver más abajo.                             |
+| 5. Cuentas fijas de P18.1 | Corre `pnpm test:fixtures:setup`, que crea las 10 cuentas `e2e-fijo-*` de las suites e2e si faltan (idempotente).                                  | `[OK] fixtures_p18_1`.                                                   |
 | 6. Validación             | Lectura anónima de la marca, ingreso del dueño (el hook arma el rol `owner`), lectura con RLS, buckets de Storage y que la Edge Function responda. | Cinco líneas `[OK]` y `App_dev quedó utilizable`.                        |
 
-**Paso 5, cuando exista `tests/fixtures/`.** Hay dos formas, a elección:
-
-- pasar el comando en la línea:
-  `pnpm db:recuperar-dev --fixtures "<COMANDO_DE_SETUP_DE_FIXTURES_P18_1>"`, o
-- completar la constante `COMANDO_FIXTURES_P18_1` al principio de `scripts/recuperar-app-dev.ts`
-  y borrar este aviso.
+**Paso 5.** Por defecto corre `pnpm test:fixtures:setup`; otro comando se pasa con
+`pnpm db:recuperar-dev --fixtures "<comando>"`.
 
 El orden importa: **el seed va antes que las cuentas fijas**, porque `supabase/seed.sql` corta si
 encuentra usuarios que no son los suyos (es una salvaguarda contra correrlo en una base con gente

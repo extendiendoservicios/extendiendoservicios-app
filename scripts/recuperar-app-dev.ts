@@ -12,7 +12,7 @@
 //      docs/environments.md sección 3): si falta algo, lo informa y se corrige a mano.
 //   3. Usuarios de prueba: `scripts/seed-dev.ts` (Admin API; nunca por SQL).
 //   4. Datos ficticios: `supabase/seed.sql` (roles, capacidades, empresa, clientes, turnos...).
-//   5. Cuentas fijas de las suites e2e (P18.1, `tests/fixtures/`): paso con marcador, ver abajo.
+//   5. Cuentas fijas de las suites e2e (P18.1): `pnpm test:fixtures:setup`.
 //   6. Validación final: lectura anónima de `v_public_branding`, ingreso del dueño (el hook de
 //      Auth arma los roles en el token), lectura con RLS, buckets de Storage y Edge Function.
 //
@@ -23,8 +23,9 @@
 //
 // Opciones:
 //   --fixtures "<comando>"  Comando que arma las cuentas fijas de pruebas (P18.1). Se corre desde
-//                           la raíz de app/, después del seed. Si no se indica, el paso queda
-//                           PENDIENTE y el script lo recuerda con el marcador de más abajo.
+//                           la raíz de app/, después del seed. Por defecto,
+//                           `pnpm test:fixtures:setup` (idempotente; las variables del entorno
+//                           actual priman sobre las de .env.local).
 //   --local                 Apunta a un Supabase local (`supabase start`) en vez de al proyecto
 //                           vinculado. Es para ensayar este mismo script sin tocar App_dev.
 //   --workdir <ruta>        Carpeta de proyecto de la CLI (solo con --local, para un ensayo con
@@ -46,12 +47,8 @@ import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
 
-// ---------------------------------------------------------------------------------------------
-// MARCADOR DE P18.1: cuando exista `tests/fixtures/` en develop, poner acá el comando que arma las
-// cuentas fijas de pruebas (por ejemplo `node --env-file=.env.local tests/fixtures/setup.ts`) y
-// borrar el aviso. Mientras tenga el valor de abajo, el paso queda PENDIENTE.
-// ---------------------------------------------------------------------------------------------
-const COMANDO_FIXTURES_P18_1 = '<COMANDO_DE_SETUP_DE_FIXTURES_P18_1>'
+// Cuentas fijas de las suites e2e (P18.1, `tests/fixtures/setup-accounts.ts`).
+const COMANDO_FIXTURES_P18_1 = 'pnpm test:fixtures:setup'
 
 const REF_APP_DEV = 'anesttvrnpsaaaxaquce'
 const REF_APP_PRODUCCION = 'fysuppdadwvabrjpnnoh'
@@ -340,15 +337,6 @@ async function pasoDatos(): Promise<void> {
 
 function pasoFixtures(): void {
   console.log('5. Cuentas fijas de las suites e2e (P18.1, tests/fixtures/)')
-  if (comandoFixtures === COMANDO_FIXTURES_P18_1) {
-    registrar(
-      'fixtures_p18_1',
-      'PENDIENTE',
-      'todavía no hay comando: cuando exista tests/fixtures/, pasalo con --fixtures "<comando>" o completá ' +
-        'COMANDO_FIXTURES_P18_1 en este script. Hasta entonces las suites e2e que dependan de esas cuentas van a fallar',
-    )
-    return
-  }
   const codigo =
     spawnSync(comandoFixtures, {
       shell: true,
