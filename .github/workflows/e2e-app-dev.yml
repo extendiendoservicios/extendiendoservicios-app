@@ -1,0 +1,182 @@
+name: E2E App_dev
+
+# TEST-021 (F18, P18): corre las suites e2e REALES (backend verdadero, no el humo de `ci.yml` con
+# variables falsas) contra `App_dev`. Decisión de Mike (3 oct 2026): cada noche y a mano, nunca en
+# cada Pull Request. docs/deployment.md sección 14 lo documenta completo (clic por clic, qué hacer
+# si falla y cómo sumar una suite).
+#
+# QUÉ CÓDIGO PRUEBA. GitHub ejecuta `schedule` y `workflow_dispatch` con la versión de ESTE archivo
+# que está en la rama por defecto (`main`), pero lo que se prueba es `develop`: el checkout pide
+# `develop` en el cron y, a mano, la rama del input `rama` (por defecto `develop`).
+#
+# INTERRUPTOR. El cron solo corre si la variable de repositorio `E2E_NOCTURNO_ENABLED` vale
+# "true" (mismo mecanismo que los otros workflows): así fusionar este archivo no genera una falla
+# diaria antes de que Mike cargue los cuatro secretos `E2E_*` (P18_cargar_secretos_e2e.ps1). La
+# corrida a mano ignora el interruptor.
+#
+# UNA SOLA CORRIDA A LA VEZ. Las cuentas fijas (`tests/fixtures/`) y los clientes `e2e-` son
+# compartidos en `App_dev`, y el global setup de cada suite barre los `e2e-` residuales: dos
+# corridas simultáneas se pisarían. Por eso `concurrency` encola en vez de cancelar, y la matriz
+# corre de a una entrada (`max-parallel: 1`); ver docs/deployment.md sección 14.5.
+
+on:
+  schedule:
+    # 07:30 UTC = 04:30 Argentina (UTC-3 todo el año, ADR-019). `backup.yml` corre a las 06:00 UTC
+    # y dura un par de minutos; una hora y media de margen evita que compitan por los runners y
+    # por las conexiones de Supabase. GitHub puede demorar los cron unos minutos.
+    - cron: '30 7 * * *'
+  workflow_dispatch:
+    inputs:
+      rama:
+        description: 'Rama a probar (por defecto develop)'
+        required: false
+        default: 'develop'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-app-dev
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    name: e2e ${{ matrix.suite }}
+    if: github.event_name == 'workflow_dispatch' || vars.E2E_NOCTURNO_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    strategy:
+      fail-fast: false
+      # De a una: las suites comparten cuentas fijas y el barrido de residuos del global setup
+      # borraría los datos de otra suite en marcha. Ver docs/deployment.md sección 14.5 antes de
+      # subir este número.
+      max-parallel: 1
+      matrix:
+        include:
+          # Para sumar una suite: una entrada más (docs/deployment.md sección 14.6).
+          #   suite:    nombre corto (título del job y del artefacto).
+          #   config:   config de Playwright de la suite.
+          #   browsers: navegadores a instalar (`playwright install`), separados por espacio.
+          - suite: administracion
+            config: tests/e2e/admin/playwright.admin.config.ts
+            browsers: chromium
+    env:
+      # El mismo juego de cuatro variables que `.env.local` (tests/fixtures/env.ts), sacado de
+      # secretos de repositorio con prefijo E2E_ para no confundirlos con los de los despliegues.
+      VITE_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+      SEED_DEV_PASSWORD: ${{ secrets.E2E_SEED_DEV_PASSWORD }}
+      # Igual que `.env.local`; el banner "Entorno de prueba" es solo de `staging`.
+      VITE_APP_ENV: local
+      VITE_SENTRY_DSN: ''
+      RAMA_PROBADA: ${{ github.event_name == 'workflow_dispatch' && inputs.rama || 'develop' }}
+    steps:
+      - name: Guarda contra producción (corta antes de tocar nada)
+        run: |
+          set -eu
+          ref_prod="fysuppdadwvabrjpnnoh"
+          ref_dev="anesttvrnpsaaaxaquce"
+          if [ -z "${VITE_SUPABASE_URL}" ] || [ -z "${VITE_SUPABASE_ANON_KEY}" ] \
+            || [ -z "${SUPABASE_SERVICE_ROLE_KEY}" ] || [ -z "${SEED_DEV_PASSWORD}" ]; then
+            echo "::error::Faltan secretos E2E_*. Corré P18_cargar_secretos_e2e.ps1 (docs/deployment.md sección 14.2)."
+            exit 1
+          fi
+          case "${VITE_SUPABASE_URL}" in
+            *"${ref_prod}"*)
+              echo "::error::E2E_SUPABASE_URL apunta a la base de PRODUCCIÓN (App). Estas suites solo corren contra App_dev."
+              exit 1 ;;
+          esac
+          case "${VITE_SUPABASE_URL}" in
+            *"${ref_dev}"*) echo "La URL corresponde a App_dev (${ref_dev})." ;;
+            *)
+              echo "::error::E2E_SUPABASE_URL no contiene la referencia de App_dev (${ref_dev})."
+              exit 1 ;;
+          esac
+
+      - name: Descargar el código (develop, o la rama elegida a mano)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RAMA_PROBADA }}
+
+      - name: Habilitar corepack (resuelve la versión de pnpm de package.json → packageManager)
+        run: corepack enable
+
+      - name: Node (.node-version) y caché de pnpm
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.node-version'
+          cache: 'pnpm'
+
+      - name: Instalar dependencias (lockfile congelado)
+        run: pnpm install --frozen-lockfile
+
+      - name: Versión de Playwright (clave de la caché de navegadores)
+        id: pw
+        run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
+      - name: Caché de navegadores de Playwright
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-${{ matrix.browsers }}
+
+      - name: Instalar navegadores de Playwright con sus dependencias del sistema
+        # Con la caché llena, `install` no descarga nada; las dependencias del sistema (apt) se
+        # instalan siempre porque no viven en ~/.cache.
+        run: pnpm exec playwright install --with-deps ${{ matrix.browsers }}
+
+      - name: Build con las variables de App_dev
+        run: pnpm build
+
+      - name: Dejar las cuentas fijas listas (idempotente)
+        run: node tests/fixtures/setup-accounts.ts
+
+      - name: Suite ${{ matrix.suite }} (Playwright, puerto 5173 con vite preview)
+        # `admin-users` solo acepta el origen http://localhost:5173 por CORS: el propio config
+        # levanta `vite preview` ahí. Se invoca Playwright directo (no `pnpm test:e2e:*`) porque
+        # esos scripts agregan `--env-file=.env.local`, que en CI no existe; acá las variables
+        # vienen del `env` del job. El reporte JSON alimenta el resumen.
+        # Las carpetas de salida se fijan acá (relativas a la raíz) para que el artefacto no
+        # dependa de dónde esté el config de cada suite.
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ runner.temp }}/resultados-${{ matrix.suite }}.json
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report
+        run: pnpm exec playwright test --config=${{ matrix.config }} --reporter=list,html,json --output=test-results
+
+      - name: Resumen de la corrida
+        if: always()
+        env:
+          JSON: ${{ runner.temp }}/resultados-${{ matrix.suite }}.json
+        run: |
+          {
+            echo "### e2e ${{ matrix.suite }} contra App_dev"
+            echo ""
+            echo "Rama probada: \`${RAMA_PROBADA}\`"
+            echo ""
+            if [ -f "$JSON" ]; then
+              jq -r '"| Pasaron | Fallaron | Inestables | Salteados | Duración |\n| --- | --- | --- | --- | --- |\n| \(.stats.expected) | \(.stats.unexpected) | \(.stats.flaky) | \(.stats.skipped) | \((.stats.duration / 1000) | floor) s |"' "$JSON"
+              fallas="$(jq -r '[.. | objects | select(has("specs")) | .specs[] | select(.ok == false) | "- `\(.file)`: \(.title)"] | .[]' "$JSON")"
+              if [ -n "$fallas" ]; then
+                echo ""
+                echo "**Tests que fallaron**"
+                echo ""
+                echo "$fallas"
+              fi
+            else
+              echo "No se generó el reporte JSON: la suite no llegó a correr (mirá el paso que falló)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Subir el reporte HTML y las trazas si algo falló
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-${{ matrix.suite }}-reporte
+          path: |
+            playwright-report/
+            test-results/
+            ${{ runner.temp }}/resultados-${{ matrix.suite }}.json
+          if-no-files-found: ignore
+          retention-days: 7

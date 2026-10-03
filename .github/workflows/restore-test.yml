@@ -56,8 +56,10 @@ on:
 permissions:
   contents: read
 
+# Mismo grupo que e2e-app-dev.yml: la restauración vacía App_dev y las suites e2e lo usan; así
+# GitHub nunca corre las dos a la vez.
 concurrency:
-  group: restore-test-app-dev
+  group: e2e-app-dev
   cancel-in-progress: false
 
 jobs:
