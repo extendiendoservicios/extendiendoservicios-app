@@ -1,29 +1,25 @@
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
-// Config dedicado de la suite de permisos (P04.7, 08_Fases_y_Backlog.md F4).
+// Config de la matriz de permisos completa (TEST-019, P18.3, 08_Fases_y_Backlog.md F18).
 //
-// A propósito NO es el `vitest.config.ts` de la raíz: ese lo corre `pnpm test` en cada PR
-// (ci.yml), donde no existe `.env.local` ni hay credenciales de `App_dev` (regla del encargo:
-// "los tests nuevos no pueden romper el CI"). Esta suite queda fuera de esa corrida por
-// construcción, no por una condición en tiempo de ejecución: los archivos de
-// `tests/permissions/` usan la extensión `.permissions.ts` (no `.test.ts` ni `.spec.ts`), así
-// que ni siquiera coinciden con el patrón por defecto de Vitest (`**/*.{test,spec}.*`) que usa
-// el config de la raíz -- `pnpm test` no los ve. Además, cada spec se saltea solo con un aviso
-// si faltan las variables de entorno (`describe.skipIf`, ver helpers/env.ts): doble capa de
-// seguridad para que nunca rompa CI, aunque alguien lo corra con este config sin `.env.local`.
+// Igual que la suite que nació en P04.7, queda FUERA de `pnpm test` (el de la raíz, que corre en
+// cada PR sin credenciales): los archivos terminan en `.permissions.ts`, que el patrón por
+// defecto de Vitest (`**/*.{test,spec}.*`) no ve. Se corre a mano o en el workflow nocturno con
+// `pnpm test:permissions` (lee `app/.env.local`, apunta a App_dev).
 //
-// Se corre a mano, desde `app/`, con `.env.local` cargado:
-//   node --env-file=.env.local ./node_modules/.bin/vitest run --config tests/permissions/vitest.config.ts
-// (ver tests/permissions/README.md).
+// Los archivos corren UNO DETRÁS DE OTRO (`fileParallelism: false`): comparten las diez cuentas
+// fijas y el escenario plantado, y la prueba de desactivados cambia el estado de tres cuentas.
+// Tampoco se puede correr en paralelo con las suites e2e, que usan las mismas cuentas.
 export default defineConfig({
   root: fileURLToPath(new URL('../..', import.meta.url)),
   test: {
     environment: 'node',
-    include: ['tests/permissions/**/*.permissions.ts'],
-    // Contra una base real (App_dev), no localhost: sin retries ni mocks -- si algo tarda, es
-    // señal real (RLS mal escrita, red), no un timeout por defecto demasiado corto.
-    hookTimeout: 20_000,
-    testTimeout: 20_000,
+    include: ['tests/permissions/suite/**/*.permissions.ts'],
+    globalSetup: ['tests/permissions/suite/global-setup.ts'],
+    fileParallelism: false,
+    // Contra una base real: sin reintentos ni mocks. Si algo tarda es una señal real.
+    hookTimeout: 60_000,
+    testTimeout: 30_000,
   },
 })
