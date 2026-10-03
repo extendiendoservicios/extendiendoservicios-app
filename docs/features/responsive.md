@@ -48,15 +48,15 @@ ven centradas en una columna de 480 px (`MobileShell`, P-016).
 - **Drawers.** Los de ruta (ADM-06, 14 y 15) tienen URL propia y por debajo de 1024 son una página. Los
   paneles que abre una acción (por ejemplo ADM-08, ADM-11, el alta de un administrador o de un
   criterio) son un `Sheet`: ocupan toda la pantalla solo en celular y quedan de 452 px en tablet.
-- **Pantallas móviles** (`/app`, `/sup`): no cambian con el ancho; solo se centran a 480 px.
+- **Pantallas móviles** (`/app`, `/sup`): ocupan todo el ancho por debajo de 768 px y desde `md` se centran en una columna de 480 px.
 
 ## Área segura
 
 `viewport-fit=cover` en `index.html` hace que el contenido llegue a los bordes y que
 `env(safe-area-inset-*)` valga algo en celulares con muesca, isla o barra de inicio. Los cuatro valores
 están en `tokens.css` como `--safe-top`, `--safe-right`, `--safe-bottom` y `--safe-left`. La tabbar
-(`tabbar-safe`) crece con el área inferior en lugar de apretar los ítems; las cabeceras suman
-`--safe-top`; `ActionBar` aplica abajo, izquierda y derecha. Si agregás un elemento fijo al borde,
+(`tabbar-safe`) crece con el área inferior en lugar de apretar los ítems; la barra de marca (`MobileBrandBar`) suma
+`--safe-top` y la cabecera de título ya no; `ActionBar` aplica abajo, izquierda y derecha. Si agregás un elemento fijo al borde,
 sumale la variable que corresponda. Detalle en `design-system.md`, "Área segura, teclado virtual y
 objetivos táctiles".
 
@@ -126,3 +126,18 @@ Las dos primeras necesitan `.env.local` completo y corren a mano, fuera del CI. 
 Para revisar a mano en el navegador, abrí las herramientas de desarrollo en modo dispositivo y probá
 390, 768, 1024 y 1280 px; a 390 px, además, con la simulación del área segura de la suite
 (`--safe-top: 47px`, `--safe-bottom: 34px`).
+
+## Cabeceras en celular (P17.8)
+
+- **Campos a 16 px** por debajo de 768 px (`Input`, `PasswordInput`, `Textarea`, `TimeInput`, `SelectTrigger`,
+  `CommandInput`): con menos, Safari de iPhone hace zoom al enfocar y no vuelve. No se usa
+  `maximum-scale` ni `user-scalable=no`, para no romper el zoom con pellizco.
+- **Barra de marca** (`MobileBrandBar`, 40 px + área segura) arriba de la cabecera de título, teal, en
+  `AdminShell` (por debajo de 1024 px), `/app` y `/sup`. Se va con el scroll; la cabecera de título queda
+  pegada con `top: var(--safe-top)`. Un contenedor `sticky` de alto cero pinta siempre la franja del
+  área segura en teal, para que el contenido no se vea pasar por la muesca.
+- **Cabecera de administración teal** por debajo de 1024 px; en compu, la blanca de siempre.
+- **Flecha atrás** (`BackButton`, `useGoBack` en `backNavigation.ts`): en toda pantalla que no sea una de
+  las cuatro raíces del tabbar de administración (en celular y en compu) y en las subpáginas de
+  `/app` y `/sup`. `navigate(-1)` si hay historial dentro de la app (`location.key !== 'default'`) y, si
+  se entró directo por URL, el padre lógico (`getParentPath`).
