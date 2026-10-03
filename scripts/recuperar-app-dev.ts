@@ -43,6 +43,7 @@
 // (supabase/seed.sql corta si encuentra usuarios que no son los suyos).
 
 import { spawnSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
 
 // ---------------------------------------------------------------------------------------------
@@ -139,6 +140,25 @@ if (local) {
     `VITE_SUPABASE_URL no es el de App_dev (no contiene ${REF_APP_DEV}): corta sin tocar nada.`,
   )
   process.exit(1)
+}
+
+// La URL de .env.local no alcanza: `db push --linked` va al proyecto vinculado en la CLI, que
+// puede ser App si alguien lo vinculó para una tarea de producción.
+if (!local) {
+  let vinculado = ''
+  try {
+    vinculado = readFileSync('supabase/.temp/project-ref', 'utf8').trim()
+  } catch {
+    // sin vincular: queda vacío y corta abajo
+  }
+  if (vinculado !== REF_APP_DEV) {
+    console.error(
+      `La CLI de Supabase está vinculada a "${vinculado || 'ningún proyecto'}", no a App_dev ` +
+        `(${REF_APP_DEV}): corta sin tocar nada. Vinculala con ` +
+        `\`pnpm exec supabase link --project-ref ${REF_APP_DEV}\`.`,
+    )
+    process.exit(1)
+  }
 }
 
 const url: string = SUPABASE_URL
