@@ -163,6 +163,8 @@ function MobileGreetingHeader({
             id="mobile-session-user"
             name={displayName}
             src={avatarPath ? avatarUrl(avatarPath) : null}
+            // Aro blanco sobre la cabecera teal, como en `AdminShell`.
+            className="ring-2 ring-white/80"
           />
         </Link>
       </div>
