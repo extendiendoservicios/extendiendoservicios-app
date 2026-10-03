@@ -5,10 +5,18 @@
 // ubicación, "visto" de los cambios) y los pasos de preparación que se hacen por RPC con la
 // sesión de la cuenta (nunca con la clave de servicio: `service_role` no tiene `auth.uid()`).
 
-import { expect, type Page } from '@playwright/test'
+import {
+  expect,
+  type Browser,
+  type BrowserContext,
+  type BrowserContextOptions,
+  type Page,
+  type TestInfo,
+} from '@playwright/test'
+import { crc32, deflateSync } from 'node:zlib'
 import { getAdminDb, type FixedAccountKey } from './accounts.ts'
 import { minutesSinceMidnightAR } from './dates.ts'
-import { readId } from './sessions.ts'
+import { readId, storageStatePath, type SessionKey } from './sessions.ts'
 import { sessionClient } from './scenario.ts'
 
 /** Posición fija (Plaza de Mayo, CABA): la Base no la valida contra la sede (P-067). */
@@ -181,4 +189,61 @@ export async function esperarHastaSegundo(
       intervals: [500],
     })
     .toBe(true)
+}
+
+/**
+ * Contexto de navegador de OTRA cuenta fija con la misma configuración del proyecto (viewport
+ * táctil, agente de usuario, zona horaria): para los tests que necesitan dos personas a la vez.
+ */
+export async function contextoDe(
+  browser: Browser,
+  testInfo: TestInfo,
+  key: SessionKey,
+  extra: BrowserContextOptions = {},
+): Promise<BrowserContext> {
+  const use = testInfo.project.use
+  return browser.newContext({
+    baseURL: use.baseURL,
+    viewport: use.viewport ?? undefined,
+    isMobile: use.isMobile,
+    hasTouch: use.hasTouch,
+    userAgent: use.userAgent,
+    deviceScaleFactor: use.deviceScaleFactor,
+    locale: use.locale,
+    timezoneId: use.timezoneId,
+    storageState: storageStatePath(key),
+    ...extra,
+  })
+}
+
+/** PNG cuadrado de un solo color (para cargar una foto de perfil sin depender de ningún archivo). */
+export function pngSolido(lado = 64): Buffer {
+  const firma = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+  const trozo = (tipo: string, datos: Buffer): Buffer => {
+    const largo = Buffer.alloc(4)
+    largo.writeUInt32BE(datos.length)
+    const cuerpo = Buffer.concat([Buffer.from(tipo, 'ascii'), datos])
+    const crc = Buffer.alloc(4)
+    crc.writeUInt32BE(crc32(cuerpo))
+    return Buffer.concat([largo, cuerpo, crc])
+  }
+  const cabecera = Buffer.alloc(13)
+  cabecera.writeUInt32BE(lado, 0)
+  cabecera.writeUInt32BE(lado, 4)
+  cabecera[8] = 8 // profundidad de bits
+  cabecera[9] = 2 // color verdadero (RGB)
+  // Cada fila: byte de filtro 0 + `lado` píxeles RGB teal.
+  const fila = Buffer.concat([
+    Buffer.from([0]),
+    Buffer.concat(
+      Array.from({ length: lado }, () => Buffer.from([0x0d, 0x94, 0x88])),
+    ),
+  ])
+  const crudo = Buffer.concat(Array.from({ length: lado }, () => fila))
+  return Buffer.concat([
+    firma,
+    trozo('IHDR', cabecera),
+    trozo('IDAT', deflateSync(crudo)),
+    trozo('IEND', Buffer.alloc(0)),
+  ])
 }
