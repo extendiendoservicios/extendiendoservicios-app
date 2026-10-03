@@ -104,7 +104,7 @@ test(
       })
 
       await test.step('no puede volver a entrar a su vía ni iniciar sesión de nuevo', async () => {
-        await page.goto('/app')
+        await page.goto('/app', { waitUntil: 'commit' })
         await expect(page).toHaveURL(/\/(ingresar|sin-acceso)$/)
         await page.goto('/ingresar')
         await page.getByLabel('Email').fill(EMAIL)

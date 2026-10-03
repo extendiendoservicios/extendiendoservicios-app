@@ -89,7 +89,8 @@ test(
           '/admin',
           '/admin/supervisiones',
         ]) {
-          await page.goto(ruta)
+          // `commit`: la redirección ocurre en el cliente y en WebKit interrumpe la espera de "load".
+          await page.goto(ruta, { waitUntil: 'commit' })
           await expect(page, `${ruta} debería redirigir`).toHaveURL(/\/sup$/)
         }
       })

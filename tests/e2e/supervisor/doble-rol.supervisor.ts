@@ -57,7 +57,7 @@ test(
       await marcarCambiosVistos('dual')
 
       await test.step('al entrar, el inicio es el de empleado (COM-01): Hoy con su servicio, sin la supervisión', async () => {
-        await page.goto('/')
+        await page.goto('/', { waitUntil: 'commit' })
         await expect(page).toHaveURL(/\/app$/)
         await expect(page.getByText(sedeEmpleado.name)).toBeVisible()
         await expect(page.getByText(sedeSupervision.name)).toHaveCount(0)
