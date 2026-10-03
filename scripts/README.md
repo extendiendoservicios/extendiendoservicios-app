@@ -18,7 +18,7 @@ Scripts de Node/TypeScript que se corren a mano o desde CI, fuera de la app:
   después de una corrida de `restore-test.yml`, que lo deja sin usuarios y
   sin datos. En orden y validando cada paso: migraciones, Auth, usuarios de
   prueba (`seed-dev.ts`), `supabase/seed.sql`, cuentas fijas de P18.1
-  (marcador hasta que exista `tests/fixtures/`) y validación final. Uso:
+  (`pnpm test:fixtures:setup`) y validación final. Uso:
   `pnpm db:recuperar-dev` (o `node --env-file=.env.local
 scripts/recuperar-app-dev.ts`). Detalle en `docs/restore-test.md`
   sección 8.
