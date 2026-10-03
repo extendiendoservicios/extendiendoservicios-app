@@ -42,6 +42,15 @@ export default async function globalSetup(): Promise<void> {
 
   const keys: SessionKey[] = ['owner', ...FIXED_ACCOUNT_LIST.map((a) => a.key)]
   for (const key of keys) {
-    writeStorageState(key, await signInSession(emailOf(key)))
+    let session
+    try {
+      session = await signInSession(emailOf(key))
+    } catch {
+      // Contraseña desfasada (por ejemplo, una corrida cortada a mitad de un test de reseteo):
+      // se repone una vez en todas las cuentas y se reintenta.
+      await ensureFixedAccounts(db, { forcePassword: true })
+      session = await signInSession(emailOf(key))
+    }
+    writeStorageState(key, session)
   }
 }

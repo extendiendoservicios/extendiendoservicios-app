@@ -94,9 +94,14 @@ export async function pickMonth(
   year: number,
   month: number,
 ): Promise<void> {
-  await page.getByRole('button', { name: triggerName }).click()
   const yearLabel = page.getByText(/^\d{4}$/, { exact: true })
-  await yearLabel.waitFor()
+  // Si el clic cae antes de que la pantalla esté lista, el selector no se abre: se reintenta.
+  await expect(async () => {
+    if (!(await yearLabel.isVisible())) {
+      await page.getByRole('button', { name: triggerName }).click()
+    }
+    await expect(yearLabel).toBeVisible({ timeout: 3_000 })
+  }).toPass({ timeout: 20_000 })
   const currentYear = Number(await yearLabel.textContent())
   const diff = year - currentYear
   const button = page.getByRole('button', {

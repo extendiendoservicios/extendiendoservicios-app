@@ -13,7 +13,10 @@ if (!readE2eEnv()) {
   process.exit(1)
 }
 
-const result = await ensureFixedAccounts()
+// `--forzar-contrasena` repone la contraseña de todas (cierra las sesiones abiertas de esas cuentas).
+const result = await ensureFixedAccounts(undefined, {
+  forcePassword: process.argv.includes('--forzar-contrasena'),
+})
 console.log(`Cuentas fijas creadas ahora: ${result.created.length}`)
 for (const email of result.created) console.log(`  + ${email}`)
 console.log(

@@ -79,10 +79,18 @@ test(
         await page.goto('/admin/asistencia')
         await expectNoHorizontalScroll(page)
         await page.getByPlaceholder('Buscar por nombre…').fill('Empleado4')
-        await page
-          .getByRole('button', { name: 'Registrar en nombre' })
-          .first()
-          .click()
+        // Espera a que el filtro deje una sola tarjeta: sin esto el clic puede caer sobre el
+        // botón de otro empleado de la lista todavía sin filtrar.
+        const registrar = page.getByRole('button', {
+          name: 'Registrar en nombre',
+        })
+        await expect(registrar).toHaveCount(1)
+        await registrar.click()
+        await expect(
+          page.getByRole('dialog', {
+            name: /Registrar en nombre de E2E-Fijo Empleado4/,
+          }),
+        ).toBeVisible()
         await page.getByLabel('Hora').fill(`${sc.today}T00:02`)
         await page
           .getByLabel('Motivo')

@@ -14,7 +14,11 @@
 // Un segundo dueño haría que `last-owner-cannot-be-deactivated.spec.ts` (e2e-users) desactivara
 // de verdad al dueño real, porque esa prueba depende de que haya un solo dueño activo.
 
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import {
+  createClient,
+  type SupabaseClient,
+  type User,
+} from '@supabase/supabase-js'
 import type { Database } from '../../src/lib/database.types.ts'
 import { requireE2eEnv } from './env.ts'
 
@@ -171,20 +175,26 @@ export function getAdminDb(): AdminDb {
 }
 
 /** Todos los usuarios de Auth por email en minúscula (App_dev acumula cuentas: se pagina). */
-export async function loadAuthUserIds(
-  db: AdminDb,
-): Promise<Map<string, string>> {
+export async function loadAuthUsers(db: AdminDb): Promise<Map<string, User>> {
   const perPage = 1000
-  const byEmail = new Map<string, string>()
+  const byEmail = new Map<string, User>()
   for (let page = 1; page <= 50; page++) {
     const { data, error } = await db.auth.admin.listUsers({ page, perPage })
     if (error) throw new Error(`No se pudo listar usuarios: ${error.message}`)
     for (const user of data.users) {
-      if (user.email) byEmail.set(user.email.toLowerCase(), user.id)
+      if (user.email) byEmail.set(user.email.toLowerCase(), user)
     }
     if (data.users.length < perPage) break
   }
   return byEmail
+}
+
+/** Ids de Auth por email en minúscula. */
+export async function loadAuthUserIds(
+  db: AdminDb,
+): Promise<Map<string, string>> {
+  const users = await loadAuthUsers(db)
+  return new Map([...users].map(([email, user]) => [email, user.id]))
 }
 
 /** Busca un usuario de Auth por email. */
@@ -210,19 +220,38 @@ async function must(
   if (error) throw new Error(`${what} de ${who}: ${error.message}`)
 }
 
+export interface EnsureOptions {
+  /**
+   * `true` (por omisión, para el setup y el global setup): repone también lo que los tests
+   * mueven (capacidades de los administradores y estado de la ficha). `false`: solo crea lo que
+   * falte y repara perfil y roles; no pisa capacidades, así es seguro llamarlo EN MEDIO de una
+   * corrida con otros tests en paralelo.
+   */
+  restore?: boolean
+  /**
+   * `true`: repone la contraseña de todas las cuentas. OJO: cambiar la contraseña en Auth cierra
+   * las sesiones de esa cuenta, y los `storageState` de la corrida quedan inservibles. Por eso
+   * por omisión la contraseña solo se repone si la cuenta está baneada o sin confirmar.
+   */
+  forcePassword?: boolean
+}
+
 /**
  * Crea las cuentas fijas que falten y deja TODAS activas y completas. Idempotente: las que ya
- * existen se reutilizan (se les repone contraseña, perfil, roles, capacidades y ficha).
+ * existen se reutilizan (perfil, roles, capacidades y ficha se reponen según `options`).
  */
 export async function ensureFixedAccounts(
   db: AdminDb = getAdminDb(),
+  options: EnsureOptions = {},
 ): Promise<EnsureResult> {
+  const restore = options.restore ?? true
   const env = requireE2eEnv()
   const result: EnsureResult = { created: [], existing: [], ids: {} }
-  const authIds = await loadAuthUserIds(db)
+  const authUsers = await loadAuthUsers(db)
 
   for (const spec of FIXED_ACCOUNT_LIST) {
-    let userId = authIds.get(spec.email.toLowerCase()) ?? null
+    const existingUser = authUsers.get(spec.email.toLowerCase())
+    let userId = existingUser?.id ?? null
 
     if (!userId) {
       const { data, error } = await db.auth.admin.createUser({
@@ -239,17 +268,25 @@ export async function ensureFixedAccounts(
       userId = data.user.id
       result.created.push(spec.email)
     } else {
-      // Contraseña vigente y sin baneo (por si una corrida anterior la dejó baneada).
-      const { error } = await db.auth.admin.updateUserById(userId, {
-        password: env.seedPassword,
-        email_confirm: true,
-        ban_duration: 'none',
-        user_metadata: { first_name: spec.firstName, last_name: spec.lastName },
-      })
-      if (error) {
-        throw new Error(
-          `No se pudo reponer la cuenta fija ${spec.email}: ${error.message}`,
-        )
+      const banned =
+        !!existingUser?.banned_until &&
+        new Date(existingUser.banned_until).getTime() > Date.now()
+      const unconfirmed = !existingUser?.email_confirmed_at
+      if (options.forcePassword || banned || unconfirmed) {
+        const { error } = await db.auth.admin.updateUserById(userId, {
+          password: env.seedPassword,
+          email_confirm: true,
+          ban_duration: 'none',
+          user_metadata: {
+            first_name: spec.firstName,
+            last_name: spec.lastName,
+          },
+        })
+        if (error) {
+          throw new Error(
+            `No se pudo reponer la cuenta fija ${spec.email}: ${error.message}`,
+          )
+        }
       }
       result.existing.push(spec.email)
     }
@@ -314,7 +351,7 @@ export async function ensureFixedAccounts(
             enabled: spec.capabilities?.includes(capability) ?? false,
             updated_by: null,
           })),
-          { onConflict: 'profile_id,capability' },
+          { onConflict: 'profile_id,capability', ignoreDuplicates: !restore },
         ),
       )
     }
@@ -329,7 +366,7 @@ export async function ensureFixedAccounts(
       if (rowError) {
         throw new Error(`Ficha de ${spec.email}: ${rowError.message}`)
       }
-      if (row) {
+      if (row && restore) {
         await must(
           'ficha',
           spec.email,
@@ -342,7 +379,7 @@ export async function ensureFixedAccounts(
             })
             .eq('profile_id', userId),
         )
-      } else {
+      } else if (!row) {
         await must(
           'ficha',
           spec.email,

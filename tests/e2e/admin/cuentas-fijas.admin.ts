@@ -38,7 +38,9 @@ test.describe('cuentas fijas de prueba (RB-A01, RB-E01, RB-S01)', () => {
     const before = await countFixedAuthUsers()
     expect(before).toBe(FIXED_ACCOUNT_LIST.length)
 
-    const result = await ensureFixedAccounts()
+    // `restore: false`: esta llamada ocurre en medio de la corrida, con otros archivos en paralelo;
+    // no puede cambiar contraseñas (cierra sesiones) ni pisar capacidades.
+    const result = await ensureFixedAccounts(undefined, { restore: false })
     expect(
       result.created,
       'una segunda corrida no tiene que crear nada',
@@ -76,14 +78,12 @@ test.describe('cuentas fijas de prueba (RB-A01, RB-E01, RB-S01)', () => {
         expect(employee?.dni).toBe(spec.dni)
       }
       if (spec.roles.includes('admin')) {
+        // Solo la cantidad de filas: el estado de cada capacidad lo mueven otros tests.
         const { data: caps } = await db
           .from('admin_capabilities')
-          .select('capability, enabled')
+          .select('capability')
           .eq('profile_id', id)
-        expect(caps).toHaveLength(7)
-        expect(caps?.filter((c) => c.enabled).length).toBe(
-          spec.capabilities?.length ?? 0,
-        )
+        expect(caps, `${spec.email} capacidades`).toHaveLength(7)
       }
     }
   })

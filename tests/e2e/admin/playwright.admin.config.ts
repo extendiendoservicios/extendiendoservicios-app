@@ -50,7 +50,19 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: '**/*.movil.admin.ts',
+      testIgnore: ['**/*.movil.admin.ts', '**/recorrido-dueno.admin.ts'],
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1280, height: 900 },
+      },
+    },
+    {
+      // El recorrido del dueño termina cerrando la sesión del dueño del seed y esa cuenta es
+      // única: va DESPUÉS del resto para que el cierre no deje sin sesión a los tests que
+      // comparten el `storageState` del dueño.
+      name: 'dueno-final',
+      testMatch: '**/recorrido-dueno.admin.ts',
+      dependencies: ['chromium', 'mobile'],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 900 },
