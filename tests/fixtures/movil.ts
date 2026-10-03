@@ -247,3 +247,22 @@ export function pngSolido(lado = 64): Buffer {
     trozo('IEND', Buffer.alloc(0)),
   ])
 }
+
+/** Cierra una supervisión con la RPC real y la sesión del supervisor (preparación del escenario). */
+export async function cerrarSupervision(
+  who: FixedAccountKey,
+  supervisionId: string,
+  como: { completar: true } | { noRealizada: string },
+): Promise<void> {
+  const client = await sessionClient(who)
+  const { error } =
+    'completar' in como
+      ? await client.rpc('complete_supervision', {
+          p_supervision_id: supervisionId,
+        })
+      : await client.rpc('mark_supervision_not_done', {
+          p_supervision_id: supervisionId,
+          p_reason: como.noRealizada,
+        })
+  if (error) throw new Error(`cerrar supervisión: ${error.message}`)
+}
