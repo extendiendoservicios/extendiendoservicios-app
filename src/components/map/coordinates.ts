@@ -11,6 +11,15 @@ export interface Coordinates {
   lng: number
 }
 
+/**
+ * Centro por omisión de los mapas cuando no hay ubicación ni marcadores:
+ * Pergamino, Buenos Aires (P17.8, pedido de Mike del 3 oct 2026), donde
+ * opera la empresa.
+ */
+export const DEFAULT_MAP_CENTER: Coordinates = { lat: -33.8899, lng: -60.5731 }
+/** Zoom por omisión: se ve la ciudad entera. */
+export const DEFAULT_MAP_ZOOM = 13
+
 export const LAT_MIN = -90
 export const LAT_MAX = 90
 export const LNG_MIN = -180

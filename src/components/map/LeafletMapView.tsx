@@ -13,7 +13,11 @@ import { MapPin } from 'lucide-react'
 import { cn } from 'cn'
 import { EmptyState } from '@/components/EmptyState'
 import type { BadgeVariant } from '@/components/status'
-import type { Coordinates } from './coordinates'
+import {
+  DEFAULT_MAP_CENTER,
+  DEFAULT_MAP_ZOOM,
+  type Coordinates,
+} from './coordinates'
 import { createMarkerIcon } from './markerIcon'
 
 /** Un punto del mapa: una sede, en el uso principal de `MapView` (SITE-005, ADM-24). */
@@ -33,7 +37,7 @@ export interface MapViewProps {
   /** Alto del mapa (CSS), 320 px por omisión. */
   height?: number | string
   className?: string
-  /** Centro cuando no hay marcadores para encuadrar (por omisión, Obelisco, CABA). */
+  /** Centro cuando no hay marcadores para encuadrar (por omisión, Pergamino, Buenos Aires). */
   defaultCenter?: Coordinates
   defaultZoom?: number
   emptyTitle?: string
@@ -49,9 +53,6 @@ export interface MapViewProps {
   scrollWheelZoom?: boolean
 }
 
-/** Centro por omisión cuando no hay marcadores para calcular el encuadre: Obelisco, CABA. */
-const DEFAULT_CENTER: Coordinates = { lat: -34.6037, lng: -58.3816 }
-const DEFAULT_ZOOM = 12
 const SINGLE_MARKER_ZOOM = 15
 const FIT_BOUNDS_PADDING: [number, number] = [32, 32]
 
@@ -92,8 +93,8 @@ function MapView({
   markers,
   height = 320,
   className,
-  defaultCenter = DEFAULT_CENTER,
-  defaultZoom = DEFAULT_ZOOM,
+  defaultCenter = DEFAULT_MAP_CENTER,
+  defaultZoom = DEFAULT_MAP_ZOOM,
   emptyTitle = 'Sin ubicaciones para mostrar',
   emptyDescription = 'Todavía no hay coordenadas cargadas.',
   scrollWheelZoom = true,
