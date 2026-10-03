@@ -3,7 +3,8 @@ import { Link } from 'react-router'
 import { Briefcase, ChevronRight, Download, LogOut, User } from 'lucide-react'
 import { cn } from 'cn'
 import { useAuth } from '@/features/auth/AuthProvider'
-import { useInstallPrompt } from '@/features/employee/useInstallPrompt'
+import { AppVersion } from '@/components/AppVersion'
+import { useInstallPrompt } from '@/hooks/useInstallPrompt'
 
 /**
  * SUP-09 · Más (MOB-SUP-009, `05` fila SUP-09, P-122): acceso a perfil
@@ -43,6 +44,8 @@ export default function SupervisorMorePage() {
         <LogOut aria-hidden="true" className="size-4" />
         Cerrar sesión
       </button>
+
+      <AppVersion />
     </div>
   )
 }

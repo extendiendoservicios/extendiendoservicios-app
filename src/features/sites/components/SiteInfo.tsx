@@ -44,7 +44,7 @@ export function SiteInfo({ site }: { site: SiteInfoData }) {
           href={mapsUrl}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-1 text-[12px] font-semibold text-primary-800 hover:underline"
+          className="inline-flex items-center gap-1 text-[12px] font-semibold text-primary-800 hover:underline max-md:min-h-11"
         >
           <MapPin className="size-3.5" aria-hidden="true" />
           Abrir en el mapa

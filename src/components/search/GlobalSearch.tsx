@@ -113,7 +113,9 @@ export function GlobalSearch() {
           // Área táctil de 44 px (`07` sección 5) sobre el botón de 34 px:
           // mismo criterio que el menú de usuario de `AdminShell` en este
           // mismo rango de ancho.
-          className="relative after:absolute after:-inset-[5px]"
+          // Sobre la cabecera teal (P17.8): ícono blanco, hover translúcido y
+          // foco blanco (`--ring` es teal y no se ve sobre el teal).
+          className="relative border-white/40 bg-transparent text-white after:absolute after:-inset-[5px] hover:bg-white/15 hover:text-white focus-visible:ring-white/80"
         />
       )}
 

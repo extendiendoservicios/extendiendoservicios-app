@@ -14,7 +14,11 @@ import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import type { Coordinates } from './coordinates'
+import {
+  DEFAULT_MAP_CENTER,
+  DEFAULT_MAP_ZOOM,
+  type Coordinates,
+} from './coordinates'
 import { useAddressSearch } from './useAddressSearch'
 import { useCoordinateFields } from './useCoordinateFields'
 import { createMarkerIcon } from './markerIcon'
@@ -26,14 +30,12 @@ export interface MapPickerProps {
   className?: string
   /** Alto del mapa (CSS), 320 px por omisión. */
   height?: number | string
-  /** Centro cuando `value` es `null` (por omisión, Obelisco, CABA). */
+  /** Centro cuando `value` es `null` (por omisión, Pergamino, Buenos Aires). */
   defaultCenter?: Coordinates
   defaultZoom?: number
   disabled?: boolean
 }
 
-const DEFAULT_CENTER: Coordinates = { lat: -34.6037, lng: -58.3816 }
-const DEFAULT_ZOOM = 12
 const PICKED_ZOOM = 16
 
 /** Un clic en el mapa (fuera del marcador) ubica ahí las coordenadas. */
@@ -86,8 +88,8 @@ function MapPicker({
   onChange,
   className,
   height = 320,
-  defaultCenter = DEFAULT_CENTER,
-  defaultZoom = DEFAULT_ZOOM,
+  defaultCenter = DEFAULT_MAP_CENTER,
+  defaultZoom = DEFAULT_MAP_ZOOM,
   disabled = false,
 }: MapPickerProps) {
   const {
@@ -212,7 +214,7 @@ function MapPicker({
             inputMode="decimal"
             value={latText}
             disabled={disabled}
-            placeholder="-34.6037"
+            placeholder="-33.8899"
             error={latError}
             onChange={(event) => handleLatChange(event.target.value)}
           />
@@ -224,7 +226,7 @@ function MapPicker({
             inputMode="decimal"
             value={lngText}
             disabled={disabled}
-            placeholder="-58.3816"
+            placeholder="-60.5731"
             error={lngError}
             onChange={(event) => handleLngChange(event.target.value)}
           />

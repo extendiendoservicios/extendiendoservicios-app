@@ -16,8 +16,9 @@ import { cn } from 'cn'
  * entre la página y el shell. Los márgenes negativos compensan el `p-4` del
  * `<main>` para que ocupe todo el ancho, como el pie del mockup.
  *
- * Respeta el área segura del celular (`env(safe-area-inset-bottom)`, `07`
- * sección 1.3).
+ * Respeta el área segura del celular (`env(safe-area-inset-*)`, `07`
+ * sección 1.3) y, con el teclado virtual abierto, queda encima de él
+ * (`interactive-widget=resizes-content` en `index.html`, RESP-008).
  */
 export function ActionBar({
   children,
@@ -36,7 +37,11 @@ export function ActionBar({
         className,
       )}
       style={{
-        paddingBottom: 'max(18px, calc(env(safe-area-inset-bottom) + 12px))',
+        // Área segura abajo (barra de inicio) y a los lados (muesca en
+        // horizontal): los botones nunca quedan debajo de ellas (RESP-008).
+        paddingBottom: 'max(18px, calc(var(--safe-bottom) + 12px))',
+        paddingLeft: 'max(16px, var(--safe-left))',
+        paddingRight: 'max(16px, var(--safe-right))',
       }}
     >
       {children}

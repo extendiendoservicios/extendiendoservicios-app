@@ -17,15 +17,18 @@ import type { ReactNode } from 'react'
  * `card.tsx`; no se reusa el componente `Card` en sí porque en móvil
  * necesita perder el borde/sombra/fondo por completo, no solo el padding
  * como su variante `flush`).
+ *
+ * Es el landmark `main` de las cuatro pantallas (ninguna usa shell, así que
+ * no hay otro `main`; `landmark-one-main` de Lighthouse en COM-01, P17.4.1).
  */
 export function AuthScreenLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-col bg-bg">
+    <main className="flex min-h-dvh flex-col bg-bg">
       <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-6 py-10 sm:flex-none sm:py-16">
         <div className="flex flex-col gap-6 sm:rounded-xl sm:border sm:border-border sm:bg-surface sm:p-7 sm:shadow-card">
           {children}
         </div>
       </div>
-    </div>
+    </main>
   )
 }

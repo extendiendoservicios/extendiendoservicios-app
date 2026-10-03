@@ -109,7 +109,7 @@ function SegmentedControl<Value extends string>({
               handleKeyDown(event, index)
             }}
             className={cn(
-              'rounded-md text-xs font-semibold text-text-3 outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring',
+              'rounded-md text-xs font-semibold max-md:min-h-11 text-text-3 outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring',
               mobile
                 ? 'flex-1 px-0 py-[9px] text-center'
                 : 'px-[13px] py-[5px]',

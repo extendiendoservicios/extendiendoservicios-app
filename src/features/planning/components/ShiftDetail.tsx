@@ -338,7 +338,7 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
               >
                 <Link
                   to={`/admin/supervisiones/${supervision.id}`}
-                  className="min-w-0"
+                  className="flex min-h-11 min-w-0 items-center"
                 >
                   <PersonCell
                     id={supervision.supervisorId}

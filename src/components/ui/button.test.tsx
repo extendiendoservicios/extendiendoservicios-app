@@ -39,3 +39,29 @@ describe('Button', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 })
+
+describe('Button · objetivo táctil (RESP-003)', () => {
+  it('md y sm crecen a 44 px de alto por debajo de 768 px', () => {
+    render(
+      <>
+        <Button>Guardar</Button>
+        <Button size="sm">Ver</Button>
+      </>,
+    )
+
+    expect(screen.getByRole('button', { name: 'Guardar' })).toHaveClass(
+      'max-md:min-h-11',
+    )
+    expect(screen.getByRole('button', { name: 'Ver' })).toHaveClass(
+      'max-md:min-h-11',
+    )
+  })
+
+  it('el link en línea no se agranda', () => {
+    render(<Button variant="link">Ver más</Button>)
+
+    const button = screen.getByRole('button', { name: 'Ver más' })
+    expect(button).toHaveClass('max-md:min-h-0')
+    expect(button).not.toHaveClass('max-md:min-h-11')
+  })
+})

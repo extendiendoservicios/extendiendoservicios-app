@@ -175,6 +175,10 @@ rootChildren.push({ path: '*', element: <NotFoundPage /> })
 const routes: RouteObject[] = [
   {
     element: <RootLayout />,
+    // Mientras el router resuelve las rutas con `lazy` de la primera carga
+    // (el chunk de la pantalla pedida), se muestra el mismo fallback que usan
+    // los shells: un spinner centrado a pantalla completa, sin saltos.
+    HydrateFallback: RouteFallback,
     children: rootChildren,
   },
 ]

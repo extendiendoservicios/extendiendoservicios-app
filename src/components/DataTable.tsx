@@ -370,6 +370,7 @@ function RowCard<TData>({
 
   return (
     <div
+      data-slot="row-card"
       className={cn(
         'rounded-lg border border-border bg-surface p-[14px] shadow-card',
         variant && TABLE_ROW_CLASS_NAME[variant],

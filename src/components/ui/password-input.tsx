@@ -70,7 +70,7 @@ function PasswordInput({
           aria-invalid={Boolean(error)}
           aria-describedby={cn(ariaDescribedBy, errorId) || undefined}
           className={cn(
-            'h-auto w-full min-w-0 rounded-md border border-border-strong bg-surface text-text outline-none transition-colors placeholder:text-text-3 focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger',
+            'h-auto w-full min-w-0 max-md:min-h-11 rounded-md border border-border-strong bg-surface text-text outline-none transition-colors placeholder:text-text-3 focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger',
             // Ojito nativo de Edge: se esconde para que no quede uno al
             // lado del otro con el nuestro.
             '[&::-ms-reveal]:hidden [&::-ms-clear]:hidden',
@@ -78,6 +78,10 @@ function PasswordInput({
               ? 'py-3 pl-[13px] pr-11 text-[14px]'
               : 'px-3 py-[9px] pr-9 text-[13px]',
             Icon && (mobile ? 'pl-9' : 'pl-8'),
+            // El ojo mide 44 px de ancho en celular: el texto no lo pisa.
+            'max-md:pr-11',
+            // 16 px en celular: evita el zoom de Safari en iPhone (P17.8).
+            'max-md:text-base',
           )}
           {...props}
         />
@@ -89,7 +93,7 @@ function PasswordInput({
           aria-controls={inputId}
           aria-label={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'}
           className={cn(
-            'absolute inset-y-0 right-0 flex items-center justify-center text-text-3 outline-none transition-colors hover:text-text focus-visible:ring-3 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+            'absolute inset-y-0 right-0 flex items-center max-md:min-w-11 justify-center text-text-3 outline-none transition-colors hover:text-text focus-visible:ring-3 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
             // 44 px de alto como mínimo en móvil (`07` sección 5): la
             // variante `mobile` ya da esa altura al input completo, así
             // que el botón toma toda la altura disponible (`inset-y-0`) y

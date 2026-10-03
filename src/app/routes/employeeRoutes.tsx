@@ -1,15 +1,5 @@
 import type { RouteObject } from 'react-router'
-import TodayPage from '@/pages/app/TodayPage'
-import ServiceDetailPage from '@/pages/app/ServiceDetailPage'
-import ClockTabPage from '@/pages/app/ClockTabPage'
-import LocationConsentPage from '@/pages/app/LocationConsentPage'
-import InProgressPage from '@/pages/app/InProgressPage'
-import TasksPage from '@/pages/app/TasksPage'
-import NotesPage from '@/pages/app/NotesPage'
-import FinishPage from '@/pages/app/FinishPage'
-import SummaryPage from '@/pages/app/SummaryPage'
-import MorePage from '@/pages/app/MorePage'
-import NotifyPage from '@/pages/app/NotifyPage'
+import { lazyPage } from './lazyPage'
 
 /**
  * Rutas de `/app` (DS-015), `05_Pantallas_y_Navegacion.md` sección 5.
@@ -25,7 +15,7 @@ import NotifyPage from '@/pages/app/NotifyPage'
 export const employeeRoutes: RouteObject[] = [
   {
     index: true,
-    element: <TodayPage />,
+    ...lazyPage(() => import('@/pages/app/TodayPage')),
     handle: {
       screenId: 'EMP-03',
       title: 'Hoy',
@@ -34,7 +24,7 @@ export const employeeRoutes: RouteObject[] = [
   },
   {
     path: 'servicio/:assignmentId',
-    element: <ServiceDetailPage />,
+    ...lazyPage(() => import('@/pages/app/ServiceDetailPage')),
     handle: {
       screenId: 'EMP-04',
       title: 'Detalle del servicio',
@@ -43,7 +33,7 @@ export const employeeRoutes: RouteObject[] = [
   },
   {
     path: 'fichar',
-    element: <ClockTabPage />,
+    ...lazyPage(() => import('@/pages/app/ClockTabPage')),
     handle: {
       screenId: 'EMP-14',
       title: 'Fichar',
@@ -52,7 +42,7 @@ export const employeeRoutes: RouteObject[] = [
   },
   {
     path: 'fichar/consentimiento',
-    element: <LocationConsentPage />,
+    ...lazyPage(() => import('@/pages/app/LocationConsentPage')),
     handle: {
       screenId: 'EMP-06',
       title: 'Consentimiento de ubicación',
@@ -61,7 +51,7 @@ export const employeeRoutes: RouteObject[] = [
   },
   {
     path: 'en-curso/:assignmentId',
-    element: <InProgressPage />,
+    ...lazyPage(() => import('@/pages/app/InProgressPage')),
     handle: {
       screenId: 'EMP-07',
       title: 'Servicio en curso',
@@ -70,7 +60,7 @@ export const employeeRoutes: RouteObject[] = [
   },
   {
     path: 'en-curso/:assignmentId/tareas',
-    element: <TasksPage />,
+    ...lazyPage(() => import('@/pages/app/TasksPage')),
     handle: {
       screenId: 'EMP-08',
       title: 'Tareas',
@@ -79,7 +69,7 @@ export const employeeRoutes: RouteObject[] = [
   },
   {
     path: 'en-curso/:assignmentId/observaciones',
-    element: <NotesPage />,
+    ...lazyPage(() => import('@/pages/app/NotesPage')),
     handle: {
       screenId: 'EMP-09',
       title: 'Observaciones',
@@ -88,7 +78,7 @@ export const employeeRoutes: RouteObject[] = [
   },
   {
     path: 'en-curso/:assignmentId/finalizar',
-    element: <FinishPage />,
+    ...lazyPage(() => import('@/pages/app/FinishPage')),
     handle: {
       screenId: 'EMP-10',
       title: 'Finalizar servicio',
@@ -97,7 +87,7 @@ export const employeeRoutes: RouteObject[] = [
   },
   {
     path: 'resumen/:assignmentId',
-    element: <SummaryPage />,
+    ...lazyPage(() => import('@/pages/app/SummaryPage')),
     handle: {
       screenId: 'EMP-11',
       title: 'Resumen del servicio',
@@ -106,7 +96,7 @@ export const employeeRoutes: RouteObject[] = [
   },
   {
     path: 'avisar',
-    element: <NotifyPage />,
+    ...lazyPage(() => import('@/pages/app/NotifyPage')),
     handle: {
       screenId: 'EMP-12',
       title: 'Avisar demora o ausencia',
@@ -115,7 +105,7 @@ export const employeeRoutes: RouteObject[] = [
   },
   {
     path: 'mas',
-    element: <MorePage />,
+    ...lazyPage(() => import('@/pages/app/MorePage')),
     handle: {
       screenId: 'EMP-13',
       title: 'Más',

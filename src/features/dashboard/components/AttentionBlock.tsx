@@ -81,7 +81,12 @@ function AttentionBlock({
   return (
     <section
       aria-label="Requiere atención"
-      className="rounded-lg border border-border bg-surface p-4 shadow-card"
+      className={cn(
+        'rounded-lg border border-border bg-surface p-4 shadow-card',
+        // Reserva alto mientras carga (CLS de ADM-02, P17.4.1): sin esto, al
+        // llegar las tarjetas el bloque crece y empuja "Servicios de hoy".
+        isLoading && 'min-h-[24rem] md:min-h-[16rem]',
+      )}
     >
       <div className="mb-3 flex items-center gap-2">
         <h2 className="text-[15px] font-semibold text-text">

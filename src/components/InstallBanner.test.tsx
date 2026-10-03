@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { InstallBanner } from './InstallBanner'
-import * as installPromptModule from '@/features/employee/useInstallPrompt'
+import * as installPromptModule from '@/hooks/useInstallPrompt'
 
 /**
  * `InstallBanner` (COM-06, MOB-EMP-014): con `beforeinstallprompt`

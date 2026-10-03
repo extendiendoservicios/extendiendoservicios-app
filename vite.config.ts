@@ -28,7 +28,7 @@ const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN
 // (sin la barra del navegador -- `display: 'standalone'`, no `'fullscreen'`, que además
 // ocultaría la barra de estado del celular) y service worker que cachea solo la aplicación,
 // nunca datos. Detalle completo de cada decisión en docs/design-system.md, sección "PWA"
-// (el documento dedicado, docs/pwa.md, llega recién con RESP-012/DOC-017 en F17).
+// y en docs/pwa.md (RESP-012).
 const pwaPlugin = VitePWA({
   // 'generateSW' (default): Workbox arma el service worker a partir del build, sin escribir
   // ninguno a mano -- no hace falta la estrategia 'injectManifest' porque esta entrega no
@@ -139,10 +139,40 @@ export default defineConfig({
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(pkg.version),
   },
   build: {
+    // RESP-002 / P-090: Chrome en Android 8 o superior (Safari iOS como compatibilidad
+    // secundaria). Mismo piso que `browserslist` de package.json: Chrome 111 y Safari 16.4,
+    // que es lo que exige Tailwind CSS 4 (`@layer`, `@property`, `color-mix()`). Es también el
+    // valor de `'baseline-widely-available'` de Vite 8; se declara explícito para que el piso
+    // no cambie sin que alguien lo decida cuando Vite actualice su valor por omisión.
+    target: ['chrome111', 'safari16.4'],
     // Solo se generan si se van a subir a Sentry (arriba). Sin SENTRY_AUTH_TOKEN no hace falta
     // pagar el costo de generarlos, y no queda ningún `.map` que pueda terminar publicado.
     // 'hidden': el JS publicado no lleva el comentario `sourceMappingURL` hacia un `.map` que
     // se borra después de subirlo. Sentry no lo necesita: asocia cada archivo por debug ID.
     sourcemap: sentryAuthToken ? 'hidden' : false,
+    // RESP-010 / P17.4.1: las librerías de terceros casi no cambian entre despliegues, y el
+    // código propio sí. Separadas del chunk de entrada, el navegador (y el service worker) solo
+    // vuelve a bajar el chunk propio cuando se publica una versión nueva; las librerías siguen
+    // en caché con el mismo nombre (el hash depende del contenido). Solo las más pesadas
+    // del arranque (React y Supabase): el resto de las dependencias sigue a Rolldown, que las agrupa según quién
+    // las usa (así las que solo usa administración no viajan al celular).
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: 'vendor-react',
+              test: /node_modules\/(react|react-dom|scheduler|react-router)\//,
+              priority: 30,
+            },
+            {
+              name: 'vendor-supabase',
+              test: /node_modules\/@supabase\//,
+              priority: 20,
+            },
+          ],
+        },
+      },
+    },
   },
 })

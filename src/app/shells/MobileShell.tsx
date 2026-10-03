@@ -1,13 +1,16 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router'
-import { ArrowLeft } from 'lucide-react'
 import { cn } from 'cn'
 import { Avatar } from '@/components/Avatar'
 import { Fab } from '@/components/Fab'
 import { PwaUpdateBanner } from '@/components/PwaUpdateBanner'
+import { useEditingField } from '@/hooks/useEditingField'
 import { formatShortDate } from '@/lib/format'
 import { avatarUrl } from '@/lib/avatarUrl'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { useRouteHandle } from '@/app/routes/placeholder'
+import { BackButton } from './BackButton'
+import { useGoBack } from './backNavigation'
+import { MobileBrandBar } from './MobileBrandBar'
 import {
   EMPLOYEE_TABBAR_ITEMS,
   isMobileNavItemActive,
@@ -41,15 +44,23 @@ export type MobileShellVariant = 'employee' | 'supervisor'
  *   (`src/app/shells/ActionBar.tsx`), que las pantallas reales agregan por
  *   su cuenta.
  *
- * En escritorio se centra a 480 px con fondo `--surface` y sombra
+ * Por debajo de 768 px ocupa todo el ancho (P17.8: en un Xiaomi de ~500 px
+ * la columna de 480 px dejaba franjas a los costados). Desde 768 px se
+ * centra a 480 px con fondo `--surface` y sombra
  * (`05_Pantallas_y_Navegacion.md` sección 0: "las pantallas móviles
  * funcionan también en escritorio, centradas a 480 px").
+ *
+ * Arriba de todo va `MobileBrandBar` (logo y nombre, 40 px) y, pegada
+ * debajo, la cabecera de título: forman un solo bloque teal. La barra de
+ * marca se va con el scroll y la cabecera de título queda fija.
  */
 export function MobileShell({ variant }: { variant: MobileShellVariant }) {
   const location = useLocation()
-  const navigate = useNavigate()
   const { displayName, profile } = useAuth()
   const handle = useRouteHandle()
+  const goBack = useGoBack(variant === 'employee' ? '/app' : '/sup')
+  // Teclado virtual abierto (RESP-008): la tabbar se oculta mientras se escribe.
+  const editing = useEditingField()
 
   const rootPath = variant === 'employee' ? '/app' : '/sup'
   const tabItems =
@@ -59,7 +70,8 @@ export function MobileShell({ variant }: { variant: MobileShellVariant }) {
 
   return (
     <div className="flex min-h-dvh justify-center bg-bg">
-      <div className="flex min-h-dvh w-full max-w-[480px] flex-col bg-surface shadow-card">
+      <div className="flex min-h-dvh w-full flex-col bg-surface md:max-w-[480px] md:shadow-card">
+        <MobileBrandBar />
         {isGreeting ? (
           <MobileGreetingHeader
             displayName={displayName}
@@ -70,7 +82,7 @@ export function MobileShell({ variant }: { variant: MobileShellVariant }) {
             title={handle?.title ?? ''}
             subtitle={handle?.subtitle}
             showBack={!isRootTab}
-            onBack={() => void navigate(-1)}
+            onBack={goBack}
           />
         )}
 
@@ -89,13 +101,22 @@ export function MobileShell({ variant }: { variant: MobileShellVariant }) {
                 alguien puede estar a mitad de fichar o de cargar algo --
                 el peor momento para un aviso, aunque sea uno que no
                 interrumpe. */}
-            <PwaUpdateBanner className="sticky bottom-[74px] z-20" />
-            <MobileTabbar
-              variant={variant}
-              items={tabItems}
-              pathname={location.pathname}
-              rootPath={rootPath}
+            <PwaUpdateBanner
+              className={cn(
+                'sticky z-20',
+                editing
+                  ? 'bottom-4'
+                  : 'bottom-[calc(var(--tabbar-h)+var(--safe-bottom)+8px)]',
+              )}
             />
+            {!editing && (
+              <MobileTabbar
+                variant={variant}
+                items={tabItems}
+                pathname={location.pathname}
+                rootPath={rootPath}
+              />
+            )}
           </>
         )}
       </div>
@@ -129,13 +150,21 @@ function MobileGreetingHeader({
         {/* Avatar de 28 px; el `::after` lleva el área táctil a 44 px (`07`). */}
         <Link
           to="/perfil"
-          aria-label="Ir a mi perfil"
           className="relative ml-auto shrink-0 rounded-full outline-none after:absolute after:-inset-2 focus-visible:ring-3 focus-visible:ring-ring"
         >
+          {/* Nombre accesible por contenido, sin `aria-label` (WCAG 2.5.3,
+              "Etiqueta en el nombre"): las iniciales visibles son decorativas
+              (`aria-hidden` en `Avatar`) y el nombre accesible sale de
+              "Mi perfil, " + el nombre completo que `Avatar` ya trae oculto
+              para lectores. Con un `aria-label` que no contenga las iniciales
+              visibles, quien maneja por voz no podría decir lo que ve. */}
+          <span className="sr-only">Mi perfil, </span>
           <Avatar
             id="mobile-session-user"
             name={displayName}
             src={avatarPath ? avatarUrl(avatarPath) : null}
+            // Aro blanco sobre la cabecera teal, como en `AdminShell`.
+            className="ring-2 ring-white/80"
           />
         </Link>
       </div>
@@ -155,17 +184,8 @@ function MobileNavbarHeader({
   onBack: () => void
 }) {
   return (
-    <header className="sticky top-0 z-20 flex min-h-[56px] shrink-0 items-center gap-3 bg-primary px-4 py-[9px] text-white">
-      {showBack && (
-        <button
-          type="button"
-          onClick={onBack}
-          aria-label="Volver"
-          className="relative flex size-9 shrink-0 items-center justify-center rounded-full outline-none after:absolute after:-inset-1 hover:bg-white/10 focus-visible:ring-3 focus-visible:ring-ring"
-        >
-          <ArrowLeft aria-hidden="true" className="size-5" />
-        </button>
-      )}
+    <header className="sticky top-[var(--safe-top)] z-20 flex min-h-14 shrink-0 items-center gap-3 bg-primary px-4 py-[9px] text-white">
+      {showBack && <BackButton onClick={onBack} />}
       <div className="min-w-0">
         <p className="truncate text-[15.5px] leading-tight font-semibold tracking-[-0.15px]">
           {title}
@@ -194,8 +214,7 @@ function MobileTabbar({
 
   return (
     <nav
-      className="sticky bottom-0 z-20 flex h-[66px] shrink-0 items-center border-t border-border bg-surface px-1"
-      style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}
+      className="tabbar-safe sticky bottom-0 z-20 flex shrink-0 items-center border-t border-border bg-surface"
       aria-label="Navegación principal"
     >
       {variant === 'employee' && first && second ? (
@@ -234,7 +253,7 @@ function TabLink({ item, active }: { item: MobileNavItem; active: boolean }) {
       to={item.path}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'flex min-h-11 flex-1 flex-col items-center gap-1 pt-2 text-[10px] font-semibold text-text-3',
+        'flex min-h-11 flex-1 flex-col items-center gap-1 pt-2 text-[10px] font-semibold text-text-3 outline-none focus-visible:ring-3 focus-visible:ring-ring',
         active && 'text-primary',
       )}
     >

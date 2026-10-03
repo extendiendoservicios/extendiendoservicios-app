@@ -1,8 +1,11 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Branding } from '@/features/auth/useBranding'
+import * as installPromptModule from '@/hooks/useInstallPrompt'
 import { AdminShell } from './AdminShell'
+
+const signOutMock = vi.hoisted(() => vi.fn())
 
 // `AdminShell` lee `useAuth()` (nombre, rol, cerrar sesión): estos tests
 // prueban el layout, no la sesión (eso lo cubre `AuthProvider.test.tsx`),
@@ -17,7 +20,7 @@ vi.mock('@/features/auth/AuthProvider', () => ({
     profile: null,
     displayName: 'Andrea Ríos',
     isPasswordRecovery: false,
-    signOut: vi.fn(),
+    signOut: signOutMock,
     refreshProfile: vi.fn(),
   }),
 }))
@@ -65,7 +68,9 @@ function mockViewportWidth(widthPx: number) {
     const minWidthMatch = /min-width:\s*(\d+)px/.exec(query)
     const minWidth = minWidthMatch?.[1] ? Number(minWidthMatch[1]) : 0
     return {
-      matches: widthPx >= minWidth,
+      // `display-mode: standalone` (app ya instalada) no es una consulta de
+      // ancho: acá nunca coincide, para que `InstallBanner` pueda mostrarse.
+      matches: query.includes('display-mode') ? false : widthPx >= minWidth,
       media: query,
       onchange: null,
       addEventListener: vi.fn(),
@@ -80,7 +85,10 @@ function mockViewportWidth(widthPx: number) {
 // `AdminShell` lee el título/subtítulo con `useRouteHandle` (`useMatches`),
 // que solo existe dentro de un router de datos (`RouterProvider`) — un
 // `<MemoryRouter><Routes>` simple no alcanza acá.
-function renderAdminShell() {
+function renderAdminShell(
+  initialPath = '/admin',
+  initialEntries: string[] = [initialPath],
+) {
   const router = createMemoryRouter(
     [
       {
@@ -91,10 +99,40 @@ function renderAdminShell() {
             element: <p>Resumen operativo</p>,
             handle: { screenId: 'ADM-02', title: 'Resumen' },
           },
+          {
+            path: '/admin/empleados',
+            element: <p>Listado de empleados</p>,
+            handle: { screenId: 'ADM-14', title: 'Empleados' },
+          },
+          {
+            path: '/admin/asistencia',
+            element: <p>Asistencia de hoy</p>,
+            handle: { screenId: 'ADM-10', title: 'Asistencia' },
+          },
+          {
+            path: '/admin/planificacion',
+            element: <p>Planificación</p>,
+            handle: { screenId: 'ADM-05', title: 'Planificación' },
+          },
+          {
+            path: '/admin/supervisiones',
+            element: <p>Supervisiones</p>,
+            handle: { screenId: 'ADM-13', title: 'Supervisiones' },
+          },
+          {
+            path: '/admin/empleados/:id',
+            element: <p>Ficha de empleado</p>,
+            handle: { screenId: 'ADM-15', title: 'Ficha' },
+          },
+          {
+            path: '/admin/configuracion/empresa',
+            element: <p>Empresa</p>,
+            handle: { screenId: 'ADM-28', title: 'Empresa' },
+          },
         ],
       },
     ],
-    { initialEntries: ['/admin'] },
+    { initialEntries, initialIndex: initialEntries.length - 1 },
   )
   return render(<RouterProvider router={router} />)
 }
@@ -205,5 +243,220 @@ describe('AdminShell — menos de 1024 px', () => {
     expect(screen.getByRole('link', { name: /Hoy/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Planificar/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Más' })).toBeInTheDocument()
+  })
+
+  it('"Más" abre el menú con el resto de las secciones, así todas quedan alcanzables', () => {
+    mockViewportWidth(390)
+    renderAdminShell()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Más' }))
+
+    const menu = screen.getByRole('navigation', { name: 'Más secciones' })
+    const hrefs = Array.from(menu.querySelectorAll('a')).map((a) =>
+      a.getAttribute('href'),
+    )
+    expect(hrefs).toEqual([
+      '/admin/empleados',
+      '/admin/clientes',
+      '/admin/tareas',
+      '/admin/configuracion/usuarios',
+    ])
+  })
+
+  it('las ocho secciones de P-121 se alcanzan entre la tabbar y "Más"', () => {
+    mockViewportWidth(390)
+    renderAdminShell()
+
+    // Antes de abrir el menú: el diálogo marca el resto de la página como
+    // oculta para la tecnología asistiva y ya no se la puede consultar.
+    const tabbar = screen.getByRole('navigation', {
+      name: 'Navegación principal',
+    })
+    const tabbarHrefs = Array.from(tabbar.querySelectorAll('a')).map((a) =>
+      a.getAttribute('href'),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Más' }))
+
+    const sections = [
+      ...tabbarHrefs,
+      ...Array.from(
+        screen
+          .getByRole('navigation', { name: 'Más secciones' })
+          .querySelectorAll('a'),
+      ).map((a) => a.getAttribute('href')),
+    ].map((href) => href?.split('?')[0])
+    expect(sections).toEqual([
+      '/admin',
+      '/admin/planificacion',
+      '/admin/asistencia',
+      '/admin/supervisiones',
+      '/admin/empleados',
+      '/admin/clientes',
+      '/admin/tareas',
+      '/admin/configuracion/usuarios',
+    ])
+  })
+
+  it('"Más" se marca activo cuando la pantalla es una de sus secciones', () => {
+    mockViewportWidth(390)
+    renderAdminShell('/admin/empleados')
+
+    expect(screen.getByRole('button', { name: 'Más' }).className).toContain(
+      'text-primary',
+    )
+    expect(screen.getByRole('link', { name: /Hoy/ }).className).not.toContain(
+      'text-primary',
+    )
+  })
+
+  it('la tabbar crece con el área segura (RESP-008)', () => {
+    mockViewportWidth(390)
+    renderAdminShell()
+
+    expect(
+      screen.getByRole('navigation', { name: 'Navegación principal' }),
+    ).toHaveClass('tabbar-safe')
+  })
+})
+
+describe('AdminShell — banner de instalación (COM-06)', () => {
+  function mockInstallable() {
+    vi.spyOn(installPromptModule, 'useInstallPrompt').mockReturnValue({
+      available: true,
+      promptInstall: vi.fn(),
+    })
+  }
+
+  afterEach(() => {
+    window.localStorage.clear()
+  })
+
+  it('aparece en el inicio de administración en celular', () => {
+    mockViewportWidth(390)
+    mockInstallable()
+    renderAdminShell('/admin')
+
+    expect(screen.getByText('Instalá la aplicación')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Instalar' })).toBeInTheDocument()
+  })
+
+  it('no aparece en otras pantallas de administración', () => {
+    mockViewportWidth(390)
+    mockInstallable()
+    renderAdminShell('/admin/asistencia')
+
+    expect(screen.queryByText('Instalá la aplicación')).not.toBeInTheDocument()
+  })
+
+  it('no aparece en escritorio (1024 px o más)', () => {
+    mockViewportWidth(1440)
+    mockInstallable()
+    renderAdminShell('/admin')
+
+    expect(screen.queryByText('Instalá la aplicación')).not.toBeInTheDocument()
+  })
+
+  it('"Ahora no" lo oculta', () => {
+    mockViewportWidth(390)
+    mockInstallable()
+    renderAdminShell('/admin')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ahora no' }))
+
+    expect(screen.queryByText('Instalá la aplicación')).not.toBeInTheDocument()
+  })
+})
+
+describe('AdminShell — flecha atrás (P17.8)', () => {
+  const backName = { name: 'Volver' }
+
+  it.each([
+    '/admin',
+    '/admin/planificacion',
+    '/admin/asistencia',
+    '/admin/supervisiones',
+  ])('no hay flecha en la raíz del tabbar %s', (path) => {
+    mockViewportWidth(390)
+    renderAdminShell(path)
+
+    expect(screen.queryByRole('button', backName)).not.toBeInTheDocument()
+  })
+
+  it.each([
+    '/admin/empleados',
+    '/admin/empleados/123',
+    '/admin/configuracion/empresa',
+  ])('hay flecha en %s (sección de Más o detalle)', (path) => {
+    mockViewportWidth(390)
+    renderAdminShell(path)
+
+    expect(screen.getByRole('button', backName)).toBeInTheDocument()
+  })
+
+  it('con historial, vuelve a la pantalla anterior', () => {
+    mockViewportWidth(390)
+    renderAdminShell('/admin/asistencia', [
+      '/admin/asistencia',
+      '/admin/empleados/123',
+    ])
+
+    fireEvent.click(screen.getByRole('button', backName))
+
+    expect(screen.getByText('Asistencia de hoy')).toBeInTheDocument()
+  })
+
+  it('sin historial (entrada directa), un detalle vuelve a su listado', () => {
+    mockViewportWidth(390)
+    renderAdminShell('/admin/empleados/123')
+
+    fireEvent.click(screen.getByRole('button', backName))
+
+    expect(screen.getByText('Listado de empleados')).toBeInTheDocument()
+  })
+
+  it('sin historial, una sección de Más vuelve al inicio', () => {
+    mockViewportWidth(390)
+    renderAdminShell('/admin/empleados')
+
+    fireEvent.click(screen.getByRole('button', backName))
+
+    expect(screen.getByText('Resumen operativo')).toBeInTheDocument()
+  })
+
+  it('en compu (1024 px o más) también hay flecha, salvo en las raíces', () => {
+    mockViewportWidth(1440)
+    const { unmount } = renderAdminShell('/admin/empleados/123')
+    expect(screen.getByRole('button', backName)).toBeInTheDocument()
+    unmount()
+
+    renderAdminShell('/admin/planificacion')
+    expect(screen.queryByRole('button', backName)).not.toBeInTheDocument()
+  })
+})
+
+describe('AdminShell — barra de marca y Más en celular (P17.8)', () => {
+  it('muestra la barra de marca solo por debajo de 1024 px', () => {
+    mockViewportWidth(390)
+    const mobile = renderAdminShell()
+    expect(
+      mobile.container.querySelector('[data-slot="brand-bar"]'),
+    ).not.toBeNull()
+    mobile.unmount()
+
+    mockViewportWidth(1440)
+    const desktop = renderAdminShell()
+    expect(
+      desktop.container.querySelector('[data-slot="brand-bar"]'),
+    ).toBeNull()
+  })
+
+  it('"Cerrar sesión" está en el menú Más y cierra la sesión', () => {
+    mockViewportWidth(390)
+    renderAdminShell()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Más' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar sesión' }))
+
+    expect(signOutMock).toHaveBeenCalledTimes(1)
   })
 })

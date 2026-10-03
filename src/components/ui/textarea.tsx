@@ -34,6 +34,8 @@ function Textarea({
           mobile
             ? 'min-h-[74px] px-[13px] py-3 text-[14px]'
             : 'min-h-[62px] px-3 py-[9px] text-[13px]',
+          // 16 px en celular: evita el zoom de Safari en iPhone (P17.8).
+          'max-md:text-base',
           className,
         )}
         {...props}

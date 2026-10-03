@@ -10,7 +10,8 @@ import {
 } from 'lucide-react'
 import { cn } from 'cn'
 import { useAuth } from '@/features/auth/AuthProvider'
-import { useInstallPrompt } from '@/features/employee/useInstallPrompt'
+import { AppVersion } from '@/components/AppVersion'
+import { useInstallPrompt } from '@/hooks/useInstallPrompt'
 
 /**
  * EMP-13 · Más (MOB-EMP-013, P-122): acceso a perfil (COM-04), avisar
@@ -51,6 +52,8 @@ export default function MorePage() {
         <LogOut aria-hidden="true" className="size-4" />
         Cerrar sesión
       </button>
+
+      <AppVersion />
     </div>
   )
 }

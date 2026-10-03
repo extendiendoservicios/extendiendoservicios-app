@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { router } from '@/app/router'
+import { reloadAfterChunkError } from '@/app/routes/lazyPage'
 import { PwaUpdateProvider } from '@/app/PwaUpdateProvider'
 import { AuthProvider } from '@/features/auth/AuthProvider'
 import { queryClient } from '@/lib/queryClient'
@@ -17,6 +18,12 @@ initSentry()
 // COM-06: el aviso de instalación de Chrome llega una sola vez y temprano;
 // se captura antes de montar React (ver src/lib/installPrompt.ts).
 startInstallPromptCapture()
+
+// RESP-010: si falla la precarga de un chunk de una versión anterior (despliegue
+// con la app abierta), se recarga una vez en lugar de mostrar el error.
+window.addEventListener('vite:preloadError', (event) => {
+  if (reloadAfterChunkError()) event.preventDefault()
+})
 
 const rootElement = document.getElementById('root')
 if (!rootElement) {

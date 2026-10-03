@@ -209,7 +209,7 @@ export function AvatarUpload({
           onClick={openPicker}
           disabled={busy}
           aria-label="Cambiar foto de perfil"
-          className="absolute -right-1 -bottom-1 flex size-8 items-center justify-center rounded-full border-2 border-surface bg-primary text-white outline-none focus-visible:ring-3 focus-visible:ring-ring disabled:opacity-50"
+          className="absolute -right-1 -bottom-1 flex size-8 after:absolute after:-inset-2 md:after:hidden items-center justify-center rounded-full border-2 border-surface bg-primary text-white outline-none focus-visible:ring-3 focus-visible:ring-ring disabled:opacity-50"
         >
           <Camera aria-hidden="true" className="size-[15px]" />
         </button>

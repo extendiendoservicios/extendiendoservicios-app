@@ -2,7 +2,16 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- viewport-fit=cover: el contenido llega a los bordes y los shells respetan
+         el área segura con env(safe-area-inset-*) (RESP-008).
+         interactive-widget=resizes-content: el teclado virtual achica el viewport
+         de layout (Chrome/Android), así la barra fija al pie queda arriba del
+         teclado y no tapa el campo enfocado. Safari lo ignora y ya desplaza el
+         campo a la vista por su cuenta. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
+    />
     <title>Extendiendo Servicios — Plataforma</title>
     <meta
       name="description"

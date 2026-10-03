@@ -180,7 +180,7 @@ conexión, la persona vuelve a intentar la acción a mano.
 
 ## Banner de instalación (COM-06)
 
-`src/features/employee/components/InstallBanner.tsx`, montado en EMP-03
+`src/components/InstallBanner.tsx`, montado en EMP-03
 (`TodayPage`) -- SUP-02 (Hoy del supervisor) todavía no existe (F15) y por
 lo tanto ese `05` fila COM-06 ("EMP-03 y SUP-02") queda con un solo punto de
 montaje hasta esa fase.
@@ -196,7 +196,7 @@ montaje hasta esa fase.
   que ya descartó el evento) no se muestra nada.
 - No aparece si la app ya corre instalada (`display-mode: standalone`, o
   `navigator.standalone` en iOS).
-- Al cerrarlo, `src/features/employee/installBannerDismiss.ts` guarda la
+- Al cerrarlo, `src/lib/installBannerDismiss.ts` guarda la
   marca por siete días (decisión menor, el plan no fija un número): ni
   insiste en cada visita, ni desaparece para siempre por un solo cierre.
 
