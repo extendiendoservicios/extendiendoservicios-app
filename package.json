@@ -43,7 +43,8 @@
     "db:test": "bash scripts/db-test.sh",
     "db:seed:users": "node --env-file=.env.local scripts/seed-dev.ts",
     "db:seed:data": "supabase db query --linked -f supabase/seed.sql",
-    "db:seed": "pnpm db:seed:users && pnpm db:seed:data"
+    "db:seed": "pnpm db:seed:users && pnpm db:seed:data",
+    "db:recuperar-dev": "node --env-file=.env.local scripts/recuperar-app-dev.ts"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
