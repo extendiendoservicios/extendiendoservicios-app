@@ -159,9 +159,9 @@ test(
           await page.getByRole('button', { name: 'Agregar ítem' }).click()
           await page.getByLabel('Título').fill(titulo)
           await page.getByRole('button', { name: 'Guardar' }).click()
-          await expect(
-            page.getByText('Agregamos el ítem.').last(),
-          ).toBeVisible()
+          // El toast "Agregamos el ítem." del ítem anterior puede seguir en pantalla: se espera
+          // al ítem mismo en la lista, así el siguiente paso no arranca antes de que se guarde.
+          await expect(page.getByText(titulo, { exact: true })).toBeVisible()
         }
       })
 

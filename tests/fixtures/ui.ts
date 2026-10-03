@@ -176,8 +176,14 @@ export async function chooseMenuItem(
 ): Promise<void> {
   await expect(async () => {
     await page.getByRole('button', { name: triggerName }).click()
-    await page
-      .getByRole('menuitem', { name: itemName })
-      .click({ timeout: 3_000 })
+    try {
+      await page
+        .getByRole('menuitem', { name: itemName })
+        .click({ timeout: 3_000 })
+    } catch (error) {
+      // El clic pudo llegar a ejecutarse y abrir el diálogo de la acción antes de que Playwright
+      // lo diera por terminado: con un diálogo abierto no hay que volver a abrir el menú.
+      if ((await page.getByRole('dialog').count()) === 0) throw error
+    }
   }).toPass({ timeout: 20_000 })
 }
