@@ -9,6 +9,7 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ### Agregado
 
+- Workflow `e2e-app-dev.yml` (TEST-021, F18): corre las suites e2e reales contra `App_dev` cada noche (04:30 de Argentina) y a mano, sobre `develop` o la rama elegida, de a una corrida por vez, con guarda contra producción, resumen en Summary y reporte con trazas ante fallas. Usa cuatro secretos `E2E_*`; guía en `docs/deployment.md` sección 14.
 - Prueba de restauración de respaldos revisada contra el estado actual y ensayada en Docker (TEST-024): el volcado se inspecciona antes de tocar nada, se comparan las filas de cada tabla, las claves foráneas y los permisos (sin el `GRANT ALL` por defecto de Supabase), se simula una sesión de dueño con el hook de Auth y la RLS, y el resultado queda resumido con tiempos en la pestaña Summary de la corrida.
 - `pnpm db:recuperar-dev` (`scripts/recuperar-app-dev.ts`): deja a `App_dev` utilizable después de la prueba de restauración, validando cada paso.
 - `scripts/ensayo-restauracion-local.sh`: ensayo completo de respaldo, restauración y recuperación en Docker, sin credenciales.
