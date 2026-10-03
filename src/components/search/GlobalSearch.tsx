@@ -115,7 +115,7 @@ export function GlobalSearch() {
           // mismo rango de ancho.
           // Sobre la cabecera teal (P17.8): ícono blanco, hover translúcido y
           // foco blanco (`--ring` es teal y no se ve sobre el teal).
-          className="relative text-white after:absolute after:-inset-[5px] hover:bg-white/15 hover:text-white focus-visible:ring-white/80"
+          className="relative border-white/40 bg-transparent text-white after:absolute after:-inset-[5px] hover:bg-white/15 hover:text-white focus-visible:ring-white/80"
         />
       )}
 
