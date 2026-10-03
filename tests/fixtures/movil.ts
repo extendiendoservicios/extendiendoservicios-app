@@ -266,3 +266,11 @@ export async function cerrarSupervision(
         })
   if (error) throw new Error(`cerrar supervisión: ${error.message}`)
 }
+
+/** JPEG mínimo de 1x1 píxel: el bucket `avatars` solo acepta `image/jpeg` (lo que sube la app). */
+export function jpegMinimo(): Buffer {
+  return Buffer.from(
+    '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=',
+    'base64',
+  )
+}

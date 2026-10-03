@@ -9,10 +9,11 @@ import { MISSING_ENV_MESSAGE, readE2eEnv } from '../../fixtures/env.ts'
 import {
   fijarConsentimiento,
   marcarCambiosVistos,
+  jpegMinimo,
   tareasDelTurno,
 } from '../../fixtures/movil.ts'
 import { Scenario } from '../../fixtures/scenario.ts'
-import { storageStatePath } from '../../fixtures/sessions.ts'
+import { readId, storageStatePath } from '../../fixtures/sessions.ts'
 import { cubre } from '../../fixtures/trace.ts'
 import { expectNoHorizontalScroll } from '../../fixtures/ui.ts'
 
@@ -29,6 +30,7 @@ test(
   cubre('RB-E03', 'RB-E02', 'P-103'),
   async ({ page }) => {
     const sc = new Scenario()
+    let rutaFoto: string | null = null
     try {
       const cliente = await sc.client('detalle')
       const sede = await sc.site(cliente.id, 'detalle', {
@@ -62,6 +64,20 @@ test(
       const asignacion = await sc.assign(turno, 'empleado2')
       await sc.assign(turno, 'empleado3')
       await marcarCambiosVistos('empleado2')
+      // El compañero tiene foto: se sube una de verdad al bucket `avatars` (P-103: nombre y foto).
+      const idCompanero = readId('empleado3')
+      rutaFoto = `${idCompanero}/e2e-detalle.jpg`
+      const subida = await sc.db.storage
+        .from('avatars')
+        .upload(rutaFoto, jpegMinimo(), {
+          contentType: 'image/jpeg',
+          upsert: true,
+        })
+      expect(subida.error, subida.error?.message).toBeNull()
+      await sc.db
+        .from('profiles')
+        .update({ avatar_path: rutaFoto })
+        .eq('id', idCompanero)
 
       await page.goto(`/app/servicio/${asignacion}`)
       await expectNoHorizontalScroll(page)
@@ -101,6 +117,11 @@ test(
           .filter({ hasText: 'Compañeros de este servicio' })
         await expect(companeros).toContainText('E2E-Fijo Empleado3')
         await expect(companeros).not.toContainText('E2E-Fijo Empleado2')
+        // La foto se ve (el componente solo pinta la imagen si se pudo cargar).
+        await expect(companeros.locator('img')).toHaveAttribute(
+          'src',
+          new RegExp(rutaFoto!.split('/')[0]),
+        )
       })
 
       await test.step('tareas previstas en solo lectura (antes del inicio)', async () => {
@@ -125,6 +146,13 @@ test(
         )
       })
     } finally {
+      if (rutaFoto) {
+        await sc.db.storage.from('avatars').remove([rutaFoto])
+        await sc.db
+          .from('profiles')
+          .update({ avatar_path: null })
+          .eq('id', readId('empleado3'))
+      }
       expect(await sc.cleanup(), 'limpieza').toEqual([])
     }
   },

@@ -132,7 +132,9 @@ test(
       // Cada servicio lleva a su detalle.
       await destacada.click()
       await expect(page).toHaveURL(/\/app\/servicio\//)
-      await expect(page.getByText(cliente.name)).toBeVisible()
+      await expect(
+        page.getByRole('link', { name: 'Abrir en el mapa' }),
+      ).toBeVisible()
     } finally {
       expect(await sc.cleanup(), 'limpieza').toEqual([])
     }
