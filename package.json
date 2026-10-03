@@ -32,6 +32,8 @@
     "test:e2e:avisos-asistencia": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-avisos-asistencia/playwright.avisos-asistencia.config.ts",
     "test:e2e:tablero": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-tablero/playwright.tablero.config.ts",
     "test:e2e:admin": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e/admin/playwright.admin.config.ts",
+    "test:e2e:empleado": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e/empleado/playwright.empleado.config.ts",
+    "test:e2e:supervisor": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e/supervisor/playwright.supervisor.config.ts",
     "test:fixtures:setup": "node --env-file=.env.local tests/fixtures/setup-accounts.ts",
     "test:e2e:responsive": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-responsive/playwright.responsive.config.ts",
     "test:e2e:supervisiones": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-supervisiones/playwright.supervisiones.config.ts",
