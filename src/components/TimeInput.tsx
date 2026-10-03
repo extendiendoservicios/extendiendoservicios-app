@@ -34,6 +34,8 @@ function TimeInput({
         className={cn(
           'h-auto w-full min-w-0 rounded-md border border-border-strong bg-surface text-text tabular-nums outline-none transition-colors placeholder:text-text-3 focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger',
           mobile ? 'px-[13px] py-3 text-[14px]' : 'px-3 py-[9px] text-[13px]',
+          // 16 px en celular: evita el zoom de Safari en iPhone (P17.8).
+          'max-md:text-base',
           className,
         )}
         {...props}

@@ -80,6 +80,8 @@ function PasswordInput({
             Icon && (mobile ? 'pl-9' : 'pl-8'),
             // El ojo mide 44 px de ancho en celular: el texto no lo pisa.
             'max-md:pr-11',
+            // 16 px en celular: evita el zoom de Safari en iPhone (P17.8).
+            'max-md:text-base',
           )}
           {...props}
         />

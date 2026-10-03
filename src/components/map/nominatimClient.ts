@@ -27,6 +27,8 @@
  *   además evita pedidos superpuestos.
  * - `countrycodes=ar`, `limit` bajo y `accept-language=es`: fijos en
  *   `buildSearchUrl`.
+ * - `viewbox` alrededor de Pergamino (P17.8), sin `bounded`: prioriza los
+ *   resultados de esa zona pero no excluye otras ciudades.
  *
  * Si en algún momento se necesita más volumen o cumplir el `User-Agent` al
  * pie de la letra, la alternativa es mover la búsqueda a un backend propio
@@ -37,6 +39,13 @@
 const NOMINATIM_SEARCH_URL = 'https://nominatim.openstreetmap.org/search'
 
 /** Dirección de contacto que manda la app como parámetro `email` (ver arriba). */
+/**
+ * Zona que se prioriza en la búsqueda (P17.8): caja de unos 2° alrededor de
+ * Pergamino, en el orden que pide Nominatim (`izquierda,arriba,derecha,abajo`
+ * = lng mín, lat máx, lng máx, lat mín). Sin `bounded=1`, es solo un sesgo.
+ */
+const SEARCH_VIEWBOX = '-61.6,-32.9,-59.6,-34.9'
+
 const NOMINATIM_CONTACT_EMAIL = 'extserviciosapp@gmail.com'
 
 /** Mínimo de milisegundos entre dos pedidos a Nominatim desde esta app. */
@@ -87,6 +96,7 @@ function buildSearchUrl(query: string, limit: number): string {
   url.searchParams.set('format', 'jsonv2')
   url.searchParams.set('limit', String(limit))
   url.searchParams.set('countrycodes', 'ar')
+  url.searchParams.set('viewbox', SEARCH_VIEWBOX)
   url.searchParams.set('accept-language', 'es')
   url.searchParams.set('email', NOMINATIM_CONTACT_EMAIL)
   return url.toString()

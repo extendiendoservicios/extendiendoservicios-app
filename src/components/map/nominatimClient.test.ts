@@ -52,6 +52,9 @@ describe('searchAddress', () => {
     expect(url.searchParams.get('format')).toBe('jsonv2')
     expect(Number(url.searchParams.get('limit'))).toBeLessThanOrEqual(5)
     expect(url.searchParams.get('email')).toBeTruthy()
+    // Sesgo hacia Pergamino sin excluir otras ciudades (P17.8).
+    expect(url.searchParams.get('viewbox')).toBe('-61.6,-32.9,-59.6,-34.9')
+    expect(url.searchParams.has('bounded')).toBe(false)
   })
 
   it('devuelve los resultados con lat/lng numéricos', async () => {

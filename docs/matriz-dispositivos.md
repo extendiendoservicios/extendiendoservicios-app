@@ -27,16 +27,16 @@ Qué necesitás en cada teléfono:
 
 Completá una columna por teléfono antes de empezar. La versión del sistema está en **Ajustes → Acerca del teléfono** (Android) o **Ajustes → General → Información** (iPhone).
 
-| Dato                                         | Android 1 | Android 2 | iPhone |
-| -------------------------------------------- | --------- | --------- | ------ |
-| Marca y modelo                               |           |           |        |
-| Versión del sistema (Android o iOS)          |           |           |        |
-| Navegador y versión (Chrome / Safari)        |           |           |        |
-| Tamaño de pantalla (chico, mediano, grande)  |           |           |        |
-| ¿Tiene muesca, cámara en la pantalla o isla? |           |           |        |
-| ¿Navegación por botones o por gestos?        |           |           |        |
-| Fecha de la prueba                           |           |           |        |
-| Quién la hizo                                |           |           |        |
+| Dato                                         | Android 1                     | Android 2     | iPhone             |
+| -------------------------------------------- | ----------------------------- | ------------- | ------------------ |
+| Marca y modelo                               | Xiaomi Redmi note 12 pro plus | Motorola K50S | Iphone 16 Pro Max  |
+| Versión del sistema (Android o iOS)          | Android 14                    | Android 10    | IOS 26             |
+| Navegador y versión (Chrome / Safari)        | Chrome 154                    | Chrome 154    | Safari             |
+| Tamaño de pantalla (chico, mediano, grande)  | Grande                        | Grande        | Grande             |
+| ¿Tiene muesca, cámara en la pantalla o isla? | Si, hueco                     | Si, notche    | Si, dinamic island |
+| ¿Navegación por botones o por gestos?        | tactil                        | tactil        | tactil             |
+| Fecha de la prueba                           | 2 de octubre                  | 2 de octubre  | 2 de octubre       |
+| Quién la hizo                                | Mike                          | Mike          | Mike               |
 
 ## Cómo anotar
 
@@ -59,9 +59,9 @@ La idea es que la app quede en la pantalla de inicio del teléfono, como cualqui
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | OK                     |               |
+| Android 2 | OK                     |               |
+| iPhone    | OK                     |               |
 
 ### 1.2 · Instalar desde Android
 
@@ -73,8 +73,8 @@ La idea es que la app quede en la pantalla de inicio del teléfono, como cualqui
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
+| Android 1 | OK                     |               |
+| Android 2 | OK                     |               |
 | iPhone    | No aplica              |               |
 
 ### 1.3 · Instalar desde iPhone
@@ -91,7 +91,7 @@ La idea es que la app quede en la pantalla de inicio del teléfono, como cualqui
 | --------- | ---------------------- | ------------- |
 | Android 1 | No aplica              |               |
 | Android 2 | No aplica              |               |
-| iPhone    |                        |               |
+| iPhone    | OK                     |               |
 
 ### 1.4 · El ícono y el nombre
 
@@ -101,9 +101,9 @@ La idea es que la app quede en la pantalla de inicio del teléfono, como cualqui
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | OK                     |               |
+| Android 2 | OK                     |               |
+| iPhone    | OK                     |               |
 
 ### 1.5 · Abrir a pantalla completa
 
@@ -112,11 +112,11 @@ La idea es que la app quede en la pantalla de inicio del teléfono, como cualqui
 
 **Tiene que pasar:** Se ve primero una pantalla verde azulada con el logo (mientras carga) y después la app **sin la barra de direcciones del navegador**: ocupa toda la pantalla, solo se ve la hora y la batería arriba.
 
-| Teléfono  | Resultado (OK / Falla) | Observaciones |
-| --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Teléfono  | Resultado (OK / Falla) | Observaciones                                                                                                                                                                                      |
+| --------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Android 1 | OK                     | La barra donde está el titulo "Hola MAria" o "Servicios en curso" no se ajusta al ancho de la pantalla. Quedan unos píxeles blancos.                                                               |
+| Android 2 | OK                     | La barra se ajusta al ancho de la pantalla correctamente                                                                                                                                           |
+| iPhone    | OK                     | LA imagen de toda la app parece comenzar con un nivel de zoom aumentado. Requiere un "pellizco" para achicar el tamaño y ajustar todo el contenido a la pantalla. Puedo adjuntar captura. Pedimela |
 
 ### 1.6 · Color de la barra de arriba
 
@@ -126,9 +126,9 @@ La idea es que la app quede en la pantalla de inicio del teléfono, como cualqui
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | OK                     |               |
+| Android 2 | OK                     |               |
+| iPhone    | OK                     |               |
 
 ## 2. Iniciar sesión según el rol
 
@@ -142,9 +142,9 @@ Necesitás tres cuentas de prueba (ver «Antes de empezar»). Hacé cada ingreso
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | OK                     |               |
+| Android 2 | OK                     |               |
+| iPhone    | OK                     |               |
 
 ### 2.2 · Supervisor
 
@@ -154,9 +154,9 @@ Necesitás tres cuentas de prueba (ver «Antes de empezar»). Hacé cada ingreso
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | OK                     |               |
+| Android 2 | OK                     |               |
+| iPhone    | OK                     |               |
 
 ### 2.3 · Dueño o administrador
 
@@ -166,9 +166,9 @@ Necesitás tres cuentas de prueba (ver «Antes de empezar»). Hacé cada ingreso
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | OK                     |               |
+| Android 2 | OK                     |               |
+| iPhone    | OK                     |               |
 
 ### 2.4 · La sesión se mantiene
 
@@ -179,9 +179,9 @@ Necesitás tres cuentas de prueba (ver «Antes de empezar»). Hacé cada ingreso
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | OK                     |               |
+| Android 2 | OK                     |               |
+| iPhone    | OK                     |               |
 
 ### 2.5 · Contraseña equivocada
 
@@ -210,9 +210,9 @@ Usá la cuenta de **empleado** con un servicio de hoy sin iniciar (ver «Antes d
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | OK                     |               |
+| Android 2 | OK                     |               |
+| iPhone    | OK                     |               |
 
 ### 3.2 · Servicio en curso
 
@@ -223,9 +223,9 @@ Usá la cuenta de **empleado** con un servicio de hoy sin iniciar (ver «Antes d
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | OK                     |               |
+| Android 2 | OK                     |               |
+| iPhone    | OK                     |               |
 
 ### 3.3 · Registrar el fin
 
@@ -235,9 +235,9 @@ Usá la cuenta de **empleado** con un servicio de hoy sin iniciar (ver «Antes d
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | OK                     |               |
+| Android 2 | OK                     |               |
+| iPhone    | OK                     |               |
 
 ### 3.4 · Ubicación negada (opcional, con otro servicio)
 
@@ -264,9 +264,9 @@ Usá la cuenta de **empleado** con un servicio de hoy sin iniciar (ver «Antes d
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | OK                     |               |
+| Android 2 | OK                     |               |
+| iPhone    | OK                     |               |
 
 ## 5. Supervisor: supervisión y calificación
 
@@ -280,9 +280,9 @@ Usá la cuenta de **supervisor**, con una supervisión asignada para hoy sobre u
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | OK                     |               |
+| Android 2 | OK                     |               |
+| iPhone    | OK                     |               |
 
 ### 5.2 · Registrar el inicio de la supervisión
 
@@ -293,9 +293,9 @@ Usá la cuenta de **supervisor**, con una supervisión asignada para hoy sobre u
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | OK                     |               |
+| Android 2 | OK                     |               |
+| iPhone    | OK                     |               |
 
 ### 5.3 · Calificar a un empleado
 
@@ -304,11 +304,11 @@ Usá la cuenta de **supervisor**, con una supervisión asignada para hoy sobre u
 
 **Tiene que pasar:** Las estrellas se pueden tocar con el dedo sin errar, se guarda la calificación y el empleado figura como calificado.
 
-| Teléfono  | Resultado (OK / Falla) | Observaciones |
-| --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Teléfono  | Resultado (OK / Falla) | Observaciones                                      |
+| --------- | ---------------------- | -------------------------------------------------- |
+| Android 1 | OK                     | Fuera de horario no permite calificar. Es correcto |
+| Android 2 | OK                     | Fuera de horario no permite calificar. Es correcto |
+| iPhone    | OK                     | Fuera de horario no permite calificar. Es correcto |
 
 ### 5.4 · Registrar el fin y cerrar la supervisión
 
@@ -319,9 +319,9 @@ Usá la cuenta de **supervisor**, con una supervisión asignada para hoy sobre u
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | ok                     |               |
+| Android 2 | ok                     |               |
+| iPhone    | ok                     |               |
 
 ## 6. Administración: la barra de abajo y «Más»
 
@@ -333,11 +333,11 @@ Usá la cuenta de **dueño**.
 
 **Tiene que pasar:** Cada una abre su pantalla; la pestaña en la que estás se ve resaltada; ninguna pantalla se corta ni obliga a mover la pantalla hacia los costados.
 
-| Teléfono  | Resultado (OK / Falla) | Observaciones |
-| --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Teléfono  | Resultado (OK / Falla) | Observaciones                                                                                                                           |
+| --------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Android 1 | OK                     | La barra de título an la versión dueño es de color blanca, no verde azulada como antes. No hay flecha hacia atrás en la barra de titulo |
+| Android 2 | OK                     | La barra de título an la versión dueño es de color blanca, no verde azulada como antes. No hay flecha hacia atrás en la barra de titulo |
+| iPhone    | OK                     | La barra de título an la versión dueño es de color blanca, no verde azulada como antes. No hay flecha hacia atrás en la barra de titulo |
 
 ### 6.2 · El menú «Más»
 
@@ -346,11 +346,11 @@ Usá la cuenta de **dueño**.
 
 **Tiene que pasar:** «Más» muestra una lista con Empleados, Clientes y sedes, Tareas y Configuración. Cada opción abre su pantalla y se puede volver. Las listas se ven como **tarjetas**, no como tablas.
 
-| Teléfono  | Resultado (OK / Falla) | Observaciones |
-| --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Teléfono  | Resultado (OK / Falla) | Observaciones                                                                            |
+| --------- | ---------------------- | ---------------------------------------------------------------------------------------- |
+| Android 1 | ok                     | No hay flecha hacia atrás en la barra de titulo. Vuelvo atrás con la flecha del telefono |
+| Android 2 | ok                     | No hay flecha hacia atrás en la barra de titulo. Vuelvo atrás con la flecha del telefono |
+| iPhone    | ok                     | No hay flecha hacia atrás en la barra de titulo. Vuelvo atrás con la flecha del telefono |
 
 ### 6.3 · Nada se corta hacia los costados
 
@@ -360,9 +360,9 @@ Usá la cuenta de **dueño**.
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | ok                     |               |
+| Android 2 | ok                     |               |
+| iPhone    | ok                     |               |
 
 ## 7. El teclado sobre los formularios
 
@@ -376,9 +376,9 @@ Cuando aparece el teclado, la pantalla tiene que acomodarse para que veas lo que
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | ok                     |               |
+| Android 2 | ok                     |               |
+| iPhone    | ok                     |               |
 
 ### 7.2 · Observaciones del empleado
 
@@ -388,9 +388,9 @@ Cuando aparece el teclado, la pantalla tiene que acomodarse para que veas lo que
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | ok                     |               |
+| Android 2 | ok                     |               |
+| iPhone    | ok                     |               |
 
 ### 7.3 · Comentario de la calificación
 
@@ -400,9 +400,9 @@ Cuando aparece el teclado, la pantalla tiene que acomodarse para que veas lo que
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | ok                     |               |
+| Android 2 | ok                     |               |
+| iPhone    | ok                     |               |
 
 ### 7.4 · Un formulario de administración
 
@@ -413,9 +413,9 @@ Cuando aparece el teclado, la pantalla tiene que acomodarse para que veas lo que
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | ok                     |               |
+| Android 2 | ok                     |               |
+| iPhone    | ok                     |               |
 
 ## 8. Área segura: muesca, barra de inicio y botones del sistema
 
@@ -429,9 +429,9 @@ Se hace con la app **instalada**. Es lo que más cambia entre un teléfono y otr
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | ok                     |               |
+| Android 2 | ok                     |               |
+| iPhone    | ok                     |               |
 
 ### 8.2 · Abajo (barra de inicio del iPhone o botones del sistema de Android)
 
@@ -442,9 +442,9 @@ Se hace con la app **instalada**. Es lo que más cambia entre un teléfono y otr
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | ok                     |               |
+| Android 2 | ok                     |               |
+| iPhone    | ok                     |               |
 
 ### 8.3 · Botones al final de una pantalla
 
@@ -454,9 +454,9 @@ Se hace con la app **instalada**. Es lo que más cambia entre un teléfono y otr
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | ok                     |               |
+| Android 2 | ok                     |               |
+| iPhone    | ok                     |               |
 
 ## 9. Rotar el teléfono
 
@@ -471,9 +471,9 @@ Se hace con la app **instalada**. Es lo que más cambia entre un teléfono y otr
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | ok                     |               |
+| Android 2 | ok                     |               |
+| iPhone    | ok                     |               |
 
 ## 10. Aviso de nueva versión después de un despliegue
 
@@ -487,11 +487,11 @@ Este punto necesita que **Claude publique una versión nueva** mientras vos ten�
 
 **Tiene que pasar:** Aparece un cartel que dice **Hay una versión nueva de la aplicación** con el botón **Actualizar ahora**. La app **no se recarga sola** mientras no lo toques.
 
-| Teléfono  | Resultado (OK / Falla) | Observaciones |
-| --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Teléfono  | Resultado (OK / Falla) | Observaciones                      |
+| --------- | ---------------------- | ---------------------------------- |
+| Android 1 | ok                     |                                    |
+| Android 2 | ok                     | se actualizó al reabrir, sin aviso |
+| iPhone    | no probado             |                                    |
 
 ### 10.2 · Actualizar
 
@@ -501,9 +501,9 @@ Este punto necesita que **Claude publique una versión nueva** mientras vos ten�
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | ok                     |               |
+| Android 2 | ok                     |               |
+| iPhone    | no probado             |               |
 
 ### 10.3 · «Más tarde» (opcional)
 
@@ -547,9 +547,9 @@ Este punto necesita que **Claude publique una versión nueva** mientras vos ten�
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | ok                     |               |
+| Android 2 | ok                     |               |
+| iPhone    | ok                     |               |
 
 ### 11.3 · Volver la conexión
 
@@ -560,9 +560,9 @@ Este punto necesita que **Claude publique una versión nueva** mientras vos ten�
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 |                        |               |
-| Android 2 |                        |               |
-| iPhone    |                        |               |
+| Android 1 | ok                     |               |
+| Android 2 | ok                     |               |
+| iPhone    | ok                     |               |
 
 ---
 
@@ -582,9 +582,9 @@ Un renglón por problema (los puntos que dieron **Falla**, con más detalle). De
 
 | Teléfono  | Puntos OK | Puntos con Falla | Puntos que no aplican | ¿Se puede usar la app en este teléfono? (sí / con problemas / no) |
 | --------- | --------- | ---------------- | --------------------- | ----------------------------------------------------------------- |
-| Android 1 |           |                  |                       |                                                                   |
-| Android 2 |           |                  |                       |                                                                   |
-| iPhone    |           |                  |                       |                                                                   |
+| Android 1 |           |                  |                       | Perfectamente                                                     |
+| Android 2 |           |                  |                       | Perfectamente                                                     |
+| iPhone    |           |                  |                       | Perfectamente                                                     |
 
 ## Criterio de aceptación (F17)
 

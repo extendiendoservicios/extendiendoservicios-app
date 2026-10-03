@@ -55,6 +55,9 @@ function Input({
           className={cn(
             'h-auto w-full min-w-0 max-md:min-h-11 rounded-md border border-border-strong bg-surface text-text outline-none transition-colors placeholder:text-text-3 focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger',
             mobile ? 'px-[13px] py-3 text-[14px]' : 'px-3 py-[9px] text-[13px]',
+            // 16 px en celular: con menos, Safari de iPhone hace zoom al
+            // enfocar el campo y no vuelve (P17.8). Sin `maximum-scale`.
+            'max-md:text-base',
             Icon && (mobile ? 'pl-9' : 'pl-8'),
             className,
           )}

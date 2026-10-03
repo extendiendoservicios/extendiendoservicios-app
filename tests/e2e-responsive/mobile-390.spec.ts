@@ -79,6 +79,9 @@ test.afterAll(async () => {
   }
 })
 
+/** Alto de la barra de marca (`MobileBrandBar`, P17.8), sin el área segura. */
+const BRAND_BAR_HEIGHT = 40
+
 interface SafeAreaMetrics {
   headerTop: number | null
   headerContentTop: number | null
@@ -90,6 +93,7 @@ interface SafeAreaMetrics {
   tabbarTop: number | null
   innerHeight: number
   scrolledHeaderTop: number | null
+  scrollY: number
 }
 
 async function measureSafeArea(page: Page): Promise<SafeAreaMetrics> {
@@ -157,6 +161,7 @@ async function measureSafeArea(page: Page): Promise<SafeAreaMetrics> {
       tabbarTop: tabbarRect ? Math.round(tabbarRect.top) : null,
       innerHeight: window.innerHeight,
       scrolledHeaderTop: headerRect ? Math.round(headerRect.top) : null,
+      scrollY: Math.round(window.scrollY),
     }
   })
 }
@@ -256,11 +261,18 @@ test.describe('RESP-003/RESP-008: empleado y supervisor a 390 px con área segur
           }
         }
         if (m.headerSticky) {
-          // Con scroll, la barra pegajosa tiene que seguir en el borde superior.
-          if (m.scrolledHeaderTop !== 0) {
+          // Con scroll, la cabecera de título queda pegada justo debajo del
+          // área segura (P17.8): la barra de marca de 40 px se va con el
+          // scroll. Si la pantalla es corta y casi no scrollea, la cabecera
+          // queda donde la deja el scroll que hubo, nunca por debajo de eso.
+          const expectedTop = Math.max(
+            SAFE_TOP,
+            SAFE_TOP + BRAND_BAR_HEIGHT - m.scrollY,
+          )
+          if (m.scrolledHeaderTop !== expectedTop) {
             note(
               'cabecera-pegajosa',
-              `con scroll la cabecera quedó a ${m.scrolledHeaderTop}px del borde`,
+              `con scroll la cabecera quedó a ${m.scrolledHeaderTop}px del borde (esperado ${expectedTop}px)`,
               shot,
             )
           }

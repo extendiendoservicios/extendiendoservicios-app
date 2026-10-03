@@ -1660,7 +1660,7 @@ const markers: MapViewMarker[] = [
   `neutral`), igual que ya hace con `StatusBadge`.
 - `height` (`number | string`, 320 por omisión), `className`.
 - `defaultCenter`/`defaultZoom` — centro y zoom cuando no hay marcadores
-  para calcular el encuadre (por omisión, Obelisco/CABA, zoom 12); con
+  para calcular el encuadre (por omisión, Pergamino, Buenos Aires, zoom 13; `DEFAULT_MAP_CENTER` en `coordinates.ts`). La búsqueda de direcciones manda un `viewbox` alrededor de Pergamino, sin `bounded`: prioriza esa zona sin excluir otras ciudades; con
   marcadores, el mapa siempre encuadra solo (un marcador → centra y hace
   zoom 15; más de uno → `fitBounds` con margen).
 - `emptyTitle`/`emptyDescription` — texto del `EmptyState` cuando

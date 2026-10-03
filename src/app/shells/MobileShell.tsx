@@ -1,5 +1,4 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router'
-import { ArrowLeft } from 'lucide-react'
 import { cn } from 'cn'
 import { Avatar } from '@/components/Avatar'
 import { Fab } from '@/components/Fab'
@@ -9,6 +8,9 @@ import { formatShortDate } from '@/lib/format'
 import { avatarUrl } from '@/lib/avatarUrl'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { useRouteHandle } from '@/app/routes/placeholder'
+import { BackButton } from './BackButton'
+import { useGoBack } from './backNavigation'
+import { MobileBrandBar } from './MobileBrandBar'
 import {
   EMPLOYEE_TABBAR_ITEMS,
   isMobileNavItemActive,
@@ -42,15 +44,21 @@ export type MobileShellVariant = 'employee' | 'supervisor'
  *   (`src/app/shells/ActionBar.tsx`), que las pantallas reales agregan por
  *   su cuenta.
  *
- * En escritorio se centra a 480 px con fondo `--surface` y sombra
+ * Por debajo de 768 px ocupa todo el ancho (P17.8: en un Xiaomi de ~500 px
+ * la columna de 480 px dejaba franjas a los costados). Desde 768 px se
+ * centra a 480 px con fondo `--surface` y sombra
  * (`05_Pantallas_y_Navegacion.md` sección 0: "las pantallas móviles
  * funcionan también en escritorio, centradas a 480 px").
+ *
+ * Arriba de todo va `MobileBrandBar` (logo y nombre, 40 px) y, pegada
+ * debajo, la cabecera de título: forman un solo bloque teal. La barra de
+ * marca se va con el scroll y la cabecera de título queda fija.
  */
 export function MobileShell({ variant }: { variant: MobileShellVariant }) {
   const location = useLocation()
-  const navigate = useNavigate()
   const { displayName, profile } = useAuth()
   const handle = useRouteHandle()
+  const goBack = useGoBack(variant === 'employee' ? '/app' : '/sup')
   // Teclado virtual abierto (RESP-008): la tabbar se oculta mientras se escribe.
   const editing = useEditingField()
 
@@ -62,7 +70,8 @@ export function MobileShell({ variant }: { variant: MobileShellVariant }) {
 
   return (
     <div className="flex min-h-dvh justify-center bg-bg">
-      <div className="flex min-h-dvh w-full max-w-[480px] flex-col bg-surface shadow-card">
+      <div className="flex min-h-dvh w-full flex-col bg-surface md:max-w-[480px] md:shadow-card">
+        <MobileBrandBar />
         {isGreeting ? (
           <MobileGreetingHeader
             displayName={displayName}
@@ -73,7 +82,7 @@ export function MobileShell({ variant }: { variant: MobileShellVariant }) {
             title={handle?.title ?? ''}
             subtitle={handle?.subtitle}
             showBack={!isRootTab}
-            onBack={() => void navigate(-1)}
+            onBack={goBack}
           />
         )}
 
@@ -128,7 +137,7 @@ function MobileGreetingHeader({
   avatarPath: string | null
 }) {
   return (
-    <header className="shrink-0 bg-primary px-5 pt-[calc(16px+var(--safe-top))] pb-5 text-white">
+    <header className="shrink-0 bg-primary px-5 pt-4 pb-5 text-white">
       <div className="flex items-center gap-3">
         <div className="min-w-0">
           <p className="text-[20px] font-bold tracking-[-0.4px]">
@@ -154,6 +163,8 @@ function MobileGreetingHeader({
             id="mobile-session-user"
             name={displayName}
             src={avatarPath ? avatarUrl(avatarPath) : null}
+            // Aro blanco sobre la cabecera teal, como en `AdminShell`.
+            className="ring-2 ring-white/80"
           />
         </Link>
       </div>
@@ -173,17 +184,8 @@ function MobileNavbarHeader({
   onBack: () => void
 }) {
   return (
-    <header className="sticky top-0 z-20 flex min-h-[calc(56px+var(--safe-top))] shrink-0 items-center gap-3 bg-primary px-4 pt-[calc(9px+var(--safe-top))] pb-[9px] text-white">
-      {showBack && (
-        <button
-          type="button"
-          onClick={onBack}
-          aria-label="Volver"
-          className="relative flex size-9 shrink-0 items-center justify-center rounded-full outline-none after:absolute after:-inset-1 hover:bg-white/10 focus-visible:ring-3 focus-visible:ring-ring"
-        >
-          <ArrowLeft aria-hidden="true" className="size-5" />
-        </button>
-      )}
+    <header className="sticky top-[var(--safe-top)] z-20 flex min-h-14 shrink-0 items-center gap-3 bg-primary px-4 py-[9px] text-white">
+      {showBack && <BackButton onClick={onBack} />}
       <div className="min-w-0">
         <p className="truncate text-[15.5px] leading-tight font-semibold tracking-[-0.15px]">
           {title}
