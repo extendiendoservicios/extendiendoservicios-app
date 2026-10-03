@@ -5,6 +5,8 @@ import type { Branding } from '@/features/auth/useBranding'
 import * as installPromptModule from '@/hooks/useInstallPrompt'
 import { AdminShell } from './AdminShell'
 
+const signOutMock = vi.hoisted(() => vi.fn())
+
 // `AdminShell` lee `useAuth()` (nombre, rol, cerrar sesión): estos tests
 // prueban el layout, no la sesión (eso lo cubre `AuthProvider.test.tsx`),
 // así que alcanza con una sesión fija de administradora.
@@ -18,7 +20,7 @@ vi.mock('@/features/auth/AuthProvider', () => ({
     profile: null,
     displayName: 'Andrea Ríos',
     isPasswordRecovery: false,
-    signOut: vi.fn(),
+    signOut: signOutMock,
     refreshProfile: vi.fn(),
   }),
 }))
@@ -83,7 +85,10 @@ function mockViewportWidth(widthPx: number) {
 // `AdminShell` lee el título/subtítulo con `useRouteHandle` (`useMatches`),
 // que solo existe dentro de un router de datos (`RouterProvider`) — un
 // `<MemoryRouter><Routes>` simple no alcanza acá.
-function renderAdminShell(initialPath = '/admin') {
+function renderAdminShell(
+  initialPath = '/admin',
+  initialEntries: string[] = [initialPath],
+) {
   const router = createMemoryRouter(
     [
       {
@@ -104,10 +109,30 @@ function renderAdminShell(initialPath = '/admin') {
             element: <p>Asistencia de hoy</p>,
             handle: { screenId: 'ADM-10', title: 'Asistencia' },
           },
+          {
+            path: '/admin/planificacion',
+            element: <p>Planificación</p>,
+            handle: { screenId: 'ADM-05', title: 'Planificación' },
+          },
+          {
+            path: '/admin/supervisiones',
+            element: <p>Supervisiones</p>,
+            handle: { screenId: 'ADM-13', title: 'Supervisiones' },
+          },
+          {
+            path: '/admin/empleados/:id',
+            element: <p>Ficha de empleado</p>,
+            handle: { screenId: 'ADM-15', title: 'Ficha' },
+          },
+          {
+            path: '/admin/configuracion/empresa',
+            element: <p>Empresa</p>,
+            handle: { screenId: 'ADM-28', title: 'Empresa' },
+          },
         ],
       },
     ],
-    { initialEntries: [initialPath] },
+    { initialEntries, initialIndex: initialEntries.length - 1 },
   )
   return render(<RouterProvider router={router} />)
 }
@@ -339,5 +364,99 @@ describe('AdminShell — banner de instalación (COM-06)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ahora no' }))
 
     expect(screen.queryByText('Instalá la aplicación')).not.toBeInTheDocument()
+  })
+})
+
+describe('AdminShell — flecha atrás (P17.8)', () => {
+  const backName = { name: 'Volver' }
+
+  it.each([
+    '/admin',
+    '/admin/planificacion',
+    '/admin/asistencia',
+    '/admin/supervisiones',
+  ])('no hay flecha en la raíz del tabbar %s', (path) => {
+    mockViewportWidth(390)
+    renderAdminShell(path)
+
+    expect(screen.queryByRole('button', backName)).not.toBeInTheDocument()
+  })
+
+  it.each([
+    '/admin/empleados',
+    '/admin/empleados/123',
+    '/admin/configuracion/empresa',
+  ])('hay flecha en %s (sección de Más o detalle)', (path) => {
+    mockViewportWidth(390)
+    renderAdminShell(path)
+
+    expect(screen.getByRole('button', backName)).toBeInTheDocument()
+  })
+
+  it('con historial, vuelve a la pantalla anterior', () => {
+    mockViewportWidth(390)
+    renderAdminShell('/admin/asistencia', [
+      '/admin/asistencia',
+      '/admin/empleados/123',
+    ])
+
+    fireEvent.click(screen.getByRole('button', backName))
+
+    expect(screen.getByText('Asistencia de hoy')).toBeInTheDocument()
+  })
+
+  it('sin historial (entrada directa), un detalle vuelve a su listado', () => {
+    mockViewportWidth(390)
+    renderAdminShell('/admin/empleados/123')
+
+    fireEvent.click(screen.getByRole('button', backName))
+
+    expect(screen.getByText('Listado de empleados')).toBeInTheDocument()
+  })
+
+  it('sin historial, una sección de Más vuelve al inicio', () => {
+    mockViewportWidth(390)
+    renderAdminShell('/admin/empleados')
+
+    fireEvent.click(screen.getByRole('button', backName))
+
+    expect(screen.getByText('Resumen operativo')).toBeInTheDocument()
+  })
+
+  it('en compu (1024 px o más) también hay flecha, salvo en las raíces', () => {
+    mockViewportWidth(1440)
+    const { unmount } = renderAdminShell('/admin/empleados/123')
+    expect(screen.getByRole('button', backName)).toBeInTheDocument()
+    unmount()
+
+    renderAdminShell('/admin/planificacion')
+    expect(screen.queryByRole('button', backName)).not.toBeInTheDocument()
+  })
+})
+
+describe('AdminShell — barra de marca y Más en celular (P17.8)', () => {
+  it('muestra la barra de marca solo por debajo de 1024 px', () => {
+    mockViewportWidth(390)
+    const mobile = renderAdminShell()
+    expect(
+      mobile.container.querySelector('[data-slot="brand-bar"]'),
+    ).not.toBeNull()
+    mobile.unmount()
+
+    mockViewportWidth(1440)
+    const desktop = renderAdminShell()
+    expect(
+      desktop.container.querySelector('[data-slot="brand-bar"]'),
+    ).toBeNull()
+  })
+
+  it('"Cerrar sesión" está en el menú Más y cierra la sesión', () => {
+    mockViewportWidth(390)
+    renderAdminShell()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Más' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar sesión' }))
+
+    expect(signOutMock).toHaveBeenCalledTimes(1)
   })
 })

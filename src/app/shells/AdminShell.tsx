@@ -33,6 +33,9 @@ import { useAuth } from '@/features/auth/AuthProvider'
 import { ROLE_LABELS } from '@/features/auth/session'
 import { brandingLogoUrl, useBranding } from '@/features/auth/useBranding'
 import { useRouteHandle } from '@/app/routes/placeholder'
+import { BackButton } from './BackButton'
+import { isAdminRootPath, useGoBack } from './backNavigation'
+import { MobileBrandBar } from './MobileBrandBar'
 import {
   ADMIN_MORE_ITEMS,
   ADMIN_NAV_CONFIGURATION,
@@ -72,6 +75,7 @@ export function AdminShell({
   const { displayName, roles, signOut, profile } = useAuth()
   const handle = useRouteHandle()
   const [moreOpen, setMoreOpen] = useState(false)
+  const goBack = useGoBack('/admin')
   // USERS-013: logo personalizado de la empresa (ADM-28) en la marca de la
   // sidebar, con el mismo hook y el mismo criterio de reserva que ya usa
   // `LoginPage` -- sin logo cargado, se sigue viendo el isotipo de `Images/`.
@@ -118,13 +122,25 @@ export function AdminShell({
           `<main>` no es un contenedor de scroll y cualquier `sticky` de una
           pantalla se ancla a la ventana. */}
       <div className="flex min-h-dvh min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-[calc(64px+var(--safe-top))] shrink-0 items-center gap-[18px] border-b border-border bg-surface px-4 pt-[var(--safe-top)] lg:px-[26px]">
+        {/* Por debajo de 1024 px (tabbar): barra de marca + cabecera teal,
+            un solo bloque como en `/app` y `/sup` (P17.8). Desde 1024 px, la
+            cabecera blanca de siempre, con la sidebar al costado. */}
+        {showTabbar && <MobileBrandBar />}
+        <header className="sticky z-20 flex shrink-0 items-center gap-[18px] bg-primary px-4 text-white max-lg:top-[var(--safe-top)] max-lg:min-h-14 max-lg:py-[9px] lg:top-0 lg:h-[calc(64px+var(--safe-top))] lg:border-b lg:border-border lg:bg-surface lg:pt-[var(--safe-top)] lg:px-[26px] lg:text-text">
+          {/* Flecha atrás en toda pantalla que no sea una raíz del tabbar,
+              también en compu (P17.8): ahí, gris y de 34 px como `IconButton`. */}
+          {!isAdminRootPath(location.pathname) && (
+            <BackButton
+              onClick={goBack}
+              className="lg:size-[34px] lg:text-text-3 lg:hover:bg-secondary lg:hover:text-text lg:focus-visible:ring-ring lg:after:-inset-[5px]"
+            />
+          )}
           <div className="min-w-0">
-            <h1 className="truncate text-[17px] font-semibold tracking-[-0.25px] text-text">
+            <h1 className="truncate text-[15.5px] font-semibold tracking-[-0.15px] lg:text-[17px] lg:tracking-[-0.25px]">
               {handle?.title ?? 'Extendiendo Servicios'}
             </h1>
             {handle?.subtitle && (
-              <p className="truncate text-[12.5px] text-text-3">
+              <p className="truncate text-[11px] text-white/82 lg:text-[12.5px] lg:text-text-3">
                 {handle.subtitle}
               </p>
             )}
@@ -135,13 +151,16 @@ export function AdminShell({
             <DropdownMenu>
               {/* `after:-inset-1`: área táctil de 44 px por debajo de 1024,
                   donde este shell se usa en el celular (`07`: ≥ 44 px). */}
-              <DropdownMenuTrigger className="relative flex items-center gap-2 rounded-full p-1 outline-none after:absolute after:-inset-1 focus-visible:ring-3 focus-visible:ring-ring">
+              <DropdownMenuTrigger className="relative flex items-center gap-2 rounded-full p-1 outline-none after:absolute after:-inset-1 focus-visible:ring-3 focus-visible:ring-white/80 lg:focus-visible:ring-ring">
                 <Avatar
                   id="admin-session-user"
                   name={displayName}
                   src={
                     profile?.avatarPath ? avatarUrl(profile.avatarPath) : null
                   }
+                  // Aro blanco sobre la cabecera teal: el color de avatar
+                  // por omisión es el mismo teal y se confundiría con el fondo.
+                  className="ring-2 ring-white/80 lg:ring-0"
                 />
                 <span className="sr-only">Menú de usuario</span>
               </DropdownMenuTrigger>
@@ -211,6 +230,19 @@ export function AdminShell({
               </Link>
             ))}
           </nav>
+          <div className="px-6">
+            <button
+              type="button"
+              onClick={() => {
+                setMoreOpen(false)
+                void handleSignOut()
+              }}
+              className="flex min-h-11 w-full items-center gap-3 rounded-md px-2 text-[13px] font-medium text-danger outline-none hover:bg-bg focus-visible:ring-3 focus-visible:ring-ring"
+            >
+              <LogOut aria-hidden="true" className="size-4" />
+              Cerrar sesión
+            </button>
+          </div>
           <AppVersion className="pb-[calc(16px+var(--safe-bottom))]" />
         </SheetContent>
       </Sheet>
