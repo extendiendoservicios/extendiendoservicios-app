@@ -47,6 +47,7 @@ export type FixedAccountKey =
   | 'empleado2'
   | 'empleado3'
   | 'empleado4'
+  | 'empleado5'
   | 'supervisor1'
   | 'supervisor2'
   | 'dual'
@@ -108,9 +109,13 @@ const TODAS: readonly FixedAccountKey[] = [
   'dual',
 ]
 
+// El empleado 5 es de la auditoría de accesibilidad de la suite de administración (ninguna otra
+// cuenta puede ser suya sin pisarse con los archivos que corren en paralelo).
+const TODAS_Y_EMPLEADO5: readonly FixedAccountKey[] = [...TODAS, 'empleado5']
+
 const DEF_CONJUNTOS: Record<Conjunto, DefConjunto> = {
-  base: { tag: '', keys: TODAS },
-  edge: { tag: 'eg', keys: TODAS },
+  base: { tag: '', keys: TODAS_Y_EMPLEADO5 },
+  edge: { tag: 'eg', keys: TODAS_Y_EMPLEADO5 },
   'emp-movil': {
     tag: 'em',
     keys: ['empleado1', 'empleado2', 'empleado3', 'empleado4', 'supervisor1'],
@@ -198,6 +203,13 @@ const PLANTILLAS: readonly Plantilla[] = [
     lastName: 'Empleado4',
     roles: ['employee'],
     dni: '000004',
+  },
+  {
+    key: 'empleado5',
+    slug: 'empleado-5',
+    lastName: 'Empleado5',
+    roles: ['employee'],
+    dni: '000005',
   },
   {
     key: 'supervisor1',
