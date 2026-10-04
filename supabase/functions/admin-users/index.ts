@@ -22,7 +22,7 @@
 //
 // Todas las acciones registran su evento en `security_events` (P-104) al terminar con éxito.
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { corsHeaders, ALLOWED_ORIGINS } from '../_shared/cors.ts'
+import { corsHeaders, getAllowedOrigins } from '../_shared/cors.ts'
 
 // ---------------------------------------------------------------------------------------------
 // Tipos y constantes del dominio (calcados de 04_Modelo_de_Datos.md, no se importan desde
@@ -54,7 +54,9 @@ const ALL_CAPABILITIES: AdminCapability[] = [
 
 // Eventos que esta función puede registrar (subconjunto de `security_event_type`, 04 sección 2.6)
 // y que cuentan para el límite de acciones por minuto (no cuenta `sign_in`, que registra un
-// trigger aparte, AUTH-009).
+// trigger aparte, AUTH-009). `admin_action_rejected` (migración 0030, SEG-03) es el intento
+// rechazado de una persona ya identificada (FORBIDDEN, validación, no encontrada...): cuenta
+// para el límite igual que una acción exitosa.
 type AdminUsersEventType =
   | 'user_created'
   | 'user_deactivated'
@@ -62,6 +64,7 @@ type AdminUsersEventType =
   | 'password_reset_by_admin'
   | 'sessions_revoked'
   | 'email_changed'
+  | 'admin_action_rejected'
 
 const RATE_LIMITED_EVENT_TYPES: AdminUsersEventType[] = [
   'user_created',
@@ -70,6 +73,7 @@ const RATE_LIMITED_EVENT_TYPES: AdminUsersEventType[] = [
   'password_reset_by_admin',
   'sessions_revoked',
   'email_changed',
+  'admin_action_rejected',
 ]
 
 // CONFIRMADO por Mike el 23 sep 2026 (P07.0): 10 acciones por minuto por persona que actúa.
@@ -692,6 +696,21 @@ export async function actionSignOutUser(
   requireOwnerOrManageUsers(actor)
   await assertCanActOnTarget(admin, actor, profile_id)
 
+  // DEF-P08: la persona tiene que existir. Va DESPUÉS de las verificaciones de permiso para no
+  // delatar qué ids existen a quien no puede actuar; igual que las demás acciones, un id que no
+  // existe responde PROFILE_NOT_FOUND y no deja ningún evento de "sesiones cerradas".
+  const { data: targetProfile, error: targetError } = await admin
+    .from('profiles')
+    .select('id')
+    .eq('id', profile_id)
+    .maybeSingle()
+  if (targetError) {
+    throw errors.internal(targetError.message)
+  }
+  if (!targetProfile) {
+    throw errors.profileNotFound()
+  }
+
   await revokeAllSessions(admin, profile_id)
 
   await logEvent(admin, 'sessions_revoked', actor.id, profile_id, {}, ip)
@@ -848,6 +867,20 @@ const ACTIONS: Record<
   reactivate_user: actionReactivateUser,
 }
 
+// Rechazos que se registran y cuentan para el límite (SEG-03): todos los que ocurren una vez que
+// se sabe quién es la persona, salvo los que no son un "intento" suyo o harían crecer el bloqueo
+// solo (RATE_LIMITED: si se registrara, un bloqueo se auto-prolongaría mientras siga insistiendo;
+// INTERNAL_ERROR: falla nuestra, no de la persona). UNAUTHENTICATED y ORIGIN_NOT_ALLOWED ocurren
+// antes de identificar a nadie, así que nunca llegan acá con un actor.
+function isCountableRejection(err: DomainError): boolean {
+  return (
+    err.hint !== 'RATE_LIMITED' &&
+    err.hint !== 'INTERNAL_ERROR' &&
+    err.hint !== 'UNAUTHENTICATED' &&
+    err.hint !== 'ORIGIN_NOT_ALLOWED'
+  )
+}
+
 function jsonResponse(
   body: Record<string, unknown>,
   status: number,
@@ -862,17 +895,29 @@ function jsonResponse(
   })
 }
 
-export async function handleRequest(req: Request): Promise<Response> {
+// `makeAdmin` existe para los tests (inyectan un cliente simulado); en producción es siempre
+// createAdminClient().
+export async function handleRequest(
+  req: Request,
+  makeAdmin: () => SupabaseClient = createAdminClient,
+): Promise<Response> {
   const origin = req.headers.get('Origin')
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders(origin) })
   }
 
+  // Para registrar el intento rechazado (SEG-03) hace falta saber quién es y qué pidió: se van
+  // completando a medida que avanza la verificación.
+  let admin: SupabaseClient | null = null
+  let actor: Actor | null = null
+  let action: string | null = null
+  let ip: string | null = null
+
   try {
     // 1. Origin en la lista blanca (defensa en profundidad, ver `_shared/cors.ts`: además de
     //    esto, sin Access-Control-Allow-Origin el navegador ya bloquea la respuesta).
-    if (origin && !ALLOWED_ORIGINS.includes(origin)) {
+    if (origin && !getAllowedOrigins().includes(origin)) {
       throw errors.originNotAllowed()
     }
 
@@ -880,24 +925,10 @@ export async function handleRequest(req: Request): Promise<Response> {
       throw errors.validation('Esta función solo acepta POST.')
     }
 
-    const admin = createAdminClient()
+    admin = makeAdmin()
 
     // 2 y 3. JWT válido + perfil activo (resolveActor lee todo en vivo de la base).
-    const actor = await resolveActor(admin, req.headers.get('Authorization'))
-
-    let body: Record<string, unknown>
-    try {
-      body = await req.json()
-    } catch {
-      throw errors.validation('El cuerpo tiene que ser JSON.')
-    }
-    const action = body.action
-    if (typeof action !== 'string' || !(action in ACTIONS)) {
-      throw errors.unknownAction(String(action))
-    }
-
-    // 5. Límite de acciones por minuto (antes de ejecutar la acción, después de saber quién es).
-    await checkRateLimit(admin, actor.id)
+    actor = await resolveActor(admin, req.headers.get('Authorization'))
 
     // `x-forwarded-for` puede traer varias IP separadas por coma (una por cada salto de proxy
     // -- Cloudflare/el gateway de Supabase agregan la suya); `security_events.ip` es `inet`, que
@@ -907,15 +938,48 @@ export async function handleRequest(req: Request): Promise<Response> {
     // ninguna acción quedaba auditada (y el límite de acciones por minuto, que cuenta sobre esta
     // misma tabla, nunca veía nada para contar).
     const rawIp = req.headers.get('x-forwarded-for')
-    const ip = rawIp ? rawIp.split(',')[0].trim() : null
+    ip = rawIp ? rawIp.split(',')[0].trim() : null
+
+    let body: Record<string, unknown>
+    try {
+      body = await req.json()
+    } catch {
+      throw errors.validation('El cuerpo tiene que ser JSON.')
+    }
+    const requestedAction = body.action
+    if (typeof requestedAction === 'string') {
+      action = requestedAction.slice(0, 40)
+    }
+    if (typeof requestedAction !== 'string' || !(requestedAction in ACTIONS)) {
+      throw errors.unknownAction(String(requestedAction))
+    }
+
+    // 5. Límite de acciones por minuto (antes de ejecutar la acción, después de saber quién es).
+    //    Cuenta las acciones exitosas y también los intentos rechazados (SEG-03).
+    await checkRateLimit(admin, actor.id)
 
     // 4. Rol/capacidad: cada acción valida lo que le corresponde (06 sección 2.1) al principio de
     //    su propia función, antes de tocar nada.
-    const result = await ACTIONS[action](admin, actor, body, ip)
+    const result = await ACTIONS[requestedAction](admin, actor, body, ip)
 
     return jsonResponse({ data: result }, 200, origin)
   } catch (err) {
     if (err instanceof DomainError) {
+      if (admin && actor && isCountableRejection(err)) {
+        // SEG-03: el intento rechazado de una persona ya identificada queda registrado y suma al
+        // límite de acciones por minuto, igual que una acción exitosa.
+        await logEvent(
+          admin,
+          'admin_action_rejected',
+          actor.id,
+          null,
+          {
+            action,
+            hint: err.hint,
+          },
+          ip,
+        )
+      }
       return jsonResponse(
         { error: { message: err.message, hint: err.hint } },
         err.status,
@@ -937,4 +1001,5 @@ export async function handleRequest(req: Request): Promise<Response> {
   }
 }
 
-Deno.serve(handleRequest)
+// Se envuelve para que Deno no le pase su segundo argumento (ConnInfo) a `makeAdmin`.
+Deno.serve((req) => handleRequest(req))

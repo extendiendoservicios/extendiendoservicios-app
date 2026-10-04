@@ -6,6 +6,15 @@ Es una revisión de **solo lectura**: no se cambió la base, la configuración n
 
 Complementa la matriz de permisos (`tests/permissions/suite/`, 1.580 casos) y la revisión del orquestador (`Docs/Plan_Maestro/reportes/P18.3/revision-orquestador.md`). Los identificadores `DEF-Pxx` son los de `tests/permissions/suite/defectos.ts`.
 
+## 0. Estado tras P18.6 (4 oct 2026)
+
+La migración `0030_p18_6_permisos_y_rendimiento.sql` y la Edge Function `admin-users` corrigieron
+SEG-01 (= DEF-P07), SEG-02, SEG-03, SEG-07 y SEG-08 (= DEF-P11), más los trece defectos de la matriz
+(DEF-P01 a DEF-P13). Quedan abiertos, por decisión de Mike, SEG-04 y SEG-05 (contraseña de 8 y la del
+seed) y SEG-06 (documentación del JWT). Las secciones siguientes conservan el texto original de la
+revisión; cada hallazgo corregido lleva su nota "Corregido en P18.6". Detalle técnico en
+`docs/database.md`, "Correcciones de P18.6".
+
 ## 1. Resumen
 
 | Severidad     | Cantidad        | Hallazgos                                              |
@@ -41,6 +50,10 @@ Además: `pnpm audit --prod` devuelve "No known vulnerabilities found".
 
 ### SEG-01 (mayor) · `anon` lista el bucket `avatars` (= DEF-P07)
 
+**Corregido en P18.6.** Se quitó `avatars_select_public`; `select` queda solo para la carpeta propia y
+para owner/admin (`avatars_select_own_or_admin`). El bucket sigue siendo público: las fotos se sirven por
+`/object/public` (`getPublicUrl`). `src/` no usa `.list()` ni `.download()` sobre `avatars`.
+
 - **Dónde:** `supabase/migrations/0014_storage_buckets.sql`, política `avatars_select_public` (`select` a `anon, authenticated` sobre todo el bucket).
 - **Evidencia:** con la clave anónima, `storage.from('avatars').list('')` devuelve las carpetas, que son los `profile_id`, y `list(<carpeta>)` devuelve las fotos. Lo cubre la matriz como `expected fail` con la anotación `[DEF-P07]` para `anon`, empleado, supervisor y doble rol. Detalle completo en la revisión del orquestador.
 - **Plan:** 04 §7.3 apoya la lectura pública en que la URL "no sea adivinable"; el listado la anula.
@@ -56,9 +69,17 @@ Además: `pnpm audit --prod` devuelve "No known vulnerabilities found".
 
 ### SEG-02 (menor) · SVG en `branding`
 
+**Corregido en P18.6.** `image/svg+xml` salió de `allowed_mime_types` (PNG, JPEG y WebP). El logo de
+`App_dev` no estaba cargado y el seed no trae SVG. El front (`src/api/settings.ts`) todavía lo ofrece:
+pendiente de front-admin.
+
 Ver la revisión del orquestador. Un SVG con script no se ejecuta en `<img>`, pero sí si se abre la URL directa de Storage (otro origen que el de la app). Solo lo suben dueño y administrador. Opciones: sacar `image/svg+xml` de `allowed_mime_types` o aceptar el riesgo. Dueño: backend-supabase.
 
 ### SEG-03 (menor) · El límite de tasa de `admin-users` no cuenta los rechazos
+
+**Corregido en P18.6.** Los intentos rechazados de una persona ya identificada se registran como
+`admin_action_rejected` y cuentan para el límite de 10 por minuto. No se registran `RATE_LIMITED`,
+`INTERNAL_ERROR`, `UNAUTHENTICATED` ni `ORIGIN_NOT_ALLOWED`. Tests Deno y un caso en vivo en la matriz.
 
 `checkRateLimit` cuenta eventos exitosos de `security_events`; los intentos rechazados (`FORBIDDEN`, validación) no suman. Hace falta sesión válida de dueño o administrador activo, así que el riesgo es bajo. Dueño: backend-supabase.
 
@@ -72,13 +93,24 @@ El plan (03 §15) dice "JWT de 1 hora"; `jwt_expiry = 900` (15 minutos). El camb
 
 ### SEG-07 (menor) · `http://localhost:5173` en la lista blanca de CORS desplegada
 
+**Corregido en P18.6.** `localhost:5173` sale de la lista base y entra con el secreto de la función
+`ALLOWED_ORIGINS_EXTRA`, cargado solo en `App_dev`. En `App` no se carga (solo se aceptan orígenes
+locales aunque alguien lo cargue por error).
+
 `supabase/functions/_shared/cors.ts` admite `localhost:5173`, además de `dev.` y `app.`. En producción esa entrada no hace falta. El riesgo es bajo (solo lo usa quien corre la app en su máquina y aun así necesita un JWT válido), pero conviene dejarlo fuera de la función de producción. Dueño: backend-supabase.
 
 ### SEG-08 (menor) · `rls_auto_enable()` expuesta como RPC (= DEF-P11)
 
+**Corregido en P18.6.** `revoke execute` a `public`, `anon` y `authenticated`.
+
 Función de plataforma, `security definer`, con `execute` para `anon` y `authenticated`. Hoy falla al devolver su resultado, pero no debería ser llamable (revoke de `execute`). Dueño: backend-supabase.
 
 ## 4. Cobertura de permisos relacionada
+
+**Estado tras P18.6:** los trece defectos quedaron corregidos y la matriz no tiene casos
+`expected fail`. Los de privacidad (DEF-P03 a DEF-P06) se resolvieron con vistas recortadas
+(`v_people_basic`, `v_clients_basic`, `v_shift_peers`), por decisión de Mike; el texto que sigue es el
+original.
 
 Los 50 casos "expected fail" de la matriz (13 causas raíz, DEF-P01 a DEF-P13) son permisos de más o de rendimiento. Los de privacidad de datos personales (DEF-P03, DEF-P04, DEF-P05, DEF-P06) comparten una causa: la RLS filtra filas, no columnas, y el plan limita a un compañero o al supervisor a "nombre y foto"/"nombre, foto, asistencia" (03 §6 y §15). Una corrección razonable es dar a esos roles una vista o un `grant` por columna; cómo hacerlo es una decisión de diseño y la toma backend-supabase con el orquestador.
 

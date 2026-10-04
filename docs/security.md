@@ -59,12 +59,33 @@ capa de API"; ver ADR-005). Antes de tocar cualquier dato:
 5. Límite de **10 acciones por minuto por persona que actúa** (CONFIRMADO por Mike el 23 sep 2026,
    P07.0), contado sobre `security_events` (decisión menor: `06_API.md` no fija cómo guardar el
    conteo; se reutiliza la tabla que de todos modos ya audita cada acción, en vez de sumar una
-   tabla nueva solo para contar — funciona igual con varias instancias de la función).
+   tabla nueva solo para contar — funciona igual con varias instancias de la función). Desde P18.6
+   (SEG-03) cuenta también los intentos **rechazados** de una persona ya identificada, que quedan
+   registrados como `admin_action_rejected`.
+
+El `Origin` permitido sale de una lista base (`dev.` y `app.extendiendoservicios.com`) más el
+secreto de la función `ALLOWED_ORIGINS_EXTRA`, que solo existe en `App_dev` y solo admite orígenes
+locales (SEG-07: `http://localhost:5173` no está en producción).
 
 Cada acción exitosa queda en `security_events` (P-104), auditoría de solo lectura para el owner.
 Detalle completo, incluidos los hallazgos de la verificación en vivo (por qué
 `auth.admin.signOut()` de supabase-js no sirve para revocar por `profile_id`, el recorte de
 `x-forwarded-for`), en `docs/database.md`, sección "Edge Function `admin-users`".
+
+### Qué lee cada rol de lo ajeno (P18.6)
+
+RLS filtra filas, no columnas. Empleado y supervisor **no leen las tablas base** para las filas
+ajenas de `profiles`, `employees`, `clients` ni `assignments`: lo hacen por vistas recortadas
+(`v_people_basic`, `v_clients_basic`, `v_shift_peers`), que solo exponen nombre y foto, el nombre del
+cliente y quiénes están en el turno (P-062, P-103, 03 sección 6 y 15). Sus propias filas sí se leen
+completas. Detalle en `docs/database.md`, "Correcciones de P18.6".
+
+Además: un administrador no desactiva ni edita a otro administrador ni al dueño, y para cambiar
+`is_active` necesita `manage_users` (trigger `trg_enforce_profile_admin_update_rules`); la
+configuración de la empresa es del dueño y el administrador solo cambia el logo; una cuenta
+desactivada con el token vigente ya no lee feriados ni configuración, no sube fotos ni marca cambios
+vistos; `avatars` no se puede listar (las fotos se sirven por URL pública); `branding` no acepta
+SVG; `public.rls_auto_enable()` no es ejecutable por la app.
 
 ### Nada se borra físicamente (P-014, P-105)
 

@@ -2,8 +2,9 @@
 //
 // La RLS no puede volver inutilizable una tabla para quien tiene permiso de leerla. Un
 // `select` sin filtro sobre `shift_tasks` por un empleado o un supervisor evalúa la política
-// fila por fila: con 6.655 filas hoy tarda 7 a 8 segundos y con el doble rol se cancela por el
-// límite de la consulta (DEF-P02). Cualquier cuenta de empleado puede ocupar la base con eso.
+// fila por fila: con 6.655 filas tardaba 7 a 8 segundos y con el doble rol se cancelaba por el
+// límite de la consulta (DEF-P02, corregido en P18.6 con la migración 0030: las políticas evalúan
+// los permisos una vez por consulta y filtran por conjunto de turnos).
 // Criterio: responde sin error en menos de 3 segundos (RB-X02; `03` sección 14.1, rendimiento).
 
 import { describe, expect } from 'vitest'

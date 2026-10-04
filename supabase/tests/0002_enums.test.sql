@@ -115,9 +115,10 @@ select enum_has_labels(
   array[
     'sign_in', 'sign_in_failed', 'user_created', 'user_deactivated',
     'user_reactivated', 'password_reset_by_admin', 'sessions_revoked',
-    'roles_changed', 'capabilities_changed', 'email_changed'
+    'roles_changed', 'capabilities_changed', 'email_changed',
+    'admin_action_rejected'
   ],
-  'security_event_type tiene los valores exactos y en orden (04 sección 2.6)'
+  'security_event_type tiene los valores exactos y en orden (04 sección 2.6; admin_action_rejected agregado en 0030, SEG-03)'
 );
 
 select * from finish();

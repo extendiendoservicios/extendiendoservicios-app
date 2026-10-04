@@ -216,15 +216,19 @@ select throws_ok(
 -- rol en el JWT (set local role authenticated puro, sin tests.as_user). El detalle de "quién ve
 -- qué según su rol" para estas tres tablas está en
 -- supabase/tests/0012_rls_policies_supervisions_ratings_settings.test.sql (DB-014).
+-- Desde 0030 (P18.6, DEF-P09) "todos los autenticados" exige además un perfil ACTIVO: esta sesión
+-- es `authenticated` puro, sin usuario ni perfil (sin tests.as_user), así que ya no ve nada. El
+-- caso con una persona activa (sí ve) y con una desactivada (no ve) está en
+-- 0030_p18_6_permisos_y_rendimiento.test.sql.
 select is(
   (select count(*)::int from public.company_settings),
-  1,
-  'company_settings: con las políticas de 0012, authenticated ve la fila (04 sección 7.2: "todos los autenticados")'
+  0,
+  'company_settings: una sesión authenticated sin perfil activo no lee la fila (0030, DEF-P09)'
 );
 select is(
   (select count(*)::int from public.holidays),
-  2,
-  'holidays: con las políticas de 0012, authenticated ve los dos feriados vigentes (04 sección 7.2: "todos los autenticados")'
+  0,
+  'holidays: una sesión authenticated sin perfil activo no lee los feriados (0030, DEF-P09)'
 );
 select is(
   (select count(*)::int from public.security_events),

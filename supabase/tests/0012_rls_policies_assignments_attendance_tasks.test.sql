@@ -125,8 +125,9 @@ select is(
   'assignments: supervisora ve las dos asignaciones del turno que supervisa, no la del otro turno'
 );
 
--- Criterio de aceptación de F4: un empleado ve la propia + la de un compañero del MISMO turno
--- (P-103), pero NO la asignación de un turno ajeno.
+-- Desde 0030 (P18.6, DEF-P06) un empleado lee de `assignments` solo la propia: los compañeros del
+-- mismo turno (P-103) los ve por v_shift_peers (nombre y foto), porque la fila de la asignación
+-- trae la observación de cada empleado, que ven administración y el supervisor (P-062).
 select tests.as_user('test-db014c-empleado1@example.com');
 select is(
   (select coalesce(array_agg(id order by id), array[]::uuid[]) from public.assignments
@@ -134,8 +135,8 @@ select is(
       'c2300000-0000-0000-0000-000000000051'::uuid, 'c2300000-0000-0000-0000-000000000052',
       'c2300000-0000-0000-0000-000000000053'
     ])),
-  array['c2300000-0000-0000-0000-000000000051', 'c2300000-0000-0000-0000-000000000052']::uuid[],
-  'assignments: empleado 1 ve la propia + la del compañero del mismo turno (P-103), no la del otro turno'
+  array['c2300000-0000-0000-0000-000000000051']::uuid[],
+  'assignments: empleado 1 lee SOLO la propia; a los compañeros del mismo turno los ve por v_shift_peers, sin su observación (P-062, P-103, 0030, DEF-P06)'
 );
 
 select tests.as_user('test-db014c-empleado-afuera@example.com');

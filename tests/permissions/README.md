@@ -43,10 +43,18 @@ por perfil y repone al final lo que la suite toca).
 
 ## Defectos conocidos (`suite/defectos.ts`)
 
-Los casos que hoy fallan por un defecto de la app llevan `it.fails` y el identificador
-(`DEF-P01` a `DEF-P13`, `SEG-01`). No se ajusta la prueba al defecto: cuando se corrige, Vitest
-avisa y hay que sacar el caso de `defectos.ts`. Hoy: 1.530 casos pasan y 50 son `expected fail`.
-El detalle está en `docs/test-inventory.md` (sección 9) y en `docs/security-review.md`.
+Los casos que fallan por un defecto de la app llevan `it.fails` y el identificador (`DEF-Pxx`).
+No se ajusta la prueba al defecto: cuando se corrige, Vitest avisa y hay que sacar el caso de
+`defectos.ts`. **Desde P18.6 (migración `0030` y Edge Function `admin-users`) la lista está vacía**: se
+corrigieron DEF-P01 a DEF-P13 (con SEG-01, SEG-02, SEG-03, SEG-07 y SEG-08) y todos los casos son `it`
+comunes. El mecanismo queda para el próximo defecto. El detalle está en `docs/test-inventory.md`
+(sección 9) y en `docs/security-review.md`.
+
+La matriz usa vistas recortadas para lo ajeno (`v_people_basic`, `v_clients_basic`,
+`v_shift_peers`) y comprueba que las tablas base no entregan esas filas. Como desde P18.6 los
+intentos rechazados de `admin-users` cuentan para su límite de 10 por minuto, `edge-cliente.ts`
+borra los eventos `admin_action_rejected` de quien llama antes de cada llamada (salvo en el caso
+que prueba el límite).
 
 ## Cómo correrla
 

@@ -69,8 +69,8 @@ select is((select file_size_limit from storage.buckets where id = 'branding'), 1
 
 select is(
   (select qual from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'avatars_delete_own_or_admin'),
-  $$((bucket_id = 'avatars'::text) AND (is_admin() OR ((storage.foldername(name))[1] = (auth.uid())::text)))$$,
-  'avatars_delete_own_or_admin: existe con el using esperado (propio o admin)'
+  $$((bucket_id = 'avatars'::text) AND (( SELECT is_admin() AS is_admin) OR ((storage.foldername(name))[1] = (( SELECT current_uid() AS current_uid))::text)))$$,
+  'avatars_delete_own_or_admin: existe con el using esperado (propio con perfil activo, o admin; 0030, DEF-P10)'
 );
 
 select ok(
@@ -146,8 +146,8 @@ set local role anon;
 select is(
   (select count(*)::int from storage.objects
     where bucket_id = 'avatars' and name like 'c4100000-0000-0000-0000-%'),
-  2,
-  'avatars: anon puede leer (lectura pública, 04 sección 7.3)'
+  0,
+  'avatars: anon NO lista el bucket; las fotos se sirven por la URL pública /object/public, que no pasa por RLS (0030, SEG-01 = DEF-P07)'
 );
 
 set local role postgres;
@@ -157,8 +157,8 @@ select tests.as_user('test-db016-empleado2@example.com');
 select is(
   (select count(*)::int from storage.objects
     where bucket_id = 'avatars' and name like 'c4100000-0000-0000-0000-%'),
-  2,
-  'avatars: cualquier autenticado puede leer, aunque el archivo sea de otra persona (lectura pública)'
+  1,
+  'avatars: un autenticado lista solo su propia carpeta, no las de otras personas (0030, SEG-01 = DEF-P07)'
 );
 
 set local role postgres;
