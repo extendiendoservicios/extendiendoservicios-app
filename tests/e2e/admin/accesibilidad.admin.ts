@@ -116,20 +116,11 @@ test.describe('axe: perfil propio', () => {
 
   // DEF-A01 (nuevo, TEST-023): el `<input type="file">` de la foto de perfil (COM-04) no tiene
   // etiqueta accesible (axe `label`, impacto critical). Es la misma pantalla para los tres roles,
-  // por eso se prueba una sola vez acá. Se corrige en P18.6; al corregirlo, sacar el `test.fail`.
+  // por eso se prueba una sola vez acá. Corregido en P18.6.
   test(
     'COM-04 Perfil propio',
     cubre('RB-X01', 'RB-A01', 'RB-E01', 'RB-S01'),
     async ({ page }, testInfo) => {
-      test.fail(
-        true,
-        'DEF-A01: el input de archivo de la foto de perfil no tiene etiqueta (axe label, critical)',
-      )
-      testInfo.annotations.push({
-        type: 'defecto',
-        description:
-          'DEF-A01: COM-04, input[type=file] de la foto sin etiqueta accesible (axe label, critical)',
-      })
       await page.goto('/perfil')
       await auditarEnAmbosTamanos(page, testInfo, 'COM-04 Perfil propio', () =>
         esperarPantallaLista(page),

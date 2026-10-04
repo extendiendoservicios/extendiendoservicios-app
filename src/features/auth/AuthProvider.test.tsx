@@ -13,7 +13,9 @@ type AuthChangeCallback = (event: string, session: unknown) => void
 
 const authStateCallbacks: AuthChangeCallback[] = []
 const unsubscribeMock = vi.fn()
-const signOutMock = vi.fn(() => Promise.resolve({ error: null }))
+const signOutMock = vi.fn((_options?: { scope?: string }) =>
+  Promise.resolve({ error: null }),
+)
 const onAuthStateChangeMock = vi.fn((callback: AuthChangeCallback) => {
   authStateCallbacks.push(callback)
   return { data: { subscription: { unsubscribe: unsubscribeMock } } }
@@ -43,7 +45,7 @@ vi.mock('@/lib/supabase', () => ({
     auth: {
       onAuthStateChange: (callback: AuthChangeCallback) =>
         onAuthStateChangeMock(callback),
-      signOut: () => signOutMock(),
+      signOut: (options?: { scope?: string }) => signOutMock(options),
     },
     from: (table: string) => fromMock(table),
   },
@@ -201,7 +203,7 @@ describe('AuthProvider / useAuth', () => {
     expect(fromMock).toHaveBeenCalledTimes(1)
   })
 
-  it('signOut() llama a supabase.auth.signOut()', () => {
+  it('signOut() llama a supabase.auth.signOut() con scope local (DEF-04)', () => {
     renderProbe()
 
     act(() => {
@@ -217,6 +219,7 @@ describe('AuthProvider / useAuth', () => {
     screen.getByRole('button', { name: 'salir' }).click()
 
     expect(signOutMock).toHaveBeenCalledTimes(1)
+    expect(signOutMock).toHaveBeenCalledWith({ scope: 'local' })
   })
 
   it('una revocación remota (el próximo evento llega con session null) deja todo limpio', () => {
