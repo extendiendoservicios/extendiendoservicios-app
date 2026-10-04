@@ -35,6 +35,7 @@
     "test:e2e:empleado": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e/empleado/playwright.empleado.config.ts",
     "test:e2e:supervisor": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e/supervisor/playwright.supervisor.config.ts",
     "test:fixtures:setup": "node --env-file=.env.local tests/fixtures/setup-accounts.ts",
+    "test:load": "node --env-file=.env.local tests/load/carga-ligera.ts",
     "test:e2e:responsive": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-responsive/playwright.responsive.config.ts",
     "test:e2e:supervisiones": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-supervisiones/playwright.supervisiones.config.ts",
     "test:lighthouse": "node --env-file=.env.local tests/lighthouse/run.ts",
