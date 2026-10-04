@@ -45,7 +45,7 @@ import {
 } from './helpers/adminClient.ts'
 import { pickFarMonth } from './helpers/monthPicker.ts'
 import { loginAs } from './helpers/login.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 const env = readE2eAssignmentsEnv()
 test.skip(!env, MISSING_ENV_MESSAGE)

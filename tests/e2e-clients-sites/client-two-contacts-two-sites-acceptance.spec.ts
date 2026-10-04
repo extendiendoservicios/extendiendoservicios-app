@@ -8,7 +8,7 @@ import {
 } from './helpers/adminClient.ts'
 import { interceptMapRequests } from './helpers/interceptMap.ts'
 import { loginAs } from './helpers/login.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 // Criterio de aceptación de F8 (08_Fases_y_Backlog.md, literal): "Un administrador da de alta un
 // cliente con dos contactos y dos sedes con coordenadas; el mapa las muestra." A diferencia de

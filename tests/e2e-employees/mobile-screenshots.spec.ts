@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { readE2eEmployeesEnv, MISSING_ENV_MESSAGE } from './helpers/env.ts'
 import { expectNoHorizontalScroll } from './helpers/noHorizontalScroll.ts'
 import { loginAs } from './helpers/login.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 // EMP-014/TEST-006 (08_Fases_y_Backlog.md F9, encargo P09.5, punto 8): capturas a 390 px de
 // ADM-16 (listado) y ADM-17 (ficha, con cada pestaña), cada una con la comprobación de que no

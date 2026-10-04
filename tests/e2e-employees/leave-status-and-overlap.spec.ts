@@ -10,7 +10,7 @@ import {
 } from './helpers/adminEmployeesClient.ts'
 import { createEmployeeViaForm } from './helpers/employeeForm.ts'
 import { loginAs } from './helpers/login.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 // EMP-014/TEST-006 (08_Fases_y_Backlog.md F9, encargo P09.5, punto 5): "una licencia vigente
 // hace que la cabecera muestre 'De licencia'; al darla de baja vuelve a 'Activo'. Una licencia

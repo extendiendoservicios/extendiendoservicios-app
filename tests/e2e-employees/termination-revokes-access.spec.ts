@@ -10,7 +10,7 @@ import {
 } from './helpers/adminEmployeesClient.ts'
 import { createEmployeeViaForm } from './helpers/employeeForm.ts'
 import { loginAs, loginAsExpectingFailure } from './helpers/login.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 // EMP-014/TEST-006 (08_Fases_y_Backlog.md F9, encargo P09.5, punto 4): "baja desde la ficha
 // ('Dar de baja') → la persona ya no puede entrar" (EMP-005, baja en dos pasos: Edge

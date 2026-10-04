@@ -29,7 +29,7 @@ import {
 import { FAR_HOLIDAY_DATE, FAR_MONTH, FAR_YEAR } from './helpers/farDate.ts'
 import { loginAs } from './helpers/login.ts'
 import { pickFarMonth } from './helpers/monthPicker.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 const env = readE2eShiftsServicesEnv()
 test.skip(!env, MISSING_ENV_MESSAGE)

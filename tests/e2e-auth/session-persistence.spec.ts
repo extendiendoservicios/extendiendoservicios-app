@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { readE2eAuthEnv, MISSING_ENV_MESSAGE } from './helpers/env.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 // AUTH-012: "persistencia de sesión (recarga y pestaña nueva)". Cuenta del seed en solo lectura.
 const env = readE2eAuthEnv()

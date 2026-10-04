@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { readE2eAuthEnv, MISSING_ENV_MESSAGE } from './helpers/env.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 // AUTH-012 (08_Fases_y_Backlog.md F6): "e2e de ingreso por rol (dueño, administrador,
 // supervisor, empleado: cada uno cae en su shell/pantalla de inicio correcta según

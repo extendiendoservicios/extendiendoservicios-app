@@ -23,7 +23,7 @@ import { addDaysInBuenosAires } from './helpers/nearDates.ts'
 import { loginAs } from './helpers/login.ts'
 import { expectAssignSuccessToast } from './helpers/assignToast.ts'
 import { pickSafeEmployee } from './helpers/pickSafeEmployee.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 const env = readE2eAssignmentsEnv()
 test.skip(!env, MISSING_ENV_MESSAGE)

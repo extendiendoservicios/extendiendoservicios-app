@@ -21,7 +21,7 @@ import {
 import { FAR_HOLIDAY_DATE, FAR_PUNCTUAL_DATE } from './helpers/farDate.ts'
 import { loginAs } from './helpers/login.ts'
 import { pickFarDate } from './helpers/datePicker.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 const env = readE2eShiftsServicesEnv()
 test.skip(!env, MISSING_ENV_MESSAGE)

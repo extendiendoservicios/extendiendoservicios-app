@@ -8,11 +8,12 @@ import { cubre } from '../../fixtures/trace.ts'
 import { pickDate } from '../../fixtures/ui.ts'
 
 // TEST-016 (P18.1): configuración del dueño, ADM-28 a ADM-31 (RB-A01, P-104, P-117, P-050, P-087).
-// `tests/e2e-users/owner-config-screens.spec.ts` ya comprueba que cada pantalla carga y se
-// comporta (feriados nacionales sin duplicar, vista previa de criterios, tabla de eventos de solo
-// lectura). Acá se recorren los CAMBIOS: dato de la empresa que se ve en el ingreso, alta y baja
-// de un feriado, alta y cierre de un criterio, y los filtros de eventos de seguridad.
-// Todo lo que cambia se repone al terminar.
+// Se recorren los CAMBIOS: dato de la empresa que se ve en el ingreso, alta y baja de un feriado,
+// alta y cierre de un criterio, los filtros de eventos de seguridad y, desde P18.4, lo que traía
+// `e2e-users/owner-config-screens.spec.ts` (borrado: la estructura de ADM-28, los feriados
+// nacionales cargados dos veces sin duplicar y la vista previa del supervisor).
+// Todo lo que cambia se repone al terminar. Va en el proyecto `dueno-config` (al final): edita la
+// configuración de la empresa, que la matriz de permisos también toca y repone.
 
 test.skip(!readE2eEnv(), MISSING_ENV_MESSAGE)
 
@@ -201,6 +202,75 @@ test.describe('configuración del dueño (ADM-28 a ADM-31)', () => {
       for (const fila of (await filas.all()).slice(1)) {
         await expect(fila).toContainText('Inicio de sesión')
       }
+    },
+  )
+
+  test(
+    'ADM-28: la pantalla ofrece logo, datos generales, teléfono de soporte y texto de consentimiento',
+    cubre('RB-A01', 'P-117'),
+    async ({ page }) => {
+      await page.goto('/admin/configuracion/empresa')
+      await expect(page.getByRole('heading', { name: 'Logo' })).toBeVisible()
+      await expect(
+        page.getByRole('heading', { name: 'Datos generales' }),
+      ).toBeVisible()
+      await expect(page.getByLabel('Nombre de la empresa')).toBeVisible()
+      await expect(page.getByLabel('Teléfono de soporte')).toBeVisible()
+      await expect(
+        page.getByLabel('Texto de consentimiento de ubicación'),
+      ).toBeVisible()
+    },
+  )
+
+  test(
+    'ADM-29: cargar los feriados nacionales dos veces seguidas no duplica',
+    cubre('RB-A01', 'P-050'),
+    async ({ page }) => {
+      const anio = Number(todayAR().slice(0, 4))
+      const db = getAdminDb()
+      const contar = async (): Promise<number> => {
+        const { count, error } = await db
+          .from('holidays')
+          .select('id', { count: 'exact', head: true })
+          .gte('holiday_date', `${anio}-01-01`)
+          .lte('holiday_date', `${anio}-12-31`)
+          .is('deleted_at', null)
+        if (error) throw new Error(error.message)
+        return count ?? 0
+      }
+      const aviso = new RegExp(
+        `Feriados nacionales de ${anio}|No agregamos feriados nuevos`,
+      )
+
+      await page.goto('/admin/configuracion/feriados')
+      const cargar = page.getByRole('button', {
+        name: `Cargar feriados nacionales de ${anio}`,
+      })
+      await expect(cargar).toBeVisible()
+      // La primera carga puede crear filas o no, según lo que hubiera: no se asume el estado.
+      await cargar.click()
+      await expect(page.getByText(aviso)).toBeVisible()
+      const tras1 = await contar()
+      // La segunda, enseguida, no tiene que agregar ni una fila (por conteo, no por texto).
+      await cargar.click()
+      await expect(page.getByText(aviso).last()).toBeVisible()
+      expect(
+        await contar(),
+        'la segunda carga no tiene que agregar filas nuevas',
+      ).toBe(tras1)
+    },
+  )
+
+  test(
+    'ADM-30: la lista de criterios ofrece la vista previa "Ver como supervisor"',
+    cubre('RB-A01', 'RB-X04', 'P-087'),
+    async ({ page }) => {
+      await page.goto('/admin/configuracion/criterios')
+      await expect(
+        page.getByRole('button', { name: 'Nuevo criterio' }),
+      ).toBeVisible()
+      await page.getByRole('button', { name: 'Ver como supervisor' }).click()
+      await expect(page.getByRole('dialog')).toBeVisible()
     },
   )
 })

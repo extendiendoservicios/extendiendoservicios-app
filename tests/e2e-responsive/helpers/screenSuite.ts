@@ -33,7 +33,7 @@ import {
   type ResponsiveData,
 } from './fixtures.ts'
 import { BASE_WIDTHS, MAIN_WIDTHS, type AdminScreen } from './screens.ts'
-import { SEED_ACCOUNTS } from '../../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../../fixtures/seed-accounts.ts'
 
 const TABBAR_LABELS = [
   'Hoy',

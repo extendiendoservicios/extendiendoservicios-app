@@ -34,7 +34,6 @@
     "tests/e2e-shifts-services/**/*.ts",
     "tests/e2e-assignments/**/*.ts",
     "tests/e2e-checklists/**/*.ts",
-    "tests/e2e-employee-shift/**/*.ts",
     "tests/e2e-avisos-asistencia/**/*.ts",
     "tests/e2e-supervisiones/**/*.ts",
     "tests/e2e-tablero/**/*.ts",
