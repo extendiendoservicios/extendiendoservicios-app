@@ -892,24 +892,42 @@ Decisión de Mike (3 oct 2026): cada noche y a mano; **no** en cada Pull Request
 - **Qué código prueba:** GitHub corre el cron y el botón con el archivo del workflow
   que está en `main`, pero el workflow hace checkout de `develop` (o de la rama del
   campo `rama`). Por eso lo que se prueba es siempre el código nuevo, no el de `main`.
-- **Pasos:** (1) guarda contra producción: corta si `E2E_SUPABASE_URL` contiene la
-  referencia de `App` (`fysuppdadwvabrjpnnoh`) o no contiene la de `App_dev`
-  (`anesttvrnpsaaaxaquce`), o si falta algún secreto, antes de descargar nada;
-  (2) checkout; (3) `pnpm install --frozen-lockfile` con caché de pnpm;
-  (4) navegadores de Playwright con caché de `~/.cache/ms-playwright`; (5) `pnpm build`
-  con las variables de `App_dev`; (6) `node tests/fixtures/setup-accounts.ts`
-  (cuentas fijas, idempotente); (7) la suite con `playwright test --config=...`
-  (el config levanta `vite preview` en el puerto 5173, el único origen que acepta la
-  Edge Function `admin-users` por CORS); (8) resumen en la pestaña Summary;
-  (9) si falló, sube el reporte HTML y las trazas como artefacto (7 días).
-- **Tiempo:** hoy hay una sola suite (administración, 31 tests, unos 5 minutos con 2
-  workers) más unos 2 o 3 minutos de preparación: del orden de 8 minutos, con
-  `timeout-minutes: 14` por job.
+- **Jobs (en paralelo, cada uno en su runner):**
+
+  | Job          | Qué hace                                                                                                                                        | `E2E_CONJUNTO` | Estimado                          |
+  | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | --------------------------------- |
+  | `guarda`     | Corta si falta algún secreto `E2E_*`, si la URL es la de `App` (`fysuppdadwvabrjpnnoh`) o no es la de `App_dev` (`anesttvrnpsaaaxaquce`)        | ninguno        | 0,3 min                           |
+  | `build`      | `pnpm install`, `pnpm exec vite build` con las variables de `App_dev`, sube `dist/` como artefacto (1 día)                                      | ninguno        | 2,0 min                           |
+  | `barrido`    | `node tests/fixtures/setup-accounts.ts --barrer`: crea o repone los conjuntos de cuentas y borra los residuos `e2e-`; **es el único que barre** | ninguno        | 1,5 min (en paralelo con `build`) |
+  | `admin`      | Administración, proyectos `chromium` y `mobile`                                                                                                 | `base`         | 5,7 min                           |
+  | `admin-edge` | Administración, `--project=edge --no-deps` (Edge ya viene en la imagen; si no, `playwright install msedge`)                                     | `edge`         | 5,2 min                           |
+  | `admin-a11y` | Accesibilidad con axe, `--project=a11y --no-deps`                                                                                               | `a11y`         | 3,7 min                           |
+  | `emp-movil`  | Empleado, proyecto `mobile`                                                                                                                     | `emp-movil`    | 7,2 min                           |
+  | `emp-webkit` | Empleado, `--project=webkit --no-deps` (iPhone 14)                                                                                              | `emp-webkit`   | 5,9 min                           |
+  | `sup`        | Supervisor (`mobile` y `webkit`) y después la suite vieja `e2e-auth`                                                                            | `sup`          | 6,2 min                           |
+  | `perm`       | Matriz de permisos por API (`vitest`), sin navegador ni `dist/`                                                                                 | `perm`         | 6,9 min                           |
+  | `dueno`      | Espera a todos (`if: !cancelled()`, pero no corre si falló `build` o `barrido`): `dueno-config` y después `dueno-final`                         | `base`         | 2,7 min                           |
+
+  Todos los jobs de suites (`needs: [build, barrido]`) bajan `dist/`, ejecutan Playwright
+  directo (los scripts `pnpm test:e2e:*` agregan `--env-file=.env.local` y rehacen el build),
+  con `E2E_SKIP_SWEEP=1`, instalan solo los navegadores que usan (con caché de
+  `~/.cache/ms-playwright`) y levantan su propio `vite preview` en el puerto 5173 (el único
+  origen que acepta la Edge Function `admin-users` por CORS; no chocan porque cada job es una
+  máquina distinta). Cada uno escribe un resumen en la pestaña Summary y, si algo falla, sube
+  el reporte HTML y las trazas como artefacto `e2e-<job>-reporte` (7 días). Los pasos repetidos
+  están en dos acciones locales: `.github/actions/preparar-e2e` (corepack, Node, pnpm,
+  navegadores) y `.github/actions/resumen-e2e` (el resumen).
+
+- **Tiempo:** el camino crítico es `guarda` + `build` + el job más largo (`emp-movil` o `perm`)
+  - `dueno`: unos 12 minutos con los tiempos medidos en local y 14 con runners más lentos. Es
+    una **estimación**: el objetivo de F18 (menos de 15 minutos) se confirma con la primera
+    corrida en GitHub (sección 14.7). Cada job tiene su `timeout-minutes` (de 8 a 15).
 - **Una corrida a la vez:** `concurrency: e2e-app-dev` sin cancelar la que está en
   curso (las cuentas fijas son compartidas; dos corridas se pisarían). Lo que llegue
   mientras otra corre queda en cola. **No lo dispares mientras alguien corre suites
   e2e en su máquina** contra `App_dev`, ni durante `restore-test.yml` (borra y
-  recarga `App_dev`): GitHub no puede saber lo que pasa fuera de él.
+  recarga `App_dev`; comparte el grupo de `concurrency`): GitHub no puede saber lo que
+  pasa fuera de él.
 
 ### 14.2 Secretos y puesta en marcha
 
@@ -949,7 +967,7 @@ lugares distintos para una sola suite.
 1. Abrí la corrida y mirá **Summary**: qué tests fallaron y en qué archivo.
 2. Si el job cortó en "Guarda contra producción", revisá los secretos `E2E_*`: o falta
    uno, o la URL no es la de `App_dev`. Volvé a correr `P18_cargar_secretos_e2e.ps1`.
-3. Para ver el detalle: abajo de todo, en **Artifacts**, bajá `e2e-<suite>-reporte`
+3. Para ver el detalle: abajo de todo, en **Artifacts**, bajá `e2e-<job>-reporte`
    (se conserva 7 días). Descomprimilo, abrí `playwright-report/index.html` y, en cada
    test, la traza (`trace`) muestra paso a paso lo que hizo el navegador. Para abrir
    una traza suelta: `pnpm exec playwright show-trace ruta\trace.zip`.
@@ -958,28 +976,34 @@ lugares distintos para una sola suite.
    pausado por inactividad o con las cuentas fijas desfasadas? Reproducilo en tu
    máquina con `pnpm test:e2e:admin` (los mismos comandos).
 5. Si fue un residuo de datos de una corrida cortada, la siguiente lo barre sola
-   (el global setup borra los clientes `e2e-`).
+   (lo hace el job `barrido`, que borra los clientes `e2e-`). Si un job falla en el
+   arranque con un 429 de Auth (límite de ingresos por IP), las suites esperan y
+   reintentan solas; si igual falla, volvé a correr solo ese job (**Re-run failed jobs**).
 6. Un fallo real se avisa al orquestador con el nombre del test y el artefacto.
 
-### 14.5 Por qué la matriz corre de a una suite (`max-parallel: 1`)
+### 14.5 Por qué las suites pueden correr en paralelo (y qué no hay que romper)
 
-Es el límite de diseño que hay que respetar al crecer. Dentro de una suite, los
-archivos se reparten las cuentas fijas (cada uno usa las suyas) para correr en
-paralelo sin pisarse. Entre suites hay dos cosas compartidas:
+Entre suites hay dos cosas compartidas en `App_dev`: las **cuentas fijas** (y sus sesiones)
+y el **barrido de residuos** `e2e-`. Se resolvió así (P18.4, `tests/fixtures/`):
 
-- el **global setup** de cada config repone las cuentas fijas y borra todo cliente
-  `e2e-`: si otra suite está en marcha en ese momento, le borra los datos;
-- las **sesiones** que cada setup abre para las mismas cuentas fijas.
+- cada suite tiene su **conjunto de cuentas** (`E2E_CONJUNTO`: `base`, `edge`, `a11y`,
+  `emp-movil`, `emp-webkit`, `sup`, `perm`), con cuentas y carpetas de sesión distintas:
+  dos suites en paralelo no usan nunca la misma cuenta;
+- el barrido corre **una sola vez**, en el job `barrido`; las suites lo saltean con
+  `E2E_SKIP_SWEEP=1`. Si agregás un job de suites sin esa variable, borrará los datos de
+  los demás;
+- el dueño del seed es **una sola cuenta** que no se puede duplicar: lo que cierra su sesión
+  (DEF-04 cierra todas) o edita la configuración de la empresa (`dueno-config`, `dueno-final`)
+  va en el job `dueno`, que espera a todos. Cuando se corrija DEF-04, `dueno` puede fundirse
+  con `admin`;
+- los ingresos por API contra Auth tienen un límite (unos 30 cada 5 minutos por IP): los
+  runners son máquinas distintas pero pueden compartir salida, y los ingresos esperan y
+  reintentan ante un 429.
 
-Por eso hoy cada entrada de la matriz corre completa antes que la siguiente (cada una
-en su runner, con su propia instalación y build). Mientras el total entre en 15
-minutos, es lo más simple y seguro. Si no entra, la salida no es solo cambiar el
-workflow: hay que lograr que las suites tomen cuentas fijas distintas y que el barrido
-de residuos corra una única vez en un job previo (cambio en `tests/fixtures/`, de
-qa-pruebas); recién entonces se puede subir `max-parallel`. Mientras tanto no subas
-ese número. Costo extra de cada entrada: unos 2 o 3 minutos de instalación y build.
-El plan gratuito de Supabase tiene un límite de conexiones; con dos workers por suite
-y de a una, no se acerca.
+Costo extra de cada job: 1 a 2 minutos de instalación (con caché de pnpm y de navegadores).
+El plan gratuito de Supabase tiene un límite de conexiones: con siete suites a la vez no se
+acerca, pero se mira en la primera corrida. El repositorio es público (sin límite de minutos
+de Actions); si pasara a privado, ver `docs/test-inventory.md` sección 10.2.
 
 ### 14.6 Cómo sumar una suite
 
@@ -987,13 +1011,25 @@ y de a una, no se acerca.
    `tests/e2e/empleado/playwright.empleado.config.ts`), con `globalSetup` de
    `tests/fixtures/`, `webServer` en el puerto 5173 y, si necesita otro navegador,
    su proyecto (`webkit`, canal `msedge`) dentro del mismo config.
-2. En `.github/workflows/e2e-app-dev.yml`, en `strategy.matrix.include`, agregá una entrada:
-   `suite` (nombre corto), `config` (la ruta) y `browsers` (los navegadores a instalar,
-   por ejemplo `chromium webkit`, o `msedge` para el canal de Edge).
-3. Si la suite usa un script de `package.json` con `--env-file=.env.local`, no se
+2. Que use un **conjunto de cuentas propio**: sumarlo a `CONJUNTOS` en
+   `tests/fixtures/accounts.ts`. Sin eso se pisaría con otra suite (sección 14.5).
+3. En `.github/workflows/e2e-app-dev.yml`, copiá un job de suites (por ejemplo `emp-webkit`)
+   y cambiá el nombre, el conjunto (`E2E_CONJUNTO`), los navegadores (`navegadores:`) y el
+   comando de Playwright. Dejá `needs: [build, barrido]` y `E2E_SKIP_SWEEP: '1'`, y sumalo
+   a `needs` del job `dueno`.
+4. Si la suite usa un script de `package.json` con `--env-file=.env.local`, no se
    invoca ese script: el workflow llama a Playwright directo y las variables vienen del
-   `env` del job.
-4. Respetá la regla de cuentas fijas por archivo (sección 14.5) y actualizá el tiempo
-   estimado de la sección 14.1.
-5. Los tests de carga y axe (P18.4) que no son de Playwright se suman como otro paso
-   o como otro job que corra después, con las mismas variables del `env`.
+   `env` del workflow.
+5. Actualizá la tabla de la sección 14.1 y `docs/test-inventory.md` sección 10.
+6. Los tests de carga (`pnpm test:load`) no son del nocturno: se corren a mano.
+
+### 14.7 Qué verificar en la primera corrida a mano
+
+Los comandos se probaron en local; lo que depende de GitHub, no:
+
+1. Que **Edge** funcione en `ubuntu-latest` (job `admin-edge`, paso "Microsoft Edge").
+2. Que el **tiempo total** sea menor a 15 minutos (duración de la corrida).
+3. Que no aparezcan **429** de Auth por compartir IP entre runners.
+4. Que las acciones locales (`.github/actions/`) y la descarga de `dist/` anden, y que al
+   fallar se suba el reporte como artefacto.
+5. Que `dueno` espere a todos y corra aunque otra suite haya fallado.

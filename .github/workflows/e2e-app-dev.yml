@@ -14,10 +14,23 @@ name: E2E App_dev
 # diaria antes de que Mike cargue los cuatro secretos `E2E_*` (P18_cargar_secretos_e2e.ps1). La
 # corrida a mano ignora el interruptor.
 #
-# UNA SOLA CORRIDA A LA VEZ. Las cuentas fijas (`tests/fixtures/`) y los clientes `e2e-` son
-# compartidos en `App_dev`, y el global setup de cada suite barre los `e2e-` residuales: dos
-# corridas simultáneas se pisarían. Por eso `concurrency` encola en vez de cancelar, y la matriz
-# corre de a una entrada (`max-parallel: 1`); ver docs/deployment.md sección 14.5.
+# JOBS EN PARALELO. Una corrida a la vez (`concurrency`), pero dentro de ella las suites corren
+# juntas, cada una en su runner y con su propio conjunto de cuentas fijas (`E2E_CONJUNTO`, ver
+# tests/fixtures/accounts.ts), así que no se pisan:
+#
+#   guarda ──► build   ──┐
+#          └─► barrido ──┴─► admin, admin-edge, admin-a11y, emp-movil, emp-webkit, sup, perm ──► dueno
+#
+#  - `barrido` crea los conjuntos de cuentas que falten y borra los residuos `e2e-`: es el ÚNICO
+#    que barre; las suites corren con `E2E_SKIP_SWEEP=1`.
+#  - `build` compila una vez con las variables de App_dev y sube `dist/`; cada suite lo baja y su
+#    config levanta `vite preview` en el 5173 (el único origen que acepta por CORS la Edge Function
+#    `admin-users`; cada job es una máquina distinta, así que no chocan).
+#  - `dueno` va al final y espera a todos: el dueño del seed es una sola cuenta compartida y lo que
+#    cierra su sesión o edita la configuración de la empresa no admite otra suite en marcha.
+#
+# Mientras corre, no se puede usar App_dev a mano ni correr `restore-test.yml` (comparten
+# `concurrency`). Detalle y tiempos: docs/deployment.md sección 14 y docs/test-inventory.md sección 10.
 
 on:
   schedule:
@@ -36,42 +49,33 @@ on:
 permissions:
   contents: read
 
+# Una sola corrida a la vez y sin cancelar la que está en curso: las cuentas fijas y los datos `e2e-`
+# son compartidos en App_dev. Mismo grupo que `restore-test.yml`, que vacía y recarga App_dev.
 concurrency:
   group: e2e-app-dev
   cancel-in-progress: false
 
+env:
+  # El mismo juego de cuatro variables que `.env.local` (tests/fixtures/env.ts), sacado de
+  # secretos de repositorio con prefijo E2E_ para no confundirlos con los de los despliegues.
+  # Llegan como variables de entorno a los procesos: nunca van en la línea de comando.
+  VITE_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+  VITE_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+  SEED_DEV_PASSWORD: ${{ secrets.E2E_SEED_DEV_PASSWORD }}
+  # Igual que `.env.local`; el banner "Entorno de prueba" es solo de `staging`.
+  VITE_APP_ENV: local
+  VITE_SENTRY_DSN: ''
+  RAMA_PROBADA: ${{ github.event_name == 'workflow_dispatch' && inputs.rama || 'develop' }}
+  # El reporte HTML nunca abre un servidor (en CI bloquearía el job).
+  PLAYWRIGHT_HTML_OPEN: never
+
 jobs:
-  e2e:
-    name: e2e ${{ matrix.suite }}
+  guarda:
+    name: guarda contra producción
     if: github.event_name == 'workflow_dispatch' || vars.E2E_NOCTURNO_ENABLED == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 14
-    strategy:
-      fail-fast: false
-      # De a una: las suites comparten cuentas fijas y el barrido de residuos del global setup
-      # borraría los datos de otra suite en marcha. Ver docs/deployment.md sección 14.5 antes de
-      # subir este número.
-      max-parallel: 1
-      matrix:
-        include:
-          # Para sumar una suite: una entrada más (docs/deployment.md sección 14.6).
-          #   suite:    nombre corto (título del job y del artefacto).
-          #   config:   config de Playwright de la suite.
-          #   browsers: navegadores a instalar (`playwright install`), separados por espacio.
-          - suite: administracion
-            config: tests/e2e/admin/playwright.admin.config.ts
-            browsers: chromium
-    env:
-      # El mismo juego de cuatro variables que `.env.local` (tests/fixtures/env.ts), sacado de
-      # secretos de repositorio con prefijo E2E_ para no confundirlos con los de los despliegues.
-      VITE_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
-      SEED_DEV_PASSWORD: ${{ secrets.E2E_SEED_DEV_PASSWORD }}
-      # Igual que `.env.local`; el banner "Entorno de prueba" es solo de `staging`.
-      VITE_APP_ENV: local
-      VITE_SENTRY_DSN: ''
-      RAMA_PROBADA: ${{ github.event_name == 'workflow_dispatch' && inputs.rama || 'develop' }}
+    timeout-minutes: 2
     steps:
       - name: Guarda contra producción (corta antes de tocar nada)
         run: |
@@ -95,88 +99,473 @@ jobs:
               exit 1 ;;
           esac
 
+  build:
+    name: build
+    needs: guarda
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
       - name: Descargar el código (develop, o la rama elegida a mano)
         uses: actions/checkout@v7
         with:
           ref: ${{ env.RAMA_PROBADA }}
 
-      - name: Habilitar corepack (resuelve la versión de pnpm de package.json → packageManager)
-        run: corepack enable
+      - name: Preparar Node y dependencias
+        uses: ./.github/actions/preparar-e2e
 
-      - name: Node (.node-version) y caché de pnpm
-        uses: actions/setup-node@v7
-        with:
-          node-version-file: '.node-version'
-          cache: 'pnpm'
-
-      - name: Instalar dependencias (lockfile congelado)
-        run: pnpm install --frozen-lockfile
-
-      - name: Versión de Playwright (clave de la caché de navegadores)
-        id: pw
-        run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
-
-      - name: Caché de navegadores de Playwright
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-${{ matrix.browsers }}
-
-      - name: Instalar navegadores de Playwright con sus dependencias del sistema
-        # Con la caché llena, `install` no descarga nada; las dependencias del sistema (apt) se
-        # instalan siempre porque no viven en ~/.cache.
-        run: pnpm exec playwright install --with-deps ${{ matrix.browsers }}
-
+      # Solo `vite build`: el `tsc -b` ya lo corre `ci.yml` en cada Pull Request.
       - name: Build con las variables de App_dev
-        run: pnpm build
+        run: pnpm exec vite build
 
-      - name: Dejar las cuentas fijas listas (idempotente)
-        run: node tests/fixtures/setup-accounts.ts
+      - name: Subir dist/ para las suites
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist-e2e
+          path: dist/
+          if-no-files-found: error
+          retention-days: 1
 
-      - name: Suite ${{ matrix.suite }} (Playwright, puerto 5173 con vite preview)
-        # `admin-users` solo acepta el origen http://localhost:5173 por CORS: el propio config
-        # levanta `vite preview` ahí. Se invoca Playwright directo (no `pnpm test:e2e:*`) porque
-        # esos scripts agregan `--env-file=.env.local`, que en CI no existe; acá las variables
-        # vienen del `env` del job. El reporte JSON alimenta el resumen.
-        # Las carpetas de salida se fijan acá (relativas a la raíz) para que el artefacto no
-        # dependa de dónde esté el config de cada suite.
+  barrido:
+    name: barrido y cuentas fijas
+    needs: guarda
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Descargar el código (develop, o la rama elegida a mano)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RAMA_PROBADA }}
+
+      - name: Preparar Node y dependencias
+        uses: ./.github/actions/preparar-e2e
+
+      # Crea o repone los conjuntos de cuentas (base, edge, a11y, ...) y barre los residuos `e2e-`
+      # de corridas cortadas. Lo hace UNA vez, acá: las suites corren con `E2E_SKIP_SWEEP=1`.
+      - name: Dejar listas las cuentas de todos los conjuntos y barrer residuos
+        run: node tests/fixtures/setup-accounts.ts --barrer
+
+  admin:
+    name: admin (chromium y mobile)
+    needs: [build, barrido]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      E2E_CONJUNTO: base
+      # El barrido lo hizo el job `barrido`: acá nadie borra datos de otra suite.
+      E2E_SKIP_SWEEP: '1'
+    steps:
+      - name: Descargar el código (develop, o la rama elegida a mano)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RAMA_PROBADA }}
+
+      - name: Preparar Node, dependencias y navegadores
+        uses: ./.github/actions/preparar-e2e
+        with:
+          navegadores: chromium
+
+      - name: Bajar dist/ (el build de App_dev del job build)
+        uses: actions/download-artifact@v8
+        with:
+          name: dist-e2e
+          path: dist/
+
+      # Se invoca Playwright directo (no `pnpm test:e2e:*`): esos scripts agregan
+      # `--env-file=.env.local`, que en CI no existe, y rehacen el build. El config levanta
+      # `vite preview` en el 5173 sobre el `dist/` bajado.
+      - name: Suite de administración, proyectos chromium y mobile
         env:
-          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ runner.temp }}/resultados-${{ matrix.suite }}.json
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ runner.temp }}/resultados-admin.json
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report
-        run: pnpm exec playwright test --config=${{ matrix.config }} --reporter=list,html,json --output=test-results
+        run: pnpm exec playwright test --config=tests/e2e/admin/playwright.admin.config.ts --project=chromium --project=mobile --reporter=list,html,json --output=test-results
 
       - name: Resumen de la corrida
-        if: always()
-        env:
-          JSON: ${{ runner.temp }}/resultados-${{ matrix.suite }}.json
-        run: |
-          {
-            echo "### e2e ${{ matrix.suite }} contra App_dev"
-            echo ""
-            echo "Rama probada: \`${RAMA_PROBADA}\`"
-            echo ""
-            if [ -f "$JSON" ]; then
-              jq -r '"| Pasaron | Fallaron | Inestables | Salteados | Duración |\n| --- | --- | --- | --- | --- |\n| \(.stats.expected) | \(.stats.unexpected) | \(.stats.flaky) | \(.stats.skipped) | \((.stats.duration / 1000) | floor) s |"' "$JSON"
-              fallas="$(jq -r '[.. | objects | select(has("specs")) | .specs[] | select(.ok == false) | "- `\(.file)`: \(.title)"] | .[]' "$JSON")"
-              if [ -n "$fallas" ]; then
-                echo ""
-                echo "**Tests que fallaron**"
-                echo ""
-                echo "$fallas"
-              fi
-            else
-              echo "No se generó el reporte JSON: la suite no llegó a correr (mirá el paso que falló)."
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/resumen-e2e
+        with:
+          titulo: 'admin (chromium y mobile)'
+          json: ${{ runner.temp }}/resultados-admin.json
 
       - name: Subir el reporte HTML y las trazas si algo falló
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: e2e-${{ matrix.suite }}-reporte
+          name: e2e-admin-reporte
           path: |
-            playwright-report/
-            test-results/
-            ${{ runner.temp }}/resultados-${{ matrix.suite }}.json
+            playwright-report*/
+            test-results*/
+            ${{ runner.temp }}/resultados-admin.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+  admin-edge:
+    name: admin en Edge
+    needs: [build, barrido]
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      E2E_CONJUNTO: edge
+      E2E_SKIP_SWEEP: '1'
+    steps:
+      - name: Descargar el código (develop, o la rama elegida a mano)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RAMA_PROBADA }}
+
+      - name: Preparar Node y dependencias
+        uses: ./.github/actions/preparar-e2e
+
+      # Las imágenes de GitHub ya traen Microsoft Edge en /opt/microsoft/msedge/msedge, que es donde
+      # Playwright lo busca (canal `msedge`). Si no estuviera, lo instala (necesita sudo, que tiene).
+      - name: Microsoft Edge (instalarlo solo si no está)
+        run: test -x /opt/microsoft/msedge/msedge || pnpm exec playwright install msedge
+
+      - name: Bajar dist/ (el build de App_dev del job build)
+        uses: actions/download-artifact@v8
+        with:
+          name: dist-e2e
+          path: dist/
+
+      - name: Suite de administración, proyecto edge (sin esperar a chromium ni mobile)
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ runner.temp }}/resultados-admin-edge.json
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report
+        run: pnpm exec playwright test --config=tests/e2e/admin/playwright.admin.config.ts --project=edge --no-deps --reporter=list,html,json --output=test-results
+
+      - name: Resumen de la corrida
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/resumen-e2e
+        with:
+          titulo: 'admin en Edge'
+          json: ${{ runner.temp }}/resultados-admin-edge.json
+
+      - name: Subir el reporte HTML y las trazas si algo falló
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-admin-edge-reporte
+          path: |
+            playwright-report*/
+            test-results*/
+            ${{ runner.temp }}/resultados-admin-edge.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+  admin-a11y:
+    name: admin accesibilidad (axe)
+    needs: [build, barrido]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      E2E_CONJUNTO: a11y
+      E2E_SKIP_SWEEP: '1'
+    steps:
+      - name: Descargar el código (develop, o la rama elegida a mano)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RAMA_PROBADA }}
+
+      - name: Preparar Node, dependencias y navegadores
+        uses: ./.github/actions/preparar-e2e
+        with:
+          navegadores: chromium
+
+      - name: Bajar dist/ (el build de App_dev del job build)
+        uses: actions/download-artifact@v8
+        with:
+          name: dist-e2e
+          path: dist/
+
+      - name: Accesibilidad de administración, proyecto a11y
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ runner.temp }}/resultados-admin-a11y.json
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report
+        run: pnpm exec playwright test --config=tests/e2e/admin/playwright.admin.config.ts --project=a11y --no-deps --reporter=list,html,json --output=test-results
+
+      - name: Resumen de la corrida
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/resumen-e2e
+        with:
+          titulo: 'admin accesibilidad (axe)'
+          json: ${{ runner.temp }}/resultados-admin-a11y.json
+
+      - name: Subir el reporte HTML y las trazas si algo falló
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-admin-a11y-reporte
+          path: |
+            playwright-report*/
+            test-results*/
+            ${{ runner.temp }}/resultados-admin-a11y.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+  emp-movil:
+    name: empleado en celular (chromium)
+    needs: [build, barrido]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      E2E_CONJUNTO: emp-movil
+      E2E_SKIP_SWEEP: '1'
+    steps:
+      - name: Descargar el código (develop, o la rama elegida a mano)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RAMA_PROBADA }}
+
+      - name: Preparar Node, dependencias y navegadores
+        uses: ./.github/actions/preparar-e2e
+        with:
+          navegadores: chromium
+
+      - name: Bajar dist/ (el build de App_dev del job build)
+        uses: actions/download-artifact@v8
+        with:
+          name: dist-e2e
+          path: dist/
+
+      - name: Suite de empleado, proyecto mobile
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ runner.temp }}/resultados-emp-movil.json
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report
+        run: pnpm exec playwright test --config=tests/e2e/empleado/playwright.empleado.config.ts --project=mobile --reporter=list,html,json --output=test-results
+
+      - name: Resumen de la corrida
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/resumen-e2e
+        with:
+          titulo: 'empleado mobile'
+          json: ${{ runner.temp }}/resultados-emp-movil.json
+
+      - name: Subir el reporte HTML y las trazas si algo falló
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-emp-movil-reporte
+          path: |
+            playwright-report*/
+            test-results*/
+            ${{ runner.temp }}/resultados-emp-movil.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+  emp-webkit:
+    name: empleado en iPhone (webkit)
+    needs: [build, barrido]
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      E2E_CONJUNTO: emp-webkit
+      E2E_SKIP_SWEEP: '1'
+    steps:
+      - name: Descargar el código (develop, o la rama elegida a mano)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RAMA_PROBADA }}
+
+      - name: Preparar Node, dependencias y navegadores
+        uses: ./.github/actions/preparar-e2e
+        with:
+          navegadores: webkit
+
+      - name: Bajar dist/ (el build de App_dev del job build)
+        uses: actions/download-artifact@v8
+        with:
+          name: dist-e2e
+          path: dist/
+
+      - name: Suite de empleado, proyecto webkit (sin esperar a mobile)
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ runner.temp }}/resultados-emp-webkit.json
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report
+        run: pnpm exec playwright test --config=tests/e2e/empleado/playwright.empleado.config.ts --project=webkit --no-deps --reporter=list,html,json --output=test-results
+
+      - name: Resumen de la corrida
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/resumen-e2e
+        with:
+          titulo: 'empleado webkit'
+          json: ${{ runner.temp }}/resultados-emp-webkit.json
+
+      - name: Subir el reporte HTML y las trazas si algo falló
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-emp-webkit-reporte
+          path: |
+            playwright-report*/
+            test-results*/
+            ${{ runner.temp }}/resultados-emp-webkit.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+  sup:
+    name: supervisor y e2e-auth
+    needs: [build, barrido]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      E2E_CONJUNTO: sup
+      E2E_SKIP_SWEEP: '1'
+    steps:
+      - name: Descargar el código (develop, o la rama elegida a mano)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RAMA_PROBADA }}
+
+      - name: Preparar Node, dependencias y navegadores
+        uses: ./.github/actions/preparar-e2e
+        with:
+          navegadores: chromium webkit
+
+      - name: Bajar dist/ (el build de App_dev del job build)
+        uses: actions/download-artifact@v8
+        with:
+          name: dist-e2e
+          path: dist/
+
+      - name: Suite de supervisor, proyectos mobile y webkit
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ runner.temp }}/resultados-sup.json
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report
+        run: pnpm exec playwright test --config=tests/e2e/supervisor/playwright.supervisor.config.ts --reporter=list,html,json --output=test-results
+
+      # La suite vieja de autenticación (TEST-003) usa cuentas descartables propias, sin tocar las
+      # fijas, y levanta su propio `vite preview` en el 4174 sobre el mismo `dist/`.
+      - name: Suite e2e-auth (autenticación)
+        if: ${{ !cancelled() }}
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ runner.temp }}/resultados-sup-auth.json
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-auth
+        run: pnpm exec playwright test --config=tests/e2e-auth/playwright.auth.config.ts --reporter=list,html,json --output=test-results-auth
+
+      - name: Resumen de supervisor
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/resumen-e2e
+        with:
+          titulo: 'supervisor'
+          json: ${{ runner.temp }}/resultados-sup.json
+
+      - name: Resumen de e2e-auth
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/resumen-e2e
+        with:
+          titulo: 'e2e-auth'
+          json: ${{ runner.temp }}/resultados-sup-auth.json
+
+      - name: Subir el reporte HTML y las trazas si algo falló
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-sup-reporte
+          path: |
+            playwright-report*/
+            test-results*/
+            ${{ runner.temp }}/resultados-sup.json
+            ${{ runner.temp }}/resultados-sup-auth.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+  perm:
+    name: matriz de permisos (API)
+    needs: [build, barrido]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      E2E_CONJUNTO: perm
+      E2E_SKIP_SWEEP: '1'
+    steps:
+      - name: Descargar el código (develop, o la rama elegida a mano)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RAMA_PROBADA }}
+
+      - name: Preparar Node y dependencias
+        uses: ./.github/actions/preparar-e2e
+
+      # Es `pnpm test:permissions` sin `--env-file=.env.local`, que en CI no existe: las variables
+      # vienen del `env` del workflow. Sin navegador y sin `dist/`.
+      - name: Matriz de permisos por API directa (Vitest)
+        run: node ./node_modules/vitest/vitest.mjs run --config tests/permissions/vitest.config.ts
+
+  dueno:
+    name: dueño al final (configuración y cierre de sesión)
+    needs:
+      [
+        build,
+        barrido,
+        admin,
+        admin-edge,
+        admin-a11y,
+        emp-movil,
+        emp-webkit,
+        sup,
+        perm,
+      ]
+    # `!cancelled()`: corre aunque alguna suite haya fallado (así se ve el resto), pero no si el
+    # build o el barrido fallaron (no habría `dist/` ni cuentas) ni si la guarda lo salteó.
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.barrido.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      E2E_CONJUNTO: base
+      E2E_SKIP_SWEEP: '1'
+    steps:
+      - name: Descargar el código (develop, o la rama elegida a mano)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RAMA_PROBADA }}
+
+      - name: Preparar Node, dependencias y navegadores
+        uses: ./.github/actions/preparar-e2e
+        with:
+          navegadores: chromium
+
+      - name: Bajar dist/ (el build de App_dev del job build)
+        uses: actions/download-artifact@v8
+        with:
+          name: dist-e2e
+          path: dist/
+
+      - name: Administración, dueno-config (configuración de la empresa)
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ runner.temp }}/resultados-dueno-config.json
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report
+        run: pnpm exec playwright test --config=tests/e2e/admin/playwright.admin.config.ts --project=dueno-config --no-deps --reporter=list,html,json --output=test-results
+
+      # Cierra TODAS las sesiones del dueño (DEF-04): por eso va último.
+      - name: Administración, dueno-final (cierra la sesión del dueño)
+        if: ${{ !cancelled() }}
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ runner.temp }}/resultados-dueno-final.json
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-final
+        run: pnpm exec playwright test --config=tests/e2e/admin/playwright.admin.config.ts --project=dueno-final --no-deps --reporter=list,html,json --output=test-results-final
+
+      - name: Resumen de dueno-config
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/resumen-e2e
+        with:
+          titulo: 'dueño: configuración'
+          json: ${{ runner.temp }}/resultados-dueno-config.json
+
+      - name: Resumen de dueno-final
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/resumen-e2e
+        with:
+          titulo: 'dueño: cierre de sesión'
+          json: ${{ runner.temp }}/resultados-dueno-final.json
+
+      - name: Subir el reporte HTML y las trazas si algo falló
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-dueno-reporte
+          path: |
+            playwright-report*/
+            test-results*/
+            ${{ runner.temp }}/resultados-dueno-config.json
+            ${{ runner.temp }}/resultados-dueno-final.json
           if-no-files-found: ignore
           retention-days: 7
