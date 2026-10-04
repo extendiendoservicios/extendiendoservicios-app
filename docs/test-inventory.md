@@ -372,9 +372,9 @@ Dos cosas que bajaron el tiempo: el borde exacto de CB-06 (espera unos 3 minutos
 
 En secuencia, todo suma unos 33 minutos de pruebas, más 2 a 3 de preparación por suite: pasa de 40 minutos. **Probado en paralelo en la misma máquina** (administración, empleado `mobile` y matriz de permisos a la vez, cada una con su conjunto de cuentas): pasaron las tres (32, 24 y 1.580 casos), en 7,6, 8,3 y 7,1 minutos; es decir, ningún test se pisó con otro. Con seis suites juntas el límite de ingresos de Auth (429 por IP) las hizo fallar en el arranque; se arregló con espera y reintento, y la prueba con seis a la vez no se pudo completar en una sola máquina (el equipo se saturó, no por las cuentas). En CI cada job es una máquina distinta.
 
-### 10.2 Diseño: workflow propuesto (no se tocó `.github/`)
+### 10.2 Diseño del workflow nocturno (implementado en `.github/workflows/e2e-app-dev.yml`)
 
-Un workflow `e2e-app-dev.yml` con `concurrency: e2e-app-dev` (como hoy) y estos jobs:
+El workflow `e2e-app-dev.yml` (con `concurrency: e2e-app-dev`) tiene un job `guarda` previo (corta si la URL no es la de App_dev) y estos jobs; la descripción operativa está en `docs/deployment.md` sección 14:
 
 ```
 build     ──┐  (instala, vite build con las variables de App_dev, sube dist/ como artefacto)

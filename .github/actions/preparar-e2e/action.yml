@@ -1,0 +1,53 @@
+name: Preparar el entorno de las suites e2e
+description: >-
+  Habilita corepack, instala Node (.node-version) y las dependencias con el lockfile congelado y,
+  si se piden, los navegadores de Playwright con su caché. Va DESPUÉS del checkout (el workflow
+  que la usa descarga el código primero). Lo usan todos los jobs de e2e-app-dev.yml.
+
+inputs:
+  navegadores:
+    description: >-
+      Navegadores de Playwright a instalar, separados por espacio (chromium, webkit). Vacío: no
+      instala ninguno (build, barrido, matriz de permisos). Edge se instala aparte en su job.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Habilitar corepack (resuelve la versión de pnpm de package.json → packageManager)
+      shell: bash
+      run: corepack enable
+
+    - name: Node (.node-version) y caché de pnpm
+      uses: actions/setup-node@v7
+      with:
+        node-version-file: '.node-version'
+        cache: 'pnpm'
+
+    - name: Instalar dependencias (lockfile congelado)
+      shell: bash
+      run: pnpm install --frozen-lockfile
+
+    - name: Versión de Playwright (clave de la caché de navegadores)
+      if: inputs.navegadores != ''
+      id: pw
+      shell: bash
+      run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
+    - name: Caché de navegadores de Playwright
+      if: inputs.navegadores != ''
+      uses: actions/cache@v6
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-${{ inputs.navegadores }}
+
+    - name: Instalar navegadores de Playwright con sus dependencias del sistema
+      if: inputs.navegadores != ''
+      shell: bash
+      env:
+        NAVEGADORES: ${{ inputs.navegadores }}
+      # Con la caché llena, `install` no descarga nada; las dependencias del sistema (apt) se
+      # instalan siempre porque no viven en ~/.cache. `$NAVEGADORES` va sin comillas a propósito:
+      # son varias palabras (chromium webkit).
+      run: pnpm exec playwright install --with-deps $NAVEGADORES
