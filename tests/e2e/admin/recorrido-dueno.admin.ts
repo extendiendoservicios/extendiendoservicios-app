@@ -3,6 +3,8 @@ import {
   FIXED_ACCOUNTS,
   getAdminDb,
   OWNER_EMAIL,
+  nombreDe,
+  reNombreDe,
 } from '../../fixtures/accounts.ts'
 import { MISSING_ENV_MESSAGE, readE2eEnv } from '../../fixtures/env.ts'
 import { anonClient, readId, signInSession } from '../../fixtures/sessions.ts'
@@ -107,11 +109,13 @@ test(
         await page.getByRole('button', { name: /^Buscar/ }).click()
         await page
           .getByPlaceholder('Buscar empleados, clientes o sedes…')
-          .fill('E2E-Fijo Empleado1')
-        await page.getByRole('option', { name: /E2E-Fijo Empleado1/ }).click()
+          .fill(nombreDe('empleado1'))
+        await page
+          .getByRole('option', { name: reNombreDe('empleado1') })
+          .click()
         await expect(page).toHaveURL(/\/admin\/empleados\/[0-9a-f-]+$/)
         await expect(
-          page.getByRole('heading', { name: 'E2E-Fijo Empleado1', level: 2 }),
+          page.getByRole('heading', { name: nombreDe('empleado1'), level: 2 }),
         ).toBeVisible()
         for (const pestana of [
           'Datos',

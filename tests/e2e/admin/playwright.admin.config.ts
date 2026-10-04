@@ -18,8 +18,22 @@ const APP_ROOT = fileURLToPath(new URL('../../..', import.meta.url))
 // Proyectos:
 //  - `chromium`: escritorio 1280x900; todos los archivos salvo los `*.movil.admin.ts`.
 //  - `mobile`: 390x844 táctil; solo los `*.movil.admin.ts` (administración desde el celular).
+//  - `edge`: Microsoft Edge (canal `msedge`, TEST-021); los mismos archivos que `chromium`. Va
+//    DESPUÉS de `chromium` y `mobile` (`dependencies`): comparten las cuentas fijas. En CI corre
+//    como job aparte con `--project=edge --no-deps` y su propio conjunto de cuentas
+//    (`E2E_CONJUNTO=edge`), así que no espera a nadie.
+//  - `dueno-config` y `dueno-final`: lo que usa al dueño del seed (única cuenta que no se puede
+//    duplicar): editar la configuración de la empresa y cerrar su sesión (DEF-04: cierra TODAS las
+//    suyas). Van al final de todo, de a uno; en CI son un job que espera a los demás.
 //
 // Puerto 5173 por la lista blanca de CORS de la Edge Function `admin-users`.
+// Los que usan al dueño del seed de un modo que no admite otra suite en paralelo.
+// Los que usan al dueño del seed de un modo que no admite otra suite en paralelo.
+const ARCHIVOS_DUENO = [
+  '**/recorrido-dueno.admin.ts',
+  '**/configuracion-dueno.admin.ts',
+]
+
 export default defineConfig({
   testDir: '.',
   testMatch: '**/*.admin.ts',
@@ -44,25 +58,48 @@ export default defineConfig({
     command: 'pnpm exec vite preview --port 5173 --strictPort',
     cwd: APP_ROOT,
     url: E2E_BASE_URL,
-    reuseExistingServer: false,
+    // `E2E_REUSE_SERVER=1`: usa el `vite preview` que ya está en el 5173 (para probar suites en
+    // paralelo en una sola máquina, que comparten el servidor). Por omisión, uno propio.
+    reuseExistingServer: process.env.E2E_REUSE_SERVER === '1',
     timeout: 30_000,
   },
   projects: [
     {
       name: 'chromium',
-      testIgnore: ['**/*.movil.admin.ts', '**/recorrido-dueno.admin.ts'],
+      testIgnore: ['**/*.movil.admin.ts', ...ARCHIVOS_DUENO],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 900 },
       },
     },
     {
-      // El recorrido del dueño termina cerrando la sesión del dueño del seed y esa cuenta es
-      // única: va DESPUÉS del resto para que el cierre no deje sin sesión a los tests que
-      // comparten el `storageState` del dueño.
+      name: 'edge',
+      testIgnore: ['**/*.movil.admin.ts', ...ARCHIVOS_DUENO],
+      dependencies: ['chromium', 'mobile'],
+      use: {
+        ...devices['Desktop Edge'],
+        channel: 'msedge',
+        viewport: { width: 1280, height: 900 },
+      },
+    },
+    {
+      // `configuracion-dueno` edita la configuración de la empresa (singleton), que la matriz de
+      // permisos también toca y repone: va fuera del camino paralelo, con el dueño.
+      name: 'dueno-config',
+      testMatch: '**/configuracion-dueno.admin.ts',
+      dependencies: ['chromium', 'mobile', 'edge'],
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1280, height: 900 },
+      },
+    },
+    {
+      // El recorrido del dueño termina cerrando la sesión del dueño del seed (DEF-04: cierra
+      // TODAS sus sesiones) y esa cuenta es única: va DESPUÉS de todo (también de `dueno-config`,
+      // que usa la sesión del dueño; por eso son dos proyectos y no corren a la vez).
       name: 'dueno-final',
       testMatch: '**/recorrido-dueno.admin.ts',
-      dependencies: ['chromium', 'mobile'],
+      dependencies: ['dueno-config'],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 900 },

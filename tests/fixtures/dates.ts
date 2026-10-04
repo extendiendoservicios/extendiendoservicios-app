@@ -51,6 +51,18 @@ export function minutesSinceMidnightAR(): number {
 }
 
 /**
+ * `true` si la franja de HOY ya empezó en este momento (hora de Argentina). Hay estados de la
+ * interfaz que solo existen antes del inicio ("Programado", "Quitar" una asignación): una prueba
+ * que los afirma sobre un turno de hoy tiene que saltear esa línea cuando ya empezó (no es un
+ * defecto de la app: el turno ya no es "programado"). El nocturno (04:30 de Argentina) siempre
+ * las afirma.
+ */
+export function franjaYaEmpezo(franja: { start: string }): boolean {
+  const [h, m] = franja.start.split(':').map(Number)
+  return minutesSinceMidnightAR() >= h * 60 + m
+}
+
+/**
  * `true` en la ventana de la medianoche (6 min antes y 4 después), en la que el "hoy" de las
  * pantallas cambia durante la corrida. Los tests que dependen de "hoy" se saltean con un motivo
  * explícito en vez de inventar un reloj falso.

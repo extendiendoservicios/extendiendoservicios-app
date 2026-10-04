@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test'
-import { getAdminDb } from '../../fixtures/accounts.ts'
+import {
+  FIXED_ACCOUNTS,
+  getAdminDb,
+  nombreDe,
+} from '../../fixtures/accounts.ts'
 import { MISSING_ENV_MESSAGE, readE2eEnv } from '../../fixtures/env.ts'
 import { fijarConsentimiento, pngSolido } from '../../fixtures/movil.ts'
 import { readId, storageStatePath } from '../../fixtures/sessions.ts'
@@ -46,9 +50,9 @@ test(
 
     await page.getByRole('link', { name: 'Mi perfil' }).click()
     await expect(page).toHaveURL(/\/perfil$/)
-    await expect(page.getByLabel('Nombre')).toHaveValue('E2E-Fijo Empleado2')
+    await expect(page.getByLabel('Nombre')).toHaveValue(nombreDe('empleado2'))
     await expect(page.getByLabel('Email de login')).toHaveValue(
-      'e2e-fijo-empleado-2@example.com',
+      FIXED_ACCOUNTS.empleado2.email,
     )
     await expect(page.getByText('Empleado', { exact: true })).toBeVisible()
   },

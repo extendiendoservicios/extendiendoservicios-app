@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { nombreDe } from '../../fixtures/accounts.ts'
 import {
   daysFromToday,
   FRANJAS,
@@ -123,8 +124,8 @@ test(
         await expect(tarjeta).toContainText('08:00–12:00')
         await expect(tarjeta).toContainText('Asignada')
         await expect(tarjeta).toContainText('2 empleados')
-        await expect(tarjeta).toContainText('E2E-Fijo Empleado1')
-        await expect(tarjeta).toContainText('E2E-Fijo Empleado2')
+        await expect(tarjeta).toContainText(nombreDe('empleado1'))
+        await expect(tarjeta).toContainText(nombreDe('empleado2'))
         await expectNoHorizontalScroll(page)
       })
 
@@ -168,12 +169,12 @@ test(
 
         const filaUno = page
           .locator('div.flex.items-center.justify-between.gap-2')
-          .filter({ hasText: 'E2E-Fijo Empleado1' })
+          .filter({ hasText: nombreDe('empleado1') })
         await expect(filaUno).toContainText('Presente')
         await expect(filaUno).toContainText(/Inicio: \d{2}:\d{2}/)
         const filaDos = page
           .locator('div.flex.items-center.justify-between.gap-2')
-          .filter({ hasText: 'E2E-Fijo Empleado2' })
+          .filter({ hasText: nombreDe('empleado2') })
         await expect(filaDos).toContainText('Esperado')
 
         await expect(page.getByText('Tareas del turno')).toBeVisible()
@@ -269,7 +270,7 @@ test(
         ).toHaveCount(0)
         const fila = page
           .locator('div.flex.items-center.justify-between.gap-2')
-          .filter({ hasText: 'E2E-Fijo Empleado1' })
+          .filter({ hasText: nombreDe('empleado1') })
         await expect(
           fila.getByRole('img', { name: '4 de 5 estrellas' }),
         ).toBeVisible()

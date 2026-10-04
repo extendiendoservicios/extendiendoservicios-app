@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { nombreDe } from '../../fixtures/accounts.ts'
 import { expectHint } from '../../fixtures/api.ts'
 import {
   FRANJAS,
@@ -128,7 +129,7 @@ test(
         await page.goto(`/sup/supervisiones/${supervision}`)
         const propiaFila = page
           .locator('div.flex.items-center.justify-between.gap-2')
-          .filter({ hasText: 'E2E-Fijo Dual' })
+          .filter({ hasText: nombreDe('dual') })
         await expect(propiaFila.getByText('Vos')).toBeVisible()
         await expect(
           propiaFila.getByRole('link', { name: /Calificar|Editar/ }),
@@ -136,7 +137,7 @@ test(
         await expect(
           page
             .locator('div.flex.items-center.justify-between.gap-2')
-            .filter({ hasText: 'E2E-Fijo Empleado1' })
+            .filter({ hasText: nombreDe('empleado1') })
             .getByRole('link', { name: 'Calificar' }),
         ).toBeVisible()
       })

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { getAdminDb } from '../../fixtures/accounts.ts'
+import { getAdminDb, nombreDe } from '../../fixtures/accounts.ts'
 import { todayAR } from '../../fixtures/dates.ts'
 import { MISSING_ENV_MESSAGE, readE2eEnv } from '../../fixtures/env.ts'
 import { Scenario } from '../../fixtures/scenario.ts'
@@ -181,14 +181,14 @@ test.describe('configuración del dueño (ADM-28 a ADM-31)', () => {
 
       await page.getByRole('combobox', { name: 'Filtrar por usuario' }).click()
       await page
-        .getByRole('option', { name: 'E2E-Fijo Admin', exact: true })
+        .getByRole('option', { name: nombreDe('admin'), exact: true })
         .click()
       const filas = page
         .getByRole('table', { name: 'Eventos de seguridad' })
         .getByRole('row')
-      await expect(filas.nth(1)).toContainText('E2E-Fijo Admin')
+      await expect(filas.nth(1)).toContainText(nombreDe('admin'))
       for (const fila of (await filas.all()).slice(1)) {
-        await expect(fila).toContainText('E2E-Fijo Admin')
+        await expect(fila).toContainText(nombreDe('admin'))
       }
 
       await page

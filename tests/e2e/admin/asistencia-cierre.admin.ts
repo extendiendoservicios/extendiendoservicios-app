@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { nombreDe } from '../../fixtures/accounts.ts'
 import {
   FRANJAS,
   isTooCloseToMidnight,
@@ -55,7 +56,7 @@ test.describe('asistencia administrativa (ADM-02, ADM-06, ADM-10, ADM-11, ADM-12
           .eq('kind', 'check_in')
         expect(corrido.error, corrido.error?.message).toBeNull()
 
-        const titulo = 'E2E-Fijo Empleado3 sigue en curso pasada su hora de fin'
+        const titulo = `${nombreDe('empleado3')} sigue en curso pasada su hora de fin`
 
         await test.step('ADM-02: la asignación queda en "Requiere atención", todavía presente', async () => {
           await page.goto('/admin')
@@ -149,7 +150,9 @@ test.describe('asistencia administrativa (ADM-02, ADM-06, ADM-10, ADM-11, ADM-12
 
         await test.step('ADM-10: la asignación figura con la ausencia avisada', async () => {
           await page.goto('/admin/asistencia')
-          await page.getByPlaceholder('Buscar por nombre…').fill('Empleado4')
+          await page
+            .getByPlaceholder('Buscar por nombre…')
+            .fill(nombreDe('empleado4'))
           const fila = page.getByRole('row').filter({ hasText: client.name })
           await expect(fila).toContainText(/Ausencia avisada/i)
         })
@@ -170,7 +173,9 @@ test.describe('asistencia administrativa (ADM-02, ADM-06, ADM-10, ADM-11, ADM-12
 
         await test.step('ADM-10 y ADM-06: figura presente y el aviso queda en el historial', async () => {
           await page.goto('/admin/asistencia')
-          await page.getByPlaceholder('Buscar por nombre…').fill('Empleado4')
+          await page
+            .getByPlaceholder('Buscar por nombre…')
+            .fill(nombreDe('empleado4'))
           const fila = page.getByRole('row').filter({ hasText: client.name })
           await expect(fila).toContainText('Presente')
 

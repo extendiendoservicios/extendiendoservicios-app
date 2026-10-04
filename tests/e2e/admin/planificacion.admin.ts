@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
-import { addDays } from '../../fixtures/dates.ts'
+import { nombreDe, reNombreDe } from '../../fixtures/accounts.ts'
+import { addDays, FRANJAS, franjaYaEmpezo } from '../../fixtures/dates.ts'
 import { MISSING_ENV_MESSAGE, readE2eEnv } from '../../fixtures/env.ts'
 import { Scenario } from '../../fixtures/scenario.ts'
 import { storageStatePath } from '../../fixtures/sessions.ts'
@@ -123,7 +124,10 @@ test.describe('cronograma (ADM-03, ADM-04, ADM-05)', () => {
         await page.goto(`/admin/planificacion?vista=dia&fecha=${sc.today}`)
         const filaHoy = page.getByRole('row').filter({ hasText: client.name })
         await expect(filaHoy).toContainText('1/2')
-        await expect(filaHoy).toContainText('Programado')
+        // "Programado" solo hasta que la franja empieza (después ya no lo es).
+        if (!franjaYaEmpezo(FRANJAS.tarde)) {
+          await expect(filaHoy).toContainText('Programado')
+        }
         await expect(filaHoy).toContainText('14:00–18:00')
 
         await page.getByRole('button', { name: 'Día siguiente' }).click()
@@ -175,23 +179,25 @@ test.describe('asignar con advertencias (ADM-08, ADM-04)', () => {
             .click()
           const hoja = page.getByRole('dialog', { name: 'Asignar empleado' })
           const licencia = hoja.getByRole('radio', {
-            name: /E2E-Fijo Empleado3/,
+            name: reNombreDe('empleado3'),
           })
           await expect(licencia).toContainText('De licencia')
           const noHabilitado = hoja.getByRole('radio', {
-            name: /E2E-Fijo Empleado4/,
+            name: reNombreDe('empleado4'),
           })
           await expect(noHabilitado).toContainText(
             'No habilitado para el cliente',
           )
           await expect(
-            hoja.getByRole('radio', { name: /E2E-Fijo Empleado1/ }),
+            hoja.getByRole('radio', { name: reNombreDe('empleado1') }),
           ).toContainText('Habilitado y disponible')
         })
 
         await test.step('asigna al de licencia: se asigna igual y avisa (no bloquea)', async () => {
           const hoja = page.getByRole('dialog', { name: 'Asignar empleado' })
-          await hoja.getByRole('radio', { name: /E2E-Fijo Empleado3/ }).click()
+          await hoja
+            .getByRole('radio', { name: reNombreDe('empleado3') })
+            .click()
           await hoja
             .getByRole('button', { name: 'Asignar', exact: true })
             .click()
@@ -209,7 +215,9 @@ test.describe('asignar con advertencias (ADM-08, ADM-04)', () => {
 
         await test.step('asigna al no habilitado: se asigna igual y avisa', async () => {
           const hoja = page.getByRole('dialog', { name: 'Asignar empleado' })
-          await hoja.getByRole('radio', { name: /E2E-Fijo Empleado4/ }).click()
+          await hoja
+            .getByRole('radio', { name: reNombreDe('empleado4') })
+            .click()
           await hoja
             .getByRole('button', { name: 'Asignar', exact: true })
             .click()
@@ -239,7 +247,7 @@ test.describe('asignar con advertencias (ADM-08, ADM-04)', () => {
           await page.goto(`/admin/planificacion?vista=semana&fecha=${sc.today}`)
           const fila = page
             .getByRole('row')
-            .filter({ hasText: 'E2E-Fijo Empleado3' })
+            .filter({ hasText: nombreDe('empleado3') })
           await expect(fila).toContainText('(de licencia)')
           await expect(
             fila.getByRole('link', {
@@ -331,7 +339,7 @@ test.describe('cambiar la franja de un turno con asignaciones (ADM-07)', () => {
       try {
         const { turnoB } = await armar(sc)
         await intentarSolapar(page, turnoB)
-        await expect(page.getByText(/E2E-Fijo Empleado1/)).toBeVisible({
+        await expect(page.getByText(reNombreDe('empleado1'))).toBeVisible({
           timeout: 5_000,
         })
       } finally {

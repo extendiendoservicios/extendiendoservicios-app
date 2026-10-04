@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { nombreDe } from '../../fixtures/accounts.ts'
 import { expectHint } from '../../fixtures/api.ts'
 import {
   FRANJAS,
@@ -208,7 +209,7 @@ test(
       ).toBeVisible()
       const fila = page
         .locator('div.flex.items-center.justify-between.gap-2')
-        .filter({ hasText: 'E2E-Fijo Empleado2' })
+        .filter({ hasText: nombreDe('empleado2') })
       await expect(fila).toBeVisible()
       await expect(
         fila.getByRole('link', { name: /Calificar|Editar/ }),

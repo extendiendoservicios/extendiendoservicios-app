@@ -14,6 +14,7 @@
 import { randomUUID } from 'node:crypto'
 import type { Contexto } from './contexto.ts'
 import { cuitUnico, nombreUnico, PREFIJO } from './escenario.ts'
+import { FIXED_ACCOUNTS } from '../../fixtures/accounts.ts'
 import { daysFromToday } from '../../fixtures/dates.ts'
 import type { Perfil } from './perfiles.ts'
 import { ES_ADMIN } from './perfiles.ts'
@@ -153,7 +154,8 @@ export const TABLAS: TablaSpec[] = [
         nombre: 'perfil ajeno (nombre)',
         permitido: TODOS_ADMIN,
         objetivo: (c) => ({ id: c.ids.empleado2 }),
-        parche: { first_name: 'E2E-Fijo' },
+        // El mismo nombre que ya tiene la cuenta del conjunto (no cambia nada visible para otras suites).
+        parche: { first_name: FIXED_ACCOUNTS.empleado2.firstName },
       },
       {
         // 03 §6: "desactivarlos" (empleados y supervisores) exige `manage_users`. Un

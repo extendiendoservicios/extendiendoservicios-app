@@ -16,6 +16,7 @@ import { createClient, type Session } from '@supabase/supabase-js'
 import type { Database } from '../../src/lib/database.types.ts'
 import { authStorageKey, E2E_BASE_URL, requireE2eEnv } from './env.ts'
 import {
+  conjuntoActivo,
   FIXED_ACCOUNTS,
   OWNER_EMAIL,
   type AdminDb,
@@ -26,13 +27,15 @@ const APP_ROOT = fileURLToPath(new URL('../..', import.meta.url))
 
 /**
  * Carpeta del estado de la corrida. Dentro de `node_modules/.cache/` porque git la ignora y
- * Playwright no la limpia al arrancar (a diferencia de `test-results/`).
+ * Playwright no la limpia al arrancar (a diferencia de `test-results/`). Cada conjunto de cuentas
+ * (`E2E_CONJUNTO`, ver `accounts.ts`) tiene su carpeta: dos suites en paralelo en la misma
+ * máquina no se pisan los `storageState`.
  */
 export const STATE_DIR = path.join(
   APP_ROOT,
   'node_modules',
   '.cache',
-  'e2e-fijo',
+  conjuntoActivo() === 'base' ? 'e2e-fijo' : `e2e-fijo-${conjuntoActivo()}`,
 )
 
 export type SessionKey = FixedAccountKey | 'owner'

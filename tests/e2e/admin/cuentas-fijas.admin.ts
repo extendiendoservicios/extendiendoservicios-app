@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import {
   ensureFixedAccounts,
+  esDelConjuntoActivo,
   FIXED_ACCOUNT_LIST,
   FIXED_ACCOUNTS,
   getAdminDb,
@@ -27,7 +28,9 @@ async function countFixedAuthUsers(): Promise<number> {
       perPage: 1000,
     })
     if (error) throw new Error(error.message)
-    total += data.users.filter((u) => u.email?.startsWith('e2e-fijo-')).length
+    total += data.users.filter(
+      (u) => u.email && esDelConjuntoActivo(u.email),
+    ).length
     if (data.users.length < 1000) break
   }
   return total

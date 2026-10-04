@@ -64,103 +64,244 @@ export interface FixedAccountSpec {
   dni?: string
 }
 
-const DOMAIN = 'example.com'
-const FIRST_NAME = 'E2E-Fijo'
+// ---------------------------------------------------------------------------------------------
+// Conjuntos de cuentas (TEST-021, P18.4). Para que las suites corran EN PARALELO en CI (un job
+// por suite) sin que dos de ellas usen la misma cuenta fija, hay varios conjuntos disjuntos de
+// las mismas cuentas, con la misma forma. El conjunto activo lo elige la variable
+// `E2E_CONJUNTO` (por omisión `base`, el de siempre: así nada cambia al correr una suite sola en
+// local). Cada conjunto tiene sus propios emails, nombres y DNI, por lo que dos conjuntos no se
+// pisan ni en la base ni en lo que ve cada pantalla (un nombre no es subcadena de otro).
+//
+// El dueño del seed es único y NO tiene conjunto: lo comparten todas las suites. Compartirlo es
+// seguro mientras nadie le cierre las sesiones (ver `docs/deployment.md` sección 14.5): el cierre
+// de sesión del dueño (DEF-04, global) y todo lo que edita la configuración de la empresa corre
+// en el proyecto `dueno-final`, que en CI es un job aparte, al final.
+// ---------------------------------------------------------------------------------------------
 
-function person(
-  key: FixedAccountKey,
-  emailSlug: string,
-  lastName: string,
-  roles: readonly AppRole[],
-  dni?: string,
-): FixedAccountSpec {
-  return {
-    key,
-    email: `e2e-fijo-${emailSlug}@${DOMAIN}`,
-    firstName: FIRST_NAME,
-    lastName,
-    roles,
-    dni,
+export const CONJUNTOS = [
+  'base',
+  'edge',
+  'emp-movil',
+  'emp-webkit',
+  'sup',
+  'perm',
+] as const
+export type Conjunto = (typeof CONJUNTOS)[number]
+
+interface DefConjunto {
+  /** Infijo del email y sufijo del nombre ('' en el conjunto base). */
+  tag: string
+  /** Cuentas que ese conjunto necesita (las demás no se crean). */
+  keys: readonly FixedAccountKey[]
+}
+
+const TODAS: readonly FixedAccountKey[] = [
+  'admin',
+  'adminSinCapacidades',
+  'adminCapacidades',
+  'empleado1',
+  'empleado2',
+  'empleado3',
+  'empleado4',
+  'supervisor1',
+  'supervisor2',
+  'dual',
+]
+
+const DEF_CONJUNTOS: Record<Conjunto, DefConjunto> = {
+  base: { tag: '', keys: TODAS },
+  edge: { tag: 'eg', keys: TODAS },
+  'emp-movil': {
+    tag: 'em',
+    keys: ['empleado1', 'empleado2', 'empleado3', 'empleado4', 'supervisor1'],
+  },
+  'emp-webkit': {
+    tag: 'ew',
+    keys: ['empleado1', 'empleado2', 'empleado3', 'empleado4', 'supervisor1'],
+  },
+  sup: {
+    tag: 'su',
+    keys: ['empleado1', 'empleado2', 'supervisor1', 'supervisor2', 'dual'],
+  },
+  perm: { tag: 'pe', keys: TODAS },
+}
+
+/** Conjunto activo: `E2E_CONJUNTO` (por omisión `base`). Un valor desconocido corta la corrida. */
+export function conjuntoActivo(): Conjunto {
+  const valor = process.env.E2E_CONJUNTO?.trim() || 'base'
+  if (!(CONJUNTOS as readonly string[]).includes(valor)) {
+    throw new Error(
+      `E2E_CONJUNTO="${valor}" no existe. Valores válidos: ${CONJUNTOS.join(', ')}.`,
+    )
   }
+  return valor as Conjunto
+}
+
+const DOMAIN = 'example.com'
+
+interface Plantilla {
+  key: FixedAccountKey
+  slug: string
+  lastName: string
+  roles: readonly AppRole[]
+  capabilities?: readonly AdminCapability[]
+  /** Sufijo de 6 dígitos del DNI (el prefijo lo pone el conjunto). */
+  dni?: string
+}
+
+const PLANTILLAS: readonly Plantilla[] = [
+  {
+    key: 'admin',
+    slug: 'admin',
+    lastName: 'Admin',
+    roles: ['admin'],
+    capabilities: ADMIN_CAPABILITIES,
+  },
+  {
+    key: 'adminSinCapacidades',
+    slug: 'admin-sin-capacidades',
+    lastName: 'AdminSinCapacidades',
+    roles: ['admin'],
+    capabilities: [],
+  },
+  {
+    key: 'adminCapacidades',
+    slug: 'admin-capacidades',
+    lastName: 'AdminCapacidades',
+    roles: ['admin'],
+    capabilities: ADMIN_CAPABILITIES,
+  },
+  {
+    key: 'empleado1',
+    slug: 'empleado-1',
+    lastName: 'Empleado1',
+    roles: ['employee'],
+    dni: '000001',
+  },
+  {
+    key: 'empleado2',
+    slug: 'empleado-2',
+    lastName: 'Empleado2',
+    roles: ['employee'],
+    dni: '000002',
+  },
+  {
+    key: 'empleado3',
+    slug: 'empleado-3',
+    lastName: 'Empleado3',
+    roles: ['employee'],
+    dni: '000003',
+  },
+  {
+    key: 'empleado4',
+    slug: 'empleado-4',
+    lastName: 'Empleado4',
+    roles: ['employee'],
+    dni: '000004',
+  },
+  {
+    key: 'supervisor1',
+    slug: 'supervisor-1',
+    lastName: 'Supervisor1',
+    roles: ['supervisor'],
+    dni: '000011',
+  },
+  {
+    key: 'supervisor2',
+    slug: 'supervisor-2',
+    lastName: 'Supervisor2',
+    roles: ['supervisor'],
+    dni: '000012',
+  },
+  {
+    key: 'dual',
+    slug: 'dual',
+    lastName: 'Dual',
+    roles: ['employee', 'supervisor'],
+    dni: '000021',
+  },
+]
+
+/** Las diez claves de un conjunto, con emails, nombres y DNI propios. */
+function armarConjunto(
+  conjunto: Conjunto,
+): Record<FixedAccountKey, FixedAccountSpec> {
+  const indice = CONJUNTOS.indexOf(conjunto)
+  const { tag } = DEF_CONJUNTOS[conjunto]
+  const out = {} as Record<FixedAccountKey, FixedAccountSpec>
+  for (const p of PLANTILLAS) {
+    out[p.key] = {
+      key: p.key,
+      email: `e2e-fijo-${tag ? `${tag}-` : ''}${p.slug}@${DOMAIN}`,
+      // El conjunto base conserva el nombre de siempre ("E2E-Fijo Empleado1"); los demás llevan
+      // su etiqueta en el nombre de pila ("E2E-Fijo-EM Empleado1"), que no contiene al otro.
+      firstName: tag ? `E2E-Fijo-${tag.toUpperCase()}` : 'E2E-Fijo',
+      lastName: p.lastName,
+      roles: p.roles,
+      capabilities: p.capabilities,
+      // DNI de 8 dígitos: `99` + índice del conjunto + sufijo de la plantilla (base: `99000001`).
+      dni: p.dni ? `99${indice}${p.dni.slice(1)}` : undefined,
+    }
+  }
+  return out
+}
+
+/** Cuentas que el conjunto crea y repone (un subconjunto de las diez claves). */
+export function cuentasDelConjunto(
+  conjunto: Conjunto = conjuntoActivo(),
+): FixedAccountSpec[] {
+  const todas = armarConjunto(conjunto)
+  return DEF_CONJUNTOS[conjunto].keys.map((k) => todas[k])
 }
 
 /**
- * Cantidad por rol pensada para las suites en paralelo: cuatro empleados (una asignación por
- * test sin pisarse), dos supervisores, una persona con los dos roles y tres administradores
- * (todas las capacidades, ninguna, y una cuyas capacidades cambia el test de capacidades).
+ * Cuentas del conjunto activo por clave. Las diez claves tienen spec (email y nombre), pero solo
+ * se crean las que el conjunto declara: una suite que pide otra falla al no encontrar la cuenta.
  */
-export const FIXED_ACCOUNTS: Record<FixedAccountKey, FixedAccountSpec> = {
-  admin: {
-    ...person('admin', 'admin', 'Admin', ['admin']),
-    capabilities: ADMIN_CAPABILITIES,
-  },
-  adminSinCapacidades: {
-    ...person(
-      'adminSinCapacidades',
-      'admin-sin-capacidades',
-      'AdminSinCapacidades',
-      ['admin'],
-    ),
-    capabilities: [],
-  },
-  adminCapacidades: {
-    ...person('adminCapacidades', 'admin-capacidades', 'AdminCapacidades', [
-      'admin',
-    ]),
-    capabilities: ADMIN_CAPABILITIES,
-  },
-  empleado1: person(
-    'empleado1',
-    'empleado-1',
-    'Empleado1',
-    ['employee'],
-    '99000001',
-  ),
-  empleado2: person(
-    'empleado2',
-    'empleado-2',
-    'Empleado2',
-    ['employee'],
-    '99000002',
-  ),
-  empleado3: person(
-    'empleado3',
-    'empleado-3',
-    'Empleado3',
-    ['employee'],
-    '99000003',
-  ),
-  empleado4: person(
-    'empleado4',
-    'empleado-4',
-    'Empleado4',
-    ['employee'],
-    '99000004',
-  ),
-  supervisor1: person(
-    'supervisor1',
-    'supervisor-1',
-    'Supervisor1',
-    ['supervisor'],
-    '99000011',
-  ),
-  supervisor2: person(
-    'supervisor2',
-    'supervisor-2',
-    'Supervisor2',
-    ['supervisor'],
-    '99000012',
-  ),
-  dual: person('dual', 'dual', 'Dual', ['employee', 'supervisor'], '99000021'),
-}
+export const FIXED_ACCOUNTS: Record<FixedAccountKey, FixedAccountSpec> =
+  armarConjunto(conjuntoActivo())
 
-/** Todas las cuentas fijas, en orden estable. */
+/** Las cuentas del conjunto activo, en orden estable. */
 export const FIXED_ACCOUNT_LIST: readonly FixedAccountSpec[] =
-  Object.values(FIXED_ACCOUNTS)
+  cuentasDelConjunto()
 
 /** Nombre completo como se ve en las pantallas (`first_name last_name`). */
 export function fullName(spec: FixedAccountSpec): string {
   return `${spec.firstName} ${spec.lastName}`
+}
+
+/** Nombre completo de la cuenta fija `key` del conjunto activo (para pantallas y búsquedas). */
+export function nombreDe(key: FixedAccountKey): string {
+  return fullName(FIXED_ACCOUNTS[key])
+}
+
+/** Expresión regular que acepta ese nombre completo y no uno más largo (por ejemplo `Empleado1`). */
+export function reNombreDe(key: FixedAccountKey): RegExp {
+  const escapado = nombreDe(key).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`${escapado}(?![\\w-])`)
+}
+
+/** Prefijo de email propio del conjunto activo (para contar o reconocer sus cuentas). */
+export function prefijoEmailDelConjunto(): string {
+  const { tag } = DEF_CONJUNTOS[conjuntoActivo()]
+  return `e2e-fijo-${tag ? `${tag}-` : ''}`
+}
+
+/** `true` si el email es de una cuenta fija del conjunto activo (y no de otro conjunto). */
+export function esDelConjuntoActivo(email: string): boolean {
+  const e = email.toLowerCase()
+  if (!e.startsWith(prefijoEmailDelConjunto())) return false
+  if (conjuntoActivo() !== 'base') return true
+  // En el base, "e2e-fijo-" también empieza el email de los otros conjuntos: se los descarta.
+  return !Object.values(DEF_CONJUNTOS).some(
+    (d) => d.tag && e.startsWith(`e2e-fijo-${d.tag}-`),
+  )
+}
+
+/** Email de la cuenta descartable del test de baja con la app abierta (CB-18), por conjunto. */
+export function emailBajaCb18(): string {
+  const { tag } = DEF_CONJUNTOS[conjuntoActivo()]
+  return `e2e-baja-cb18${tag ? `-${tag}` : ''}@${DOMAIN}`
 }
 
 /** Cliente con la clave de servicio (RLS salteada), solo para preparar y limpiar datos. */
@@ -234,6 +375,8 @@ export interface EnsureOptions {
    * por omisión la contraseña solo se repone si la cuenta está baneada o sin confirmar.
    */
   forcePassword?: boolean
+  /** Conjunto a reponer (por omisión, el activo). `setup-accounts.ts` los recorre todos. */
+  conjunto?: Conjunto
 }
 
 /**
@@ -245,11 +388,12 @@ export async function ensureFixedAccounts(
   options: EnsureOptions = {},
 ): Promise<EnsureResult> {
   const restore = options.restore ?? true
+  const lista = cuentasDelConjunto(options.conjunto)
   const env = requireE2eEnv()
   const result: EnsureResult = { created: [], existing: [], ids: {} }
   const authUsers = await loadAuthUsers(db)
 
-  for (const spec of FIXED_ACCOUNT_LIST) {
+  for (const spec of lista) {
     const existingUser = authUsers.get(spec.email.toLowerCase())
     let userId = existingUser?.id ?? null
 

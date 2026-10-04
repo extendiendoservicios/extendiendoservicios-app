@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { nombreDe } from '../../fixtures/accounts.ts'
 import {
   FRANJAS,
   isTooCloseToMidnight,
@@ -132,7 +133,7 @@ test.describe('con la geoposición concedida', () => {
         })
 
         await test.step('SUP-05: calificar a un empleado con estrellas y comentario', async () => {
-          await filaDe(page, 'E2E-Fijo Empleado1')
+          await filaDe(page, nombreDe('empleado1'))
             .getByRole('link', { name: 'Calificar' })
             .click()
           await expect(page).toHaveURL(
@@ -149,14 +150,14 @@ test.describe('con la geoposición concedida', () => {
             new RegExp(`/sup/supervisiones/${supA}$`),
           )
           await expect(
-            filaDe(page, 'E2E-Fijo Empleado1').getByRole('link', {
+            filaDe(page, nombreDe('empleado1')).getByRole('link', {
               name: 'Editar',
             }),
           ).toBeVisible()
         })
 
         await test.step('P-083: se edita dentro de la ventana y queda el último puntaje', async () => {
-          await filaDe(page, 'E2E-Fijo Empleado1')
+          await filaDe(page, nombreDe('empleado1'))
             .getByRole('link', { name: 'Editar' })
             .click()
           await expect(
@@ -170,7 +171,7 @@ test.describe('con la geoposición concedida', () => {
             .getByRole('button', { name: 'Guardar calificación' })
             .click()
           await expect(
-            filaDe(page, 'E2E-Fijo Empleado1').getByRole('img', {
+            filaDe(page, nombreDe('empleado1')).getByRole('img', {
               name: '5 de 5 estrellas',
             }),
           ).toBeVisible()

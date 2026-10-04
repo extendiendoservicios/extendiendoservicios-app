@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { nombreDe } from '../../fixtures/accounts.ts'
 import {
   daysFromToday,
   FRANJAS,
@@ -115,8 +116,8 @@ test(
         const companeros = page
           .locator('[data-slot="card"]')
           .filter({ hasText: 'Compañeros de este servicio' })
-        await expect(companeros).toContainText('E2E-Fijo Empleado3')
-        await expect(companeros).not.toContainText('E2E-Fijo Empleado2')
+        await expect(companeros).toContainText(nombreDe('empleado3'))
+        await expect(companeros).not.toContainText(nombreDe('empleado2'))
         // La foto se ve (el componente solo pinta la imagen si se pudo cargar).
         await expect(companeros.locator('img')).toHaveAttribute(
           'src',
