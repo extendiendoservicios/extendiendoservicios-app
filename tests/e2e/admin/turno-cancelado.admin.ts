@@ -191,23 +191,11 @@ test.describe('CB-03: cancelar un turno en curso con un empleado presente', () =
     },
   )
 
-  // DEFECTO DEF-02 (menor): 05 ADM-06 lista `cancel_shift (capacidad)` entre las acciones del
-  // detalle del turno; hoy "Cancelar" solo existe en la lista del día (ADM-05).
+  // DEF-02 (corregido en P18.6): ADM-06 ofrece `cancel_shift` en el detalle del turno (05).
   test(
     'ADM-06 ofrece "Cancelar turno" (acción del detalle según 05)',
-    {
-      ...cubre('RB-A04'),
-      annotation: [
-        ...cubre('RB-A04').annotation,
-        {
-          type: 'defecto',
-          description:
-            'DEF-02 (menor): el detalle del turno (ADM-06) no tiene la acción cancel_shift que lista 05_Pantallas; solo está en ADM-05.',
-        },
-      ],
-    },
+    cubre('RB-A04'),
     async ({ page }) => {
-      test.fail(true, 'DEF-02: ADM-06 no ofrece cancelar el turno')
       const sc = new Scenario()
       try {
         const client = await sc.client('detalle-cancelar')
