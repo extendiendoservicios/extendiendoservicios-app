@@ -8,7 +8,7 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../src/lib/database.types.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 export const PREFIJO = 'E2E-P174'
 

@@ -13,12 +13,14 @@ import type { TestProject } from 'vitest/node'
 import { createClient } from '@supabase/supabase-js'
 import {
   ensureFixedAccounts,
+  FIXED_ACCOUNTS,
   getAdminDb,
   loadAuthUserIds,
   OWNER_EMAIL,
 } from '../../fixtures/accounts.ts'
 import { daysFromToday } from '../../fixtures/dates.ts'
 import { readE2eEnv, requireE2eEnv } from '../../fixtures/env.ts'
+import { esLimiteDeTasa } from '../../fixtures/sessions.ts'
 import type { Database } from '../../../src/lib/database.types.ts'
 import type { Contexto, IdsCuentas } from './contexto.ts'
 import { barrerResiduos, limpiar, plantar } from './escenario.ts'
@@ -29,10 +31,20 @@ async function iniciarSesion(email: string) {
   const cliente = createClient<Database>(env.supabaseUrl, env.anonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
-  const { data, error } = await cliente.auth.signInWithPassword({
+  let { data, error } = await cliente.auth.signInWithPassword({
     email,
     password: env.seedPassword,
   })
+  // Con otras suites en paralelo desde la misma IP el proveedor puede limitar los ingresos (429):
+  // se espera y se reintenta (ver `signInSession` en `tests/fixtures/sessions.ts`).
+  for (const espera of [5, 10, 20, 30, 40, 60]) {
+    if (!error || !esLimiteDeTasa(error)) break
+    await new Promise((r) => setTimeout(r, espera * 1000))
+    ;({ data, error } = await cliente.auth.signInWithPassword({
+      email,
+      password: env.seedPassword,
+    }))
+  }
   if (error || !data.session) {
     throw new Error(
       `No se pudo iniciar sesión como ${email}: ${error?.message ?? 'sin sesión'}. ` +
@@ -67,16 +79,16 @@ export default async function setup(project: TestProject) {
   }
   const ids: IdsCuentas = {
     owner: ownerId,
-    admin: idDeEmail('e2e-fijo-admin@example.com'),
-    adminSin: idDeEmail('e2e-fijo-admin-sin-capacidades@example.com'),
-    adminCapacidades: idDeEmail('e2e-fijo-admin-capacidades@example.com'),
-    empleado1: idDeEmail('e2e-fijo-empleado-1@example.com'),
-    empleado2: idDeEmail('e2e-fijo-empleado-2@example.com'),
-    empleado3: idDeEmail('e2e-fijo-empleado-3@example.com'),
-    empleado4: idDeEmail('e2e-fijo-empleado-4@example.com'),
-    supervisor1: idDeEmail('e2e-fijo-supervisor-1@example.com'),
-    supervisor2: idDeEmail('e2e-fijo-supervisor-2@example.com'),
-    dual: idDeEmail('e2e-fijo-dual@example.com'),
+    admin: idDeEmail(FIXED_ACCOUNTS.admin.email),
+    adminSin: idDeEmail(FIXED_ACCOUNTS.adminSinCapacidades.email),
+    adminCapacidades: idDeEmail(FIXED_ACCOUNTS.adminCapacidades.email),
+    empleado1: idDeEmail(FIXED_ACCOUNTS.empleado1.email),
+    empleado2: idDeEmail(FIXED_ACCOUNTS.empleado2.email),
+    empleado3: idDeEmail(FIXED_ACCOUNTS.empleado3.email),
+    empleado4: idDeEmail(FIXED_ACCOUNTS.empleado4.email),
+    supervisor1: idDeEmail(FIXED_ACCOUNTS.supervisor1.email),
+    supervisor2: idDeEmail(FIXED_ACCOUNTS.supervisor2.email),
+    dual: idDeEmail(FIXED_ACCOUNTS.dual.email),
   }
 
   // Un inicio de sesión por perfil, más el del administrador de capacidades.
@@ -89,9 +101,7 @@ export default async function setup(project: TestProject) {
     if (perfil === 'empleado') refreshEmpleado = s.sesion.refresh_token
     if (perfil === 'owner') owner = s
   }
-  const capacidades = await iniciarSesion(
-    'e2e-fijo-admin-capacidades@example.com',
-  )
+  const capacidades = await iniciarSesion(FIXED_ACCOUNTS.adminCapacidades.email)
   tokens.adminCapacidades = capacidades.sesion.access_token
   if (!owner) throw new Error('Sin sesión del dueño.')
 

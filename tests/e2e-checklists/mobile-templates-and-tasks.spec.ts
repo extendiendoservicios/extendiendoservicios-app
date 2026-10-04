@@ -18,7 +18,7 @@ import {
 import { FAR_DATE_MOBILE_SHIFT } from './helpers/farDate.ts'
 import { loginAs } from './helpers/login.ts'
 import { expectNoHorizontalScroll } from './helpers/noHorizontalScroll.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 const env = readE2eChecklistsEnv()
 test.skip(!env, MISSING_ENV_MESSAGE)

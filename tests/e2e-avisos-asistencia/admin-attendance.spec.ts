@@ -38,7 +38,7 @@ import {
   fetchAttendanceRecords,
 } from './helpers/shiftFixture.ts'
 import { loginAs } from './helpers/login.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 const env = readE2eAvisosAsistenciaEnv()
 test.skip(!env, MISSING_ENV_MESSAGE)

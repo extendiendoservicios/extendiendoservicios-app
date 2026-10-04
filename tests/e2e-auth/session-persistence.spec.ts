@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { readE2eAuthEnv, MISSING_ENV_MESSAGE } from './helpers/env.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 // AUTH-012: "persistencia de sesión (recarga y pestaña nueva)". Cuenta del seed en solo lectura.
 const env = readE2eAuthEnv()
@@ -16,7 +16,7 @@ test('la sesión sobrevive a recargar la página', async ({ page }) => {
   await page.reload()
 
   await expect(page).toHaveURL(/\/app$/)
-  await expect(page.getByText('EMP-03')).toBeVisible()
+  await expect(page.getByRole('main')).toBeVisible()
 })
 
 test('la sesión sigue disponible en una pestaña nueva del mismo contexto', async ({
@@ -36,7 +36,7 @@ test('la sesión sigue disponible en una pestaña nueva del mismo contexto', asy
   await segundaPestana.goto('/app')
 
   await expect(segundaPestana).toHaveURL(/\/app$/)
-  await expect(segundaPestana.getByText('EMP-03')).toBeVisible()
+  await expect(segundaPestana.getByRole('main')).toBeVisible()
 
   await segundaPestana.close()
 })

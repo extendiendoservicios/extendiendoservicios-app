@@ -1,91 +1,90 @@
 # `tests/permissions`
 
-Suite negativa de permisos por rol, por **API directa** (`supabase-js`, sin interfaz) contra
-`App_dev`: cada rol intenta leer y escribir lo que la RLS no le permite, y también lo que sí le
-permite (para que un `deny all` accidental no pase la suite). Nace en P04.7
-(`11_Desglose_de_Tareas.md`) como primer esqueleto que adelanta parte de TEST-019
-(`08_Fases_y_Backlog.md`, F18); la suite completa por tabla y por RPC, más la variante por
-interfaz (acción oculta), llega en F18.
+Matriz de permisos por rol, por **API directa** (`supabase-js`, sin interfaz) contra `App_dev`
+(TEST-019, P18.3, y limpieza de TEST-020, P18.4). Cada uno de los siete perfiles intenta leer y
+escribir cada tabla de `public`, leer cada vista, llamar cada RPC, usar los buckets `avatars` y
+`branding` y llamar cada acción de la Edge Function `admin-users`. Lo permitido tiene que
+funcionar (contraprueba: así un `deny all` accidental no pasa) y lo no permitido tiene que dar
+cero filas, `FORBIDDEN` o un error de RLS (`42501`).
 
-## Cómo está organizada
+La parte "por interfaz" (la acción oculta) está en las suites de Playwright de cada rol
+(`tests/e2e/admin/permisos-capacidades.admin.ts`, `tests/e2e/supervisor/permisos.supervisor.ts`,
+`tests/e2e/empleado/sin-calificaciones.empleado.ts`); acá se prueba lo que importa de verdad: que
+el servidor lo rechace.
 
-- `helpers/env.ts` — lee y valida las variables de entorno (nunca las imprime).
-- `helpers/clients.ts` — fábricas de clientes `supabase-js`: `createAdminClient` (clave de
-  servicio, solo para preparar y verificar datos, nunca para probar qué puede hacer un rol),
-  `createAnonClient`, `loginAs(email)`.
-- `helpers/admin-lookups.ts` — resuelve ids del seed por email en tiempo de ejecución (nunca se
-  hardcodean uuids: el seed no promete los mismos ids entre corridas de `pnpm db:seed`).
-- `fixtures/seed-accounts.ts` — los emails de las 14 cuentas del seed, por rol.
-- Un archivo por rol: `anon.permissions.ts`, `employee.permissions.ts`,
-  `supervisor.permissions.ts`, `admin.permissions.ts`. Cada uno separa dos bloques: "lo que NO
-  puede hacer" (tiene que dar cero filas o un error `FORBIDDEN`/`42501`) y "lo que SÍ puede
-  hacer" (contraprueba).
+## Los siete perfiles
 
-Para agregar un rol o una tabla nueva: un archivo o un `it()` más, siguiendo el mismo patrón
-(cliente autenticado con `loginAs`, cliente admin solo para verificar, limpieza de cualquier dato
-que el test haya tocado).
+`anon` (sin sesión, clave publicable), empleado, supervisor, doble rol (empleado y supervisor),
+administrador sin capacidades, administrador con las siete capacidades y dueño. Los seis con
+sesión son cuentas fijas `e2e-fijo-*` (`tests/fixtures/accounts.ts`) y el dueño del seed. Los
+tests nunca nombran emails: piden el perfil por su clave (`suite/perfiles.ts`).
 
-## Por qué `.permissions.ts` y no `.spec.ts`/`.test.ts`
+## Cómo está organizada (`suite/`)
 
-Esta suite pega contra `App_dev`, un backend real, con credenciales que solo existen en
-`.env.local` (nunca en CI). `pnpm test` (Vitest con el config de la raíz) corre en cada PR
-(`ci.yml`) sin ese archivo: si esta suite usara la extensión `.spec.ts`/`.test.ts`, Vitest la
-descubriría con su patrón por defecto y `pnpm test` intentaría correrla igual, fallando en CI por
-falta de credenciales.
+| Archivo                 | Qué prueba                                                                                                   |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `00-inventario`         | Que la matriz no quede vieja: falla si una migración agrega una tabla, vista, RPC, bucket o acción sin casos |
+| `10-tablas-lectura`     | `select` de las 25 tablas por los 7 perfiles (`04` §7.2); CB-15, CB-17                                       |
+| `11-tablas-escritura`   | `insert`, `update` y `delete` por tabla y perfil; escalamiento (CB-17)                                       |
+| `12-columnas-sensibles` | Columnas de más en filas que el rol sí puede leer (DNI, contacto, observaciones)                             |
+| `13-rendimiento`        | Que la RLS no vuelva inutilizable una tabla (`select` sin filtro, menos de 3 s)                              |
+| `20-vistas`             | Las 10 vistas `v_*`: qué filas ve cada perfil y que ninguna se pueda escribir                                |
+| `30-rpc`                | Cada RPC llamada por cada perfil (`06` §15)                                                                  |
+| `40-capacidades`        | Las siete capacidades del administrador, una por una                                                         |
+| `50-storage`            | Buckets `avatars` y `branding`: carpeta propia y ajena, límites de tamaño y tipo                             |
+| `60-edge`               | Edge Function `admin-users`: JWT, rol, jerarquía, CORS, errores internos                                     |
+| `70-escalamiento`       | Un rol no se escala a sí mismo (CB-17); `anon` solo lee `v_public_branding`                                  |
+| `80-desactivado`        | Un desactivado con el token vigente no puede hacer nada (CB-18)                                              |
 
-En cambio, los archivos de esta carpeta terminan en `.permissions.ts`: no coinciden con el patrón
-de include por defecto de Vitest (`**/*.{test,spec}.*`), así que el `vitest.config.ts` de la raíz
-ni siquiera los ve. Quedan **fuera de la corrida por defecto por construcción**, no por una
-condición en tiempo de ejecución — es la opción más robusta entre las dos que pedía el encargo
-P04.7 ("que quede fuera de la corrida por defecto o se saltee sola"): no depende de que nadie
-recuerde chequear una variable de entorno antes de imprimir un resultado.
+Apoyos: `tablas.ts`, `vistas.ts`, `rpc.ts` y `edge-casos.ts` (los casos esperados), `escenario.ts`
+(el escenario `e2e-perm-` que se planta y se borra), `contexto.ts`, `perfiles.ts`, `ayudas.ts`,
+`cobertura.ts`, `inventario.ts` y `global-setup.ts` (deja las cuentas, inicia sesión una sola vez
+por perfil y repone al final lo que la suite toca).
 
-Como capa adicional (no la principal), cada archivo llama `readPermissionsTestEnv()` y envuelve
-sus casos en `describe.skipIf(!env)`: si alguien corre este config a mano sin `.env.local`
-completo, los tests se saltean solos con un aviso por consola, en vez de fallar con un error de
-red confuso.
+## Defectos conocidos (`suite/defectos.ts`)
+
+Los casos que hoy fallan por un defecto de la app llevan `it.fails` y el identificador
+(`DEF-P01` a `DEF-P13`, `SEG-01`). No se ajusta la prueba al defecto: cuando se corrige, Vitest
+avisa y hay que sacar el caso de `defectos.ts`. Hoy: 1.530 casos pasan y 50 son `expected fail`.
+El detalle está en `docs/test-inventory.md` (sección 9) y en `docs/security-review.md`.
 
 ## Cómo correrla
 
 Desde `app/`, con `.env.local` completo (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`,
-`SUPABASE_SERVICE_ROLE_KEY`, `SEED_DEV_PASSWORD` — las mismas cuatro que ya usa
-`scripts/seed-dev.ts`, ver `docs/environments.md` sección 4):
+`SUPABASE_SERVICE_ROLE_KEY`, `SEED_DEV_PASSWORD`: las mismas cuatro de `scripts/seed-dev.ts`):
 
 ```bash
-pnpm test:permissions
+pnpm test:fixtures:setup   # una vez: deja las cuentas fijas (idempotente)
+pnpm test:permissions      # unos 340 s
 ```
 
-Que es un atajo de:
+Los archivos corren uno detrás del otro (`fileParallelism: false`): comparten el escenario
+plantado y `80-desactivado` cambia el estado de tres cuentas. No se repone ninguna contraseña en
+plena corrida (cerraría las sesiones de la cuenta).
 
-```bash
-node --env-file=.env.local ./node_modules/vitest/vitest.mjs run --config tests/permissions/vitest.config.ts
-```
+### Con otras suites en paralelo (CI)
 
-(No `./node_modules/.bin/vitest`: en Git Bash de Windows ese shim es un script pensado para
-`sh`/`cmd`, no para pasárselo directo a `node`; el `.mjs` de arriba es el mismo binario, sin ese
-problema.)
+Tiene que correr con su propio conjunto de cuentas, para no pisarse con las suites de Playwright:
+`E2E_CONJUNTO=perm` (ver `tests/fixtures/accounts.ts`). Además lee el dueño del seed y repone al
+final la configuración de la empresa (`company_settings`): por eso la edición de esa configuración
+desde la interfaz (`tests/e2e/admin/configuracion-dueno.admin.ts`) va en el proyecto
+`dueno-config`, que en CI espera a que esta suite termine.
 
-No hay script en `package.json` para esto (ver la nota en el reporte de P04.7): agregar uno queda
-para cuando el orquestador decida si esta suite entra a algún workflow de CI aparte (con
-`App_dev` como secreto), y con qué nombre.
+## Por qué `.permissions.ts` y no `.spec.ts` ni `.test.ts`
 
-## Independencia y limpieza
+Esta suite pega contra `App_dev`, con credenciales que solo existen en `.env.local` (nunca en el
+CI de cada PR). `pnpm test` corre en cada PR sin ese archivo: con la extensión `.test.ts` Vitest
+la descubriría y fallaría por falta de credenciales. Los archivos terminan en `.permissions.ts`,
+que no coincide con el patrón por defecto de Vitest: quedan **fuera de la corrida por defecto por
+construcción**, no por una condición en tiempo de ejecución. Como capa adicional, sin
+`.env.local` completo la matriz se saltea sola con un aviso.
 
-Usa las cuentas fijas del seed (no crea personas: distinto de `tests/e2e/`, que si llega a crear
-datos lo hace con prefijo `e2e-`). Los pocos casos que escriben algo (teléfono propio, nota de una
-asignación propia, un `set_user_roles` con el mismo conjunto de roles) lo hacen sobre datos que
-después dejan como estaban, salvo el evento de auditoría que la propia RPC registra en
-`security_events` (no se puede deshacer: no hay política de `delete` para esa tabla, ni falta —
-es historial real de una acción real, no un dato de prueba corrupto).
+## `helpers/` y lo que se borró en P18.4
 
-## Qué NO cubre todavía (queda para TEST-019, F18)
-
-- El resto de las tablas de `04_Modelo_de_Datos.md` sección 7.2 (`employee_leaves`,
-  `employee_availability`, `client_contacts`, `checklist_templates`, `shift_tasks`,
-  `attendance_records`, `attendance_notices`, `supervision_attendance` no tienen su propio caso
-  todavía).
-- Las RPC que dependen de turnos y asignaciones activas (`assign_employee`, `record_check_in`,
-  `notify_absence`, etc.): no existen todavía en F4, nacen en fases 10 a 15.
-- La variante "por interfaz" (botón o ruta oculta) de cada caso: esta carpeta es solo API directa.
-- Storage (`avatars`, `branding`).
-- Una segunda cuenta admin con capacidades parciales (el seed de F4 solo tiene una, con las 7).
+Los cuatro archivos por rol de P04.7 (`anon`, `employee`, `supervisor`, `admin`), su config
+(`vitest.legacy.config.ts`), el script `test:permissions:legacy`, los `helpers/` que solo ellos
+usaban (`assignment-fixtures`, `checklist-fixtures`, `supervision-fixtures`, `team-lookups`) y
+`fixtures/seed-accounts.ts` (que se movió a `tests/fixtures/seed-accounts.ts` porque lo importan
+las suites viejas por dominio) quedaron reemplazados por esta matriz. Quedan `helpers/env.ts`,
+`helpers/clients.ts` y `helpers/admin-lookups.ts` porque los importa `tests/e2e-assignments/`;
+cuando esa carpeta se migre a `tests/fixtures/`, se borran.

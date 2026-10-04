@@ -37,7 +37,7 @@ import {
 } from './helpers/shiftFixture.ts'
 import { pickFarDate } from './helpers/datePicker.ts'
 import { loginAs } from './helpers/login.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 const env = readE2eSupervisionesEnv()
 test.skip(!env, MISSING_ENV_MESSAGE)

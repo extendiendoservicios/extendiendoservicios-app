@@ -20,7 +20,7 @@ import {
   getAdminClient,
 } from './helpers/adminClient.ts'
 import { loginAs } from './helpers/login.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 const env = readE2eShiftsServicesEnv()
 test.skip(!env, MISSING_ENV_MESSAGE)

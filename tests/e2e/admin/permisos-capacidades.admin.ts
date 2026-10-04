@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { FIXED_ACCOUNTS, getAdminDb } from '../../fixtures/accounts.ts'
 import { callAdminUsers, expectHint } from '../../fixtures/api.ts'
-import { FRANJAS } from '../../fixtures/dates.ts'
+import { FRANJAS, franjaYaEmpezo } from '../../fixtures/dates.ts'
 import { MISSING_ENV_MESSAGE, readE2eEnv } from '../../fixtures/env.ts'
 import { Scenario } from '../../fixtures/scenario.ts'
 import {
@@ -52,9 +52,12 @@ test.describe('permisos por capacidad (03 sección 6)', () => {
           })
           await expect(detalle.getByText('Dotación: 1/1')).toBeVisible()
           // Lo que un administrador SIN capacidades sí puede (matriz: "S"): quitar antes del inicio.
-          await expect(
-            detalle.getByRole('button', { name: 'Quitar' }),
-          ).toBeVisible()
+          // "Quitar" solo se ofrece antes del inicio del turno.
+          if (!franjaYaEmpezo(FRANJAS.noche)) {
+            await expect(
+              detalle.getByRole('button', { name: 'Quitar' }),
+            ).toBeVisible()
+          }
           await expect(
             detalle.getByRole('button', { name: 'Registrar en nombre' }),
           ).toHaveCount(0)

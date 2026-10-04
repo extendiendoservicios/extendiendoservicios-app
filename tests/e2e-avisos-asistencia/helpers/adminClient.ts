@@ -8,7 +8,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../../src/lib/database.types.ts'
 import { readE2eAvisosAsistenciaEnv } from './env.ts'
-import { SEED_ACCOUNTS } from '../../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../../fixtures/seed-accounts.ts'
 
 export type AdminClient = SupabaseClient<Database>
 

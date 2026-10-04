@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { nombreDe, reNombreDe } from '../../fixtures/accounts.ts'
 import {
   FRANJAS,
   isTooCloseToMidnight,
@@ -203,7 +204,7 @@ test(
         await expect(detalle.getByText('Vaciar los canastos')).toBeVisible()
         await detalle.getByRole('button', { name: 'Asignar empleado' }).click()
         const hoja = page.getByRole('dialog', { name: 'Asignar empleado' })
-        await hoja.getByRole('radio', { name: /E2E-Fijo Empleado1/ }).click()
+        await hoja.getByRole('radio', { name: reNombreDe('empleado1') }).click()
         await hoja.getByRole('button', { name: 'Asignar', exact: true }).click()
         await expect(page.getByText('Asignamos al empleado.')).toBeVisible()
         await expect(detalle.getByText('Dotación: 1/1')).toBeVisible()
@@ -230,7 +231,9 @@ test(
 
       await test.step('ADM-10: la asignación sin registro figura como "Sin registro"', async () => {
         await page.goto('/admin/asistencia')
-        await page.getByPlaceholder('Buscar por nombre…').fill('Empleado1')
+        await page
+          .getByPlaceholder('Buscar por nombre…')
+          .fill(nombreDe('empleado1'))
         await expect(
           page.getByRole('row').filter({ hasText: nombreCliente }),
         ).toContainText('Sin registro')
@@ -248,7 +251,9 @@ test(
           })
           .click()
         await hoja.getByRole('combobox', { name: 'Supervisor' }).click()
-        await page.getByRole('option', { name: 'E2E-Fijo Supervisor2' }).click()
+        await page
+          .getByRole('option', { name: nombreDe('supervisor2') })
+          .click()
         await hoja.getByRole('button', { name: 'Asignar supervisión' }).click()
         await expect(page.getByText('Asignamos al supervisor.')).toBeVisible()
         const { data: supervision } = await sc.db
@@ -354,7 +359,7 @@ test(
           .getByRole('region', { name: 'Servicios de hoy' })
           .getByRole('row')
           .filter({ hasText: nombreCliente })
-        await expect(filas.first()).toContainText('E2E-Fijo Empleado1')
+        await expect(filas.first()).toContainText(nombreDe('empleado1'))
         await expect(
           page.getByRole('region', { name: 'Supervisiones de hoy' }),
         ).toContainText(nombreCliente)

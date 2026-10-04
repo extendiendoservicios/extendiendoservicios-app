@@ -2,7 +2,10 @@
 //
 // Global setup de Playwright para las suites de F18 contra `App_dev`:
 //  1. Deja las cuentas fijas creadas, activas y completas (idempotente: `ensureFixedAccounts`).
-//  2. Barre los residuos `e2e-` de una corrida anterior que se cortó a la mitad.
+//  2. Barre los residuos `e2e-` de una corrida anterior que se cortó a la mitad. Con
+//     `E2E_SKIP_SWEEP=1` NO barre: en CI lo hace un único job previo (`setup-accounts.ts --barrer`),
+//     porque el barrido borra todo cliente `e2e-` y, con suites en paralelo, borraría los datos de
+//     las demás.
 //  3. Inicia sesión una vez por cuenta y deja el `storageState` y los ids para los tests.
 // Sin variables en `.env.local` no hace nada: los specs se saltean solos (`test.skip`).
 
@@ -32,9 +35,11 @@ export default async function globalSetup(): Promise<void> {
     console.log(`[fixtures] cuentas fijas creadas: ${ensured.created.length}`)
   }
 
-  const swept = await sweepResidues(db)
-  if (swept > 0)
-    console.log(`[fixtures] residuos barridos: ${swept} cliente(s) e2e-`)
+  if (process.env.E2E_SKIP_SWEEP !== '1') {
+    const swept = await sweepResidues(db)
+    if (swept > 0)
+      console.log(`[fixtures] residuos barridos: ${swept} cliente(s) e2e-`)
+  }
 
   const ownerId = (await loadAuthUserIds(db)).get(OWNER_EMAIL.toLowerCase())
   if (!ownerId) throw new Error('No existe el dueño del seed en App_dev.')

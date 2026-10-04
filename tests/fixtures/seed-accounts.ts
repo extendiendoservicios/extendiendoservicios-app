@@ -1,4 +1,4 @@
-// tests/permissions/fixtures/seed-accounts.ts — P04.7
+// tests/fixtures/seed-accounts.ts — P04.7 (movido desde tests/permissions/fixtures en P18.4, TEST-020)
 //
 // Emails de las 14 cuentas ficticias del seed de `App_dev` (supabase/seed.sql,
 // scripts/seed-dev.ts), agrupadas por rol. Todas comparten `SEED_DEV_PASSWORD`

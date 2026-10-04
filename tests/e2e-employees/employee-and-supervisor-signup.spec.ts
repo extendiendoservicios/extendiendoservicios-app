@@ -10,7 +10,7 @@ import {
 } from './helpers/adminEmployeesClient.ts'
 import { createEmployeeViaForm } from './helpers/employeeForm.ts'
 import { loginAs } from './helpers/login.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 // EMP-014/TEST-006 (08_Fases_y_Backlog.md F9, encargo P09.5): "e2e: alta de empleado con
 // usuario → ese usuario entra a /app; alta de supervisor → entra a /sup" (RB-A02). Cada test

@@ -9,7 +9,7 @@ import {
 } from './helpers/adminClient.ts'
 import { interceptMapRequests } from './helpers/interceptMap.ts'
 import { loginAs } from './helpers/login.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 // SITE-008 (08_Fases_y_Backlog.md F8, SITE-005 "e2e: crear sede con coordenadas y verla en el
 // mapa"): un administrador crea una sede con coordenadas desde ADM-23 y la ve en ADM-24 (pestaña

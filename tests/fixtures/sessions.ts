@@ -16,6 +16,7 @@ import { createClient, type Session } from '@supabase/supabase-js'
 import type { Database } from '../../src/lib/database.types.ts'
 import { authStorageKey, E2E_BASE_URL, requireE2eEnv } from './env.ts'
 import {
+  conjuntoActivo,
   FIXED_ACCOUNTS,
   OWNER_EMAIL,
   type AdminDb,
@@ -26,13 +27,15 @@ const APP_ROOT = fileURLToPath(new URL('../..', import.meta.url))
 
 /**
  * Carpeta del estado de la corrida. Dentro de `node_modules/.cache/` porque git la ignora y
- * Playwright no la limpia al arrancar (a diferencia de `test-results/`).
+ * Playwright no la limpia al arrancar (a diferencia de `test-results/`). Cada conjunto de cuentas
+ * (`E2E_CONJUNTO`, ver `accounts.ts`) tiene su carpeta: dos suites en paralelo en la misma
+ * máquina no se pisan los `storageState`.
  */
 export const STATE_DIR = path.join(
   APP_ROOT,
   'node_modules',
   '.cache',
-  'e2e-fijo',
+  conjuntoActivo() === 'base' ? 'e2e-fijo' : `e2e-fijo-${conjuntoActivo()}`,
 )
 
 export type SessionKey = FixedAccountKey | 'owner'
@@ -57,19 +60,42 @@ export function anonClient(): AdminDb {
   })
 }
 
-/** Inicia sesión por API y devuelve la sesión (para `storageState` o para pedidos directos). */
+/** El proveedor limita los ingresos por IP (429 `over_request_rate_limit`). */
+export function esLimiteDeTasa(error: {
+  status?: number
+  code?: string
+  message: string
+}): boolean {
+  return (
+    error.status === 429 ||
+    error.code === 'over_request_rate_limit' ||
+    /rate limit/i.test(error.message)
+  )
+}
+
+/**
+ * Inicia sesión por API y devuelve la sesión (para `storageState` o para pedidos directos).
+ * Si el proveedor responde con el límite de tasa (varias suites en paralelo desde la misma IP,
+ * ver `docs/deployment.md` sección 14.5), espera con retroceso creciente y reintenta: es una
+ * espera por una condición real, no un `sleep` para sincronizar el test.
+ */
 export async function signInSession(email: string): Promise<Session> {
   const env = requireE2eEnv()
-  const { data, error } = await anonClient().auth.signInWithPassword({
-    email,
-    password: env.seedPassword,
-  })
-  if (error || !data.session) {
+  const esperas = [5, 10, 20, 30, 40, 60]
+  for (let intento = 0; ; intento++) {
+    const { data, error } = await anonClient().auth.signInWithPassword({
+      email,
+      password: env.seedPassword,
+    })
+    if (!error && data.session) return data.session
+    if (error && esLimiteDeTasa(error) && intento < esperas.length) {
+      await new Promise((r) => setTimeout(r, esperas[intento] * 1000))
+      continue
+    }
     throw new Error(
       `No se pudo iniciar sesión como ${email}: ${error?.message ?? 'sin sesión'}`,
     )
   }
-  return data.session
 }
 
 /** Cliente con la sesión de la cuenta indicada (el dueño del seed o una cuenta fija). */

@@ -8,7 +8,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../../src/lib/database.types.ts'
 import { readE2eAssignmentsEnv } from './env.ts'
-import { SEED_ACCOUNTS } from '../../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../../fixtures/seed-accounts.ts'
 
 // Tipado con `Database` (no genérico a secas): permite pasar este cliente directo a
 // `resolveUserId` (`tests/permissions/helpers/admin-lookups.ts`), que algunos specs de esta

@@ -5,7 +5,7 @@ import {
   signInForToken,
   callAdminUsersFunction,
 } from './helpers/adminUsersClient.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 // USERS-018 (encargo P07.4): "el último dueño no se puede desactivar" — `06_API.md` sección 2.1
 // (regla del último owner, P-017) y `supabase/functions/admin-users/index.ts`

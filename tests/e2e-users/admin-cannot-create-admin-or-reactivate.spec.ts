@@ -7,7 +7,7 @@ import {
   getAdminClient,
   signInForToken,
 } from './helpers/adminUsersClient.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 // USERS-018 (encargo P07.4): "un administrador no puede crear otro administrador ni reactivar a
 // nadie" — por API directa, sin UI (la pantalla ya oculta los botones, `canCreateAdminUser` y

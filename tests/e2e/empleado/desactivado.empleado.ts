@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test'
 import { callAdminUsers } from '../../fixtures/api.ts'
-import { getAdminDb, loadAuthUsers } from '../../fixtures/accounts.ts'
+import {
+  emailBajaCb18,
+  getAdminDb,
+  loadAuthUsers,
+} from '../../fixtures/accounts.ts'
 import {
   MISSING_ENV_MESSAGE,
   readE2eEnv,
@@ -19,7 +23,8 @@ import { loginByForm } from '../../fixtures/ui.ts'
 
 test.skip(!readE2eEnv(), MISSING_ENV_MESSAGE)
 
-const EMAIL = 'e2e-baja-cb18@example.com'
+// Una por conjunto de cuentas: `emailBajaCb18()` (dos jobs en paralelo no comparten la cuenta).
+const EMAIL = emailBajaCb18()
 
 test(
   'CB-18: con la app abierta, al desactivar la cuenta el siguiente refresco de la sesión deja a la persona fuera',

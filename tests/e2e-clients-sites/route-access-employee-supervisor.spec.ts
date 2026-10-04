@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { readE2eClientsSitesEnv, MISSING_ENV_MESSAGE } from './helpers/env.ts'
 import { loginAs } from './helpers/login.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 // TEST-005: "que empleado y supervisor no entren a las rutas de administración de clientes y
 // sedes" (encargo P08.5). `RequireRole allow={['owner','admin']}` (`router.tsx`) protege TODO

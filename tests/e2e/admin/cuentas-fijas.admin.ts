@@ -1,12 +1,15 @@
 import { expect, test } from '@playwright/test'
 import {
   ensureFixedAccounts,
+  esDelConjuntoActivo,
   FIXED_ACCOUNT_LIST,
   FIXED_ACCOUNTS,
   getAdminDb,
+  OWNER_EMAIL,
   type FixedAccountKey,
 } from '../../fixtures/accounts.ts'
 import { MISSING_ENV_MESSAGE, readE2eEnv } from '../../fixtures/env.ts'
+import { cubre } from '../../fixtures/trace.ts'
 import { loginByForm } from '../../fixtures/ui.ts'
 
 // TEST-015/TEST-016 (P18.1): las cuentas fijas de prueba que usan todas las suites de F18.
@@ -27,7 +30,9 @@ async function countFixedAuthUsers(): Promise<number> {
       perPage: 1000,
     })
     if (error) throw new Error(error.message)
-    total += data.users.filter((u) => u.email?.startsWith('e2e-fijo-')).length
+    total += data.users.filter(
+      (u) => u.email && esDelConjuntoActivo(u.email),
+    ).length
     if (data.users.length < 1000) break
   }
   return total
@@ -100,4 +105,14 @@ test.describe('cuentas fijas de prueba (RB-A01, RB-E01, RB-S01)', () => {
       await loginByForm(page, FIXED_ACCOUNTS[key].email, home)
     })
   }
+
+  // Reemplaza a `e2e-auth/auth-by-role` (borrado: esperaba el texto de las pantallas
+  // provisorias): el dueño del seed también ingresa por la pantalla y cae en su inicio.
+  test(
+    'el dueño del seed ingresa por la pantalla y cae en su inicio',
+    cubre('RB-A01'),
+    async ({ page }) => {
+      await loginByForm(page, OWNER_EMAIL, /\/admin$/)
+    },
+  )
 })

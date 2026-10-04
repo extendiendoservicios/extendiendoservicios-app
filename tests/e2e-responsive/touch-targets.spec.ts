@@ -26,7 +26,7 @@ import {
   type ResponsiveData,
 } from './helpers/fixtures.ts'
 import { MANAGEMENT_SCREENS, OPERATION_SCREENS } from './helpers/screens.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 const env = readE2eResponsiveEnv()
 test.skip(!env, MISSING_ENV_MESSAGE)

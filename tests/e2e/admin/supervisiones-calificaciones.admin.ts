@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { nombreDe } from '../../fixtures/accounts.ts'
 import { expectHint } from '../../fixtures/api.ts'
 import {
   FRANJAS,
@@ -86,7 +87,7 @@ test.describe('supervisiones y calificaciones (ADM-13, ADM-15)', () => {
             .getByRole('combobox', { name: 'Filtrar por supervisor' })
             .click()
           await page
-            .getByRole('option', { name: 'E2E-Fijo Supervisor2' })
+            .getByRole('option', { name: nombreDe('supervisor2') })
             .click()
           await expect(fila(clienteB.name)).toBeVisible()
           await expect(fila(clienteA.name)).toHaveCount(0)
@@ -102,7 +103,7 @@ test.describe('supervisiones y calificaciones (ADM-13, ADM-15)', () => {
           await page
             .getByRole('combobox', { name: 'Filtrar por empleado' })
             .click()
-          await page.getByRole('option', { name: 'E2E-Fijo Dual' }).click()
+          await page.getByRole('option', { name: nombreDe('dual') }).click()
           await expect(fila(clienteA.name)).toBeVisible()
           await expect(fila(clienteB.name)).toHaveCount(0)
           await page
@@ -146,7 +147,7 @@ test.describe('supervisiones y calificaciones (ADM-13, ADM-15)', () => {
             .getByRole('row')
             .filter({ hasText: comentario })
           await expect(calificacion).toBeVisible()
-          await expect(calificacion).toContainText('E2E-Fijo Dual')
+          await expect(calificacion).toContainText(nombreDe('dual'))
           await expect(
             calificacion.getByRole('img', { name: '4 de 5 estrellas' }),
           ).toBeVisible()

@@ -8,7 +8,7 @@ import {
 } from './helpers/adminClient.ts'
 import { interceptMapRequests } from './helpers/interceptMap.ts'
 import { loginAs } from './helpers/login.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 // CLIENT-008 (08_Fases_y_Backlog.md F8, CLIENT-005 "e2e alta de cliente completo"): un
 // administrador da de alta un cliente con CUIT, carga dos contactos (uno principal, cambia cuál

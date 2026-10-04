@@ -5,7 +5,7 @@ import {
   disposableEmail,
   getAdminClient,
 } from './helpers/adminUsersClient.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 // USERS-018 (08_Fases_y_Backlog.md F7): "e2e: dueño crea administrador, ajusta capacidades, el
 // administrador entra y ve lo que corresponde". Recorrido principal del encargo P07.4, con las

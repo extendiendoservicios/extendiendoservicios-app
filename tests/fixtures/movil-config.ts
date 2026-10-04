@@ -47,7 +47,8 @@ export function configMovil(testMatch: string): PlaywrightTestConfig {
       command: 'pnpm exec vite preview --port 5173 --strictPort',
       cwd: APP_ROOT,
       url: E2E_BASE_URL,
-      reuseExistingServer: false,
+      // `E2E_REUSE_SERVER=1`: usa el `vite preview` ya levantado en el 5173 (suites en paralelo).
+      reuseExistingServer: process.env.E2E_REUSE_SERVER === '1',
       timeout: 30_000,
     },
     projects: [

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { nombreDe, reNombreDe } from '../../fixtures/accounts.ts'
 import {
   FRANJAS,
   isTooCloseToMidnight,
@@ -64,7 +65,7 @@ test(
         await page.goto(`/admin/turnos/${turnoAsignar}`)
         await expectNoHorizontalScroll(page)
         await page.getByRole('button', { name: 'Asignar empleado' }).click()
-        await page.getByRole('radio', { name: /E2E-Fijo Empleado3/ }).click()
+        await page.getByRole('radio', { name: reNombreDe('empleado3') }).click()
         await page.getByRole('button', { name: 'Asignar', exact: true }).click()
         await expect(page.getByText('Asignamos al empleado.')).toBeVisible()
         const { data } = await sc.db
@@ -78,7 +79,9 @@ test(
       await test.step('ADM-10/11: registra el inicio en nombre de otro empleado', async () => {
         await page.goto('/admin/asistencia')
         await expectNoHorizontalScroll(page)
-        await page.getByPlaceholder('Buscar por nombre…').fill('Empleado4')
+        await page
+          .getByPlaceholder('Buscar por nombre…')
+          .fill(nombreDe('empleado4'))
         // Espera a que el filtro deje una sola tarjeta: sin esto el clic puede caer sobre el
         // botón de otro empleado de la lista todavía sin filtrar.
         const registrar = page.getByRole('button', {
@@ -88,7 +91,9 @@ test(
         await registrar.click()
         await expect(
           page.getByRole('dialog', {
-            name: /Registrar en nombre de E2E-Fijo Empleado4/,
+            name: new RegExp(
+              `Registrar en nombre de ${reNombreDe('empleado4').source}`,
+            ),
           }),
         ).toBeVisible()
         await page.getByLabel('Hora').fill(`${sc.today}T00:02`)
@@ -115,7 +120,9 @@ test(
           })
           .click()
         await page.getByRole('combobox', { name: 'Supervisor' }).click()
-        await page.getByRole('option', { name: 'E2E-Fijo Supervisor1' }).click()
+        await page
+          .getByRole('option', { name: nombreDe('supervisor1') })
+          .click()
         await page.getByRole('button', { name: 'Asignar supervisión' }).click()
         await expect(page.getByText('Asignamos al supervisor.')).toBeVisible()
         const { data } = await sc.db

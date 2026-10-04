@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { getAdminDb } from '../../fixtures/accounts.ts'
+import { getAdminDb, reNombreDe } from '../../fixtures/accounts.ts'
 import { weekdayOf } from '../../fixtures/dates.ts'
 import { MISSING_ENV_MESSAGE, readE2eEnv } from '../../fixtures/env.ts'
 import { Scenario } from '../../fixtures/scenario.ts'
@@ -54,7 +54,7 @@ test(
           .click()
         const hoja = page.getByRole('dialog', { name: 'Asignar empleado' })
         const candidato = hoja.getByRole('radio', {
-          name: /E2E-Fijo Empleado4/,
+          name: reNombreDe('empleado4'),
         })
         await expect(candidato).toBeVisible()
         return (await candidato.textContent()) ?? ''
