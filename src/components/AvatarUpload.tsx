@@ -255,6 +255,7 @@ export function AvatarUpload({
       <input
         ref={fileInputRef}
         type="file"
+        aria-label="Cambiar foto de perfil"
         accept={AVATAR_ACCEPTED_MIME_TYPES.join(',')}
         className="sr-only"
         onChange={(event) => void handleFileSelected(event)}

@@ -206,20 +206,11 @@ test(
   },
 )
 
-// DEF-04 (defecto de la app, severidad menor): `AuthProvider.signOut` llama a
-// `supabase.auth.signOut()` sin `scope`, y el alcance por omisión de supabase-js es 'global': el
-// "Cerrar sesión" de un dispositivo cierra TODAS las sesiones de la cuenta. `06_API.md` sección 1
-// dice "Cerrar sesión | auth.signOut() | propio" y el comentario del propio código habla de
-// "cierre local". Cuando se corrija (`signOut({ scope: 'local' })`) este test pasa y hay que
-// sacarle el `test.fail`.
+// DEF-04 (corregido en P18.6): el cierre de sesión es local (`signOut({ scope: 'local' })`).
 test(
   'cerrar la sesión en un dispositivo no cierra la sesión de la misma cuenta en otro dispositivo',
   cubre('RB-X02', 'P-015'),
   async ({ page }) => {
-    test.fail(
-      true,
-      'DEF-04: el cierre de sesión de la app es global (supabase.auth.signOut() sin scope local)',
-    )
     // Segundo dispositivo: una sesión independiente de la misma cuenta, abierta por API.
     const otroDispositivo = await signInSession(OWNER_EMAIL)
 

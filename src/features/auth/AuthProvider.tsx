@@ -304,7 +304,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // (F7, `06_API.md` sección 2.1) — no algo que la propia sesión haga
     // sobre sí misma. `onAuthStateChange` dispara `SIGNED_OUT` y limpia el
     // estado; no hace falta setearlo acá también.
-    await supabase.auth.signOut()
+    await supabase.auth.signOut({ scope: 'local' })
   }, [])
 
   const refreshProfile = useCallback(async () => {

@@ -188,4 +188,18 @@ describe('AvatarUpload — con foto', () => {
     ).toBeInTheDocument()
     expect(onChange).not.toHaveBeenCalled()
   })
+
+  it('el input de archivo tiene etiqueta accesible (DEF-A01)', () => {
+    render(
+      <AvatarUpload
+        profileId="perfil-1"
+        name="Sofía Ibarra"
+        avatarPath={null}
+      />,
+    )
+
+    expect(document.querySelector('input[type="file"]')).toHaveAccessibleName(
+      'Cambiar foto de perfil',
+    )
+  })
 })
