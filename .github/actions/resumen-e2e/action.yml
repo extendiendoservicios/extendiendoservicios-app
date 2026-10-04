@@ -1,0 +1,40 @@
+name: Resumen de una corrida de Playwright
+description: >-
+  Escribe en la pestaña Summary del job una tabla con los resultados del reporte JSON de
+  Playwright y la lista de los tests que fallaron. Va con `if: always()`.
+
+inputs:
+  titulo:
+    description: 'Título de la sección (por ejemplo: admin, chromium y mobile)'
+    required: true
+  json:
+    description: Ruta del reporte JSON (PLAYWRIGHT_JSON_OUTPUT_NAME de la corrida)
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Resumen
+      shell: bash
+      env:
+        TITULO: ${{ inputs.titulo }}
+        JSON: ${{ inputs.json }}
+      run: |
+        {
+          echo "### e2e ${TITULO} contra App_dev"
+          echo ""
+          echo "Rama probada: \`${RAMA_PROBADA}\`"
+          echo ""
+          if [ -f "$JSON" ]; then
+            jq -r '"| Pasaron | Fallaron | Inestables | Salteados | Duración |\n| --- | --- | --- | --- | --- |\n| \(.stats.expected) | \(.stats.unexpected) | \(.stats.flaky) | \(.stats.skipped) | \((.stats.duration / 1000) | floor) s |"' "$JSON"
+            fallas="$(jq -r '[.. | objects | select(has("specs")) | .specs[] | select(.ok == false) | "- `\(.file)`: \(.title)"] | .[]' "$JSON")"
+            if [ -n "$fallas" ]; then
+              echo ""
+              echo "**Tests que fallaron**"
+              echo ""
+              echo "$fallas"
+            fi
+          else
+            echo "No se generó el reporte JSON: la suite no llegó a correr (mirá el paso que falló)."
+          fi
+        } >> "$GITHUB_STEP_SUMMARY"

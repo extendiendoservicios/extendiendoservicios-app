@@ -30,7 +30,7 @@ Cada suite tiene su propio conjunto de cuentas (`E2E_CONJUNTO`: `base` por omisi
 `emp-movil`, `emp-webkit`, `sup`, `perm`). El barrido de residuos corre una sola vez antes de todo
 (`node --env-file=.env.local tests/fixtures/setup-accounts.ts --barrer`) y las suites se ejecutan con
 `E2E_SKIP_SWEEP=1`. Lo que usa al dueño del seed (`dueno-config` y `dueno-final`) corre al final.
-El diseño, los tiempos medidos y el workflow propuesto están en `docs/test-inventory.md`, sección 10.
+El nocturno (`.github/workflows/e2e-app-dev.yml`) corre estos conjuntos como jobs paralelos, uno por suite (guía y tiempos en `docs/deployment.md` sección 14); el diseño y los tiempos medidos están en `docs/test-inventory.md`, sección 10.
 Para probar suites en paralelo en una sola máquina: `E2E_REUSE_SERVER=1` con un `vite preview` en el 5173. Los ingresos por API esperan y reintentan si el proveedor responde con el límite de tasa (429).
 
 ### Reglas
