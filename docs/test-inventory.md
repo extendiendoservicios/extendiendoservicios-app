@@ -26,7 +26,7 @@ Este documento es la base de P18.2 a P18.4: dice qué hay probado hoy, a qué fi
 | Deno                       | `supabase/functions/admin-users/index.test.ts`             | 9 pruebas                                                                                                                                 |
 | Permisos por API directa   | `tests/permissions/suite/` (matriz completa)               | 1.580 casos (1.530 pasan, 50 `expected fail`); el legado (137 casos) se borró en P18.4                                                    |
 | e2e viejos                 | 11 carpetas `tests/e2e-*` + `tests/e2e/*.spec.ts`          | 56 `test(...)` en 11 carpetas (sin contar los generados en bucles), más 3 de humo de CI en `tests/e2e/*.spec.ts`                          |
-| e2e administración (nuevo) | `tests/e2e/admin/`                                         | 41 tests en 17 archivos (proyectos `chromium`, `mobile`, `edge`, `a11y`, `dueno-config`, `dueno-final`); 4 con `test.fail()` por defectos |
+| e2e administración (nuevo) | `tests/e2e/admin/`                                         | 42 tests en 17 archivos (proyectos `chromium`, `mobile`, `edge`, `a11y`, `dueno-config`, `dueno-final`); 4 con `test.fail()` por defectos |
 | e2e empleado (nuevo)       | `tests/e2e/empleado/`                                      | 24 tests en 9 archivos, en `mobile` (390 px táctil, Chromium) y `webkit` (iPhone 14); 1 con `test.fail()` (DEF-01)                        |
 | e2e supervisor (nuevo)     | `tests/e2e/supervisor/`                                    | 12 tests en 5 archivos, en `mobile` y `webkit`                                                                                            |
 | Carga ligera               | `tests/load/carga-ligera.ts` (`pnpm test:load`)            | script Node con supabase-js: 5 administradores y 30 empleados con polling; manual, no corre en el nocturno                                |
@@ -258,7 +258,7 @@ Matriz completa en `tests/permissions/suite/` (`pnpm test:permissions`): **1.580
 
 ### Transversales (P18.4): hecho
 
-- Navegadores (TEST-021): webkit (iPhone 14) en empleado y supervisor desde P18.2, y **Edge** (canal `msedge`) como proyecto de la suite de administración (27 tests). Ver la sección 10.
+- Navegadores (TEST-021): webkit (iPhone 14) en empleado y supervisor desde P18.2, y **Edge** (canal `msedge`) como proyecto de la suite de administración (28 tests). Ver la sección 10.
 - Accesibilidad con axe-core (TEST-023): hecho, sección 10. Un defecto nuevo (DEF-A01).
 - Carga ligera (TEST-022): hecho, `pnpm test:load`, sección 10.
 - Casos borde (TEST-020): los 25 cubiertos (sección 6).
@@ -354,19 +354,19 @@ Detalle y pasos en el reporte del paquete. Cada uno está marcado en el test con
 
 Máquina de desarrollo (Windows 10); en un runner de `ubuntu-latest` (2 vCPU) hay que esperar tiempos algo mayores. El tiempo de cada suite incluye su `globalSetup` (cuentas e inicio de sesión, unos 15 s).
 
-| Suite (cómo se corre)                                                         | Tests                | Tiempo medido |
-| ----------------------------------------------------------------------------- | -------------------- | ------------- |
-| Administración, proyectos `chromium` y `mobile` (2 procesos)                  | 28                   | 4 min 27 s    |
-| Administración en Edge, proyecto `edge` (sin `dueno-*` ni axe)                | 27                   | 3 min 55 s    |
-| Auditoría de accesibilidad de administración, proyecto `a11y`                 | 4                    | 2 min 29 s    |
-| Empleado, proyecto `mobile`                                                   | 24                   | 5 min 55 s    |
-| Empleado, proyecto `webkit` (iPhone 14)                                       | 23 (1 salteado)      | 4 min 24 s    |
-| Supervisor, `mobile` y `webkit` en secuencia                                  | 24 (12 por proyecto) | 4 min 14 s    |
-| Matriz de permisos (`pnpm test:permissions`)                                  | 1.580                | 5 min 51 s    |
-| Administración, `dueno-config` y `dueno-final` (dos invocaciones)             | 9                    | 56 s + 34 s   |
-| `e2e-auth` (suite vieja que se suma al nocturno)                              | 14                   | 26 s          |
-| `pnpm build` completo (`tsc -b` y `vite build`), solo `vite build`            | —                    | 84 s, 67 s    |
-| Barrido único + todos los conjuntos de cuentas (`setup-accounts.ts --barrer`) | —                    | 22 a 32 s     |
+| Suite (cómo se corre)                                                         | Tests                | Tiempo medido                          |
+| ----------------------------------------------------------------------------- | -------------------- | -------------------------------------- |
+| Administración, proyectos `chromium` y `mobile` (2 procesos)                  | 29                   | 4 min 27 s (dos corridas: 4:25 y 4:28) |
+| Administración en Edge, proyecto `edge` (sin `dueno-*` ni axe)                | 28                   | 4 min 1 s y 4 min 36 s (dos corridas)  |
+| Auditoría de accesibilidad de administración, proyecto `a11y`                 | 4                    | 2 min 50 s (2:49 y 2:51)               |
+| Empleado, proyecto `mobile`                                                   | 24                   | 6 min (6:04 y 6:01)                    |
+| Empleado, proyecto `webkit` (iPhone 14)                                       | 23 (1 salteado)      | 4 min 24 s                             |
+| Supervisor, `mobile` y `webkit` en secuencia                                  | 24 (12 por proyecto) | 4 min 5 s y 4 min 25 s (dos corridas)  |
+| Matriz de permisos (`pnpm test:permissions`)                                  | 1.580                | 5 min 53 s (dos corridas idénticas)    |
+| Administración, `dueno-config` y `dueno-final` (dos invocaciones)             | 9                    | 56 s + 34 s                            |
+| `e2e-auth` (suite vieja que se suma al nocturno)                              | 14                   | 26 s                                   |
+| `pnpm build` completo (`tsc -b` y `vite build`), solo `vite build`            | —                    | 84 s, 67 s                             |
+| Barrido único + todos los conjuntos de cuentas (`setup-accounts.ts --barrer`) | —                    | 22 a 32 s                              |
 
 Dos cosas que bajaron el tiempo: el borde exacto de CB-06 (espera unos 3 minutos de reloj real) corre solo en `mobile` y el proyecto `webkit` pasó de 7 min 25 s a 4 min 24 s; y los ~3 minutos de axe de administración salieron del job principal a su propio proyecto (`a11y`), con la regla de contraste corriendo solo en las pantallas representativas.
 
@@ -388,7 +388,7 @@ barrido   ──┴─► suites en paralelo, cada una con su conjunto de cuenta
 | `admin`      | `playwright test --config=tests/e2e/admin/playwright.admin.config.ts --project=chromium --project=mobile`                           | `base`         | 1,2 + 4,5 = 5,7 min               |
 | `admin-edge` | igual, `--project=edge --no-deps`                                                                                                   | `edge`         | 1,2 + 4,0 = 5,2 min               |
 | `admin-a11y` | igual, `--project=a11y --no-deps`                                                                                                   | `a11y`         | 1,2 + 2,5 = 3,7 min               |
-| `emp-movil`  | `--config=tests/e2e/empleado/playwright.empleado.config.ts --project=mobile`                                                        | `emp-movil`    | 1,2 + 5,9 = 7,1 min               |
+| `emp-movil`  | `--config=tests/e2e/empleado/playwright.empleado.config.ts --project=mobile`                                                        | `emp-movil`    | 1,2 + 6,0 = 7,2 min               |
 | `emp-webkit` | igual, `--project=webkit --no-deps` (hace falta `playwright install --with-deps webkit`)                                            | `emp-webkit`   | 1,5 + 4,4 = 5,9 min               |
 | `sup`        | `--config=tests/e2e/supervisor/playwright.supervisor.config.ts` (los dos proyectos) y después `e2e-auth`                            | `sup`          | 1,5 + 4,7 = 6,2 min               |
 | `perm`       | `pnpm test:permissions` con `node --env-file` reemplazado por el `env` del job (sin navegador)                                      | `perm`         | 1,0 + 5,9 = 6,9 min               |
@@ -396,7 +396,7 @@ barrido   ──┴─► suites en paralelo, cada una con su conjunto de cuenta
 
 Variables de todos los jobs de suites: `E2E_SKIP_SWEEP=1` (nadie barre salvo `barrido`), `E2E_CONJUNTO` (la de la tabla) y los cuatro secretos `E2E_*` de hoy; el `webServer` de cada config levanta su `vite preview` en el 5173 sobre el `dist/` descargado. Cada job de Playwright usa `--reporter=dot,html` y sube el reporte si falla.
 
-**Tiempo total estimado: de 12 a 14 minutos** (camino crítico: `build` 2,0 + el job más largo, `emp-movil` 7,1 o `perm` 6,9, + `dueno` 2,7 = 11,8 minutos con los tiempos de esta máquina; unos 14 con runners un 25 % más lentos). Margen angosto. Si se pasa de 15: (1) partir `emp-movil` en dos jobs por archivo (necesita un conjunto más), (2) partir `11-tablas-escritura` (2 min 32 s) de la matriz de permisos, (3) cuando DEF-04 se corrija, `dueno` deja de esperar a los demás y se funde con `admin`.
+**Tiempo total estimado: de 12 a 14 minutos** (camino crítico: `build` 2,0 + el job más largo, `emp-movil` 7,2 o `perm` 6,9, + `dueno` 2,7 = 11,9 minutos con los tiempos de esta máquina; unos 14 con runners un 25 % más lentos). Margen angosto. Si se pasa de 15: (1) partir `emp-movil` en dos jobs por archivo (necesita un conjunto más), (2) partir `11-tablas-escritura` (2 min 32 s) de la matriz de permisos, (3) cuando DEF-04 se corrija, `dueno` deja de esperar a los demás y se funde con `admin`.
 
 **Consumo de minutos de GitHub Actions:** unos 47 minutos de job por noche (≈ 1.400 por mes). Si el repositorio es privado en el plan gratuito (2.000 minutos por mes), con `ci.yml`, los despliegues y el respaldo queda justo: conviene correrlo tres o cuatro noches por semana o pasar los jobs de Edge y de accesibilidad a semanal.
 
@@ -404,7 +404,7 @@ Variables de todos los jobs de suites: `E2E_SKIP_SWEEP=1` (nadie barre salvo `ba
 
 ### 10.3 Edge (canal `msedge`)
 
-Es **viable**. Corre en local (Windows) con el proyecto `edge` de la suite de administración: 27 de 27 tests (3 min 55 s). En `ubuntu-latest`: Playwright 1.63 soporta `msedge` en Ubuntu x64 (`npx playwright install msedge` corre `reinstall_msedge_stable_linux.sh`, que instala `microsoft-edge-stable` con apt y necesita `sudo`; los runners lo tienen) y la imagen de GitHub ya trae Microsoft Edge, que Playwright busca en `/opt/microsoft/msedge/msedge`. Recomendación: no instalarlo si ya está (`test -x /opt/microsoft/msedge/msedge || npx playwright install msedge`). **No se pudo probar en un runner de GitHub desde acá**; es lo primero que hay que verificar en la primera corrida a mano.
+Es **viable**. Corre en local (Windows) con el proyecto `edge` de la suite de administración: 28 de 28 tests (4 min). En `ubuntu-latest`: Playwright 1.63 soporta `msedge` en Ubuntu x64 (`npx playwright install msedge` corre `reinstall_msedge_stable_linux.sh`, que instala `microsoft-edge-stable` con apt y necesita `sudo`; los runners lo tienen) y la imagen de GitHub ya trae Microsoft Edge, que Playwright busca en `/opt/microsoft/msedge/msedge`. Recomendación: no instalarlo si ya está (`test -x /opt/microsoft/msedge/msedge || npx playwright install msedge`). **No se pudo probar en un runner de GitHub desde acá**; es lo primero que hay que verificar en la primera corrida a mano.
 
 Al correr Edge salió una fragilidad real de una ayuda de prueba, no de la aplicación: `pickMonth` buscaba el año con `getByText(/^\d{4}$/)` en toda la página, y cuando una celda del calendario de atrás juntaba día y cantidad de turnos («13» y «16») había quince coincidencias (`strict mode violation`). Ahora busca dentro del selector abierto.
 

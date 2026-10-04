@@ -15,7 +15,7 @@ humo de CI (`*.spec.ts`) no los tome.
 
 | Carpeta           | Qué es                                                                                                        | Cómo se corre                                                                                        |
 | ----------------- | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `e2e/admin/`      | Administración: recorridos del dueño y del administrador, casos borde, permisos por interfaz, axe (41 tests)  | `pnpm test:e2e:admin`; proyectos `chromium`, `mobile`, `edge`, `a11y`, `dueno-config`, `dueno-final` |
+| `e2e/admin/`      | Administración: recorridos del dueño y del administrador, casos borde, permisos por interfaz, axe (42 tests)  | `pnpm test:e2e:admin`; proyectos `chromium`, `mobile`, `edge`, `a11y`, `dueno-config`, `dueno-final` |
 | `e2e/empleado/`   | Empleado en celular (24 tests)                                                                                | `pnpm test:e2e:empleado`; proyectos `mobile` y `webkit` (iPhone 14)                                  |
 | `e2e/supervisor/` | Supervisor en celular (12 tests)                                                                              | `pnpm test:e2e:supervisor`; proyectos `mobile` y `webkit`                                            |
 | `permissions/`    | Matriz de permisos por API directa (1.580 casos), Vitest, ver `permissions/README.md`                         | `pnpm test:permissions`                                                                              |
