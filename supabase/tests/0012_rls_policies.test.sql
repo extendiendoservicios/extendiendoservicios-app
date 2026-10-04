@@ -151,11 +151,8 @@ select is(
       'c2100000-0000-0000-0000-000000000083', 'c2100000-0000-0000-0000-000000000084',
       'c2100000-0000-0000-0000-000000000085', 'c2100000-0000-0000-0000-000000000086'
     ]::uuid[])),
-  array[
-    'c2100000-0000-0000-0000-000000000083', 'c2100000-0000-0000-0000-000000000084',
-    'c2100000-0000-0000-0000-000000000085'
-  ]::uuid[],
-  'profiles: supervisora ve la propia + los empleados de su turno supervisado (E1, E2), no owner/admin/E3'
+  array['c2100000-0000-0000-0000-000000000083']::uuid[],
+  'profiles: supervisora lee de la tabla SOLO su propia fila; los empleados de su turno los ve por v_people_basic (0030, DEF-P03)'
 );
 
 select tests.as_user('test-db014-empleado1@example.com');
@@ -166,8 +163,8 @@ select is(
       'c2100000-0000-0000-0000-000000000083', 'c2100000-0000-0000-0000-000000000084',
       'c2100000-0000-0000-0000-000000000085', 'c2100000-0000-0000-0000-000000000086'
     ]::uuid[])),
-  array['c2100000-0000-0000-0000-000000000084', 'c2100000-0000-0000-0000-000000000085']::uuid[],
-  'profiles: empleado 1 ve la propia + su compañero de turno (E2, P-103), no ve a la supervisora (no comparte asignación con ella) ni a owner/admin/E3'
+  array['c2100000-0000-0000-0000-000000000084']::uuid[],
+  'profiles: empleado 1 lee de la tabla SOLO su propia fila; a su compañero de turno (E2, P-103) lo ve por v_people_basic (0030, DEF-P03)'
 );
 
 select tests.as_user('test-db014-empleado-afuera@example.com');
@@ -319,11 +316,8 @@ select is(
       'c2100000-0000-0000-0000-000000000083'::uuid, 'c2100000-0000-0000-0000-000000000084',
       'c2100000-0000-0000-0000-000000000085', 'c2100000-0000-0000-0000-000000000086'
     ])),
-  array[
-    'c2100000-0000-0000-0000-000000000083', 'c2100000-0000-0000-0000-000000000084',
-    'c2100000-0000-0000-0000-000000000085'
-  ]::uuid[],
-  'employees: supervisora ve su propia fila + E1 y E2 (empleados de su turno), no E3'
+  array['c2100000-0000-0000-0000-000000000083']::uuid[],
+  'employees: supervisora ve SOLO su propia fila (DNI, CUIL, domicilio de los empleados de su turno son de owner/admin, 0030, DEF-P04)'
 );
 
 select tests.as_user('test-db014-empleado1@example.com');

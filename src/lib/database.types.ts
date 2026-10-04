@@ -70,25 +70,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "admin_capabilities_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "admin_capabilities_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "admin_capabilities_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -156,13 +142,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "assignments_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "assignments_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
@@ -184,13 +163,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "assignments_removed_by_fkey"
-            columns: ["removed_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "assignments_shift_id_fkey"
             columns: ["shift_id"]
             isOneToOne: false
@@ -210,13 +182,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "assignments_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -282,13 +247,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attendance_notices_reported_by_fkey"
-            columns: ["reported_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -361,13 +319,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["recorded_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
         ]
       }
       checklist_template_items: {
@@ -419,13 +370,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "checklist_template_items_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "checklist_template_items_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
@@ -438,13 +382,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "checklist_template_items_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -508,13 +445,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "checklist_templates_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "checklist_templates_site_id_client_id_fkey"
             columns: ["site_id", "client_id"]
             isOneToOne: false
@@ -527,13 +457,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "checklist_templates_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -603,25 +526,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "client_contacts_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "client_contacts_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "client_contacts_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -683,25 +592,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "clients_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "clients_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "clients_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -740,13 +635,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "company_settings_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -793,13 +681,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "employee_availability_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "employee_availability_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
@@ -819,13 +700,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "employee_availability_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -869,13 +743,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "employee_client_permissions_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "employee_client_permissions_employee_id_fkey"
@@ -939,13 +806,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "employee_leaves_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "employee_leaves_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
@@ -965,13 +825,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "employee_leaves_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -1045,13 +898,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "employees_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "employees_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: true
@@ -1059,25 +905,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "employees_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: true
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "employees_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "employees_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -1121,25 +953,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "holidays_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "holidays_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "holidays_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -1201,25 +1019,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "profiles_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "profiles_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "profiles_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -1269,25 +1073,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "rating_criteria_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "rating_criteria_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rating_criteria_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -1355,13 +1145,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "ratings_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "ratings_supervision_id_fkey"
             columns: ["supervision_id"]
             isOneToOne: false
@@ -1388,13 +1171,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ratings_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -1435,25 +1211,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "security_events_actor_id_fkey"
-            columns: ["actor_id"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "security_events_target_id_fkey"
             columns: ["target_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "security_events_target_id_fkey"
-            columns: ["target_id"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -1547,13 +1309,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "services_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "services_site_id_client_id_fkey"
             columns: ["site_id", "client_id"]
             isOneToOne: false
@@ -1566,13 +1321,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "services_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -1634,13 +1382,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "shift_tasks_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "shift_tasks_shift_id_fkey"
             columns: ["shift_id"]
             isOneToOne: false
@@ -1662,25 +1403,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "shift_tasks_status_changed_by_fkey"
-            columns: ["status_changed_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "shift_tasks_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "shift_tasks_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -1766,13 +1493,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "shifts_cancelled_by_fkey"
-            columns: ["cancelled_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "shifts_checklist_template_id_fkey"
             columns: ["checklist_template_id"]
             isOneToOne: false
@@ -1801,13 +1521,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "shifts_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "shifts_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
@@ -1827,13 +1540,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "shifts_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -1927,25 +1633,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "sites_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "sites_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sites_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -2062,25 +1754,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "supervisions_assigned_by_fkey"
-            columns: ["assigned_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "supervisions_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "supervisions_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "supervisions_shift_id_fkey"
@@ -2117,13 +1795,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "supervisions_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
         ]
       }
       user_roles: {
@@ -2154,25 +1825,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "user_roles_granted_by_fkey"
-            columns: ["granted_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "user_roles_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_roles_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -2239,13 +1896,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "assignments_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "assignments_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
@@ -2265,13 +1915,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "assignments_removed_by_fkey"
-            columns: ["removed_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "assignments_shift_id_fkey"
@@ -2295,25 +1938,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "assignments_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "attendance_notices_reported_by_fkey"
             columns: ["last_notice_reported_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attendance_notices_reported_by_fkey"
-            columns: ["last_notice_reported_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
@@ -2328,20 +1957,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_out_recorded_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
-            foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_in_recorded_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "shifts_client_id_fkey"
@@ -2394,27 +2009,21 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "clients_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "clients_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "clients_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
         ]
+      }
+      v_clients_basic: {
+        Row: {
+          id: string | null
+          legal_name: string | null
+          trade_name: string | null
+        }
+        Relationships: []
       }
       v_employees: {
         Row: {
@@ -2454,13 +2063,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "employees_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "employees_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: true
@@ -2468,25 +2070,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "employees_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: true
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "employees_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "employees_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -2567,20 +2155,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "attendance_notices_reported_by_fkey"
-            columns: ["last_notice_reported_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
-            foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_in_recorded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_out_recorded_by"]
             isOneToOne: false
@@ -2591,15 +2165,8 @@ export type Database = {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_in_recorded_by"]
             isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
-            foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_out_recorded_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "shifts_client_id_fkey"
@@ -2703,18 +2270,6 @@ export type Database = {
           last_name: string | null
           profile_id: string | null
         }
-        Insert: {
-          avatar_path?: string | null
-          first_name?: string | null
-          last_name?: string | null
-          profile_id?: string | null
-        }
-        Update: {
-          avatar_path?: string | null
-          first_name?: string | null
-          last_name?: string | null
-          profile_id?: string | null
-        }
         Relationships: []
       }
       v_public_branding: {
@@ -2742,6 +2297,16 @@ export type Database = {
           search_text: string | null
           subtitle: string | null
           title: string | null
+        }
+        Relationships: []
+      }
+      v_shift_peers: {
+        Row: {
+          avatar_path: string | null
+          first_name: string | null
+          last_name: string | null
+          profile_id: string | null
+          shift_id: string | null
         }
         Relationships: []
       }
@@ -2789,13 +2354,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "shifts_cancelled_by_fkey"
-            columns: ["cancelled_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "shifts_checklist_template_id_fkey"
             columns: ["checklist_template_id"]
             isOneToOne: false
@@ -2824,13 +2382,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "shifts_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
-          },
-          {
             foreignKeyName: "shifts_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
@@ -2850,13 +2401,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "shifts_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -2919,13 +2463,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "supervisions_assigned_by_fkey"
-            columns: ["assigned_by"]
-            isOneToOne: false
-            referencedRelation: "v_people_basic"
-            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "supervisions_shift_id_fkey"
@@ -3638,6 +3175,7 @@ export type Database = {
         | "roles_changed"
         | "capabilities_changed"
         | "email_changed"
+        | "admin_action_rejected"
       service_status: "active" | "paused" | "ended"
       shift_status:
         | "scheduled"
@@ -3823,6 +3361,7 @@ export const Constants = {
         "roles_changed",
         "capabilities_changed",
         "email_changed",
+        "admin_action_rejected",
       ],
       service_status: ["active", "paused", "ended"],
       shift_status: [

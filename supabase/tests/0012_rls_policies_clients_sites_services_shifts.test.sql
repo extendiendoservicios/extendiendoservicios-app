@@ -45,7 +45,7 @@ $$;
 
 grant execute on function tests.as_user(text) to authenticated, anon;
 
-select plan(22);
+select plan(23);
 
 -- Fixtures: dos clientes (uno con un turno compartido por S/E, otro sin relación con nadie) -------
 
@@ -118,8 +118,14 @@ select tests.as_user('test-db014b-empleado@example.com');
 select is(
   (select coalesce(array_agg(id order by id), array[]::uuid[]) from public.clients
     where id = any(array['c2200000-0000-0000-0000-000000000001'::uuid, 'c2200000-0000-0000-0000-000000000002'])),
+  array[]::uuid[],
+  'clients: empleado no lee la tabla (CUIT, domicilio, notas); el nombre del cliente de su turno lo ve por v_clients_basic (0030, DEF-P05)'
+);
+select is(
+  (select coalesce(array_agg(id order by id), array[]::uuid[]) from public.v_clients_basic
+    where id = any(array['c2200000-0000-0000-0000-000000000001'::uuid, 'c2200000-0000-0000-0000-000000000002'])),
   array['c2200000-0000-0000-0000-000000000001']::uuid[],
-  'clients: empleado ve solo el cliente de su turno'
+  'v_clients_basic: empleado ve solo el nombre del cliente de su turno'
 );
 
 select tests.as_user('test-db014b-empleado-afuera@example.com');

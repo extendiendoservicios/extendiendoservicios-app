@@ -347,8 +347,8 @@ set local role postgres;
 
 select tests.as_user('test-db014d-admin@example.com');
 select lives_ok(
-  $$update public.company_settings set support_phone = '+54 11 4444-4444' where id = 1$$,
-  'company_settings: admin puede actualizar (04 sección 7.2, P-117: se otorga a O y A)'
+  $$update public.company_settings set logo_path = 'logo.png' where id = 1$$,
+  'company_settings: admin puede actualizar el logo (04 sección 7.2, P-117 y 03 sección 6; el resto es del dueño, 0030, DEF-P01)'
 );
 
 set local role postgres;
