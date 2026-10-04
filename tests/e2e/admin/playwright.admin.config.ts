@@ -29,6 +29,10 @@ const APP_ROOT = fileURLToPath(new URL('../../..', import.meta.url))
 // Puerto 5173 por la lista blanca de CORS de la Edge Function `admin-users`.
 // Los que usan al dueño del seed de un modo que no admite otra suite en paralelo.
 // Los que usan al dueño del seed de un modo que no admite otra suite en paralelo.
+// La auditoría de accesibilidad (axe) tiene su proyecto y, en CI, su job: es lenta y no depende de
+// ninguna otra prueba de administración.
+const ARCHIVO_A11Y = '**/accesibilidad.admin.ts'
+
 const ARCHIVOS_DUENO = [
   '**/recorrido-dueno.admin.ts',
   '**/configuracion-dueno.admin.ts',
@@ -66,7 +70,17 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: ['**/*.movil.admin.ts', ...ARCHIVOS_DUENO],
+      testIgnore: ['**/*.movil.admin.ts', ARCHIVO_A11Y, ...ARCHIVOS_DUENO],
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1280, height: 900 },
+      },
+    },
+    {
+      // TEST-023: axe-core sobre las pantallas de administración, en escritorio y en celular
+      // (el propio test cambia el tamaño de la ventana).
+      name: 'a11y',
+      testMatch: ARCHIVO_A11Y,
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 900 },
@@ -74,7 +88,7 @@ export default defineConfig({
     },
     {
       name: 'edge',
-      testIgnore: ['**/*.movil.admin.ts', ...ARCHIVOS_DUENO],
+      testIgnore: ['**/*.movil.admin.ts', ARCHIVO_A11Y, ...ARCHIVOS_DUENO],
       dependencies: ['chromium', 'mobile'],
       use: {
         ...devices['Desktop Edge'],
@@ -87,7 +101,7 @@ export default defineConfig({
       // permisos también toca y repone: va fuera del camino paralelo, con el dueño.
       name: 'dueno-config',
       testMatch: '**/configuracion-dueno.admin.ts',
-      dependencies: ['chromium', 'mobile', 'edge'],
+      dependencies: ['chromium', 'mobile', 'edge', 'a11y'],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 900 },

@@ -308,6 +308,13 @@ test(
   cubre('CB-06', 'RB-E07', 'P-072', 'P-073'),
   async ({ page, browser }, testInfo) => {
     test.setTimeout(420_000)
+    // El borde es del RELOJ DEL SERVIDOR (`TOO_LATE_TO_NOTIFY`), no del navegador, y el test espera
+    // unos 3 minutos de reloj real: corre solo en `mobile` (en `webkit` sumaría 3 minutos al CI sin
+    // probar nada distinto; la pantalla en WebKit ya se ejercita en los otros tests de este archivo).
+    test.skip(
+      testInfo.project.name !== 'mobile',
+      'CB-06 (borde exacto de reloj): solo en el proyecto mobile, ver el comentario.',
+    )
     // La hora de inicio se arma a 3 minutos de ahora (hay que dejar tiempo para llegar a la
     // pantalla de confirmación y esperar el borde); sin lugar en el día, se saltea.
     const arranque = minutosAhora() + 3

@@ -94,7 +94,13 @@ export async function pickMonth(
   year: number,
   month: number,
 ): Promise<void> {
-  const yearLabel = page.getByText(/^\d{4}$/, { exact: true })
+  // El año se busca DENTRO del selector abierto (el diálogo con "Año anterior"): sin esto, el
+  // texto de cuatro dígitos también lo cumplen las celdas del calendario de atrás cuando un día
+  // junta día y cantidad de turnos (strict mode violation vista en Edge al correr la suite entera).
+  const picker = page
+    .getByRole('dialog')
+    .filter({ has: page.getByRole('button', { name: 'Año anterior' }) })
+  const yearLabel = picker.getByText(/^\d{4}$/, { exact: true })
   // Si el clic cae antes de que la pantalla esté lista, el selector no se abre: se reintenta.
   await expect(async () => {
     if (!(await yearLabel.isVisible())) {

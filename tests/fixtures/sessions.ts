@@ -60,19 +60,42 @@ export function anonClient(): AdminDb {
   })
 }
 
-/** Inicia sesión por API y devuelve la sesión (para `storageState` o para pedidos directos). */
+/** El proveedor limita los ingresos por IP (429 `over_request_rate_limit`). */
+export function esLimiteDeTasa(error: {
+  status?: number
+  code?: string
+  message: string
+}): boolean {
+  return (
+    error.status === 429 ||
+    error.code === 'over_request_rate_limit' ||
+    /rate limit/i.test(error.message)
+  )
+}
+
+/**
+ * Inicia sesión por API y devuelve la sesión (para `storageState` o para pedidos directos).
+ * Si el proveedor responde con el límite de tasa (varias suites en paralelo desde la misma IP,
+ * ver `docs/deployment.md` sección 14.5), espera con retroceso creciente y reintenta: es una
+ * espera por una condición real, no un `sleep` para sincronizar el test.
+ */
 export async function signInSession(email: string): Promise<Session> {
   const env = requireE2eEnv()
-  const { data, error } = await anonClient().auth.signInWithPassword({
-    email,
-    password: env.seedPassword,
-  })
-  if (error || !data.session) {
+  const esperas = [5, 10, 20, 30, 40, 60]
+  for (let intento = 0; ; intento++) {
+    const { data, error } = await anonClient().auth.signInWithPassword({
+      email,
+      password: env.seedPassword,
+    })
+    if (!error && data.session) return data.session
+    if (error && esLimiteDeTasa(error) && intento < esperas.length) {
+      await new Promise((r) => setTimeout(r, esperas[intento] * 1000))
+      continue
+    }
     throw new Error(
       `No se pudo iniciar sesión como ${email}: ${error?.message ?? 'sin sesión'}`,
     )
   }
-  return data.session
 }
 
 /** Cliente con la sesión de la cuenta indicada (el dueño del seed o una cuenta fija). */

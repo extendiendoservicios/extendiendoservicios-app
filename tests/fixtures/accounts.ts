@@ -86,6 +86,7 @@ export const CONJUNTOS = [
   'emp-webkit',
   'sup',
   'perm',
+  'a11y',
 ] as const
 export type Conjunto = (typeof CONJUNTOS)[number]
 
@@ -129,6 +130,9 @@ const DEF_CONJUNTOS: Record<Conjunto, DefConjunto> = {
     keys: ['empleado1', 'empleado2', 'supervisor1', 'supervisor2', 'dual'],
   },
   perm: { tag: 'pe', keys: TODAS },
+  // Auditoría de accesibilidad de administración (`accesibilidad.admin.ts`): solo mira con `admin`
+  // y escribe con `empleado5`; va en su propio job para no alargar el de administración.
+  a11y: { tag: 'ay', keys: ['admin', 'empleado5'] },
 }
 
 /** Conjunto activo: `E2E_CONJUNTO` (por omisión `base`). Un valor desconocido corta la corrida. */

@@ -92,9 +92,7 @@ test.describe('SHIFT-012: turno puntual (ADM-07), cambio de franja y cancelació
         await page.getByLabel('Desde').fill('10:00')
         await page.getByLabel('Hasta').fill('14:00')
         await page.getByRole('button', { name: 'Guardar cambios' }).click()
-        await expect(
-          page.getByText('Actualizamos el horario del turno.'),
-        ).toBeVisible()
+        await expect(page.getByText('Actualizamos el turno.')).toBeVisible()
 
         const { data } = await admin
           .from('shifts')

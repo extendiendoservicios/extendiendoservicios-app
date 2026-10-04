@@ -9,10 +9,13 @@
 //
 // EXCEPCIÓN `color-contrast` (decisión de Mike en F17: los contrastes de los tokens del Design
 // System, por ejemplo `--text-3` sobre `--surface` a 3,9:1 según `07_Design_System.md`, quedan
-// por debajo de 4,5:1). Se eligió REPORTARLA APARTE y no excluirla de la ejecución: la regla
-// corre igual, sus hallazgos se anotan en el informe (`contraste-aceptado`, con la cantidad de
-// elementos) y se adjuntan, pero no hacen fallar la suite. Así la excepción es visible y medible
-// (si alguien arregla un token, el número baja) en vez de desaparecer con un `disableRules`.
+// por debajo de 4,5:1). Se eligió REPORTARLA APARTE, sin que haga fallar la suite, y no tirarla
+// con un `disableRules` general: en las pantallas representativas de cada rol
+// (`PANTALLAS_CON_REPORTE_DE_CONTRASTE`) la regla corre y sus hallazgos se anotan en el informe
+// (`contraste-aceptado`, con la cantidad de elementos) y se adjuntan; así la excepción es visible y
+// medible (si alguien arregla un token, el número baja). En las demás pantallas la regla se
+// deshabilita porque es la más cara de axe (en las tablas grandes, miles de nodos) y duplicaría
+// el tiempo de la suite sin aportar nada que el reporte por pantallas representativas no diga.
 
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, type Page, type TestInfo } from '@playwright/test'
@@ -25,6 +28,15 @@ export const VIEWPORTS_A11Y = [
 
 /** Regla de contraste: aceptada por Mike en F17 (ver arriba); se informa aparte. */
 export const REGLA_CONTRASTE_ACEPTADA = 'color-contrast'
+
+/** Pantallas (por su código) donde la regla de contraste corre y se informa sin fallar. */
+export const PANTALLAS_CON_REPORTE_DE_CONTRASTE = [
+  'COM-01',
+  'ADM-02',
+  'EMP-03',
+  'EMP-07',
+  'SUP-02',
+] as const
 
 export interface ResumenAxe {
   pantalla: string
@@ -73,7 +85,12 @@ export async function auditarAccesibilidad(
   pantalla: string,
   viewport: string,
 ): Promise<ResumenAxe> {
-  const resultado = await new AxeBuilder({ page }).analyze()
+  const medirContraste = PANTALLAS_CON_REPORTE_DE_CONTRASTE.some((codigo) =>
+    pantalla.startsWith(codigo),
+  )
+  const constructor = new AxeBuilder({ page })
+  if (!medirContraste) constructor.disableRules([REGLA_CONTRASTE_ACEPTADA])
+  const resultado = await constructor.analyze()
   const violaciones = resultado.violations as unknown as ViolacionAxe[]
 
   const contraste = violaciones.filter((v) => v.id === REGLA_CONTRASTE_ACEPTADA)
@@ -91,13 +108,15 @@ export async function auditarAccesibilidad(
     serious: contarPor('serious'),
     moderate: contarPor('moderate'),
     minor: contarPor('minor'),
-    contraste: contraste.reduce((total, v) => total + v.nodes.length, 0),
+    contraste: medirContraste
+      ? contraste.reduce((total, v) => total + v.nodes.length, 0)
+      : -1,
     reglas: resto.map((v) => `${v.impact}:${v.id}`),
   }
 
   testInfo.annotations.push({
     type: 'axe',
-    description: `${pantalla} (${viewport}): critical=${resumen.critical} serious=${resumen.serious} moderate=${resumen.moderate} minor=${resumen.minor}; contraste aceptado=${resumen.contraste} elementos`,
+    description: `${pantalla} (${viewport}): critical=${resumen.critical} serious=${resumen.serious} moderate=${resumen.moderate} minor=${resumen.minor}; contraste aceptado=${resumen.contraste < 0 ? 'no medido' : `${resumen.contraste} elementos`}`,
   })
   if (resumen.contraste > 0) {
     testInfo.annotations.push({

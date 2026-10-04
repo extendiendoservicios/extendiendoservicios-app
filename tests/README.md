@@ -1,76 +1,58 @@
 # `tests`
 
-Pruebas que no son unitarias (esas viven junto a cada archivo en `src/` como
-`*.test.ts(x)`, con Vitest):
+Pruebas que no son unitarias (las unitarias viven junto a cada archivo en `src/` como
+`*.test.ts(x)`, con Vitest). El mapa completo de lo que hay probado, a qué fila de
+`09_Trazabilidad.md` y a qué caso borde corresponde está en `docs/test-inventory.md`.
 
-- `e2e/` — pruebas de punta a punta con Playwright (proyectos chromium,
-  webkit y mobile a 390 px). `pnpm test:e2e` las corre contra
-  `pnpm preview`. **Suite de humo**: `ci.yml` la corre contra un build con
-  variables FALSAS (sin backend) y `deploy-staging.yml`/
-  `deploy-production.yml` la reutilizan como smoke test contra la URL ya
-  publicada. Por eso no puede depender de ningún dato real ni de sesión.
-- `e2e-auth/` — e2e de autenticación (AUTH-012/TEST-003, P06.4) contra un
-  backend real (`App_dev`): ingreso por rol, credenciales erróneas,
-  recuperación de contraseña de punta a punta, persistencia de sesión y
-  usuario desactivado. **Aparte de `e2e/` a propósito**: necesita
-  `app/.env.local` (las mismas cuatro variables que `scripts/seed-dev.ts` —
-  `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
-  `SEED_DEV_PASSWORD`) para loguear con las cuentas del seed y crear/borrar
-  cuentas descartables (prefijo `e2e-auth-`) con la Admin API. Ninguno de los
-  tres workflows la descubre ni la ejecuta (su config, su `testDir` y su
-  script son propios). Se corre a mano, desde `app/`:
+## Suites de F18 contra `App_dev` (cuentas fijas)
 
-  ```bash
-  pnpm test:e2e:auth                      # los dos proyectos (chromium, mobile)
-  pnpm test:e2e:auth --project=chromium   # uno solo
-  ```
+Cuentas fijas `e2e-fijo-*` que arma `tests/fixtures/` (`pnpm test:fixtures:setup`), datos por test con
+prefijo `e2e-` que cada test limpia, fechas relativas a hoy en hora de Argentina. Necesitan
+`app/.env.local` con `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` y
+`SEED_DEV_PASSWORD` (las mismas cuatro de `scripts/seed-dev.ts`); nunca corren contra producción.
+Los archivos terminan en `.admin.ts`, `.empleado.ts` o `.supervisor.ts` para que el `testMatch` del
+humo de CI (`*.spec.ts`) no los tome.
 
-  El script corre `pnpm build` primero (carga `.env.local` con la
-  convención de Vite, así que apunta de verdad a `App_dev`) y recién
-  después Playwright, que sirve ese `dist/` en el puerto 4174. Ver
-  `tests/e2e-auth/README.md` y `tests/e2e-auth/helpers/env.ts` para el
-  detalle.
+| Carpeta           | Qué es                                                                                                        | Cómo se corre                                                                                        |
+| ----------------- | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `e2e/admin/`      | Administración: recorridos del dueño y del administrador, casos borde, permisos por interfaz, axe (41 tests)  | `pnpm test:e2e:admin`; proyectos `chromium`, `mobile`, `edge`, `a11y`, `dueno-config`, `dueno-final` |
+| `e2e/empleado/`   | Empleado en celular (24 tests)                                                                                | `pnpm test:e2e:empleado`; proyectos `mobile` y `webkit` (iPhone 14)                                  |
+| `e2e/supervisor/` | Supervisor en celular (12 tests)                                                                              | `pnpm test:e2e:supervisor`; proyectos `mobile` y `webkit`                                            |
+| `permissions/`    | Matriz de permisos por API directa (1.580 casos), Vitest, ver `permissions/README.md`                         | `pnpm test:permissions`                                                                              |
+| `load/`           | Carga ligera: 5 administradores y 30 empleados con polling (p50, p95, p99, errores)                           | `pnpm test:load` (manual, no corre en el nocturno)                                                   |
+| `fixtures/`       | Cuentas y conjuntos de cuentas, sesiones, `Scenario` (datos por test), fechas, trazabilidad (`cubre`), axe    | —                                                                                                    |
+| `lighthouse/`     | Lighthouse sobre staging (PWA y accesibilidad), ver su README                                                 | `pnpm test:lighthouse`                                                                               |
+| `e2e/*.spec.ts`   | **Suite de humo** de `ci.yml` y de los despliegues: con variables falsas o contra la URL publicada, sin datos | `pnpm test:e2e`                                                                                      |
 
-- `e2e-clients-sites/` — e2e de clientes y sedes (CLIENT-008/SITE-008/TEST-005, P08.5) contra
-  un backend real (`App_dev`): alta de cliente con contactos y CUIT repetido, alta de sede con
-  coordenadas y su marcador en el mapa, el criterio de aceptación de F8 con la cuenta `admin`,
-  rutas vedadas a empleado y supervisor, capturas móviles sin scroll horizontal. Mismo motivo de
-  separación que `e2e-auth/` y `e2e-users/` (necesita la clave de servicio); puerto propio
-  (4175), sin la restricción de CORS de `e2e-users/` porque este dominio no llama a ninguna Edge
-  Function. Se corre a mano: `pnpm test:e2e:clients-sites`. Ver `tests/e2e-clients-sites/README.md`.
-- `e2e-assignments/` — e2e de asignaciones y cronograma (ASSIGN-015/ASSIGN-016/TEST-008, P11.4)
-  contra un backend real (`App_dev`): asignar hasta completar la dotación y verlo en la grilla
-  semanal, quitar con motivo, superposición rechazada con su mensaje, un turno cancelado que
-  conserva sus asignaciones, asignar desde la lista del día en celular, advertencia
-  `NOT_ENABLED_FOR_CLIENT` sin bloquear, y el rendimiento del calendario mensual con 600 turnos.
-  Puerto propio (4176): a diferencia de otras suites de backend real, no invoca ninguna Edge
-  Function. Se corre a mano: `pnpm test:e2e:assignments`. Ver `tests/e2e-assignments/README.md`.
-- `e2e-tablero/` — e2e y rendimiento del tablero operativo ADM-02 (DASH-008/DASH-009/TEST-013,
-  P16.2) contra un backend real (`App_dev`): escenario con ausencia avisada, sin registro y turno
-  sin cubrir, acciones del tablero, versión de 390 px (D29), permisos y rendimiento con 24 turnos y
-  40 asignaciones. Las franjas son fijas dentro del día del turno (no dependen de la hora en que
-  corre). Puerto 5173. Se corre a mano: `pnpm test:e2e:tablero`. Ver `tests/e2e-tablero/README.md`.
-- `e2e-responsive/` y `lighthouse/` — **suite responsive (TEST-014, F17, RB-X01)**. Tres capas que
-  se complementan; cada una tiene su detalle en su propio README (no se repite acá):
+### Correrlas en paralelo (CI) sin pisarse
 
-  | Capa                               | Qué comprueba                                                                                                                                                                                                                                                                               | Dónde / cómo                                                                                                                               |
-  | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-  | Capturas por viewport (Playwright) | Las pantallas de administración a 390, 768, 1024, 1366 y 1440 px (las 20 principales a los cinco): sin scroll horizontal, tabbar o sidebar según el ancho, tarjetas en vez de tablas, objetivos táctiles de 44 px, área segura en `/app` y `/sup`. Guarda una captura por pantalla y ancho. | `e2e-responsive/`; `pnpm test:e2e:responsive`; capturas en `test-results/responsive-capturas/`. Ver `e2e-responsive/README.md`.            |
-  | Lighthouse (staging)               | Accesibilidad >= 90, rendimiento y buenas prácticas de referencia, e instalabilidad de la PWA (a mano, porque Lighthouse 12+ ya no trae la categoría PWA), en celular y escritorio.                                                                                                         | `lighthouse/`; `pnpm test:lighthouse`; informes en `test-results/lighthouse/`. Ver `lighthouse/README.md`.                                 |
-  | Dispositivos reales                | Instalación, pantalla completa, sesión por rol, fichaje con ubicación, teclado, área segura, rotación, aviso de versión nueva y sin conexión, en dos Android y un iPhone.                                                                                                                   | Planilla `docs/matriz-dispositivos.md` (RESP-011); la completa Mike. Explicación general en `docs/features/responsive.md` y `docs/pwa.md`. |
+Cada suite tiene su propio conjunto de cuentas (`E2E_CONJUNTO`: `base` por omisión, `edge`, `a11y`,
+`emp-movil`, `emp-webkit`, `sup`, `perm`). El barrido de residuos corre una sola vez antes de todo
+(`node --env-file=.env.local tests/fixtures/setup-accounts.ts --barrer`) y las suites se ejecutan con
+`E2E_SKIP_SWEEP=1`. Lo que usa al dueño del seed (`dueno-config` y `dueno-final`) corre al final.
+El diseño, los tiempos medidos y el workflow propuesto están en `docs/test-inventory.md`, sección 10.
+Para probar suites en paralelo en una sola máquina: `E2E_REUSE_SERVER=1` con un `vite preview` en el 5173. Los ingresos por API esperan y reintentan si el proveedor responde con el límite de tasa (429).
 
-  Orden recomendado en una revisión: primero las capturas (rápidas y locales), después Lighthouse
-  sobre staging ya desplegado, y por último la planilla en los teléfonos.
+### Reglas
 
-- `permissions/` — suite negativa por rol (cada rol intenta lo que no puede,
-  por interfaz y por API directa). Primer esqueleto desde P04.7 (F4, API
-  directa solamente, criterio de aceptación de la fase); la versión
-  completa (todas las tablas y RPC, más la variante por interfaz) es
-  TEST-019 (F18). Ver `permissions/README.md`: corre con un config de
-  Vitest propio, fuera de `pnpm test`, porque necesita credenciales de
-  `App_dev` que no existen en CI.
-- `fixtures/` — datos y helpers compartidos entre specs de e2e, a medida que
-  se necesiten.
+- Cada test lleva su rastro con `cubre('RB-A04', 'CB-10', 'P-051')`: etiquetas `@RB-A04` para filtrar
+  con `--grep` y anotaciones en el informe HTML.
+- Los nombres de las cuentas se piden con `nombreDe('empleado1')` y `reNombreDe(...)`, nunca con el
+  literal: cambian según el conjunto.
+- Un defecto de la aplicación se marca con `test.fail()` y una anotación `defecto` (en la matriz de
+  permisos, `it.fails` en `permissions/suite/defectos.ts`); nunca se ajusta la prueba al defecto.
+- Sin `sleep` fijos: aserciones que esperan solas. Las que dependen de la hora del día se saltean con
+  un motivo (`isTooCloseToMidnight`) o afirman solo lo que vale a cualquier hora (`franjaYaEmpezo`).
 
-`fixtures/` se crea cuando tenga contenido (llega con los primeros specs de
-`e2e/` de una pantalla real, F6 en adelante).
+## Suites viejas por dominio (`e2e-*`)
+
+Siguen siendo suites independientes, con su propio `playwright.*.config.ts`, su propio arnés
+(`helpers/`), las cuentas del seed en solo lectura y datos con prefijos propios (`E2E-P…`). **No
+entran al nocturno** (salvo `e2e-auth`, que se suma al job del supervisor); se corren a mano:
+`pnpm test:e2e:auth`, `:users`, `:clients-sites`, `:employees`, `:shifts-services`, `:assignments`,
+`:checklists`, `:avisos-asistencia`, `:supervisiones`, `:tablero` y `:responsive`. Cada script hace
+`pnpm build` y después Playwright con su puerto propio. El estado de cada una (resultado del 4 de
+octubre de 2026 y destino: migrar, manual o sumar al nocturno) está en `docs/test-inventory.md`,
+sección 8. `e2e-responsive/` y `lighthouse/` son la suite responsive (TEST-014, RB-X01): capturas a
+390, 768, 1024, 1366 y 1440 px, Lighthouse sobre staging y la planilla de dispositivos reales
+(`docs/matriz-dispositivos.md`, la completa Mike).
