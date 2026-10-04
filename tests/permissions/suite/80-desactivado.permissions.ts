@@ -32,9 +32,6 @@ const PERFILES_A_DESACTIVAR: Array<
   Extract<Perfil, 'empleado' | 'supervisor' | 'admin'>
 > = ['empleado', 'supervisor', 'admin']
 
-/** Tablas que cualquier persona con sesión lee por diseño (04 §7.2: "todos autenticados"). */
-const LEIBLES_POR_TODOS = ['holidays', 'company_settings']
-
 for (const perfil of PERFILES_A_DESACTIVAR) {
   describe(`desactivado: ${ETIQUETA[perfil]} con el token todavía vigente`, () => {
     let db: Db
@@ -101,7 +98,6 @@ for (const perfil of PERFILES_A_DESACTIVAR) {
     })
 
     for (const spec of TABLAS) {
-      const permitidoPorTodos = LEIBLES_POR_TODOS.includes(spec.tabla)
       caso(
         claveCaso('desactivado', spec.tabla, 'select', perfil),
         `${spec.tabla}.select -> cero filas (CB-18, RB-X02)`,
@@ -111,12 +107,9 @@ for (const perfil of PERFILES_A_DESACTIVAR) {
             ? consulta.in(spec.clave, Object.values(spec.filas(contexto())))
             : consulta.limit(5))
           expect(res.error, describir(res)).toBeNull()
-          expect(
-            filas(res),
-            permitidoPorTodos
-              ? 'una cuenta desactivada sigue leyendo esta tabla'
-              : `${spec.tabla} devolvió filas`,
-          ).toEqual([])
+          // Desde P18.6 (0030, DEF-P09) también `holidays` y `company_settings`, que leen todos
+          // los autenticados ACTIVOS, vuelven vacías para una cuenta desactivada.
+          expect(filas(res), `${spec.tabla} devolvió filas`).toEqual([])
         },
       )
     }

@@ -11,7 +11,9 @@
 //     (03 §6); DNI, CUIL y domicilio son "solo dueño y administrador" (03 §15).
 //
 // Cada caso carga un dato sensible en la fila ajena (con la clave de servicio), lo lee con el rol
-// y espera que NO llegue. Los casos que hoy fallan están marcados como defecto (`defectos.ts`).
+// y espera que NO llegue. Desde P18.6 (migración 0030) lo ajeno se lee por vistas recortadas
+// (`v_people_basic`, `v_clients_basic`, `v_shift_peers`) y las tablas base no dan esas filas;
+// los casos de contraprueba verifican que las vistas sí entregan nombre y foto.
 
 import { afterAll, beforeAll, describe, expect } from 'vitest'
 import { clienteDe, contexto, servicio } from './contexto.ts'
@@ -74,13 +76,53 @@ describe('columnas de filas ajenas que un rol no debería leer', () => {
   // ---- Contraprueba: lo que sí corresponde leer sigue funcionando ----------------------------
   caso(
     claveCaso('columnas', 'control', 'empleado lee nombre del compañero'),
-    '[empleado] profiles del compañero: el nombre SÍ se ve (P-103)',
+    '[empleado] v_people_basic del compañero: el nombre y la foto SÍ se ven (P-103)',
     async () => {
-      const res = await tabla(clienteDe('empleado'), 'profiles')
+      const res = await tabla(clienteDe('empleado'), 'v_people_basic')
         .select('first_name,last_name,avatar_path')
-        .eq('id', contexto().ids.empleado2)
+        .eq('profile_id', contexto().ids.empleado2)
       expect(res.error, describir(res)).toBeNull()
       expect(filas(res)).toHaveLength(1)
+    },
+  )
+
+  caso(
+    claveCaso('columnas', 'control', 'supervisor lee nombre del empleado'),
+    '[supervisor] v_people_basic del empleado de su turno: el nombre y la foto SÍ se ven (03 §6)',
+    async () => {
+      const res = await tabla(clienteDe('supervisor'), 'v_people_basic')
+        .select('first_name,last_name,avatar_path')
+        .eq('profile_id', contexto().ids.empleado2)
+      expect(res.error, describir(res)).toBeNull()
+      expect(filas(res)).toHaveLength(1)
+    },
+  )
+
+  caso(
+    claveCaso('columnas', 'control', 'empleado lee el nombre del cliente'),
+    '[empleado] v_clients_basic del cliente de su turno: el nombre SÍ se ve (04 §7.2)',
+    async () => {
+      const res = await tabla(clienteDe('empleado'), 'v_clients_basic')
+        .select('legal_name,trade_name')
+        .eq('id', contexto().e.clienteA)
+      expect(res.error, describir(res)).toBeNull()
+      expect(filas(res)).toHaveLength(1)
+    },
+  )
+
+  caso(
+    claveCaso('columnas', 'control', 'empleado lee a los compañeros del turno'),
+    '[empleado] v_shift_peers del turno: ve a sus compañeros con nombre y foto, sin observación (P-103, P-062)',
+    async () => {
+      const res = await tabla(clienteDe('empleado'), 'v_shift_peers')
+        .select('profile_id,first_name,last_name,avatar_path')
+        .eq('shift_id', contexto().e.turnoA)
+      expect(res.error, describir(res)).toBeNull()
+      expect(
+        filas(res)
+          .map((f) => String(f.profile_id))
+          .sort(),
+      ).toEqual([contexto().ids.empleado1, contexto().ids.empleado2].sort())
     },
   )
 

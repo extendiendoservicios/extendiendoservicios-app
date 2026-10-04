@@ -6,6 +6,7 @@
 // inválido, u `OK` si la acción se ejecutó.
 
 import { requireE2eEnv } from '../../fixtures/env.ts'
+import { servicio } from './contexto.ts'
 
 export interface RespuestaEdge {
   status: number
@@ -14,12 +15,46 @@ export interface RespuestaEdge {
   cabeceras: Headers
 }
 
+/** `sub` (id de la persona) de un JWT, o null si no se puede leer. */
+export function subDelToken(token: string): string | null {
+  try {
+    const carga = JSON.parse(
+      Buffer.from(token.split('.')[1] ?? '', 'base64url').toString('utf8'),
+    ) as { sub?: string }
+    return carga.sub ?? null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Desde P18.6 (SEG-03) el límite de 10 acciones por minuto de `admin-users` cuenta también los
+ * intentos RECHAZADOS (evento `admin_action_rejected`). Esta matriz hace muchos a propósito
+ * (FORBIDDEN, no encontrado) con las mismas cuentas fijas: antes de cada llamada se borran los
+ * eventos de rechazo de quien llama, para que la matriz no tropiece con su propio límite. El
+ * límite en sí se prueba aparte (`60-edge`, "límite de acciones por minuto").
+ */
+export async function liberarLimite(token: string | null): Promise<void> {
+  const sub = token ? subDelToken(token) : null
+  if (!sub) return
+  await servicio()
+    .from('security_events')
+    .delete()
+    .eq('event_type', 'admin_action_rejected')
+    .eq('actor_id', sub)
+}
+
 export async function llamarEdge(
   token: string | null,
   cuerpo: unknown,
-  opciones: { origen?: string; metodo?: string } = {},
+  opciones: {
+    origen?: string
+    metodo?: string
+    conservarLimite?: boolean
+  } = {},
 ): Promise<RespuestaEdge> {
   const env = requireE2eEnv()
+  if (!opciones.conservarLimite) await liberarLimite(token)
   const cabeceras: Record<string, string> = {
     'Content-Type': 'application/json',
     apikey: env.anonKey,

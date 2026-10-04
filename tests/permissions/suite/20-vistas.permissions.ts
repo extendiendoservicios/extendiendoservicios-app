@@ -1,6 +1,6 @@
 // tests/permissions/suite/20-vistas.permissions.ts — TEST-019 (P18.3)
 //
-// Las 10 vistas `v_*` por los 7 perfiles: qué filas ve cada uno (las vistas son
+// Las 12 vistas `v_*` por los 7 perfiles: qué filas ve cada uno (las vistas son
 // `security_invoker`: aplican la RLS de las tablas base, `04_Modelo_de_Datos.md` sección 4) y
 // que ninguna se pueda escribir. `anon` solo lee `v_public_branding` (RB-X02, RB-A01).
 

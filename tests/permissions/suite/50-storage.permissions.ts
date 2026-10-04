@@ -6,7 +6,8 @@
 //
 //   avatars   `{profile_id}/{archivo}.jpg`, máx. 2 MB, solo JPEG. Lectura pública; escribe el
 //             dueño de la carpeta, el administrador y el dueño de la empresa.
-//   branding  logo, máx. 1 MB, PNG/JPEG/SVG/WebP. Lectura pública; escriben administrador y dueño.
+//   branding  logo, máx. 1 MB, PNG/JPEG/WebP (sin SVG desde P18.6, SEG-02). Lectura pública;
+//             escriben administrador y dueño.
 //
 // Todo lo que sube la suite lleva el prefijo `e2e-perm-` y se borra al final.
 
@@ -361,7 +362,19 @@ describe('Storage: avatars y branding', () => {
       )
     }
 
-    describe('límites de tamaño y tipo (branding: 1 MB; PNG, JPEG, SVG y WebP)', () => {
+    describe('límites de tamaño y tipo (branding: 1 MB; PNG, JPEG y WebP)', () => {
+      it('un SVG se rechaza: puede llevar scripts y se abre en el origen de Storage (SEG-02, RB-X02)', async () => {
+        const { error } = await clienteDe('admin')
+          .storage.from('branding')
+          .upload(
+            'e2e-perm-logo.svg',
+            new TextEncoder().encode(
+              '<svg xmlns="http://www.w3.org/2000/svg"/>',
+            ),
+            { contentType: 'image/svg+xml' },
+          )
+        expect(error?.message).toMatch(/mime type/i)
+      })
       it('un logo de más de 1 MB se rechaza (RB-X02, P-117)', async () => {
         const { error } = await clienteDe('admin')
           .storage.from('branding')

@@ -72,10 +72,11 @@ export const VISTAS: VistaSpec[] = [
       supervisor2: c.ids.supervisor2,
       dual: c.ids.dual,
     }),
+    // Desde P18.6 (0030, DEF-P04) el supervisor no lee la ficha de los empleados de su turno.
     ve: ven({
       empleado: ['empleado1'],
-      supervisor: ['supervisor1', 'empleado1', 'empleado2'],
-      dual: ['dual', 'empleado4'],
+      supervisor: ['supervisor1'],
+      dual: ['dual'],
       ...admins,
     }),
   },
@@ -87,8 +88,9 @@ export const VISTAS: VistaSpec[] = [
       turnoB: c.e.turnoB,
       turnoD: c.e.turnoD,
     }),
+    // Desde P18.6 (0030, DEF-P05) el empleado no lee `clients` y la vista los une por cliente:
+    // no la ve. Para el empleado, Hoy es `v_my_day`.
     ve: ven({
-      empleado: ['turnoA'],
       supervisor: ['turnoA'],
       dual: ['turnoD'],
       ...admins,
@@ -104,10 +106,11 @@ export const VISTAS: VistaSpec[] = [
       asigE4: c.e.asigE4,
       asigDual: c.e.asigDual,
     }),
+    // Desde P18.6 (0030) la vista une `clients` y `profiles` de cada persona asignada: el empleado
+    // y el supervisor ya no ven filas ajenas (el tablero es de administración; ellos usan
+    // `v_my_day`, `v_my_supervisions` y `v_shift_peers`). El doble rol solo ve la propia.
     ve: ven({
-      empleado: ['asigE1', 'asigE2'],
-      supervisor: ['asigE1', 'asigE2'],
-      dual: ['asigE4', 'asigDual'],
+      dual: ['asigDual'],
       ...admins,
     }),
   },
@@ -154,11 +157,36 @@ export const VISTAS: VistaSpec[] = [
     vista: 'v_clients',
     clave: 'id',
     filas: (c) => ({ clienteA: c.e.clienteA, clienteB: c.e.clienteB }),
+    // Desde P18.6 (0030, DEF-P05) el empleado no lee `clients` (CUIT, domicilio, notas).
+    ve: ven({
+      supervisor: ['clienteA'],
+      dual: ['clienteB'],
+      ...admins,
+    }),
+  },
+  {
+    // Nueva en 0030 (DEF-P05): el nombre del cliente de sus turnos, sin CUIT ni notas.
+    vista: 'v_clients_basic',
+    clave: 'id',
+    filas: (c) => ({ clienteA: c.e.clienteA, clienteB: c.e.clienteB }),
     ve: ven({
       empleado: ['clienteA'],
       supervisor: ['clienteA'],
       dual: ['clienteB'],
       ...admins,
+    }),
+  },
+  {
+    // Nueva en 0030 (DEF-P06): quiénes están en los turnos que comparto o superviso, con nombre y
+    // foto. Administración no la usa (tiene `v_assignments_board`): la ve vacía.
+    vista: 'v_shift_peers',
+    propia: true,
+    clave: 'profile_id',
+    filas: (c) => ({ ...c.ids }),
+    ve: ven({
+      empleado: ['empleado1', 'empleado2'],
+      supervisor: ['empleado1', 'empleado2'],
+      dual: ['dual', 'empleado4'],
     }),
   },
   {
@@ -176,16 +204,12 @@ export const VISTAS: VistaSpec[] = [
       sedeA: c.e.sedeA,
       sedeB: c.e.sedeB,
     }),
+    // Desde P18.6 (0030): el buscador es de administración. El empleado solo se encuentra a sí
+    // mismo (la sede se une por cliente y no lo ve); el supervisor, a sí mismo y a sus clientes.
     ve: ven({
-      empleado: ['empleado1', 'clienteA', 'sedeA'],
-      supervisor: [
-        'supervisor1',
-        'empleado1',
-        'empleado2',
-        'clienteA',
-        'sedeA',
-      ],
-      dual: ['dual', 'empleado4', 'clienteB', 'sedeB'],
+      empleado: ['empleado1'],
+      supervisor: ['supervisor1', 'clienteA', 'sedeA'],
+      dual: ['dual', 'clienteB', 'sedeB'],
       ...admins,
     }),
   },

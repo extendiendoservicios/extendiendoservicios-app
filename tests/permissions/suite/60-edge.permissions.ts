@@ -4,14 +4,14 @@
 // obligatorio, rol y capacidad del que llama, la jerarquía (un administrador no actúa sobre un
 // dueño ni sobre otro administrador), el origen (CORS) y que no se filtren errores internos.
 // Todo con cuerpos que no crean ni cambian nada: se detienen en la puerta o en "no encontrado".
-// El límite de 10 acciones por minuto no se ejerce en vivo (haría falta ejecutar 10 acciones
-// reales sobre cuentas fijas): lo cubre `supabase/functions/admin-users/index.test.ts` y se
-// revisa en `docs/security-review.md`.
+// El límite de 10 acciones por minuto se ejerce en vivo con intentos RECHAZADOS (desde P18.6,
+// SEG-03, cuentan igual que las acciones exitosas): ver "límite de acciones por minuto" más abajo.
+// La lógica fina la cubren además los tests Deno de `supabase/functions/admin-users`.
 
-import { describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it } from 'vitest'
 import { clienteDe, contexto } from './contexto.ts'
 import { caso, claveCaso } from './defectos.ts'
-import { llamarEdge, preflight } from './edge-cliente.ts'
+import { liberarLimite, llamarEdge, preflight } from './edge-cliente.ts'
 import { requireE2eEnv } from '../../fixtures/env.ts'
 import { ETIQUETA, PERFILES } from './perfiles.ts'
 import { INEXISTENTE } from './rpc.ts'
@@ -146,7 +146,37 @@ describe('Edge Function admin-users por acción y perfil', () => {
     }
   })
 
+  describe('límite de acciones por minuto (SEG-03)', () => {
+    afterAll(async () => {
+      for (const perfil of ['adminSin', 'admin', 'owner'] as const) {
+        await liberarLimite(contexto().tokens[perfil])
+      }
+    })
+
+    it('10 intentos rechazados en un minuto bloquean el siguiente con RATE_LIMITED (SEG-03, RB-X02)', async () => {
+      const token = contexto().tokens.adminSin
+      // El administrador sin capacidades no puede cerrar sesiones: cada intento es FORBIDDEN.
+      const cuerpo = { action: 'sign_out_user', profile_id: INEXISTENTE }
+      try {
+        await liberarLimite(token)
+        for (let i = 1; i <= 10; i++) {
+          const r = await llamarEdge(token, cuerpo, { conservarLimite: true })
+          expect(r.hint, `intento ${i}: ${JSON.stringify(r.cuerpo)}`).toBe(
+            'FORBIDDEN',
+          )
+        }
+        const r11 = await llamarEdge(token, cuerpo, { conservarLimite: true })
+        expect(r11.status).toBe(429)
+        expect(r11.hint).toBe('RATE_LIMITED')
+      } finally {
+        await liberarLimite(token)
+      }
+    })
+  })
+
   describe('CORS: orígenes', () => {
+    // `http://localhost:5173` está permitido solo en App_dev (secreto ALLOWED_ORIGINS_EXTRA de la
+    // función, SEG-07): en producción no aparece. Esta matriz corre siempre contra App_dev.
     const permitidos = [
       'http://localhost:5173',
       'https://dev.extendiendoservicios.com',

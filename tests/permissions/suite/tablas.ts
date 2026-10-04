@@ -45,8 +45,8 @@ export interface TablaSpec {
   ve: Record<Perfil, Ve>
   /**
    * La tabla es tan grande que un `select` sin filtro con RLS por fila supera el tiempo máximo
-   * de la consulta (defecto de rendimiento DEF-P02): para el esperado "nada" se pide filtrando
-   * por las filas plantadas.
+   * de la consulta: para el esperado "nada" se pide filtrando por las filas plantadas. Ninguna
+   * tabla lo usa desde P18.6 (DEF-P02 corregido en 0030: `shift_tasks` responde sin filtro).
    */
   pesada?: boolean
   insert: {
@@ -122,10 +122,12 @@ export const TABLAS: TablaSpec[] = [
       permitido: [],
       fila: () => ({ id: randomUUID(), first_name: 'e2e', last_name: 'perm' }),
     },
+    // Desde P18.6 (0030, DEF-P03) empleado y supervisor leen de `profiles` SOLO su propia fila:
+    // los compañeros y los empleados de su turno se leen por `v_people_basic` (nombre y foto).
     ve: ven({
-      empleado: ['empleado1', 'empleado2'],
-      supervisor: ['supervisor1', 'empleado1', 'empleado2'],
-      dual: ['dual', 'empleado4'],
+      empleado: ['empleado1'],
+      supervisor: ['supervisor1'],
+      dual: ['dual'],
       ...admins,
     }),
     // Insert: nunca (solo el trigger `app.handle_new_user`). Delete: nunca.
@@ -325,8 +327,9 @@ export const TABLAS: TablaSpec[] = [
     clave: 'id',
     filas: (c) => ({ clienteA: c.e.clienteA, clienteB: c.e.clienteB }),
     objetivo: (c) => ({ id: c.e.clienteB }),
+    // Desde P18.6 (0030, DEF-P05) el empleado no lee `clients`: el nombre del cliente de su
+    // turno sale de `v_clients_basic`. El supervisor sigue leyendo el cliente de sus turnos.
     ve: ven({
-      empleado: ['clienteA'],
       supervisor: ['clienteA'],
       dual: ['clienteB'],
       ...admins,
@@ -447,10 +450,11 @@ export const TABLAS: TablaSpec[] = [
       dual: c.ids.dual,
     }),
     objetivo: (c) => ({ profile_id: c.ids.empleado3 }),
+    // Desde P18.6 (0030, DEF-P04) el supervisor no lee la ficha de los empleados de su turno.
     ve: ven({
       empleado: ['empleado1'],
-      supervisor: ['supervisor1', 'empleado1', 'empleado2'],
-      dual: ['dual', 'empleado4'],
+      supervisor: ['supervisor1'],
+      dual: ['dual'],
       ...admins,
     }),
     insert: {
@@ -607,8 +611,10 @@ export const TABLAS: TablaSpec[] = [
         window: `[${c.fechaTurno}T20:00:00Z,${c.fechaTurno}T21:00:00Z)`,
       }),
     },
+    // Desde P18.6 (0030, DEF-P06) el empleado lee solo sus asignaciones: a los compañeros del
+    // turno los ve por `v_shift_peers` (sin la observación). El supervisor ve las del turno.
     ve: ven({
-      empleado: ['asigE1', 'asigE2'],
+      empleado: ['asigE1'],
       supervisor: ['asigE1', 'asigE2'],
       dual: ['asigE4', 'asigDual'],
       ...admins,
@@ -755,7 +761,6 @@ export const TABLAS: TablaSpec[] = [
   },
   {
     tabla: 'shift_tasks',
-    pesada: true,
     pk: ['id'],
     clave: 'id',
     filas: (c) => ({ tareaA: c.e.tareaA, tareaB: c.e.tareaB }),

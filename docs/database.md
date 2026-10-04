@@ -540,6 +540,14 @@ Tabla por tabla, sobre las 23 tablas de negocio (más dos políticas de `anon` s
   (04 sección 0); owner/admin ven todo, incluidas las filas dadas de baja lógica.
 - `to authenticated` en todas las políticas salvo las dos de `anon` sobre `company_settings`.
 
+> **Actualización de P18.6 (migración `0030`):** lo que sigue describe el criterio de `0012`. El
+> "riesgo residual aceptado" de `profiles` quedó superado: Mike decidió resolver el recorte de
+> columnas con vistas (ver "Correcciones de P18.6"). Las políticas
+> `profiles_select_employee_teammates`, `profiles_select_supervisor_team` y
+> `employees_select_supervisor_team` ya no existen, el empleado ya no lee `clients` ni las
+> asignaciones de sus compañeros, y todas las políticas pasaron a `(select app.fn())` y a conjuntos
+> por turno.
+
 **Límite real de "solo columnas" en Postgres (decisión de Mike, tramo A de P04.5).** RLS es por
 fila, no por columna. `04` sección 7.2 pide, para `profiles` (empleado: compañeros) y
 `clients`/`client_contacts` (empleado: clientes de sus turnos), exponer "solo columnas" limitadas
@@ -1031,10 +1039,10 @@ la autocalificación rechazada de CB-13, la negativa del empleado sobre `ratings
 
 ## Storage: buckets `avatars` y `branding` (04 sección 7.3, migración `0014`, DB-016, ADR-016)
 
-| Bucket     | Ruta                      | Límite | Tipos                                                                               | Lectura                           | Escritura                                                      |
-| ---------- | ------------------------- | ------ | ----------------------------------------------------------------------------------- | --------------------------------- | -------------------------------------------------------------- |
-| `avatars`  | `{profile_id}/{uuid}.jpg` | 2 MB   | `image/jpeg`                                                                        | Pública (`anon`, `authenticated`) | Propio (primer segmento del path = `auth.uid()`) u owner/admin |
-| `branding` | `logo.{ext}`              | 1 MB   | PNG, JPEG, SVG, WebP (decisión menor: el modelo dice "logo.{ext}" sin fijar cuáles) | Pública                           | Owner y admin                                                  |
+| Bucket     | Ruta                      | Límite | Tipos                                                                                              | Lectura                                                                         | Escritura                                                                     |
+| ---------- | ------------------------- | ------ | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `avatars`  | `{profile_id}/{uuid}.jpg` | 2 MB   | `image/jpeg`                                                                                       | Pública por URL (`/object/public`); listar: propia carpeta u owner/admin (0030) | Propio (primer segmento del path = `auth.uid()`, perfil activo) u owner/admin |
+| `branding` | `logo.{ext}`              | 1 MB   | PNG, JPEG, WebP (sin SVG desde 0030, SEG-02; decisión menor original: el modelo dice "logo.{ext}") | Pública                                                                         | Owner y admin                                                                 |
 
 Políticas sobre `storage.objects` (RLS ya habilitada de fábrica por Supabase en esa tabla; esta
 migración solo agrega las políticas de estos dos buckets), con `(storage.foldername(name))[1]`
@@ -1472,6 +1480,158 @@ supabase/functions/admin-users/index.test.ts` después de que exista Deno en el 
 Deno (no en el proyecto de TypeScript de Vite): excluidos de `eslint.config.js` (`ignores`) y de
 `vitest.config.ts` (`exclude`), verificados con `deno check`/`deno test`.
 
+## Correcciones de P18.6: permisos recortados, rendimiento de la RLS y Edge Function (migración `0030`)
+
+Una sola migración, `0030_p18_6_permisos_y_rendimiento.sql`, cierra los defectos que dejaron la
+matriz de permisos (P18.3, `tests/permissions/`), la revisión de seguridad (`docs/security-review.md`)
+y la prueba de carga (P18.4). pgTAP: `supabase/tests/0030_p18_6_permisos_y_rendimiento.test.sql`
+(91 aserciones), `0031_p18_6_service_role_funciones_de_vistas.test.sql` (10) y los tests de `0002`, `0004`, `0012` (cuatro archivos), `0014` y `0023`, que se
+ajustaron a lo nuevo.
+
+### Datos recortados para empleado y supervisor (DEF-P03, P04, P05, P06; decisión de Mike)
+
+RLS filtra filas, no columnas. En vez de dejarle a empleado y supervisor la fila entera de lo
+ajeno, **esas filas dejan de leerse de la tabla base** y se leen por vistas que solo exponen lo
+permitido. Las filas propias siguen leyéndose completas.
+
+| Antes                                                                                        | Ahora                                                                                                                                                                  |
+| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `profiles`: empleado y supervisor leían compañeros y empleados de su turno (teléfono, mail)  | Se quitaron `profiles_select_employee_teammates` y `profiles_select_supervisor_team`. Se leen por `v_people_basic` (nombre y foto)                                     |
+| `employees` y `v_employees`: el supervisor leía DNI, CUIL, domicilio, contacto de emergencia | Se quitó `employees_select_supervisor_team`. El supervisor solo lee su propia ficha. Nombre, foto y asistencia: `v_people_basic` y `v_my_supervisions`                 |
+| `clients`: el empleado leía CUIT, domicilio administrativo y notas del cliente de su turno   | `clients_select_shift_party` quedó solo para el supervisor. El empleado lee el nombre por `v_clients_basic`. `v_my_day` ya lo trae                                     |
+| `assignments`: el empleado leía las de sus compañeros (con su observación)                   | `assignments_select_employee` quedó en "las propias". Los compañeros del turno se leen por `v_shift_peers` (sin observación). El supervisor sigue viendo todo el turno |
+
+Las vistas son `security_invoker = true` como todas, pero leen de funciones del esquema `app`
+(`security definer`, sin parámetros, parten de `auth.uid()` y del rol de la sesión):
+`app.people_basic()`, `app.clients_basic()`, `app.shift_peers()`. Nombre y columnas de
+`v_people_basic` no cambian; `v_clients_basic (id, legal_name, trade_name)` y
+`v_shift_peers (shift_id, profile_id, first_name, last_name, avatar_path)` son nuevas.
+
+`service_role` (la clave de servicio, que usan los tests y los scripts) lee estas vistas completas, como
+lee las tablas: la migración `0031_p18_6_service_role_funciones_de_vistas.sql` le da `execute` sobre las
+funciones y hace que `people_basic()`, `clients_basic()` y `shift_peers()` devuelvan todas las filas
+cuando el JWT es de `service_role`. Sin esto, `v_my_day` y `v_my_supervisions` daban error con esa
+clave (lo detectó la matriz de permisos).
+
+Consecuencias que se aceptaron (la matriz las refleja): `v_shifts_board`, `v_assignments_board`,
+`v_clients` y `v_search` unen `clients`/`profiles`, así que el empleado ya no las ve y el supervisor
+ve solo lo que sigue permitido (sus clientes y sedes). Son vistas de administración; empleado y
+supervisor usan `v_my_day`, `v_my_supervisions`, `v_people_basic`, `v_clients_basic` y
+`v_shift_peers`.
+
+### Rendimiento de la RLS (DEF-P02 y `v_my_day` bajo carga)
+
+Causa: las políticas llamaban `app.has_role(...)`, `app.is_admin()` y `app.shares_shift(shift_id)`
+**fila por fila** (cada `has_role` lee el JWT y busca el perfil; `shares_shift` busca en
+`assignments`), y las de `clients`/`sites` recorrían todos los turnos del cliente por cada fila.
+Con 6.664 filas de `shift_tasks` eso era ~1 ms por fila. Arreglo:
+
+- Toda función de permisos va envuelta en `(select ...)` (`(select app.has_role('employee'))`):
+  Postgres la evalúa **una vez** por consulta.
+- Los filtros por turno pasan de "función por fila" a "pertenece al conjunto":
+  `shift_id in (select s from app.my_shift_ids() as s)`, que se calcula una vez (hashed subplan). Las
+  funciones de conjuntos son `app.my_shift_ids`, `my_supervised_shift_ids`, `my_assignment_ids`,
+  `supervised_assignment_ids`, `my_supervision_ids`, `supervised_client_ids`, `shared_client_ids`,
+  `supervised_site_ids` y `shared_site_ids`. `app.shares_shift` y `app.supervises_shift` siguen
+  existiendo (las usan las RPC).
+- Se reescribieron con `alter policy` las políticas de todas las tablas (no solo las de turnos).
+
+Medido con `explain analyze` desde la CLI contra `App_dev`, simulando a la persona (rol
+`authenticated` y claims del hook), mismos datos (1.515 turnos, 6.664 tareas, 439 asignaciones):
+
+| Consulta                                | Antes    | Después    |
+| --------------------------------------- | -------- | ---------- |
+| `select * from shift_tasks` (empleado)  | 6.574 ms | 86 ms      |
+| `select * from shift_tasks` (doble rol) | 7.955 ms | 8 ms       |
+| `v_my_day` (empleado)                   | 340 ms   | 12 a 14 ms |
+| `v_my_day` (doble rol)                  | 525 ms   | 16 ms      |
+| `v_my_supervisions` (doble rol)         | 380 ms   | 16 ms      |
+
+Prueba de carga (`pnpm test:load -- --duracion=60`, 35 usuarios abriendo a la vez), `v_my_day`:
+
+| `v_my_day` (milisegundos)      | Antes | Después |
+| ------------------------------ | ----- | ------- |
+| Arranque (ráfaga de 35), p50   | 4.682 | 1.714   |
+| Arranque (ráfaga de 35), p95   | 7.102 | 2.509   |
+| Régimen (polling de 30 s), p50 | 246   | 94      |
+| Régimen (polling de 30 s), p95 | 328   | 168     |
+
+Lo que queda del arranque ya no es la consulta (12 a 16 ms con `explain analyze`): es la cola de 35
+usuarios que abren a la vez contra el pooler de una instancia chica.
+
+### Quién puede desactivar o editar a quién (DEF-P13)
+
+Trigger `trg_enforce_profile_admin_update_rules` (`app.enforce_profile_admin_update_rules()`),
+`BEFORE UPDATE` en `profiles`, solo para sesiones de usuario (`auth.uid()` no nulo; la Edge Function
+con `service_role` y el SQL administrativo quedan afuera):
+
+- La propia fila: nadie cambia su `is_active` ni su `deleted_at` por esta vía.
+- Fila ajena: un administrador no actúa sobre un administrador ni sobre un dueño (solo el dueño);
+  `location_consent_at` y `last_seen_changes_at` son de cada persona; cambiar `is_active` o
+  `deleted_at` exige `manage_users` (el dueño siempre la tiene); reactivar es solo del dueño; desactivar
+  al último dueño activo es `LAST_OWNER`.
+- Editar nombre, email de contacto, teléfono y foto de empleados y supervisores sigue siendo de
+  cualquier administrador (03 sección 6: "Empleados: editar datos"). El grant por columnas de `0017`
+  ya dejaba fuera el resto.
+
+La vía normal para desactivar o reactivar sigue siendo la Edge Function `admin-users`.
+
+### Configuración de la empresa (DEF-P01)
+
+Trigger `trg_enforce_company_settings_columns`: una sesión que no es `owner` solo puede cambiar
+`logo_path` (más `updated_by`/`updated_at`). Nombre, teléfono de soporte y texto de consentimiento
+son del dueño (03 sección 6).
+
+### Cuenta desactivada con el token vigente (DEF-P09, P10, P12)
+
+- `holidays_select_authenticated` y `company_settings_select_authenticated` exigen
+  `app.current_profile_active()`. `anon` sigue viendo `v_public_branding` (grant por columnas).
+- `avatars`: insertar, actualizar y borrar en la carpeta propia usan `app.current_uid()` (nulo si el
+  perfil no está activo).
+- `mark_changes_seen()` responde `FORBIDDEN` si el perfil no está activo.
+
+### Storage y funciones de la plataforma (DEF-P07 = SEG-01, SEG-02, DEF-P11 = SEG-08)
+
+- `avatars_select_public` se quitó. Nueva `avatars_select_own_or_admin` (`authenticated`: carpeta
+  propia u owner/admin). El bucket sigue siendo `public`: la app muestra las fotos con
+  `getPublicUrl` (`/storage/v1/object/public/avatars/...`), que no pasa por RLS. Se comprobó que
+  `src/` no usa `.list()` ni `.download()` sobre `avatars`.
+- `branding` ya no acepta `image/svg+xml` (PNG, JPEG y WebP). El logo de `App_dev` está sin cargar
+  (`logo_path` nulo) y el seed no trae SVG, así que no hubo nada que migrar.
+- `public.rls_auto_enable()` (la crea la plataforma): `revoke execute ... from public, anon,
+authenticated`.
+
+### `v_my_day` incluye los turnos cancelados (DEF-01)
+
+Se quitó `sh.status <> 'cancelled'`. El indicador para el front es **`shift_status = 'cancelled'`**
+(columna que ya existía). Además `changed_since_last_seen` se enciende al cancelar (el cambio es
+ajeno). Mismas columnas y mismo orden. Las RPC de asistencia y avisos ya rechazan un turno cancelado
+con `SHIFT_CANCELLED`.
+
+### `update_shift_time` nombra al empleado (DEF-03)
+
+`ASSIGNMENT_OVERLAP` ahora dice `El empleado ya tiene otro turno en ese horario. Afecta a: Nombre
+Apellido.` (el texto anterior queda como prefijo). Los nombres salen de calcular qué asignaciones
+vigentes del turno quedarían pisadas con la franja nueva (la misma cuenta que
+`app.sync_assignment_window`), no del texto del error de Postgres.
+
+### Edge Function `admin-users` (DEF-P08, SEG-03, SEG-07)
+
+- `sign_out_user` con una persona inexistente responde `PROFILE_NOT_FOUND` (404), sin cerrar sesiones ni
+  dejar evento. La comprobación va después de las de permiso.
+- El límite de 10 acciones por minuto ahora cuenta también los intentos **rechazados** de una persona
+  ya identificada (`FORBIDDEN`, validación, acción desconocida, no encontrada...). Se registran en
+  `security_events` con el tipo nuevo `admin_action_rejected` (`details`: `action`, `hint`). No se
+  registran `RATE_LIMITED` (el bloqueo se auto-prolongaría), `INTERNAL_ERROR`, `UNAUTHENTICATED` ni
+  `ORIGIN_NOT_ALLOWED` (todavía no se sabe quién es).
+- `_shared/cors.ts`: `http://localhost:5173` salió de la lista base. Se agrega con el secreto de la
+  función `ALLOWED_ORIGINS_EXTRA` (lista separada por comas; solo se aceptan orígenes `http://localhost` o
+  `http://127.0.0.1`, cualquier otro valor se ignora). Cargado únicamente en `App_dev`; en `App` no
+  existe. Comando: `supabase secrets set ALLOWED_ORIGINS_EXTRA=http://localhost:5173 --project-ref
+<ref de App_dev>`.
+- Tests Deno nuevos en `supabase/functions/admin-users/index.p18_6.test.ts` (10). `handleRequest` acepta
+  un segundo parámetro opcional (`makeAdmin`) para inyectar un cliente simulado en los tests.
+
 ## Enumeraciones (04 sección 3)
 
 Las 15 enumeraciones del modelo, en el esquema `public`, migración `0002_enums.sql`. Agregar un
@@ -1536,7 +1696,10 @@ empleado y observación" más arriba. En F14 (P14.1, ABS-002, ATT-007):
 `admin_record_attendance` y `close_assignment`, más las columnas nuevas de `v_assignments_board`/
 `v_my_day` -- ver "RPC de avisos y asistencia administrativa" más arriba. Corrección chica de F14
 (P14.2, revisión visual, sin tarea `DB-0xx` propia): `0028_v_my_day_own_actions.sql` -- ver
-"`v_my_day`: acciones propias no encienden el aviso de cambios (P14.2)" más arriba.
+"`v_my_day`: acciones propias no encienden el aviso de cambios (P14.2)" más arriba. En F18
+(P18.6, corrección de defectos de la matriz de permisos y de la prueba de carga):
+`0030_p18_6_permisos_y_rendimiento.sql` y `0031_p18_6_service_role_funciones_de_vistas.sql` -- ver
+"Correcciones de P18.6" más arriba.
 
 ## Cómo escribir una migración
 
