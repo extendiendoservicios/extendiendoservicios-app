@@ -7,8 +7,15 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.15.1] - 2026-10-05
+
+### Cambiado
+
+- Nocturno de e2e (TEST-021): las suites corren en tres tandas en lugar de siete jobs a la vez, con la hora de Argentina fijada; estimado de 35 a 40 minutos. Lo pidió la primera corrida en GitHub, donde App_dev se volvía lenta con siete suites juntas.
+
 ### Corregido
 
+- Prueba `planificacion.admin.ts`: «Programado» solo se afirma si faltan más de 2 horas para la franja (antes la app ya muestra «Próximo»).
 - Prueba de restauración (TEST-024): esperaba la política `avatars_select_public`, que la migración 0030 reemplazó por `avatars_select_own_or_admin` (SEG-01), y abortaba sin tocar nada.
 
 ## [0.15.0] - 2026-10-05
