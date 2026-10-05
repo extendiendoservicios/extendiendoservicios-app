@@ -314,34 +314,22 @@ test.describe('cambiar la franja de un turno con asignaciones (ADM-07)', () => {
     },
   )
 
-  // DEFECTO DEF-03 (menor): 08 sección 3, CB-10: "Rechazado; el mensaje indica qué empleado".
-  // `update_shift_time` responde "El empleado ya tiene otro turno en ese horario." (0023): no
-  // nombra a la persona afectada.
+  // DEF-03 (corregido en P18.6): `update_shift_time` nombra al empleado afectado (CB-10).
   test(
     'el mensaje del rechazo indica qué empleado queda superpuesto',
-    {
-      ...cubre('RB-A04', 'CB-10'),
-      annotation: [
-        ...cubre('RB-A04', 'CB-10').annotation,
-        {
-          type: 'defecto',
-          description:
-            'DEF-03 (menor): ASSIGNMENT_OVERLAP en update_shift_time no nombra al empleado (CB-10).',
-        },
-      ],
-    },
+    cubre('RB-A04', 'CB-10'),
     async ({ page }) => {
-      test.fail(
-        true,
-        'DEF-03: el mensaje de update_shift_time no indica el empleado (CB-10)',
-      )
       const sc = new Scenario()
       try {
         const { turnoB } = await armar(sc)
         await intentarSolapar(page, turnoB)
-        await expect(page.getByText(reNombreDe('empleado1'))).toBeVisible({
-          timeout: 5_000,
-        })
+        await expect(
+          page.getByText(
+            new RegExp(
+              `El empleado ya tiene otro turno en ese horario[.] Afecta a: ${reNombreDe('empleado1').source}`,
+            ),
+          ),
+        ).toBeVisible({ timeout: 5_000 })
       } finally {
         expect(await sc.cleanup(), 'limpieza').toEqual([])
       }

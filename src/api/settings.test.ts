@@ -98,7 +98,7 @@ describe('updateCompanySettings', () => {
 describe('validateLogoFile', () => {
   it('rechaza un tipo MIME no admitido', () => {
     const file = new File(['x'], 'logo.gif', { type: 'image/gif' })
-    expect(validateLogoFile(file)).toMatch(/PNG, JPEG, SVG o WebP/)
+    expect(validateLogoFile(file)).toMatch(/PNG, JPEG o WebP/)
   })
 
   it('rechaza un archivo de más de 1 MB', () => {
