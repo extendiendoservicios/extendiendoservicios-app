@@ -469,7 +469,7 @@ requerir_en_volcado "hook de Auth" '^[0-9]+; [0-9]+ [0-9]+ FUNCTION app custom_a
 requerir_en_volcado "trigger de perfiles sobre auth.users" ' TRIGGER auth users trg_handle_new_user '
 requerir_en_volcado "trigger de ingresos sobre auth.sessions" ' TRIGGER auth sessions trg_log_sign_in '
 requerir_en_volcado "buckets de Storage (datos)" '^[0-9]+; [0-9]+ [0-9]+ TABLE DATA storage buckets '
-for politica in avatars_select_public avatars_insert_own_or_admin avatars_update_own_or_admin \
+for politica in avatars_select_own_or_admin avatars_insert_own_or_admin avatars_update_own_or_admin \
   avatars_delete_own_or_admin branding_select_public branding_write_admin; do
   requerir_en_volcado "política de Storage ${politica}" " POLICY storage objects ${politica} "
 done

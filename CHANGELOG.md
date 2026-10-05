@@ -7,6 +7,10 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+### Corregido
+
+- Prueba de restauración (TEST-024): esperaba la política `avatars_select_public`, que la migración 0030 reemplazó por `avatars_select_own_or_admin` (SEG-01), y abortaba sin tocar nada.
+
 ## [0.15.0] - 2026-10-05
 
 F18: testing integral. Informe completo en `docs/test-report-f18.md`.
