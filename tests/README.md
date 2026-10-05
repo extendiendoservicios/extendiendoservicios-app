@@ -31,6 +31,7 @@ Cada suite tiene su propio conjunto de cuentas (`E2E_CONJUNTO`: `base` por omisi
 (`node --env-file=.env.local tests/fixtures/setup-accounts.ts --barrer`) y las suites se ejecutan con
 `E2E_SKIP_SWEEP=1`. Lo que edita la configuración de la empresa (`dueno-config`, singleton que la matriz de permisos también toca) corre al final; el recorrido del dueño ya no necesita ir al final desde que el cierre de sesión es local (DEF-04, P18.6).
 El nocturno (`.github/workflows/e2e-app-dev.yml`) corre estos conjuntos como jobs paralelos, uno por suite (guía y tiempos en `docs/deployment.md` sección 14); el diseño y los tiempos medidos están en `docs/test-inventory.md`, sección 10.
+En Windows, el navegador WebKit de pruebas a veces deja un proceso `WebKitNetworkProcess` huérfano al cerrar y Playwright no termina aunque todos los tests pasaron (se cortó a los 30 minutos con `globalTimeout`; TEST-029, `docs/test-report-f18.md` sección 3.3). Si pasa, terminá ese proceso a mano (`taskkill /F /IM WebKitNetworkProcess.exe`); en el nocturno (Linux) no se vio.
 Para probar suites en paralelo en una sola máquina: `E2E_REUSE_SERVER=1` con un `vite preview` en el 5173. Los ingresos por API esperan y reintentan si el proveedor responde con el límite de tasa (429).
 
 ### Reglas

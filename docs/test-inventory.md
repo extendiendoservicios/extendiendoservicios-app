@@ -2,6 +2,8 @@
 
 TEST-015 (P18.1, F18). Fecha: 3 de octubre de 2026. Base: rama `test/TEST-015-inventario-admin`, desde `develop` `39d64f7`.
 
+**Informe de pruebas de F18 (5 de octubre de 2026, TEST-028 y TEST-029):** el acta con la trazabilidad fila por fila y su resultado, las tres corridas de estabilidad, los defectos de la fase y los riesgos abiertos está en [`docs/test-report-f18.md`](test-report-f18.md).
+
 **Actualización P18.2 (3 de octubre de 2026, TEST-017 y TEST-018):** se sumaron las suites móviles `tests/e2e/empleado/` (23 tests) y `tests/e2e/supervisor/` (11 tests), con proyectos `mobile` y `webkit`. Las secciones 2, 3, 4, 5, 6, 7 y 8 ya los incluyen.
 
 **Actualización P18.4 (4 de octubre de 2026, TEST-020, TEST-021, TEST-022 y TEST-023):** conjuntos de cuentas disjuntos por suite y Edge en administración (sección 3 y 10), CB-11 y CB-23 (sección 6), carga ligera (`pnpm test:load`, sección 10), accesibilidad con axe-core en los tres roles (sección 10), y limpieza de las suites viejas reemplazadas (sección 8). **TEST-026 (ejemplos reales del cliente, IF-15) es no aplicable: el cliente no los mandó; decisión de Mike.**
