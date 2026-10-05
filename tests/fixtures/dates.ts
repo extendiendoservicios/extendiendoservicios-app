@@ -63,6 +63,18 @@ export function franjaYaEmpezo(franja: { start: string }): boolean {
 }
 
 /**
+ * `true` si la franja de HOY todavía se muestra como "Programado" (o "Asignado"): la interfaz
+ * pasa a "Próximo" cuando faltan 2 horas o menos para el inicio (derivado `upcoming`, `04`
+ * sección 4; no es un estado) y a otro estado cuando ya empezó. Se pide un margen de 10 minutos
+ * sobre las 2 horas para que la prueba no cruce el umbral mientras corre. Con la franja de la
+ * tarde (14:00) vale solo hasta las 11:50 de Argentina; el nocturno (04:30) siempre la afirma.
+ */
+export function franjaSigueProgramada(franja: { start: string }): boolean {
+  const [h, m] = franja.start.split(':').map(Number)
+  return h * 60 + m - minutesSinceMidnightAR() > 130
+}
+
+/**
  * `true` en la ventana de la medianoche (6 min antes y 4 después), en la que el "hoy" de las
  * pantallas cambia durante la corrida. Los tests que dependen de "hoy" se saltean con un motivo
  * explícito en vez de inventar un reloj falso.
