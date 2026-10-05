@@ -36,7 +36,9 @@ export function configMovil(testMatch: string): PlaywrightTestConfig {
     expect: { timeout: 10_000 },
     use: {
       baseURL: E2E_BASE_URL,
-      actionTimeout: 15_000,
+      // 30 s y no 15: con otras suites corriendo, un clic en WebKit llegó a quedarse 14 s esperando
+      // que el botón estuviera «estable» (TEST-029); solo, la misma prueba pasó seis de seis.
+      actionTimeout: 30_000,
       navigationTimeout: 30_000,
       trace: 'retain-on-failure',
       locale: 'es-AR',

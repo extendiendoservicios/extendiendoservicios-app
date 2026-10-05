@@ -13,7 +13,7 @@ import {
 } from '../../fixtures/env.ts'
 import { signInSession } from '../../fixtures/sessions.ts'
 import { cubre } from '../../fixtures/trace.ts'
-import { loginByForm } from '../../fixtures/ui.ts'
+import { irARedirigida, loginByForm } from '../../fixtures/ui.ts'
 
 // TEST-017 (P18.2): CB-18, "usuario desactivado con la app abierta" (P-014). Es un test de baja
 // y reactivación, así que NO usa una cuenta fija de empleado (desactivarla y reponerla pisaría
@@ -109,7 +109,7 @@ test(
       })
 
       await test.step('no puede volver a entrar a su vía ni iniciar sesión de nuevo', async () => {
-        await page.goto('/app', { waitUntil: 'commit' })
+        await irARedirigida(page, '/app')
         await expect(page).toHaveURL(/\/(ingresar|sin-acceso)$/)
         await page.goto('/ingresar')
         await page.getByLabel('Email').fill(EMAIL)

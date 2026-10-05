@@ -15,6 +15,7 @@ import {
 import { Scenario, sessionClient } from '../../fixtures/scenario.ts'
 import { storageStatePath } from '../../fixtures/sessions.ts'
 import { cubre } from '../../fixtures/trace.ts'
+import { irARedirigida } from '../../fixtures/ui.ts'
 
 // TEST-018 (P18.2): lo que el supervisor NO puede hacer, por pantalla y por API directa
 // (RB-S02, RB-S03, RB-S04, RB-X02, P-020, P-083, P-084; CB-14 por pantalla). La persona que mira
@@ -90,8 +91,7 @@ test(
           '/admin',
           '/admin/supervisiones',
         ]) {
-          // `commit`: la redirección ocurre en el cliente y en WebKit interrumpe la espera de "load".
-          await page.goto(ruta, { waitUntil: 'commit' })
+          await irARedirigida(page, ruta)
           await expect(page, `${ruta} debería redirigir`).toHaveURL(/\/sup$/)
         }
       })

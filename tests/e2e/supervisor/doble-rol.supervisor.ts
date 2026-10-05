@@ -16,6 +16,7 @@ import {
 import { Scenario, sessionClient } from '../../fixtures/scenario.ts'
 import { storageStatePath } from '../../fixtures/sessions.ts'
 import { cubre } from '../../fixtures/trace.ts'
+import { irARedirigida } from '../../fixtures/ui.ts'
 
 // TEST-018 (P18.2): el doble rol empleado y supervisor (`e2e-fijo-dual`): el ingreso va a la vía
 // de empleado, "Más" ofrece "Supervisión" (EMP-13) y "Mis servicios" (SUP-09) con los enlaces
@@ -58,7 +59,7 @@ test(
       await marcarCambiosVistos('dual')
 
       await test.step('al entrar, el inicio es el de empleado (COM-01): Hoy con su servicio, sin la supervisión', async () => {
-        await page.goto('/', { waitUntil: 'commit' })
+        await irARedirigida(page, '/')
         await expect(page).toHaveURL(/\/app$/)
         await expect(page.getByText(sedeEmpleado.name)).toBeVisible()
         await expect(page.getByText(sedeSupervision.name)).toHaveCount(0)
