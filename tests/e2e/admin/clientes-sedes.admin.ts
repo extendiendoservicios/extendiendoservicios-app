@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { anioLejano } from '../../fixtures/accounts.ts'
 import { FRANJAS } from '../../fixtures/dates.ts'
 import { MISSING_ENV_MESSAGE, readE2eEnv } from '../../fixtures/env.ts'
 import { Scenario, sessionClient } from '../../fixtures/scenario.ts'
@@ -13,10 +14,11 @@ import { interceptMapRequests } from '../../fixtures/ui.ts'
 //     empleado ve la dirección igual.
 // El alta de cliente, de contactos y de sedes con coordenadas ya la recorre
 // `tests/e2e-clients-sites/` (CLIENT-008, SITE-008); acá van los casos borde.
-// Mes lejano reservado de este archivo: junio de 2193. Empleado: empleado2, de 08:00 a 12:00 (cada
+// Mes lejano reservado de este archivo: junio del año lejano del conjunto (2193 en `base`). Empleado: empleado2, de 08:00 a 12:00 (cada
 // archivo usa su propia combinación de empleado y franja para correr en paralelo sin superponerse).
 
 test.skip(!readE2eEnv(), MISSING_ENV_MESSAGE)
+const ANIO = anioLejano()
 
 test.describe('clientes y sedes (ADM-19 a ADM-24)', () => {
   test.use({ storageState: storageStatePath('admin') })
@@ -27,14 +29,14 @@ test.describe('clientes y sedes (ADM-19 a ADM-24)', () => {
     async ({ page }) => {
       test.setTimeout(180_000)
       const sc = new Scenario()
-      sc.useFarMonth(2193, 6)
+      sc.useFarMonth(ANIO, 6)
       try {
         const client = await sc.client('suspende')
         const site = await sc.site(client.id, 'suspende')
         await sc.service(client.id, site.id, 'diario', {
           weekdays: [0, 1, 2, 3, 4, 5, 6],
-          validFrom: '2193-06-01',
-          validTo: '2193-06-30',
+          validFrom: `${ANIO}-06-01`,
+          validTo: `${ANIO}-06-30`,
         })
         const owner = await sessionClient('owner')
         const contar = async () => {
@@ -47,7 +49,7 @@ test.describe('clientes y sedes (ADM-19 a ADM-24)', () => {
 
         await test.step('con el cliente activo, la generación crea los 30 turnos de junio', async () => {
           const generado = await owner.rpc('generate_shifts', {
-            p_year: 2193,
+            p_year: ANIO,
             p_month: 6,
           })
           expect(generado.error, generado.error?.message).toBeNull()
@@ -73,11 +75,11 @@ test.describe('clientes y sedes (ADM-19 a ADM-24)', () => {
             weekdays: [1, 2, 3],
             start: '14:00',
             end: '18:00',
-            validFrom: '2193-06-01',
-            validTo: '2193-06-30',
+            validFrom: `${ANIO}-06-01`,
+            validTo: `${ANIO}-06-30`,
           })
           const regenerado = await owner.rpc('generate_shifts', {
-            p_year: 2193,
+            p_year: ANIO,
             p_month: 6,
           })
           expect(regenerado.error, regenerado.error?.message).toBeNull()

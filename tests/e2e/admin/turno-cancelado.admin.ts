@@ -132,28 +132,13 @@ test.describe('CB-03: cancelar un turno en curso con un empleado presente', () =
     },
   )
 
-  // DEFECTO DEF-01 (mayor): 02_Decisiones.md P-049 y 05 (EMP-03, "Cambios desde tu última visita:
-  // turnos nuevos, cancelados o con horario cambiado") dicen que el empleado ve el turno
-  // cancelado en Hoy con indicador de cambio. `v_my_day` filtra `shift.status <> 'cancelled'`
-  // (0011_views.sql), así que el turno cancelado desaparece y Hoy dice "No tenés servicios hoy".
+  // DEF-01 (corregido en P18.6): el empleado ve el turno cancelado en Hoy (P-049, CB-03).
   test(
     'el empleado ve el turno cancelado en Hoy con indicador de cambio',
     {
       ...cubre('RB-E02', 'CB-03', 'P-049'),
-      annotation: [
-        ...cubre('RB-E02', 'CB-03', 'P-049').annotation,
-        {
-          type: 'defecto',
-          description:
-            'DEF-01 (mayor): v_my_day excluye los turnos cancelados; el empleado no se entera de la cancelación (P-049, EMP-03).',
-        },
-      ],
     },
     async ({ browser }) => {
-      test.fail(
-        true,
-        'DEF-01: v_my_day oculta los turnos cancelados (P-049 pide mostrarlos con indicador)',
-      )
       const sc = new Scenario()
       try {
         const client = await sc.client('cancelado-hoy')
@@ -181,7 +166,9 @@ test.describe('CB-03: cancelar un turno en curso con un empleado presente', () =
           await expect(page.getByRole('main')).toContainText(client.name, {
             timeout: 8_000,
           })
-          await expect(page.getByRole('main')).toContainText(/cancelad/i)
+          await expect(
+            page.getByRole('main').getByText('Cancelado', { exact: true }),
+          ).toBeVisible()
         } finally {
           await ctx.close()
         }

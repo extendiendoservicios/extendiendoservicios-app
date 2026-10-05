@@ -130,7 +130,7 @@ pantalla, no del servidor.
 
 - **Logo con nombre de archivo fijo** (`logo.{ext}`, bucket `branding`,
   `upsert: true`): pisa el anterior en vez de acumular versiones. Si la
-  extensión cambia (por ejemplo de `.png` a `.svg`), se borra el archivo
+  extensión cambia (por ejemplo de `.png` a `.jpg`), se borra el archivo
   viejo del bucket a mano (best effort) para no dejar huérfanos.
 - **USERS-013, logo en login y sidebar**: ambos reusan `useBranding`/
   `brandingLogoUrl` (`src/features/auth/useBranding.ts`, ya existía desde

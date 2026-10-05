@@ -52,7 +52,8 @@ export default function ClockTabPage() {
   const online = useOnlineStatus()
   const { data, isLoading, isError } = useMyDayQuery()
 
-  const today = data?.filter((a) => a.isToday) ?? []
+  const today =
+    data?.filter((a) => a.isToday && a.shiftStatus !== 'cancelled') ?? []
   const inProgress = today.find(
     (a) => a.checkInAt != null && a.checkOutAt == null,
   )

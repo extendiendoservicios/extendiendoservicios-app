@@ -10,8 +10,13 @@ import type { MyDayAssignment } from '@/api/myDay'
  * mismo estado que ya trae `v_my_day` alcanza (P-063: "el empleado marca
  * tareas solo entre su inicio y su fin registrados").
  */
-export function canEditTasks(assignment: Pick<MyDayAssignment, 'status'>) {
-  return assignment.status === 'present'
+export function canEditTasks(
+  assignment: Pick<MyDayAssignment, 'status'> &
+    Partial<Pick<MyDayAssignment, 'shiftStatus'>>,
+) {
+  return (
+    assignment.shiftStatus !== 'cancelled' && assignment.status === 'present'
+  )
 }
 
 /**

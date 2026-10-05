@@ -218,36 +218,31 @@ describe('markChangesSeen', () => {
 })
 
 describe('fetchShiftPeers', () => {
-  it('busca los ids de la asignaciones vigentes del turno y después sus datos básicos, sin incluirse a sí mismo', async () => {
-    fromMock
-      .mockReturnValueOnce(
-        makeChainable({
-          data: [
-            { employee_id: 'yo' },
-            { employee_id: 'compa-1' },
-            { employee_id: 'compa-1' },
-          ],
-          error: null,
-        }),
-      )
-      .mockReturnValueOnce(
-        makeChainable({
-          data: [
-            {
-              profile_id: 'compa-1',
-              first_name: 'Mara',
-              last_name: 'Diaz',
-              avatar_path: null,
-            },
-          ],
-          error: null,
-        }),
-      )
+  it('lee v_shift_peers del turno y descarta al propio usuario', async () => {
+    fromMock.mockReturnValueOnce(
+      makeChainable({
+        data: [
+          {
+            profile_id: 'yo',
+            first_name: 'Yo',
+            last_name: 'Mismo',
+            avatar_path: null,
+          },
+          {
+            profile_id: 'compa-1',
+            first_name: 'Mara',
+            last_name: 'Diaz',
+            avatar_path: null,
+          },
+        ],
+        error: null,
+      }),
+    )
 
     const peers = await fetchShiftPeers('sh1', 'yo')
 
-    expect(fromMock).toHaveBeenNthCalledWith(1, 'assignments')
-    expect(fromMock).toHaveBeenNthCalledWith(2, 'v_people_basic')
+    expect(fromMock).toHaveBeenCalledTimes(1)
+    expect(fromMock).toHaveBeenCalledWith('v_shift_peers')
     expect(peers).toEqual([
       {
         profileId: 'compa-1',
@@ -258,14 +253,9 @@ describe('fetchShiftPeers', () => {
     ])
   })
 
-  it('no consulta v_people_basic si no hay compañeros', async () => {
-    fromMock.mockReturnValueOnce(
-      makeChainable({ data: [{ employee_id: 'yo' }], error: null }),
-    )
+  it('devuelve lista vacía si no hay compañeros', async () => {
+    fromMock.mockReturnValueOnce(makeChainable({ data: [], error: null }))
 
-    const peers = await fetchShiftPeers('sh1', 'yo')
-
-    expect(fromMock).toHaveBeenCalledTimes(1)
-    expect(peers).toEqual([])
+    expect(await fetchShiftPeers('sh1', 'yo')).toEqual([])
   })
 })

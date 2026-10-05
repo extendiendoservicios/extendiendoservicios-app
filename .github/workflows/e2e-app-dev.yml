@@ -26,8 +26,10 @@ name: E2E App_dev
 #  - `build` compila una vez con las variables de App_dev y sube `dist/`; cada suite lo baja y su
 #    config levanta `vite preview` en el 5173 (el único origen que acepta por CORS la Edge Function
 #    `admin-users`; cada job es una máquina distinta, así que no chocan).
-#  - `dueno` va al final y espera a todos: el dueño del seed es una sola cuenta compartida y lo que
-#    cierra su sesión o edita la configuración de la empresa no admite otra suite en marcha.
+#  - `dueno` va al final y espera a todos: edita la configuración de la empresa (singleton que la
+#    matriz de permisos también toca y repone), lo que no admite otra suite en marcha. El cierre de
+#    sesión del dueño ya no obliga a nada: desde P18.6 es local (DEF-04) y su recorrido corre con
+#    `admin` y `admin-edge`.
 #
 # Mientras corre, no se puede usar App_dev a mano ni correr `restore-test.yml` (comparten
 # `concurrency`). Detalle y tiempos: docs/deployment.md sección 14 y docs/test-inventory.md sección 10.
@@ -491,7 +493,7 @@ jobs:
         run: node ./node_modules/vitest/vitest.mjs run --config tests/permissions/vitest.config.ts
 
   dueno:
-    name: dueño al final (configuración y cierre de sesión)
+    name: dueño al final (configuración de la empresa)
     needs:
       [
         build,
@@ -535,27 +537,12 @@ jobs:
           PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report
         run: pnpm exec playwright test --config=tests/e2e/admin/playwright.admin.config.ts --project=dueno-config --no-deps --reporter=list,html,json --output=test-results
 
-      # Cierra TODAS las sesiones del dueño (DEF-04): por eso va último.
-      - name: Administración, dueno-final (cierra la sesión del dueño)
-        if: ${{ !cancelled() }}
-        env:
-          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ runner.temp }}/resultados-dueno-final.json
-          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-final
-        run: pnpm exec playwright test --config=tests/e2e/admin/playwright.admin.config.ts --project=dueno-final --no-deps --reporter=list,html,json --output=test-results-final
-
       - name: Resumen de dueno-config
         if: ${{ !cancelled() }}
         uses: ./.github/actions/resumen-e2e
         with:
           titulo: 'dueño: configuración'
           json: ${{ runner.temp }}/resultados-dueno-config.json
-
-      - name: Resumen de dueno-final
-        if: ${{ !cancelled() }}
-        uses: ./.github/actions/resumen-e2e
-        with:
-          titulo: 'dueño: cierre de sesión'
-          json: ${{ runner.temp }}/resultados-dueno-final.json
 
       - name: Subir el reporte HTML y las trazas si algo falló
         if: failure()
@@ -566,6 +553,5 @@ jobs:
             playwright-report*/
             test-results*/
             ${{ runner.temp }}/resultados-dueno-config.json
-            ${{ runner.temp }}/resultados-dueno-final.json
           if-no-files-found: ignore
           retention-days: 7

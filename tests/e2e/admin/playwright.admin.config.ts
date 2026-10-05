@@ -22,21 +22,18 @@ const APP_ROOT = fileURLToPath(new URL('../../..', import.meta.url))
 //    DESPUÉS de `chromium` y `mobile` (`dependencies`): comparten las cuentas fijas. En CI corre
 //    como job aparte con `--project=edge --no-deps` y su propio conjunto de cuentas
 //    (`E2E_CONJUNTO=edge`), así que no espera a nadie.
-//  - `dueno-config` y `dueno-final`: lo que usa al dueño del seed (única cuenta que no se puede
-//    duplicar): editar la configuración de la empresa y cerrar su sesión (DEF-04: cierra TODAS las
-//    suyas). Van al final de todo, de a uno; en CI son un job que espera a los demás.
+//  - `dueno-config`: edita la configuración de la empresa (singleton que la matriz de permisos
+//    también toca y repone), así que no admite otra suite en marcha. Va al final de todo; en CI
+//    es un job que espera a los demás. Desde P18.6 el cierre de sesión es local (DEF-04
+//    corregido): el recorrido del dueño ya no necesita ir al final y corre con `chromium` y `edge`.
 //
 // Puerto 5173 por la lista blanca de CORS de la Edge Function `admin-users`.
-// Los que usan al dueño del seed de un modo que no admite otra suite en paralelo.
-// Los que usan al dueño del seed de un modo que no admite otra suite en paralelo.
 // La auditoría de accesibilidad (axe) tiene su proyecto y, en CI, su job: es lenta y no depende de
 // ninguna otra prueba de administración.
 const ARCHIVO_A11Y = '**/accesibilidad.admin.ts'
 
-const ARCHIVOS_DUENO = [
-  '**/recorrido-dueno.admin.ts',
-  '**/configuracion-dueno.admin.ts',
-]
+// Edita la configuración de la empresa: va fuera del camino paralelo.
+const ARCHIVO_DUENO_CONFIG = '**/configuracion-dueno.admin.ts'
 
 export default defineConfig({
   testDir: '.',
@@ -70,7 +67,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: ['**/*.movil.admin.ts', ARCHIVO_A11Y, ...ARCHIVOS_DUENO],
+      testIgnore: ['**/*.movil.admin.ts', ARCHIVO_A11Y, ARCHIVO_DUENO_CONFIG],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 900 },
@@ -88,7 +85,7 @@ export default defineConfig({
     },
     {
       name: 'edge',
-      testIgnore: ['**/*.movil.admin.ts', ARCHIVO_A11Y, ...ARCHIVOS_DUENO],
+      testIgnore: ['**/*.movil.admin.ts', ARCHIVO_A11Y, ARCHIVO_DUENO_CONFIG],
       dependencies: ['chromium', 'mobile'],
       use: {
         ...devices['Desktop Edge'],
@@ -98,22 +95,10 @@ export default defineConfig({
     },
     {
       // `configuracion-dueno` edita la configuración de la empresa (singleton), que la matriz de
-      // permisos también toca y repone: va fuera del camino paralelo, con el dueño.
+      // permisos también toca y repone: va fuera del camino paralelo, después de todo.
       name: 'dueno-config',
-      testMatch: '**/configuracion-dueno.admin.ts',
+      testMatch: ARCHIVO_DUENO_CONFIG,
       dependencies: ['chromium', 'mobile', 'edge', 'a11y'],
-      use: {
-        ...devices['Desktop Chrome'],
-        viewport: { width: 1280, height: 900 },
-      },
-    },
-    {
-      // El recorrido del dueño termina cerrando la sesión del dueño del seed (DEF-04: cierra
-      // TODAS sus sesiones) y esa cuenta es única: va DESPUÉS de todo (también de `dueno-config`,
-      // que usa la sesión del dueño; por eso son dos proyectos y no corren a la vez).
-      name: 'dueno-final',
-      testMatch: '**/recorrido-dueno.admin.ts',
-      dependencies: ['dueno-config'],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 900 },

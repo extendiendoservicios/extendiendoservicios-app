@@ -53,6 +53,12 @@ function baseAssignment(
 }
 
 describe('isNotifiable', () => {
+  it('no se puede avisar un turno cancelado (CB-03)', () => {
+    expect(isNotifiable(baseAssignment({ shiftStatus: 'cancelled' }))).toBe(
+      false,
+    )
+  })
+
   it('se puede avisar si está esperada, sin inicio registrado', () => {
     expect(isNotifiable(baseAssignment({ status: 'expected' }))).toBe(true)
   })

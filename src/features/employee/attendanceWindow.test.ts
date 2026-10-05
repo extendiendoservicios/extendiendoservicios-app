@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { canEditTasks, taskWindowNotice } from './attendanceWindow'
 
 describe('canEditTasks', () => {
+  it('no deja marcar tareas si el turno está cancelado', () => {
+    expect(canEditTasks({ status: 'present', shiftStatus: 'cancelled' })).toBe(
+      false,
+    )
+  })
+
   it('solo se puede editar con la asignación en `present`', () => {
     expect(canEditTasks({ status: 'present' })).toBe(true)
     expect(canEditTasks({ status: 'expected' })).toBe(false)

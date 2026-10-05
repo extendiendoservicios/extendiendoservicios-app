@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { nombreDe, reNombreDe } from '../../fixtures/accounts.ts'
+import { anioLejano, nombreDe, reNombreDe } from '../../fixtures/accounts.ts'
 import {
   FRANJAS,
   isTooCloseToMidnight,
@@ -23,7 +23,7 @@ import { interceptMapRequests, pickDate, pickMonth } from '../../fixtures/ui.ts'
 //   (ADM-25) -> plantilla de tareas (ADM-26) -> generación del mes (ADM-09) -> cronograma y
 //   asignación (ADM-05/06/08) -> asistencia en nombre del empleado (ADM-10/11) -> supervisión y
 //   calificación (ADM-14/15) -> tablero (ADM-02).
-// El mes de la generación es lejano y reservado de este archivo (agosto de 2193, 31 días): la
+// El mes de la generación es lejano y reservado de este archivo (agosto del año lejano del conjunto, 2193 en `base`; 31 días): la
 // generación es global y no se debe tocar la operación real. Empleado: empleado1 (franja de
 // madrugada 00:02–00:03, que ya terminó a cualquier hora del día); supervisor: supervisor2.
 
@@ -32,7 +32,7 @@ test.skip(isTooCloseToMidnight(), NEAR_MIDNIGHT_MESSAGE)
 
 test.use({ storageState: storageStatePath('admin') })
 
-const ANIO = 2193
+const ANIO = anioLejano()
 const MES = 8
 const DIA_LEJANO = `${ANIO}-08-03`
 
@@ -111,7 +111,7 @@ test(
         ).toBeVisible()
       })
 
-      await test.step('ADM-25: alta del servicio diario con vigencia desde agosto de 2193', async () => {
+      await test.step('ADM-25: alta del servicio diario con vigencia desde agosto del año lejano', async () => {
         await page.goto(`/admin/servicios/nuevo?cliente=${clienteId}`)
         await page.getByRole('combobox', { name: 'Sede' }).click()
         await page.getByRole('option', { name: nombreSede }).click()
@@ -166,7 +166,7 @@ test(
         }
       })
 
-      await test.step('ADM-09: generación de agosto de 2193; los turnos nacen con las tareas de la plantilla', async () => {
+      await test.step('ADM-09: generación de agosto del año lejano; los turnos nacen con las tareas de la plantilla', async () => {
         await page.goto('/admin/turnos/generar')
         await pickMonth(page, 'Mes a generar', ANIO, MES)
         await page
@@ -179,6 +179,10 @@ test(
           .from('shifts')
           .select('id, shift_date')
           .eq('service_id', servicioId)
+          // Solo agosto: el servicio no tiene fin y la generación del mismo mes de OTRO conjunto
+          // (otro año lejano, en paralelo en CI) también le crea turnos.
+          .gte('shift_date', `${ANIO}-08-01`)
+          .lte('shift_date', `${ANIO}-08-31`)
           .order('shift_date')
         expect(turnos, 'un turno por día del mes').toHaveLength(31)
         const { data: tareas } = await sc.db

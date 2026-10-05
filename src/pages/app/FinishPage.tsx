@@ -56,6 +56,9 @@ export default function FinishPage() {
     )
   }
 
+  if (assignment.shiftStatus === 'cancelled') {
+    return <Navigate to={`/app/servicio/${assignment.assignmentId}`} replace />
+  }
   // Sin inicio registrado no hay nada que finalizar; con el fin ya
   // registrado, lo que corresponde es el comprobante (EMP-11), no esta
   // pantalla (mismo criterio que `InProgressPage`).

@@ -6,17 +6,22 @@ import {
 } from '../../fixtures/accounts.ts'
 import { MISSING_ENV_MESSAGE, readE2eEnv } from '../../fixtures/env.ts'
 import { fijarConsentimiento, pngSolido } from '../../fixtures/movil.ts'
-import { readId, storageStatePath } from '../../fixtures/sessions.ts'
+import {
+  anonClient,
+  readId,
+  signInSession,
+  storageStatePath,
+} from '../../fixtures/sessions.ts'
 import { cubre } from '../../fixtures/trace.ts'
-import { expectNoHorizontalScroll } from '../../fixtures/ui.ts'
+import { expectNoHorizontalScroll, loginByForm } from '../../fixtures/ui.ts'
 
 // TEST-017 (P18.2): "Más" (EMP-13, P-122) y el perfil propio (COM-04): autogestión de contacto,
 // foto de perfil (P-037) y consentimiento de ubicación (P-108). Cuenta de este archivo:
 // empleado2. El test deja la cuenta como estaba (sin foto, sin teléfono ni email de contacto).
 //
-// "Cerrar sesión" se comprueba visible pero no se pulsa: `signOut()` sin `scope` cierra TODAS
-// las sesiones de la cuenta (DEF-04, P18.6) e invalidaría las demás sesiones de esta corrida.
-// Cuando DEF-04 esté corregido hay que sumar el cierre de sesión propio acá.
+// "Cerrar sesión" (DEF-04, corregido en P18.6: el cierre es local) se prueba en un test aparte con
+// un ingreso propio por la pantalla: así cierra SU sesión y no la del archivo de sesión compartido
+// con los demás tests de la cuenta.
 
 test.skip(!readE2eEnv(), MISSING_ENV_MESSAGE)
 
@@ -193,3 +198,36 @@ test(
     }
   },
 )
+
+test.describe('cerrar sesión', () => {
+  // Ingreso propio por COM-01: la sesión que se cierra no es la de `storageState`.
+  test.use({ storageState: { cookies: [], origins: [] } })
+
+  test(
+    'EMP-13 Cerrar sesión lleva a COM-01 y la ruta del empleado ya no abre; la otra sesión de la cuenta sigue viva (DEF-04)',
+    cubre('RB-E01', 'RB-X02', 'P-015', 'P-122'),
+    async ({ page }) => {
+      // Otra sesión de la misma cuenta (otro dispositivo), abierta por API.
+      const otroDispositivo = await signInSession(
+        FIXED_ACCOUNTS.empleado2.email,
+      )
+      await loginByForm(page, FIXED_ACCOUNTS.empleado2.email, /\/app/)
+      await page
+        .getByRole('navigation', { name: 'Navegación principal' })
+        .getByRole('link', { name: 'Más' })
+        .click()
+      await page.getByRole('button', { name: 'Cerrar sesión' }).click()
+      await expect(page).toHaveURL(/\/ingresar/)
+      await page.goto('/app')
+      await expect(page).toHaveURL(/\/ingresar/)
+
+      const renovada = await anonClient().auth.refreshSession({
+        refresh_token: otroDispositivo.refresh_token,
+      })
+      expect(
+        renovada.error,
+        'la sesión del otro dispositivo sigue válida (cierre local)',
+      ).toBeNull()
+    },
+  )
+})

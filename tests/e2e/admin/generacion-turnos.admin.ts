@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { anioLejano } from '../../fixtures/accounts.ts'
 import { MISSING_ENV_MESSAGE, readE2eEnv } from '../../fixtures/env.ts'
 import { Scenario } from '../../fixtures/scenario.ts'
 import { storageStatePath } from '../../fixtures/sessions.ts'
@@ -11,14 +12,14 @@ import { pickMonth } from '../../fixtures/ui.ts'
 //     turnos del servicio nuevo.
 //   - CB-09: feriado con un servicio que no trabaja feriados: sin turno ese día.
 // `generate_shifts` es global (genera los turnos de TODOS los servicios activos vigentes), por
-// eso se usa un mes lejano reservado de este archivo (julio de 2193, 31 días) y la limpieza
+// eso se usa un mes lejano reservado de este archivo (julio del año lejano del conjunto, 2193 en `base`; 31 días) y la limpieza
 // borra los turnos sin asignaciones de ese mes. Sin cuentas de empleado: no hay asignaciones.
 
 test.skip(!readE2eEnv(), MISSING_ENV_MESSAGE)
 
 test.use({ storageState: storageStatePath('admin') })
 
-const ANIO = 2193
+const ANIO = anioLejano()
 const MES = 7
 const FERIADO = `${ANIO}-07-05`
 
