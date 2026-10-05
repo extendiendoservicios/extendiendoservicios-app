@@ -17,7 +17,9 @@ import type { NoticeKind } from '@/api/notices'
  */
 export function isNotifiable(assignment: MyDayAssignment): boolean {
   return (
-    assignment.checkInAt == null && assignment.status !== 'absence_notified'
+    assignment.shiftStatus !== 'cancelled' &&
+    assignment.checkInAt == null &&
+    assignment.status !== 'absence_notified'
   )
 }
 

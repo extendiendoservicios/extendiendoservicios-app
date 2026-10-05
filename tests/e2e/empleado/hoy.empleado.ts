@@ -210,27 +210,13 @@ test(
   },
 )
 
-// DEFECTO DEF-01 (mayor): `02_Decisiones.md` P-049 y `05` EMP-03 piden que el empleado vea el
-// turno cancelado en Hoy (con "Cambios desde tu última visita"); `v_my_day` filtra los turnos
-// cancelados y Hoy dice "No tenés servicios hoy". Se corrige en P18.6.
+// DEF-01 (corregido en P18.6): el empleado ve el turno cancelado en Hoy (P-049, CB-03).
 test(
   'Hoy muestra el turno cancelado con su indicador (P-049, CB-03)',
   {
     ...cubre('RB-E02', 'CB-03', 'P-049'),
-    annotation: [
-      ...cubre('RB-E02', 'CB-03', 'P-049').annotation,
-      {
-        type: 'defecto',
-        description:
-          'DEF-01 (mayor): v_my_day excluye los turnos cancelados; el empleado no se entera de la cancelación.',
-      },
-    ],
   },
   async ({ page }) => {
-    test.fail(
-      true,
-      'DEF-01: v_my_day oculta los turnos cancelados (P-049 pide mostrarlos con indicador)',
-    )
     const sc = new Scenario()
     try {
       const cliente = await sc.client('hoy-cancelado')
@@ -253,7 +239,7 @@ test(
       await expect(page.getByRole('main')).toContainText(sede.name, {
         timeout: 8_000,
       })
-      await expect(page.getByRole('main')).toContainText(/cancelad/i)
+      await expect(page.getByRole('main').getByText('Cancelado')).toBeVisible()
     } finally {
       expect(await sc.cleanup(), 'limpieza').toEqual([])
     }

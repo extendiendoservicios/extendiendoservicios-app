@@ -248,47 +248,30 @@ export interface ShiftPeer {
 
 /**
  * Compañeros de un turno, sin la propia fila (EMP-04: "compañeros del
- * turno (nombre y foto)"). Dos pasos porque `v_people_basic` no sabe nada
- * de turnos: primero los `employee_id` de las asignaciones vigentes de ese
- * turno (RLS `assignments_select_employee`, ver `0012_rls_policies.sql`:
- * cualquier empleado con una asignación vigente en el turno puede leer las
- * de sus compañeros), después sus datos básicos.
+ * turno (nombre y foto)", P-103). Una sola consulta a `v_shift_peers`
+ * (migración 0030, P18.6): la vista ya acota a los compañeros del mismo
+ * turno y expone solo nombre y foto. Ya no se lee `assignments`, que para
+ * el empleado devuelve únicamente su propia fila.
  */
 export async function fetchShiftPeers(
   shiftId: string,
   selfProfileId: string,
 ): Promise<ShiftPeer[]> {
-  const { data: assignmentRows, error: assignmentsError } = await supabase
-    .from('assignments')
-    .select('employee_id')
-    .eq('shift_id', shiftId)
-    .is('removed_at', null)
-
-  if (assignmentsError) {
-    throw fromPostgrestError(assignmentsError)
-  }
-
-  const peerIds = Array.from(
-    new Set((assignmentRows ?? []).map((row) => row.employee_id)),
-  ).filter((id) => id !== selfProfileId)
-
-  if (peerIds.length === 0) {
-    return []
-  }
-
-  const { data: peopleRows, error: peopleError } = await supabase
-    .from('v_people_basic')
+  const { data, error } = await supabase
+    .from('v_shift_peers')
     .select('profile_id, first_name, last_name, avatar_path')
-    .in('profile_id', peerIds)
+    .eq('shift_id', shiftId)
 
-  if (peopleError) {
-    throw fromPostgrestError(peopleError)
+  if (error) {
+    throw fromPostgrestError(error)
   }
 
-  return (peopleRows ?? []).map((row) => ({
-    profileId: row.profile_id as string,
-    firstName: row.first_name as string,
-    lastName: row.last_name as string,
-    avatarPath: row.avatar_path,
-  }))
+  return (data ?? [])
+    .filter((row) => row.profile_id !== selfProfileId)
+    .map((row) => ({
+      profileId: row.profile_id as string,
+      firstName: row.first_name as string,
+      lastName: row.last_name as string,
+      avatarPath: row.avatar_path,
+    }))
 }

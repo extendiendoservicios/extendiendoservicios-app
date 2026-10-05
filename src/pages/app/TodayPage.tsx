@@ -121,21 +121,23 @@ export default function TodayPage() {
  * La tarjeta destacada (`05` fila EMP-03): el servicio en curso si hay uno;
  * si no, el próximo por empezar; si ya están todos cerrados (finalizados o
  * con ausencia avisada), el último de la lista — para que la tarjeta nunca
- * quede vacía habiendo servicios hoy.
+ * quede vacía habiendo servicios hoy. Los turnos cancelados no se destacan.
  */
 export function pickFeatured(
   today: MyDayAssignment[],
 ): MyDayAssignment | undefined {
-  if (today.length === 0) return undefined
-  const inProgress = today.find(
+  // Un turno cancelado nunca se destaca (CB-03): se lista como cualquier otro.
+  const active = today.filter((a) => a.shiftStatus !== 'cancelled')
+  if (active.length === 0) return undefined
+  const inProgress = active.find(
     (a) => a.checkInAt != null && a.checkOutAt == null,
   )
   if (inProgress) return inProgress
-  const pending = today.find(
+  const pending = active.find(
     (a) => a.checkInAt == null && a.status !== 'absence_notified',
   )
   if (pending) return pending
-  return today[today.length - 1]
+  return active[active.length - 1]
 }
 
 function ChangesBlock({ changes }: { changes: MyDayAssignment[] }) {
@@ -166,7 +168,8 @@ function ServiceCard({
   assignment: MyDayAssignment
   featured?: boolean
 }) {
-  const notice = getNoticeMessage(assignment)
+  const cancelled = assignment.shiftStatus === 'cancelled'
+  const notice = cancelled ? null : getNoticeMessage(assignment)
   return (
     <Link to={`/app/servicio/${assignment.assignmentId}`} className="block">
       <Card variant={featured ? 'hero' : 'default'}>
@@ -180,7 +183,7 @@ function ServiceCard({
                 {assignment.siteName}
               </p>
             </div>
-            <StatusBadge domain="assignment" status={assignment.status} />
+            <AssignmentBadge assignment={assignment} />
           </div>
           {assignment.siteAddress && (
             <p className="flex items-center gap-[6px] text-[11.5px] text-text-3">
@@ -203,6 +206,15 @@ function ServiceCard({
   )
 }
 
+/** Un turno cancelado se muestra como "Cancelado" (CB-03), no con el estado propio. */
+function AssignmentBadge({ assignment }: { assignment: MyDayAssignment }) {
+  return assignment.shiftStatus === 'cancelled' ? (
+    <StatusBadge domain="shift" status="cancelled" />
+  ) : (
+    <StatusBadge domain="assignment" status={assignment.status} />
+  )
+}
+
 function UpcomingRow({ assignment }: { assignment: MyDayAssignment }) {
   return (
     <Link
@@ -218,7 +230,7 @@ function UpcomingRow({ assignment }: { assignment: MyDayAssignment }) {
           {formatTimeOfDay(assignment.endTime)}
         </p>
       </div>
-      <StatusBadge domain="assignment" status={assignment.status} />
+      <AssignmentBadge assignment={assignment} />
     </Link>
   )
 }
