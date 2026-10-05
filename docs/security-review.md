@@ -10,8 +10,8 @@ Complementa la matriz de permisos (`tests/permissions/suite/`, 1.580 casos) y la
 
 La migración `0030_p18_6_permisos_y_rendimiento.sql` y la Edge Function `admin-users` corrigieron
 SEG-01 (= DEF-P07), SEG-02, SEG-03, SEG-07 y SEG-08 (= DEF-P11), más los trece defectos de la matriz
-(DEF-P01 a DEF-P13). Quedan abiertos, por decisión de Mike, SEG-04 y SEG-05 (contraseña de 8 y la del
-seed) y SEG-06 (documentación del JWT). Las secciones siguientes conservan el texto original de la
+(DEF-P01 a DEF-P13). SEG-04 y SEG-05 (contraseña de 8 y la del seed) quedan como están por decisión
+de Mike, y SEG-06 se cerró actualizando el plan (03 §15, 4 oct 2026). Las secciones siguientes conservan el texto original de la
 revisión; cada hallazgo corregido lleva su nota "Corregido en P18.6". Detalle técnico en
 `docs/database.md`, "Correcciones de P18.6".
 
@@ -90,6 +90,8 @@ Ver la revisión del orquestador. Un SVG con script no se ejecuta en `<img>`, pe
 ### SEG-06 (menor) · `config.toml` y el plan no coinciden en la vida del JWT
 
 El plan (03 §15) dice "JWT de 1 hora"; `jwt_expiry = 900` (15 minutos). El cambio lo decidió Mike el 23 sep 2026 y está comentado en `config.toml`. El defecto es de documentación: actualizar 03 §15 y `docs/security.md`. Dueño: documentador.
+
+**Cerrado en F18.** 03 §15 actualizado el 4 oct 2026; `docs/security.md` ya documentaba los 900 segundos.
 
 ### SEG-07 (menor) · `http://localhost:5173` en la lista blanca de CORS desplegada
 
