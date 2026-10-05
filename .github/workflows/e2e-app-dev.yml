@@ -14,12 +14,21 @@ name: E2E App_dev
 # diaria antes de que Mike cargue los cuatro secretos `E2E_*` (P18_cargar_secretos_e2e.ps1). La
 # corrida a mano ignora el interruptor.
 #
-# JOBS EN PARALELO. Una corrida a la vez (`concurrency`), pero dentro de ella las suites corren
-# juntas, cada una en su runner y con su propio conjunto de cuentas fijas (`E2E_CONJUNTO`, ver
-# tests/fixtures/accounts.ts), así que no se pisan:
+# JOBS EN TANDAS. Una corrida a la vez (`concurrency`). Cada suite corre en su runner y con su
+# propio conjunto de cuentas fijas (`E2E_CONJUNTO`, ver tests/fixtures/accounts.ts), así que no se
+# pisan por los datos; pero App_dev es una sola base chica: con siete suites a la vez (primera
+# corrida, 5 oct 2026) las consultas llegaron a tardar 10 a 16 segundos y aparecieron
+# `statement timeout`, esperas vencidas y la matriz de permisos cortada por tiempo. Por eso corren
+# en TRES tandas (cada una espera a la anterior, aunque haya fallado):
 #
 #   guarda ──► build   ──┐
-#          └─► barrido ──┴─► admin, admin-edge, admin-a11y, emp-movil, emp-webkit, sup, perm ──► dueno
+#          └─► barrido ──┴─► tanda 1: admin, emp-movil, sup
+#                            tanda 2: admin-edge, emp-webkit, admin-a11y
+#                            tanda 3: perm (sola: es la que más consultas hace)
+#                            al final: dueno
+#
+# Tiempo estimado de la corrida completa: 35 a 40 minutos (tanda 1 ~11, tanda 2 ~8, perm ~8,
+# dueño ~2, más preparación de cada job).
 #
 #  - `barrido` crea los conjuntos de cuentas que falten y borra los residuos `e2e-`: es el ÚNICO
 #    que barre; las suites corren con `E2E_SKIP_SWEEP=1`.
@@ -67,6 +76,8 @@ env:
   SEED_DEV_PASSWORD: ${{ secrets.E2E_SEED_DEV_PASSWORD }}
   # Igual que `.env.local`; el banner "Entorno de prueba" es solo de `staging`.
   VITE_APP_ENV: local
+  # Los runners están en UTC; las pruebas y la app usan la hora de Argentina (ADR-019).
+  TZ: America/Argentina/Buenos_Aires
   VITE_SENTRY_DSN: ''
   RAMA_PROBADA: ${{ github.event_name == 'workflow_dispatch' && inputs.rama || 'develop' }}
   # El reporte HTML nunca abre un servidor (en CI bloquearía el job).
@@ -202,7 +213,9 @@ jobs:
 
   admin-edge:
     name: admin en Edge
-    needs: [build, barrido]
+    needs: [build, barrido, admin, emp-movil, sup]
+    # Tanda 2: espera a la tanda 1 (aunque haya fallado) para no cargar App_dev con siete suites.
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.barrido.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
@@ -255,7 +268,9 @@ jobs:
 
   admin-a11y:
     name: admin accesibilidad (axe)
-    needs: [build, barrido]
+    needs: [build, barrido, admin, emp-movil, sup]
+    # Tanda 2: espera a la tanda 1 (aunque haya fallado) para no cargar App_dev con siete suites.
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.barrido.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -355,7 +370,9 @@ jobs:
 
   emp-webkit:
     name: empleado en iPhone (webkit)
-    needs: [build, barrido]
+    needs: [build, barrido, admin, emp-movil, sup]
+    # Tanda 2: espera a la tanda 1 (aunque haya fallado) para no cargar App_dev con siete suites.
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.barrido.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
@@ -472,9 +489,11 @@ jobs:
 
   perm:
     name: matriz de permisos (API)
-    needs: [build, barrido]
+    # Tanda 3: sola, después de las dos primeras.
+    needs: [build, barrido, admin-edge, emp-webkit, admin-a11y]
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.barrido.result == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     env:
       E2E_CONJUNTO: perm
       E2E_SKIP_SWEEP: '1'

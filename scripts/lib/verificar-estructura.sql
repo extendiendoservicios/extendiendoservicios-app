@@ -167,7 +167,7 @@ begin
 
   select count(*) into v_n from pg_policies
   where schemaname = 'storage' and tablename = 'objects'
-    and policyname in ('avatars_select_public', 'avatars_insert_own_or_admin', 'avatars_update_own_or_admin',
+    and policyname in ('avatars_select_own_or_admin', 'avatars_insert_own_or_admin', 'avatars_update_own_or_admin',
                        'avatars_delete_own_or_admin', 'branding_select_public', 'branding_write_admin');
   return query select 'politicas_de_storage', case when v_n = 6 then 'OK' else 'FALLA' end,
     v_n || ' de 6 políticas de storage.objects';
