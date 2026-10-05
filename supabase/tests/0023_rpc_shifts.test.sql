@@ -302,8 +302,8 @@ prepare update_time_overlap as
   select public.update_shift_time('e2300000-0000-0000-0000-000000000042', '11:00', '17:00');
 
 select throws_ok(
-  'update_time_overlap', 'P0001', 'El empleado ya tiene otro turno en ese horario.',
-  'update_shift_time: deja a un empleado con dos asignaciones superpuestas -> ASSIGNMENT_OVERLAP (no el 23P01 crudo)'
+  'update_time_overlap', 'P0001', 'El empleado ya tiene otro turno en ese horario. Afecta a: Empleado Equis.',
+  'update_shift_time: deja a un empleado con dos asignaciones superpuestas -> ASSIGNMENT_OVERLAP nombrando al empleado (no el 23P01 crudo; 0030, DEF-03)'
 );
 
 set local role postgres;

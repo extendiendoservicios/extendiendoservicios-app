@@ -47,3 +47,13 @@ export function canCancelShift(actor: ShiftsScreenActor): boolean {
       actor.capabilities.includes('cancel_shifts'))
   )
 }
+
+/**
+ * Estados en los que `cancel_shift` acepta el turno (`06_API.md` sección 7):
+ * programado, asignado o en curso. Lo comparten ADM-05 y ADM-06.
+ */
+export function isShiftCancellable(status: string): boolean {
+  return (
+    status === 'scheduled' || status === 'assigned' || status === 'in_progress'
+  )
+}

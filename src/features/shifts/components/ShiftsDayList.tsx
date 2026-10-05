@@ -18,6 +18,7 @@ import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
 import {
   canCancelShift,
   canManageShiftTime,
+  isShiftCancellable,
 } from '@/features/shifts/permissions'
 import { useShiftsByDateQuery } from '@/features/shifts/queries'
 import { groupShiftsByFranja } from '@/features/shifts/grouping'
@@ -114,7 +115,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
         const shift = row.original
         const isEditable =
           shift.status === 'scheduled' || shift.status === 'assigned'
-        const isCancellable = isEditable || shift.status === 'in_progress'
+        const isCancellable = isShiftCancellable(shift.status)
         return (
           <div className="flex items-center gap-2">
             <Button asChild variant="ghost" size="sm">

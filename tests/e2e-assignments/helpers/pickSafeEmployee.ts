@@ -22,7 +22,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../../src/lib/database.types.ts'
-import { SEED_ACCOUNTS } from '../../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../../fixtures/seed-accounts.ts'
 import { resolveUserId } from '../../permissions/helpers/admin-lookups.ts'
 
 export interface SafeEmployee {

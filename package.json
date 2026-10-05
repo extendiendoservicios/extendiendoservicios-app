@@ -1,6 +1,6 @@
 {
   "name": "extendiendoservicios-app",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -28,9 +28,13 @@
     "test:e2e:shifts-services": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-shifts-services/playwright.shifts-services.config.ts",
     "test:e2e:assignments": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-assignments/playwright.assignments.config.ts",
     "test:e2e:checklists": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-checklists/playwright.checklists.config.ts",
-    "test:e2e:employee-shift": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-employee-shift/playwright.employee-shift.config.ts",
     "test:e2e:avisos-asistencia": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-avisos-asistencia/playwright.avisos-asistencia.config.ts",
     "test:e2e:tablero": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-tablero/playwright.tablero.config.ts",
+    "test:e2e:admin": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e/admin/playwright.admin.config.ts",
+    "test:e2e:empleado": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e/empleado/playwright.empleado.config.ts",
+    "test:e2e:supervisor": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e/supervisor/playwright.supervisor.config.ts",
+    "test:fixtures:setup": "node --env-file=.env.local tests/fixtures/setup-accounts.ts",
+    "test:load": "node --env-file=.env.local tests/load/carga-ligera.ts",
     "test:e2e:responsive": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-responsive/playwright.responsive.config.ts",
     "test:e2e:supervisiones": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-supervisiones/playwright.supervisiones.config.ts",
     "test:lighthouse": "node --env-file=.env.local tests/lighthouse/run.ts",
@@ -43,7 +47,8 @@
     "db:test": "bash scripts/db-test.sh",
     "db:seed:users": "node --env-file=.env.local scripts/seed-dev.ts",
     "db:seed:data": "supabase db query --linked -f supabase/seed.sql",
-    "db:seed": "pnpm db:seed:users && pnpm db:seed:data"
+    "db:seed": "pnpm db:seed:users && pnpm db:seed:data",
+    "db:recuperar-dev": "node --env-file=.env.local scripts/recuperar-app-dev.ts"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
@@ -79,6 +84,7 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@eslint/js": "9.39.5",
     "@fontsource/inter": "5.3.0",
     "@playwright/test": "1.63.0",

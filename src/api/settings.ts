@@ -142,20 +142,18 @@ const LOGO_MAX_SIZE_BYTES = 1_048_576 // 1 MB (0014_storage_buckets.sql, ADR-016
 const LOGO_ALLOWED_MIME_TYPES = new Set([
   'image/png',
   'image/jpeg',
-  'image/svg+xml',
   'image/webp',
 ])
 const LOGO_MIME_TO_EXTENSION: Record<string, string> = {
   'image/png': 'png',
   'image/jpeg': 'jpg',
-  'image/svg+xml': 'svg',
   'image/webp': 'webp',
 }
 
 /** Mensaje de validación de logo, repetido del lado del cliente (ver `schemas.ts`). */
 export function validateLogoFile(file: File): string | null {
   if (!LOGO_ALLOWED_MIME_TYPES.has(file.type)) {
-    return 'El logo tiene que ser PNG, JPEG, SVG o WebP.'
+    return 'El logo tiene que ser PNG, JPEG o WebP.'
   }
   if (file.size > LOGO_MAX_SIZE_BYTES) {
     return 'El logo no puede superar 1 MB.'

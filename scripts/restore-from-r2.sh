@@ -1,195 +1,95 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# scripts/restore-from-r2.sh — INFRA-018/INFRA-024 (ADR-015, TEST-024): baja un respaldo de R2,
-# lo descifra, restaura en App_dev el esquema "public" MÁS los usuarios de "auth" (auth.users,
-# auth.identities), verifica el resultado y borra todo lo restaurado antes de terminar. Lo usa
-# .github/workflows/restore-test.yml (workflow_dispatch, todavía sin correr: se dispara recién
-# cuando App tenga las tablas de F4, ver docs/deployment.md sección 6.3) y sirve también para una
-# restauración manual siguiendo el paso a paso de ese mismo documento.
+# scripts/restore-from-r2.sh — INFRA-018/INFRA-024 (ADR-015, TEST-024): baja un respaldo de R2 (o
+# toma un volcado local), lo descifra, restaura en App_dev el esquema "public" MÁS los usuarios de
+# "auth" (auth.users, auth.identities), verifica el resultado y borra todo lo restaurado antes de
+# terminar. Lo usa .github/workflows/restore-test.yml (workflow_dispatch) y sirve también para una
+# restauración manual. La guía para quien lo dispara, con el acta de la prueba y la recuperación
+# de App_dev, es docs/restore-test.md; el diseño completo y su historia, docs/deployment.md
+# sección 6.3.
 #
 # SOLO App_dev. Este script no lee SUPABASE_DB_URL_PROD en ningún lado: estructuralmente no
 # puede apuntar a App (producción) por accidente ni por variable mal cargada. Restaurar
-# producción es un procedimiento manual y excepcional aparte (docs/runbook-produccion.md, F20),
-# nunca este script.
+# producción es un procedimiento manual y excepcional aparte (docs/runbook-produccion.md), nunca
+# este script.
 #
-# DECISIONES DE MIKE (19 sep 2026), corrección de P03.7 — docs/deployment.md sección 6.3 tiene el
-# detalle completo:
+# DECISIONES DE MIKE (19 sep 2026):
 #   1. Se restaura App_dev CON usuarios reales de producción: el esquema "public" completo más
 #      auth.users y auth.identities (lo mínimo para que las referencias de "public" hacia
-#      auth.users cierren). Mike aceptó que datos personales y hashes de contraseña de
-#      producción pasen por App_dev durante la prueba.
-#   2. La prueba LIMPIA lo que restauró antes de terminar (siempre, incluso si algo falla a
-#      mitad de camino): App_dev tiene que quedar sin los datos reales apenas termina, porque
-#      "dev." sirve desde App_dev y mientras los usuarios restaurados sigan ahí, cualquier
-#      empleado real podría iniciar sesión en staging con su contraseña de producción, y los
-#      emails de Auth de App_dev podrían llegarle a gente real.
+#      auth.users cierren). Datos personales y HASHES DE CONTRASEÑA de producción pasan por
+#      App_dev mientras dura la prueba.
+#   2. La prueba LIMPIA lo que restauró antes de terminar (siempre, incluso si algo falla a mitad
+#      de camino): "dev." sirve desde App_dev, y mientras los usuarios restaurados sigan ahí,
+#      cualquier empleado real podría iniciar sesión en staging con su contraseña de producción.
 #
-# CORRECCIÓN (23 sep 2026, fix/TEST-024-restore-sequence, primer intento — validada de punta a
-# punta contra Postgres 17 local en Docker, docs/deployment.md sección 6.3): la versión anterior
-# recreaba "public" desde cero (DROP TABLE + CREATE TABLE, --section=pre-data/post-data) y eso
-# traía DOS defectos reales:
-#   a. El DROP TABLE podía fallar por objetos de post-data (claves foráneas, políticas RLS) que
-#      dependen de la tabla y que --clean de pre-data no toca, y probando la solución "borrar
-#      antes las FK/políticas" apareció un problema más de fondo: recrear la estructura puede
-#      cascadear a objetos de OTRO esquema (por ejemplo, `app.log_security_event` devuelve
-#      `public.security_events`, así que `drop table ... cascade` se llevaría puesta una función
-#      de "app" que este script no tiene que tocar).
-#   b. `--no-privileges` (necesario porque `backup-to-r2.sh` tampoco graba privilegios en el
-#      volcado) dejaba las tablas recreadas con el ACL por defecto de Supabase (más abierto que
-#      `0017_grants.sql`).
-#   Los dos defectos comparten la misma causa: recrear la ESTRUCTURA de "public" es innecesario.
-#   El paso 0 (más abajo) YA garantiza que App_dev tiene exactamente las mismas migraciones que el
-#   volcado, así que la estructura (tablas, columnas, restricciones, índices, políticas, ACL) es
-#   IDÉNTICA en los dos lados: alcanza con reemplazar los DATOS, sin tocar nunca la estructura.
-#   Nunca se toca un GRANT, un REVOKE ni una política: quedan exactamente como los dejaron las
-#   migraciones, siempre.
-#   Además, en la validación local aparecieron dos defectos más, independientes de los dos de
-#   arriba, los dos de PostgreSQL 17.11 (el cliente que instala `asegurar_pg17` en el runner):
-#   c. `pg_restore -t auth.users` (con el esquema pegado al nombre de la tabla) no matcheaba
-#      NINGÚN objeto del volcado (falla silenciosa: pg_restore no imprime error, pero tampoco
-#      restaura una sola fila) -- confirmado también contra `public.clients` con el mismo patrón:
-#      `--table=esquema.tabla` no encuentra nada, `--table=tabla` sí. Se corrige usando
-#      `-n <esquema> -t <tabla>` (dos argumentos separados), que sí matchea.
-#   d. `pg_restore --data-only -t <tabla>` sin `--dbname` NI `--file` (para leer el volcado sin
-#      tocar ninguna base, paso 0 de más abajo) ahora corta con el error "one of -d/--dbname and
-#      -f/--file must be specified": esta versión ya no imprime a la salida estándar por defecto
-#      como hacían versiones anteriores. Se corrige agregando `-f -` (salida estándar explícita).
-#   El primer intento resolvía el orden de carga entre tablas (para que las claves foráneas no
-#   fallaran por ese motivo) con `alter table ... disable trigger all` en todas las tablas de
-#   "public". ESO TENÍA UN DEFECTO BLOQUEANTE, corregido en el segundo intento (ver el bloque
-#   siguiente): `disable trigger all` incluye a los triggers internos de las claves foráneas
-#   (`RI_ConstraintTrigger_*`), y deshabilitar ESOS puntualmente exige superusuario -- no alcanza
-#   con ser dueño de la tabla. La validación del primer intento no lo detectó porque corrió como
-#   superusuario de un Postgres vainilla en Docker, y en Supabase "postgres" NO es superusuario
-#   (confirmado en App_dev: `select rolsuper from pg_roles where rolname = 'postgres'` da `false`).
-#   El error real en un rol sin superusuario es: `ERROR: permission denied: "RI_ConstraintTrigger_
-#   c_..." is a system trigger`.
+# POR QUÉ SOLO SE REEMPLAZAN DATOS (corrección del 23 sep 2026, validada en Docker, y de nuevo en
+# el ensayo de TEST-024 del 3 oct 2026 con las 29 migraciones): recrear la estructura de "public"
+# fallaba por claves foráneas y políticas de post-data, podía cascadear a funciones de otro
+# esquema y, con `--no-privileges`, dejaba el ACL por defecto de Supabase (más abierto que
+# 0017_grants.sql). El paso 0 garantiza que App_dev tiene las MISMAS migraciones que el volcado,
+# así que la estructura, los permisos y las políticas ya son idénticos: se reemplazan datos y
+# nunca se toca un GRANT, un REVOKE, una política ni un trigger. Además, en PostgreSQL 17.11:
+#   - `pg_restore -t esquema.tabla` no matchea nada: se usa `-n <esquema> -t <tabla>`.
+#   - `pg_restore --data-only` sin `--dbname` ni `--file` corta: se usa `-f -`.
+#   - Deshabilitar triggers tabla por tabla exige superusuario (en Supabase `postgres` no lo es):
+#     cada carga fija `set session_replication_role = replica` en SU PROPIA conexión (supautils lo
+#     permite para `postgres`), por la misma tubería que el SQL de `pg_restore -f -`. No se usa
+#     PGOPTIONS: el Session pooler puede no reenviar opciones de arranque.
 #
-# CORRECCIÓN 2 (23 sep 2026, fix/TEST-024-restore-sequence, segundo intento -- revisión del
-# orquestador, validada de nuevo en Docker con un rol dueño de las tablas SIN superusuario, ver el
-# reporte de la tarea): en vez de deshabilitar triggers tabla por tabla, cada carga de datos fija
-# `session_replication_role = replica` en su propia conexión ANTES de correr el `pg_restore`/
-# `psql` que inserta filas. Con `replica` activo, ni los triggers de usuario (incluido el que F4
-# agrega sobre auth.users para crear la fila de "profiles") ni los triggers internos de las claves
-# foráneas se disparan -- así el orden de carga entre tablas deja de importar, sin necesidad de
-# tocar ningún trigger de ninguna tabla ni de recrear nada.
-#   Por qué funciona sin superusuario en Supabase: `session_replication_role` es un parámetro que
-#   por defecto solo puede cambiar un superusuario, pero Supabase instala la extensión
-#   `supautils`, que mantiene una lista propia de parámetros que roles no-superusuario SÍ pueden
-#   fijar (`supautils.privileged_role_allowed_configs`) -- "postgres" figura ahí para
-#   `session_replication_role`. Confirmado por el orquestador en App_dev, en una transacción
-#   revertida (`begin; set local session_replication_role = replica; rollback;`, sin dejar ningún
-#   cambio): el `set local` no da error, aunque
-#   `select has_parameter_privilege('postgres', 'session_replication_role', 'SET')` devuelva
-#   `false` (esa función solo conoce el mecanismo estándar de PostgreSQL 15+,
-#   `GRANT SET ON PARAMETER ... TO ...`, no el mecanismo propio de `supautils`).
-#   Por qué cada carga usa SU PROPIA conexión: `session_replication_role` vale por conexión, no
-#   por rol ni de forma global -- fijarlo en una conexión de `psql` y después correr un
-#   `pg_restore --dbname ...` aparte (que abre OTRA conexión) no serviría de nada. Por eso cada
-#   paso que necesita `replica` arma el SQL completo (el `SET` más el contenido que genera
-#   `pg_restore -f -`) y lo manda TODO por la misma tubería a un único `psql`, que abre una sola
-#   conexión para las dos cosas. No se usa `PGOPTIONS="-c session_replication_role=replica"`
-#   porque el Session pooler de Supabase puede no reenviar opciones de arranque de conexión al
-#   servidor real, y `supautils` valida el permiso en el momento del `SET` explícito, no en el
-#   arranque de la conexión -- confirmado que hay que fijarlo con un `SET` dentro de la sesión.
-#   Con "replica" ya no hace falta el paso que vaciaba "public" por segunda vez (el trigger que
-#   crea "profiles" tampoco se dispara al restaurar auth.users): la secuencia de abajo quedó con
-#   un paso menos.
+# SECUENCIA:
+#   0. Antes de tocar nada (si algo falla acá, App_dev queda intacto):
+#        a. el volcado trae lo que tiene que traer un respaldo completo (usuarios, migraciones,
+#           hook de Auth, triggers sobre auth, políticas de Storage, políticas de public);
+#        b. App_dev tiene las mismas migraciones aplicadas que el volcado;
+#        c. las columnas de auth.users/auth.identities del volcado existen en App_dev (Supabase
+#           actualiza GoTrue por proyecto: un esquema de auth distinto rompería la carga);
+#        d. la estructura y los permisos de App_dev son los esperados (scripts/lib/verificar-
+#           estructura.sql) y se toma su huella (scripts/lib/huella-permisos.sql).
+#   1. Vacía "public" (TRUNCATE ... CASCADE).
+#   2. Reemplaza auth.users/auth.identities (DELETE antes del `replica`, para que el ON DELETE
+#      CASCADE limpie sesiones y tokens; después carga el volcado con `replica`).
+#   3. Carga los datos de "public" (--section=data) con `replica`.
+#   4. Verifica: cantidad de filas de CADA tabla contra el volcado, claves foráneas sin huérfanas
+#      (que `replica` no comprueba), estructura y permisos otra vez, huella idéntica a la de antes,
+#      y una sesión simulada de una persona owner/admin (hook de Auth + RLS) si hay usuarios.
+#   5. Limpieza (siempre, por `trap`): vacía "public" y borra los usuarios de auth restaurados, y
+#      confirma que quedaron vacíos. Termina con un resumen (y, en GitHub Actions, lo escribe en
+#      la pestaña Summary de la corrida: es el insumo del acta de docs/restore-test.md).
 #
-# PERMISOS SIN CONFIRMAR: la documentación pública de Supabase describe al rol "postgres" (el que
-# usa este script, vía el Session pooler) como "the default Postgres role. This has admin
-# privileges", pero en ningún lado confirma ni niega privilegios de INSERT/DELETE sobre
-# auth.users/auth.identities, y recomienda explícitamente NO escribir en auth.users a mano ("may
-# change at any time", usar la Auth Admin API). No pude confirmar esto en vivo (esta capa no
-# inicia sesión en ningún servicio). El diseño de abajo falla rápido y sin dejar nada a medias si
-# el permiso no está (cada paso corre en su propia transacción, y la limpieza final corre siempre
-# por `trap`). Antes de la primera corrida real (después de F4), Mike puede confirmarlo sin
-# arriesgar nada, desde el SQL Editor de App_dev:
-#   select has_table_privilege('postgres', 'auth.users', 'INSERT') as auth_users_insert,
-#          has_table_privilege('postgres', 'auth.users', 'DELETE') as auth_users_delete,
-#          has_table_privilege('postgres', 'auth.identities', 'INSERT') as auth_identities_insert,
-#          has_table_privilege('postgres', 'auth.identities', 'DELETE') as auth_identities_delete;
+# NO SE IMPRIME NINGÚN DATO PERSONAL: solo cantidades y nombres de objetos de la base.
 #
-# ALCANCE en "public": todas las tablas, vistas, funciones, índices y datos que crean las
-# migraciones propias. No se toca la ESTRUCTURA de "auth" (solo sus filas): nunca se hace DROP ni
-# ALTER sobre auth.users/auth.identities, esquemas/tablas que administra Supabase
-# (supabase_auth_admin es su dueño, no "postgres").
-#
-# SECUENCIA (segundo intento, validada de nuevo en Docker con un rol sin superusuario, ver el
-# reporte de la tarea para los números):
-#   0. Verifica que App_dev tenga las mismas migraciones aplicadas que el volcado
-#      (supabase_migrations.schema_migrations) -- si no coinciden, aborta ANTES de tocar nada.
-#      Esto es lo que garantiza que la ESTRUCTURA de "public" es idéntica en los dos lados: el
-#      resto de la secuencia confía en eso para no tener que recrear nada.
-#   1. Vacía "public" (TRUNCATE ... CASCADE) por si App_dev tenía datos de antes. TRUNCATE no
-#      necesita `session_replication_role` ni deshabilitar nada: alcanza con ser dueño de la
-#      tabla, y CASCADE ya se encarga de las tablas dependientes.
-#   2. Reemplaza auth.users/auth.identities, en una única conexión con `session_replication_role
-#      = replica` fijado al principio: borra lo que haya (identities antes que users) y restaura
-#      los datos del volcado (users antes que identities, con `-n auth -t <tabla>`, ver la nota de
-#      arriba sobre `-t esquema.tabla`). Con "replica" activo, el trigger que F4 agrega sobre
-#      auth.users (crea la fila de "profiles", 04_Modelo_de_Datos.md) NO se dispara -- ya no hace
-#      falta un paso aparte para limpiar ese efecto secundario.
-#   3. Carga los datos de "public" (--section=data), también con `session_replication_role =
-#      replica` fijado en esa misma conexión: ni los triggers de usuario ni los internos de las
-#      claves foráneas se disparan, así que el orden de carga entre tablas no importa.
-#   4. Verifica (cantidad de tablas y filas por tabla, nunca contenido: nada de emails, nombres
-#      ni otras columnas).
-#   5. Limpieza (siempre, por `trap`, corra lo que corra arriba): vacía "public" y borra los
-#      usuarios de auth restaurados, y confirma que quedaron vacíos.
-#
-# Cada paso de la secuencia corre en su propia transacción (`begin`/`commit` explícito en los
-# bloques de psql, incluidos los que arman `session_replication_role = replica` + el SQL que
-# genera `pg_restore -f -` y lo mandan junto a un único `psql --single-transaction`): si algo
-# falla a mitad de un paso, ESE paso se revierte solo. No hay una única transacción global para
-# toda la secuencia (el paso 3 necesita ver ya confirmados los datos del paso 2, escritos en una
-# conexión distinta) -- la garantía de "nunca dejar nada a medias" la da la limpieza del paso 5,
-# que corre siempre.
-#
-# NO SE IMPRIME NINGÚN DATO PERSONAL: la verificación cuenta filas (números), nunca imprime
-# contenido de ninguna tabla ni de auth.users/auth.identities.
-#
-# ES DESTRUCTIVO, dos veces: primero reemplaza el contenido de App_dev por el del volcado, después
-# lo borra todo de nuevo al terminar. Nunca correr esto contra una base que tenga algo que no se
-# pueda perder, ni asumir que App_dev conserva datos entre una corrida y la siguiente: la prueba
-# lo deja vacío a propósito. Volver a cargar datos de prueba después es un paso aparte (ver
-# docs/deployment.md sección 6.3, "Después de la prueba").
+# ES DESTRUCTIVO, dos veces: reemplaza el contenido de App_dev por el del volcado y después lo
+# borra de nuevo. App_dev queda VACÍO a propósito (sin usuarios ni datos de prueba): volver a
+# dejarlo utilizable es un paso aparte, scripts/recuperar-app-dev.ts (docs/restore-test.md).
+# Tampoco toca Storage: los archivos de avatars/branding de App_dev quedan, aunque sus perfiles
+# ya no existan.
 #
 # Uso:
 #   scripts/restore-from-r2.sh --listar
-#     Lista las claves disponibles en el bucket es-backups (más recientes primero), para elegir
-#     cuál restaurar.
-#
+#     Lista las claves del bucket (más recientes primero).
 #   scripts/restore-from-r2.sh <clave-del-objeto> restaurar-app-dev
-#     Por ejemplo: scripts/restore-from-r2.sh diarios/App_20260101_030000.dump.gpg restaurar-app-dev
-#     Baja <clave-del-objeto>, la descifra y corre la secuencia completa de arriba contra
-#     App_dev. El segundo argumento tiene que ser exactamente la palabra "restaurar-app-dev": es
-#     la confirmación explícita que exige ADR-015 antes de un paso destructivo. Si la entrada
-#     estándar es una terminal interactiva, además pide escribir la misma palabra una segunda vez
-#     antes de tocar nada.
-#
+#     Baja <clave>, la descifra y corre la secuencia. El segundo argumento tiene que ser
+#     exactamente "restaurar-app-dev" (ADR-015); en una terminal interactiva pide escribirlo de
+#     nuevo.
 #   scripts/restore-from-r2.sh --ultimo restaurar-app-dev
-#     Igual que arriba, pero en vez de indicar una clave elige sola el respaldo más reciente con
-#     prefijo "diarios/". La usa restore-test.yml cuando no se indica el input "objeto_r2".
-#
+#     Igual, con el respaldo más reciente de "diarios/".
+#   scripts/restore-from-r2.sh --archivo <ruta> restaurar-app-dev
+#     Igual, pero con un volcado local (.dump, o .dump.gpg si se define BACKUP_PASSPHRASE) en vez
+#     de bajarlo de R2. Sirve para ensayar en una base local (TEST-024) o restaurar a mano.
 #   scripts/restore-from-r2.sh --confirmar-vacio
-#     Solo verifica y reporta si "public" y auth.users/auth.identities están vacíos en App_dev
-#     (números, sin datos). No restaura ni borra nada. La usa restore-test.yml como paso final
-#     `if: always()`, además de la limpieza automática de este script, para dejar constancia en
-#     el log de la corrida.
+#     Solo informa si "public" y auth.users/auth.identities están vacíos. No toca nada.
 #
-# Variables de entorno requeridas (ninguna se imprime en ningún momento):
+# Variables de entorno (ninguna se imprime):
 #   SUPABASE_DB_URL_DEV    Cadena de conexión de App_dev, Session pooler (IPv4).
-#   R2_ACCESS_KEY_ID       Access key S3 del token de R2 con permisos sobre R2_BUCKET.
-#   R2_SECRET_ACCESS_KEY   Secret key S3 del mismo token.
-#   R2_BUCKET              Nombre del bucket privado de respaldos (es-backups).
-#   CLOUDFLARE_ACCOUNT_ID  Id de cuenta de Cloudflare: arma el endpoint S3 de R2.
-#   BACKUP_PASSPHRASE      La misma frase de cifrado que usó scripts/backup-to-r2.sh para este
-#                          respaldo. Sin ella no se puede descifrar (docs/deployment.md).
-# (--confirmar-vacio solo necesita SUPABASE_DB_URL_DEV.)
+#   R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET, CLOUDFLARE_ACCOUNT_ID
+#                          Solo para --listar, --ultimo y <clave> (bucket es-backups).
+#   BACKUP_PASSPHRASE      La frase de cifrado de scripts/backup-to-r2.sh. Sin ella no se puede
+#                          descifrar (docs/deployment.md).
+#   GITHUB_STEP_SUMMARY    Si existe (GitHub Actions), se le agrega el resumen en Markdown.
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/dependencias-ci.sh"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$script_dir/lib/dependencias-ci.sh"
 
 uso() {
   cat >&2 <<'USO'
@@ -197,6 +97,7 @@ Uso:
   scripts/restore-from-r2.sh --listar
   scripts/restore-from-r2.sh <clave-del-objeto> restaurar-app-dev
   scripts/restore-from-r2.sh --ultimo restaurar-app-dev
+  scripts/restore-from-r2.sh --archivo <ruta> restaurar-app-dev
   scripts/restore-from-r2.sh --confirmar-vacio
 USO
 }
@@ -217,10 +118,15 @@ configurar_credenciales_r2() {
   endpoint="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
 }
 
+# psql contra App_dev, siempre con ON_ERROR_STOP. Los argumentos se pasan tal cual.
+psql_dev() {
+  "$PG_BIN_DIR/psql" "$SUPABASE_DB_URL_DEV" -X -q -v ON_ERROR_STOP=1 "$@"
+}
+
 # Cuenta filas totales de "public" (todas las tablas) y de auth.users/auth.identities. Solo
 # números: nunca imprime contenido.
 contar_filas_app_dev() {
-  filas_public="$("$PG_BIN_DIR/psql" "$SUPABASE_DB_URL_DEV" -X -q -A -t -v ON_ERROR_STOP=1 -c "
+  filas_public="$(psql_dev -A -t -c "
     select coalesce(sum(
       (xpath('/row/c/text()',
         query_to_xml(format('select count(*) as c from public.%I', table_name), false, true, '')))[1]::text::bigint
@@ -228,19 +134,17 @@ contar_filas_app_dev() {
     from information_schema.tables
     where table_schema = 'public' and table_type = 'BASE TABLE';
   ")"
-  filas_auth_users="$("$PG_BIN_DIR/psql" "$SUPABASE_DB_URL_DEV" -X -q -A -t -v ON_ERROR_STOP=1 -c \
-    "select count(*) from auth.users;")"
-  filas_auth_identities="$("$PG_BIN_DIR/psql" "$SUPABASE_DB_URL_DEV" -X -q -A -t -v ON_ERROR_STOP=1 -c \
-    "select count(*) from auth.identities;")"
+  filas_auth_users="$(psql_dev -A -t -c "select count(*) from auth.users;")"
+  filas_auth_identities="$(psql_dev -A -t -c "select count(*) from auth.identities;")"
 }
 
-# Vacía TODAS las tablas de "public" (TRUNCATE ... CASCADE, dentro de su propia transacción). No
-# hace falta deshabilitar ni habilitar ningún trigger para esto: TRUNCATE es una operación por
-# tabla completa (no dispara triggers por fila) y CASCADE ya se encarga de las tablas
-# dependientes. Se usa tanto en el paso 1 de la secuencia normal como en la limpieza del paso 5.
+# Vacía TODAS las tablas de "public" (TRUNCATE ... CASCADE, en su propia transacción). TRUNCATE no
+# dispara triggers por fila y CASCADE se ocupa de las dependientes. Se usa en el paso 1 y en la
+# limpieza del paso 5.
 vaciar_public() {
-  "$PG_BIN_DIR/psql" "$SUPABASE_DB_URL_DEV" -X -q -v ON_ERROR_STOP=1 -f - <<'SQL'
+  psql_dev -f - <<'SQL'
 begin;
+set local client_min_messages = warning;
 do $do$
 declare r record;
 begin
@@ -273,25 +177,51 @@ if [ "${1:-}" = "--confirmar-vacio" ]; then
   echo "  Filas en auth.users:                ${filas_auth_users}"
   echo "  Filas en auth.identities:           ${filas_auth_identities}"
   if [ "$filas_public" != "0" ] || [ "$filas_auth_users" != "0" ] || [ "$filas_auth_identities" != "0" ]; then
-    echo "ADVERTENCIA: App_dev no quedó vacío. dev. no es seguro mientras esto no se resuelva: revisar a mano (docs/deployment.md sección 6.3)." >&2
+    echo "ADVERTENCIA: App_dev no quedó vacío. dev. no es seguro mientras esto no se resuelva: revisar a mano (docs/restore-test.md, sección de problemas)." >&2
+    resumen_vacio="NO quedó vacío (public: ${filas_public}, auth.users: ${filas_auth_users}, auth.identities: ${filas_auth_identities})"
+    if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+      printf '\n### Confirmación independiente de App_dev vacío\n\nFALLA: %s\n' "$resumen_vacio" >>"$GITHUB_STEP_SUMMARY"
+    fi
     exit 1
   fi
   echo "OK: App_dev quedó vacío."
+  if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+    printf '\n### Confirmación independiente de App_dev vacío\n\nOK: public, auth.users y auth.identities con 0 filas.\n' >>"$GITHUB_STEP_SUMMARY"
+  fi
   exit 0
 fi
 
-object_key="${1:-}"
-confirmacion="${2:-}"
+# ---- Restauración -------------------------------------------------------------------------------
+origen="${1:-}"
+archivo_local=""
+if [ "$origen" = "--archivo" ]; then
+  archivo_local="${2:-}"
+  confirmacion="${3:-}"
+  if [ -z "$archivo_local" ] || [ ! -f "$archivo_local" ]; then
+    echo "No existe el archivo '${archivo_local}'." >&2
+    uso
+    exit 1
+  fi
+  object_key="archivo local: $(basename "$archivo_local")"
+else
+  object_key="$origen"
+  confirmacion="${2:-}"
+fi
 
-if [ -z "$object_key" ] || [ "$confirmacion" != "restaurar-app-dev" ]; then
+if [ -z "$origen" ] || [ "$confirmacion" != "restaurar-app-dev" ]; then
   uso
   exit 1
 fi
 
-requerir_vars SUPABASE_DB_URL_DEV R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BUCKET \
-  CLOUDFLARE_ACCOUNT_ID BACKUP_PASSPHRASE
+if [ -n "$archivo_local" ]; then
+  requerir_vars SUPABASE_DB_URL_DEV
+  case "$archivo_local" in *.gpg) requerir_vars BACKUP_PASSPHRASE ;; esac
+else
+  requerir_vars SUPABASE_DB_URL_DEV R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BUCKET \
+    CLOUDFLARE_ACCOUNT_ID BACKUP_PASSPHRASE
+fi
 
-if [ "$object_key" = "--ultimo" ]; then
+if [ "$origen" = "--ultimo" ]; then
   asegurar_aws_cli
   configurar_credenciales_r2
   echo "Buscando el respaldo más reciente en diarios/..."
@@ -321,19 +251,127 @@ else
 fi
 
 asegurar_pg17
-asegurar_aws_cli
-configurar_credenciales_r2
+if [ -z "$archivo_local" ]; then
+  asegurar_aws_cli
+  configurar_credenciales_r2
+fi
 
 workdir="$(mktemp -d)"
+resumen_tsv="$workdir/resumen.tsv"
+tiempos_tsv="$workdir/tiempos.tsv"
+: >"$resumen_tsv"
+: >"$tiempos_tsv"
 restauracion_iniciada=false
+hubo_fallas=false
+inicio_total=$SECONDS
+etapa_nombre=""
+etapa_inicio=0
+
+# --- Resumen y tiempos (insumo del acta de docs/restore-test.md) ---------------------------------
+
+# registrar <comprobación> <OK|FALLA|OMITIDA|INFO> <detalle>
+registrar() {
+  printf '%s\t%s\t%s\n' "$1" "$2" "$3" >>"$resumen_tsv"
+  if [ "$2" = "FALLA" ]; then
+    hubo_fallas=true
+  fi
+}
+
+# etapa <nombre>: cierra la etapa anterior (si había) y abre la siguiente, midiendo segundos.
+etapa() {
+  if [ -n "$etapa_nombre" ]; then
+    printf '%s\t%s\n' "$etapa_nombre" "$((SECONDS - etapa_inicio))" >>"$tiempos_tsv"
+  fi
+  etapa_nombre="${1:-}"
+  etapa_inicio=$SECONDS
+}
+
+imprimir_resumen() {
+  etapa ""
+  echo ""
+  echo "================ RESUMEN DE LA PRUEBA DE RESTAURACIÓN ================"
+  echo "Respaldo: ${object_key}"
+  echo "Tiempo total: $((SECONDS - inicio_total)) s"
+  echo ""
+  echo "Tiempos por etapa:"
+  while IFS=$'\t' read -r nombre seg; do
+    printf '  %-58s %5s s\n' "$nombre" "$seg"
+  done <"$tiempos_tsv"
+  echo ""
+  echo "Resultado de cada comprobación:"
+  while IFS=$'\t' read -r nombre estado detalle; do
+    printf '  [%s] %s: %s\n' "$estado" "$nombre" "$detalle"
+  done <"$resumen_tsv"
+  echo "======================================================================"
+
+  if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+    {
+      echo "## Prueba de restauración (TEST-024)"
+      echo ""
+      echo "- **Respaldo restaurado:** \`${object_key}\`"
+      echo "- **Tiempo total:** $((SECONDS - inicio_total)) s"
+      echo ""
+      echo "| Etapa | Segundos |"
+      echo "| --- | ---: |"
+      while IFS=$'\t' read -r nombre seg; do
+        echo "| ${nombre} | ${seg} |"
+      done <"$tiempos_tsv"
+      echo ""
+      echo "| Comprobación | Estado | Detalle |"
+      echo "| --- | --- | --- |"
+      while IFS=$'\t' read -r nombre estado detalle; do
+        echo "| ${nombre} | ${estado} | ${detalle//|/\\|} |"
+      done <"$resumen_tsv"
+    } >>"$GITHUB_STEP_SUMMARY"
+  fi
+}
+
+# correr_sql_de_verificacion <archivo.sql> <prefijo> [agrupar]: corre un archivo de scripts/lib/ que
+# imprime `comprobación|estado|detalle`, muestra cada línea y la registra. Con "agrupar", las que
+# dan OK se registran como una sola línea de resumen (las FALLA y OMITIDA siempre van aparte).
+# Devuelve 1 si hubo alguna FALLA.
+correr_sql_de_verificacion() {
+  local archivo="$1" prefijo="$2" agrupar="${3:-}" salida rc=0 n_ok=0
+  # Dentro de una función llamada con `if` o `||`, `set -e` no corta: hay que mirar el código de
+  # salida de psql a mano, o un error de SQL pasaría por una verificación sin fallas.
+  if ! salida="$(psql_dev -A -t -F '|' -f "$script_dir/lib/$archivo")"; then
+    echo "  [FALLA] ${prefijo}${archivo}: psql terminó con error (ver el mensaje de arriba)" >&2
+    registrar "${prefijo}${archivo}" "FALLA" "psql terminó con error al correr ${archivo}"
+    return 1
+  fi
+  if [ -z "$salida" ]; then
+    echo "  [FALLA] ${prefijo}${archivo}: no devolvió ninguna comprobación" >&2
+    registrar "${prefijo}${archivo}" "FALLA" "${archivo} no devolvió ninguna comprobación"
+    return 1
+  fi
+  while IFS='|' read -r comprobacion estado detalle; do
+    [ -z "$comprobacion" ] && continue
+    echo "  [${estado}] ${prefijo}${comprobacion}: ${detalle}"
+    if [ -n "$agrupar" ] && [ "$estado" = "OK" ]; then
+      n_ok=$((n_ok + 1))
+    else
+      registrar "${prefijo}${comprobacion}" "$estado" "$detalle"
+    fi
+    if [ "$estado" = "FALLA" ]; then
+      rc=1
+    fi
+  done <<<"$salida"
+  if [ -n "$agrupar" ] && [ "$n_ok" -gt 0 ]; then
+    registrar "${prefijo}${agrupar}" "OK" "${n_ok} comprobaciones OK"
+  fi
+  return "$rc"
+}
+
+# --- Limpieza (siempre) -----------------------------------------------------------------------------
 
 limpiar_app_dev() {
   local rc=$?
   if [ "$restauracion_iniciada" = true ]; then
+    etapa "Limpieza de App_dev"
     echo ""
     echo "Limpiando App_dev (dejando public y los usuarios de auth restaurados vacíos -- siempre" \
       "corre esto, haya salido bien o mal lo de arriba)..."
-    if vaciar_public && "$PG_BIN_DIR/psql" "$SUPABASE_DB_URL_DEV" -X -q -v ON_ERROR_STOP=1 -c "
+    if vaciar_public && psql_dev -c "
       begin;
       delete from auth.identities;
       delete from auth.users;
@@ -345,39 +383,119 @@ limpiar_app_dev() {
       echo "  Filas en auth.users:                ${filas_auth_users}"
       echo "  Filas en auth.identities:           ${filas_auth_identities}"
       if [ "$filas_public" != "0" ] || [ "$filas_auth_users" != "0" ] || [ "$filas_auth_identities" != "0" ]; then
-        echo "ADVERTENCIA: la limpieza corrió pero App_dev no quedó vacío. dev. NO es seguro: revisar a mano ya mismo (docs/deployment.md sección 6.3)." >&2
+        echo "ADVERTENCIA: la limpieza corrió pero App_dev no quedó vacío. dev. NO es seguro: revisar a mano ya mismo (docs/restore-test.md, sección de problemas)." >&2
+        registrar "limpieza_app_dev_vacio" "FALLA" "public: ${filas_public}, auth.users: ${filas_auth_users}, auth.identities: ${filas_auth_identities}"
         rc=1
       else
         echo "OK: App_dev quedó vacío."
+        registrar "limpieza_app_dev_vacio" "OK" "public, auth.users y auth.identities con 0 filas"
       fi
     else
-      echo "ADVERTENCIA: la limpieza automática de App_dev encontró un error. dev. puede NO ser seguro: revisar a mano ya mismo, y correr 'scripts/restore-from-r2.sh --confirmar-vacio' (docs/deployment.md sección 6.3)." >&2
+      echo "ADVERTENCIA: la limpieza automática de App_dev encontró un error. dev. puede NO ser seguro: revisar a mano ya mismo, y correr 'scripts/restore-from-r2.sh --confirmar-vacio' (docs/restore-test.md, sección de problemas)." >&2
+      registrar "limpieza_app_dev_vacio" "FALLA" "la limpieza automática terminó con error"
       rc=1
     fi
   fi
+  if [ "$rc" != "0" ]; then
+    registrar "resultado_general" "FALLA" "la corrida terminó con error (código ${rc})"
+  elif [ "$hubo_fallas" = true ]; then
+    registrar "resultado_general" "FALLA" "alguna comprobación falló"
+    rc=1
+  else
+    registrar "resultado_general" "OK" "todas las comprobaciones pasaron"
+  fi
+  imprimir_resumen
   rm -rf "$workdir"
   exit "$rc"
 }
 trap limpiar_app_dev EXIT
 
-encrypted_file="$workdir/respaldo.dump.gpg"
+# --- Obtener el volcado -----------------------------------------------------------------------------
+
 dump_file="$workdir/respaldo.dump"
 
-echo "Bajando ${object_key} de R2 (bucket ${R2_BUCKET})..."
-aws s3 cp "s3://${R2_BUCKET}/${object_key}" "$encrypted_file" \
-  --endpoint-url "$endpoint" --only-show-errors
+if [ -n "$archivo_local" ]; then
+  etapa "Descifrar o tomar el volcado local"
+  case "$archivo_local" in
+    *.gpg)
+      echo "Descifrando ${archivo_local} (gpg)..."
+      printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
+        --passphrase-fd 0 --decrypt --output "$dump_file" "$archivo_local"
+      ;;
+    *)
+      dump_file="$archivo_local"
+      ;;
+  esac
+else
+  encrypted_file="$workdir/respaldo.dump.gpg"
+  etapa "Bajar el respaldo de R2"
+  echo "Bajando ${object_key} de R2 (bucket ${R2_BUCKET})..."
+  aws s3 cp "s3://${R2_BUCKET}/${object_key}" "$encrypted_file" \
+    --endpoint-url "$endpoint" --only-show-errors
 
-echo "Descifrando el volcado (gpg)..."
-printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
-  --passphrase-fd 0 --decrypt --output "$dump_file" "$encrypted_file"
-rm -f "$encrypted_file" # el volcado cifrado ya no hace falta en disco
+  etapa "Descifrar el volcado"
+  echo "Descifrando el volcado (gpg)..."
+  printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
+    --passphrase-fd 0 --decrypt --output "$dump_file" "$encrypted_file"
+  rm -f "$encrypted_file" # el volcado cifrado ya no hace falta en disco
+fi
+tam_volcado="$(wc -c <"$dump_file" | tr -d ' ')"
+registrar "volcado_descifrado" "OK" "${tam_volcado} bytes"
+
+# --- Paso 0: comprobaciones previas (no tocan nada) -----------------------------------------------------
+
+etapa "Paso 0: comprobaciones previas"
+echo ""
+echo "0a. Contenido del volcado (¿es un respaldo completo?)..."
+lista_volcado="$workdir/volcado.toc"
+"$PG_BIN_DIR/pg_restore" -l "$dump_file" >"$lista_volcado"
+
+requerir_en_volcado() { # <descripción> <patrón extendido>
+  if grep -qE "$2" "$lista_volcado"; then
+    echo "  [OK] El volcado trae: $1"
+    elementos_ok=$((elementos_ok + 1))
+  else
+    echo "  [FALLA] El volcado NO trae: $1" >&2
+    registrar "volcado_trae_$1" "FALLA" "falta en el volcado"
+    contenido_incompleto=true
+  fi
+}
+contenido_incompleto=false
+elementos_ok=0
+requerir_en_volcado "datos de auth.users" '^[0-9]+; [0-9]+ [0-9]+ TABLE DATA auth users '
+requerir_en_volcado "datos de auth.identities" '^[0-9]+; [0-9]+ [0-9]+ TABLE DATA auth identities '
+requerir_en_volcado "migraciones aplicadas" '^[0-9]+; [0-9]+ [0-9]+ TABLE DATA supabase_migrations schema_migrations '
+requerir_en_volcado "hook de Auth" '^[0-9]+; [0-9]+ [0-9]+ FUNCTION app custom_access_token_hook\('
+requerir_en_volcado "trigger de perfiles sobre auth.users" ' TRIGGER auth users trg_handle_new_user '
+requerir_en_volcado "trigger de ingresos sobre auth.sessions" ' TRIGGER auth sessions trg_log_sign_in '
+requerir_en_volcado "buckets de Storage (datos)" '^[0-9]+; [0-9]+ [0-9]+ TABLE DATA storage buckets '
+for politica in avatars_select_public avatars_insert_own_or_admin avatars_update_own_or_admin \
+  avatars_delete_own_or_admin branding_select_public branding_write_admin; do
+  requerir_en_volcado "política de Storage ${politica}" " POLICY storage objects ${politica} "
+done
+if [ "$contenido_incompleto" = true ]; then
+  echo "ABORTADO: el volcado no es un respaldo completo. No se toca App_dev." >&2
+  exit 1
+fi
+registrar "volcado_es_un_respaldo_completo" "OK" "${elementos_ok} elementos esperados presentes (usuarios, migraciones, hook, triggers de auth, buckets y políticas de Storage)"
+
+politicas_volcado="$(grep -cE '^[0-9]+; [0-9]+ [0-9]+ POLICY public ' "$lista_volcado" || true)"
+politicas_app_dev="$(psql_dev -A -t -c "select count(*) from pg_policies where schemaname = 'public';")"
+if [ "$politicas_volcado" = "$politicas_app_dev" ] && [ "$politicas_volcado" != "0" ]; then
+  echo "  [OK] Políticas RLS de public: ${politicas_volcado} en el volcado y en App_dev"
+  registrar "politicas_rls_public_volcado_vs_app_dev" "OK" "${politicas_volcado} y ${politicas_app_dev}"
+else
+  echo "  [FALLA] Políticas RLS de public: ${politicas_volcado} en el volcado, ${politicas_app_dev} en App_dev" >&2
+  registrar "politicas_rls_public_volcado_vs_app_dev" "FALLA" "${politicas_volcado} en el volcado, ${politicas_app_dev} en App_dev"
+  echo "ABORTADO: el volcado y App_dev no tienen las mismas políticas. No se toca App_dev." >&2
+  exit 1
+fi
 
 echo ""
-echo "Verificando que App_dev tenga las mismas migraciones aplicadas que el volcado" \
-  "(supabase_migrations.schema_migrations)..."
+echo "0b. Migraciones (supabase_migrations.schema_migrations): volcado contra App_dev..."
 # "version" es la clave primaria de esta tabla de control de Supabase CLI: se busca su posición
-# en la lista de columnas del propio COPY en vez de asumir que es la primera, por si el orden
-# cambiara. No toca ninguna base de datos: pg_restore sin --dbname solo imprime el SQL.
+# en la lista de columnas del propio COPY en vez de asumir que es la primera. No toca ninguna
+# base: pg_restore con -f - solo imprime el SQL.
 versiones_volcado="$("$PG_BIN_DIR/pg_restore" --data-only -n supabase_migrations -t schema_migrations -f - "$dump_file" \
   | awk '
       /^COPY supabase_migrations\.schema_migrations \(/ {
@@ -402,7 +520,7 @@ if [ -z "$versiones_volcado" ]; then
   exit 1
 fi
 
-versiones_app_dev="$("$PG_BIN_DIR/psql" "$SUPABASE_DB_URL_DEV" -X -q -A -t -v ON_ERROR_STOP=1 -c \
+versiones_app_dev="$(psql_dev -A -t -c \
   "select version from supabase_migrations.schema_migrations order by version;" | sort)"
 
 if [ "$versiones_volcado" != "$versiones_app_dev" ]; then
@@ -412,43 +530,80 @@ if [ "$versiones_volcado" != "$versiones_app_dev" ]; then
   echo "Versiones en App_dev:" >&2
   echo "$versiones_app_dev" >&2
   echo "Corré 'pnpm db:push' contra App_dev (o esperá a que deploy-staging.yml lo haga) y reintentá." >&2
+  registrar "migraciones_volcado_vs_app_dev" "FALLA" "no coinciden"
   exit 1
 fi
-echo "OK: App_dev tiene las mismas migraciones que el volcado (${versiones_app_dev})."
-echo "Como la estructura es idéntica a la del volcado, esta secuencia solo reemplaza DATOS: nunca" \
-  "hace falta recrear tablas, restricciones, políticas ni permisos (docs/deployment.md sección 6.3)."
+cantidad_migraciones="$(printf '%s\n' "$versiones_app_dev" | wc -l | tr -d ' ')"
+ultima_migracion="$(printf '%s\n' "$versiones_app_dev" | tail -n 1)"
+echo "  [OK] App_dev tiene las mismas ${cantidad_migraciones} migraciones que el volcado (la última, ${ultima_migracion})."
+registrar "migraciones_volcado_vs_app_dev" "OK" "${cantidad_migraciones} migraciones iguales, la última ${ultima_migracion}"
+
+echo ""
+echo "0c. Columnas de auth.users y auth.identities: volcado contra App_dev..."
+for tabla in users identities; do
+  columnas_volcado="$("$PG_BIN_DIR/pg_restore" --data-only -n auth -t "$tabla" -f - "$dump_file" \
+    | sed -n "s/^COPY auth\.${tabla} (\(.*\)) FROM stdin;\$/\1/p" | tr ',' '\n' | tr -d ' "' | sort)"
+  columnas_app_dev="$(psql_dev -A -t -c "select column_name from information_schema.columns
+      where table_schema = 'auth' and table_name = '${tabla}' and is_generated = 'NEVER' order by 1;" | sort)"
+  if [ -z "$columnas_volcado" ]; then
+    echo "ABORTADO: no se pudieron leer las columnas de auth.${tabla} del volcado. No se toca App_dev." >&2
+    registrar "columnas_auth_${tabla}" "FALLA" "no se pudieron leer del volcado"
+    exit 1
+  fi
+  faltan_en_app_dev="$(comm -23 <(printf '%s\n' "$columnas_volcado") <(printf '%s\n' "$columnas_app_dev") | paste -sd, -)"
+  sobran_en_app_dev="$(comm -13 <(printf '%s\n' "$columnas_volcado") <(printf '%s\n' "$columnas_app_dev") | paste -sd, -)"
+  if [ -n "$faltan_en_app_dev" ]; then
+    echo "ABORTADO: auth.${tabla} de App_dev no tiene estas columnas del volcado: ${faltan_en_app_dev}. Supabase actualizó el servicio de Auth en un proyecto y en el otro no. No se toca App_dev." >&2
+    registrar "columnas_auth_${tabla}" "FALLA" "faltan en App_dev: ${faltan_en_app_dev}"
+    exit 1
+  fi
+  if [ -n "$sobran_en_app_dev" ]; then
+    echo "  [OK] auth.${tabla}: todas las columnas del volcado existen en App_dev (App_dev tiene además: ${sobran_en_app_dev}, quedan con su valor por defecto)"
+    registrar "columnas_auth_${tabla}" "OK" "todas existen; App_dev tiene además ${sobran_en_app_dev}"
+  else
+    echo "  [OK] auth.${tabla}: las columnas del volcado y las de App_dev coinciden"
+    registrar "columnas_auth_${tabla}" "OK" "coinciden"
+  fi
+done
+
+echo ""
+echo "0d. Estructura y permisos de App_dev antes de restaurar..."
+if ! correr_sql_de_verificacion verificar-estructura.sql "antes_" "estructura_y_permisos"; then
+  echo "ABORTADO: App_dev no tiene la estructura o los permisos esperados (ver [FALLA] arriba). No se toca nada." >&2
+  exit 1
+fi
+huella_antes="$(psql_dev -A -t -F '|' -f "$script_dir/lib/huella-permisos.sql")"
+echo "  Huella de permisos tomada: $(printf '%s\n' "$huella_antes" | wc -l | tr -d ' ') componentes."
 
 restauracion_iniciada=true
 
+# --- Pasos 1 a 3: reemplazar los datos -----------------------------------------------------------------
+
+etapa "Paso 1: vaciar public"
 echo ""
 echo "1/3 - Vaciando public, por si App_dev tenía datos de antes..."
 vaciar_public
 
+etapa "Paso 2: reemplazar auth.users y auth.identities"
 echo ""
 echo "2/3 - Reemplazando los usuarios de auth (auth.users, auth.identities), con" \
   "session_replication_role = replica fijado en esta misma conexión (así el trigger que crea" \
   "profiles al insertar en auth.users no se dispara, y el orden entre auth.users y" \
   "auth.identities deja de importar)..."
-# Todo el SQL de este paso (el SET, los DELETE y el contenido que genera pg_restore -f -) va por
-# una sola tubería a un único psql: session_replication_role vale por conexión, así que fijarlo en
-# un psql aparte y restaurar con un pg_restore --dbname (que abriría OTRA conexión) no serviría de
-# nada. `-n <esquema> -t <tabla>` (dos argumentos), NO `-t esquema.tabla`: verificado en la
-# validación local (ver el comentario del encabezado) que `pg_restore -t esquema.tabla` no
-# matchea ningún objeto del volcado en PostgreSQL 17.11 -- termina sin error pero sin restaurar
-# una sola fila.
-# Los DELETE van ANTES del SET, a propósito: con `replica` tampoco se disparan los ON DELETE
-# CASCADE, y borrar auth.users así dejaría huérfanas las filas de auth.sessions,
-# auth.refresh_tokens, auth.mfa_factors y demás tablas que dependen de ella (comprobado por el
-# orquestador en Docker el 23 sep 2026). Si después se recrearan usuarios con los mismos id,
-# esas sesiones viejas volverían a quedar asociadas a ellos.
+# Todo el SQL de este paso (los DELETE, el SET y el contenido que genera pg_restore -f -) va por
+# una sola tubería a un único psql: session_replication_role vale por conexión. Los DELETE van
+# ANTES del SET, a propósito: con `replica` tampoco se disparan los ON DELETE CASCADE, y borrar
+# auth.users así dejaría huérfanas las filas de auth.sessions, auth.refresh_tokens,
+# auth.mfa_factors y demás.
 {
   printf 'delete from auth.identities;\n'
   printf 'delete from auth.users;\n'
   printf 'set session_replication_role = replica;\n'
   "$PG_BIN_DIR/pg_restore" --data-only -n auth -t users --no-owner --no-privileges -f - "$dump_file"
   "$PG_BIN_DIR/pg_restore" --data-only -n auth -t identities --no-owner --no-privileges -f - "$dump_file"
-} | "$PG_BIN_DIR/psql" "$SUPABASE_DB_URL_DEV" -X -q -v ON_ERROR_STOP=1 --single-transaction -f -
+} | psql_dev -o /dev/null --single-transaction -f -
 
+etapa "Paso 3: cargar los datos de public"
 echo ""
 echo "3/3 - Cargando los datos de public (--section=data), también con session_replication_role" \
   "= replica fijado en esta conexión: ni los triggers de usuario ni los internos de las claves" \
@@ -457,46 +612,80 @@ echo "3/3 - Cargando los datos de public (--section=data), también con session_
   printf 'set session_replication_role = replica;\n'
   "$PG_BIN_DIR/pg_restore" --schema=public --data-only --no-owner --no-privileges \
     --section=data -f - "$dump_file"
-} | "$PG_BIN_DIR/psql" "$SUPABASE_DB_URL_DEV" -X -q -v ON_ERROR_STOP=1 --single-transaction -f -
+} | psql_dev -o /dev/null --single-transaction -f -
+
+# --- Paso 4: verificación ---------------------------------------------------------------------------------
+
+etapa "Paso 4: verificación"
+echo ""
+echo "Restauración completa. Verificando (solo cantidades y nombres de objetos, nunca contenido)..."
 
 echo ""
-echo "Restauración completa. Verificando (solo cantidades, nunca contenido)..."
+echo "4a. Filas por tabla: volcado contra App_dev (tienen que ser idénticas)..."
+filas_volcado="$workdir/filas_volcado.tsv"
+filas_app_dev="$workdir/filas_app_dev.tsv"
+{
+  "$PG_BIN_DIR/pg_restore" --data-only --schema=public -f - "$dump_file"
+  "$PG_BIN_DIR/pg_restore" --data-only -n auth -t users -f - "$dump_file"
+  "$PG_BIN_DIR/pg_restore" --data-only -n auth -t identities -f - "$dump_file"
+} | awk '
+    /^COPY / { tabla = $2; n[tabla] = 0; dentro = 1; next }
+    /^\\\.$/ { dentro = 0; next }
+    dentro { n[tabla]++ }
+    END { for (t in n) printf "%s\t%d\n", t, n[t] }
+  ' | LC_ALL=C sort >"$filas_volcado"
+psql_dev -A -t -F $'\t' -c "
+  select table_schema || '.' || table_name,
+         (xpath('/row/c/text()',
+           query_to_xml(format('select count(*) as c from %I.%I', table_schema, table_name), false, true, '')))[1]::text
+  from information_schema.tables
+  where (table_schema = 'public' and table_type = 'BASE TABLE')
+     or (table_schema = 'auth' and table_name in ('users', 'identities'));
+" | LC_ALL=C sort >"$filas_app_dev"
 
-tablas_volcado="$("$PG_BIN_DIR/pg_restore" --schema=public -l "$dump_file" \
-  | grep -cE '^[0-9]+; [0-9]+ [0-9]+ TABLE public ' || true)"
-tablas_app_dev="$("$PG_BIN_DIR/psql" "$SUPABASE_DB_URL_DEV" -X -q -A -t -v ON_ERROR_STOP=1 -c \
-  "select count(*) from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE';")"
+tablas_volcado="$(wc -l <"$filas_volcado" | tr -d ' ')"
+tablas_app_dev="$(wc -l <"$filas_app_dev" | tr -d ' ')"
+echo "  Tablas con datos en el volcado (public + auth.users + auth.identities): ${tablas_volcado}"
+echo "  Tablas en App_dev:                                                      ${tablas_app_dev}"
+printf '  %-42s %10s %10s\n' "tabla" "volcado" "App_dev"
+LC_ALL=C join -a1 -a2 -e FALTA -t $'\t' -o 0,1.2,2.2 "$filas_volcado" "$filas_app_dev" \
+  | while IFS=$'\t' read -r tabla en_volcado en_app_dev; do
+      marca=""
+      [ "$en_volcado" != "$en_app_dev" ] && marca="   <-- NO COINCIDE"
+      printf '  %-42s %10s %10s%s\n' "$tabla" "$en_volcado" "$en_app_dev" "$marca"
+    done
+if diff -q "$filas_volcado" "$filas_app_dev" >/dev/null; then
+  total_filas="$(awk -F'\t' '{ s += $2 } END { print s + 0 }' "$filas_app_dev")"
+  echo "  [OK] Las ${tablas_app_dev} tablas tienen exactamente las mismas filas que el volcado (${total_filas} filas en total)."
+  registrar "filas_por_tabla_volcado_vs_app_dev" "OK" "${tablas_app_dev} tablas idénticas, ${total_filas} filas en total"
+else
+  echo "  [FALLA] Hay tablas cuyas filas no coinciden con el volcado (ver la columna marcada arriba)." >&2
+  registrar "filas_por_tabla_volcado_vs_app_dev" "FALLA" "hay tablas con cantidades distintas (ver el log)"
+fi
+registrar "usuarios_de_auth_restaurados" "INFO" "auth.users: $(awk -F'\t' '$1 == "auth.users" { print $2 }' "$filas_app_dev"), auth.identities: $(awk -F'\t' '$1 == "auth.identities" { print $2 }' "$filas_app_dev")"
 
-echo "  Tablas en el volcado (pg_restore -l, esquema public): ${tablas_volcado}"
-echo "  Tablas en App_dev (esquema public):                   ${tablas_app_dev}"
+echo ""
+echo "4b. Integridad referencial y sesión simulada (claves foráneas sin huérfanas; hook de Auth y RLS)..."
+correr_sql_de_verificacion verificar-datos.sql "" || true
 
-if [ "$tablas_volcado" != "$tablas_app_dev" ]; then
-  echo "VERIFICACION FALLIDA: la cantidad de tablas restauradas no coincide con la del volcado." >&2
+echo ""
+echo "4c. Estructura y permisos otra vez, y huella de permisos contra la de antes de restaurar..."
+correr_sql_de_verificacion verificar-estructura.sql "despues_" "estructura_y_permisos" || true
+huella_despues="$(psql_dev -A -t -F '|' -f "$script_dir/lib/huella-permisos.sql")"
+if [ "$huella_antes" = "$huella_despues" ]; then
+  echo "  [OK] La huella de permisos (tablas, columnas, funciones, esquemas, privilegios por defecto, políticas y triggers) es idéntica a la de antes de restaurar."
+  registrar "huella_de_permisos_igual_a_la_de_antes" "OK" "7 componentes idénticos"
+else
+  distintos="$(diff <(printf '%s\n' "$huella_antes") <(printf '%s\n' "$huella_despues") | sed -n 's/^> \([^|]*\)|.*/\1/p' | paste -sd, -)"
+  echo "  [FALLA] La huella de permisos cambió después de restaurar. Componentes distintos: ${distintos}" >&2
+  registrar "huella_de_permisos_igual_a_la_de_antes" "FALLA" "cambió: ${distintos}"
+fi
+
+etapa ""
+echo ""
+if [ "$hubo_fallas" = true ]; then
+  echo "VERIFICACION FALLIDA: alguna comprobación dio [FALLA] (ver arriba). Limpiando a continuación." >&2
   exit 1
 fi
-echo "Verificación OK: coincide la cantidad de tablas (${tablas_app_dev})."
-
-echo ""
-echo "Filas por tabla en App_dev (esquema public), para revisión manual (solo conteos, nunca" \
-  "contenido):"
-"$PG_BIN_DIR/psql" "$SUPABASE_DB_URL_DEV" -X -q -A -t -v ON_ERROR_STOP=1 -c \
-  "select table_name from information_schema.tables
-     where table_schema = 'public' and table_type = 'BASE TABLE'
-     order by table_name;" \
-  | while IFS= read -r tabla; do
-      [ -z "$tabla" ] && continue
-      filas="$("$PG_BIN_DIR/psql" "$SUPABASE_DB_URL_DEV" -X -q -A -t -v ON_ERROR_STOP=1 -c \
-        "select count(*) from public.\"${tabla}\";")"
-      echo "  ${tabla}: ${filas} filas"
-    done
-
-filas_auth_users_verif="$("$PG_BIN_DIR/psql" "$SUPABASE_DB_URL_DEV" -X -q -A -t -v ON_ERROR_STOP=1 -c \
-  "select count(*) from auth.users;")"
-filas_auth_identities_verif="$("$PG_BIN_DIR/psql" "$SUPABASE_DB_URL_DEV" -X -q -A -t -v ON_ERROR_STOP=1 -c \
-  "select count(*) from auth.identities;")"
-echo "  auth.users: ${filas_auth_users_verif} filas"
-echo "  auth.identities: ${filas_auth_identities_verif} filas"
-
-echo ""
 echo "Restauración y verificación completas: ${object_key} -> App_dev. Limpiando a continuación" \
   "(ver más abajo): esto no debe interpretarse como que App_dev quedó con estos datos."

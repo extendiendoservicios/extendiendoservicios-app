@@ -55,6 +55,9 @@ export default function InProgressPage() {
       </Alert>
     )
   }
+  if (assignment.shiftStatus === 'cancelled') {
+    return <Navigate to={`/app/servicio/${assignment.assignmentId}`} replace />
+  }
   // Todavía no se registró el inicio: no hay nada "en curso" que mostrar acá
   // -- de vuelta a Fichar, que sabe a dónde mandar a la persona.
   if (assignment.checkInAt == null) {

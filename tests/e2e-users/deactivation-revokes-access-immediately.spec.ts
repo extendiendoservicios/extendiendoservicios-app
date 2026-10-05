@@ -8,7 +8,7 @@ import {
   getAdminClient,
   signInForToken,
 } from './helpers/adminUsersClient.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 // USERS-018 (encargo P07.4): "que al desactivar a alguien su token vigente deja de leer datos
 // al instante y que al reactivarlo vuelve" — por API directa con `supabase-js`/`fetch`, sin UI:

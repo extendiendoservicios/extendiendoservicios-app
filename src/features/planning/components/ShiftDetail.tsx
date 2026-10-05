@@ -33,6 +33,7 @@ import {
 } from '@/features/planning/permissions'
 import { useShiftDetailQuery } from '@/features/planning/queries'
 import { canManageSupervisions } from '@/features/supervisions/permissions'
+import { CancelShiftAction } from '@/features/shifts/components/CancelShiftAction'
 import { AdminTaskList } from './AdminTaskList'
 import { AssignEmployeeSheet } from './AssignEmployeeSheet'
 import { AssignmentTimeDialog } from './AssignmentTimeDialog'
@@ -157,6 +158,7 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
             </Button>
           </div>
         )}
+        <CancelShiftAction shift={shift} />
       </div>
 
       {shiftStarted && canManage && !canManageAfterStart && (

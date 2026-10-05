@@ -103,4 +103,14 @@ describe('pickFeatured', () => {
       'finalizado-2',
     )
   })
+
+  it('no destaca un turno cancelado (CB-03)', () => {
+    const cancelled = assignment({
+      assignmentId: 'cancelado',
+      shiftStatus: 'cancelled',
+    })
+    const pending = assignment({ assignmentId: 'pendiente' })
+    expect(pickFeatured([cancelled, pending])?.assignmentId).toBe('pendiente')
+    expect(pickFeatured([cancelled])).toBeUndefined()
+  })
 })

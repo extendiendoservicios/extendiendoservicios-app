@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { readE2eAuthEnv, MISSING_ENV_MESSAGE } from './helpers/env.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 // AUTH-012: "credenciales erróneas (mensaje de error en español, sin revelar si el email
 // existe)". `authErrors.ts` (loginErrorMessage) unifica el texto de `invalid_credentials` para

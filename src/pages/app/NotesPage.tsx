@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams } from 'react-router'
+import { Navigate, useParams } from 'react-router'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -45,6 +45,10 @@ export default function NotesPage() {
         </AlertDescription>
       </Alert>
     )
+  }
+
+  if (assignment.shiftStatus === 'cancelled') {
+    return <Navigate to={`/app/servicio/${assignment.assignmentId}`} replace />
   }
 
   // El texto arranca en lo que ya estaba guardado; una vez que la persona

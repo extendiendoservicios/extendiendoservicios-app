@@ -29,7 +29,7 @@ import {
   waitForDashboardLoaded,
 } from './helpers/dashboard.ts'
 import { loginAs } from './helpers/login.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 const env = readE2eTableroEnv()
 test.skip(!env, MISSING_ENV_MESSAGE)

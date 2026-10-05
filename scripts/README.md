@@ -14,9 +14,29 @@ Scripts de Node/TypeScript que se corren a mano o desde CI, fuera de la app:
 - `import-initial.ts` — importación de la planilla de carga inicial del
   cliente, desde F19.
 
+- `recuperar-app-dev.ts` — TEST-024 (P18.5): deja a `App_dev` utilizable
+  después de una corrida de `restore-test.yml`, que lo deja sin usuarios y
+  sin datos. En orden y validando cada paso: migraciones, Auth, usuarios de
+  prueba (`seed-dev.ts`), `supabase/seed.sql`, cuentas fijas de P18.1
+  (`pnpm test:fixtures:setup`) y validación final. Uso:
+  `pnpm db:recuperar-dev` (o `node --env-file=.env.local
+scripts/recuperar-app-dev.ts`). Detalle en `docs/restore-test.md`
+  sección 8.
+
 `db-test.sh` (DB-022) y `backup-to-r2.sh`/`restore-from-r2.sh` (INFRA-018)
 son scripts de shell, no de Node/TypeScript: quedan fuera de esta lista,
 documentados en su propio encabezado. Lo mismo pasa con:
+
+- `ensayo-restauracion-local.sh` (TEST-024, P18.5) — ensaya en Docker, con un
+  Supabase local propio y un R2 simulado, la secuencia completa de
+  respaldo, restauración y recuperación, sin credenciales de nadie. Hay que
+  correrlo cada vez que se cambie un script o un `.sql` de esta carpeta:
+  `bash scripts/ensayo-restauracion-local.sh` (o `--rapido`).
+- `lib/dependencias-ci.sh`, `lib/verificar-estructura.sql`,
+  `lib/verificar-datos.sql` y `lib/huella-permisos.sql` — lo que usan los
+  scripts de respaldo y restauración: instalación de herramientas en el
+  runner y las comprobaciones de estructura, permisos y datos. Ver
+  `docs/restore-test.md`.
 
 - `generar-plantilla-carga-inicial.py` (DATA-001, DATA-002, P04.8) — script
   Python (no Node) que genera `docs/plantilla-carga-inicial.xlsx` con

@@ -10,7 +10,7 @@ import {
 import { interceptMapRequests } from './helpers/interceptMap.ts'
 import { loginAs } from './helpers/login.ts'
 import { expectNoHorizontalScroll } from './helpers/noHorizontalScroll.ts'
-import { SEED_ACCOUNTS } from '../permissions/fixtures/seed-accounts.ts'
+import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 // TEST-005: capturas móviles (390 px, proyecto `mobile` de `playwright.clients-sites.config.ts`)
 // de ADM-19 (listado), ADM-21, ADM-22 y ADM-24, comprobando en cada una que no haya scroll

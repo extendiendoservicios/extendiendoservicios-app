@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams } from 'react-router'
+import { Navigate, useParams } from 'react-router'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { TaskList } from '@/components/TaskList'
 import { isApiError } from '@/api/errors'
@@ -46,6 +46,10 @@ export default function TasksPage() {
         </AlertDescription>
       </Alert>
     )
+  }
+
+  if (assignment.shiftStatus === 'cancelled') {
+    return <Navigate to={`/app/servicio/${assignment.assignmentId}`} replace />
   }
 
   const withinWindow = canEditTasks(assignment)

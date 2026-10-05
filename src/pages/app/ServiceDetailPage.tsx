@@ -83,7 +83,8 @@ export default function ServiceDetailPage() {
     assignment.startTime,
     assignment.endTime,
   )
-  const notice = getNoticeMessage(assignment)
+  const cancelled = assignment.shiftStatus === 'cancelled'
+  const notice = cancelled ? null : getNoticeMessage(assignment)
   const siteInfo: SiteInfoData = {
     address: assignment.siteAddress ?? assignment.siteName,
     city: assignment.siteCity,
@@ -106,7 +107,11 @@ export default function ServiceDetailPage() {
             <CardTitle>{assignment.clientName}</CardTitle>
             <p className="text-[12px] text-text-3">{assignment.siteName}</p>
           </div>
-          <StatusBadge domain="assignment" status={assignment.status} />
+          {cancelled ? (
+            <StatusBadge domain="shift" status="cancelled" />
+          ) : (
+            <StatusBadge domain="assignment" status={assignment.status} />
+          )}
         </CardHeader>
         <CardContent className="flex flex-col gap-[10px]">
           <p className="text-[13px] text-text-2">
@@ -119,6 +124,13 @@ export default function ServiceDetailPage() {
               </span>
             )}
           </p>
+          {cancelled && (
+            <Alert variant="warn">
+              <AlertDescription>
+                Este servicio fue cancelado. No hace falta que lo registres.
+              </AlertDescription>
+            </Alert>
+          )}
           {notice && (
             <Alert variant="warn">
               <AlertDescription>{notice.text}</AlertDescription>
