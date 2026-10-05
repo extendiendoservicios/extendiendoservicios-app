@@ -27,6 +27,11 @@ import { cubre } from '../../fixtures/trace.ts'
 
 test.skip(!readE2eEnv(), MISSING_ENV_MESSAGE)
 
+// Cada filtro vuelve a pedir la lista al servidor. En una corrida con otras suites a la vez,
+// App_dev llegó a demorar once segundos en responder (TEST-029, traza de la corrida 2); con la
+// espera por omisión de 10 s eso fallaba sin que la pantalla estuviera mal.
+const ESPERA_LISTA = { timeout: 30_000 }
+
 test.use({ storageState: storageStatePath('admin') })
 
 test.describe('supervisiones y calificaciones (ADM-13, ADM-15)', () => {
@@ -89,8 +94,8 @@ test.describe('supervisiones y calificaciones (ADM-13, ADM-15)', () => {
           await page
             .getByRole('option', { name: nombreDe('supervisor2') })
             .click()
-          await expect(fila(clienteB.name)).toBeVisible()
-          await expect(fila(clienteA.name)).toHaveCount(0)
+          await expect(fila(clienteB.name)).toBeVisible(ESPERA_LISTA)
+          await expect(fila(clienteA.name)).toHaveCount(0, ESPERA_LISTA)
           await page
             .getByRole('combobox', { name: 'Filtrar por supervisor' })
             .click()
@@ -104,8 +109,8 @@ test.describe('supervisiones y calificaciones (ADM-13, ADM-15)', () => {
             .getByRole('combobox', { name: 'Filtrar por empleado' })
             .click()
           await page.getByRole('option', { name: nombreDe('dual') }).click()
-          await expect(fila(clienteA.name)).toBeVisible()
-          await expect(fila(clienteB.name)).toHaveCount(0)
+          await expect(fila(clienteA.name)).toBeVisible(ESPERA_LISTA)
+          await expect(fila(clienteB.name)).toHaveCount(0, ESPERA_LISTA)
           await page
             .getByRole('combobox', { name: 'Filtrar por empleado' })
             .click()
@@ -119,11 +124,11 @@ test.describe('supervisiones y calificaciones (ADM-13, ADM-15)', () => {
             .getByRole('combobox', { name: 'Filtrar por cliente' })
             .click()
           await page.getByRole('option', { name: clienteB.name }).click()
-          await expect(fila(clienteB.name)).toBeVisible()
-          await expect(fila(clienteA.name)).toHaveCount(0)
+          await expect(fila(clienteB.name)).toBeVisible(ESPERA_LISTA)
+          await expect(fila(clienteA.name)).toHaveCount(0, ESPERA_LISTA)
           await page.getByRole('combobox', { name: 'Filtrar por sede' }).click()
           await page.getByRole('option', { name: sedeB.name }).click()
-          await expect(fila(clienteB.name)).toBeVisible()
+          await expect(fila(clienteB.name)).toBeVisible(ESPERA_LISTA)
           await page.getByRole('combobox', { name: 'Filtrar por sede' }).click()
           await page.getByRole('option', { name: 'Todas las sedes' }).click()
           await page
@@ -137,8 +142,8 @@ test.describe('supervisiones y calificaciones (ADM-13, ADM-15)', () => {
             .getByRole('combobox', { name: 'Filtrar por estado' })
             .click()
           await page.getByRole('option', { name: 'Completada' }).click()
-          await expect(fila(clienteA.name)).toBeVisible()
-          await expect(fila(clienteB.name)).toHaveCount(0)
+          await expect(fila(clienteA.name)).toBeVisible(ESPERA_LISTA)
+          await expect(fila(clienteB.name)).toHaveCount(0, ESPERA_LISTA)
         })
 
         await test.step('pestaña Calificaciones: puntaje y comentario de lo cargado', async () => {
@@ -146,7 +151,7 @@ test.describe('supervisiones y calificaciones (ADM-13, ADM-15)', () => {
           const calificacion = page
             .getByRole('row')
             .filter({ hasText: comentario })
-          await expect(calificacion).toBeVisible()
+          await expect(calificacion).toBeVisible(ESPERA_LISTA)
           await expect(calificacion).toContainText(nombreDe('dual'))
           await expect(
             calificacion.getByRole('img', { name: '4 de 5 estrellas' }),
