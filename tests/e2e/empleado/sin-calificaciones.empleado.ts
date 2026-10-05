@@ -15,6 +15,7 @@ import {
   NEAR_MIDNIGHT_MESSAGE,
 } from '../../fixtures/dates.ts'
 import { cubre } from '../../fixtures/trace.ts'
+import { irARedirigida } from '../../fixtures/ui.ts'
 
 // TEST-017 (P18.2): MOB-SUP-014, "el empleado no ve calificaciones" (RB-S04, P-084, CB-15).
 // Decisión de Mike (3 oct 2026): alcanza con que las rutas de supervisor y de administración lo
@@ -108,8 +109,7 @@ test(
           '/admin',
           '/admin/supervisiones',
         ]) {
-          // `commit`: la redirección ocurre en el cliente y en WebKit interrumpe la espera de "load".
-          await page.goto(ruta, { waitUntil: 'commit' })
+          await irARedirigida(page, ruta)
           await expect(page, `${ruta} debería redirigir`).toHaveURL(/\/app$/)
         }
       })

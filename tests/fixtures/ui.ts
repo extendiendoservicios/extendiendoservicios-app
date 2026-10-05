@@ -22,6 +22,26 @@ export async function loginByForm(
   await expect(page).toHaveURL(homePattern)
 }
 
+/**
+ * Navega a una ruta que la app redirige desde el cliente (por rol o por sesión) sin esperar la
+ * carga: la redirección interrumpe la navegación y en WebKit `page.goto` termina con «Frame load
+ * interrupted» aunque la pantalla esté bien (TEST-029, corrida 4). Ese error se ignora; lo que
+ * importa lo comprueba el `toHaveURL` que el test pone después.
+ */
+export async function irARedirigida(page: Page, ruta: string): Promise<void> {
+  try {
+    await page.goto(ruta, { waitUntil: 'commit' })
+  } catch (error) {
+    if (
+      !/Frame load interrupted|interrupted by another navigation/i.test(
+        String(error),
+      )
+    ) {
+      throw error
+    }
+  }
+}
+
 /** PNG de 1×1 transparente (el tile más chico posible). */
 const TRANSPARENT_PNG_BASE64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
