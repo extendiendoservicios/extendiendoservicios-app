@@ -7,13 +7,41 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.15.0] - 2026-10-05
+
+F18: testing integral. Informe completo en `docs/test-report-f18.md`.
+
 ### Agregado
 
+- Suites e2e por rol con cuentas fijas (TEST-015 a TEST-018): administración en Chromium, celular y Edge; empleado y supervisor en celular y WebKit; configuración del dueño; autenticación. Conjuntos de cuentas disjuntos por suite (`E2E_CONJUNTO`) y barrido único para correrlas en paralelo.
+- Matriz de permisos por API directa (TEST-019): 1.619 casos, cada perfil contra cada tabla, vista, RPC, bucket y acción de `admin-users`.
+- Casos borde CB-01 a CB-25 cubiertos (TEST-020), accesibilidad con axe-core en 44 pantallas (TEST-023) y prueba de carga ligera `pnpm test:load` (TEST-022).
+- Revisión de seguridad `docs/security-review.md` (TEST-025).
+- Nocturno de e2e con jobs paralelos contra `App_dev` (TEST-021), además del disparo manual.
+- Vistas recortadas `v_shift_peers` y `v_clients_basic` (migración 0030).
+- Detalle del turno (ADM-06): acción «Cancelar turno».
 - Workflow `e2e-app-dev.yml` (TEST-021, F18): corre las suites e2e reales contra `App_dev` cada noche (04:30 de Argentina) y a mano, sobre `develop` o la rama elegida, de a una corrida por vez, con guarda contra producción, resumen en Summary y reporte con trazas ante fallas. Usa cuatro secretos `E2E_*`; guía en `docs/deployment.md` sección 14.
 - Prueba de restauración de respaldos revisada contra el estado actual y ensayada en Docker (TEST-024): el volcado se inspecciona antes de tocar nada, se comparan las filas de cada tabla, las claves foráneas y los permisos (sin el `GRANT ALL` por defecto de Supabase), se simula una sesión de dueño con el hook de Auth y la RLS, y el resultado queda resumido con tiempos en la pestaña Summary de la corrida.
 - `pnpm db:recuperar-dev` (`scripts/recuperar-app-dev.ts`): deja a `App_dev` utilizable después de la prueba de restauración, validando cada paso.
 - `scripts/ensayo-restauracion-local.sh`: ensayo completo de respaldo, restauración y recuperación en Docker, sin credenciales.
 - Guía `docs/restore-test.md`: clic por clic, qué ver en cada paso, recuperación de `App_dev` y plantilla de acta.
+
+### Corregido
+
+- El empleado ve en Hoy los turnos cancelados, marcados «Cancelado», con sus acciones apagadas (DEF-01).
+- «Cerrar sesión» cierra solo el dispositivo actual (DEF-04).
+- El mensaje de turno superpuesto nombra al empleado (DEF-03).
+- Etiqueta accesible en el botón de la foto de perfil (DEF-A01).
+- Permisos (DEF-P01 a DEF-P13): un administrador sin capacidad ya no desactiva a nadie ni actúa sobre otros administradores o dueños; solo el dueño cambia la configuración de la empresa; el supervisor ya no lee datos personales de los empleados; el empleado ya no lee contactos ni notas de compañeros ni datos fiscales del cliente; un usuario desactivado con token vigente ya no lee ni escribe.
+- Rendimiento de la RLS: `shift_tasks` de 6,6 s a 86 ms y `v_my_day` de 340 a 13 ms (DEF-P02).
+
+### Seguridad
+
+- Las fotos de perfil ya no se pueden listar sin sesión (SEG-01).
+- El logo ya no acepta SVG (SEG-02).
+- El límite de `admin-users` cuenta también los intentos rechazados (SEG-03).
+- `localhost` sale de los orígenes permitidos de `admin-users` en producción (SEG-07).
+- `rls_auto_enable()` sin permiso de ejecución para `anon` y `authenticated` (SEG-08).
 
 ## [0.14.0] - 2026-10-02
 
