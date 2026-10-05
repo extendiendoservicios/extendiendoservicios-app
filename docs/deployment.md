@@ -892,7 +892,7 @@ Decisión de Mike (3 oct 2026): cada noche y a mano; **no** en cada Pull Request
 - **Qué código prueba:** GitHub corre el cron y el botón con el archivo del workflow
   que está en `main`, pero el workflow hace checkout de `develop` (o de la rama del
   campo `rama`). Por eso lo que se prueba es siempre el código nuevo, no el de `main`.
-- **Jobs (en paralelo, cada uno en su runner):**
+- **Jobs (cada uno en su runner, en tres tandas: ver "Tiempo" más abajo):**
 
   | Job          | Qué hace                                                                                                                                        | `E2E_CONJUNTO` | Estimado                          |
   | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | --------------------------------- |
@@ -918,10 +918,18 @@ Decisión de Mike (3 oct 2026): cada noche y a mano; **no** en cada Pull Request
   están en dos acciones locales: `.github/actions/preparar-e2e` (corepack, Node, pnpm,
   navegadores) y `.github/actions/resumen-e2e` (el resumen).
 
-- **Tiempo:** el camino crítico es `guarda` + `build` + el job más largo (`emp-movil` o `perm`)
-  - `dueno`: unos 12 minutos con los tiempos medidos en local y 14 con runners más lentos. Es
-    una **estimación**: el objetivo de F18 (menos de 15 minutos) se confirma con la primera
-    corrida en GitHub (sección 14.7). Cada job tiene su `timeout-minutes` (de 8 a 15).
+- **Tandas y tiempo:** la primera corrida en GitHub (5 oct 2026) lanzó las siete suites a la
+  vez y `App_dev` (un plan gratuito, una sola base) no aguantó: consultas de 10 a 16
+  segundos, un `canceling statement due to statement timeout` en `record_check_in`, esperas
+  vencidas y la matriz de permisos cortada por su `timeout-minutes`. Las mismas suites pasan
+  en local, incluso `admin` y `admin-edge` a la vez. Por eso ahora corren en **tres tandas**,
+  y cada una espera a la anterior aunque haya fallado: tanda 1 (`admin`, `emp-movil`, `sup`),
+  tanda 2 (`admin-edge`, `emp-webkit`, `admin-a11y`), tanda 3 (`perm`, sola) y al final `dueno`.
+  Tiempo estimado de la corrida completa: **35 a 40 minutos** (tanda 1 ~11, tanda 2 ~8,
+  `perm` ~8, `dueno` ~2, más la preparación de cada job); la meta de 15 minutos de F18 se
+  cambió por una corrida estable. Lo confirma la segunda corrida manual. Cada job tiene su
+  `timeout-minutes` (de 8 a 25). El workflow fija `TZ=America/Argentina/Buenos_Aires` (los
+  runners están en UTC).
 - **Una corrida a la vez:** `concurrency: e2e-app-dev` sin cancelar la que está en
   curso (las cuentas fijas son compartidas; dos corridas se pisarían). Lo que llegue
   mientras otra corre queda en cola. **No lo dispares mientras alguien corre suites
@@ -1004,8 +1012,8 @@ y el **barrido de residuos** `e2e-`. Se resolvió así (P18.4, `tests/fixtures/`
   reintentan ante un 429.
 
 Costo extra de cada job: 1 a 2 minutos de instalación (con caché de pnpm y de navegadores).
-El plan gratuito de Supabase tiene un límite de conexiones: con siete suites a la vez no se
-acerca, pero se mira en la primera corrida. El repositorio es público (sin límite de minutos
+El plan gratuito de Supabase tiene un límite de conexiones: con siete suites a la vez la base
+se saturó (ver sección 14.1); por eso corren en tres tandas. El repositorio es público (sin límite de minutos
 de Actions); si pasara a privado, ver `docs/test-inventory.md` sección 10.2.
 
 ### 14.6 Cómo sumar una suite

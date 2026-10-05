@@ -1,6 +1,10 @@
 import { expect, test, type Page } from '@playwright/test'
 import { anioLejano, nombreDe, reNombreDe } from '../../fixtures/accounts.ts'
-import { addDays, FRANJAS, franjaYaEmpezo } from '../../fixtures/dates.ts'
+import {
+  addDays,
+  FRANJAS,
+  franjaSigueProgramada,
+} from '../../fixtures/dates.ts'
 import { MISSING_ENV_MESSAGE, readE2eEnv } from '../../fixtures/env.ts'
 import { Scenario } from '../../fixtures/scenario.ts'
 import { storageStatePath } from '../../fixtures/sessions.ts'
@@ -125,8 +129,9 @@ test.describe('cronograma (ADM-03, ADM-04, ADM-05)', () => {
         await page.goto(`/admin/planificacion?vista=dia&fecha=${sc.today}`)
         const filaHoy = page.getByRole('row').filter({ hasText: client.name })
         await expect(filaHoy).toContainText('1/2')
-        // "Programado" solo hasta que la franja empieza (después ya no lo es).
-        if (!franjaYaEmpezo(FRANJAS.tarde)) {
+        // "Programado" solo mientras faltan más de 2 horas: después es "Próximo" (derivado por
+        // hora, 04 sección 4) y, ya empezada la franja, otro estado.
+        if (franjaSigueProgramada(FRANJAS.tarde)) {
           await expect(filaHoy).toContainText('Programado')
         }
         await expect(filaHoy).toContainText('14:00–18:00')

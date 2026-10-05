@@ -44,7 +44,7 @@ Para probar suites en paralelo en una sola máquina: `E2E_REUSE_SERVER=1` con un
 - Un defecto de la aplicación se marca con `test.fail()` y una anotación `defecto` (en la matriz de
   permisos, `it.fails` en `permissions/suite/defectos.ts`); nunca se ajusta la prueba al defecto.
 - Sin `sleep` fijos: aserciones que esperan solas. Las que dependen de la hora del día se saltean con
-  un motivo (`isTooCloseToMidnight`) o afirman solo lo que vale a cualquier hora (`franjaYaEmpezo`).
+  un motivo (`isTooCloseToMidnight`) o afirman solo lo que vale a cualquier hora (`franjaYaEmpezo`, `franjaSigueProgramada`: "Programado" pasa a "Próximo" 2 horas antes del inicio).
 
 ## Suites viejas por dominio (`e2e-*`)
 
