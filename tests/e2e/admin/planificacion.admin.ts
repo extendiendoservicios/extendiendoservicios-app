@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { nombreDe, reNombreDe } from '../../fixtures/accounts.ts'
+import { anioLejano, nombreDe, reNombreDe } from '../../fixtures/accounts.ts'
 import { addDays, FRANJAS, franjaYaEmpezo } from '../../fixtures/dates.ts'
 import { MISSING_ENV_MESSAGE, readE2eEnv } from '../../fixtures/env.ts'
 import { Scenario } from '../../fixtures/scenario.ts'
@@ -25,10 +25,11 @@ test.describe('cronograma (ADM-03, ADM-04, ADM-05)', () => {
     cubre('RB-A06', 'CB-09', 'P-050'),
     async ({ page }) => {
       const sc = new Scenario()
-      // Un mes lejano propio de esta prueba (2193-05): no choca con los turnos reales del seed
+      // Un mes lejano propio de esta prueba (mayo del año lejano del conjunto): no choca con los turnos reales del seed
       // ni con los feriados nacionales, que son los únicos de `App_dev`.
-      const feriado = '2193-05-12'
-      const otroDia = '2193-05-14'
+      const anio = anioLejano()
+      const feriado = `${anio}-05-12`
+      const otroDia = `${anio}-05-14`
       try {
         const client = await sc.client('mes')
         const site = await sc.site(client.id, 'mes')
@@ -44,10 +45,10 @@ test.describe('cronograma (ADM-03, ADM-04, ADM-05)', () => {
 
         // El calendario mensual guarda el mes en su estado (no en la URL): se llega con el selector.
         await page.goto('/admin/planificacion?vista=mes')
-        await pickMonth(page, 'Elegir mes', 2193, 5)
+        await pickMonth(page, 'Elegir mes', anio, 5)
         await expect(
           page.getByRole('button', { name: 'Elegir mes' }),
-        ).toContainText('mayo 2193')
+        ).toContainText(`mayo ${anio}`)
 
         await test.step('el feriado está marcado y el turno del día feriado se ve igual', async () => {
           await expect(

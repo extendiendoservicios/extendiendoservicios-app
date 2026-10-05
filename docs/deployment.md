@@ -906,7 +906,7 @@ Decisión de Mike (3 oct 2026): cada noche y a mano; **no** en cada Pull Request
   | `emp-webkit` | Empleado, `--project=webkit --no-deps` (iPhone 14)                                                                                              | `emp-webkit`   | 5,9 min                           |
   | `sup`        | Supervisor (`mobile` y `webkit`) y después la suite vieja `e2e-auth`                                                                            | `sup`          | 6,2 min                           |
   | `perm`       | Matriz de permisos por API (`vitest`), sin navegador ni `dist/`                                                                                 | `perm`         | 6,9 min                           |
-  | `dueno`      | Espera a todos (`if: !cancelled()`, pero no corre si falló `build` o `barrido`): `dueno-config` y después `dueno-final`                         | `base`         | 2,7 min                           |
+  | `dueno`      | Espera a todos (`if: !cancelled()`, pero no corre si falló `build` o `barrido`): `dueno-config` (configuración de la empresa)                   | `base`         | 2,5 min                           |
 
   Todos los jobs de suites (`needs: [build, barrido]`) bajan `dist/`, ejecutan Playwright
   directo (los scripts `pnpm test:e2e:*` agregan `--env-file=.env.local` y rehacen el build),
@@ -992,10 +992,13 @@ y el **barrido de residuos** `e2e-`. Se resolvió así (P18.4, `tests/fixtures/`
 - el barrido corre **una sola vez**, en el job `barrido`; las suites lo saltean con
   `E2E_SKIP_SWEEP=1`. Si agregás un job de suites sin esa variable, borrará los datos de
   los demás;
-- el dueño del seed es **una sola cuenta** que no se puede duplicar: lo que cierra su sesión
-  (DEF-04 cierra todas) o edita la configuración de la empresa (`dueno-config`, `dueno-final`)
-  va en el job `dueno`, que espera a todos. Cuando se corrija DEF-04, `dueno` puede fundirse
-  con `admin`;
+- el dueño del seed es **una sola cuenta** que no se puede duplicar. Desde P18.6 el «Cerrar
+  sesión» de la app es local (DEF-04 corregido) y su recorrido (`recorrido-dueno`) corre con
+  `admin` y `admin-edge`. Lo que edita la configuración de la empresa (`dueno-config`), que la
+  matriz de permisos también toca, va solo en el job `dueno`, que espera a todos;
+- el año lejano de las pruebas que generan turnos o cargan feriados es propio de cada conjunto
+  (`anioLejano()`: 2193 en `base`, 2194 en `edge`), porque `generate_shifts` y `holidays` son
+  globales y `admin` y `admin-edge` corren a la vez;
 - los ingresos por API contra Auth tienen un límite (unos 30 cada 5 minutos por IP): los
   runners son máquinas distintas pero pueden compartir salida, y los ingresos esperan y
   reintentan ante un 429.

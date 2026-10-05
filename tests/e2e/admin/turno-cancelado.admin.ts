@@ -167,7 +167,7 @@ test.describe('CB-03: cancelar un turno en curso con un empleado presente', () =
             timeout: 8_000,
           })
           await expect(
-            page.getByRole('main').getByText('Cancelado'),
+            page.getByRole('main').getByText('Cancelado', { exact: true }),
           ).toBeVisible()
         } finally {
           await ctx.close()

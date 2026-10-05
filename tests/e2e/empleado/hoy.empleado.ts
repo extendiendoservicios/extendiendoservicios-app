@@ -239,7 +239,9 @@ test(
       await expect(page.getByRole('main')).toContainText(sede.name, {
         timeout: 8_000,
       })
-      await expect(page.getByRole('main').getByText('Cancelado')).toBeVisible()
+      await expect(
+        page.getByRole('main').getByText('Cancelado', { exact: true }),
+      ).toBeVisible()
     } finally {
       expect(await sc.cleanup(), 'limpieza').toEqual([])
     }

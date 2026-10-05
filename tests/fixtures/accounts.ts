@@ -74,9 +74,10 @@ export interface FixedAccountSpec {
 // pisan ni en la base ni en lo que ve cada pantalla (un nombre no es subcadena de otro).
 //
 // El dueño del seed es único y NO tiene conjunto: lo comparten todas las suites. Compartirlo es
-// seguro mientras nadie le cierre las sesiones (ver `docs/deployment.md` sección 14.5): el cierre
-// de sesión del dueño (DEF-04, global) y todo lo que edita la configuración de la empresa corre
-// en el proyecto `dueno-final`, que en CI es un job aparte, al final.
+// seguro (ver `docs/deployment.md` sección 14.5): desde P18.6 el cierre de sesión es local (DEF-04
+// corregido) y no invalida las sesiones de las demás suites. Lo único que va aparte es lo que edita
+// la configuración de la empresa (singleton): el proyecto `dueno-config`, que en CI es un job al
+// final.
 // ---------------------------------------------------------------------------------------------
 
 export const CONJUNTOS = [
@@ -144,6 +145,16 @@ export function conjuntoActivo(): Conjunto {
     )
   }
   return valor as Conjunto
+}
+
+/**
+ * Año lejano reservado del conjunto activo para las pruebas que generan turnos o cargan feriados
+ * (`generate_shifts` y `holidays` son globales, no del conjunto): 2193 para `base`, 2194 para
+ * `edge`, etc. Sin esto, `chromium` y `edge` (que en CI corren a la vez, cada uno con su conjunto)
+ * se pisarían los feriados y los turnos del mismo mes lejano.
+ */
+export function anioLejano(): number {
+  return 2193 + (CONJUNTOS as readonly string[]).indexOf(conjuntoActivo())
 }
 
 const DOMAIN = 'example.com'

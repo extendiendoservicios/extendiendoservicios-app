@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { nombreDe } from '../../fixtures/accounts.ts'
+import { FIXED_ACCOUNTS, nombreDe } from '../../fixtures/accounts.ts'
 import {
   FRANJAS,
   isTooCloseToMidnight,
@@ -13,9 +13,14 @@ import {
   TEXTO,
 } from '../../fixtures/movil.ts'
 import { Scenario } from '../../fixtures/scenario.ts'
-import { readId, storageStatePath } from '../../fixtures/sessions.ts'
+import {
+  anonClient,
+  readId,
+  signInSession,
+  storageStatePath,
+} from '../../fixtures/sessions.ts'
 import { cubre } from '../../fixtures/trace.ts'
-import { expectNoHorizontalScroll } from '../../fixtures/ui.ts'
+import { expectNoHorizontalScroll, loginByForm } from '../../fixtures/ui.ts'
 
 // TEST-018 (P18.2): el flujo del supervisor en la sede (SUP-03 a SUP-06 y SUP-08): registrar
 // inicio y fin (SUP-04) con la geoposición concedida y negada, calificar con estrellas y
@@ -370,7 +375,6 @@ test.describe('con la geoposición negada', () => {
       await expect(page.getByRole('link', { name: 'Mi perfil' })).toBeVisible()
       await expect(
         page.getByRole('button', { name: 'Cerrar sesión' }),
-        // No se pulsa: `signOut()` cierra todas las sesiones de la cuenta (DEF-04, P18.6).
       ).toBeVisible()
       await expect(
         page.getByRole('link', { name: 'Mis servicios' }),
@@ -379,6 +383,37 @@ test.describe('con la geoposición negada', () => {
       await page.getByRole('link', { name: 'Mi perfil' }).click()
       await expect(page).toHaveURL(/\/perfil$/)
       await expect(page.getByText('Supervisor', { exact: true })).toBeVisible()
+    },
+  )
+})
+
+test.describe('cerrar sesión', () => {
+  // Ingreso propio por COM-01: la sesión que se cierra no es la de `storageState`.
+  test.use({ storageState: { cookies: [], origins: [] }, permissions: [] })
+
+  test(
+    'SUP-09 Cerrar sesión lleva a COM-01 y la ruta del supervisor ya no abre; la otra sesión de la cuenta sigue viva (DEF-04)',
+    cubre('RB-S01', 'RB-X02', 'P-015', 'P-122'),
+    async ({ page }) => {
+      const cuenta = FIXED_ACCOUNTS.supervisor2.email
+      const otroDispositivo = await signInSession(cuenta)
+      await loginByForm(page, cuenta, /\/sup/)
+      await page
+        .getByRole('navigation', { name: 'Navegación principal' })
+        .getByRole('link', { name: 'Más' })
+        .click()
+      await page.getByRole('button', { name: 'Cerrar sesión' }).click()
+      await expect(page).toHaveURL(/\/ingresar/)
+      await page.goto('/sup')
+      await expect(page).toHaveURL(/\/ingresar/)
+
+      const renovada = await anonClient().auth.refreshSession({
+        refresh_token: otroDispositivo.refresh_token,
+      })
+      expect(
+        renovada.error,
+        'la sesión del otro dispositivo sigue válida (cierre local)',
+      ).toBeNull()
     },
   )
 })

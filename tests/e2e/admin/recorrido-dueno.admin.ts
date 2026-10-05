@@ -183,8 +183,11 @@ test(
           page
             .getByRole('table', { name: 'Eventos de seguridad' })
             .getByRole('row')
-            .nth(1),
-        ).toContainText(nombreObjetivo)
+            // Los eventos son globales: con otro conjunto corriendo a la vez la primera fila puede
+            // ser la de su cuenta, así que se busca la de este objetivo.
+            .filter({ hasText: nombreObjetivo })
+            .first(),
+        ).toBeVisible()
       })
 
       await test.step('cierra la sesión y las rutas de administración ya no abren', async () => {
