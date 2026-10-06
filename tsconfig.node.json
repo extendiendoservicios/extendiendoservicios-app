@@ -40,6 +40,7 @@
     "tests/e2e-responsive/**/*.ts",
     "tests/lighthouse/**/*.ts",
     "tests/permissions/**/*.ts",
-    "scripts/**/*.ts"
+    "scripts/**/*.ts",
+    "docs/guias/**/*.ts"
   ]
 }
