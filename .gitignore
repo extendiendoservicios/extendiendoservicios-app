@@ -24,6 +24,18 @@ coverage
 supabase/.branches
 supabase/.temp
 
+# Informes del importador de la carga inicial (DATA-003): pueden traer datos personales del
+# archivo del cliente. Por defecto se escriben acá; con una planilla real se usa --salida con una
+# carpeta fuera del repositorio.
+/informes-importacion/
+
+# Planillas completadas por la empresa (datos personales reales): nunca al repositorio. La
+# plantilla vacía `docs/plantilla-carga-inicial.xlsx` sí se versiona.
+/carga_inicial/
+/docs/*completada*.xlsx
+/docs/*completa*.xlsx
+/docs/carga-real*/
+
 # Editor / SO
 .vscode/*
 !.vscode/extensions.json

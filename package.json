@@ -48,7 +48,9 @@
     "db:seed:users": "node --env-file=.env.local scripts/seed-dev.ts",
     "db:seed:data": "supabase db query --linked -f supabase/seed.sql",
     "db:seed": "pnpm db:seed:users && pnpm db:seed:data",
-    "db:recuperar-dev": "node --env-file=.env.local scripts/recuperar-app-dev.ts"
+    "db:recuperar-dev": "node --env-file=.env.local scripts/recuperar-app-dev.ts",
+    "import:initial": "node --env-file-if-exists=.env.local scripts/import-initial.ts",
+    "test:import": "node --env-file=.env.local ./node_modules/vitest/vitest.mjs run --config scripts/import-initial/vitest.integracion.config.ts"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
@@ -101,6 +103,7 @@
     "eslint": "9.39.5",
     "eslint-plugin-jsx-a11y": "6.10.2",
     "eslint-plugin-react-hooks": "7.1.1",
+    "exceljs": "^4.4.0",
     "globals": "17.12.0",
     "husky": "9.1.7",
     "jsdom": "30.1.0",
