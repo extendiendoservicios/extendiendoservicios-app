@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-generar-plantilla-carga-inicial.py — DATA-001 y DATA-002
+generar-plantilla-carga-inicial.py — DATA-001 y DATA-002 (versión 2, octubre 2026)
 (08_Fases_y_Backlog.md, F19 · Staging, UAT y carga inicial).
 
 Genera `docs/plantilla-carga-inicial.xlsx`: la planilla que la empresa
@@ -55,6 +55,13 @@ COLOR_EJEMPLO = "FDF3E0"  # `--warning-bg`: usado para marcar lo que hay que bor
 COLOR_EJEMPLO_TEXTO = "9A6408"  # `--warning` oscurecido, tono de badge del design system.
 COLOR_OBLIGATORIA = "CE4B52"  # `--danger`: asterisco de columna obligatoria.
 COLOR_SEPARADOR = "E6E9EF"
+
+VERSION_PLANTILLA = "Versión 2 · octubre 2026"
+
+# Título de la columna que vincula una fila con su cliente (contactos, sedes, servicios y
+# habilitaciones). El importador acepta también el título de la versión de septiembre
+# ("CUIT del cliente"): ver `scripts/import-initial/esquema.ts`.
+TITULO_CLIENTE = "Cliente (CUIT o razón social)"
 
 FILAS_DE_DATOS = 300  # Hasta esta fila llegan las validaciones de cada hoja (margen generoso).
 
@@ -149,6 +156,25 @@ def _aplicar_validacion(ws: Worksheet, columna: Columna, letra: str, fila_desde:
             showErrorMessage=True,
             errorTitle="Tiene que tener 11 dígitos",
             error="Ingresá los 11 dígitos, sin puntos, guiones ni espacios (por ejemplo 30712345678).",
+        )
+    elif columna.tipo == "cliente":
+        # La referencia al cliente acepta el CUIT o la razón social, así que la base no impone
+        # nada acá: es una ayuda nuestra y por eso sale como advertencia (no bloquea). Avisa
+        # solo cuando el dato parece un CUIT mal tipeado: todo números pero no 11. Cualquier
+        # texto (la razón social) pasa sin aviso.
+        celda = f"{letra}{fila_desde}"
+        dv = DataValidation(
+            type="custom",
+            formula1=f'=OR(NOT(ISNUMBER(VALUE({celda}))),LEN({celda})=11)',
+            allow_blank=True,
+            showErrorMessage=True,
+            errorStyle="warning",
+            errorTitle="Revisá el CUIT",
+            error=(
+                "Si escribiste un CUIT, tiene que tener 11 dígitos, sin puntos ni guiones "
+                "(por ejemplo 30712345678). Si el cliente no tiene CUIT, escribí su razón "
+                "social tal cual figura en la hoja Clientes. Si es correcto, aceptá igual."
+            ),
         )
     elif columna.tipo == "dni":
         # `employees_dni_format_check` de 0016_hardening.sql exige solo dígitos, sin largo fijo.
@@ -340,7 +366,7 @@ def _crear_hoja_datos(
                 celda.number_format = "DD/MM/YYYY"
             elif columna.tipo in ("hora", "hora_fin"):
                 celda.number_format = "HH:MM"
-            elif columna.tipo in ("cuit", "cuil", "dni"):
+            elif columna.tipo in ("cuit", "cuil", "dni", "cliente"):
                 celda.number_format = "@"  # Texto: no perder ceros ni pasar a notación científica.
         _aplicar_validacion(ws, columna, letra, fila_datos_desde, fila_datos_hasta)
         # Las validaciones de tipo lista/si_no/etc. también alcanzan la fila de ejemplo, así el
@@ -390,13 +416,20 @@ def _crear_hoja_instrucciones(wb: Workbook) -> None:
         c.value = texto
         c.font = Font(name=FUENTE, size=10.5, color=COLOR_TEXTO)
         c.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
-        ws.row_dimensions[fila].height = alto
+        # El alto se calcula por el largo del texto (unos 98 caracteres por renglón en la
+        # columna B), para que ningún párrafo quede cortado; `alto` es solo el mínimo.
+        renglones = -(-len(texto) // 98)
+        ws.row_dimensions[fila].height = max(alto, 14 * renglones + 4)
         fila += 1
 
     def item(texto: str, alto: int = 16) -> None:
         parrafo(f"•  {texto}", alto=alto)
 
     titulo("Carga inicial de datos — Extendiendo Servicios", 16)
+    c_version = ws[f"B{fila}"]
+    c_version.value = VERSION_PLANTILLA
+    c_version.font = Font(name=FUENTE, size=10.5, bold=True, color=COLOR_TEXTO_2)
+    fila += 1
     parrafo(
         "Esta planilla sirve para pasarnos, en un solo archivo, los datos con los que arranca "
         "la plataforma: tus clientes, sus sedes, tu personal y los servicios que prestás. La "
@@ -418,7 +451,7 @@ def _crear_hoja_instrucciones(wb: Workbook) -> None:
         "3. Sedes — los lugares donde se trabaja (puede haber varias por cliente).",
         "4. Empleados — tu personal de limpieza.",
         "5. Supervisores — quienes supervisan el trabajo del personal.",
-        "6. Servicios — qué días y en qué horario se trabaja en cada sede.",
+        "6. Servicios — qué días y en qué horario se trabaja en cada sede. Es la hoja que hace falta para que la plataforma opere: sin servicios no se pueden generar turnos.",
         "7. Habilitaciones — en qué clientes puede trabajar cada persona (opcional).",
         "8. Feriados — el calendario de feriados que la empresa respeta.",
         "9. Criterios — las pautas con las que los supervisores califican el trabajo.",
@@ -440,6 +473,13 @@ def _crear_hoja_instrucciones(wb: Workbook) -> None:
         "HH:MM, en formato de 24 horas (por ejemplo 14:30 para las 2:30 de la tarde).",
         "El CUIT y el CUIL se escriben con sus 11 números, sin puntos ni guiones (por ejemplo "
         "30712345678). El DNI se escribe solo con números, sin puntos.",
+        "El CUIT del cliente es opcional. Si un cliente no tiene CUIT, dejá esa celda VACÍA: no "
+        "escribas \"sin CUIT\", \"en trámite\" ni nada parecido. Ese cliente se vincula en las otras "
+        "hojas por su razón social, escrita igual que en la hoja Clientes.",
+        "En las hojas Contactos, Sedes, Servicios y Habilitaciones, la columna \"Cliente (CUIT o "
+        "razón social)\" lleva el CUIT del cliente o, si no tiene, su razón social. Si el dato "
+        "parece un CUIT mal escrito (solo números, pero no 11), Excel te avisa; podés aceptar "
+        "igual si es correcto.",
         "No hace falta llenar todas las filas de una vez: podés guardar y seguir después. Lo "
         "importante es que, cuando nos la devuelvas, ya no queden filas de ejemplo.",
         "Si un dato no lo tenés a mano (por ejemplo, la ubicación exacta de una sede en el "
@@ -449,12 +489,32 @@ def _crear_hoja_instrucciones(wb: Workbook) -> None:
 
     subtitulo("Sobre el personal (hojas Empleados y Supervisores)")
     parrafo(
-        "Cada persona que va a usar la aplicación necesita un email propio: es el usuario con "
-        "el que va a entrar. Si una persona es empleada Y supervisora al mismo tiempo, cargala "
-        "en las DOS hojas, con el mismo DNI en ambas — el sistema la va a reconocer como la "
-        "misma persona y le va a dar los dos accesos. Las contraseñas iniciales no van en esta "
-        "planilla: te las vamos a hacer llegar aparte, por un medio seguro, una vez que "
+        "El email es OBLIGATORIO para cada empleado y cada supervisor: es el usuario con el que "
+        "esa persona entra a la aplicación. Tiene que ser propio de cada persona, no compartido. "
+        "Sin email no se puede cargar a la persona: esa fila queda afuera hasta que lo tengamos.",
+        alto=42,
+    )
+    parrafo(
+        "Si una persona es empleada Y supervisora al mismo tiempo, cargala en las DOS hojas, "
+        "con el mismo DNI y el mismo email en ambas: el sistema la reconoce como la misma "
+        "persona y le da los dos accesos.",
+        alto=30,
+    )
+    parrafo(
+        "Quien esté de Baja NO se carga: no hace falta que la incluyas (si la dejás con estado "
+        "Baja, se ignora y no se le crea usuario). Las contraseñas iniciales no van en esta "
+        "planilla: te las hacemos llegar aparte, una por una y por un medio seguro, una vez que "
         "carguemos los datos.",
+        alto=42,
+    )
+
+    subtitulo("Sobre las sedes de cada cliente")
+    parrafo(
+        "Si un cliente tiene un solo domicilio, no hace falta cargarlo en la hoja Sedes: alcanza "
+        "con la dirección administrativa en la hoja Clientes. Dejá la hoja Sedes sin filas para "
+        "ese cliente y la plataforma crea sola una sede llamada \"Principal\" con esa dirección. "
+        "En la hoja Servicios, para ese cliente, escribí Principal como nombre de la sede. Si el "
+        "cliente tiene dos o más lugares de trabajo, cargá todos en la hoja Sedes.",
         alto=56,
     )
 
@@ -493,18 +553,19 @@ def construir_libro() -> Workbook:
     # ---- Clientes --------------------------------------------------------------------------
     columnas_clientes = [
         Columna(
-            "CUIT", 16, True,
-            "Los 11 números del CUIT del cliente, sin puntos ni guiones. Es la clave con la "
-            "que vamos a vincular sus contactos, sedes y servicios en las otras hojas: "
-            "escribilo igual en todas.",
+            "CUIT", 16, False,
+            "Los 11 números del CUIT del cliente, sin puntos ni guiones. Es opcional: si el "
+            "cliente no tiene CUIT, dejá la celda VACÍA (no escribas \"sin CUIT\" ni \"en "
+            "trámite\"). Con CUIT, es la clave para vincular sus contactos, sedes y servicios "
+            "en las otras hojas; sin CUIT se vincula por razón social.",
             tipo="cuit",
         ),
-        Columna("Razón social", 34, True, "El nombre legal completo del cliente, como figura en su CUIT."),
+        Columna("Razón social", 34, True, "El nombre legal completo del cliente. Si el cliente no tiene CUIT, es la clave con la que se lo vincula en las otras hojas: escribila igual en todas."),
         Columna(
             "Nombre de fantasía", 26, False,
             "Como lo conoce la gente, si es distinto de la razón social (por ejemplo un nombre comercial). Dejalo en blanco si es el mismo.",
         ),
-        Columna("Dirección administrativa", 34, False, "El domicilio de la oficina o de facturación del cliente (no el de las sedes donde se trabaja: eso va en la hoja Sedes)."),
+        Columna("Dirección administrativa", 34, False, "El domicilio de la oficina o de facturación del cliente. Si el cliente tiene un solo domicilio, alcanza con esta dirección: dejá la hoja Sedes sin filas para ese cliente y la plataforma crea sola una sede llamada \"Principal\". Si tiene más de una sede, cargalas en la hoja Sedes."),
         Columna(
             "Latitud", 12, False,
             "Coordenada del mapa, opcional. Si no la tenés, no pasa nada: se puede ubicar después desde el mapa dentro de la aplicación.",
@@ -529,22 +590,23 @@ def construir_libro() -> Workbook:
             "Cliente ficticio de ejemplo.",
         ],
         [
-            "30798765432", "Ejemplo Textiles Norte S.R.L.", None,
-            "Calle Ejemplo 890, San Martín, Buenos Aires", None, None, "Activo", None,
+            None, "Ejemplo Textiles Norte S.R.L.", None,
+            "Calle Ejemplo 890, San Martín, Buenos Aires", None, None, "Activo",
+            "Cliente ficticio sin CUIT: la celda de CUIT queda vacía.",
         ],
     ]
     _crear_hoja_datos(
         wb, "Clientes", "Clientes",
-        "Las empresas a las que Extendiendo Servicios les presta servicio de limpieza.",
+        "Las empresas a las que Extendiendo Servicios les presta servicio de limpieza. El CUIT es opcional: si no tiene, dejalo vacío.",
         columnas_clientes, filas_ejemplo_clientes,
     )
 
     # ---- Contactos ---------------------------------------------------------------------------
     columnas_contactos = [
         Columna(
-            "CUIT del cliente", 16, True,
-            "El mismo CUIT que cargaste para ese cliente en la hoja Clientes (11 dígitos, sin puntos ni guiones).",
-            tipo="cuit",
+            TITULO_CLIENTE, 24, True,
+            "El CUIT del cliente (11 dígitos, sin puntos ni guiones) tal como lo cargaste en la hoja Clientes. Si ese cliente no tiene CUIT, escribí su razón social, igual que en la hoja Clientes.",
+            tipo="cliente",
         ),
         Columna("Nombre del contacto", 26, True, "Nombre y apellido de la persona de referencia en ese cliente."),
         Columna("Cargo", 22, False, "Su puesto o función (por ejemplo \"Encargada de limpieza\" o \"Administración\")."),
@@ -581,7 +643,7 @@ def construir_libro() -> Workbook:
 
     # ---- Sedes --------------------------------------------------------------------------------
     columnas_sedes = [
-        Columna("CUIT del cliente", 16, True, "El CUIT del cliente al que pertenece esta sede (el mismo de la hoja Clientes).", tipo="cuit"),
+        Columna(TITULO_CLIENTE, 24, True, "El CUIT del cliente al que pertenece esta sede (el mismo de la hoja Clientes) o, si no tiene CUIT, su razón social.", tipo="cliente"),
         Columna("Nombre de la sede", 24, True, "Un nombre que identifique el lugar (por ejemplo \"Sede Centro\" o \"Planta 2\"). Tiene que ser único dentro del mismo cliente."),
         Columna("Dirección", 34, True, "La dirección donde se presta el servicio."),
         Columna("Localidad", 20, False, "Localidad o barrio."),
@@ -615,7 +677,7 @@ def construir_libro() -> Workbook:
             Columna("DNI", 14, True, "Solo números, sin puntos. Es la clave con la que vamos a identificar a esta persona en toda la planilla (por ejemplo en Habilitaciones).", tipo="dni"),
             Columna("Nombre", 20, True, "Nombre de pila."),
             Columna("Apellido", 20, True, "Apellido."),
-            Columna("Email", 28, True, "El email con el que esta persona va a entrar a la aplicación. Tiene que ser un email propio de cada persona, no compartido con otra."),
+            Columna("Email", 28, True, "El email con el que esta persona va a entrar a la aplicación. Es obligatorio: sin email no se puede cargar a la persona. Tiene que ser un email propio de cada persona, no compartido con otra.", tipo="email"),
             Columna("CUIL", 16, False, "Los 11 números del CUIL, sin puntos ni guiones.", tipo="cuil"),
             Columna("Teléfono", 18, False, "Un teléfono de contacto."),
             Columna("Domicilio", 30, False, "Domicilio particular."),
@@ -625,7 +687,7 @@ def construir_libro() -> Workbook:
             Columna("Contacto de emergencia: teléfono", 20, False, "Teléfono de esa persona."),
             Columna("Contacto de emergencia: vínculo", 18, False, "Por ejemplo \"Esposo\", \"Madre\", \"Hermana\"."),
             Columna("Legajo", 10, False, "Dejalo en blanco si no tenés un número de legajo asignado: el sistema le va a asignar uno.", tipo="entero", minimo=1, maximo=999999),
-            Columna("Estado", 14, False, "Si dejás esta celda en blanco, la persona queda Activa.", tipo="lista", opciones=["Activo", "Baja"]),
+            Columna("Estado", 14, False, "Si dejás esta celda en blanco, la persona queda Activa. Quien figure como Baja NO se carga (ni se crea su usuario): no hace falta que la incluyas.", tipo="lista", opciones=["Activo", "Baja"]),
             Columna("Notas", 26, False, "Cualquier observación libre."),
         ]
 
@@ -653,8 +715,8 @@ def construir_libro() -> Workbook:
 
     # ---- Servicios ------------------------------------------------------------------------
     columnas_servicios = [
-        Columna("CUIT del cliente", 16, True, "El CUIT del cliente (el mismo de la hoja Clientes).", tipo="cuit"),
-        Columna("Nombre de la sede", 22, True, "El nombre de la sede (el mismo que le pusiste en la hoja Sedes), para ese mismo cliente."),
+        Columna(TITULO_CLIENTE, 24, True, "El CUIT del cliente (el mismo de la hoja Clientes) o, si no tiene CUIT, su razón social.", tipo="cliente"),
+        Columna("Nombre de la sede", 22, True, "El nombre de la sede (el mismo que le pusiste en la hoja Sedes), para ese mismo cliente. Si dejaste la hoja Sedes sin filas para ese cliente, escribí Principal: es el nombre de la sede que la plataforma crea sola con la dirección administrativa."),
         Columna("Nombre del servicio", 26, True, "Un nombre que lo identifique (por ejemplo \"Limpieza turno mañana\")."),
         Columna("Lunes", 9, False, "¿Se trabaja los lunes en este servicio? En blanco = No.", tipo="si_no"),
         Columna("Martes", 9, False, "¿Se trabaja los martes en este servicio? En blanco = No.", tipo="si_no"),
@@ -684,14 +746,14 @@ def construir_libro() -> Workbook:
     ]
     _crear_hoja_datos(
         wb, "Servicios", "Servicios",
-        "Los días y horarios en los que se trabaja en cada sede: la base para generar los turnos.",
+        "Los días y horarios en los que se trabaja en cada sede. Es la hoja imprescindible: sin servicios la plataforma no puede generar turnos ni operar.",
         columnas_servicios, filas_ejemplo_servicios,
     )
 
     # ---- Habilitaciones ---------------------------------------------------------------------
     columnas_habilitaciones = [
         Columna("DNI del empleado o supervisor", 20, True, "El DNI de la persona (el mismo que cargaste en Empleados o Supervisores).", tipo="dni"),
-        Columna("CUIT del cliente habilitado", 18, True, "El CUIT del cliente en el que esa persona puede trabajar.", tipo="cuit"),
+        Columna(TITULO_CLIENTE, 24, True, "El CUIT del cliente en el que esa persona puede trabajar (o su razón social, si no tiene CUIT).", tipo="cliente"),
     ]
     filas_ejemplo_habilitaciones = [
         ["30111222", "30712345678"],

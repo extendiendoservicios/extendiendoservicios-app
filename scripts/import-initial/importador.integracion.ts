@@ -4,7 +4,7 @@
 // de Auth. Solo toca filas que lleven el prefijo (el nocturno de e2e usa App_dev: no se borra
 // nada ajeno). Se corre con `pnpm test:import`.
 
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createClient } from '@supabase/supabase-js'
@@ -97,6 +97,14 @@ function datosFicticios(): DatosPlanilla {
         nombre: `${PREFIJO}Beto`,
         apellido: 'Dos',
         email: `${PREFIJO}beto@prueba.test`,
+      },
+      // De Baja: no se carga ni se le crea usuario (decisión del 6 oct 2026).
+      {
+        dni: '99900004',
+        nombre: `${PREFIJO}Dani`,
+        apellido: 'Baja',
+        email: `${PREFIJO}dani@prueba.test`,
+        estado: 'Baja',
       },
     ],
     Supervisores: [
@@ -290,6 +298,23 @@ describe.skipIf(!hayCredenciales)('el importador contra App_dev', () => {
     // Tres personas con usuario; Beto con los dos roles.
     const cuentas = await cuentasConPrefijo()
     expect(cuentas).toHaveLength(3)
+    // La persona de Baja no tiene cuenta ni ficha de empleado.
+    expect(cuentas.some((c) => c.email.includes('dani'))).toBe(false)
+    const { count: fichasDeBaja } = await admin
+      .from('employees')
+      .select('*', { count: 'exact', head: true })
+      .eq('dni', '99900004')
+    expect(fichasDeBaja).toBe(0)
+    // El importador deja la lista de cuentas sin contraseña, entrada de las credenciales.
+    const listas = (await readdir(carpeta)).filter((f) =>
+      f.startsWith('cuentas-creadas-'),
+    )
+    expect(listas).toHaveLength(1)
+    const emailsListados = (await readFile(join(carpeta, listas[0]), 'utf8'))
+      .split('\n')
+      .filter((l) => l !== '' && !l.startsWith('#'))
+      .sort()
+    expect(emailsListados).toEqual(cuentas.map((c) => c.email).sort())
     const beto = cuentas.find((c) => c.email.includes('beto'))
     const { data: roles } = await admin
       .from('user_roles')

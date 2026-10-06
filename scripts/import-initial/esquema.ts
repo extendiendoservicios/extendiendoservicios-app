@@ -13,13 +13,21 @@ export interface ColumnaEsquema {
   titulo: string
   /** Según la plantilla; el validador decide qué es realmente obligatorio. */
   obligatoria: boolean
+  /** Títulos anteriores que también se aceptan (plantilla de septiembre). */
+  alias: string[]
 }
 
 const c = (
   campo: string,
   titulo: string,
   obligatoria = false,
-): ColumnaEsquema => ({ campo, titulo, obligatoria })
+  alias: string[] = [],
+): ColumnaEsquema => ({ campo, titulo, obligatoria, alias })
+
+/** Título de la columna que vincula una fila con su cliente, en la versión 2 de la plantilla. */
+const TITULO_CLIENTE_V2 = 'Cliente (CUIT o razón social)'
+/** Título de la plantilla de septiembre, que también se acepta. */
+const TITULO_CLIENTE_V1 = 'CUIT del cliente'
 
 const COLUMNAS_PERSONAL: ColumnaEsquema[] = [
   c('dni', 'DNI', true),
@@ -41,8 +49,8 @@ const COLUMNAS_PERSONAL: ColumnaEsquema[] = [
 
 export const ESQUEMA: Record<NombreHoja, ColumnaEsquema[]> = {
   Clientes: [
-    // En la plantilla de septiembre el CUIT figura como obligatorio; desde la decisión del
-    // 6 oct 2026 es opcional (el cliente sin CUIT se vincula por razón social).
+    // En la plantilla de septiembre el CUIT figura como obligatorio; desde la versión 2 (decisión
+    // del 6 oct 2026) es opcional (el cliente sin CUIT se vincula por razón social).
     c('cuit', 'CUIT'),
     c('razonSocial', 'Razón social', true),
     c('nombreFantasia', 'Nombre de fantasía'),
@@ -53,7 +61,7 @@ export const ESQUEMA: Record<NombreHoja, ColumnaEsquema[]> = {
     c('notas', 'Notas'),
   ],
   Contactos: [
-    c('cliente', 'CUIT del cliente', true),
+    c('cliente', TITULO_CLIENTE_V2, true, [TITULO_CLIENTE_V1]),
     c('nombre', 'Nombre del contacto', true),
     c('cargo', 'Cargo'),
     c('telefono', 'Teléfono'),
@@ -61,7 +69,7 @@ export const ESQUEMA: Record<NombreHoja, ColumnaEsquema[]> = {
     c('principal', '¿Es el contacto principal?'),
   ],
   Sedes: [
-    c('cliente', 'CUIT del cliente', true),
+    c('cliente', TITULO_CLIENTE_V2, true, [TITULO_CLIENTE_V1]),
     c('nombre', 'Nombre de la sede', true),
     c('direccion', 'Dirección', true),
     c('localidad', 'Localidad'),
@@ -79,7 +87,7 @@ export const ESQUEMA: Record<NombreHoja, ColumnaEsquema[]> = {
   Empleados: COLUMNAS_PERSONAL,
   Supervisores: COLUMNAS_PERSONAL,
   Servicios: [
-    c('cliente', 'CUIT del cliente', true),
+    c('cliente', TITULO_CLIENTE_V2, true, [TITULO_CLIENTE_V1]),
     c('sede', 'Nombre de la sede', true),
     c('nombre', 'Nombre del servicio', true),
     c('lunes', 'Lunes'),
@@ -102,7 +110,10 @@ export const ESQUEMA: Record<NombreHoja, ColumnaEsquema[]> = {
   ],
   Habilitaciones: [
     c('dni', 'DNI del empleado o supervisor', true),
-    c('cliente', 'CUIT del cliente habilitado', true),
+    c('cliente', TITULO_CLIENTE_V2, true, [
+      TITULO_CLIENTE_V1,
+      'CUIT del cliente habilitado',
+    ]),
   ],
   Feriados: [c('fecha', 'Fecha', true), c('nombre', 'Nombre', true)],
   Criterios: [

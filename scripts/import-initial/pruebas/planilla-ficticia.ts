@@ -91,6 +91,11 @@ export interface OpcionesPlanilla {
   sinColumnas?: Partial<Record<NombreHoja, string[]>>
   /** Si es `false`, no se agregan las filas de ejemplo ni el separador. */
   conEjemplos?: boolean
+  /**
+   * Títulos de columna: `v2` (octubre 2026, el predeterminado) o `septiembre` (la primera versión
+   * de la plantilla: "CUIT del cliente" y CUIT de Clientes con asterisco).
+   */
+  version?: 'v2' | 'septiembre'
 }
 
 /** Genera el `.xlsx` en memoria (un `Buffer`) con los datos pedidos. */
@@ -111,9 +116,12 @@ export async function crearPlanilla(
     ws.getCell('A1').value = nombre
     ws.getCell('A2').value = 'Descripción de la hoja'
     columnas.forEach((col, i) => {
-      ws.getCell(3, i + 1).value = col.obligatoria
-        ? `${col.titulo} (*)`
-        : col.titulo
+      const septiembre = opciones.version === 'septiembre'
+      const titulo = septiembre ? (col.alias[0] ?? col.titulo) : col.titulo
+      const obligatoria =
+        col.obligatoria ||
+        (septiembre && nombre === 'Clientes' && col.campo === 'cuit')
+      ws.getCell(3, i + 1).value = obligatoria ? `${titulo} (*)` : titulo
     })
     let fila = 4
     const escribir = (valores: FilaDatos, ejemplo: boolean) => {

@@ -88,8 +88,11 @@ function leerHoja(
   incidencias: Incidencia[],
 ): HojaLeida {
   const esquema = ESQUEMA[nombre]
+  // Se aceptan el título actual (versión 2) y los anteriores (plantilla de septiembre).
   const esperados = new Map(
-    esquema.map((col) => [claveSinTildes(col.titulo), col] as const),
+    esquema.flatMap((col) =>
+      [col.titulo, ...col.alias].map((t) => [claveSinTildes(t), col] as const),
+    ),
   )
 
   // Fila de encabezados: la que más títulos esperados tenga entre las primeras filas.
