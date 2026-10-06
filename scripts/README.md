@@ -20,6 +20,14 @@ Scripts de Node/TypeScript que se corren a mano o desde CI, fuera de la app:
   `scripts/import-initial/`; los tests unitarios corren en `pnpm test` y la
   prueba de integración contra `App_dev` con `pnpm test:import`. Procedimiento
   completo en `docs/carga-inicial.md`.
+- `entregar-credenciales.ts` — DATA-008 (P19.1b): genera la contraseña inicial
+  (12 caracteres en 3 grupos de 4) de las cuentas que cargó el importador y
+  todavía no entraron, y las guarda en un CSV **fuera del repositorio** (la
+  carpeta `--salida` es obligatoria y se rechaza si cae dentro de `app/`). Mismos
+  resguardos de entorno que el importador. Uso:
+  `pnpm credenciales:inicial --emails <lista.txt> --salida <carpeta> [--dry-run]`.
+  La lógica vive en `scripts/entregar-credenciales/`. Procedimiento en
+  `docs/carga-inicial.md`, sección 12.
 
 - `recuperar-app-dev.ts` — TEST-024 (P18.5): deja a `App_dev` utilizable
   después de una corrida de `restore-test.yml`, que lo deja sin usuarios y

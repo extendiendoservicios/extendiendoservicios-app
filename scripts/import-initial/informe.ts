@@ -57,7 +57,8 @@ export interface Resumen {
 const TITULO_NIVEL: Record<Nivel, string> = {
   error: 'ERRORES (hay que corregirlos: mientras haya uno no se carga nada)',
   advertencia: 'ADVERTENCIAS (no frenan la carga; conviene revisarlas)',
-  ignorada: 'FILAS IGNORADAS (ejemplos de la plantilla)',
+  ignorada:
+    'FILAS IGNORADAS (ejemplos de la plantilla y personas de Baja, que no se cargan)',
 }
 
 export function resumir(resultado: ResultadoValidacion): Resumen {
@@ -218,6 +219,8 @@ export interface RastroCarga {
   sedesAutomaticas: number
   /** Cuentas de Auth creadas sin contraseña (a la espera de DATA-008). */
   cuentasSinContrasena: number
+  /** Emails de esas cuentas (lista para el paso de contraseñas, DATA-008). */
+  emailsSinContrasena: string[]
   interrumpidaEn: string | null
 }
 
@@ -248,7 +251,7 @@ export function informeCargaTexto(
   )
   if (rastro.cuentasSinContrasena > 0) {
     lineas.push(
-      '  (Todavía no pueden iniciar sesión: las contraseñas iniciales se generan en un paso aparte, DATA-008.)',
+      '  (Todavía no pueden iniciar sesión: las contraseñas iniciales se generan en un paso aparte, `pnpm credenciales:inicial`, DATA-008.)',
     )
   }
   if (rastro.interrumpidaEn !== null) {
@@ -374,5 +377,27 @@ export async function escribirInformeCarga(
   await mkdir(carpeta, { recursive: true })
   const ruta = join(carpeta, `informe-carga-${sello(meta.fecha)}.txt`)
   await writeFile(ruta, informeCargaTexto(rastro, meta), 'utf8')
+  return ruta
+}
+
+/**
+ * Escribe la lista de emails de las cuentas creadas sin contraseña (una por línea), que es la
+ * entrada del script de contraseñas iniciales (DATA-008). Contiene datos personales: va a la
+ * misma carpeta fuera del repositorio que los informes. Si no se creó ninguna cuenta, no escribe
+ * nada y devuelve `null`.
+ */
+export async function escribirListaDeCuentas(
+  rastro: RastroCarga,
+  meta: MetaInforme,
+  carpeta: string,
+): Promise<string | null> {
+  if (rastro.emailsSinContrasena.length === 0) return null
+  await mkdir(carpeta, { recursive: true })
+  const ruta = join(carpeta, `cuentas-creadas-${sello(meta.fecha)}.txt`)
+  await writeFile(
+    ruta,
+    `# Cuentas creadas sin contraseña (${meta.entorno ?? '-'}). Entrada de pnpm credenciales:inicial.\n${rastro.emailsSinContrasena.join('\n')}\n`,
+    'utf8',
+  )
   return ruta
 }

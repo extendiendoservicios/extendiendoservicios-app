@@ -79,6 +79,8 @@ const ETIQUETAS_SERVICIO: Record<string, EstadoServicio> = {
 
 class Contexto {
   readonly incidencias: Incidencia[]
+  /** DNI (solo dígitos) de las personas de Baja que no se cargan, para avisar en Habilitaciones. */
+  readonly dnisDeBaja = new Set<string>()
 
   constructor(incidencias: Incidencia[]) {
     this.incidencias = incidencias
@@ -116,8 +118,18 @@ class ContextoHoja {
     this.registrar('advertencia', fila, campo, codigo, mensaje)
   }
 
+  /** Fila que no se carga a propósito (no es un error: queda en el informe como ignorada). */
+  ignorada(
+    fila: number | null,
+    campo: string | null,
+    codigo: string,
+    mensaje: string,
+  ): void {
+    this.registrar('ignorada', fila, campo, codigo, mensaje)
+  }
+
   private registrar(
-    nivel: 'error' | 'advertencia',
+    nivel: 'error' | 'advertencia' | 'ignorada',
     fila: number | null,
     campo: string | null,
     codigo: string,
@@ -432,7 +444,7 @@ type ResultadoCliente =
   { cliente: PlanCliente } | { error: { codigo: string; mensaje: string } }
 
 /**
- * Cómo se escribe la referencia a un cliente en las hojas hijas (columna "CUIT del cliente"):
+ * Cómo se escribe la referencia a un cliente en las hojas hijas (columna "Cliente (CUIT o razón social)"):
  *  - solo números (con o sin guiones o puntos) = CUIT; tiene que existir en la hoja Clientes;
  *  - cualquier otro texto = razón social exacta (sin distinguir mayúsculas ni espacios de más).
  * Si varios clientes comparten esa razón social, se elige el que no tiene CUIT (los que sí lo
@@ -975,6 +987,19 @@ function leerPersonas(
   const h = ctx.hoja(hoja)
   const leidas: PersonaLeida[] = []
   for (const f of lectura.hojas[hoja].filas) {
+    // Decisión del 6 oct 2026: quien está de Baja no se carga. Se mira antes de validar nada más:
+    // una fila ignorada no puede tener errores (le falte el email o lo que sea).
+    if (claveNorm(texto(f.celdas.estado ?? null) ?? '') === 'baja') {
+      h.ignorada(
+        f.fila,
+        'estado',
+        'PERSONA_DE_BAJA',
+        'La persona está de Baja: no se carga (no se crea su usuario). Si tiene que volver a trabajar, cambiale el estado a Activo.',
+      )
+      const dniBaja = soloDigitos(texto(f.celdas.dni ?? null) ?? '')
+      if (esSoloDigitos(dniBaja)) ctx.dnisDeBaja.add(dniBaja)
+      continue
+    }
     const r = h.fila(f)
     const dniCrudo = r.txt('dni', true)
     const nombre = r.txt('nombre', true)
@@ -1044,14 +1069,6 @@ function leerPersonas(
 
     if (dni === null || nombre === null || apellido === null) {
       continue
-    }
-    if (estado === 'terminated') {
-      h.aviso(
-        f.fila,
-        'estado',
-        'PERSONA_DE_BAJA',
-        'La persona está de Baja: se carga como dada de baja, pero su acceso a la aplicación queda habilitado hasta que lo desactives desde Usuarios.',
-      )
     }
     leidas.push({
       hoja,
@@ -1230,6 +1247,15 @@ function validarHabilitaciones(
     const referencia = r.txt('cliente', true)
     if (dniCrudo === null || referencia === null) continue
     const dni = soloDigitos(dniCrudo)
+    if (!dnis.has(dni) && ctx.dnisDeBaja.has(dni)) {
+      h.ignorada(
+        f.fila,
+        'dni',
+        'HABILITACION_DE_PERSONA_DE_BAJA',
+        `El DNI ${dni} es de una persona de Baja, que no se carga: se ignora esta habilitación.`,
+      )
+      continue
+    }
     if (!dnis.has(dni)) {
       h.error(
         f.fila,

@@ -303,7 +303,7 @@ describe('vínculo con el cliente en las hojas hijas', () => {
     expect(errores).toHaveLength(1)
     expect(errores[0]).toMatchObject({
       fila: 6,
-      columna: 'CUIT del cliente',
+      columna: 'Cliente (CUIT o razón social)',
       codigo: 'CLIENTE_AMBIGUO',
     })
     expect(res.plan.contactos.map((c) => c.nombre)).toEqual(['Test Preciso'])
@@ -676,21 +676,132 @@ describe('empleados y supervisores', () => {
     ])
   })
 
-  it('una persona de Baja se carga con advertencia', async () => {
+  it('una persona de Baja no se carga: queda ignorada, sin errores ni exigir el email', async () => {
     const res = await validarDatos({
       Empleados: [
         {
           dni: '40111222',
           nombre: 'A',
           apellido: 'B',
-          email: 'a@prueba.test',
           estado: 'Baja',
+        },
+        {
+          dni: '40111333',
+          nombre: 'C',
+          apellido: 'D',
+          email: 'c@prueba.test',
+        },
+      ],
+      Supervisores: [
+        {
+          dni: '40111444',
+          nombre: 'E',
+          apellido: 'F',
+          email: 'e@prueba.test',
+          estado: ' baja ',
         },
       ],
     })
     expect(de(res, 'error')).toEqual([])
-    expect(res.plan.personas[0].estado).toBe('terminated')
-    expect(codigos(res, 'advertencia')).toEqual(['PERSONA_DE_BAJA'])
+    expect(de(res, 'advertencia')).toEqual([])
+    expect(res.plan.personas.map((p) => p.dni)).toEqual(['40111333'])
+    const ignoradas = de(res, 'ignorada').filter(
+      (i) => i.codigo === 'PERSONA_DE_BAJA',
+    )
+    expect(ignoradas.map((i) => [i.hoja, i.fila])).toEqual([
+      ['Empleados', 6],
+      ['Supervisores', 6],
+    ])
+    expect(
+      resumir(res).porHoja.find((h) => h.hoja === 'Empleados')?.ignoradas,
+    ).toBe(2) // la fila de ejemplo de la plantilla y la persona de Baja
+  })
+
+  it('la habilitación de una persona de Baja se ignora; la de un DNI desconocido sigue siendo error', async () => {
+    const res = await validarDatos({
+      Clientes: [{ cuit: cuitValido('3071234567'), razonSocial: 'Test Uno' }],
+      Empleados: [
+        { dni: '40111222', nombre: 'A', apellido: 'B', estado: 'Baja' },
+      ],
+      Habilitaciones: [
+        { dni: '40111222', cliente: 'Test Uno' },
+        { dni: '49999999', cliente: 'Test Uno' },
+      ],
+    })
+    expect(codigos(res, 'error')).toEqual(['DNI_NO_ENCONTRADO'])
+    expect(codigos(res, 'ignorada')).toContain(
+      'HABILITACION_DE_PERSONA_DE_BAJA',
+    )
+    expect(res.plan.habilitaciones).toHaveLength(0)
+  })
+
+  it('una persona de Baja en una hoja y activa en la otra se carga una vez, como activa', async () => {
+    const res = await validarDatos({
+      Empleados: [
+        { dni: '40111222', nombre: 'A', apellido: 'B', estado: 'Baja' },
+      ],
+      Supervisores: [
+        {
+          dni: '40111222',
+          nombre: 'A',
+          apellido: 'B',
+          email: 'a@prueba.test',
+        },
+      ],
+    })
+    expect(de(res, 'error')).toEqual([])
+    expect(res.plan.personas).toHaveLength(1)
+    expect(res.plan.personas[0].roles).toEqual(['supervisor'])
+  })
+})
+
+describe('las dos versiones de la plantilla', () => {
+  const datos = (): DatosPlanilla => ({
+    Clientes: [
+      { cuit: cuitValido('3071234567'), razonSocial: 'Test Uno' },
+      { razonSocial: 'Test Sin Cuit', direccion: 'Calle Test 1' },
+    ],
+    Contactos: [{ cliente: 'Test Sin Cuit', nombre: 'Test Contacto' }],
+    Sedes: [
+      { cliente: 'Test Uno', nombre: 'Planta', direccion: 'Calle Test 2' },
+    ],
+    Empleados: [
+      { dni: '40111222', nombre: 'A', apellido: 'B', email: 'a@prueba.test' },
+    ],
+    Habilitaciones: [{ dni: '40111222', cliente: 'Test Uno' }],
+    Servicios: [
+      {
+        cliente: 'Test Uno',
+        sede: 'Planta',
+        nombre: 'Test Servicio',
+        lunes: 'Sí',
+        inicio: horaExcel(7),
+        fin: horaExcel(15),
+        desde: fechaExcel(2026, 11, 1),
+      },
+    ],
+  })
+
+  it.each(['v2', 'septiembre'] as const)(
+    'la versión %s se lee y valida igual',
+    async (version) => {
+      const res = await validarDatos(datos(), { version })
+      expect(de(res, 'error')).toEqual([])
+      expect(res.plan.clientes).toHaveLength(2)
+      expect(res.plan.contactos).toHaveLength(1)
+      expect(res.plan.habilitaciones).toHaveLength(1)
+      expect(res.plan.servicios).toHaveLength(1)
+      // Contactos, Sedes, Servicios y Habilitaciones: ninguna columna de cliente "falta".
+      expect(res.incidencias.some((i) => i.codigo === 'COLUMNA_FALTA')).toBe(
+        false,
+      )
+    },
+  )
+
+  it('las dos versiones dan el mismo plan', async () => {
+    const a = await validarDatos(datos(), { version: 'v2' })
+    const b = await validarDatos(datos(), { version: 'septiembre' })
+    expect(b.plan).toEqual(a.plan)
   })
 })
 

@@ -17,6 +17,7 @@ import {
 import { ErrorDeEntorno, resolverConexion } from './entorno.ts'
 import {
   escribirInformeCarga,
+  escribirListaDeCuentas,
   escribirInformeValidacion,
   resumir,
   type MetaInforme,
@@ -60,7 +61,7 @@ export interface Salida {
 export interface DependenciasEjecucion {
   env: Record<string, string | undefined>
   salida: Salida
-  /** Punto de extensión de DATA-008. */
+  /** Punto de extensión: contraseña al crear la cuenta (el flujo normal usa `pnpm credenciales:inicial`). */
   contrasenaInicial?: OpcionesCarga['contrasenaInicial']
 }
 
@@ -221,6 +222,12 @@ export async function ejecutarImportacion(
     )
   }
   salida.log(`Informe de carga: ${rutaCarga}`)
+  const rutaCuentas = await escribirListaDeCuentas(rastro, meta, carpeta)
+  if (rutaCuentas) {
+    salida.log(
+      `Lista de las ${rastro.emailsSinContrasena.length} cuenta(s) creadas sin contraseña (para pnpm credenciales:inicial): ${rutaCuentas}`,
+    )
+  }
   const fallas = rastro.pasos.reduce((a, p) => a + p.fallidos.length, 0)
   if (rastro.interrumpidaEn !== null) {
     salida.error(

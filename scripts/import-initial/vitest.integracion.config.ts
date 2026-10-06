@@ -13,7 +13,10 @@ export default defineConfig({
   root: fileURLToPath(new URL('../..', import.meta.url)),
   test: {
     environment: 'node',
-    include: ['scripts/import-initial/**/*.integracion.ts'],
+    include: [
+      'scripts/import-initial/**/*.integracion.ts',
+      'scripts/entregar-credenciales/**/*.integracion.ts',
+    ],
     fileParallelism: false,
     hookTimeout: 120_000,
     testTimeout: 120_000,

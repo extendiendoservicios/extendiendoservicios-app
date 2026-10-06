@@ -17,7 +17,7 @@
 // fila de `employees`, los roles en `user_roles` y el evento `user_created` en `security_events`.
 // Diferencia buscada: acá no hay persona que actúa (`created_by`/`granted_by`/`actor_id` quedan
 // nulos) y la cuenta se crea SIN contraseña: las contraseñas iniciales las asigna un paso aparte
-// (DATA-008, `contrasenaInicial`) que todavía no existe.
+// (DATA-008, `pnpm credenciales:inicial`), que toma la lista de emails de las cuentas creadas.
 //
 // Falla de una fila: se anota y se sigue con las demás filas de ese paso; lo que depende de una
 // fila fallida se anota como falla también. No se deshace nada (las cuentas de Auth no se pueden
@@ -366,6 +366,7 @@ export async function cargar(
   const ix = indexar(existentes)
   const pasos: PasoRastro[] = []
   let cuentasSinContrasena = 0
+  const emailsSinContrasena: string[] = []
   let interrumpidaEn: string | null = null
   let pasoActual = 'inicio'
 
@@ -576,7 +577,10 @@ export async function cargar(
             }
             perfil = data.user.id
             existentes.cuentas.set(p.email, perfil)
-            if (!contrasena) cuentasSinContrasena++
+            if (!contrasena) {
+              cuentasSinContrasena++
+              emailsSinContrasena.push(p.email)
+            }
           }
 
           const { error: errorEmpleado } = await admin
@@ -762,5 +766,11 @@ export async function cargar(
     const detalle = error instanceof Error ? error.message : String(error)
     interrumpidaEn = `${pasoActual} (${detalle})`
   }
-  return { pasos, sedesAutomaticas, cuentasSinContrasena, interrumpidaEn }
+  return {
+    pasos,
+    sedesAutomaticas,
+    cuentasSinContrasena,
+    emailsSinContrasena,
+    interrumpidaEn,
+  }
 }
