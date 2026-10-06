@@ -3,8 +3,9 @@
 Procedimiento para pasar a la plataforma los datos reales de la empresa (clientes, sedes,
 personal, servicios, feriados y criterios) desde la planilla
 [`plantilla-carga-inicial.xlsx`](plantilla-carga-inicial.xlsx), con el importador
-`scripts/import-initial.ts` (DATA-003, DATA-004, DATA-005, DATA-010; F19). Lo usan el
-orquestador y Mike. La empresa solo completa la planilla.
+`scripts/import-initial.ts` (DATA-003, DATA-004, DATA-005, DATA-010; F19) y, después, entregar las
+contraseñas iniciales con `scripts/entregar-credenciales.ts` (DATA-008). Lo usan el orquestador y
+Mike. La empresa solo completa la planilla. La plantilla vigente es la **versión 2 (octubre 2026)**; el importador también acepta la de septiembre (sección 7).
 
 Contenido: [1. Qué hace el importador](#1-qué-hace-el-importador) ·
 [2. Antes de empezar](#2-antes-de-empezar) · [3. Paso a paso](#3-paso-a-paso) ·
@@ -12,7 +13,8 @@ Contenido: [1. Qué hace el importador](#1-qué-hace-el-importador) ·
 [6. Reglas que aplica](#6-reglas-que-aplica-el-importador) ·
 [7. Cómo se vincula cada hoja con el cliente](#7-cómo-se-vincula-cada-hoja-con-el-cliente) ·
 [8. Después de la carga](#8-después-de-la-carga) · [9. Producción (F20)](#9-producción-f20) ·
-[10. Tests](#10-tests) · [11. Códigos de incidencia](#11-códigos-de-incidencia)
+[10. Tests](#10-tests) · [11. Códigos de incidencia](#11-códigos-de-incidencia) ·
+[12. Entrega de contraseñas iniciales](#12-entrega-de-contraseñas-iniciales-data-008)
 
 ## 1. Qué hace el importador
 
@@ -28,7 +30,8 @@ desde la aplicación) y las licencias tampoco se cargan.
 
 Las filas de ejemplo de la plantilla (las que dicen "Ejemplo", o tienen el fondo amarillo arriba
 del renglón "Borrá la fila de ejemplo...") se ignoran y quedan en el informe como "filas
-ignoradas" con su número, para que se vea qué se descartó.
+ignoradas" con su número, para que se vea qué se descartó. Lo mismo pasa con las **personas de
+Baja** (hojas Empleados y Supervisores): no se cargan ni se les crea usuario (sección 6).
 
 ## 2. Antes de empezar
 
@@ -98,7 +101,10 @@ IMPORT_ENTORNO=app_dev pnpm import:initial "D:/ruta/planilla.xlsx" --salida "D:/
 2. Verifica el entorno de destino y lee lo que ya existe. Si la base **ya tiene algo** de esta
    planilla, corta sin escribir y lo dice: es probable que sea un reintento (sección 5).
 3. Carga paso por paso y, al final, escribe `informe-carga-AAAAMMDD-HHMMSS.txt` con cuántos
-   registros se crearon, cuántos ya existían y cuáles fallaron.
+   registros se crearon, cuántos ya existían y cuáles fallaron, y
+   `cuentas-creadas-AAAAMMDD-HHMMSS.txt` con los emails de las cuentas que quedaron **sin
+   contraseña** (es la lista de entrada del paso de contraseñas, sección 12; tiene datos
+   personales: queda en la misma carpeta de afuera del repositorio).
 
 Códigos de salida: `0` todo bien · `1` la planilla tiene errores o la base ya tiene datos (no se
 escribió nada) · `2` mal uso o entorno mal configurado (no se escribió nada) · `3` la carga empezó
@@ -117,9 +123,11 @@ El informe tiene cuatro partes:
 3. **Advertencias.** No frenan. Son avisos de que algo se ve raro (un dígito verificador, una
    razón social repetida, un cliente sin sede...). Se carga igual; conviene revisarlas con la
    empresa, sobre todo las de dígito verificador y las de clientes sin sede.
-4. **Filas ignoradas.** Los ejemplos de la plantilla. Si aparece una fila que no es un ejemplo,
-   es porque dice "Ejemplo" en alguna celda o conserva el fondo amarillo: se le saca y se
-   vuelve a validar.
+4. **Filas ignoradas.** Los ejemplos de la plantilla y las personas de Baja (código
+   `PERSONA_DE_BAJA`, y `HABILITACION_DE_PERSONA_DE_BAJA` si tenían habilitaciones). Si aparece
+   una fila que no es un ejemplo, es porque dice "Ejemplo" en alguna celda o conserva el fondo
+   amarillo: se le saca y se vuelve a validar. Si una persona de Baja tiene que cargarse, se le
+   cambia el estado a Activo.
 
 La regla de la plantilla, que también rige acá: **se bloquea solo donde Postgres rechazaría la
 fila** (un CUIT de largo distinto de 11, un CUIT o DNI repetido, un día sin marcar en un servicio)
@@ -176,7 +184,7 @@ Detalles:
 | Contactos                         | A lo sumo un contacto principal por cliente (error si hay más de uno).                                                                                                                                                                                                                 |
 | Servicios                         | Al menos un día en "Sí"; hora de fin posterior a la de inicio (no cruza la medianoche); dotación de 1 a 10; la sede tiene que figurar para ese cliente (la `Principal` automática sirve).                                                                                              |
 | Estados                           | Vacío = Activo/Activa. Cualquier valor fuera de la lista es error.                                                                                                                                                                                                                     |
-| Personas de Baja                  | Se cargan con estado Baja, pero **su cuenta queda habilitada**: advertencia para desactivarla desde Usuarios.                                                                                                                                                                          |
+| Personas de Baja                  | **No se cargan** (decisión del 6 oct 2026): la fila de Empleados o Supervisores con estado Baja se ignora, sin error ni aviso, y no se le crea usuario. Queda en el informe como fila ignorada. No se le exige email. Sus habilitaciones también se ignoran.                           |
 | Coordenadas                       | Fuera de rango (latitud ±90, longitud ±180) o incompletas: advertencia; la fila se carga sin coordenadas.                                                                                                                                                                              |
 | Habilitaciones                    | El DNI tiene que estar en Empleados o Supervisores y el cliente en Clientes. Filas repetidas: advertencia, se carga una.                                                                                                                                                               |
 | Feriados                          | Una fila por fecha (error si se repite).                                                                                                                                                                                                                                               |
@@ -185,8 +193,8 @@ Detalles:
 
 ## 7. Cómo se vincula cada hoja con el cliente
 
-En las hojas Contactos, Sedes, Servicios y Habilitaciones, la columna **"CUIT del cliente"**
-(en Habilitaciones, "CUIT del cliente habilitado") acepta dos formas:
+En las hojas Contactos, Sedes, Servicios y Habilitaciones, la columna **"Cliente (CUIT o razón
+social)"** acepta dos formas:
 
 - el **CUIT** del cliente (solo números, como en Clientes; se toleran guiones y puntos), o
 - la **razón social exacta** del cliente, escrita igual que en la hoja Clientes (no importan las
@@ -197,20 +205,26 @@ social. Si la razón social corresponde a un solo cliente, listo. Si corresponde
 uno solo no tiene CUIT, se elige ese. Si siguen quedando varios, es un error de referencia
 ambigua: hay que usar el CUIT.
 
-**Atención con la plantilla de Excel:** esas columnas llevan hoy una validación de Excel que solo
-deja escribir 11 dígitos, así que Excel rechaza escribir una razón social a mano. Mientras la
-plantilla no se actualice, la empresa puede **pegar** el texto (Excel no valida lo que se
-pega) o se completa esa columna por otro medio. Hay una propuesta de cambio de la
-plantilla pendiente de decisión de Mike.
+**Versiones de la plantilla.** La versión 2 (octubre 2026) llama a esa columna "Cliente (CUIT o
+razón social) (\*)" en las cuatro hojas, deja el CUIT de Clientes como opcional y su validación de
+Excel pasa a ser un aviso que no bloquea (solo avisa si lo escrito son números y no son 11). El
+importador acepta **los dos títulos**: "Cliente (CUIT o razón social)" y los de la versión de
+septiembre ("CUIT del cliente" y, en Habilitaciones, "CUIT del cliente habilitado"). Una planilla
+completada con la versión de septiembre se lee igual. Con esa versión Excel rechaza escribir una
+razón social a mano en esas columnas: se la puede **pegar** (Excel no valida lo que se pega).
 
-Las sedes y los servicios se vinculan por el **nombre de la sede** dentro de ese cliente.
+La plantilla se genera con `python scripts/generar-plantilla-carga-inicial.py` (necesita
+`openpyxl`); la hoja Instrucciones trae el número de versión.
+
+Las sedes y los servicios se vinculan por el **nombre de la sede** dentro de ese cliente. Para un
+cliente con un solo domicilio basta con su dirección administrativa y dejar sin filas la hoja
+Sedes: el importador crea la sede `Principal` (en Servicios se la nombra `Principal`).
 
 ## 8. Después de la carga
 
 - **Contraseñas.** Las cuentas se crean **sin contraseña**: nadie puede iniciar sesión todavía.
-  Las contraseñas iniciales las asigna un paso aparte, DATA-008 (P19.3, pendiente de
-  confirmación). El importador deja el punto de extensión (`contrasenaInicial` en
-  `scripts/import-initial/cargar.ts`). Nunca se escriben en el repositorio ni en los logs.
+  Las contraseñas iniciales las asigna un paso aparte, `pnpm credenciales:inicial` (sección 12,
+  DATA-008). Nunca se escriben en el repositorio ni en los logs.
 - **Misma lógica que `create_user`.** Cada persona se crea como lo hace la Edge Function
   `admin-users` (`06_API.md` sección 2.1): cuenta de Auth con el email confirmado y nombre y
   apellido, fila de empleado, roles y el evento `user_created` en el registro de seguridad. Las
@@ -236,29 +250,41 @@ el ref del proyecto antes de escribir.
 
 ## 10. Tests
 
-- **Unitarios** (corren en `pnpm test`, sin base ni credenciales): `scripts/import-initial/*.test.ts`.
-  Leen planillas ficticias armadas en el propio test y cubren cada regla de la sección 6, la
-  lectura de la plantilla oficial y la elección del entorno.
+- **Unitarios** (corren en `pnpm test`, sin base ni credenciales): `scripts/import-initial/*.test.ts` y `scripts/entregar-credenciales/*.test.ts`.
+  Leen planillas ficticias armadas en el propio test y cubren cada regla de la sección 6, las
+  dos versiones de la plantilla (títulos de septiembre y de la versión 2), la lectura de la
+  plantilla oficial, la elección del entorno, el generador de contraseñas y las guardas del paso
+  de credenciales.
 - **Integración contra `App_dev`** (`pnpm test:import`, a mano; no corre en CI): carga datos
   ficticios con el prefijo `imp-test-` (un cliente sin CUIT vinculado por razón social, sede
   automática, una persona con los dos roles...), comprueba el contenido en la base, repite la
   carga sin y con `--resume`, simula una carga cortada y verifica que una planilla con un error
-  no escribe nada. Al terminar (y al empezar) barre todo lo que lleva el prefijo, incluidas las
-  cuentas de Auth, sin tocar nada más.
+  no escribe nada, y que una persona de Baja no se carga. Al terminar (y al empezar) barre todo
+  lo que lleva el prefijo, incluidas las cuentas de Auth, sin tocar nada más.
+- **Integración de las credenciales** (también en `pnpm test:import`): crea cuentas ficticias
+  `imp-test-cred-*` (con y sin alta del importador, una que ya inició sesión, una con contraseña
+  ya entregada), corre el paso de contraseñas con `--dry-run`, en serio, de nuevo y con
+  `--regenerar`, y verifica que la cuenta inicia sesión con la contraseña generada, que las otras
+  no se tocan y que la consola no muestra ninguna contraseña. El CSV va a una carpeta temporal
+  fuera del repositorio y se borra; las cuentas se barren al terminar.
 
 Archivos del importador:
 
-| Archivo                                     | Qué hace                                                         |
-| ------------------------------------------- | ---------------------------------------------------------------- |
-| `scripts/import-initial.ts`                 | Punto de entrada (`pnpm import:initial`).                        |
-| `scripts/import-initial/ejecutar.ts`        | Flujo completo y códigos de salida.                              |
-| `scripts/import-initial/leer-plantilla.ts`  | Lee el Excel con `exceljs`; ubica hojas, encabezados y ejemplos. |
-| `scripts/import-initial/esquema.ts`         | Hojas y columnas de la plantilla.                                |
-| `scripts/import-initial/validar.ts`         | Todas las reglas; arma el plan y las incidencias.                |
-| `scripts/import-initial/cargar.ts`          | Escribe en la base; reintento por clave natural.                 |
-| `scripts/import-initial/entorno.ts`         | Elección y verificación del destino.                             |
-| `scripts/import-initial/informe.ts`         | Informes (texto, Excel, JSON).                                   |
-| `scripts/import-initial/compat-openpyxl.ts` | Permite abrir la plantilla original (generada con openpyxl).     |
+| Archivo                                     | Qué hace                                                           |
+| ------------------------------------------- | ------------------------------------------------------------------ |
+| `scripts/import-initial.ts`                 | Punto de entrada (`pnpm import:initial`).                          |
+| `scripts/import-initial/ejecutar.ts`        | Flujo completo y códigos de salida.                                |
+| `scripts/import-initial/leer-plantilla.ts`  | Lee el Excel con `exceljs`; ubica hojas, encabezados y ejemplos.   |
+| `scripts/import-initial/esquema.ts`         | Hojas y columnas de la plantilla.                                  |
+| `scripts/import-initial/validar.ts`         | Todas las reglas; arma el plan y las incidencias.                  |
+| `scripts/import-initial/cargar.ts`          | Escribe en la base; reintento por clave natural.                   |
+| `scripts/import-initial/entorno.ts`         | Elección y verificación del destino.                               |
+| `scripts/import-initial/informe.ts`         | Informes (texto, Excel, JSON).                                     |
+| `scripts/import-initial/compat-openpyxl.ts` | Permite abrir la plantilla original (generada con openpyxl).       |
+| `scripts/entregar-credenciales.ts`          | Punto de entrada de las contraseñas (`pnpm credenciales:inicial`). |
+| `scripts/entregar-credenciales/ejecutar.ts` | Flujo: a quién toca, cambio de contraseña, CSV, auditoría.         |
+| `scripts/entregar-credenciales/generar.ts`  | Generador de contraseñas (`node:crypto`).                          |
+| `scripts/entregar-credenciales/guardas.ts`  | Carpeta fuera del repo, lista de emails y CSV seguro.              |
 
 ## 11. Códigos de incidencia
 
@@ -294,7 +320,69 @@ Aparecen en el JSON del informe y en las pruebas. **E** = error, **A** = adverte
 | `DNI_FORMATO`                                                 | E     | El DNI tiene letras u otros caracteres.                                                         |
 | `DNI_LARGO`                                                   | A     | DNI de largo poco habitual.                                                                     |
 | `DNI_NO_ENCONTRADO`                                           | E     | La habilitación apunta a un DNI que no está en el personal.                                     |
-| `PERSONA_DE_BAJA`                                             | A     | Se carga de Baja con la cuenta habilitada: desactivarla desde Usuarios.                         |
+| `PERSONA_DE_BAJA`                                             | -     | Persona de Baja: no se carga ni se le crea usuario (fila ignorada).                             |
+| `HABILITACION_DE_PERSONA_DE_BAJA`                             | -     | Habilitación de una persona de Baja: se ignora (fila ignorada).                                 |
 | `HABILITACION_REPETIDA`                                       | A     | Fila repetida: se carga una sola.                                                               |
 | `FERIADO_REPETIDO`, `CRITERIO_REPETIDO`                       | E     | Fecha o título repetido.                                                                        |
 | `ORDEN_REPETIDO`                                              | A     | Dos criterios con el mismo orden.                                                               |
+
+## 12. Entrega de contraseñas iniciales (DATA-008)
+
+Después de la carga las cuentas existen pero nadie puede entrar: no tienen contraseña. Este paso
+genera una contraseña por cuenta y la deja en un archivo para entregarla. **Primero se ensaya en
+`App_dev` con cuentas ficticias; en producción solo en F20, por encargo.**
+
+### Qué hace
+
+- Genera contraseñas de 12 caracteres en tres grupos de cuatro con guiones (`Kq7m-Xw3p-Tn9d`), sin
+  caracteres ambiguos (sin 0, O, 1, l, I, o), con `node:crypto`.
+- Por cada cuenta: cambia la contraseña (`updateUserById`), cierra todas sus sesiones y registra
+  el evento `password_reset_by_admin`, igual que `reset_password` de la Edge Function `admin-users`.
+- Escribe un CSV (`Nombre`, `Email`, `Rol`, `Contraseña`; separador `;`, abre bien en Excel en
+  español) **solo** en la carpeta que se indica con `--salida`. Esa carpeta es obligatoria y el
+  script la rechaza si está dentro de `app/` o de cualquier repositorio git.
+- **Nunca** muestra una contraseña en la consola ni en un log: imprime solo cantidades y la ruta
+  del archivo.
+
+### A quién toca (y a quién no)
+
+Solo a las cuentas que están en la lista de emails y cumplen **todo** esto:
+
+1. La creó el importador sin contraseña (evento `user_created` con origen `import-initial`). Las
+   cuentas del seed, las `e2e-fijo-*` y las creadas a mano **quedan afuera**, aunque estén en la
+   lista.
+2. Nunca inició sesión (`last_sign_in_at` vacío).
+3. El perfil está activo.
+4. No tiene una contraseña ya entregada (evento `password_reset_by_admin`). Esto evita invalidar
+   por error una contraseña que ya se entregó. Si se perdió el CSV y la persona todavía no entró,
+   se puede volver a generar con `--regenerar`.
+
+La lista de emails es el archivo `cuentas-creadas-*.txt` que escribe el importador (o cualquier
+archivo de texto con un email por línea; las líneas que empiezan con `#` se ignoran).
+
+> Nota de diseño: Supabase no deja leer desde la API si una cuenta tiene o no contraseña. Por eso
+> "sin contraseña" se verifica por el registro de auditoría (puntos 1 y 4) y no por el hash.
+
+### Paso a paso
+
+Desde la raíz de `app/`, con `IMPORT_ENTORNO` elegido (mismos resguardos de entorno que el
+importador: `app` solo con `--permitir-produccion-f20`).
+
+1. **Simular** (no cambia nada; deja un archivo con a quién tocaría y a quién omitiría):
+
+   ```bash
+   IMPORT_ENTORNO=app_dev pnpm credenciales:inicial --emails "D:/ruta/carga_inicial/cuentas-creadas-AAAAMMDD-HHMMSS.txt" --salida "D:/ruta/carga_inicial/credenciales" --dry-run
+   ```
+
+2. **Generar** (mismo comando sin `--dry-run`). Termina con código 0 si todo salió bien, 2 si algo
+   del uso, la carpeta o el entorno está mal (no se tocó nada) y 3 si alguna cuenta falló (el
+   detalle, sin contraseñas, queda en `credenciales-AAAAMMDD-HHMMSS-fallas.txt`).
+3. **Entregar.** Mike o el dueño le dan a **cada persona su contraseña por un canal individual**
+   (un mensaje directo, en persona). No por un grupo, no todas juntas, no por mail común.
+4. **Borrar el CSV** en cuanto se entregó (y el archivo `cuentas-creadas-*.txt`, que tiene los
+   emails). El CSV se escribe a medida que se cambia cada contraseña, así que si el proceso se corta
+   no se pierde ninguna; se vuelve a correr y toma solo a las que faltan.
+5. Cada persona puede **cambiar su contraseña desde su Perfil** (COM-04). No se la obliga en el
+   primer ingreso.
+
+Ayuda de todas las opciones: `pnpm credenciales:inicial --ayuda`.
