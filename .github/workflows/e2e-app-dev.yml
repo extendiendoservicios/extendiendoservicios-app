@@ -374,7 +374,9 @@ jobs:
     # Tanda 2: espera a la tanda 1 (aunque haya fallado) para no cargar App_dev con siete suites.
     if: ${{ !cancelled() && needs.build.result == 'success' && needs.barrido.result == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    # 25: sin caché, instalar las dependencias de WebKit por apt llegó a tardar más de 12 minutos
+    # (segunda corrida manual, 5 oct 2026).
+    timeout-minutes: 25
     env:
       E2E_CONJUNTO: emp-webkit
       E2E_SKIP_SWEEP: '1'

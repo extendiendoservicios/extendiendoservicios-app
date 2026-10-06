@@ -56,6 +56,8 @@ export async function barrerResiduos(db: AdminDb): Promise<number> {
     await deleteClientDeep(db, fila.id)
     barridos += 1
   }
+  // Licencias de una corrida cortada: la siguiente chocaría con `employee_leaves_no_overlap`.
+  await db.from('employee_leaves').delete().like('reason', `${PREFIJO}%`)
   await db.from('holidays').delete().like('name', `${PREFIJO}%`)
   await db.from('rating_criteria').delete().like('title', `${PREFIJO}%`)
   await db.from('security_events').delete().eq('details->>e2e', 'perm')
