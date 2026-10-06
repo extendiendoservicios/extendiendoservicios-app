@@ -21,15 +21,19 @@ cambio que documenta (`03_Plan_Maestro_Tecnico.md` sección 17).
 | [`features/responsive.md`](features/responsive.md)             | Cortes 390 / 768 / 1024 / 1280, qué cambia en cada uno, área segura, teclado virtual, objetivos táctiles de 44 px, pestañas con degradé, carga diferida y cómo se prueba (RESP-001 a RESP-012, DOC-017).                                                                                                                   |
 | [`matriz-dispositivos.md`](matriz-dispositivos.md)             | Planilla de la prueba en dos Android y un iPhone que completa Mike: instalación, pantalla completa, sesión por rol, fichaje, teclado, área segura, rotación, versión nueva y sin conexión (RESP-011, TEST-014).                                                                                                            |
 | [`plantilla-carga-inicial.xlsx`](plantilla-carga-inicial.xlsx) | Planilla que la empresa completa con sus datos reales para la carga inicial (DATA-001, DATA-002; adelantada desde F19 al cerrar F4, `08_Fases_y_Backlog.md` sección 4.3). Se regenera con `scripts/generar-plantilla-carga-inicial.py` (ver `scripts/README.md`). Cómo importarla: [`carga-inicial.md`](carga-inicial.md). |
+| [`guia-admin.md`](guia-admin.md)                               | Guía de uso para el dueño y los administradores: permisos, carga de clientes, sedes, servicios y personal, cronograma, asignaciones, seguimiento del día, supervisiones y configuración, marcando lo que es solo del dueño (DOC-018, P19.4).                                                                               |
+| [`guia-empleado.md`](guia-empleado.md)                         | Guía de uso del empleado en el celular: instalar la app, iniciar sesión, ver los servicios, registrar inicio y fin, tareas, observaciones, avisos de demora o ausencia y perfil (DOC-019, P19.4).                                                                                                                          |
+| [`guia-supervisor.md`](guia-supervisor.md)                     | Guía de uso del supervisor en el celular: instalar la app, ver las supervisiones, registrar su jornada, calificar a cada empleado, cerrar la supervisión y consultar el historial (DOC-020, P19.4).                                                                                                                        |
+| [`troubleshooting.md`](troubleshooting.md)                     | Problemas frecuentes con su síntoma, causa y qué hacer, separando lo que resuelve el usuario, Administración y el soporte técnico: sesión, ubicación, instalación y actualización, sin conexión, `App_dev` pausado (DOC-021, P19.4).                                                                                       |
+| [`guias/`](guias/capturas.ts)                                  | Capturas de pantalla de las guías (`guias/img/`) y el script que las regenera (`capturas.ts`, solo lectura, contra `App_dev`; cómo correrlo en el encabezado del script) (P19.4).                                                                                                                                          |
+| [`uat/guion-uat.md`](uat/guion-uat.md)                         | Guion de la prueba de aceptación con la referente: preparación, 52 escenarios por rol (dueño, administración, empleado, supervisor y transversales) con resultado esperado y clasificación Base o ampliación (V3 punto 7), y acta para firmar (DEPLOY-001, P19.4).                                                         |
 
 ## Qué llega en cada fase
 
-| Archivo                                                   | Contenido                                                      | Fase |
-| --------------------------------------------------------- | -------------------------------------------------------------- | ---- |
-| `security.md`                                             | RLS por tabla, Edge Function                                   | F6   |
-| `guia-admin.md`, `guia-empleado.md`, `guia-supervisor.md` | Guías de uso por rol con capturas                              | F19  |
-| `troubleshooting.md`                                      | Problemas conocidos y solución                                 | F19  |
-| `runbook-produccion.md`                                   | Puesta en marcha, rollback, restauración, rotación de secretos | F20  |
+| Archivo                 | Contenido                                                      | Fase |
+| ----------------------- | -------------------------------------------------------------- | ---- |
+| `security.md`           | RLS por tabla, Edge Function                                   | F6   |
+| `runbook-produccion.md` | Puesta en marcha, rollback, restauración, rotación de secretos | F20  |
 
 `README.md` (raíz del repo) y `CHANGELOG.md` no viven en esta carpeta pero
 son parte de la misma documentación; se crean también en F2.
