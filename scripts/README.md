@@ -11,8 +11,15 @@ Scripts de Node/TypeScript que se corren a mano o desde CI, fuera de la app:
   **No hizo falta** en P04.6: `supabase gen types --linked > ...` alcanza
   solo (decisión menor, ver el reporte de esa tarea). Queda pendiente por
   si una fase futura necesita algo más que ese comando directo.
-- `import-initial.ts` — importación de la planilla de carga inicial del
-  cliente, desde F19.
+- `import-initial.ts` — DATA-003, DATA-004, DATA-005 (P19.1): importador de la
+  planilla de carga inicial de la empresa. Valida todo, informa por hoja, fila y
+  columna, y solo si no hay errores carga en el entorno elegido con
+  `IMPORT_ENTORNO` (`app_dev`; `app` solo con `--permitir-produccion-f20`). Uso:
+  `pnpm import:initial <planilla.xlsx> --dry-run --salida <carpeta>` (validar),
+  sin `--dry-run` (cargar) y con `--resume` (reintentar). La lógica vive en
+  `scripts/import-initial/`; los tests unitarios corren en `pnpm test` y la
+  prueba de integración contra `App_dev` con `pnpm test:import`. Procedimiento
+  completo en `docs/carga-inicial.md`.
 
 - `recuperar-app-dev.ts` — TEST-024 (P18.5): deja a `App_dev` utilizable
   después de una corrida de `restore-test.yml`, que lo deja sin usuarios y
