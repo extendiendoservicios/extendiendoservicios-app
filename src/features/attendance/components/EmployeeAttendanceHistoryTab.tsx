@@ -15,7 +15,7 @@ import type { AttendanceBoardRow } from '@/api/attendance'
 import type { Role } from '@/api/users'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { ROLE_LABELS } from '@/features/auth/session'
-import { getAttendanceStatusBadgeInput } from '@/features/attendance/derive'
+import { getAttendanceRowBadge } from '@/features/attendance/derive'
 import {
   buildAttendanceEntries,
   ENTRY_KIND_LABELS,
@@ -243,10 +243,7 @@ function EmployeeAttendanceHistoryTab({
       meta: { card: 'meta', cardLabel: 'Estado' },
       cell: ({ row }) =>
         row.original.kind === 'service' ? (
-          <StatusBadge
-            domain="assignment"
-            {...getAttendanceStatusBadgeInput(row.original.row)}
-          />
+          <StatusBadge {...getAttendanceRowBadge(row.original.row)} />
         ) : (
           <StatusBadge domain="supervision" status={row.original.row.status} />
         ),

@@ -29,7 +29,7 @@ import type { AttendanceBoardRow } from '@/api/attendance'
 import {
   getArrivalHint,
   getAttendanceRowVariant,
-  getAttendanceStatusBadgeInput,
+  getAttendanceRowBadge,
   getAvailableAttendanceActions,
 } from '@/features/attendance/derive'
 import { canManageAttendance } from '@/features/attendance/permissions'
@@ -124,15 +124,22 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
 
   const filteredRows = useMemo(() => {
     const text = debouncedText.trim().toLowerCase()
+    // DEF-AJ-01: un turno cancelado no es una alerta, así que no entra cuando
+    // se filtra por un estado (el servidor filtra por `display_status`, que
+    // no sabe de cancelaciones).
+    const visible =
+      statusFilter === 'all'
+        ? rows
+        : rows.filter((row) => row.shiftStatus !== 'cancelled')
     if (!text) {
-      return rows
+      return visible
     }
-    return rows.filter((row) =>
+    return visible.filter((row) =>
       `${row.employeeFirstName} ${row.employeeLastName}`
         .toLowerCase()
         .includes(text),
     )
-  }, [rows, debouncedText])
+  }, [rows, debouncedText, statusFilter])
 
   const recordTargetActions = recordTarget
     ? getAvailableAttendanceActions({
@@ -200,10 +207,7 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
         const arrival = getArrivalHint(row.original)
         return (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <StatusBadge
-              domain="assignment"
-              {...getAttendanceStatusBadgeInput(row.original)}
-            />
+            <StatusBadge {...getAttendanceRowBadge(row.original)} />
             {arrival && (
               <span className="text-[12px] text-text-2">{arrival}</span>
             )}

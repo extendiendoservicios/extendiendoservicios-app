@@ -1,6 +1,9 @@
 import type { AssignmentStatus } from '@/api/assignments'
 import type { AttendanceBoardRow } from '@/api/attendance'
-import type { AssignmentStatus as BadgeAssignmentStatus } from '@/components/status'
+import type {
+  AssignmentStatus as BadgeAssignmentStatus,
+  StatusBadgeInput,
+} from '@/components/status'
 import { formatMinutes, formatTime } from '@/lib/format'
 
 /**
@@ -127,17 +130,26 @@ export function getAttendanceStatusBadgeInput(
   return { status: row.status }
 }
 
-/** Estado efectivo de la fila para el color: el turno cancelado anula `on_the_way` y `late`. */
+/**
+ * Entrada completa de `StatusBadge` para una fila de asistencia (DEF-AJ-01):
+ * un turno cancelado muestra «Cancelado» gris tachado (dominio `shift`),
+ * cualquiera sea el `display_status` de la asignación; el resto, el estado
+ * de asignación de `getAttendanceStatusBadgeInput`.
+ */
+export function getAttendanceRowBadge(
+  row: Parameters<typeof getAttendanceStatusBadgeInput>[0],
+): StatusBadgeInput {
+  if (row.shiftStatus === 'cancelled') {
+    return { domain: 'shift', status: 'cancelled' }
+  }
+  return { domain: 'assignment', ...getAttendanceStatusBadgeInput(row) }
+}
+
+/** Estado efectivo de la fila para el color: el turno cancelado anula todo (DEF-AJ-01). */
 function effectiveDisplayStatus(
   row: Pick<AttendanceBoardRow, 'displayStatus' | 'shiftStatus'>,
 ): string {
-  if (
-    row.shiftStatus === 'cancelled' &&
-    (row.displayStatus === 'on_the_way' || row.displayStatus === 'late')
-  ) {
-    return 'cancelled'
-  }
-  return row.displayStatus
+  return row.shiftStatus === 'cancelled' ? 'cancelled' : row.displayStatus
 }
 
 /**
@@ -151,6 +163,9 @@ export function getAttendanceRowVariant(
     'displayStatus' | 'shiftStatus' | 'status' | 'minutesEarlyLeave'
   >,
 ): 'crit' | 'warn' | 'info' | undefined {
+  if (row.shiftStatus === 'cancelled') {
+    return undefined
+  }
   const display = effectiveDisplayStatus(row)
   if (display === 'no_record' || row.status === 'absence_notified') {
     return 'crit'

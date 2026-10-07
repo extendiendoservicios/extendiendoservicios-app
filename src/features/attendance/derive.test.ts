@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   getArrivalHint,
+  getAttendanceRowBadge,
   getAttendanceRowVariant,
   getAttendanceStatusBadgeInput,
   getAvailableAttendanceActions,
@@ -163,16 +164,43 @@ describe('estados nuevos en camino y llegada tarde (AJ-02, AJ-07)', () => {
     ).toEqual({ status: 'late' })
   })
 
-  it('el turno cancelado manda sobre on_the_way y late', () => {
-    for (const displayStatus of ['on_the_way', 'late']) {
-      const cancelled = { ...base, shiftStatus: 'cancelled' as const }
-      expect(
-        getAttendanceStatusBadgeInput({ ...cancelled, displayStatus }),
-      ).toEqual({ status: 'expected' })
+  it('turno cancelado: «Cancelado» tachado y fila sin color, cualquiera sea el display_status (DEF-AJ-01)', () => {
+    const cancelled = { ...base, shiftStatus: 'cancelled' as const }
+    for (const displayStatus of [
+      'on_the_way',
+      'late',
+      'no_record',
+      'expected',
+      'delay_notified',
+    ]) {
+      expect(getAttendanceRowBadge({ ...cancelled, displayStatus })).toEqual({
+        domain: 'shift',
+        status: 'cancelled',
+      })
       expect(
         getAttendanceRowVariant({ ...cancelled, displayStatus }),
       ).toBeUndefined()
     }
+    expect(
+      getAttendanceRowVariant({
+        ...cancelled,
+        status: 'absence_notified',
+        displayStatus: 'absence_notified',
+      }),
+    ).toBeUndefined()
+    expect(
+      getArrivalHint({
+        ...cancelled,
+        displayStatus: 'on_the_way',
+        lastNoticeEstimatedArrivalAt: '2026-09-30T11:30:00Z',
+      }),
+    ).toBeNull()
+  })
+
+  it('turno vivo: el badge sigue siendo de asignación', () => {
+    expect(
+      getAttendanceRowBadge({ ...base, displayStatus: 'no_record' }),
+    ).toEqual({ domain: 'assignment', status: 'no_record' })
   })
 
   it('colorea la fila: celeste en camino, amarilla llegada tarde, roja sin registro', () => {

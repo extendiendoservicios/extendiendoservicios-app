@@ -17,7 +17,7 @@ import type { AttendanceBoardRow } from '@/api/attendance'
 import {
   getArrivalHint,
   getAttendanceRowVariant,
-  getAttendanceStatusBadgeInput,
+  getAttendanceRowBadge,
 } from '@/features/attendance/derive'
 import { WorkedHoursCell } from '@/features/attendance/components/WorkedHoursCell'
 import {
@@ -110,10 +110,7 @@ function ServicesTodayTable({
         const arrival = getArrivalHint(row.original)
         return (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <StatusBadge
-              domain="assignment"
-              {...getAttendanceStatusBadgeInput(row.original)}
-            />
+            <StatusBadge {...getAttendanceRowBadge(row.original)} />
             {arrival && (
               <span className="text-[12px] text-text-2">{arrival}</span>
             )}
@@ -144,6 +141,7 @@ function ServicesTodayTable({
       cell: ({ row }) => {
         const assignable =
           canAssign(row.original.shiftId) &&
+          row.original.shiftStatus !== 'cancelled' &&
           (row.original.status === 'absence_notified' ||
             row.original.displayStatus === 'no_record')
         return (

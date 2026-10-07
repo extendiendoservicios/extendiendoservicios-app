@@ -40,7 +40,7 @@ function PrintableLetterhead({ title, issuedAt }: PrintableLetterheadProps) {
     : FALLBACK_LOGO_URL
 
   return (
-    <header className="print-keep-together mb-4 flex items-start justify-between gap-4 border-b-2 border-black pb-3">
+    <div className="print-keep-together mb-4 flex items-start justify-between gap-4 border-b-2 border-black pb-3">
       <div className="flex min-w-0 items-center gap-3">
         {logoUrl && (
           <img
@@ -66,7 +66,7 @@ function PrintableLetterhead({ title, issuedAt }: PrintableLetterheadProps) {
           Emitido el {formatIssuedAt(issuedAt)}
         </p>
       </div>
-    </header>
+    </div>
   )
 }
 
