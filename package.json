@@ -36,6 +36,7 @@
     "test:fixtures:setup": "node --env-file=.env.local tests/fixtures/setup-accounts.ts",
     "test:load": "node --env-file=.env.local tests/load/carga-ligera.ts",
     "test:e2e:responsive": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-responsive/playwright.responsive.config.ts",
+    "test:e2e:ajustes-reunion": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-ajustes-reunion/playwright.ajustes.config.ts",
     "test:e2e:supervisiones": "pnpm build && node --env-file=.env.local ./node_modules/@playwright/test/cli.js test --config=tests/e2e-supervisiones/playwright.supervisiones.config.ts",
     "test:lighthouse": "node --env-file=.env.local tests/lighthouse/run.ts",
     "test:permissions": "node --env-file=.env.local ./node_modules/vitest/vitest.mjs run --config tests/permissions/vitest.config.ts",
