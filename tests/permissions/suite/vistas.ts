@@ -15,9 +15,10 @@ export interface VistaSpec {
   filas: (c: Contexto) => Record<string, string>
   ve: Record<Perfil, Ve>
   /**
-   * Vista de "lo mío" (filtra por `auth.uid()`): con la clave de servicio no hay `auth.uid()` y
-   * da cero filas, así que no sirve para comprobar que la vista tiene datos; lo prueba la fila
-   * que sí ve su dueño en la propia matriz.
+   * Vista que depende de la sesión (de "lo mío", que filtra por `auth.uid()`, o de
+   * `app.is_admin()`): con la clave de servicio no hay `auth.uid()` y da cero filas (o un 403,
+   * como en `v_employee_ratings`), así que no sirve para comprobar que la vista tiene datos; lo
+   * prueba la fila que sí ve quien corresponde en la propia matriz.
    */
   propia?: boolean
 }
@@ -193,6 +194,7 @@ export const VISTAS: VistaSpec[] = [
     // Nueva en 0033 (P19.5a): cantidad y promedio de calificaciones por empleado. Solo dueño y
     // administradores (como las calificaciones, P-084); el supervisor y el empleado no ven filas.
     vista: 'v_employee_ratings',
+    propia: true,
     clave: 'employee_id',
     filas: (c) => ({
       empleado1: c.ids.empleado1,

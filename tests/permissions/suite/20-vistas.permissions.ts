@@ -25,6 +25,14 @@ describe.concurrent('lectura de vistas por perfil', () => {
     // Una vista que nadie ve (cero filas en origen) no probaría nada: se comprueba con la clave
     // de servicio que tiene filas.
     for (const spec of VISTAS) {
+      // Las vistas que dependen de la sesión (`propia`: "lo mío" o `app.is_admin()`) no se pueden
+      // contar con la clave de servicio: no tiene `auth.uid()` (da cero filas) y, en
+      // `v_employee_ratings`, ni siquiera puede ejecutar `app.is_admin()` (403). Lo que ven los
+      // perfiles con sesión lo prueba la propia matriz.
+      if (spec.propia) {
+        conFilas.set(spec.vista, 0)
+        continue
+      }
       const { count, error } = await servicio()
         .from(spec.vista as 'v_clients')
         .select('*', { count: 'exact', head: true })
