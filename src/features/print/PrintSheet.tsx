@@ -47,7 +47,7 @@ function PrintSheet({ children, onClose, documentTitle }: PrintSheetProps) {
       role="dialog"
       aria-modal="true"
       aria-label={documentTitle}
-      className="print-portal fixed inset-0 z-[100] flex flex-col overflow-auto bg-surface-2"
+      className="print-portal fixed inset-0 z-[100] flex flex-col overflow-auto bg-bg"
     >
       <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 border-b border-border bg-surface px-4 py-2 print:hidden">
         <p className="text-[13px] font-semibold text-text">

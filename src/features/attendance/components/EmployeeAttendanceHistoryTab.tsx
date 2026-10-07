@@ -278,7 +278,7 @@ function EmployeeAttendanceHistoryTab({
             aria-label="Desde"
             value={isoDateToDate(from)}
             onValueChange={(next) => next && setFrom(localDateToIsoDate(next))}
-            className="w-44"
+            className="w-56"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -287,7 +287,7 @@ function EmployeeAttendanceHistoryTab({
             aria-label="Hasta"
             value={isoDateToDate(to)}
             onValueChange={(next) => next && setTo(localDateToIsoDate(next))}
-            className="w-44"
+            className="w-56"
           />
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-3">

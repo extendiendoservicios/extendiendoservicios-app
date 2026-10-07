@@ -115,7 +115,7 @@ function ClientServiceSummaryTab({
             aria-label="Desde"
             value={isoDateToDate(from)}
             onValueChange={(next) => next && setFrom(localDateToIsoDate(next))}
-            className="w-44"
+            className="w-56"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -124,7 +124,7 @@ function ClientServiceSummaryTab({
             aria-label="Hasta"
             value={isoDateToDate(to)}
             onValueChange={(next) => next && setTo(localDateToIsoDate(next))}
-            className="w-44"
+            className="w-56"
           />
         </div>
         <Button

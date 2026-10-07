@@ -27,10 +27,17 @@ interface PrintableLetterheadProps {
  * Mientras carga la configuración (o si falla) muestra solo el título, sin
  * inventar una marca.
  */
+const FALLBACK_LOGO_URL = '/logo-impresion.png'
+
 function PrintableLetterhead({ title, issuedAt }: PrintableLetterheadProps) {
   const settingsQuery = useCompanySettingsQuery()
   const settings = settingsQuery.data
-  const logoUrl = settings?.logoPath ? brandingLogoUrl(settings.logoPath) : null
+  // Sin logo propio cargado (ADM-28), el logo original de la marca en negro
+  // (`Images/ExtendiendoServicios_logo_sinfondo.png`, reducido): el blanco de
+  // `logo.png` no se ve en papel.
+  const logoUrl = settings?.logoPath
+    ? brandingLogoUrl(settings.logoPath)
+    : FALLBACK_LOGO_URL
 
   return (
     <header className="print-keep-together mb-4 flex items-start justify-between gap-4 border-b-2 border-black pb-3">
