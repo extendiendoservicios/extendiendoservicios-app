@@ -190,6 +190,22 @@ export const VISTAS: VistaSpec[] = [
     }),
   },
   {
+    // Nueva en 0033 (P19.5a): cantidad y promedio de calificaciones por empleado. Solo dueño y
+    // administradores (como las calificaciones, P-084); el supervisor y el empleado no ven filas.
+    vista: 'v_employee_ratings',
+    clave: 'employee_id',
+    filas: (c) => ({
+      empleado1: c.ids.empleado1,
+      empleado2: c.ids.empleado2,
+      empleado3: c.ids.empleado3,
+      empleado4: c.ids.empleado4,
+      supervisor1: c.ids.supervisor1,
+      supervisor2: c.ids.supervisor2,
+      dual: c.ids.dual,
+    }),
+    ve: ven({ ...admins }),
+  },
+  {
     vista: 'v_search',
     clave: 'id',
     filas: (c) => ({

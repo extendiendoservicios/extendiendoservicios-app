@@ -171,7 +171,7 @@ export async function fetchAssignmentStatus(
 }
 
 export interface AttendanceNoticeRow {
-  kind: 'delay' | 'absence'
+  kind: 'delay' | 'absence' | 'on_the_way'
   minutes_late: number | null
   reason_code: string | null
   reason_text: string | null

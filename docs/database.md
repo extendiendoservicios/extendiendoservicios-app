@@ -1632,29 +1632,104 @@ vigentes del turno quedarían pisadas con la franja nueva (la misma cuenta que
 - Tests Deno nuevos en `supabase/functions/admin-users/index.p18_6.test.ts` (10). `handleRequest` acepta
   un segundo parámetro opcional (`makeAdmin`) para inyectar un cliente simulado en los tests.
 
+## Ajustes de la reunión del 6 oct 2026 (migraciones `0032` y `0033`, P19.5a)
+
+Se probaron en la base local de Docker; todavía no están en `App_dev` ni en `App`. Prueba:
+`supabase/tests/0033_p19_5a_ajustes_reunion.test.sql` (148 aserciones) y los ajustes de `0002`/`0009`.
+
+### Constantes y auxiliares (`app`)
+
+- `app.late_grace_minutes()` = 15: único lugar de los minutos de «Llegada tarde». Cambiarlo es un
+  `create or replace` de esa función; las vistas no se tocan.
+- `app.minutes_between(desde, hasta)`: minutos redondeados al más cercano, `null` si falta un
+  extremo. Lo usan `planned_minutes`, `worked_minutes` y los resúmenes por cliente, para que el
+  redondeo sea uno solo.
+
+### Cambiar el nombre de una persona: `update_person_name(p_profile_id, p_first_name, p_last_name)`
+
+Devuelve la fila de `profiles`. El dueño cambia el nombre de cualquiera (también el suyo y el de
+otro dueño); cualquier persona activa cambia el suyo ("Mi perfil"). El administrador **no** cambia
+el de otros por esta vía: la ficha del empleado sigue usando el update directo sobre `profiles`
+(política `profiles_update_admin` + trigger de 0030, que impide que un administrador toque a otro
+administrador o a un dueño). Recorta bordes y compacta espacios; `NAME_REQUIRED`, `NAME_TOO_LONG`
+(más de 100 caracteres: el modelo no fijaba largos), `PROFILE_NOT_FOUND`, `FORBIDDEN`. Si el nombre
+no cambia, no escribe ni deja rastro. Registra `name_changed` en `security_events` con el nombre
+anterior y el nuevo. El nombre vive solo en `profiles` (`employees` no lo duplica).
+El trigger de columnas propias deja pasar `first_name`/`last_name`/`updated_by` únicamente cuando
+la transacción viene de esta RPC (variable local `app.allow_name_update`).
+
+### «En camino»: `notify_on_the_way(p_assignment_id, p_eta_minutes default null)`
+
+Es un aviso más de `attendance_notices` (`kind = 'on_the_way'`, columna nueva `estimated_arrival_at`,
+`now() + minutos`). **No cambia `assignments.status`**: el empleado sigue «esperado» y
+`record_check_in` queda igual. Solo el empleado de la asignación; ventana desde 3 horas antes del
+inicio efectivo hasta el fin efectivo. Repetirla agrega otro aviso (el último manda). Errores:
+`FORBIDDEN`, `ASSIGNMENT_NOT_FOUND` (también quitada), `NOT_YOUR_ASSIGNMENT`, `SHIFT_CANCELLED`,
+`SHIFT_COMPLETED`, `ASSIGNMENT_STARTED`, `ABSENCE_ALREADY_NOTIFIED`, `INVALID_ETA` (fuera de
+1..240), `ON_THE_WAY_TOO_EARLY`, `ON_THE_WAY_TOO_LATE`.
+
+### `v_assignments_board.display_status`
+
+Para `expected` y `delay_notified` (sin inicio registrado), en este orden: `on_the_way` (último
+aviso en camino y franja sin terminar; prevalece), `late` (pasó el inicio efectivo hace 15 minutos
+o menos), `no_record` (más de 15 minutos). El minuto 15 exacto sigue siendo `late`. Columnas nuevas
+al final: `last_notice_estimated_arrival_at`, `planned_minutes` (duración de la franja efectiva) y
+`worked_minutes` (fin real menos inicio real, `null` si falta alguno). La regla de pantalla es del
+front: tilde verde si `worked_minutes >= planned_minutes` sin margen; advertencia si es menor o si
+`minutes_early_leave` no es nulo. No hay booleano para no tener la regla en dos lugares.
+`v_my_day` suma `last_notice_estimated_arrival_at` (su `last_notice_kind` ahora puede ser
+`on_the_way`).
+
+### Calificación promedio: `v_employee_ratings`
+
+`employee_id`, `ratings_count`, `ratings_avg numeric(3,2)`, una fila por empleado (0 y `null` si no
+tiene). Solo dueño y administradores ven filas. Con 35 empleados y 35.000 calificaciones: listado
+completo ~27 ms, una ficha ~8 ms (un `lateral` por empleado salía a ~195 ms).
+
+### Asistencia de un empleado o supervisor por período (ADM-12)
+
+- Empleado (y quien tenga asignaciones): `v_assignments_board` filtrada por `employee_id` y fecha ya
+  alcanza, con `worked_minutes`/`planned_minutes`; el total del rango se suma en el front.
+- Supervisor: sus horas salen de `supervision_attendance`. `v_supervisions_admin` ya traía fecha,
+  cliente, sede, franja e inicio/fin reales; suma `planned_minutes` y `worked_minutes` al final.
+
+### Resumen por cliente
+
+- `client_service_summary(p_client_id, p_from, p_to)` (dueño y administradores) devuelve `jsonb`:
+  `totals { shifts_done, employees_count, worked_minutes, planned_minutes }` y `shifts [ { shift_id,
+shift_date, site_id, site_name, start_time, end_time, status, worked_minutes, planned_minutes,
+employees [ { assignment_id, employee_id, first_name, last_name, status, check_in_at,
+check_out_at, planned_minutes, worked_minutes } ] } ]`.
+  **Turno realizado** = vigente, no cancelado, `completed` o con al menos un inicio registrado.
+  Un inicio sin fin cuenta como persona que trabajó pero suma 0 minutos.
+- `clients_worked_minutes(p_from, p_to)` (dueño y administradores): `(client_id, worked_minutes)`
+  de todos los clientes, mismo criterio que el total del resumen.
+- Índice nuevo `shifts_client_id_shift_date_idx (client_id, shift_date) where deleted_at is null`.
+- Errores: `FORBIDDEN`, `INVALID_DATE_RANGE`, `CLIENT_NOT_FOUND`.
+
 ## Enumeraciones (04 sección 3)
 
 Las 15 enumeraciones del modelo, en el esquema `public`, migración `0002_enums.sql`. Agregar un
 valor más adelante es `alter type ... add value ...`, sin rehacer nada: así entran los estados de
 los módulos futuros.
 
-| Enum                  | Valores (en orden)                                                                                                                                                                           |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `app_role`            | `owner`, `admin`, `supervisor`, `employee`                                                                                                                                                   |
-| `admin_capability`    | `manage_users`, `cancel_shifts`, `edit_ratings`, `edit_checklists`, `manage_attendance`, `generate_shifts`, `manage_supervisions`                                                            |
-| `client_status`       | `active`, `suspended`, `closed`                                                                                                                                                              |
-| `site_status`         | `active`, `inactive`                                                                                                                                                                         |
-| `employee_status`     | `active`, `terminated`                                                                                                                                                                       |
-| `service_status`      | `active`, `paused`, `ended`                                                                                                                                                                  |
-| `shift_status`        | `scheduled`, `assigned`, `in_progress`, `completed`, `cancelled`                                                                                                                             |
-| `assignment_status`   | `expected`, `delay_notified`, `absence_notified`, `present`, `finished`                                                                                                                      |
-| `task_status`         | `pending`, `in_progress`, `done`, `not_done`                                                                                                                                                 |
-| `attendance_kind`     | `check_in`, `check_out`                                                                                                                                                                      |
-| `attendance_source`   | `employee_app`, `admin`                                                                                                                                                                      |
-| `notice_kind`         | `delay`, `absence`                                                                                                                                                                           |
-| `absence_reason`      | `illness`, `personal`, `procedure`, `transport`, `other`                                                                                                                                     |
-| `supervision_status`  | `assigned`, `in_progress`, `completed`, `not_done`, `cancelled`                                                                                                                              |
-| `security_event_type` | `sign_in`, `sign_in_failed`, `user_created`, `user_deactivated`, `user_reactivated`, `password_reset_by_admin`, `sessions_revoked`, `roles_changed`, `capabilities_changed`, `email_changed` |
+| Enum                  | Valores (en orden)                                                                                                                                                                                                                                  |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app_role`            | `owner`, `admin`, `supervisor`, `employee`                                                                                                                                                                                                          |
+| `admin_capability`    | `manage_users`, `cancel_shifts`, `edit_ratings`, `edit_checklists`, `manage_attendance`, `generate_shifts`, `manage_supervisions`                                                                                                                   |
+| `client_status`       | `active`, `suspended`, `closed`                                                                                                                                                                                                                     |
+| `site_status`         | `active`, `inactive`                                                                                                                                                                                                                                |
+| `employee_status`     | `active`, `terminated`                                                                                                                                                                                                                              |
+| `service_status`      | `active`, `paused`, `ended`                                                                                                                                                                                                                         |
+| `shift_status`        | `scheduled`, `assigned`, `in_progress`, `completed`, `cancelled`                                                                                                                                                                                    |
+| `assignment_status`   | `expected`, `delay_notified`, `absence_notified`, `present`, `finished`                                                                                                                                                                             |
+| `task_status`         | `pending`, `in_progress`, `done`, `not_done`                                                                                                                                                                                                        |
+| `attendance_kind`     | `check_in`, `check_out`                                                                                                                                                                                                                             |
+| `attendance_source`   | `employee_app`, `admin`                                                                                                                                                                                                                             |
+| `notice_kind`         | `delay`, `absence`, `on_the_way` (0032)                                                                                                                                                                                                             |
+| `absence_reason`      | `illness`, `personal`, `procedure`, `transport`, `other`                                                                                                                                                                                            |
+| `supervision_status`  | `assigned`, `in_progress`, `completed`, `not_done`, `cancelled`                                                                                                                                                                                     |
+| `security_event_type` | `sign_in`, `sign_in_failed`, `user_created`, `user_deactivated`, `user_reactivated`, `password_reset_by_admin`, `sessions_revoked`, `roles_changed`, `capabilities_changed`, `email_changed`, `admin_action_rejected` (0030), `name_changed` (0032) |
 
 Las etiquetas en español para pantalla están en `04_Modelo_de_Datos.md` sección 3; no se
 duplican acá para no desincronizarse.
@@ -1699,7 +1774,9 @@ empleado y observación" más arriba. En F14 (P14.1, ABS-002, ATT-007):
 "`v_my_day`: acciones propias no encienden el aviso de cambios (P14.2)" más arriba. En F18
 (P18.6, corrección de defectos de la matriz de permisos y de la prueba de carga):
 `0030_p18_6_permisos_y_rendimiento.sql` y `0031_p18_6_service_role_funciones_de_vistas.sql` -- ver
-"Correcciones de P18.6" más arriba.
+"Correcciones de P18.6" más arriba. En F19 (P19.5a, ajustes de la reunión del 6 oct 2026):
+`0032_p19_5a_enums.sql` y `0033_p19_5a_ajustes_reunion.sql` -- ver "Ajustes de la reunión del
+6 oct 2026" más arriba.
 
 ## Cómo escribir una migración
 
@@ -1737,6 +1814,13 @@ un contenedor:
   (`App_dev`).
 - **CI:** con la variable `SUPABASE_DB_URL_DEV` (secreto de GitHub), corre con `--db-url` contra
   `App_dev`, en un runner que ya trae Docker.
+
+Para probar una migración nueva antes de tocar `App_dev`, usar la base local de Docker:
+`pnpm exec supabase start -x studio,vector,logflare,mailpit,realtime,edge-runtime,imgproxy` (liviano),
+`pnpm exec supabase migration up --local` y `pnpm exec supabase test db` (sin `--linked`).
+`pnpm exec supabase gen types typescript --local` regenera los tipos contra esa base; hay que
+conservar a mano el bloque `__InternalSupabase` del principio de `database.types.ts`, que la
+generación local no incluye.
 
 `App_dev` también sirve de staging, así que ningún archivo de test puede dejar cambios: la
 convención completa (transacción con `rollback`, `set local role postgres`, `search_path`,

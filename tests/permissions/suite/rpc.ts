@@ -100,6 +100,15 @@ export const CASOS_RPC: CasoRpc[] = [
     },
     { cubre: ['RB-E02'] },
   ),
+  // Nombre de una persona (0033, P19.5a): el dueño cambia el de cualquiera; los demás, solo el
+  // propio. Con un id inexistente, el dueño pasa la puerta y recibe PROFILE_NOT_FOUND; los demás
+  // reciben FORBIDDEN sin enterarse de quién existe.
+  caso(
+    'update_person_name',
+    () => ({ p_profile_id: U, p_first_name: 'Prueba', p_last_name: 'Matriz' }),
+    { owner: 'PROFILE_NOT_FOUND' },
+    { cubre: ['RB-X02'] },
+  ),
   // Uso exclusivo de la Edge Function (`service_role`): ni el dueño la puede llamar.
   caso('admin_revoke_user_sessions', () => ({ p_profile_id: U }), {
     empleado: '42501',
@@ -123,6 +132,20 @@ export const CASOS_RPC: CasoRpc[] = [
       admin: '42501',
       owner: '42501',
     },
+    { cubre: ['RB-X02'] },
+  ),
+
+  // --- Resumen por cliente (0033, P19.5a): dueño y administradores ----------------------------
+  caso(
+    'client_service_summary',
+    () => ({ p_client_id: U, p_from: '2099-01-01', p_to: '2099-01-02' }),
+    admins('CLIENT_NOT_FOUND'),
+    { cubre: ['RB-X02'] },
+  ),
+  caso(
+    'clients_worked_minutes',
+    () => ({ p_from: '2099-01-02', p_to: '2099-01-01' }),
+    admins('INVALID_DATE_RANGE'),
     { cubre: ['RB-X02'] },
   ),
 
@@ -272,6 +295,20 @@ export const CASOS_RPC: CasoRpc[] = [
       admin: 'MINUTES_REQUIRED',
       owner: 'MINUTES_REQUIRED',
     },
+    { variante: 'del compañero', cubre: ['RB-E07', 'RB-X02'] },
+  ),
+  // «En camino» (0033, P19.5a): solo el empleado de la asignación; ni el administrador con
+  // permiso de asistencia ni el dueño avisan en nombre de otro.
+  caso(
+    'notify_on_the_way',
+    () => ({ p_assignment_id: U }),
+    { empleado: 'ASSIGNMENT_NOT_FOUND', dual: 'ASSIGNMENT_NOT_FOUND' },
+    { cubre: ['RB-E07'] },
+  ),
+  caso(
+    'notify_on_the_way',
+    (c) => ({ p_assignment_id: c.e.asigE2 }),
+    { empleado: 'NOT_YOUR_ASSIGNMENT', dual: 'NOT_YOUR_ASSIGNMENT' },
     { variante: 'del compañero', cubre: ['RB-E07', 'RB-X02'] },
   ),
   caso(

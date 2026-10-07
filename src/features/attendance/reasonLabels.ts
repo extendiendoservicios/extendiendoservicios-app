@@ -13,6 +13,7 @@ export { ABSENCE_REASON_LABELS } from '@/lib/absenceReasons'
 export const NOTICE_KIND_LABELS: Record<NoticeKind, string> = {
   delay: 'Demora',
   absence: 'Ausencia',
+  on_the_way: 'En camino',
 }
 
 export const ATTENDANCE_SOURCE_LABELS: Record<AttendanceSource, string> = {
