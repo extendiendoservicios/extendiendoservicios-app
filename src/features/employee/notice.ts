@@ -1,5 +1,7 @@
 import type { MyDayAssignment } from '@/api/myDay'
 import { absenceReasonLabel } from '@/lib/absenceReasons'
+import { formatTime } from '@/lib/format'
+import { hasActiveOnTheWay } from '@/features/employee/onTheWay'
 
 /**
  * ABS-005 (`05_Pantallas_y_Navegacion.md` fila EMP-03/EMP-04): el aviso
@@ -32,6 +34,17 @@ export function getNoticeMessage(
   assignment: MyDayAssignment,
 ): NoticeMessage | null {
   const byAdmin = assignment.lastNoticeSource === 'admin'
+
+  // P19.5c: «en camino» es un aviso más y el último manda; no cambia el
+  // estado de la asignación, así que se reconoce por `lastNoticeKind`.
+  if (hasActiveOnTheWay(assignment)) {
+    return {
+      text: assignment.lastNoticeEstimatedArrivalAt
+        ? `Avisaste que estás en camino · llegás ~${formatTime(assignment.lastNoticeEstimatedArrivalAt)}`
+        : 'Avisaste que estás en camino.',
+      byAdmin: false,
+    }
+  }
 
   if (
     assignment.status === 'delay_notified' &&

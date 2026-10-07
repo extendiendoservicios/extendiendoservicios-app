@@ -13,6 +13,7 @@ import {
   useMarkChangesSeenMutation,
   useMyDayQuery,
 } from '@/features/employee/queries'
+import { OnTheWayAction } from '@/features/employee/components/OnTheWayAction'
 import { InstallBanner } from '@/components/InstallBanner'
 
 /**
@@ -90,12 +91,17 @@ export default function TodayPage() {
         />
       ) : (
         <>
-          {featured && <ServiceCard assignment={featured} featured />}
+          {featured && (
+            <div className="flex flex-col gap-2">
+              <ServiceCard assignment={featured} featured />
+              <OnTheWayAction assignment={featured} />
+            </div>
+          )}
           {others.map((assignment) => (
-            <ServiceCard
-              key={assignment.assignmentId}
-              assignment={assignment}
-            />
+            <div key={assignment.assignmentId} className="flex flex-col gap-2">
+              <ServiceCard assignment={assignment} />
+              <OnTheWayAction assignment={assignment} />
+            </div>
           ))}
         </>
       )}

@@ -86,6 +86,7 @@ const MY_DAY_ROW = {
   last_notice_reported_by: null,
   last_notice_source: null,
   last_notice_at: null,
+  last_notice_estimated_arrival_at: null,
 }
 
 describe('fetchMyDay', () => {
@@ -195,6 +196,7 @@ function baseAssignment() {
     lastNoticeReportedBy: null,
     lastNoticeSource: null,
     lastNoticeAt: null,
+    lastNoticeEstimatedArrivalAt: null,
   }
 }
 

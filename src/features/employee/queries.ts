@@ -194,6 +194,27 @@ export function useNotifyAbsenceMutation() {
   })
 }
 
+/**
+ * P19.5c: avisar «Estoy en camino» (`notify_on_the_way`). No cambia el
+ * estado de la asignación, pero sí el último aviso de `v_my_day`: se
+ * invalida `myDay` para que Hoy y el detalle lo muestren sin recargar.
+ */
+export function useNotifyOnTheWayMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      assignmentId,
+      etaMinutes,
+    }: {
+      assignmentId: string
+      etaMinutes: number | null
+    }) => noticesApi.notifyOnTheWay(assignmentId, etaMinutes),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: employeeKeys.myDay() })
+    },
+  })
+}
+
 /** Guardar la observación del servicio (P-062). Sin pantalla propia acá (EMP-09 es P13.3). */
 export function useSetAssignmentNotesMutation() {
   const queryClient = useQueryClient()

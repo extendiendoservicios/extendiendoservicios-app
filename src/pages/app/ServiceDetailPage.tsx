@@ -8,6 +8,7 @@ import { TaskList } from '@/components/TaskList'
 import { StatusBadge } from '@/components/status'
 import { formatMinutes } from '@/lib/format'
 import { avatarUrl } from '@/lib/avatarUrl'
+import { OnTheWayAction } from '@/features/employee/components/OnTheWayAction'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { getNoticeMessage } from '@/features/employee/notice'
 import { isNotifiable } from '@/features/employee/notifyCandidates'
@@ -136,6 +137,7 @@ export default function ServiceDetailPage() {
               <AlertDescription>{notice.text}</AlertDescription>
             </Alert>
           )}
+          <OnTheWayAction assignment={assignment} />
           {isNotifiable(assignment) && (
             <Button asChild size="md" variant="ghost">
               <Link to={`/app/avisar?asignacion=${assignment.assignmentId}`}>
