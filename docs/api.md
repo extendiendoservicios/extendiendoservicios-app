@@ -337,6 +337,19 @@ Los criterios de calificación (`fetchRatingCriteria`, ADM-30) viven en
 | `fetchRatings(filters?)`                                         | `from('ratings')`   | Filtros por empleado, supervisor, sede y rango de fechas, resueltos en el cliente (decisión propia, ver el reporte del encargo). O, A -- el empleado no ve esta tabla por ninguna vía (P-084, RLS de `0012`).                                                                                                                  |
 | `rateEmployee({ supervisionId, assignmentId, score, comment? })` | RPC `rate_employee` | Upsert (una fila por asignación). S (propia, dentro del plazo de P-083: hasta el fin del turno o de la supervisión, lo que ocurra último); O, A + `edit_ratings` (siempre, sin ventana). `SUPERVISION_NOT_ACTIVE`, `ASSIGNMENT_NOT_IN_SHIFT`, `SELF_RATING_NOT_ALLOWED` (CB-13), `SCORE_OUT_OF_RANGE`, `RATING_WINDOW_CLOSED`. |
 
+### Ajustes de la reunión del 6 oct 2026 (P19.5b — AJ-01 a AJ-10)
+
+Detalle y decisiones en `docs/features/ajustes-reunion-6-oct.md`.
+
+| Función                                                      | Canal                          | Notas                                                                                                                                            |
+| ------------------------------------------------------------ | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `users.updatePersonName({ profileId, firstName, lastName })` | RPC `update_person_name`       | Dueño a cualquiera (incluido él); cualquier persona activa a sí misma. `FORBIDDEN`, `PROFILE_NOT_FOUND`, `NAME_REQUIRED`, `NAME_TOO_LONG` (100). |
+| `ratings.fetchEmployeeRatingsSummary()`                      | `from('v_employee_ratings')`   | Una sola consulta para todos los empleados: mapa `employee_id` -> `{ average, count }`. Sin fila = sin calificaciones. Solo O, A.                |
+| `clients.fetchClientServiceSummary(clientId, from, to)`      | RPC `client_service_summary`   | Totales y turnos realizados con sus empleados. O, A. `INVALID_DATE_RANGE`, `CLIENT_NOT_FOUND`, `FORBIDDEN`.                                      |
+| `clients.fetchClientsWorkedMinutes(from, to)`                | RPC `clients_worked_minutes`   | Mapa `client_id` -> minutos (0 si no hubo trabajo), una llamada para todo el listado. O, A. `INVALID_DATE_RANGE`.                                |
+| `attendance` (columnas nuevas)                               | `from('v_assignments_board')`  | `AttendanceBoardRow` suma `lastNoticeEstimatedArrivalAt`, `plannedMinutes` y `workedMinutes`; `displayStatus` puede valer `on_the_way` y `late`. |
+| `supervisions` (columnas nuevas)                             | `from('v_supervisions_admin')` | `SupervisionListRow` suma `plannedMinutes` y `workedMinutes`.                                                                                    |
+
 ## Próximos dominios
 
 Cada paquete de F10 en adelante agrega su sección acá (`myDay`) siguiendo
