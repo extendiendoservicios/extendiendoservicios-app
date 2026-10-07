@@ -25,10 +25,10 @@ name: E2E App_dev
 #          └─► barrido ──┴─► tanda 1: admin, emp-movil, sup
 #                            tanda 2: admin-edge, emp-webkit, admin-a11y
 #                            tanda 3: perm (sola: es la que más consultas hace)
-#                            al final: dueno
+#                            al final: dueno, y después ajustes
 #
-# Tiempo estimado de la corrida completa: 35 a 40 minutos (tanda 1 ~11, tanda 2 ~8, perm ~8,
-# dueño ~2, más preparación de cada job).
+# Tiempo estimado de la corrida completa: 40 a 45 minutos (tanda 1 ~11, tanda 2 ~8, perm ~8,
+# dueño ~2, ajustes ~5, más preparación de cada job).
 #
 #  - `barrido` crea los conjuntos de cuentas que falten y borra los residuos `e2e-`: es el ÚNICO
 #    que barre; las suites corren con `E2E_SKIP_SWEEP=1`.
@@ -39,6 +39,8 @@ name: E2E App_dev
 #    matriz de permisos también toca y repone), lo que no admite otra suite en marcha. El cierre de
 #    sesión del dueño ya no obliga a nada: desde P18.6 es local (DEF-04) y su recorrido corre con
 #    `admin` y `admin-edge`.
+#  - `ajustes` (P19.5d, ajustes de la reunión del 6 oct 2026) va después de `dueno`: cambia y repone
+#    el nombre del dueño del seed (AJ-01), una cuenta única que las demás suites leen.
 #
 # Mientras corre, no se puede usar App_dev a mano ni correr `restore-test.yml` (comparten
 # `concurrency`). Detalle y tiempos: docs/deployment.md sección 14 y docs/test-inventory.md sección 10.
@@ -574,5 +576,70 @@ jobs:
             playwright-report*/
             test-results*/
             ${{ runner.temp }}/resultados-dueno-config.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+  ajustes:
+    name: ajustes de la reunión (nombre, en camino, horas, resumen)
+    # Al final de todo, después de `dueno`: el test de AJ-01 cambia (y repone) el nombre del dueño
+    # del seed, que es una sola cuenta compartida por todas las suites.
+    needs:
+      [
+        build,
+        barrido,
+        admin,
+        admin-edge,
+        admin-a11y,
+        emp-movil,
+        emp-webkit,
+        sup,
+        perm,
+        dueno,
+      ]
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.barrido.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      E2E_CONJUNTO: ajustes
+      E2E_SKIP_SWEEP: '1'
+    steps:
+      - name: Descargar el código (develop, o la rama elegida a mano)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RAMA_PROBADA }}
+
+      - name: Preparar Node, dependencias y navegadores
+        uses: ./.github/actions/preparar-e2e
+        with:
+          navegadores: chromium
+
+      - name: Bajar dist/ (el build de App_dev del job build)
+        uses: actions/download-artifact@v8
+        with:
+          name: dist-e2e
+          path: dist/
+
+      - name: Ajustes de la reunión del 6 oct, proyectos desktop y mobile
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ runner.temp }}/resultados-ajustes.json
+          PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report
+        run: pnpm exec playwright test --config=tests/e2e-ajustes-reunion/playwright.ajustes.config.ts --reporter=list,html,json --output=test-results
+
+      - name: Resumen de la corrida
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/resumen-e2e
+        with:
+          titulo: 'ajustes de la reunión'
+          json: ${{ runner.temp }}/resultados-ajustes.json
+
+      - name: Subir el reporte HTML y las trazas si algo falló
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-ajustes-reporte
+          path: |
+            playwright-report*/
+            test-results*/
+            ${{ runner.temp }}/resultados-ajustes.json
           if-no-files-found: ignore
           retention-days: 7
