@@ -50,10 +50,18 @@ export async function elegirFecha(
   nombre: string,
   objetivo: FechaPartes,
 ): Promise<void> {
-  await page.getByRole('button', { name: nombre, exact: true }).click()
-  await page
-    .locator('[data-slot="popover-content"][data-state="open"]')
-    .waitFor()
+  const abierto = page.locator(
+    '[data-slot="popover-content"][data-state="open"]',
+  )
+  // Que el selector anterior ya haya terminado de cerrarse: si no, el clic puede caer en el
+  // momento en que se cierra y el selector no llega a abrirse (se vio una vez en 3 corridas).
+  await expect(abierto).toHaveCount(0)
+  await expect(async () => {
+    if (!(await abierto.isVisible())) {
+      await page.getByRole('button', { name: nombre, exact: true }).click()
+    }
+    await expect(abierto).toBeVisible({ timeout: 3_000 })
+  }).toPass({ timeout: 20_000 })
 
   let encontrado: RegExpMatchArray | null = null
   await expect(async () => {
@@ -85,4 +93,5 @@ export async function elegirFecha(
     await page.keyboard.press(dDias >= 0 ? 'ArrowRight' : 'ArrowLeft')
   }
   await page.keyboard.press('Enter')
+  await expect(abierto).toHaveCount(0)
 }
