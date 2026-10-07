@@ -1994,14 +1994,14 @@ export type Database = {
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_in_recorded_by"]
+            columns: ["check_out_recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_out_recorded_by"]
+            columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -2179,6 +2179,7 @@ export type Database = {
             | Database["public"]["Enums"]["attendance_source"]
             | null
           notes: string | null
+          on_the_way_expires_at: string | null
           phone_restricted: boolean | null
           photos_not_allowed: boolean | null
           restrictions_notes: string | null
