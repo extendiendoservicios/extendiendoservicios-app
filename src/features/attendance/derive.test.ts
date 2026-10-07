@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  getArrivalHint,
+  getAttendanceRowVariant,
   getAttendanceStatusBadgeInput,
   getAvailableAttendanceActions,
+  getWorkedHoursIndicator,
 } from './derive'
 
 /**
@@ -140,5 +143,143 @@ describe('getAttendanceStatusBadgeInput', () => {
         lastNoticeMinutesLate: null,
       }),
     ).toEqual({ status: 'present' })
+  })
+})
+
+describe('estados nuevos en camino y llegada tarde (AJ-02, AJ-07)', () => {
+  const base = {
+    status: 'expected' as const,
+    minutesEarlyLeave: null,
+    lastNoticeMinutesLate: null,
+    shiftStatus: 'assigned' as const,
+  }
+
+  it('traduce display_status a on_the_way y late', () => {
+    expect(
+      getAttendanceStatusBadgeInput({ ...base, displayStatus: 'on_the_way' }),
+    ).toEqual({ status: 'on_the_way' })
+    expect(
+      getAttendanceStatusBadgeInput({ ...base, displayStatus: 'late' }),
+    ).toEqual({ status: 'late' })
+  })
+
+  it('el turno cancelado manda sobre on_the_way y late', () => {
+    for (const displayStatus of ['on_the_way', 'late']) {
+      const cancelled = { ...base, shiftStatus: 'cancelled' as const }
+      expect(
+        getAttendanceStatusBadgeInput({ ...cancelled, displayStatus }),
+      ).toEqual({ status: 'expected' })
+      expect(
+        getAttendanceRowVariant({ ...cancelled, displayStatus }),
+      ).toBeUndefined()
+    }
+  })
+
+  it('colorea la fila: celeste en camino, amarilla llegada tarde, roja sin registro', () => {
+    expect(
+      getAttendanceRowVariant({ ...base, displayStatus: 'on_the_way' }),
+    ).toBe('info')
+    expect(getAttendanceRowVariant({ ...base, displayStatus: 'late' })).toBe(
+      'warn',
+    )
+    expect(
+      getAttendanceRowVariant({ ...base, displayStatus: 'no_record' }),
+    ).toBe('crit')
+  })
+
+  it('muestra "llega ~HH:MM" en hora de Argentina solo si está en camino y informó la hora', () => {
+    const arrival = '2026-09-30T11:30:00Z' // 08:30 en Argentina
+    expect(
+      getArrivalHint({
+        ...base,
+        displayStatus: 'on_the_way',
+        lastNoticeEstimatedArrivalAt: arrival,
+      }),
+    ).toBe('llega ~08:30')
+    expect(
+      getArrivalHint({
+        ...base,
+        displayStatus: 'on_the_way',
+        lastNoticeEstimatedArrivalAt: null,
+      }),
+    ).toBeNull()
+    expect(
+      getArrivalHint({
+        ...base,
+        displayStatus: 'late',
+        lastNoticeEstimatedArrivalAt: arrival,
+      }),
+    ).toBeNull()
+  })
+})
+
+describe('getWorkedHoursIndicator (AJ-03)', () => {
+  const row = {
+    workedMinutes: 240,
+    plannedMinutes: 240,
+    minutesEarlyLeave: null,
+    checkInAt: '2026-09-30T11:00:00Z',
+    checkOutAt: '2026-09-30T15:00:00Z',
+  }
+
+  it('tilde verde si trabajó exactamente lo previsto (sin margen)', () => {
+    expect(getWorkedHoursIndicator(row)).toEqual({
+      kind: 'ok',
+      workedMinutes: 240,
+      text: '4 h',
+    })
+  })
+
+  it('tilde verde si trabajó de más', () => {
+    expect(getWorkedHoursIndicator({ ...row, workedMinutes: 250 }).kind).toBe(
+      'ok',
+    )
+  })
+
+  it('advertencia "Faltan X min" si trabajó un minuto menos', () => {
+    expect(getWorkedHoursIndicator({ ...row, workedMinutes: 239 })).toEqual({
+      kind: 'warning',
+      workedMinutes: 239,
+      text: '3 h 59 min',
+      reason: 'Faltan 1 min',
+    })
+  })
+
+  it('advertencia con salida anticipada aunque las horas alcancen', () => {
+    expect(
+      getWorkedHoursIndicator({ ...row, minutesEarlyLeave: 5 }),
+    ).toMatchObject({ kind: 'warning', reason: 'Salida anticipada' })
+  })
+
+  it('salida anticipada y faltante juntos', () => {
+    expect(
+      getWorkedHoursIndicator({
+        ...row,
+        workedMinutes: 178,
+        minutesEarlyLeave: 62,
+      }),
+    ).toMatchObject({
+      kind: 'warning',
+      text: '2 h 58 min',
+      reason: 'Salida anticipada · faltan 1 h 2 min',
+    })
+  })
+
+  it('sin fin registrado: en curso si ya empezó, guion si no', () => {
+    expect(
+      getWorkedHoursIndicator({
+        ...row,
+        workedMinutes: null,
+        checkOutAt: null,
+      }),
+    ).toEqual({ kind: 'in_progress' })
+    expect(
+      getWorkedHoursIndicator({
+        ...row,
+        workedMinutes: null,
+        checkInAt: null,
+        checkOutAt: null,
+      }),
+    ).toEqual({ kind: 'none' })
   })
 })

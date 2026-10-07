@@ -49,6 +49,8 @@ describe('computeKpis', () => {
       noRecord: 0,
       absenceNotices: 0,
       delayNotices: 0,
+      lateArrivals: 0,
+      onTheWay: 0,
     })
   })
 
@@ -108,7 +110,34 @@ describe('computeKpis', () => {
       noRecord: 2,
       absenceNotices: 1,
       delayNotices: 2,
+      lateArrivals: 0,
+      onTheWay: 0,
     })
+  })
+
+  it('AJ-02/AJ-07: "En camino" no es alerta y "Llegada tarde" sí, sin duplicar demoras avisadas ni turnos cancelados', () => {
+    const shifts = [makeShift({ id: 's1' })]
+    const assignments = [
+      makeAssignment({ id: 'a1', displayStatus: 'on_the_way' }),
+      makeAssignment({ id: 'a2', displayStatus: 'late' }),
+      // Ya cuenta como demora avisada: no suma de nuevo como llegada tarde.
+      makeAssignment({
+        id: 'a3',
+        status: 'delay_notified',
+        displayStatus: 'late',
+      }),
+      makeAssignment({
+        id: 'a4',
+        shiftId: 's9',
+        shiftStatus: 'cancelled',
+        displayStatus: 'late',
+      }),
+    ]
+    const kpis = computeKpis(shifts, assignments, NOW)
+    expect(kpis.onTheWay).toBe(1)
+    expect(kpis.lateArrivals).toBe(1)
+    expect(kpis.delayNotices).toBe(1)
+    expect(kpis.noRecord).toBe(0)
   })
 })
 

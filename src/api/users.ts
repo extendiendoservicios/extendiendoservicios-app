@@ -84,6 +84,27 @@ export async function fetchUsers(): Promise<AdminUserRow[]> {
 }
 
 /**
+ * Cambia nombre y apellido de una persona (AJ-01, `update_person_name`): el
+ * dueño a cualquiera (incluido él mismo), cualquier persona activa a sí
+ * misma. Errores del servidor, con su `message` en español y su `hint`:
+ * `FORBIDDEN`, `PROFILE_NOT_FOUND`, `NAME_REQUIRED`, `NAME_TOO_LONG` (100).
+ */
+export async function updatePersonName(input: {
+  profileId: string
+  firstName: string
+  lastName: string
+}): Promise<void> {
+  const { error } = await supabase.rpc('update_person_name', {
+    p_profile_id: input.profileId,
+    p_first_name: input.firstName,
+    p_last_name: input.lastName,
+  })
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+}
+
+/**
  * Último `sign_in` de cada persona (`security_events`, `04` sección 2.6,
  * AUTH-009), para la columna "último inicio de sesión" de ADM-27.
  *

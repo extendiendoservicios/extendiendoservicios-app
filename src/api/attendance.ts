@@ -237,6 +237,12 @@ export interface AttendanceBoardRow {
   lastNoticeReportedBy: string | null
   lastNoticeSource: AttendanceSource | null
   lastNoticeAt: string | null
+  /** AJ-02: hora de llegada que informó el empleado con «En camino» (instante), si la informó. */
+  lastNoticeEstimatedArrivalAt: string | null
+  /** AJ-03: minutos previstos de la franja efectiva. */
+  plannedMinutes: number | null
+  /** AJ-03: minutos trabajados (inicio a fin real, redondeados al minuto); `null` sin fin registrado. */
+  workedMinutes: number | null
 }
 
 /** Todas las columnas de `v_assignments_board` que usa esta pantalla (`06` sección 10, P14.1). */
@@ -248,7 +254,8 @@ const ATTENDANCE_BOARD_SELECT = `
   check_in_at, check_out_at, check_in_source, check_in_recorded_by, check_out_source, check_out_recorded_by,
   minutes_late, minutes_early_leave,
   last_notice_kind, last_notice_minutes_late, last_notice_reason_code, last_notice_reason_text,
-  last_notice_reported_by, last_notice_source, last_notice_at
+  last_notice_reported_by, last_notice_source, last_notice_at,
+  last_notice_estimated_arrival_at, planned_minutes, worked_minutes
 `
 
 interface AttendanceBoardRawRow {
@@ -286,6 +293,9 @@ interface AttendanceBoardRawRow {
   last_notice_reported_by: string | null
   last_notice_source: AttendanceSource | null
   last_notice_at: string | null
+  last_notice_estimated_arrival_at: string | null
+  planned_minutes: number | null
+  worked_minutes: number | null
 }
 
 function mapAttendanceBoardRow(row: AttendanceBoardRawRow): AttendanceBoardRow {
@@ -324,6 +334,9 @@ function mapAttendanceBoardRow(row: AttendanceBoardRawRow): AttendanceBoardRow {
     lastNoticeReportedBy: row.last_notice_reported_by,
     lastNoticeSource: row.last_notice_source,
     lastNoticeAt: row.last_notice_at,
+    lastNoticeEstimatedArrivalAt: row.last_notice_estimated_arrival_at,
+    plannedMinutes: row.planned_minutes,
+    workedMinutes: row.worked_minutes,
   }
 }
 

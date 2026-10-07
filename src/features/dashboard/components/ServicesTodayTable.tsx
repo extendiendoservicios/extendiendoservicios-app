@@ -14,7 +14,12 @@ import { StatusBadge } from '@/components/status'
 import { avatarUrl } from '@/lib/avatarUrl'
 import { formatMinutes, formatTime } from '@/lib/format'
 import type { AttendanceBoardRow } from '@/api/attendance'
-import { getAttendanceStatusBadgeInput } from '@/features/attendance/derive'
+import {
+  getArrivalHint,
+  getAttendanceRowVariant,
+  getAttendanceStatusBadgeInput,
+} from '@/features/attendance/derive'
+import { WorkedHoursCell } from '@/features/attendance/components/WorkedHoursCell'
 import {
   ALL_DAY_FILTER,
   filterByFranja,
@@ -101,12 +106,26 @@ function ServicesTodayTable({
       id: 'status',
       header: 'Estado',
       meta: { card: 'meta', cardLabel: 'Estado' },
-      cell: ({ row }) => (
-        <StatusBadge
-          domain="assignment"
-          {...getAttendanceStatusBadgeInput(row.original)}
-        />
-      ),
+      cell: ({ row }) => {
+        const arrival = getArrivalHint(row.original)
+        return (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <StatusBadge
+              domain="assignment"
+              {...getAttendanceStatusBadgeInput(row.original)}
+            />
+            {arrival && (
+              <span className="text-[12px] text-text-2">{arrival}</span>
+            )}
+          </div>
+        )
+      },
+    },
+    {
+      id: 'workedHours',
+      header: 'Horas',
+      meta: { card: 'meta', cardLabel: 'Horas' },
+      cell: ({ row }) => <WorkedHoursCell {...row.original} />,
     },
     {
       id: 'earlyLeave',
@@ -181,14 +200,7 @@ function ServicesTodayTable({
         data={filtered}
         getRowId={(row) => row.id}
         isLoading={isLoading}
-        rowVariant={(row) =>
-          row.displayStatus === 'no_record' || row.status === 'absence_notified'
-            ? 'crit'
-            : row.status === 'delay_notified' ||
-                (row.minutesEarlyLeave != null && row.minutesEarlyLeave > 0)
-              ? 'warn'
-              : undefined
-        }
+        rowVariant={getAttendanceRowVariant}
         emptyState={{
           icon: Users,
           title: 'No hay servicios para hoy',

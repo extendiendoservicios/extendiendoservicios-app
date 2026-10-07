@@ -7,6 +7,7 @@ import {
   LogOut,
   Mail,
   MoreHorizontal,
+  Pencil,
   ShieldCheck,
   UserCheck,
   UserX,
@@ -40,6 +41,7 @@ import {
   useResetPasswordMutation,
   useSignOutUserMutation,
   useUpdateEmailMutation,
+  useUpdatePersonNameMutation,
 } from '@/features/users/queries'
 import {
   getVisibleUserActions,
@@ -48,8 +50,10 @@ import {
 import {
   resetPasswordSchema,
   updateEmailSchema,
+  updatePersonNameSchema,
   type ResetPasswordFormValues,
   type UpdateEmailFormValues,
+  type UpdatePersonNameFormValues,
 } from '@/features/users/schemas'
 
 /**
@@ -73,6 +77,7 @@ function UserActionsMenu({
   onEditRolesAndCapabilities: () => void
 }) {
   type DialogKind =
+    | 'edit-name'
     | 'reset-password'
     | 'update-email'
     | 'sign-out'
@@ -90,6 +95,7 @@ function UserActionsMenu({
     deletedAt: user.deletedAt,
   })
   const canEditRoles = visibleActions.includes('edit-roles')
+  const canEditName = visibleActions.includes('edit-name')
   const showActiveActions = visibleActions.includes('reset-password')
   const showReactivate = visibleActions.includes('reactivate')
 
@@ -114,9 +120,14 @@ function UserActionsMenu({
               <ShieldCheck /> Editar roles y capacidades
             </DropdownMenuItem>
           )}
+          {canEditName && (
+            <DropdownMenuItem onSelect={() => setOpenDialog('edit-name')}>
+              <Pencil /> Editar nombre
+            </DropdownMenuItem>
+          )}
           {showActiveActions && (
             <>
-              {canEditRoles && <DropdownMenuSeparator />}
+              {(canEditRoles || canEditName) && <DropdownMenuSeparator />}
               <DropdownMenuItem
                 onSelect={() => setOpenDialog('reset-password')}
               >
@@ -145,6 +156,11 @@ function UserActionsMenu({
         </DropdownMenuContent>
       </DropdownMenu>
 
+      <EditNameDialog
+        user={user}
+        open={openDialog === 'edit-name'}
+        onOpenChange={(open) => setOpenDialog(open ? 'edit-name' : null)}
+      />
       <ResetPasswordDialog
         user={user}
         open={openDialog === 'reset-password'}
@@ -180,6 +196,103 @@ function fullNameOf(user: AdminUserRow): string {
 
 function apiErrorMessage(error: unknown, fallback: string): string {
   return isApiError(error) ? error.message : fallback
+}
+
+/** AJ-01: editar nombre y apellido (solo el dueño, `update_person_name`). */
+function EditNameDialog({
+  user,
+  open,
+  onOpenChange,
+}: {
+  user: AdminUserRow
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const updateName = useUpdatePersonNameMutation()
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<UpdatePersonNameFormValues>({
+    resolver: zodResolver(updatePersonNameSchema),
+    values: { firstName: user.firstName, lastName: user.lastName },
+  })
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen) reset()
+    onOpenChange(nextOpen)
+  }
+
+  async function onSubmit(values: UpdatePersonNameFormValues) {
+    try {
+      await updateName.mutateAsync({
+        profileId: user.profileId,
+        firstName: values.firstName,
+        lastName: values.lastName,
+      })
+      toast.success(
+        `Cambiamos el nombre a ${values.firstName} ${values.lastName}.`,
+      )
+      handleOpenChange(false)
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'No pudimos cambiar el nombre.'))
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Editar nombre</DialogTitle>
+          <DialogDescription>
+            Nombre y apellido de {fullNameOf(user)}. Se actualizan en todas las
+            pantallas.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={(event) => void handleSubmit(onSubmit)(event)}>
+          <div className="flex flex-col gap-3">
+            <Field data-invalid={Boolean(errors.firstName) || undefined}>
+              <FieldLabel htmlFor="edit-name-first">Nombre</FieldLabel>
+              <Input
+                id="edit-name-first"
+                autoComplete="off"
+                aria-invalid={Boolean(errors.firstName)}
+                {...register('firstName')}
+              />
+              {errors.firstName && (
+                <FieldError>{errors.firstName.message}</FieldError>
+              )}
+            </Field>
+            <Field data-invalid={Boolean(errors.lastName) || undefined}>
+              <FieldLabel htmlFor="edit-name-last">Apellido</FieldLabel>
+              <Input
+                id="edit-name-last"
+                autoComplete="off"
+                aria-invalid={Boolean(errors.lastName)}
+                {...register('lastName')}
+              />
+              {errors.lastName && (
+                <FieldError>{errors.lastName.message}</FieldError>
+              )}
+            </Field>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => handleOpenChange(false)}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" loading={updateName.isPending}>
+              Guardar nombre
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
 }
 
 /** USERS-011: resetear contraseña -- revoca las sesiones de la persona (06 sección 2.1). */

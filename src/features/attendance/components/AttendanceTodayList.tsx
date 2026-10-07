@@ -27,6 +27,8 @@ import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import type { AttendanceBoardRow } from '@/api/attendance'
 import {
+  getArrivalHint,
+  getAttendanceRowVariant,
   getAttendanceStatusBadgeInput,
   getAvailableAttendanceActions,
 } from '@/features/attendance/derive'
@@ -36,6 +38,7 @@ import {
   useEmployeePhonesQuery,
 } from '@/features/attendance/queries'
 import { UpdatedAgo } from './UpdatedAgo'
+import { WorkedHoursCell } from './WorkedHoursCell'
 import { RecordAttendanceSheet } from './RecordAttendanceSheet'
 
 /** `"YYYY-MM-DD"` → `Date` para `DatePicker` (mismo criterio que `ShiftsDayList`). */
@@ -51,6 +54,8 @@ const STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: 'present', label: 'Presente' },
   { value: 'finished', label: 'Finalizado' },
   { value: 'no_record', label: 'Sin registro' },
+  { value: 'on_the_way', label: 'En camino' },
+  { value: 'late', label: 'Llegada tarde' },
 ]
 
 /**
@@ -191,12 +196,26 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
       id: 'status',
       header: 'Estado',
       meta: { card: 'meta', cardLabel: 'Estado' },
-      cell: ({ row }) => (
-        <StatusBadge
-          domain="assignment"
-          {...getAttendanceStatusBadgeInput(row.original)}
-        />
-      ),
+      cell: ({ row }) => {
+        const arrival = getArrivalHint(row.original)
+        return (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <StatusBadge
+              domain="assignment"
+              {...getAttendanceStatusBadgeInput(row.original)}
+            />
+            {arrival && (
+              <span className="text-[12px] text-text-2">{arrival}</span>
+            )}
+          </div>
+        )
+      },
+    },
+    {
+      id: 'workedHours',
+      header: 'Horas',
+      meta: { card: 'meta', cardLabel: 'Horas' },
+      cell: ({ row }) => <WorkedHoursCell {...row.original} />,
     },
     {
       id: 'earlyLeave',
@@ -342,14 +361,7 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
         data={filteredRows}
         getRowId={(row) => row.id}
         isLoading={boardQuery.isLoading}
-        rowVariant={(row) =>
-          row.displayStatus === 'no_record' || row.status === 'absence_notified'
-            ? 'crit'
-            : row.status === 'delay_notified' ||
-                (row.minutesEarlyLeave != null && row.minutesEarlyLeave > 0)
-              ? 'warn'
-              : undefined
-        }
+        rowVariant={getAttendanceRowVariant}
         emptyState={{
           icon: Users,
           title: 'No hay asignaciones para este día',

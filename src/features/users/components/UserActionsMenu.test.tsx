@@ -15,6 +15,10 @@ import type { UsersScreenActor } from '@/features/users/permissions'
 vi.mock('@/features/users/queries', () => ({
   useResetPasswordMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateEmailMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdatePersonNameMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useSignOutUserMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeactivateUserMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useReactivateUserMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
