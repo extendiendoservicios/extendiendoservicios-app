@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as employeesApi from '@/api/employees'
+import { fetchEmployeeRatingsSummary } from '@/api/ratings'
 import type {
   EmployeeAvailabilitySlotInput,
   EmployeeCreateInput,
@@ -35,6 +36,7 @@ export const employeesKeys = {
     [...employeesKeys.all, 'availability', profileId] as const,
   leaves: (profileId: string) =>
     [...employeesKeys.all, 'leaves', profileId] as const,
+  ratingsSummary: () => [...employeesKeys.all, 'ratingsSummary'] as const,
 }
 
 // -------------------------------------------------------------------------
@@ -55,6 +57,19 @@ export function useEmployeeClientPermissionsQuery() {
   return useQuery({
     queryKey: employeesKeys.clientPermissions(),
     queryFn: employeesApi.fetchEmployeeClientPermissions,
+    staleTime: LIST_POLLING_MS,
+    refetchInterval: LIST_POLLING_MS,
+  })
+}
+
+/**
+ * AJ-04, AJ-05: promedio de calificaciones de todos los empleados
+ * (`v_employee_ratings`), una sola consulta para el listado y la ficha.
+ */
+export function useEmployeeRatingsSummaryQuery() {
+  return useQuery({
+    queryKey: employeesKeys.ratingsSummary(),
+    queryFn: fetchEmployeeRatingsSummary,
     staleTime: LIST_POLLING_MS,
     refetchInterval: LIST_POLLING_MS,
   })

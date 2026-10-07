@@ -194,3 +194,38 @@ export async function rateEmployee(
     updatedAt: data.updated_at,
   }
 }
+
+/** Promedio y cantidad de calificaciones de un empleado (`v_employee_ratings`, AJ-04, AJ-05). */
+export interface EmployeeRatingSummary {
+  average: number
+  count: number
+}
+
+/**
+ * Promedio de calificaciones de todos los empleados en una sola consulta
+ * (`v_employee_ratings`, solo dueño y administradores). Los empleados sin
+ * calificaciones no tienen fila: quien lo usa muestra «Sin calificaciones».
+ */
+export async function fetchEmployeeRatingsSummary(): Promise<
+  Map<string, EmployeeRatingSummary>
+> {
+  const { data, error } = await supabase
+    .from('v_employee_ratings')
+    .select('employee_id, ratings_count, ratings_avg')
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+
+  const summaries = new Map<string, EmployeeRatingSummary>()
+  for (const row of data ?? []) {
+    if (row.employee_id == null || row.ratings_avg == null) {
+      continue
+    }
+    summaries.set(row.employee_id, {
+      average: Number(row.ratings_avg),
+      count: row.ratings_count ?? 0,
+    })
+  }
+  return summaries
+}

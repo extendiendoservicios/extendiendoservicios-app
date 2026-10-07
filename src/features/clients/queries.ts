@@ -29,6 +29,10 @@ export const clientsKeys = {
   contacts: (clientId: string) =>
     [...clientsKeys.all, 'contacts', clientId] as const,
   sites: (clientId: string) => [...clientsKeys.all, 'sites', clientId] as const,
+  workedMinutes: (from: string, to: string) =>
+    [...clientsKeys.all, 'workedMinutes', from, to] as const,
+  serviceSummary: (clientId: string, from: string, to: string) =>
+    [...clientsKeys.all, 'serviceSummary', clientId, from, to] as const,
 }
 
 // -------------------------------------------------------------------------
@@ -211,5 +215,34 @@ export function useClientSitesQuery(clientId: string | undefined) {
     queryKey: clientsKeys.sites(clientId ?? ''),
     queryFn: () => clientsApi.fetchClientSites(clientId as string),
     enabled: clientId != null,
+  })
+}
+
+/** AJ-10: horas trabajadas por cliente en el período (una llamada para todo el listado). */
+export function useClientsWorkedMinutesQuery(from: string, to: string) {
+  return useQuery({
+    queryKey: clientsKeys.workedMinutes(from, to),
+    queryFn: () => clientsApi.fetchClientsWorkedMinutes(from, to),
+    staleTime: LIST_POLLING_MS,
+    refetchInterval: LIST_POLLING_MS,
+  })
+}
+
+/**
+ * AJ-09: resumen de servicios de un cliente en un período. Es el contenido de
+ * una pestaña que se abre a demanda: sin polling.
+ */
+export function useClientServiceSummaryQuery(
+  clientId: string | undefined,
+  from: string,
+  to: string,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: clientsKeys.serviceSummary(clientId ?? '', from, to),
+    queryFn: () =>
+      clientsApi.fetchClientServiceSummary(clientId as string, from, to),
+    enabled: enabled && clientId != null && from <= to,
+    retry: false,
   })
 }

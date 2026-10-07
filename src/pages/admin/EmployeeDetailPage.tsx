@@ -33,7 +33,11 @@ import {
   canEditEmployee,
   canManageEmployeeAccounts,
 } from '@/features/employees/permissions'
-import { useEmployeeDetailQuery } from '@/features/employees/queries'
+import {
+  useEmployeeDetailQuery,
+  useEmployeeRatingsSummaryQuery,
+} from '@/features/employees/queries'
+import { RatingSummary } from '@/features/employees/components/RatingSummary'
 
 const TABS = [
   'datos',
@@ -88,6 +92,7 @@ export default function EmployeeDetailPage() {
   }
 
   const employeeQuery = useEmployeeDetailQuery(id)
+  const ratingsQuery = useEmployeeRatingsSummaryQuery()
 
   if (!id) {
     return null
@@ -143,6 +148,12 @@ export default function EmployeeDetailPage() {
                 ? ` · ${employee.roles.map((role) => ROLE_LABELS[role]).join(', ')}`
                 : ''}
             </p>
+            {/* AJ-05: promedio de calificaciones en una tercera línea. */}
+            <div className="mt-1">
+              <RatingSummary
+                summary={ratingsQuery.data?.get(employee.profileId)}
+              />
+            </div>
           </div>
         </div>
         <div className="flex min-w-0 flex-wrap gap-2">
@@ -235,7 +246,14 @@ export default function EmployeeDetailPage() {
         </TabsContent>
 
         <TabsContent value="asistencia" className="pt-3">
-          <EmployeeAttendanceHistoryTab profileId={employee.profileId} />
+          <EmployeeAttendanceHistoryTab
+            profileId={employee.profileId}
+            person={{
+              name: `${employee.firstName} ${employee.lastName}`,
+              employeeNumber: employee.employeeNumber,
+              roles: employee.roles,
+            }}
+          />
         </TabsContent>
 
         <TabsContent value="calificaciones" className="pt-3">

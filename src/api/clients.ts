@@ -485,3 +485,163 @@ export async function fetchClientSites(
     status: row.status,
   }))
 }
+
+// -------------------------------------------------------------------------
+// Resumen de servicios y horas del mes (AJ-09, AJ-10)
+// -------------------------------------------------------------------------
+
+/** Una persona asignada a un turno realizado, en `client_service_summary`. */
+export interface ClientSummaryEmployee {
+  assignmentId: string
+  employeeId: string
+  firstName: string
+  lastName: string
+  status: string
+  checkInAt: string | null
+  checkOutAt: string | null
+  plannedMinutes: number | null
+  workedMinutes: number | null
+}
+
+/** Un turno realizado dentro del período. */
+export interface ClientSummaryShift {
+  shiftId: string
+  shiftDate: string
+  siteId: string
+  siteName: string
+  startTime: string
+  endTime: string
+  status: string
+  workedMinutes: number
+  plannedMinutes: number
+  employees: ClientSummaryEmployee[]
+}
+
+export interface ClientServiceSummary {
+  clientId: string
+  from: string
+  to: string
+  totals: {
+    shiftsDone: number
+    employeesCount: number
+    workedMinutes: number
+    plannedMinutes: number
+  }
+  shifts: ClientSummaryShift[]
+}
+
+interface ClientServiceSummaryRaw {
+  client_id: string
+  from: string
+  to: string
+  totals: {
+    shifts_done: number
+    employees_count: number
+    worked_minutes: number
+    planned_minutes: number
+  }
+  shifts: {
+    shift_id: string
+    shift_date: string
+    site_id: string
+    site_name: string
+    start_time: string
+    end_time: string
+    status: string
+    worked_minutes: number
+    planned_minutes: number
+    employees: {
+      assignment_id: string
+      employee_id: string
+      first_name: string
+      last_name: string
+      status: string
+      check_in_at: string | null
+      check_out_at: string | null
+      planned_minutes: number | null
+      worked_minutes: number | null
+    }[]
+  }[]
+}
+
+/** Arma el resumen tipado a partir del `jsonb` que devuelve la RPC. */
+export function mapClientServiceSummary(
+  raw: ClientServiceSummaryRaw,
+): ClientServiceSummary {
+  return {
+    clientId: raw.client_id,
+    from: raw.from,
+    to: raw.to,
+    totals: {
+      shiftsDone: raw.totals.shifts_done,
+      employeesCount: raw.totals.employees_count,
+      workedMinutes: raw.totals.worked_minutes,
+      plannedMinutes: raw.totals.planned_minutes,
+    },
+    shifts: (raw.shifts ?? []).map((shift) => ({
+      shiftId: shift.shift_id,
+      shiftDate: shift.shift_date,
+      siteId: shift.site_id,
+      siteName: shift.site_name,
+      startTime: shift.start_time,
+      endTime: shift.end_time,
+      status: shift.status,
+      workedMinutes: shift.worked_minutes,
+      plannedMinutes: shift.planned_minutes,
+      employees: (shift.employees ?? []).map((employee) => ({
+        assignmentId: employee.assignment_id,
+        employeeId: employee.employee_id,
+        firstName: employee.first_name,
+        lastName: employee.last_name,
+        status: employee.status,
+        checkInAt: employee.check_in_at,
+        checkOutAt: employee.check_out_at,
+        plannedMinutes: employee.planned_minutes,
+        workedMinutes: employee.worked_minutes,
+      })),
+    })),
+  }
+}
+
+/**
+ * Resumen de servicios de un cliente en un período (AJ-09,
+ * `client_service_summary`): dueño y cualquier administrador. Errores del
+ * servidor con su `message` en español: `INVALID_DATE_RANGE` (desde posterior
+ * a hasta), `CLIENT_NOT_FOUND`, `FORBIDDEN`.
+ */
+export async function fetchClientServiceSummary(
+  clientId: string,
+  from: string,
+  to: string,
+): Promise<ClientServiceSummary> {
+  const { data, error } = await supabase.rpc('client_service_summary', {
+    p_client_id: clientId,
+    p_from: from,
+    p_to: to,
+  })
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return mapClientServiceSummary(data as unknown as ClientServiceSummaryRaw)
+}
+
+/**
+ * Minutos trabajados por cliente en un período (AJ-10,
+ * `clients_worked_minutes`), una sola llamada para todo el listado. Mapa
+ * `client_id` -> minutos (0 si no hubo trabajo).
+ */
+export async function fetchClientsWorkedMinutes(
+  from: string,
+  to: string,
+): Promise<Map<string, number>> {
+  const { data, error } = await supabase.rpc('clients_worked_minutes', {
+    p_from: from,
+    p_to: to,
+  })
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return new Map((data ?? []).map((row) => [row.client_id, row.worked_minutes]))
+}
