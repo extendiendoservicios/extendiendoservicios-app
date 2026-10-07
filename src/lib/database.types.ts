@@ -152,6 +152,13 @@ export type Database = {
             foreignKeyName: "assignments_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
+            referencedRelation: "v_employee_ratings"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "assignments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
             referencedRelation: "v_employees"
             referencedColumns: ["profile_id"]
           },
@@ -189,6 +196,7 @@ export type Database = {
         Row: {
           assignment_id: string
           created_at: string
+          estimated_arrival_at: string | null
           id: string
           kind: Database["public"]["Enums"]["notice_kind"]
           minutes_late: number | null
@@ -200,6 +208,7 @@ export type Database = {
         Insert: {
           assignment_id: string
           created_at?: string
+          estimated_arrival_at?: string | null
           id?: string
           kind: Database["public"]["Enums"]["notice_kind"]
           minutes_late?: number | null
@@ -211,6 +220,7 @@ export type Database = {
         Update: {
           assignment_id?: string
           created_at?: string
+          estimated_arrival_at?: string | null
           id?: string
           kind?: Database["public"]["Enums"]["notice_kind"]
           minutes_late?: number | null
@@ -691,6 +701,13 @@ export type Database = {
             foreignKeyName: "employee_availability_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
+            referencedRelation: "v_employee_ratings"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_availability_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
             referencedRelation: "v_employees"
             referencedColumns: ["profile_id"]
           },
@@ -755,6 +772,13 @@ export type Database = {
             foreignKeyName: "employee_client_permissions_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
+            referencedRelation: "v_employee_ratings"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_client_permissions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
             referencedRelation: "v_employees"
             referencedColumns: ["profile_id"]
           },
@@ -811,6 +835,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employee_leaves_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "v_employee_ratings"
+            referencedColumns: ["employee_id"]
           },
           {
             foreignKeyName: "employee_leaves_employee_id_fkey"
@@ -1785,6 +1816,13 @@ export type Database = {
             foreignKeyName: "supervisions_supervisor_id_fkey"
             columns: ["supervisor_id"]
             isOneToOne: false
+            referencedRelation: "v_employee_ratings"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "supervisions_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
             referencedRelation: "v_employees"
             referencedColumns: ["profile_id"]
           },
@@ -1862,6 +1900,7 @@ export type Database = {
           employee_last_name: string | null
           id: string | null
           last_notice_at: string | null
+          last_notice_estimated_arrival_at: string | null
           last_notice_kind: Database["public"]["Enums"]["notice_kind"] | null
           last_notice_minutes_late: number | null
           last_notice_reason_code:
@@ -1875,6 +1914,7 @@ export type Database = {
           minutes_early_leave: number | null
           minutes_late: number | null
           notes: string | null
+          planned_minutes: number | null
           removed_at: string | null
           removed_by: string | null
           removed_reason: string | null
@@ -1886,6 +1926,7 @@ export type Database = {
           status: Database["public"]["Enums"]["assignment_status"] | null
           updated_at: string | null
           updated_by: string | null
+          worked_minutes: number | null
         }
         Relationships: [
           {
@@ -1901,6 +1942,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "assignments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "v_employee_ratings"
+            referencedColumns: ["employee_id"]
           },
           {
             foreignKeyName: "assignments_employee_id_fkey"
@@ -1946,14 +1994,14 @@ export type Database = {
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_out_recorded_by"]
+            columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_in_recorded_by"]
+            columns: ["check_out_recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -2024,6 +2072,22 @@ export type Database = {
           trade_name: string | null
         }
         Relationships: []
+      }
+      v_employee_ratings: {
+        Row: {
+          employee_id: string | null
+          ratings_avg: number | null
+          ratings_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_profile_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       v_employees: {
         Row: {
@@ -2103,6 +2167,7 @@ export type Database = {
           effective_starts_at: string | null
           is_today: boolean | null
           last_notice_at: string | null
+          last_notice_estimated_arrival_at: string | null
           last_notice_kind: Database["public"]["Enums"]["notice_kind"] | null
           last_notice_minutes_late: number | null
           last_notice_reason_code:
@@ -2156,14 +2221,14 @@ export type Database = {
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_out_recorded_by"]
+            columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_in_recorded_by"]
+            columns: ["check_out_recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -2421,6 +2486,7 @@ export type Database = {
           general_notes: string | null
           id: string | null
           not_done_reason: string | null
+          planned_minutes: number | null
           ratings_avg: number | null
           ratings_count: number | null
           shift_date: string | null
@@ -2434,6 +2500,7 @@ export type Database = {
           supervisor_id: string | null
           supervisor_last_name: string | null
           updated_at: string | null
+          worked_minutes: number | null
         }
         Relationships: [
           {
@@ -2484,6 +2551,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supervisions_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "v_employee_ratings"
+            referencedColumns: ["employee_id"]
           },
           {
             foreignKeyName: "supervisions_supervisor_id_fkey"
@@ -2597,6 +2671,17 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      client_service_summary: {
+        Args: { p_client_id: string; p_from: string; p_to: string }
+        Returns: Json
+      }
+      clients_worked_minutes: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          client_id: string
+          worked_minutes: number
+        }[]
       }
       clone_checklist_template: {
         Args: { p_client_id: string; p_site_id: string }
@@ -2742,6 +2827,7 @@ export type Database = {
         Returns: {
           assignment_id: string
           created_at: string
+          estimated_arrival_at: string | null
           id: string
           kind: Database["public"]["Enums"]["notice_kind"]
           minutes_late: number | null
@@ -2766,6 +2852,28 @@ export type Database = {
         Returns: {
           assignment_id: string
           created_at: string
+          estimated_arrival_at: string | null
+          id: string
+          kind: Database["public"]["Enums"]["notice_kind"]
+          minutes_late: number | null
+          reason_code: Database["public"]["Enums"]["absence_reason"] | null
+          reason_text: string | null
+          reported_by: string | null
+          source: Database["public"]["Enums"]["attendance_source"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "attendance_notices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      notify_on_the_way: {
+        Args: { p_assignment_id: string; p_eta_minutes?: number }
+        Returns: {
+          assignment_id: string
+          created_at: string
+          estimated_arrival_at: string | null
           id: string
           kind: Database["public"]["Enums"]["notice_kind"]
           minutes_late: number | null
@@ -3041,6 +3149,35 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      update_person_name: {
+        Args: {
+          p_first_name: string
+          p_last_name: string
+          p_profile_id: string
+        }
+        Returns: {
+          avatar_path: string | null
+          contact_email: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          first_name: string
+          id: string
+          is_active: boolean
+          last_name: string
+          last_seen_changes_at: string | null
+          location_consent_at: string | null
+          phone: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "profiles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       update_shift_details: {
         Args: { p_notes?: string; p_required_staff: number; p_shift_id: string }
         Returns: {
@@ -3163,7 +3300,7 @@ export type Database = {
       attendance_source: "employee_app" | "admin"
       client_status: "active" | "suspended" | "closed"
       employee_status: "active" | "terminated"
-      notice_kind: "delay" | "absence"
+      notice_kind: "delay" | "absence" | "on_the_way"
       security_event_type:
         | "sign_in"
         | "sign_in_failed"
@@ -3176,6 +3313,7 @@ export type Database = {
         | "capabilities_changed"
         | "email_changed"
         | "admin_action_rejected"
+        | "name_changed"
       service_status: "active" | "paused" | "ended"
       shift_status:
         | "scheduled"
@@ -3349,7 +3487,7 @@ export const Constants = {
       attendance_source: ["employee_app", "admin"],
       client_status: ["active", "suspended", "closed"],
       employee_status: ["active", "terminated"],
-      notice_kind: ["delay", "absence"],
+      notice_kind: ["delay", "absence", "on_the_way"],
       security_event_type: [
         "sign_in",
         "sign_in_failed",
@@ -3362,6 +3500,7 @@ export const Constants = {
         "capabilities_changed",
         "email_changed",
         "admin_action_rejected",
+        "name_changed",
       ],
       service_status: ["active", "paused", "ended"],
       shift_status: [
