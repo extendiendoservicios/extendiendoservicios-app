@@ -1,9 +1,5 @@
 import { expect, test } from '@playwright/test'
-import {
-  FIXED_ACCOUNTS,
-  getAdminDb,
-  nombreDe,
-} from '../../fixtures/accounts.ts'
+import { FIXED_ACCOUNTS, getAdminDb } from '../../fixtures/accounts.ts'
 import { MISSING_ENV_MESSAGE, readE2eEnv } from '../../fixtures/env.ts'
 import { fijarConsentimiento, pngSolido } from '../../fixtures/movil.ts'
 import {
@@ -55,7 +51,14 @@ test(
 
     await page.getByRole('link', { name: 'Mi perfil' }).click()
     await expect(page).toHaveURL(/\/perfil$/)
-    await expect(page.getByLabel('Nombre')).toHaveValue(nombreDe('empleado2'))
+    // AJ-01 (reunión del 6 oct 2026): el nombre completo de solo lectura pasó a ser dos campos
+    // editables, «Nombre» y «Apellido». La edición misma se prueba en `tests/e2e-ajustes-reunion/`.
+    await expect(page.getByLabel('Nombre', { exact: true })).toHaveValue(
+      FIXED_ACCOUNTS.empleado2.firstName,
+    )
+    await expect(page.getByLabel('Apellido', { exact: true })).toHaveValue(
+      FIXED_ACCOUNTS.empleado2.lastName,
+    )
     await expect(page.getByLabel('Email de login')).toHaveValue(
       FIXED_ACCOUNTS.empleado2.email,
     )

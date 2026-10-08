@@ -40,6 +40,9 @@ test.describe('Criterio de aceptación de F8: administrador, dos contactos, dos 
         await page.getByLabel('CUIT').fill(cuit)
         await page.getByRole('button', { name: 'Crear cliente' }).click()
         await expect(page.getByText('Creamos el cliente.')).toBeVisible()
+        // El aviso aparece antes de que termine la navegación al detalle (la ruta se carga
+        // aparte): se espera la URL en vez de leerla en el mismo instante (P19.5d).
+        await expect(page).toHaveURL(/\/admin\/clientes\/[0-9a-f-]+$/)
         const match = page.url().match(/\/admin\/clientes\/([0-9a-f-]+)$/)
         clientId = match?.[1] ?? null
         expect(

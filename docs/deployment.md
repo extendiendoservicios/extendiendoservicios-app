@@ -894,19 +894,20 @@ Decisión de Mike (3 oct 2026): cada noche y a mano; **no** en cada Pull Request
   campo `rama`). Por eso lo que se prueba es siempre el código nuevo, no el de `main`.
 - **Jobs (cada uno en su runner, en tres tandas: ver "Tiempo" más abajo):**
 
-  | Job          | Qué hace                                                                                                                                        | `E2E_CONJUNTO` | Estimado                          |
-  | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | --------------------------------- |
-  | `guarda`     | Corta si falta algún secreto `E2E_*`, si la URL es la de `App` (`fysuppdadwvabrjpnnoh`) o no es la de `App_dev` (`anesttvrnpsaaaxaquce`)        | ninguno        | 0,3 min                           |
-  | `build`      | `pnpm install`, `pnpm exec vite build` con las variables de `App_dev`, sube `dist/` como artefacto (1 día)                                      | ninguno        | 2,0 min                           |
-  | `barrido`    | `node tests/fixtures/setup-accounts.ts --barrer`: crea o repone los conjuntos de cuentas y borra los residuos `e2e-`; **es el único que barre** | ninguno        | 1,5 min (en paralelo con `build`) |
-  | `admin`      | Administración, proyectos `chromium` y `mobile`                                                                                                 | `base`         | 5,7 min                           |
-  | `admin-edge` | Administración, `--project=edge --no-deps` (Edge ya viene en la imagen; si no, `playwright install msedge`)                                     | `edge`         | 5,2 min                           |
-  | `admin-a11y` | Accesibilidad con axe, `--project=a11y --no-deps`                                                                                               | `a11y`         | 3,7 min                           |
-  | `emp-movil`  | Empleado, proyecto `mobile`                                                                                                                     | `emp-movil`    | 7,2 min                           |
-  | `emp-webkit` | Empleado, `--project=webkit --no-deps` (iPhone 14)                                                                                              | `emp-webkit`   | 5,9 min                           |
-  | `sup`        | Supervisor (`mobile` y `webkit`) y después la suite vieja `e2e-auth`                                                                            | `sup`          | 6,2 min                           |
-  | `perm`       | Matriz de permisos por API (`vitest`), sin navegador ni `dist/`                                                                                 | `perm`         | 6,9 min                           |
-  | `dueno`      | Espera a todos (`if: !cancelled()`, pero no corre si falló `build` o `barrido`): `dueno-config` (configuración de la empresa)                   | `base`         | 2,5 min                           |
+  | Job          | Qué hace                                                                                                                                                                   | `E2E_CONJUNTO` | Estimado                          |
+  | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | --------------------------------- |
+  | `guarda`     | Corta si falta algún secreto `E2E_*`, si la URL es la de `App` (`fysuppdadwvabrjpnnoh`) o no es la de `App_dev` (`anesttvrnpsaaaxaquce`)                                   | ninguno        | 0,3 min                           |
+  | `build`      | `pnpm install`, `pnpm exec vite build` con las variables de `App_dev`, sube `dist/` como artefacto (1 día)                                                                 | ninguno        | 2,0 min                           |
+  | `barrido`    | `node tests/fixtures/setup-accounts.ts --barrer`: crea o repone los conjuntos de cuentas y borra los residuos `e2e-`; **es el único que barre**                            | ninguno        | 1,5 min (en paralelo con `build`) |
+  | `admin`      | Administración, proyectos `chromium` y `mobile`                                                                                                                            | `base`         | 5,7 min                           |
+  | `admin-edge` | Administración, `--project=edge --no-deps` (Edge ya viene en la imagen; si no, `playwright install msedge`)                                                                | `edge`         | 5,2 min                           |
+  | `admin-a11y` | Accesibilidad con axe, `--project=a11y --no-deps`                                                                                                                          | `a11y`         | 3,7 min                           |
+  | `emp-movil`  | Empleado, proyecto `mobile`                                                                                                                                                | `emp-movil`    | 7,2 min                           |
+  | `emp-webkit` | Empleado, `--project=webkit --no-deps` (iPhone 14)                                                                                                                         | `emp-webkit`   | 5,9 min                           |
+  | `sup`        | Supervisor (`mobile` y `webkit`) y después la suite vieja `e2e-auth`                                                                                                       | `sup`          | 6,2 min                           |
+  | `perm`       | Matriz de permisos por API (`vitest`), sin navegador ni `dist/`                                                                                                            | `perm`         | 6,9 min                           |
+  | `dueno`      | Espera a todos (`if: !cancelled()`, pero no corre si falló `build` o `barrido`): `dueno-config` (configuración de la empresa)                                              | `base`         | 2,5 min                           |
+  | `ajustes`    | Ajustes de la reunión del 6 oct 2026 (`tests/e2e-ajustes-reunion/`, proyectos `desktop` y `mobile`); espera a todos, `dueno` incluido: cambia y repone el nombre del dueño | `ajustes`      | 5 min                             |
 
   Todos los jobs de suites (`needs: [build, barrido]`) bajan `dist/`, ejecutan Playwright
   directo (los scripts `pnpm test:e2e:*` agregan `--env-file=.env.local` y rehacen el build),
@@ -924,7 +925,7 @@ Decisión de Mike (3 oct 2026): cada noche y a mano; **no** en cada Pull Request
   vencidas y la matriz de permisos cortada por su `timeout-minutes`. Las mismas suites pasan
   en local, incluso `admin` y `admin-edge` a la vez. Por eso ahora corren en **tres tandas**,
   y cada una espera a la anterior aunque haya fallado: tanda 1 (`admin`, `emp-movil`, `sup`),
-  tanda 2 (`admin-edge`, `emp-webkit`, `admin-a11y`), tanda 3 (`perm`, sola) y al final `dueno`.
+  tanda 2 (`admin-edge`, `emp-webkit`, `admin-a11y`), tanda 3 (`perm`, sola), al final `dueno` y, después de él, `ajustes`.
   Tiempo estimado de la corrida completa: **35 a 40 minutos** (tanda 1 ~11, tanda 2 ~8,
   `perm` ~8, `dueno` ~2, más la preparación de cada job); la meta de 15 minutos de F18 se
   cambió por una corrida estable. Lo confirma la segunda corrida manual. Cada job tiene su
@@ -995,7 +996,7 @@ Entre suites hay dos cosas compartidas en `App_dev`: las **cuentas fijas** (y su
 y el **barrido de residuos** `e2e-`. Se resolvió así (P18.4, `tests/fixtures/`):
 
 - cada suite tiene su **conjunto de cuentas** (`E2E_CONJUNTO`: `base`, `edge`, `a11y`,
-  `emp-movil`, `emp-webkit`, `sup`, `perm`), con cuentas y carpetas de sesión distintas:
+  `emp-movil`, `emp-webkit`, `sup`, `perm`, `ajustes`), con cuentas y carpetas de sesión distintas:
   dos suites en paralelo no usan nunca la misma cuenta;
 - el barrido corre **una sola vez**, en el job `barrido`; las suites lo saltean con
   `E2E_SKIP_SWEEP=1`. Si agregás un job de suites sin esa variable, borrará los datos de

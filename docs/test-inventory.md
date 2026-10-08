@@ -8,6 +8,8 @@ TEST-015 (P18.1, F18). Fecha: 3 de octubre de 2026. Base: rama `test/TEST-015-in
 
 **Actualización P18.4 (4 de octubre de 2026, TEST-020, TEST-021, TEST-022 y TEST-023):** conjuntos de cuentas disjuntos por suite y Edge en administración (sección 3 y 10), CB-11 y CB-23 (sección 6), carga ligera (`pnpm test:load`, sección 10), accesibilidad con axe-core en los tres roles (sección 10), y limpieza de las suites viejas reemplazadas (sección 8). **TEST-026 (ejemplos reales del cliente, IF-15) es no aplicable: el cliente no los mandó; decisión de Mike.**
 
+**Actualización P19.5d (7 de octubre de 2026, verificación de los ajustes de la reunión del 6 de octubre, AJ-01 a AJ-10):** suite nueva `tests/e2e-ajustes-reunion/` con conjunto de cuentas propio `ajustes` y un job nocturno al final (sección 11), matriz de permisos ampliada a 1.734 casos y tres tests existentes actualizados.
+
 Este documento es la base de P18.2 a P18.4: dice qué hay probado hoy, a qué fila de `09_Trazabilidad.md`, a qué flujo crítico de `03_Plan_Maestro_Tecnico.md` sección 14.2 y a qué caso borde de `08_Fases_y_Backlog.md` sección 3 corresponde, y qué falta por rol.
 
 ## 1. Cómo se leen los estados
@@ -21,19 +23,20 @@ Este documento es la base de P18.2 a P18.4: dice qué hay probado hoy, a qué fi
 
 ## 2. Qué hay hoy (conteo)
 
-| Nivel                      | Dónde                                                      | Cantidad                                                                                                                                                                          |
-| -------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| pgTAP                      | `supabase/tests/` (39 archivos)                            | 1129 aserciones (suma de los `plan(n)`)                                                                                                                                           |
-| Unitario                   | `src/**/*.test.ts(x)`                                      | 125 archivos                                                                                                                                                                      |
-| Deno                       | `supabase/functions/admin-users/index.test.ts`             | 9 pruebas                                                                                                                                                                         |
-| Permisos por API directa   | `tests/permissions/suite/` (matriz completa)               | 1.619 casos, todos pasan (desde P18.6 no hay `expected fail`; antes 1.530 y 50); el legado (137 casos) se borró en P18.4                                                          |
-| e2e viejos                 | 11 carpetas `tests/e2e-*` + `tests/e2e/*.spec.ts`          | 56 `test(...)` en 11 carpetas (sin contar los generados en bucles), más 3 de humo de CI en `tests/e2e/*.spec.ts`                                                                  |
-| e2e administración (nuevo) | `tests/e2e/admin/`                                         | 42 tests en 17 archivos (proyectos `chromium`, `mobile`, `edge`, `a11y`, `dueno-config`); ninguno con `test.fail()` (los cuatro defectos de P18.1 y DEF-A01 se cerraron en P18.6) |
-| e2e empleado (nuevo)       | `tests/e2e/empleado/`                                      | 25 tests en 9 archivos, en `mobile` (390 px táctil, Chromium) y `webkit` (iPhone 14); ninguno con `test.fail()` (DEF-01 cerrado en P18.6)                                         |
-| e2e supervisor (nuevo)     | `tests/e2e/supervisor/`                                    | 13 tests en 5 archivos, en `mobile` y `webkit`                                                                                                                                    |
-| Carga ligera               | `tests/load/carga-ligera.ts` (`pnpm test:load`)            | script Node con supabase-js: 5 administradores y 30 empleados con polling; manual, no corre en el nocturno                                                                        |
-| Lighthouse                 | `tests/lighthouse/`                                        | script, sin test de Playwright                                                                                                                                                    |
-| axe-core                   | `tests/e2e/{admin,empleado,supervisor}/accesibilidad.*.ts` | 6 tests que auditan 44 pantallas en escritorio y celular (TEST-023, P18.4)                                                                                                        |
+| Nivel                      | Dónde                                                      | Cantidad                                                                                                                                                                                                                                        |
+| -------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| pgTAP                      | `supabase/tests/` (39 archivos)                            | 1129 aserciones (suma de los `plan(n)`)                                                                                                                                                                                                         |
+| Unitario                   | `src/**/*.test.ts(x)`                                      | 125 archivos                                                                                                                                                                                                                                    |
+| Deno                       | `supabase/functions/admin-users/index.test.ts`             | 9 pruebas                                                                                                                                                                                                                                       |
+| Permisos por API directa   | `tests/permissions/suite/` (matriz completa)               | 1.734 casos, todos pasan (P19.5d sumó 115 de `update_person_name`, `notify_on_the_way`, `client_service_summary`, `clients_worked_minutes` y `v_employee_ratings`; desde P18.6 no hay `expected fail`); el legado (137 casos) se borró en P18.4 |
+| e2e viejos                 | 11 carpetas `tests/e2e-*` + `tests/e2e/*.spec.ts`          | 56 `test(...)` en 11 carpetas (sin contar los generados en bucles), más 3 de humo de CI en `tests/e2e/*.spec.ts`                                                                                                                                |
+| e2e administración (nuevo) | `tests/e2e/admin/`                                         | 42 tests en 17 archivos (proyectos `chromium`, `mobile`, `edge`, `a11y`, `dueno-config`); ninguno con `test.fail()` (los cuatro defectos de P18.1 y DEF-A01 se cerraron en P18.6)                                                               |
+| e2e empleado (nuevo)       | `tests/e2e/empleado/`                                      | 25 tests en 9 archivos, en `mobile` (390 px táctil, Chromium) y `webkit` (iPhone 14); ninguno con `test.fail()` (DEF-01 cerrado en P18.6)                                                                                                       |
+| e2e supervisor (nuevo)     | `tests/e2e/supervisor/`                                    | 13 tests en 5 archivos, en `mobile` y `webkit`                                                                                                                                                                                                  |
+| e2e ajustes (P19.5d)       | `tests/e2e-ajustes-reunion/`                               | 26 tests en 9 archivos (`desktop` y `mobile`), conjunto `ajustes`; 1 con `test.fail()` (DEF-AJ-01)                                                                                                                                              |
+| Carga ligera               | `tests/load/carga-ligera.ts` (`pnpm test:load`)            | script Node con supabase-js: 5 administradores y 30 empleados con polling; manual, no corre en el nocturno                                                                                                                                      |
+| Lighthouse                 | `tests/lighthouse/`                                        | script, sin test de Playwright                                                                                                                                                                                                                  |
+| axe-core                   | `tests/e2e/{admin,empleado,supervisor}/accesibilidad.*.ts` | 6 tests que auditan 44 pantallas en escritorio y celular (TEST-023, P18.4)                                                                                                                                                                      |
 
 Las carpetas e2e viejas que quedan siguen siendo suites independientes con su propio `playwright.*.config.ts`, su propio arnés (`helpers/`) y datos propios con prefijos distintos (`E2E-P144`, `E2E-P156`, `E2E-P172`...). Ninguna usa las cuentas fijas (usan las cuentas del seed en solo lectura). Su estado y destino están en la sección 8.
 
@@ -456,3 +459,35 @@ Arranque (los primeros 30 s, los 35 usuarios abren la pantalla a la vez): `v_my_
 1. **CB-11**: `05` (ADM-26) dice «insert/update/delete lógico en `checklist_templates` e `items`», pero la pantalla solo da de baja ítems; no ofrece dar de baja la plantilla propia de una sede. La baja lógica se probó por API con la sesión del administrador. ¿Hay que ofrecer la acción en la interfaz?
 2. **CB-23**: con la decisión de Mike (gana el último), el formulario de edición manda franja, dotación y notas juntos: el segundo que guarda pisa también los campos que el primero cambió y que el segundo no tocó (en la prueba, la dotación 2 del primero se pierde por la 3 del segundo). ¿Es lo esperado, o «gana el último» es por campo?
 3. **Límite de ingresos**: ¿se confirma que cada job del nocturno sale desde una IP distinta? Si los runners compartieran IP, el nocturno necesitaría escalonar los jobs.
+
+## 11. P19.5d: ajustes de la reunión del 6 de octubre de 2026 (AJ-01 a AJ-10)
+
+Verificación independiente (qa-pruebas) de lo que construyeron P19.5a (base de datos, migraciones 0032 y 0033), P19.5b (administración) y P19.5c (celular). Rama `test/AJ-e2e-ajustes-reunion`. Los ajustes no tienen filas propias en `09_Trazabilidad.md` (son de F19); cada test lleva las filas `RB-` y los casos borde que toca.
+
+### 11.1 Suite nueva `tests/e2e-ajustes-reunion/`
+
+Carpeta propia, config propio (`playwright.ajustes.config.ts`: proyectos `desktop` a 1280 px y `mobile` a 390 px táctil con la posición simulada concedida), conjunto de cuentas propio `ajustes` (admin, empleado1 a empleado4, supervisor1 y dual; el dueño del seed es el de siempre) y `pnpm test:e2e:ajustes-reunion`. Detalle por archivo, salteos por hora y limpieza en su `README.md`.
+
+| Ajuste                       | Archivo                                              | Tests | Cubre                                                                     |
+| ---------------------------- | ---------------------------------------------------- | ----- | ------------------------------------------------------------------------- |
+| AJ-01 editar nombre          | `nombre.desktop.ts`, `nombre.movil.ts`               | 6     | RB-A01, RB-X02, P-103, CB-17; dueño, administrador, empleado y supervisor |
+| AJ-02 «En camino» (celular)  | `en-camino.movil.ts`                                 | 2     | RB-E07, RB-E01, CB-21                                                     |
+| AJ-02/03/07/08 (planilla)    | `estados.desktop.ts`                                 | 7     | RB-A06, RB-A08, RB-E07, CB-03, CB-05                                      |
+| AJ-04/05 calificación        | `calificaciones.desktop.ts`                          | 1     | RB-A06, RB-S04, P-088                                                     |
+| AJ-06 asistencia de la ficha | `asistencia-ficha.desktop.ts`                        | 4     | RB-A06, RB-A08, RB-S01, CB-13, P-102                                      |
+| AJ-09/10 resumen y horas mes | `clientes.desktop.ts`                                | 2     | RB-A06, RB-A01, P-102                                                     |
+| accesibilidad (axe-core)     | `accesibilidad.desktop.ts`, `accesibilidad.movil.ts` | 4     | RB-X01; 21 pantallas y estados en escritorio y celular                    |
+
+### 11.2 Matriz de permisos
+
+`tests/permissions/suite/rpc.ts` y `vistas.ts` ya traían los casos mínimos del backend. P19.5d los completó con: `update_person_name` sobre la propia fila (los seis perfiles con sesión, el administrador sin capacidades incluido), con nombre de más de 100 caracteres y sobre la de otra persona (solo el dueño pasa la puerta; administrador con todas las capacidades y el resto reciben `FORBIDDEN`); `notify_on_the_way` propia con minutos inválidos; contrapruebas de solo lectura de `clients_worked_minutes` y `client_service_summary` (rango válido, cliente existente y rango invertido) para que un `deny all` no pase. `v_employee_ratings` pasó a `propia: true`: la clave de servicio no puede ejecutar `app.is_admin()` (403), así que no sirve para contar sus filas; lo prueba la fila que ven el dueño y los administradores. El inventario queda 10 de 10.
+
+### 11.3 Tests existentes actualizados
+
+- `tests/e2e/empleado/mas-perfil.empleado.ts`: Mi perfil ya no tiene un campo «Nombre» de solo lectura con el nombre completo, sino «Nombre» y «Apellido» editables (AJ-01, a propósito). El test comprueba los dos valores.
+- `tests/e2e-avisos-asistencia/admin-attendance-mobile.spec.ts`: `toBeVisible` sobre «Registrar en nombre» se leía sobre la lista completa del día antes de que se aplicara el filtro por nombre (con retardo); con 15 y luego 18 filas del día en `App_dev` daba error de modo estricto. Ahora espera `toHaveCount(1)`. No depende de los ajustes: crece con las filas que dejan las corridas de la propia suite.
+- `tests/e2e-clients-sites/client-two-contacts-two-sites-acceptance.spec.ts`: leía `page.url()` apenas aparecía el aviso «Creamos el cliente.», antes de que terminara la navegación al detalle; ahora espera la URL.
+
+### 11.4 Nocturno
+
+Job nuevo `ajustes` en `.github/workflows/e2e-app-dev.yml`, **después de `dueno`** (necesita a todos): el test de AJ-01 cambia y repone el nombre del dueño del seed, que es una sola cuenta que leen las demás suites. Sin él en el medio, el reparto de las tres tandas queda igual. Estimado 5 minutos más preparación.
