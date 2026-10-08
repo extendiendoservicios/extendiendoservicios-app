@@ -1,0 +1,49 @@
+/*
+ * Hoja imprimible (AJ-06, AJ-09): la hoja se dibuja en un portal pegado al
+ * <body> (`.print-portal`). Al imprimir se oculta todo lo demás (la app, los
+ * diálogos, los avisos) y la hoja pasa a ser un bloque normal, para que el
+ * navegador la reparta en páginas A4.
+ */
+@page {
+  size: A4;
+  margin: 15mm;
+}
+
+@media print {
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  body > *:not(.print-portal) {
+    display: none !important;
+  }
+
+  .print-portal {
+    position: static !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  .print-sheet table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  /* El encabezado de la tabla se repite en cada página. */
+  .print-sheet thead {
+    display: table-header-group;
+  }
+
+  .print-sheet tfoot {
+    display: table-footer-group;
+  }
+
+  .print-sheet tr,
+  .print-sheet .print-keep-together {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

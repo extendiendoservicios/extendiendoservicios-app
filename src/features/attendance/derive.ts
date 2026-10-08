@@ -1,6 +1,10 @@
 import type { AssignmentStatus } from '@/api/assignments'
 import type { AttendanceBoardRow } from '@/api/attendance'
-import type { AssignmentStatus as BadgeAssignmentStatus } from '@/components/status'
+import type {
+  AssignmentStatus as BadgeAssignmentStatus,
+  StatusBadgeInput,
+} from '@/components/status'
+import { formatMinutes, formatTime } from '@/lib/format'
 
 /**
  * Reglas de negocio sin React (ATT-011, ATT-012, ATT-014): qué acciones
@@ -86,17 +90,27 @@ export interface AttendanceStatusBadgeInput {
 
 /**
  * Traduce una `AttendanceBoardRow` al estado que pinta `StatusBadge` (`04`
- * sección 4 y 5, `07` sección 3): `no_record` si `display_status` lo marca;
- * `early_leave` (derivado, sin estado propio en el servidor) si terminó con
- * salida anticipada; `delay_notified` con los minutos del último aviso (el
- * check-in real todavía no pasó); cualquier otro caso, el `status` tal cual.
+ * sección 4 y 5, `07` sección 3): `on_the_way` / `late` / `no_record` si
+ * `display_status` lo marca (AJ-02, AJ-07; un turno cancelado manda sobre
+ * `on_the_way` y `late`, la vista no los excluye); `early_leave` (derivado,
+ * sin estado propio en el servidor) si terminó con salida anticipada;
+ * `delay_notified` con los minutos del último aviso (el check-in real
+ * todavía no pasó); cualquier otro caso, el `status` tal cual.
  */
 export function getAttendanceStatusBadgeInput(
   row: Pick<
     AttendanceBoardRow,
     'status' | 'displayStatus' | 'minutesEarlyLeave' | 'lastNoticeMinutesLate'
-  >,
+  > &
+    Partial<Pick<AttendanceBoardRow, 'shiftStatus'>>,
 ): AttendanceStatusBadgeInput {
+  const cancelled = row.shiftStatus === 'cancelled'
+  if (!cancelled && row.displayStatus === 'on_the_way') {
+    return { status: 'on_the_way' }
+  }
+  if (!cancelled && row.displayStatus === 'late') {
+    return { status: 'late' }
+  }
   if (row.displayStatus === 'no_record') {
     return { status: 'no_record' }
   }
@@ -114,4 +128,120 @@ export function getAttendanceStatusBadgeInput(
     }
   }
   return { status: row.status }
+}
+
+/**
+ * Entrada completa de `StatusBadge` para una fila de asistencia (DEF-AJ-01):
+ * un turno cancelado muestra «Cancelado» gris tachado (dominio `shift`),
+ * cualquiera sea el `display_status` de la asignación; el resto, el estado
+ * de asignación de `getAttendanceStatusBadgeInput`.
+ */
+export function getAttendanceRowBadge(
+  row: Parameters<typeof getAttendanceStatusBadgeInput>[0],
+): StatusBadgeInput {
+  if (row.shiftStatus === 'cancelled') {
+    return { domain: 'shift', status: 'cancelled' }
+  }
+  return { domain: 'assignment', ...getAttendanceStatusBadgeInput(row) }
+}
+
+/** Estado efectivo de la fila para el color: el turno cancelado anula todo (DEF-AJ-01). */
+function effectiveDisplayStatus(
+  row: Pick<AttendanceBoardRow, 'displayStatus' | 'shiftStatus'>,
+): string {
+  return row.shiftStatus === 'cancelled' ? 'cancelled' : row.displayStatus
+}
+
+/**
+ * Color de la fila de las tablas de asistencia (`07` sección 3): `crit` con
+ * `no_record`/ausencia avisada, `warn` con demora avisada, salida anticipada
+ * o `late`, `info` con `on_the_way`.
+ */
+export function getAttendanceRowVariant(
+  row: Pick<
+    AttendanceBoardRow,
+    'displayStatus' | 'shiftStatus' | 'status' | 'minutesEarlyLeave'
+  >,
+): 'crit' | 'warn' | 'info' | undefined {
+  if (row.shiftStatus === 'cancelled') {
+    return undefined
+  }
+  const display = effectiveDisplayStatus(row)
+  if (display === 'no_record' || row.status === 'absence_notified') {
+    return 'crit'
+  }
+  if (
+    display === 'late' ||
+    row.status === 'delay_notified' ||
+    (row.minutesEarlyLeave != null && row.minutesEarlyLeave > 0)
+  ) {
+    return 'warn'
+  }
+  if (display === 'on_the_way') {
+    return 'info'
+  }
+  return undefined
+}
+
+/**
+ * «llega ~HH:MM» (hora de Argentina) para una fila `on_the_way` que informó
+ * la hora estimada; `null` si no corresponde o no la informó (AJ-02).
+ */
+export function getArrivalHint(
+  row: Pick<
+    AttendanceBoardRow,
+    'displayStatus' | 'shiftStatus' | 'lastNoticeEstimatedArrivalAt'
+  >,
+): string | null {
+  if (
+    effectiveDisplayStatus(row) !== 'on_the_way' ||
+    row.lastNoticeEstimatedArrivalAt == null
+  ) {
+    return null
+  }
+  return `llega ~${formatTime(row.lastNoticeEstimatedArrivalAt)}`
+}
+
+/**
+ * Indicador de horas trabajadas (AJ-03, AJ-06). Tilde verde si trabajó al
+ * menos lo previsto (sin margen) y sin salida anticipada; advertencia si
+ * trabajó menos o salió antes. Sin fin registrado: «en curso» si ya empezó,
+ * si no, sin dato.
+ */
+export type WorkedHoursIndicator =
+  | { kind: 'none' }
+  | { kind: 'in_progress' }
+  | { kind: 'ok'; workedMinutes: number; text: string }
+  | { kind: 'warning'; workedMinutes: number; text: string; reason: string }
+
+export function getWorkedHoursIndicator(
+  row: Pick<
+    AttendanceBoardRow,
+    | 'workedMinutes'
+    | 'plannedMinutes'
+    | 'minutesEarlyLeave'
+    | 'checkInAt'
+    | 'checkOutAt'
+  >,
+): WorkedHoursIndicator {
+  if (row.workedMinutes == null) {
+    return row.checkInAt != null && row.checkOutAt == null
+      ? { kind: 'in_progress' }
+      : { kind: 'none' }
+  }
+  const worked = row.workedMinutes
+  const text = formatMinutes(worked)
+  const leftEarly = row.minutesEarlyLeave != null
+  const missing =
+    row.plannedMinutes != null ? Math.max(0, row.plannedMinutes - worked) : 0
+  if (!leftEarly && missing === 0) {
+    return { kind: 'ok', workedMinutes: worked, text }
+  }
+  const missingText = missing > 0 ? `Faltan ${formatMinutes(missing)}` : ''
+  const reason = leftEarly
+    ? missing > 0
+      ? `Salida anticipada · ${missingText.toLowerCase()}`
+      : 'Salida anticipada'
+    : missingText
+  return { kind: 'warning', workedMinutes: worked, text, reason }
 }

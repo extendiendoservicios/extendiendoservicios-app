@@ -25,8 +25,10 @@ interface StatusMeta {
 const SHIFT_STATUS_MAP: Record<ShiftStatus, StatusMeta> = {
   scheduled: { variant: 'neutral', label: 'Programado' },
   assigned: { variant: 'primary', label: 'Asignado' },
-  in_progress: { variant: 'success', label: 'En curso' },
-  completed: { variant: 'dark', label: 'Finalizado' },
+  // AJ-08: "En curso" pasa a primary (igual que tareas y supervisiones) para que
+  // no se confunda con "Finalizado", que ahora es el mismo verde que "Completada".
+  in_progress: { variant: 'primary', label: 'En curso' },
+  completed: { variant: 'success', label: 'Finalizado' },
   cancelled: { variant: 'neutral-strike', label: 'Cancelado' },
   uncovered: { variant: 'danger', label: 'Sin cubrir' },
   upcoming: { variant: 'info', label: 'Próximo' },
@@ -37,9 +39,12 @@ const ASSIGNMENT_STATUS_MAP: Record<AssignmentStatus, StatusMeta> = {
   delay_notified: { variant: 'warning', label: 'Demora avisada' },
   absence_notified: { variant: 'danger', label: 'Ausencia avisada' },
   present: { variant: 'success', label: 'Presente' },
-  finished: { variant: 'dark', label: 'Finalizado' },
+  finished: { variant: 'success', label: 'Finalizado' },
   no_record: { variant: 'danger', label: 'Sin registro' },
   early_leave: { variant: 'warning', label: 'Salida anticipada' },
+  // AJ-02 y AJ-07: avisos "En camino" (informativo) y llegada tarde (alerta).
+  on_the_way: { variant: 'info', label: 'En camino' },
+  late: { variant: 'warning', label: 'Llegada tarde' },
 }
 
 const TASK_STATUS_MAP: Record<TaskStatus, StatusMeta> = {
@@ -152,14 +157,16 @@ const CRITICAL_ASSIGNMENT_STATUSES: ReadonlySet<AssignmentStatus> = new Set([
 const WARNING_ASSIGNMENT_STATUSES: ReadonlySet<AssignmentStatus> = new Set([
   'delay_notified',
   'early_leave',
+  'late',
 ])
 
-export type TableRowVariant = 'crit' | 'warn'
+export type TableRowVariant = 'crit' | 'warn' | 'info'
 
 /**
  * Helper de filas de tabla (`07` sección 3: "crit cuando hay no_record,
  * uncovered o absence_notified; warn cuando hay delay_notified o
- * early_leave"). Una fila suele tener un turno y una o más asignaciones.
+ * early_leave"; AJ-02/AJ-07: `warn` también con `late` e `info` con
+ * `on_the_way`). Una fila suele tener un turno y una o más asignaciones.
  */
 export function getTableRowVariant(row: {
   shiftStatus?: ShiftStatus
@@ -181,6 +188,9 @@ export function getTableRowVariant(row: {
   ) {
     return 'warn'
   }
+  if (assignmentStatuses.includes('on_the_way')) {
+    return 'info'
+  }
   return undefined
 }
 
@@ -188,4 +198,5 @@ export function getTableRowVariant(row: {
 export const TABLE_ROW_CLASS_NAME: Record<TableRowVariant, string> = {
   crit: 'bg-danger-bg',
   warn: 'bg-warning-bg',
+  info: 'bg-info-bg',
 }

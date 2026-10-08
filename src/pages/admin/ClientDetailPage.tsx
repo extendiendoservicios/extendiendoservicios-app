@@ -10,6 +10,7 @@ import {
   useClientDetailQuery,
   useClientSitesQuery,
 } from '@/features/clients/queries'
+import { ClientServiceSummaryTab } from '@/features/clients/components/ClientServiceSummaryTab'
 import { ClientContactsPanel } from '@/features/clients/components/ClientContactsPanel'
 import { ChangeClientStatusDialog } from '@/features/clients/components/ChangeClientStatusDialog'
 import { ClientTemplateSummary } from '@/features/checklists/components/ClientTemplateSummary'
@@ -18,7 +19,7 @@ import {
   ServiceList,
 } from '@/features/services/components/ServiceList'
 
-const TABS = ['sedes', 'contactos', 'servicios', 'tareas'] as const
+const TABS = ['sedes', 'contactos', 'servicios', 'tareas', 'resumen'] as const
 type ClientDetailTab = (typeof TABS)[number]
 
 function isClientDetailTab(value: string | null): value is ClientDetailTab {
@@ -133,6 +134,7 @@ export default function ClientDetailPage() {
           <TabsTrigger value="contactos">Contactos</TabsTrigger>
           <TabsTrigger value="servicios">Servicios</TabsTrigger>
           <TabsTrigger value="tareas">Tareas</TabsTrigger>
+          <TabsTrigger value="resumen">Resumen de servicios</TabsTrigger>
         </TabsList>
 
         <TabsContent value="sedes" className="pt-3">
@@ -191,6 +193,14 @@ export default function ClientDetailPage() {
 
         <TabsContent value="tareas" className="pt-3">
           <ClientTemplateSummary clientId={client.id} />
+        </TabsContent>
+
+        <TabsContent value="resumen" className="pt-3">
+          <ClientServiceSummaryTab
+            clientId={client.id}
+            clientName={client.tradeName ?? client.legalName}
+            cuit={client.cuit}
+          />
         </TabsContent>
       </Tabs>
 

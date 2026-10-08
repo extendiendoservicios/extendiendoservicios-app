@@ -29,6 +29,9 @@ export type AssignmentStatus =
   // Derivados de `v_assignments_board.display_status` (04 sección 5).
   | 'no_record'
   | 'early_leave'
+  // AJ-02/AJ-07: `display_status` ahora también vale `on_the_way` y `late`.
+  | 'on_the_way'
+  | 'late'
 
 export type TaskStatus = 'pending' | 'in_progress' | 'done' | 'not_done'
 

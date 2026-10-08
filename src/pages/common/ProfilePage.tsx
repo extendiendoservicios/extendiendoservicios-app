@@ -18,6 +18,12 @@ import { Field, FieldLabel, FieldError } from '@/components/ui/field'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { supabase } from '@/lib/supabase'
+import { isApiError } from '@/api/errors'
+import { updatePersonName } from '@/api/users'
+import {
+  updatePersonNameSchema,
+  type UpdatePersonNameFormValues,
+} from '@/features/users/schemas'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { ROLE_LABELS } from '@/features/auth/session'
 import { updatePasswordErrorMessage } from '@/features/auth/authErrors'
@@ -26,10 +32,13 @@ import { formatShortDate, formatTime } from '@/lib/format'
 /**
  * COM-04 · Perfil propio (AUTH-007, `05` sección 3): datos propios, email
  * de contacto, teléfono, foto, cambio de contraseña, roles, consentimiento
- * de ubicación, cerrar sesión. Nombre y email de login son de solo lectura
- * (el encargo P06.3 lo remarca: "el nombre y el email de login son de
- * solo lectura") — el nombre lo escribe un administrador (ADM-27, F7), el
- * email de login solo lo cambia el dueño o un administrador (P-037).
+ * de ubicación, cerrar sesión. El email de login es de solo lectura (solo
+ * lo cambia el dueño o un administrador, P-037); el nombre y apellido los
+ * edita cada persona desde AJ-01.
+ *
+ * AJ-01 (reunión del 6 oct 2026): cada persona, de cualquier rol, edita su
+ * propio nombre y apellido con `update_person_name`; al guardar se refresca
+ * el perfil del `AuthProvider` para que la cabecera muestre el nombre nuevo.
  *
  * La foto (EMP-011, P09.2) usa `AvatarUpload` con el `profileId` propio —
  * el mismo componente que va a usar ADM-18 (front-admin) para la foto de
@@ -81,6 +90,44 @@ function useLocationConsentText(): string | null {
 export default function ProfilePage() {
   const auth = useAuth()
   const consentText = useLocationConsentText()
+
+  const [nameStatus, setNameStatus] = useState<{
+    kind: 'idle' | 'saved' | 'error'
+    message?: string
+  }>({ kind: 'idle' })
+  const {
+    register: registerName,
+    handleSubmit: handleNameSubmit,
+    formState: { errors: nameErrors, isSubmitting: isSavingName },
+  } = useForm<UpdatePersonNameFormValues>({
+    resolver: zodResolver(updatePersonNameSchema),
+    values: {
+      firstName: auth.profile?.firstName ?? '',
+      lastName: auth.profile?.lastName ?? '',
+    },
+  })
+
+  async function onSaveName(values: UpdatePersonNameFormValues) {
+    if (!auth.userId) return
+    setNameStatus({ kind: 'idle' })
+    try {
+      await updatePersonName({
+        profileId: auth.userId,
+        firstName: values.firstName,
+        lastName: values.lastName,
+      })
+    } catch (error) {
+      setNameStatus({
+        kind: 'error',
+        message: isApiError(error)
+          ? error.message
+          : 'No pudimos guardar el nombre. Probá de nuevo.',
+      })
+      return
+    }
+    await auth.refreshProfile()
+    setNameStatus({ kind: 'saved' })
+  }
 
   const [contactStatus, setContactStatus] = useState<
     'idle' | 'saved' | 'error'
@@ -171,28 +218,67 @@ export default function ProfilePage() {
               onChange={() => void auth.refreshProfile()}
             />
           )}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="profile-name">Nombre</FieldLabel>
-              <Input
-                id="profile-name"
-                value={auth.displayName}
-                disabled
-                readOnly
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="profile-login-email">
-                Email de login
-              </FieldLabel>
-              <Input
-                id="profile-login-email"
-                value={auth.email ?? ''}
-                disabled
-                readOnly
-              />
-            </Field>
-          </div>
+          <form
+            noValidate
+            className="flex flex-col gap-3"
+            onSubmit={(event) => void handleNameSubmit(onSaveName)(event)}
+          >
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field data-invalid={Boolean(nameErrors.firstName) || undefined}>
+                <FieldLabel htmlFor="profile-first-name">Nombre</FieldLabel>
+                <Input
+                  id="profile-first-name"
+                  autoComplete="given-name"
+                  aria-invalid={Boolean(nameErrors.firstName)}
+                  {...registerName('firstName')}
+                />
+                {nameErrors.firstName && (
+                  <FieldError>{nameErrors.firstName.message}</FieldError>
+                )}
+              </Field>
+              <Field data-invalid={Boolean(nameErrors.lastName) || undefined}>
+                <FieldLabel htmlFor="profile-last-name">Apellido</FieldLabel>
+                <Input
+                  id="profile-last-name"
+                  autoComplete="family-name"
+                  aria-invalid={Boolean(nameErrors.lastName)}
+                  {...registerName('lastName')}
+                />
+                {nameErrors.lastName && (
+                  <FieldError>{nameErrors.lastName.message}</FieldError>
+                )}
+              </Field>
+            </div>
+            {nameStatus.kind === 'saved' && (
+              <Alert variant="info">
+                <AlertDescription>Guardamos tu nombre.</AlertDescription>
+              </Alert>
+            )}
+            {nameStatus.kind === 'error' && (
+              <Alert variant="crit">
+                <AlertDescription>{nameStatus.message}</AlertDescription>
+              </Alert>
+            )}
+            <Button
+              type="submit"
+              size="sm"
+              className="self-end"
+              loading={isSavingName}
+            >
+              Guardar nombre
+            </Button>
+          </form>
+          <Field>
+            <FieldLabel htmlFor="profile-login-email">
+              Email de login
+            </FieldLabel>
+            <Input
+              id="profile-login-email"
+              value={auth.email ?? ''}
+              disabled
+              readOnly
+            />
+          </Field>
           <Field>
             <FieldLabel>Roles</FieldLabel>
             <div className="flex flex-wrap gap-2">

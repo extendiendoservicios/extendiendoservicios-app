@@ -190,6 +190,8 @@ const STATUS_SHOWCASE: Array<{ domain: string; items: StatusBadgeInput[] }> = [
       { domain: 'assignment', status: 'finished' },
       { domain: 'assignment', status: 'no_record' },
       { domain: 'assignment', status: 'early_leave', minutes: 8 },
+      { domain: 'assignment', status: 'on_the_way' },
+      { domain: 'assignment', status: 'late' },
     ],
   },
   {

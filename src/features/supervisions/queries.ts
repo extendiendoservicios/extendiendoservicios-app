@@ -35,12 +35,17 @@ export const ratingsKeys = {
 }
 
 /** ADM-13, pestaña "Supervisiones" (SUP-010). */
-export function useSupervisionsAdminQuery(filters: SupervisionListFilters) {
+export function useSupervisionsAdminQuery(
+  filters: SupervisionListFilters,
+  poll = true,
+  enabled = true,
+) {
   return useQuery({
     queryKey: supervisionsKeys.list(filters),
     queryFn: () => supervisionsApi.fetchSupervisionsAdmin(filters),
-    staleTime: LIST_POLLING_MS,
-    refetchInterval: LIST_POLLING_MS,
+    staleTime: poll ? LIST_POLLING_MS : undefined,
+    refetchInterval: poll ? LIST_POLLING_MS : false,
+    enabled,
   })
 }
 

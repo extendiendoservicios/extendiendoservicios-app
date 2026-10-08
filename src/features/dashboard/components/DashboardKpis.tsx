@@ -14,7 +14,7 @@ function plural(count: number, one: string, many: string): string {
  * y la quinta ocupa el ancho completo.
  */
 function DashboardKpis({ kpis }: { kpis: Kpis }) {
-  const notices = kpis.absenceNotices + kpis.delayNotices
+  const notices = kpis.absenceNotices + kpis.delayNotices + kpis.lateArrivals
   return (
     <section
       aria-label="Indicadores de hoy"
@@ -32,7 +32,11 @@ function DashboardKpis({ kpis }: { kpis: Kpis }) {
         icon={Users}
         label="Presentes"
         value={kpis.present}
-        detail="en servicio ahora"
+        detail={
+          kpis.onTheWay > 0
+            ? `en servicio ahora · ${kpis.onTheWay} en camino`
+            : 'en servicio ahora'
+        }
       />
       <KpiCard
         icon={Clock}
@@ -53,7 +57,7 @@ function DashboardKpis({ kpis }: { kpis: Kpis }) {
         icon={AlertTriangle}
         label="Avisos"
         value={notices}
-        detail={`${plural(kpis.absenceNotices, 'ausencia', 'ausencias')} · ${plural(kpis.delayNotices, 'demora', 'demoras')}`}
+        detail={`${plural(kpis.absenceNotices, 'ausencia', 'ausencias')} · ${plural(kpis.delayNotices, 'demora', 'demoras')} · ${plural(kpis.lateArrivals, 'llegada tarde', 'llegadas tarde')}`}
       />
     </section>
   )

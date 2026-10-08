@@ -20,8 +20,15 @@ import { UpdatedAgo } from '@/features/clients/components/UpdatedAgo'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import {
   useClientsQuery,
+  useClientsWorkedMinutesQuery,
   usePrimaryContactNamesQuery,
 } from '@/features/clients/queries'
+import {
+  currentMonthRange,
+  formatWorkedHours,
+  monthName,
+} from '@/features/clients/serviceSummary'
+import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
 import {
   useClientFilterOptionsQuery,
   useSitesMapQuery,
@@ -96,6 +103,12 @@ function ClientsListTab() {
     text: debouncedText,
   })
   const primaryContactsQuery = usePrimaryContactNamesQuery()
+  // AJ-10: horas del mes en curso (del 1 a hoy, hora de Argentina), una sola
+  // llamada para todo el listado.
+  const { from: monthFrom, to: monthTo } =
+    currentMonthRange(todayInBuenosAires())
+  const workedMinutesQuery = useClientsWorkedMinutesQuery(monthFrom, monthTo)
+  const hoursHeader = `Horas de ${monthName(monthFrom)}`
 
   const rows = useMemo<ClientRowView[]>(() => {
     const clients = clientsQuery.data ?? []
@@ -156,6 +169,23 @@ function ClientsListTab() {
       header: 'Contacto principal',
       meta: { card: 'meta', cardLabel: 'Contacto principal' },
       cell: ({ row }) => row.original.primaryContactName ?? '—',
+    },
+    {
+      id: 'monthHours',
+      header: () => (
+        <span title={`${hoursHeader} (del 1 a hoy)`}>Horas (mes)</span>
+      ),
+      meta: { card: 'meta', cardLabel: hoursHeader, align: 'end' },
+      cell: ({ row }) => (
+        <span
+          className="tabular-nums"
+          title={`${hoursHeader}, del ${Number(monthFrom.slice(8))} al ${Number(monthTo.slice(8))}`}
+        >
+          {workedMinutesQuery.data
+            ? formatWorkedHours(workedMinutesQuery.data.get(row.original.id))
+            : '—'}
+        </span>
+      ),
     },
     {
       id: 'status',

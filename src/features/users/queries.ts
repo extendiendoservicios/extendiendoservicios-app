@@ -182,3 +182,18 @@ export function useReactivateUserMutation() {
     onSuccess: invalidate,
   })
 }
+
+/**
+ * AJ-01: cambiar nombre y apellido. El nombre aparece en casi todas las
+ * pantallas (turnos, asistencia, fichas), así que al guardar se invalida
+ * todo el caché de lecturas: es una acción poco frecuente.
+ */
+export function useUpdatePersonNameMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: usersApi.updatePersonName,
+    onSuccess: () => {
+      void queryClient.invalidateQueries()
+    },
+  })
+}

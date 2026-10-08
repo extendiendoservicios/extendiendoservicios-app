@@ -32,7 +32,8 @@ vi.mock('@/lib/supabase', () => ({
   supabase: { from: fromMock, rpc: rpcMock },
 }))
 
-const { fetchRatings, rateEmployee } = await import('./ratings')
+const { fetchEmployeeRatingsSummary, fetchRatings, rateEmployee } =
+  await import('./ratings')
 
 beforeEach(() => {
   fromMock.mockReset()
@@ -182,5 +183,38 @@ describe('rateEmployee', () => {
       (error: unknown) =>
         isApiError(error) && error.hint === 'RATING_WINDOW_CLOSED',
     )
+  })
+})
+
+describe('fetchEmployeeRatingsSummary (AJ-04, AJ-05)', () => {
+  it('trae el promedio de todos los empleados en una sola consulta a v_employee_ratings', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: [
+          { employee_id: 'e1', ratings_count: 12, ratings_avg: 4.33 },
+          { employee_id: 'e2', ratings_count: 1, ratings_avg: '5.00' },
+          { employee_id: null, ratings_count: 3, ratings_avg: 2 },
+        ],
+        error: null,
+      }),
+    )
+
+    const summaries = await fetchEmployeeRatingsSummary()
+
+    expect(fromMock).toHaveBeenCalledTimes(1)
+    expect(fromMock).toHaveBeenCalledWith('v_employee_ratings')
+    expect(summaries.get('e1')).toEqual({ average: 4.33, count: 12 })
+    expect(summaries.get('e2')).toEqual({ average: 5, count: 1 })
+    expect(summaries.size).toBe(2)
+  })
+
+  it('traduce un error de la consulta a ApiError', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: null,
+        error: { message: 'permission denied', code: '42501' },
+      }),
+    )
+    await expect(fetchEmployeeRatingsSummary()).rejects.toSatisfy(isApiError)
   })
 })

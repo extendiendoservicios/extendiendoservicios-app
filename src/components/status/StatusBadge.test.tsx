@@ -12,8 +12,8 @@ const cases: Array<[StatusBadgeInput, string, string]> = [
   // Turno
   [{ domain: 'shift', status: 'scheduled' }, 'Programado', 'neutral'],
   [{ domain: 'shift', status: 'assigned' }, 'Asignado', 'primary'],
-  [{ domain: 'shift', status: 'in_progress' }, 'En curso', 'success'],
-  [{ domain: 'shift', status: 'completed' }, 'Finalizado', 'dark'],
+  [{ domain: 'shift', status: 'in_progress' }, 'En curso', 'primary'],
+  [{ domain: 'shift', status: 'completed' }, 'Finalizado', 'success'],
   [{ domain: 'shift', status: 'cancelled' }, 'Cancelado', 'neutral-strike'],
   [{ domain: 'shift', status: 'uncovered' }, 'Sin cubrir', 'danger'],
   [{ domain: 'shift', status: 'upcoming' }, 'Próximo', 'info'],
@@ -30,13 +30,15 @@ const cases: Array<[StatusBadgeInput, string, string]> = [
     'danger',
   ],
   [{ domain: 'assignment', status: 'present' }, 'Presente', 'success'],
-  [{ domain: 'assignment', status: 'finished' }, 'Finalizado', 'dark'],
+  [{ domain: 'assignment', status: 'finished' }, 'Finalizado', 'success'],
   [{ domain: 'assignment', status: 'no_record' }, 'Sin registro', 'danger'],
   [
     { domain: 'assignment', status: 'early_leave' },
     'Salida anticipada',
     'warning',
   ],
+  [{ domain: 'assignment', status: 'on_the_way' }, 'En camino', 'info'],
+  [{ domain: 'assignment', status: 'late' }, 'Llegada tarde', 'warning'],
   // Tarea
   [{ domain: 'task', status: 'pending' }, 'Pendiente', 'neutral'],
   [{ domain: 'task', status: 'in_progress' }, 'En curso', 'primary'],

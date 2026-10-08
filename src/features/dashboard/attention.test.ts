@@ -3,6 +3,34 @@ import { computeAttention } from './attention'
 import { NOW, at, makeAssignment, makeShift } from './fixtures'
 import { ALL_DAY_FILTER, filterByFranja, listFranjas } from './servicesToday'
 
+describe('computeAttention (AJ-02, AJ-07)', () => {
+  it('"Llegada tarde" es una alerta y va después de las críticas; "En camino" no aparece', () => {
+    const shifts = [makeShift({ id: 's1' })]
+    const assignments = [
+      makeAssignment({ id: 'a-late', displayStatus: 'late' }),
+      makeAssignment({ id: 'a-way', displayStatus: 'on_the_way' }),
+      makeAssignment({ id: 'a-norec', displayStatus: 'no_record' }),
+    ]
+    const items = computeAttention(shifts, assignments, NOW)
+    expect(items.map((item) => item.kind)).toEqual(['noRecord', 'late'])
+    expect(items[1]?.minutesSince).toBe(180)
+  })
+
+  it('un turno cancelado no genera alerta de llegada tarde', () => {
+    const items = computeAttention(
+      [],
+      [
+        makeAssignment({
+          shiftStatus: 'cancelled',
+          displayStatus: 'late',
+        }),
+      ],
+      NOW,
+    )
+    expect(items).toEqual([])
+  })
+})
+
 describe('computeAttention', () => {
   it('sin datos no hay nada que atender', () => {
     expect(computeAttention([], [], NOW)).toEqual([])

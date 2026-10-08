@@ -13,14 +13,19 @@ import { shiftStartInstant } from './kpis'
  *   no se duplica.
  * - `noRecord`: sin registro pasada la hora de inicio.
  * - `overdue`: en curso pasada la hora de fin sin fin registrado.
+ * - `late` (AJ-07): llegada tarde (pasó el inicio hace hasta 15 min, sin
+ *   registro). Es una alerta amarilla y va última. `on_the_way` (AJ-02) no
+ *   entra: es informativo y no negativo.
  */
-export type AttentionKind = 'absence' | 'uncovered' | 'noRecord' | 'overdue'
+export type AttentionKind =
+  'absence' | 'uncovered' | 'noRecord' | 'overdue' | 'late'
 
 export const ATTENTION_ORDER: AttentionKind[] = [
   'noRecord',
   'overdue',
   'absence',
   'uncovered',
+  'late',
 ]
 
 export interface AttentionItem {
@@ -28,7 +33,7 @@ export interface AttentionItem {
   /** Clave estable para React. */
   key: string
   shiftId: string
-  /** Presente en `absence`, `noRecord` y `overdue`. */
+  /** Presente en `absence`, `noRecord`, `overdue` y `late`. */
   assignment?: AttendanceBoardRow
   /** Turno de `v_shifts_board`, si está cargado (para "Asignar reemplazo"). */
   shift?: ShiftListRow
@@ -60,6 +65,17 @@ export function computeAttention(
         assignment: row,
         shift: shiftById.get(row.shiftId),
         minutesSince: null,
+      })
+    } else if (row.displayStatus === 'late') {
+      items.push({
+        kind: 'late',
+        key: `late-${row.id}`,
+        shiftId: row.shiftId,
+        assignment: row,
+        shift: shiftById.get(row.shiftId),
+        minutesSince: row.startsAt
+          ? minutesBetween(new Date(row.startsAt), now)
+          : null,
       })
     } else if (row.displayStatus === 'no_record') {
       items.push({
