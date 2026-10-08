@@ -17,6 +17,24 @@ import { faltaMargenHaciaAdelante, franjaDesdeAhora } from './helpers/tiempo.ts'
 
 test.skip(!readE2eEnv(), MISSING_ENV_MESSAGE)
 
+/**
+ * P19.5h · el membrete de la hoja imprimible no puede duplicar el banner de la página ni dejar
+ * regiones repetidas sin nombre (defecto 3 de P19.5d, corregido en P19.5f): ni `moderate` cuenta.
+ */
+function sinMembreteDuplicado(
+  reglas: string[],
+  pantalla: string,
+  viewport: string,
+): void {
+  const repetidas = reglas.filter((regla) =>
+    /:(landmark-no-duplicate-banner|landmark-unique)$/.test(regla),
+  )
+  expect(
+    repetidas,
+    `${pantalla} (${viewport}) repite regiones de página`,
+  ).toEqual([])
+}
+
 const TAMANOS = [
   { nombre: 'escritorio', width: 1280, height: 900 },
   { nombre: 'celular', width: 390, height: 844 },
@@ -91,9 +109,14 @@ test.describe('axe: administración, pantallas de los ajustes', () => {
           await expect(
             page.getByRole('dialog', { name: /^Detalle de asistencia - / }),
           ).toBeVisible()
-          await auditarAccesibilidad(
+          const resumenHoja = await auditarAccesibilidad(
             page,
             testInfo,
+            'AJ-06 Hoja de asistencia',
+            tamano.nombre,
+          )
+          sinMembreteDuplicado(
+            resumenHoja.reglas,
             'AJ-06 Hoja de asistencia',
             tamano.nombre,
           )
@@ -112,9 +135,14 @@ test.describe('axe: administración, pantallas de los ajustes', () => {
           await expect(
             page.getByRole('dialog', { name: /^Resumen de servicios - / }),
           ).toBeVisible()
-          await auditarAccesibilidad(
+          const resumenHojaResumen = await auditarAccesibilidad(
             page,
             testInfo,
+            'AJ-09 Hoja del resumen',
+            tamano.nombre,
+          )
+          sinMembreteDuplicado(
+            resumenHojaResumen.reglas,
             'AJ-09 Hoja del resumen',
             tamano.nombre,
           )

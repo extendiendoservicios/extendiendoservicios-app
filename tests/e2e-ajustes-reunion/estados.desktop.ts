@@ -286,13 +286,15 @@ test.describe('AJ-07: «Llegada tarde» y «Sin registro»', () => {
   )
 
   /**
-   * Dos turnos de hoy que se cancelan DESPUÉS de tener el aviso: uno con «En camino» (empieza
-   * dentro de 45 min) y otro con «Llegada tarde» (empezó hace 3 min).
+   * Tres turnos de hoy que se cancelan DESPUÉS de tener el aviso: uno con «En camino» (empieza
+   * dentro de 45 min), uno con «Llegada tarde» (empezó hace 3 min) y uno que empezó hace 20 min
+   * (sin el cancelado habría quedado en «Sin registro» roja y con alerta).
    */
   async function armarCancelados(sc: Scenario, page: Page) {
     const cliente = await sc.client('adm-cancelado')
     const sedeCamino = await sc.site(cliente.id, 'adm-cancelado-camino')
     const sedeTarde = await sc.site(cliente.id, 'adm-cancelado-tarde')
+    const sedeSin = await sc.site(cliente.id, 'adm-cancelado-sinreg')
     const turnoCamino = await sc.shift(
       cliente.id,
       sedeCamino.id,
@@ -305,11 +307,18 @@ test.describe('AJ-07: «Llegada tarde» y «Sin registro»', () => {
       sc.today,
       franjaDesdeAhora(-3, 90),
     )
+    const turnoSin = await sc.shift(
+      cliente.id,
+      sedeSin.id,
+      sc.today,
+      franjaDesdeAhora(-20, 90),
+    )
     const asigCamino = await sc.assign(turnoCamino, 'empleado3')
     await sc.assign(turnoTarde, 'empleado4')
+    await sc.assign(turnoSin, 'empleado2')
     await avisarEnCamino('empleado3', asigCamino, 20)
 
-    // Antes de cancelar, las dos filas muestran el estado del aviso.
+    // Antes de cancelar, las tres filas muestran el estado que les toca.
     await page.goto('/admin')
     await expect(filaDe(servicios(page), sedeCamino.name)).toContainText(
       'En camino',
@@ -317,9 +326,12 @@ test.describe('AJ-07: «Llegada tarde» y «Sin registro»', () => {
     await expect(filaDe(servicios(page), sedeTarde.name)).toContainText(
       'Llegada tarde',
     )
+    await expect(filaDe(servicios(page), sedeSin.name)).toContainText(
+      'Sin registro',
+    )
 
     const owner = await sessionClient('owner')
-    for (const turno of [turnoCamino, turnoTarde]) {
+    for (const turno of [turnoCamino, turnoTarde, turnoSin]) {
       const { error } = await owner.rpc('cancel_shift', {
         p_shift_id: turno,
         p_reason: 'e2e: cancelado con aviso',
@@ -327,67 +339,88 @@ test.describe('AJ-07: «Llegada tarde» y «Sin registro»', () => {
       expect(error, error?.message).toBeNull()
     }
     await page.goto('/admin')
-    return { sedes: [sedeCamino, sedeTarde] }
+    return {
+      sedes: [sedeCamino, sedeTarde, sedeSin],
+      empleados: ['empleado3', 'empleado4', 'empleado2'] as const,
+    }
   }
 
   test(
-    'un turno cancelado manda sobre «En camino» y sobre «Llegada tarde»: ni celeste, ni amarilla, ni alerta',
+    'DEF-AJ-01: un turno cancelado dice «Cancelado» (gris tachado) y manda sobre «En camino», «Llegada tarde» y «Sin registro»: sin color de fila, sin «llega ~HH:MM», sin alerta ni «Asignar reemplazo»; el filtro de estado lo descarta',
     cubre('RB-A04', 'RB-A06', 'CB-03'),
     async ({ page }) => {
       const motivoAdelante = faltaMargenHaciaAdelante(45, 60)
       test.skip(motivoAdelante !== null, motivoAdelante ?? '')
-      const motivoAtras = faltaMargenHaciaAtras(4)
+      const motivoAtras = faltaMargenHaciaAtras(22)
       test.skip(motivoAtras !== null, motivoAtras ?? '')
-      test.setTimeout(180_000)
+      test.setTimeout(240_000)
 
       const sc = new Scenario()
       try {
-        const { sedes } = await armarCancelados(sc, page)
-        for (const sede of sedes) {
-          const fila = filaDe(servicios(page), sede.name)
-          await expect(fila).toBeVisible()
-          await expect(fila).not.toContainText('En camino')
-          await expect(fila).not.toContainText('Llegada tarde')
-          await expect(fila).not.toHaveClass(/bg-info-bg|bg-warning-bg/)
-        }
-        const atencion = page.getByRole('region', { name: 'Requiere atención' })
-        await expect(
-          atencion.getByRole('listitem').filter({
-            hasText: nombreDe('empleado4'),
-          }),
-        ).toHaveCount(0)
-      } finally {
-        expect(await sc.cleanup(), 'limpieza').toEqual([])
-      }
-    },
-  )
+        const { sedes, empleados } = await armarCancelados(sc, page)
 
-  test(
-    'DEF-AJ-01: la fila de un turno cancelado con aviso dice «Cancelado»',
-    cubre('RB-A04', 'RB-A06', 'CB-03'),
-    async ({ page }) => {
-      // Defecto abierto (reporte P19.5d): la planilla muestra «Esperado» para la asignación de un
-      // turno cancelado y no hay ninguna marca de cancelación. `test.fail`: cuando se corrija, el
-      // test pasa y Playwright avisa que hay que sacar la anotación.
-      test.fail(
-        true,
-        'DEF-AJ-01: la planilla muestra «Esperado» en un turno cancelado',
-      )
-      const motivoAdelante = faltaMargenHaciaAdelante(45, 60)
-      test.skip(motivoAdelante !== null, motivoAdelante ?? '')
-      const motivoAtras = faltaMargenHaciaAtras(4)
-      test.skip(motivoAtras !== null, motivoAtras ?? '')
-      test.setTimeout(180_000)
+        await test.step('tablero: «Cancelado» neutral-strike, sin color ni hora estimada ni acciones', async () => {
+          for (const sede of sedes) {
+            const fila = filaDe(servicios(page), sede.name)
+            await expect(fila).toBeVisible()
+            await expect(
+              fila.locator(
+                '[data-slot="badge"][data-variant="neutral-strike"]',
+              ),
+            ).toContainText('Cancelado')
+            await expect(fila).not.toContainText(
+              /En camino|Llegada tarde|Sin registro|Esperado|llega ~/,
+            )
+            await expect(fila).not.toHaveClass(
+              /bg-info-bg|bg-warning-bg|bg-danger-bg/,
+            )
+            await expect(
+              fila.getByRole('button', { name: /Asignar reemplazo/ }),
+            ).toHaveCount(0)
+          }
+        })
 
-      const sc = new Scenario()
-      try {
-        const { sedes } = await armarCancelados(sc, page)
-        for (const sede of sedes) {
-          await expect(filaDe(servicios(page), sede.name)).toContainText(
-            'Cancelado',
-            { timeout: 3_000 },
-          )
-        }
+        await test.step('«Requiere atención»: ninguno de los tres empleados genera alerta', async () => {
+          const atencion = page.getByRole('region', {
+            name: 'Requiere atención',
+          })
+          for (const quien of empleados) {
+            await expect(
+              atencion.getByRole('listitem').filter({
+                hasText: nombreDe(quien),
+              }),
+            ).toHaveCount(0)
+          }
+        })
+
+        await test.step('Asistencia de hoy: «Cancelado» también ahí y los filtros de estado lo descartan', async () => {
+          await page.goto('/admin/asistencia')
+          const lista = page.getByRole('main')
+          for (const sede of sedes) {
+            const fila = filaDe(lista, sede.name)
+            await expect(fila).toBeVisible()
+            await expect(
+              fila.locator(
+                '[data-slot="badge"][data-variant="neutral-strike"]',
+              ),
+            ).toContainText('Cancelado')
+            await expect(fila).not.toHaveClass(
+              /bg-info-bg|bg-warning-bg|bg-danger-bg/,
+            )
+            await expect(fila).not.toContainText('llega ~')
+          }
+          for (const estado of [
+            'En camino',
+            'Llegada tarde',
+            'Sin registro',
+            'Esperado',
+          ]) {
+            await filtrarPorEstado(page, estado)
+            for (const sede of sedes) {
+              await expect(filaDe(lista, sede.name)).toHaveCount(0)
+            }
+          }
+        })
       } finally {
         expect(await sc.cleanup(), 'limpieza').toEqual([])
       }
