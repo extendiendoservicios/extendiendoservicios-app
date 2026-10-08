@@ -58,3 +58,9 @@ generaron. Por eso el job nocturno va al final, después de `dueno`.
 - **DEF-AJ-01** (`estados.desktop.ts`): la planilla de administración muestra «Esperado» en la asignación
   de un turno cancelado con aviso «En camino» o «Llegada tarde»; ninguna marca dice «Cancelado». Cuando se
   corrija, el test pasa y Playwright avisa que hay que sacar la anotación.
+
+## P19.5h: vencimiento de «En camino»
+
+- `vencimiento.desktop.ts` (planilla) y `vencimiento.movil.ts` (celular): «En camino» vence a la hora estimada + 15 min (sin estimación, inicio + 15). Los avisos se fechan con `helpers/aviso.ts`.
+- `objetivo-tactil.movil.ts`: el enlace de «Supervisiones de hoy» mide 44 px o más a 390 px.
+- `estados.desktop.ts`: el turno cancelado muestra «Cancelado» tachado (DEF-AJ-01, sin `test.fail`).
