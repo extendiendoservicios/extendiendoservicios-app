@@ -7,6 +7,16 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.16.3] - 2026-10-08
+
+### Agregado
+
+- Mapas: botón «Mapa / Satélite» arriba a la derecha en el selector de ubicación y en los mapas de clientes y sedes. El satelital usa imágenes de Esri (ArcGIS Location Platform, plan gratuito) con los nombres de calles encima; la clave pública `VITE_ARCGIS_API_KEY` está restringida a los dominios de la app y, si falta, el botón no aparece.
+
+### Cambiado
+
+- Mapas: la rueda del mouse sobre el mapa acerca y aleja también en el alta y edición de sedes y en la ficha de la sede; fuera del mapa sigue desplazando la página.
+
 ## [0.16.2] - 2026-10-08
 
 ### Corregido
