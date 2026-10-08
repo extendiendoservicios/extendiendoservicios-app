@@ -1671,14 +1671,42 @@ inicio efectivo hasta el fin efectivo. Repetirla agrega otro aviso (el último m
 ### `v_assignments_board.display_status`
 
 Para `expected` y `delay_notified` (sin inicio registrado), en este orden: `on_the_way` (último
-aviso en camino y franja sin terminar; prevalece), `late` (pasó el inicio efectivo hace 15 minutos
-o menos), `no_record` (más de 15 minutos). El minuto 15 exacto sigue siendo `late`. Columnas nuevas
+aviso en camino, franja sin terminar y aviso vigente: ver «Vencimiento de En camino»), `late`
+(pasó el inicio efectivo hace 15 minutos o menos), `no_record` (más de 15 minutos). El minuto 15
+exacto sigue siendo `late`. Columnas nuevas
 al final: `last_notice_estimated_arrival_at`, `planned_minutes` (duración de la franja efectiva) y
 `worked_minutes` (fin real menos inicio real, `null` si falta alguno). La regla de pantalla es del
 front: tilde verde si `worked_minutes >= planned_minutes` sin margen; advertencia si es menor o si
 `minutes_early_leave` no es nulo. No hay booleano para no tener la regla en dos lugares.
 `v_my_day` suma `last_notice_estimated_arrival_at` (su `last_notice_kind` ahora puede ser
 `on_the_way`).
+
+### Vencimiento de «En camino» (migración `0034`, P19.5e)
+
+Decisión de Mike (7 oct 2026). En 0033 «En camino» prevalecía sobre `late` y `no_record` hasta el
+fin de la franja y podía tapar la alerta. Ahora `display_status = 'on_the_way'` vale mientras no
+haya inicio registrado, la franja efectiva no haya terminado **y** `now()` sea menor o igual que el
+vencimiento del aviso:
+
+- con estimación: `estimated_arrival_at + app.late_grace_minutes()` (15 minutos);
+- sin estimación: inicio efectivo `+ app.late_grace_minutes()`.
+
+Vencido, la fila sigue la regla normal: `late` (hasta 15 minutos desde el inicio efectivo),
+`no_record` (más de 15) o, si todavía no llegó la hora de inicio, `expected`/`delay_notified`. El
+instante exacto del vencimiento todavía vale (`<=`). El 15 vive solo en `app.late_grace_minutes()`.
+Un aviso posterior de demora o ausencia reemplaza al «en camino» (el último manda), y con inicio
+registrado la fila es `present`. `v_assignments_board` conserva columnas, orden y tipos.
+
+`v_my_day` suma al final `on_the_way_expires_at timestamptz`: si el último aviso es «en camino», la
+hora hasta la que sigue vigente (misma cuenta que arriba); `null` en otro caso. Sirve para no
+mostrar «llegás a las HH:MM» con una hora vencida. Requiere regenerar `database.types.ts`.
+
+`v_employee_ratings` ahora se puede leer con `service_role` (defecto 4 de P19.5d): la vista llamaba
+a `app.is_admin()`, que `service_role` no puede ejecutar (no tiene `usage` sobre el esquema
+`app`). La condición pasó a `app.employee_ratings_visible()` (`security definer`; dueño,
+administrador o `service_role`), igual que en 0031. Para `authenticated` no cambia nada.
+Pruebas: `supabase/tests/0034_p19_5e_en_camino_vence.test.sql` (32 aserciones; los casos con inicio
+pasado salen como `skip` entre las 0:00 y las 0:41 de Argentina).
 
 ### Calificación promedio: `v_employee_ratings`
 
@@ -1776,7 +1804,8 @@ empleado y observación" más arriba. En F14 (P14.1, ABS-002, ATT-007):
 `0030_p18_6_permisos_y_rendimiento.sql` y `0031_p18_6_service_role_funciones_de_vistas.sql` -- ver
 "Correcciones de P18.6" más arriba. En F19 (P19.5a, ajustes de la reunión del 6 oct 2026):
 `0032_p19_5a_enums.sql` y `0033_p19_5a_ajustes_reunion.sql` -- ver "Ajustes de la reunión del
-6 oct 2026" más arriba.
+6 oct 2026" más arriba. En F19 (P19.5e, vencimiento de «En camino» y permiso de
+`v_employee_ratings`): `0034_p19_5e_en_camino_vence.sql` -- ver "Vencimiento de «En camino»".
 
 ## Cómo escribir una migración
 

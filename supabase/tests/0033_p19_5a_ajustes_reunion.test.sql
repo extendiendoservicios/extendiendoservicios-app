@@ -173,9 +173,9 @@ select is(
   'v_assignments_board: last_notice_estimated_arrival_at, planned_minutes y worked_minutes van al final'
 );
 select is(
-  (select attname::text from pg_attribute where attrelid = 'public.v_my_day'::regclass and attnum > 0 and not attisdropped order by attnum desc limit 1),
+  (select attname::text from pg_attribute where attrelid = 'public.v_my_day'::regclass and attnum > 0 and not attisdropped order by attnum desc offset 1 limit 1),
   'last_notice_estimated_arrival_at',
-  'v_my_day: last_notice_estimated_arrival_at es la última columna'
+  'v_my_day: last_notice_estimated_arrival_at es la penúltima (0034 agrega on_the_way_expires_at al final)'
 );
 select is(
   (select array_agg(attname::text order by attnum) from (
@@ -529,7 +529,7 @@ select is(tests.err_hint($$select public.notify_on_the_way(tests.asg(11), 10)$$)
 set local role postgres;
 
 -- ---------------------------------------------------------------------------------------------
--- 3. display_status: late -> no_record, on_the_way prevalece
+-- 3. display_status: late -> no_record, on_the_way mientras no venza (el vencimiento se prueba en 0034)
 -- ---------------------------------------------------------------------------------------------
 
 -- 22: inicio hace 5 minutos, esperado -> late
@@ -560,12 +560,12 @@ select tests.mk_shift(tests.shf(30), 'e3300000-0000-0000-0000-000000000011', 'e3
 select tests.mk_asg(30, 'present');
 insert into public.attendance_records (assignment_id, kind, recorded_at, source, recorded_by)
 values (tests.asg(30), 'check_in', now() - interval '18 minutes', 'employee_app', tests.emp(30));
--- 31: en camino, inicio hace 20 minutos, franja abierta -> on_the_way (prevalece sobre no_record)
+-- 31: en camino con estimación futura, inicio hace 20 minutos, franja abierta -> on_the_way (el aviso no venció: estimación + 15 min, 0034)
 select tests.mk_shift(tests.shf(31), 'e3300000-0000-0000-0000-000000000011', 'e3300000-0000-0000-0000-000000000021', now() - interval '20 minutes', now() + interval '1 hour');
 select tests.mk_asg(31);
 insert into public.attendance_notices (assignment_id, kind, estimated_arrival_at, reported_by, source)
 values (tests.asg(31), 'on_the_way', now() + interval '10 minutes', tests.emp(31), 'employee_app');
--- 32: en camino, inicio hace 5 minutos -> on_the_way (prevalece sobre late)
+-- 32: en camino sin estimación, inicio hace 5 minutos -> on_the_way (vence a inicio + 15 min, 0034)
 select tests.mk_shift(tests.shf(32), 'e3300000-0000-0000-0000-000000000011', 'e3300000-0000-0000-0000-000000000021', now() - interval '5 minutes', now() + interval '1 hour');
 select tests.mk_asg(32);
 insert into public.attendance_notices (assignment_id, kind, reported_by, source)
@@ -610,7 +610,7 @@ select is((select display_status from public.v_assignments_board where id = test
 select is(
   (select display_status from public.v_assignments_board where id = tests.asg(31)),
   'on_the_way',
-  'en camino pasados los 15 minutos: prevalece sobre no_record'
+  'en camino con estimación futura, inicio hace 20 minutos: on_the_way (aún no venció, 0034)'
 ) where (select can_open_window from t33_flags);
 select skip(1, 'entre las 0:00 y las 0:21 no se puede armar un inicio de hace 20 minutos con la franja abierta (sin turnos que crucen la medianoche)')
 where not (select can_open_window from t33_flags);
@@ -618,7 +618,7 @@ where not (select can_open_window from t33_flags);
 select is(
   (select display_status from public.v_assignments_board where id = tests.asg(32)),
   'on_the_way',
-  'en camino dentro de los 15 minutos: prevalece sobre late'
+  'en camino sin estimación, inicio hace 5 minutos: on_the_way (vence a los 15 minutos del inicio, 0034)'
 ) where (select can_open_window from t33_flags);
 select skip(1, 'entre las 0:00 y las 0:21 no se puede armar un inicio reciente con la franja abierta')
 where not (select can_open_window from t33_flags);
