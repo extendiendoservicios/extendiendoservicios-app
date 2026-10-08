@@ -33,7 +33,7 @@ const DESKTOP_QUERY = '(min-width: 1024px)'
  * Sin arrastre (P-055, módulo G).
  *
  * Cada tarjeta es un enlace directo a `/admin/turnos/:id` (ADM-06,
- * ASSIGN-011).
+ * ASSIGN-011), y el nombre del empleado lleva a su ficha.
  *
  * Debajo de 1024 px (`05` sección 7: "Grilla semanal → un empleado por vez
  * con selector"): se elige un empleado con un `Combobox` y se ve su semana
@@ -189,7 +189,12 @@ function WeekGrid() {
                     className={`border-b border-border last:border-b-0 ${onLeave ? 'opacity-50' : ''}`}
                   >
                     <td className="px-3 py-2 font-semibold text-text">
-                      {employee.firstName} {employee.lastName}
+                      <Link
+                        to={`/admin/empleados/${employee.profileId}`}
+                        className="rounded outline-none hover:text-primary-800 hover:underline focus-visible:ring-3 focus-visible:ring-ring"
+                      >
+                        {employee.firstName} {employee.lastName}
+                      </Link>
                       {onLeave && (
                         <span className="ml-1 text-[10.5px] font-medium text-text-3">
                           (de licencia)
@@ -239,6 +244,14 @@ function WeekGrid() {
               label: `${employee.firstName} ${employee.lastName}`,
             }))}
           />
+          {mobileEmployee && (
+            <Link
+              to={`/admin/empleados/${mobileEmployee.profileId}`}
+              className="flex min-h-11 items-center text-[13px] font-medium text-primary-800"
+            >
+              Ver ficha de {mobileEmployee.firstName} {mobileEmployee.lastName}
+            </Link>
+          )}
           {mobileEmployee && (
             <ul className="flex flex-col gap-2">
               {weekDays.map((day) => {
