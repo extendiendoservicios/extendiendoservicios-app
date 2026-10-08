@@ -17,24 +17,37 @@ const ARCGIS_API_KEY = import.meta.env.VITE_ARCGIS_API_KEY ?? ''
 
 export const isSatelliteAvailable = ARCGIS_API_KEY !== ''
 
-/** Estilo de Esri: imágenes satelitales con nombres de calles y localidades. */
-const SATELLITE_STYLE = 'arcgis/imagery/labels'
+const TOKEN = `token=${encodeURIComponent(ARCGIS_API_KEY)}`
 
-const SATELLITE_URL = `https://static-map-tiles-api.arcgis.com/arcgis/rest/services/static-basemap-tiles-service/v1/${SATELLITE_STYLE}/static/tile/{z}/{y}/{x}?token=${encodeURIComponent(ARCGIS_API_KEY)}`
+/** Imágenes satelitales (ArcGIS Imagery, mosaicos de 256 px). */
+const IMAGERY_URL = `https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?${TOKEN}`
+
+/**
+ * Nombres de calles y localidades encima de la foto: el estilo
+ * `arcgis/imagery/labels` del servicio de mosaicos estáticos es una capa
+ * transparente (solo rótulos), de 512 px.
+ */
+const LABELS_URL = `https://static-map-tiles-api.arcgis.com/arcgis/rest/services/static-basemap-tiles-service/v1/arcgis/imagery/labels/static/tile/{z}/{y}/{x}?${TOKEN}`
 
 /** El fondo elegido. El `key` fuerza a Leaflet a cambiar de capa en vez de reusar los mosaicos. */
 export function BaseTileLayer({ kind }: { kind: BaseLayerKind }) {
   if (kind === 'satellite' && isSatelliteAvailable) {
     return (
-      <TileLayer
-        key="satellite"
-        url={SATELLITE_URL}
-        // El servicio devuelve mosaicos de 512 px.
-        tileSize={512}
-        zoomOffset={-1}
-        maxZoom={19}
-        attribution='Imágenes: <a href="https://www.esri.com" target="_blank" rel="noreferrer">Esri</a>, Maxar, Earthstar Geographics y la comunidad de usuarios de SIG'
-      />
+      <>
+        <TileLayer
+          key="satellite"
+          url={IMAGERY_URL}
+          maxZoom={19}
+          attribution='Imágenes: <a href="https://www.esri.com" target="_blank" rel="noreferrer">Esri</a>, Maxar, Earthstar Geographics y la comunidad de usuarios de SIG'
+        />
+        <TileLayer
+          key="satellite-labels"
+          url={LABELS_URL}
+          tileSize={512}
+          zoomOffset={-1}
+          maxZoom={19}
+        />
+      </>
     )
   }
   return (
