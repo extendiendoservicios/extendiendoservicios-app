@@ -11,6 +11,8 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_ANON_KEY: string
   readonly VITE_APP_ENV: 'local' | 'staging' | 'production'
   readonly VITE_SENTRY_DSN: string
+  /** Clave pública de Esri para el mapa satelital (opcional: sin ella no se ofrece). */
+  readonly VITE_ARCGIS_API_KEY?: string
 }
 
 interface ImportMeta {

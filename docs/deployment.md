@@ -680,7 +680,7 @@ default-src 'self';
 script-src 'self';
 style-src 'self' 'unsafe-inline';
 font-src 'self';
-img-src 'self' data: blob: https://anesttvrnpsaaaxaquce.supabase.co https://fysuppdadwvabrjpnnoh.supabase.co https://tile.openstreetmap.org https://*.tile.openstreetmap.org;
+img-src 'self' data: blob: https://anesttvrnpsaaaxaquce.supabase.co https://fysuppdadwvabrjpnnoh.supabase.co https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://static-map-tiles-api.arcgis.com https://ibasemaps-api.arcgis.com;
 connect-src 'self' https://anesttvrnpsaaaxaquce.supabase.co https://fysuppdadwvabrjpnnoh.supabase.co https://*.ingest.de.sentry.io https://nominatim.openstreetmap.org;
 base-uri 'self';
 form-action 'self';
