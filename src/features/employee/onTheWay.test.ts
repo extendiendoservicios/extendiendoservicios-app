@@ -56,6 +56,7 @@ function assignment(overrides: Partial<MyDayAssignment> = {}): MyDayAssignment {
     lastNoticeSource: null,
     lastNoticeAt: null,
     lastNoticeEstimatedArrivalAt: null,
+    onTheWayExpiresAt: null,
     ...overrides,
   }
 }
@@ -109,6 +110,16 @@ describe('canNotifyOnTheWay / onTheWayAction', () => {
     const a = assignment({ lastNoticeKind: 'on_the_way' })
     expect(hasActiveOnTheWay(a)).toBe(true)
     expect(onTheWayAction(a, now)).toBe('change')
+  })
+
+  it('vencido ofrece "renew" y deja de estar vigente; vigente sigue en "change"', () => {
+    const a = assignment({
+      lastNoticeKind: 'on_the_way',
+      onTheWayExpiresAt: '2026-10-07T10:15:00Z',
+    })
+    expect(onTheWayAction(a, at('2026-10-07T10:14:59Z'))).toBe('change')
+    expect(onTheWayAction(a, at('2026-10-07T10:15:00Z'))).toBe('renew')
+    expect(hasActiveOnTheWay(a, at('2026-10-07T10:15:00Z'))).toBe(false)
   })
 
   it('con demora avisada sigue ofreciendo "notify" (el último manda)', () => {

@@ -80,7 +80,15 @@ export function canNotifyOnTheWay(
  * registrado ni ausencia avisada (el último manda: si después avisó una
  * demora o una ausencia, `lastNoticeKind` ya no es `on_the_way`).
  */
-export function hasActiveOnTheWay(assignment: MyDayAssignment): boolean {
+export function hasActiveOnTheWay(
+  assignment: MyDayAssignment,
+  now: Date = new Date(),
+): boolean {
+  return hasOnTheWayNotice(assignment) && !isOnTheWayExpired(assignment, now)
+}
+
+/** El último aviso es un «en camino» (vigente o vencido), sin inicio ni ausencia. */
+function hasOnTheWayNotice(assignment: MyDayAssignment): boolean {
   return (
     assignment.lastNoticeKind === 'on_the_way' &&
     assignment.checkInAt == null &&
@@ -89,17 +97,40 @@ export function hasActiveOnTheWay(assignment: MyDayAssignment): boolean {
 }
 
 /**
- * Estado del botón de la tarjeta: `notify` («Estoy en camino»), `change`
+ * P19.5g (0034): el «en camino» vence a la hora estimada + 15 min (sin
+ * estimación, a la hora de inicio + 15 min); el servidor manda en
+ * `onTheWayExpiresAt`. El reloj del dispositivo solo decide qué mostrar.
+ */
+export function isOnTheWayExpired(
+  assignment: MyDayAssignment,
+  now: Date,
+): boolean {
+  if (!assignment.onTheWayExpiresAt) return false
+  return now.getTime() >= new Date(assignment.onTheWayExpiresAt).getTime()
+}
+
+/** Hay un aviso «en camino» que ya venció y nada lo reemplazó. */
+export function hasExpiredOnTheWay(
+  assignment: MyDayAssignment,
+  now: Date,
+): boolean {
+  return hasOnTheWayNotice(assignment) && isOnTheWayExpired(assignment, now)
+}
+
+/**
+ * Estado del botón de la tarjeta: `notify` («Estoy en camino»), `renew`
+ * («Avisar de nuevo», el aviso anterior venció), `change`
  * («Cambiar hora estimada», ya avisó y sigue en ventana) o `none`.
  */
-export type OnTheWayAction = 'notify' | 'change' | 'none'
+export type OnTheWayAction = 'notify' | 'renew' | 'change' | 'none'
 
 export function onTheWayAction(
   assignment: MyDayAssignment,
   now: Date,
 ): OnTheWayAction {
   if (!canNotifyOnTheWay(assignment, now)) return 'none'
-  return hasActiveOnTheWay(assignment) ? 'change' : 'notify'
+  if (hasExpiredOnTheWay(assignment, now)) return 'renew'
+  return hasActiveOnTheWay(assignment, now) ? 'change' : 'notify'
 }
 
 /** Valida la estimación: `null` (sin estimar) o entero de 1 a 240. Devuelve el mensaje o `null` si está bien. */

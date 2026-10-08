@@ -52,6 +52,7 @@ function assignment(overrides: Partial<MyDayAssignment>): MyDayAssignment {
     lastNoticeSource: null,
     lastNoticeAt: null,
     lastNoticeEstimatedArrivalAt: null,
+    onTheWayExpiresAt: null,
     ...overrides,
   }
 }

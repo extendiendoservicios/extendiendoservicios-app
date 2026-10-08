@@ -51,12 +51,16 @@ export function OnTheWayAction({
     <div className={className}>
       <Button
         size="mobile"
-        variant={action === 'notify' ? 'primary' : 'ghost'}
+        variant={action === 'change' ? 'ghost' : 'primary'}
         disabled={!online}
         onClick={() => setOpen(true)}
       >
         <Navigation aria-hidden="true" />
-        {action === 'notify' ? 'Estoy en camino' : 'Cambiar hora estimada'}
+        {action === 'notify'
+          ? 'Estoy en camino'
+          : action === 'renew'
+            ? 'Avisar de nuevo'
+            : 'Cambiar hora estimada'}
       </Button>
       <OnTheWaySheet
         assignmentId={assignment.assignmentId}

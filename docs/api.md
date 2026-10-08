@@ -289,6 +289,11 @@ la asignación. Errores nuevos: `ABSENCE_ALREADY_NOTIFIED`, `INVALID_ETA`,
 llegás?» son `OnTheWayAction` (Hoy y detalle del servicio), y el estado
 («Avisaste que estás en camino · llegás ~HH:MM») sale de
 `v_my_day.last_notice_kind = 'on_the_way'` y `last_notice_estimated_arrival_at`.
+El aviso vence a la hora estimada + 15 min (`v_my_day.on_the_way_expires_at`,
+mapeado como `onTheWayExpiresAt`; migración 0034). Vencido, la tarjeta dice «Tu
+aviso de llegada venció. Si seguís en camino, avisá de nuevo.» y el botón pasa
+a «Avisar de nuevo». La vigencia usa el reloj del dispositivo solo para la UI
+(`useNow` cada 30 s en Hoy y en el detalle); el servidor manda.
 
 ### `checklists` (`src/api/checklists.ts`, P12.2 — TASK-003 a TASK-005)
 

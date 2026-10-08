@@ -11,6 +11,7 @@ import { avatarUrl } from '@/lib/avatarUrl'
 import { OnTheWayAction } from '@/features/employee/components/OnTheWayAction'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { getNoticeMessage } from '@/features/employee/notice'
+import { useNow } from '@/features/employee/useNow'
 import { isNotifiable } from '@/features/employee/notifyCandidates'
 import {
   SiteInfo,
@@ -64,6 +65,7 @@ export default function ServiceDetailPage() {
     auth.userId ?? '',
   )
   const { data: tasks } = useShiftTasksReadOnlyQuery(assignment?.shiftId ?? '')
+  const now = useNow(30_000)
 
   if (isLoading) {
     return (
@@ -85,7 +87,7 @@ export default function ServiceDetailPage() {
     assignment.endTime,
   )
   const cancelled = assignment.shiftStatus === 'cancelled'
-  const notice = cancelled ? null : getNoticeMessage(assignment)
+  const notice = cancelled ? null : getNoticeMessage(assignment, now)
   const siteInfo: SiteInfoData = {
     address: assignment.siteAddress ?? assignment.siteName,
     city: assignment.siteCity,

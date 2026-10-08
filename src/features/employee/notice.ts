@@ -1,7 +1,10 @@
 import type { MyDayAssignment } from '@/api/myDay'
 import { absenceReasonLabel } from '@/lib/absenceReasons'
 import { formatTime } from '@/lib/format'
-import { hasActiveOnTheWay } from '@/features/employee/onTheWay'
+import {
+  hasActiveOnTheWay,
+  hasExpiredOnTheWay,
+} from '@/features/employee/onTheWay'
 
 /**
  * ABS-005 (`05_Pantallas_y_Navegacion.md` fila EMP-03/EMP-04): el aviso
@@ -32,16 +35,26 @@ function absenceReasonForSentence(assignment: MyDayAssignment): string {
 
 export function getNoticeMessage(
   assignment: MyDayAssignment,
+  now: Date = new Date(),
 ): NoticeMessage | null {
   const byAdmin = assignment.lastNoticeSource === 'admin'
 
   // P19.5c: «en camino» es un aviso más y el último manda; no cambia el
   // estado de la asignación, así que se reconoce por `lastNoticeKind`.
-  if (hasActiveOnTheWay(assignment)) {
+  if (hasActiveOnTheWay(assignment, now)) {
     return {
       text: assignment.lastNoticeEstimatedArrivalAt
         ? `Avisaste que estás en camino · llegás ~${formatTime(assignment.lastNoticeEstimatedArrivalAt)}`
         : 'Avisaste que estás en camino.',
+      byAdmin: false,
+    }
+  }
+
+  // P19.5g: vencido (hora estimada + 15 min), no se muestra una hora pasada
+  // como vigente; el botón pasa a «Avisar de nuevo».
+  if (hasExpiredOnTheWay(assignment, now)) {
+    return {
+      text: 'Tu aviso de llegada venció. Si seguís en camino, avisá de nuevo.',
       byAdmin: false,
     }
   }
