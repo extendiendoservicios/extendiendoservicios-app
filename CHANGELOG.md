@@ -7,6 +7,31 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.16.0] - 2026-10-08
+
+### Agregado
+
+- Ajustes pedidos por los dueños en la reunión del 6 de octubre (P19.5):
+  - Editar nombre y apellido: el dueño, desde Configuración → Usuarios, para cualquier persona; cada persona, el suyo desde Mi perfil. Queda en Eventos de seguridad.
+  - «Estoy en camino» desde el celular, con hora estimada de llegada opcional. En la planilla, fila celeste con «llega ~HH:MM». El aviso vence a la hora estimada + 15 min (sin estimación, al inicio + 15 min) y el celular ofrece «Avisar de nuevo».
+  - «Llegada tarde»: fila amarilla durante los primeros 15 minutos sin fichaje; después, «Sin registro».
+  - Horas trabajadas en «Servicios de hoy» y en Asistencia de hoy, con tilde verde si alcanzan las previstas o advertencia con el motivo.
+  - Calificación promedio en el listado de Empleados y en la ficha.
+  - Asistencia de la ficha: horas por turno (también supervisiones), total del período y «Descargar detalle», una hoja membretada A4 con dos firmas para el legajo.
+  - Clientes: pestaña «Resumen de servicios» con período, turnos realizados, empleados y horas, imprimible; columna «Horas (mes)» en el listado.
+- Migraciones 0032 a 0034: aviso `on_the_way`, `update_person_name`, `notify_on_the_way`, `client_service_summary`, `clients_worked_minutes`, `v_employee_ratings` y columnas de horas en las vistas de asistencia y supervisiones.
+- Carga inicial (F19): importador `scripts/import-initial.ts` con validación, simulación y reintento, plantilla versión 2 y `pnpm credenciales:inicial`; guion de UAT, guías por rol y problemas frecuentes.
+- Pruebas: suite e2e `tests/e2e-ajustes-reunion/` (escritorio y celular) en el nocturno y matriz de permisos ampliada.
+
+### Cambiado
+
+- «Finalizado» (turno y asignación) pasa a verde; «En curso» del turno, a azul.
+- Un turno cancelado se ve «Cancelado» tachado en la planilla y no genera alertas.
+
+### Corregido
+
+- El enlace de «Supervisiones de hoy» en el tablero mide 44 px de alto en el celular.
+
 ## [0.15.1] - 2026-10-05
 
 ### Cambiado
