@@ -89,6 +89,10 @@ export interface MyDayAssignment {
   lastNoticeReportedBy: string | null
   lastNoticeSource: Database['public']['Enums']['attendance_source'] | null
   lastNoticeAt: string | null
+  /** Hora estimada de llegada del último aviso «en camino» (0033); `null` si no indicó minutos o el último aviso es de otro tipo. */
+  lastNoticeEstimatedArrivalAt: string | null
+  /** Hasta cuándo vale el último aviso «en camino» (0034: hora estimada + 15 min, o inicio + 15 min); `null` si el último aviso es de otro tipo. */
+  onTheWayExpiresAt: string | null
 }
 
 interface MyDayRawRow {
@@ -135,6 +139,8 @@ interface MyDayRawRow {
   last_notice_reported_by: string | null
   last_notice_source: Database['public']['Enums']['attendance_source'] | null
   last_notice_at: string | null
+  last_notice_estimated_arrival_at: string | null
+  on_the_way_expires_at: string | null
 }
 
 function mapMyDayRow(row: MyDayRawRow): MyDayAssignment {
@@ -181,6 +187,8 @@ function mapMyDayRow(row: MyDayRawRow): MyDayAssignment {
     lastNoticeReportedBy: row.last_notice_reported_by,
     lastNoticeSource: row.last_notice_source,
     lastNoticeAt: row.last_notice_at,
+    lastNoticeEstimatedArrivalAt: row.last_notice_estimated_arrival_at,
+    onTheWayExpiresAt: row.on_the_way_expires_at,
   }
 }
 

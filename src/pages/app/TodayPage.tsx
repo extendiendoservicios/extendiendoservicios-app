@@ -8,11 +8,13 @@ import { StatusBadge } from '@/components/status'
 import { formatCalendarDate } from '@/lib/format'
 import { isRelevantChange, type MyDayAssignment } from '@/api/myDay'
 import { getNoticeMessage } from '@/features/employee/notice'
+import { useNow } from '@/features/employee/useNow'
 import { isNotifiable } from '@/features/employee/notifyCandidates'
 import {
   useMarkChangesSeenMutation,
   useMyDayQuery,
 } from '@/features/employee/queries'
+import { OnTheWayAction } from '@/features/employee/components/OnTheWayAction'
 import { InstallBanner } from '@/components/InstallBanner'
 
 /**
@@ -90,12 +92,17 @@ export default function TodayPage() {
         />
       ) : (
         <>
-          {featured && <ServiceCard assignment={featured} featured />}
+          {featured && (
+            <div className="flex flex-col gap-2">
+              <ServiceCard assignment={featured} featured />
+              <OnTheWayAction assignment={featured} />
+            </div>
+          )}
           {others.map((assignment) => (
-            <ServiceCard
-              key={assignment.assignmentId}
-              assignment={assignment}
-            />
+            <div key={assignment.assignmentId} className="flex flex-col gap-2">
+              <ServiceCard assignment={assignment} />
+              <OnTheWayAction assignment={assignment} />
+            </div>
           ))}
         </>
       )}
@@ -169,7 +176,9 @@ function ServiceCard({
   featured?: boolean
 }) {
   const cancelled = assignment.shiftStatus === 'cancelled'
-  const notice = cancelled ? null : getNoticeMessage(assignment)
+  // Reloj solo para la UI: la tarjeta se actualiza sola al vencer el aviso.
+  const now = useNow(30_000)
+  const notice = cancelled ? null : getNoticeMessage(assignment, now)
   return (
     <Link to={`/app/servicio/${assignment.assignmentId}`} className="block">
       <Card variant={featured ? 'hero' : 'default'}>

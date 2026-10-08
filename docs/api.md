@@ -277,6 +277,24 @@ es `other`; en nombre del empleado se acepta también después del inicio
 mientras no haya inicio registrado (P14.0). Los motivos con sus etiquetas
 están en `src/lib/absenceReasons.ts`.
 
+`notifyOnTheWay(assignmentId, etaMinutes?)` (P19.5c, RPC `notify_on_the_way`,
+migración 0033): «Estoy en camino», solo el empleado de la asignación. Ventana:
+desde 3 horas antes del inicio efectivo hasta el fin; se rechaza si ya fichó el
+inicio, avisó ausencia o el turno está cancelado o terminado. `etaMinutes`
+opcional, de 1 a 240; el servidor calcula `estimated_arrival_at` con su reloj.
+Repetirla corrige la estimación (el último aviso manda) y no cambia el estado de
+la asignación. Errores nuevos: `ABSENCE_ALREADY_NOTIFIED`, `INVALID_ETA`,
+`ON_THE_WAY_TOO_EARLY`, `ON_THE_WAY_TOO_LATE`; sus textos de respaldo están en
+`src/features/employee/onTheWay.ts`. En la app, el botón y la hoja «¿En cuánto
+llegás?» son `OnTheWayAction` (Hoy y detalle del servicio), y el estado
+(«Avisaste que estás en camino · llegás ~HH:MM») sale de
+`v_my_day.last_notice_kind = 'on_the_way'` y `last_notice_estimated_arrival_at`.
+El aviso vence a la hora estimada + 15 min (`v_my_day.on_the_way_expires_at`,
+mapeado como `onTheWayExpiresAt`; migración 0034). Vencido, la tarjeta dice «Tu
+aviso de llegada venció. Si seguís en camino, avisá de nuevo.» y el botón pasa
+a «Avisar de nuevo». La vigencia usa el reloj del dispositivo solo para la UI
+(`useNow` cada 30 s en Hoy y en el detalle); el servidor manda.
+
 ### `checklists` (`src/api/checklists.ts`, P12.2 — TASK-003 a TASK-005)
 
 Plantillas de tareas por cliente y por sede (ADM-26, ADM-21, ADM-22). Igual

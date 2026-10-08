@@ -11,7 +11,7 @@ vi.mock('@/lib/supabase', () => ({
   supabase: { rpc: rpcMock },
 }))
 
-const { notifyDelay, notifyAbsence } = await import('./notices')
+const { notifyDelay, notifyAbsence, notifyOnTheWay } = await import('./notices')
 
 beforeEach(() => {
   rpcMock.mockReset()
@@ -62,6 +62,7 @@ describe('notifyDelay', () => {
       reportedBy: 'e1',
       source: 'employee_app',
       createdAt: '2026-09-26T10:45:00Z',
+      estimatedArrivalAt: null,
     })
   })
 
@@ -147,6 +148,63 @@ describe('notifyAbsence', () => {
 
     await expect(notifyAbsence('a1', 'other')).rejects.toMatchObject({
       hint: 'REASON_REQUIRED',
+    })
+  })
+})
+
+describe('notifyOnTheWay', () => {
+  const ROW = {
+    id: 'n3',
+    assignment_id: 'a1',
+    kind: 'on_the_way' as const,
+    minutes_late: null,
+    reason_code: null,
+    reason_text: null,
+    reported_by: 'u1',
+    source: 'employee_app' as const,
+    created_at: '2026-10-07T11:00:00Z',
+    estimated_arrival_at: '2026-10-07T11:20:00Z',
+  }
+
+  it('llama a la RPC con los minutos y mapea la hora estimada', async () => {
+    rpcMock.mockResolvedValue({ data: ROW, error: null })
+
+    const notice = await notifyOnTheWay('a1', 20)
+
+    expect(rpcMock).toHaveBeenCalledWith('notify_on_the_way', {
+      p_assignment_id: 'a1',
+      p_eta_minutes: 20,
+    })
+    expect(notice.kind).toBe('on_the_way')
+    expect(notice.estimatedArrivalAt).toBe('2026-10-07T11:20:00Z')
+  })
+
+  it('sin estimación no manda los minutos', async () => {
+    rpcMock.mockResolvedValue({
+      data: { ...ROW, estimated_arrival_at: null },
+      error: null,
+    })
+
+    const notice = await notifyOnTheWay('a1', null)
+
+    expect(rpcMock).toHaveBeenCalledWith('notify_on_the_way', {
+      p_assignment_id: 'a1',
+      p_eta_minutes: undefined,
+    })
+    expect(notice.estimatedArrivalAt).toBeNull()
+  })
+
+  it('propaga ON_THE_WAY_TOO_EARLY', async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: {
+        message: 'Todavía es muy temprano.',
+        hint: 'ON_THE_WAY_TOO_EARLY',
+      },
+    })
+
+    await expect(notifyOnTheWay('a1')).rejects.toMatchObject({
+      hint: 'ON_THE_WAY_TOO_EARLY',
     })
   })
 })
