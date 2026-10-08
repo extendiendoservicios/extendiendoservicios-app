@@ -12,7 +12,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   Sheet,
   SheetContent,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
@@ -69,6 +68,7 @@ function AssignEmployeeSheet({
 }: AssignEmployeeSheetProps) {
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [showOwnTime, setShowOwnTime] = useState(false)
   const [lastWarnings, setLastWarnings] = useState<
     AssignEmployeeWarning[] | null
   >(null)
@@ -106,9 +106,24 @@ function AssignEmployeeSheet({
     if (open) {
       setSearch('')
       setSelectedId(null)
+      setShowOwnTime(false)
       setLastWarnings(null)
       reset({ startTime: '', endTime: '' })
     }
+  }
+
+  /**
+   * Elegir otro empleado descarta el horario cargado para el anterior. Si se
+   * superpone con otro turno, el horario propio arranca abierto: es la forma
+   * de asignarlo sin que la base lo rechace (P-046).
+   */
+  function selectCandidate(employeeId: string, overlaps: boolean) {
+    if (employeeId === selectedId) {
+      return
+    }
+    setSelectedId(employeeId)
+    setShowOwnTime(overlaps)
+    reset({ startTime: '', endTime: '' })
   }
 
   const filteredCandidates = useMemo(() => {
@@ -206,18 +221,26 @@ function AssignEmployeeSheet({
                   candidate.availableThatDay &&
                   !candidate.onLeave
                 return (
-                  <li key={candidate.employeeId}>
+                  <li
+                    key={candidate.employeeId}
+                    className={`rounded-lg border ${
+                      isSelected
+                        ? 'border-primary bg-primary-100/40'
+                        : 'border-border bg-surface hover:bg-bg'
+                    }`}
+                  >
                     <button
                       type="button"
                       role="radio"
                       aria-checked={isSelected}
                       data-testid="assign-candidate"
-                      onClick={() => setSelectedId(candidate.employeeId)}
-                      className={`w-full rounded-lg border p-3 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring ${
-                        isSelected
-                          ? 'border-primary bg-primary-100/40'
-                          : 'border-border bg-surface hover:bg-bg'
-                      }`}
+                      onClick={() =>
+                        selectCandidate(
+                          candidate.employeeId,
+                          candidate.conflicts.some((c) => c.overlaps),
+                        )
+                      }
+                      className="w-full rounded-lg p-3 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring"
                     >
                       <PersonCell
                         id={candidate.employeeId}
@@ -268,55 +291,96 @@ function AssignEmployeeSheet({
                         ))}
                       </div>
                     </button>
+
+                    {/* El botón aparece en la misma tarjeta al elegir al
+                        empleado: un clic para elegir y otro para asignar. */}
+                    {isSelected && (
+                      <form
+                        onSubmit={(event) => void handleSubmit(onSubmit)(event)}
+                        className="flex flex-col gap-3 border-t border-border p-3"
+                      >
+                        {showOwnTime ? (
+                          <>
+                            <p className="text-[11px] text-text-2">
+                              Horario solo para este empleado. Dejalo vacío para
+                              que cubra el turno completo (
+                              {shiftStartTime.slice(0, 5)}–
+                              {shiftEndTime.slice(0, 5)}).
+                            </p>
+                            <div className="grid grid-cols-2 gap-4">
+                              <Field
+                                data-invalid={
+                                  Boolean(errors.startTime) || undefined
+                                }
+                              >
+                                <FieldLabel htmlFor="assign-start-time">
+                                  Desde
+                                </FieldLabel>
+                                <Input
+                                  id="assign-start-time"
+                                  type="time"
+                                  aria-invalid={Boolean(errors.startTime)}
+                                  {...register('startTime')}
+                                />
+                                {errors.startTime && (
+                                  <FieldError>
+                                    {errors.startTime.message}
+                                  </FieldError>
+                                )}
+                              </Field>
+                              <Field
+                                data-invalid={
+                                  Boolean(errors.endTime) || undefined
+                                }
+                              >
+                                <FieldLabel htmlFor="assign-end-time">
+                                  Hasta
+                                </FieldLabel>
+                                <Input
+                                  id="assign-end-time"
+                                  type="time"
+                                  aria-invalid={Boolean(errors.endTime)}
+                                  {...register('endTime')}
+                                />
+                                {errors.endTime && (
+                                  <FieldError>
+                                    {errors.endTime.message}
+                                  </FieldError>
+                                )}
+                              </Field>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-text-2">
+                            <span>
+                              Cubre el turno completo:{' '}
+                              {shiftStartTime.slice(0, 5)}–
+                              {shiftEndTime.slice(0, 5)}.
+                            </span>
+                            <Button
+                              type="button"
+                              variant="link"
+                              size="sm"
+                              className="px-0"
+                              onClick={() => setShowOwnTime(true)}
+                            >
+                              Cambiar horario
+                            </Button>
+                          </div>
+                        )}
+                        <Button
+                          type="submit"
+                          loading={assignEmployee.isPending}
+                        >
+                          Asignar
+                        </Button>
+                      </form>
+                    )}
                   </li>
                 )
               })}
             </ul>
           )}
-
-          <form
-            onSubmit={(event) => void handleSubmit(onSubmit)(event)}
-            className="flex flex-col gap-4 border-t border-border pt-4"
-          >
-            <p className="text-[11px] font-semibold text-text-2">
-              Franja propia (opcional)
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              <Field data-invalid={Boolean(errors.startTime) || undefined}>
-                <FieldLabel htmlFor="assign-start-time">Desde</FieldLabel>
-                <Input
-                  id="assign-start-time"
-                  type="time"
-                  aria-invalid={Boolean(errors.startTime)}
-                  {...register('startTime')}
-                />
-                {errors.startTime && (
-                  <FieldError>{errors.startTime.message}</FieldError>
-                )}
-              </Field>
-              <Field data-invalid={Boolean(errors.endTime) || undefined}>
-                <FieldLabel htmlFor="assign-end-time">Hasta</FieldLabel>
-                <Input
-                  id="assign-end-time"
-                  type="time"
-                  aria-invalid={Boolean(errors.endTime)}
-                  {...register('endTime')}
-                />
-                {errors.endTime && (
-                  <FieldError>{errors.endTime.message}</FieldError>
-                )}
-              </Field>
-            </div>
-            <SheetFooter className="p-0">
-              <Button
-                type="submit"
-                disabled={!selectedId}
-                loading={assignEmployee.isPending}
-              >
-                Asignar
-              </Button>
-            </SheetFooter>
-          </form>
         </div>
       </SheetContent>
     </Sheet>

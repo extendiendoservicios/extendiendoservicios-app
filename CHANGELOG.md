@@ -7,6 +7,16 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.16.1] - 2026-10-08
+
+### Cambiado
+
+- Asignar empleado: al elegir un empleado, el botón «Asignar» aparece en su misma tarjeta, con el horario que va a cubrir (por defecto, el turno completo). La franja propia queda detrás de «Cambiar horario» y se abre sola si el empleado se superpone con otro turno.
+
+### Agregado
+
+- Planificación · Semana: el nombre de cada empleado lleva a su ficha; en celular, «Ver ficha de …» debajo del selector.
+
 ## [0.16.0] - 2026-10-08
 
 ### Agregado
