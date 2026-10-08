@@ -39,6 +39,8 @@ export interface AttendanceNotice {
   /** `employee_app` si lo avisó el propio empleado; `admin` si lo cargó la administración en su nombre. */
   source: Database['public']['Enums']['attendance_source']
   createdAt: string
+  /** Hora estimada de llegada (solo si `kind === 'on_the_way'` y la persona indicó minutos). */
+  estimatedArrivalAt: string | null
 }
 
 interface AttendanceNoticeRow {
@@ -51,6 +53,7 @@ interface AttendanceNoticeRow {
   reported_by: string
   source: Database['public']['Enums']['attendance_source']
   created_at: string
+  estimated_arrival_at: string | null
 }
 
 function mapNotice(row: AttendanceNoticeRow): AttendanceNotice {
@@ -64,6 +67,7 @@ function mapNotice(row: AttendanceNoticeRow): AttendanceNotice {
     reportedBy: row.reported_by,
     source: row.source,
     createdAt: row.created_at,
+    estimatedArrivalAt: row.estimated_arrival_at ?? null,
   }
 }
 
@@ -82,6 +86,10 @@ export type NoticeErrorHint =
   | 'TOO_LATE_TO_NOTIFY'
   | 'MINUTES_REQUIRED'
   | 'REASON_REQUIRED'
+  | 'ABSENCE_ALREADY_NOTIFIED'
+  | 'INVALID_ETA'
+  | 'ON_THE_WAY_TOO_EARLY'
+  | 'ON_THE_WAY_TOO_LATE'
 
 /**
  * Avisa una demora (`06` sección 11: `notify_delay`). Solo antes de la hora
@@ -127,6 +135,29 @@ export async function notifyAbsence(
     p_assignment_id: assignmentId,
     p_reason_code: reasonCode,
     p_reason_text: reasonText?.trim() || undefined,
+  })
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return mapNotice(data as unknown as AttendanceNoticeRow)
+}
+
+/**
+ * Avisa que el empleado está en camino (`notify_on_the_way`, migración 0033,
+ * P19.5c). Solo el empleado de la asignación, desde 3 horas antes del inicio
+ * efectivo hasta el fin, y mientras no haya inicio ni ausencia avisada.
+ * `etaMinutes`: opcional, entero de 1 a 240 (`INVALID_ETA`); el servidor
+ * calcula la hora estimada con su propio reloj. Repetirla corrige la
+ * estimación: el último aviso manda. No cambia el estado de la asignación.
+ */
+export async function notifyOnTheWay(
+  assignmentId: string,
+  etaMinutes?: number | null,
+): Promise<AttendanceNotice> {
+  const { data, error } = await supabase.rpc('notify_on_the_way', {
+    p_assignment_id: assignmentId,
+    p_eta_minutes: etaMinutes ?? undefined,
   })
 
   if (error) {
