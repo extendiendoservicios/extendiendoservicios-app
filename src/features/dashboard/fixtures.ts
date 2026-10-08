@@ -76,6 +76,9 @@ export function makeAssignment(
     lastNoticeReportedBy: null,
     lastNoticeSource: null,
     lastNoticeAt: null,
+    lastNoticeEstimatedArrivalAt: null,
+    plannedMinutes: 240,
+    workedMinutes: null,
     ...overrides,
   }
 }

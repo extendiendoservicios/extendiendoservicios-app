@@ -11,7 +11,7 @@
 //     "pasó" (por ejemplo `SHIFT_NOT_FOUND`). Que "lo permitido funciona" con datos reales lo
 //     ejercitan los e2e y pgTAP; acá se prueba que la puerta abre solo para quien corresponde.
 
-import type { Contexto } from './contexto.ts'
+import { idDe, type Contexto } from './contexto.ts'
 import type { Perfil } from './perfiles.ts'
 
 /** Funciones que App_dev expone y que NO salen de las migraciones (las crea la plataforma). */
@@ -100,6 +100,62 @@ export const CASOS_RPC: CasoRpc[] = [
     },
     { cubre: ['RB-E02'] },
   ),
+  // Nombre de una persona (0033, P19.5a): el dueño cambia el de cualquiera; los demás, solo el
+  // propio. Con un id inexistente, el dueño pasa la puerta y recibe PROFILE_NOT_FOUND; los demás
+  // reciben FORBIDDEN sin enterarse de quién existe.
+  caso(
+    'update_person_name',
+    () => ({ p_profile_id: U, p_first_name: 'Prueba', p_last_name: 'Matriz' }),
+    { owner: 'PROFILE_NOT_FOUND' },
+    { cubre: ['RB-X02'] },
+  ),
+  // P19.5d: la propia fila la puede tocar cualquier persona con sesión (Mi perfil). Con el nombre
+  // vacío la RPC rechaza DESPUÉS de la puerta (NAME_REQUIRED) y no escribe nada: prueba que la
+  // puerta abre para el propio perfil de los seis roles, administrador sin capacidades incluido.
+  caso(
+    'update_person_name',
+    (_c, quien) => ({
+      p_profile_id: quien === 'anon' ? U : idDe(quien),
+      p_first_name: '',
+      p_last_name: 'Matriz',
+    }),
+    {
+      empleado: 'NAME_REQUIRED',
+      supervisor: 'NAME_REQUIRED',
+      dual: 'NAME_REQUIRED',
+      ...admins('NAME_REQUIRED'),
+    },
+    { variante: 'la propia fila', cubre: ['RB-X02'] },
+  ),
+  // El largo máximo (100) se valida en el servidor, también para la propia fila (sin escribir).
+  caso(
+    'update_person_name',
+    (_c, quien) => ({
+      p_profile_id: quien === 'anon' ? U : idDe(quien),
+      p_first_name: 'x'.repeat(101),
+      p_last_name: 'Matriz',
+    }),
+    {
+      empleado: 'NAME_TOO_LONG',
+      supervisor: 'NAME_TOO_LONG',
+      dual: 'NAME_TOO_LONG',
+      ...admins('NAME_TOO_LONG'),
+    },
+    { variante: 'nombre de más de 100 caracteres', cubre: ['RB-X02'] },
+  ),
+  // La fila de OTRA persona existente: solo el dueño pasa la puerta. El administrador (con todas
+  // las capacidades incluidas) y el resto reciben FORBIDDEN; el dueño llega a NAME_REQUIRED sin
+  // escribir nada.
+  caso(
+    'update_person_name',
+    (c) => ({
+      p_profile_id: c.ids.empleado2,
+      p_first_name: '',
+      p_last_name: 'Matriz',
+    }),
+    { owner: 'NAME_REQUIRED' },
+    { variante: 'la de otra persona', cubre: ['RB-X02', 'CB-17'] },
+  ),
   // Uso exclusivo de la Edge Function (`service_role`): ni el dueño la puede llamar.
   caso('admin_revoke_user_sessions', () => ({ p_profile_id: U }), {
     empleado: '42501',
@@ -124,6 +180,48 @@ export const CASOS_RPC: CasoRpc[] = [
       owner: '42501',
     },
     { cubre: ['RB-X02'] },
+  ),
+
+  // --- Resumen por cliente (0033, P19.5a): dueño y administradores ----------------------------
+  caso(
+    'client_service_summary',
+    () => ({ p_client_id: U, p_from: '2099-01-01', p_to: '2099-01-02' }),
+    admins('CLIENT_NOT_FOUND'),
+    { cubre: ['RB-X02'] },
+  ),
+  caso(
+    'clients_worked_minutes',
+    () => ({ p_from: '2099-01-02', p_to: '2099-01-01' }),
+    admins('INVALID_DATE_RANGE'),
+    { cubre: ['RB-X02'] },
+  ),
+  // Contraprueba (solo lectura): con un rango válido los tres perfiles administrativos obtienen
+  // la respuesta y el resto sigue en FORBIDDEN; así un `deny all` accidental no pasaría.
+  caso(
+    'clients_worked_minutes',
+    () => ({ p_from: '2099-01-01', p_to: '2099-01-02' }),
+    admins('OK'),
+    { variante: 'rango válido', cubre: ['RB-X02'] },
+  ),
+  caso(
+    'client_service_summary',
+    (c) => ({
+      p_client_id: c.e.clienteA,
+      p_from: '2099-01-01',
+      p_to: '2099-01-02',
+    }),
+    admins('OK'),
+    { variante: 'cliente existente, rango válido', cubre: ['RB-X02'] },
+  ),
+  caso(
+    'client_service_summary',
+    (c) => ({
+      p_client_id: c.e.clienteA,
+      p_from: '2099-01-02',
+      p_to: '2099-01-01',
+    }),
+    admins('INVALID_DATE_RANGE'),
+    { variante: 'rango invertido', cubre: ['RB-X02'] },
   ),
 
   // --- Turnos -----------------------------------------------------------------------------------
@@ -273,6 +371,29 @@ export const CASOS_RPC: CasoRpc[] = [
       owner: 'MINUTES_REQUIRED',
     },
     { variante: 'del compañero', cubre: ['RB-E07', 'RB-X02'] },
+  ),
+  // «En camino» (0033, P19.5a): solo el empleado de la asignación; ni el administrador con
+  // permiso de asistencia ni el dueño avisan en nombre de otro.
+  caso(
+    'notify_on_the_way',
+    () => ({ p_assignment_id: U }),
+    { empleado: 'ASSIGNMENT_NOT_FOUND', dual: 'ASSIGNMENT_NOT_FOUND' },
+    { cubre: ['RB-E07'] },
+  ),
+  caso(
+    'notify_on_the_way',
+    (c) => ({ p_assignment_id: c.e.asigE2 }),
+    { empleado: 'NOT_YOUR_ASSIGNMENT', dual: 'NOT_YOUR_ASSIGNMENT' },
+    { variante: 'del compañero', cubre: ['RB-E07', 'RB-X02'] },
+  ),
+  // Asignación propia con una hora estimada fuera de rango (0 min): se rechaza después de la
+  // puerta (INVALID_ETA) y no crea el aviso. Para el administrador y el dueño, FORBIDDEN: no
+  // avisan en nombre de otro (P19.5d).
+  caso(
+    'notify_on_the_way',
+    (c) => ({ p_assignment_id: c.e.asigE1, p_eta_minutes: 0 }),
+    { empleado: 'INVALID_ETA', dual: 'NOT_YOUR_ASSIGNMENT' },
+    { variante: 'propia con minutos inválidos', cubre: ['RB-E07'] },
   ),
   caso(
     'notify_absence',

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   canActOnUser,
   canCreateAdminUser,
+  canEditPersonName,
   canEditRolesAndCapabilities,
   canManageUsers,
   canReactivateUser,
@@ -105,9 +106,10 @@ describe('getVisibleUserActions', () => {
     deletedAt: '2026-09-01T00:00:00Z',
   }
 
-  it('el dueño ve las cinco acciones de una cuenta activa', () => {
+  it('el dueño ve las seis acciones de una cuenta activa, con "Editar nombre" (AJ-01)', () => {
     expect(getVisibleUserActions(owner, activeEmployee)).toEqual([
       'edit-roles',
+      'edit-name',
       'reset-password',
       'update-email',
       'sign-out',
@@ -125,9 +127,10 @@ describe('getVisibleUserActions', () => {
     expect(getVisibleUserActions(adminWithManageUsers, activeAdmin)).toEqual([])
   })
 
-  it('sobre una cuenta desactivada, el dueño solo ve "reactivate"', () => {
+  it('sobre una cuenta desactivada, el dueño solo ve "edit-name" y "reactivate"', () => {
     expect(getVisibleUserActions(owner, deactivatedEmployee)).toEqual([
       'edit-roles',
+      'edit-name',
       'reactivate',
     ])
   })
@@ -145,5 +148,12 @@ describe('getVisibleUserActions', () => {
     expect(
       getVisibleUserActions(adminWithoutManageUsers, deactivatedEmployee),
     ).toEqual([])
+  })
+})
+
+describe('canEditPersonName (AJ-01)', () => {
+  it('solo el dueño edita nombres desde ADM-27', () => {
+    expect(canEditPersonName(owner)).toBe(true)
+    expect(canEditPersonName(adminWithManageUsers)).toBe(false)
   })
 })

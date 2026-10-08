@@ -36,11 +36,15 @@ function makeChainable<T>(result: PostgrestResult<T>) {
 
 const { fromMock } = vi.hoisted(() => ({ fromMock: vi.fn() }))
 
+const { rpcMock } = vi.hoisted(() => ({ rpcMock: vi.fn() }))
+
 vi.mock('@/lib/supabase', () => ({
-  supabase: { from: fromMock },
+  supabase: { from: fromMock, rpc: rpcMock },
 }))
 
 const {
+  fetchClientServiceSummary,
+  fetchClientsWorkedMinutes,
   createClient,
   updateClient,
   setClientStatus,
@@ -53,6 +57,7 @@ const {
 
 beforeEach(() => {
   fromMock.mockReset()
+  rpcMock.mockReset()
 })
 
 const CLIENT_ROW = {
@@ -303,5 +308,109 @@ describe('deactivateClientContact', () => {
     await expect(
       deactivateClientContact('ct1', 'owner-1'),
     ).resolves.toBeUndefined()
+  })
+})
+
+describe('fetchClientServiceSummary (AJ-09)', () => {
+  it('llama a client_service_summary y arma el resumen tipado', async () => {
+    rpcMock.mockResolvedValue({
+      data: {
+        client_id: 'c1',
+        from: '2026-10-01',
+        to: '2026-10-07',
+        totals: {
+          shifts_done: 1,
+          employees_count: 1,
+          worked_minutes: 239,
+          planned_minutes: 240,
+        },
+        shifts: [
+          {
+            shift_id: 's1',
+            shift_date: '2026-10-05',
+            site_id: 'site1',
+            site_name: 'Munro',
+            start_time: '08:00:00',
+            end_time: '12:00:00',
+            status: 'completed',
+            worked_minutes: 239,
+            planned_minutes: 240,
+            employees: [
+              {
+                assignment_id: 'a1',
+                employee_id: 'e1',
+                first_name: 'Carlos',
+                last_name: 'Medina',
+                status: 'finished',
+                check_in_at: '2026-10-05T11:01:00Z',
+                check_out_at: '2026-10-05T15:00:00Z',
+                planned_minutes: 240,
+                worked_minutes: 239,
+              },
+            ],
+          },
+        ],
+      },
+      error: null,
+    })
+
+    const summary = await fetchClientServiceSummary(
+      'c1',
+      '2026-10-01',
+      '2026-10-07',
+    )
+
+    expect(rpcMock).toHaveBeenCalledWith('client_service_summary', {
+      p_client_id: 'c1',
+      p_from: '2026-10-01',
+      p_to: '2026-10-07',
+    })
+    expect(summary.totals).toEqual({
+      shiftsDone: 1,
+      employeesCount: 1,
+      workedMinutes: 239,
+      plannedMinutes: 240,
+    })
+    expect(summary.shifts[0]?.employees[0]).toMatchObject({
+      firstName: 'Carlos',
+      workedMinutes: 239,
+    })
+  })
+
+  it.each([
+    ['INVALID_DATE_RANGE', 'El rango de fechas no es válido.'],
+    ['CLIENT_NOT_FOUND', 'No encontramos a ese cliente.'],
+    ['FORBIDDEN', 'No tenés permiso para ver este resumen.'],
+  ])('traduce %s con el mensaje del servidor', async (hint, message) => {
+    rpcMock.mockResolvedValue({ data: null, error: { message, hint } })
+
+    await expect(
+      fetchClientServiceSummary('c1', '2026-10-01', '2026-10-07'),
+    ).rejects.toSatisfy(
+      (error: unknown) =>
+        isApiError(error) && error.hint === hint && error.message === message,
+    )
+  })
+})
+
+describe('fetchClientsWorkedMinutes (AJ-10)', () => {
+  it('una sola llamada devuelve un mapa cliente -> minutos', async () => {
+    rpcMock.mockResolvedValue({
+      data: [
+        { client_id: 'c1', worked_minutes: 750 },
+        { client_id: 'c2', worked_minutes: 0 },
+      ],
+      error: null,
+    })
+
+    const minutes = await fetchClientsWorkedMinutes('2026-10-01', '2026-10-07')
+
+    expect(rpcMock).toHaveBeenCalledTimes(1)
+    expect(rpcMock).toHaveBeenCalledWith('clients_worked_minutes', {
+      p_from: '2026-10-01',
+      p_to: '2026-10-07',
+    })
+    expect(minutes.get('c1')).toBe(750)
+    expect(minutes.get('c2')).toBe(0)
   })
 })

@@ -35,8 +35,8 @@ select columns_are(
 
 select columns_are(
   'public', 'attendance_notices',
-  array['id', 'assignment_id', 'kind', 'minutes_late', 'reason_code', 'reason_text', 'reported_by', 'source', 'created_at'],
-  'attendance_notices tiene exactamente las columnas de 04 sección 2.3'
+  array['id', 'assignment_id', 'kind', 'minutes_late', 'reason_code', 'reason_text', 'reported_by', 'source', 'created_at', 'estimated_arrival_at'],
+  'attendance_notices tiene exactamente las columnas de 04 sección 2.3 más estimated_arrival_at (0033, P19.5a)'
 );
 
 select has_pk('public', 'attendance_records', 'attendance_records tiene primary key');

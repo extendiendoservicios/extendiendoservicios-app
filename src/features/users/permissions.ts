@@ -87,9 +87,18 @@ export function canEditRolesAndCapabilities(actor: UsersScreenActor): boolean {
   return isOwner(actor)
 }
 
+/**
+ * AJ-01: solo el dueño edita el nombre de otras personas (y el suyo) desde
+ * ADM-27; cada persona edita el propio desde "Mi perfil".
+ */
+export function canEditPersonName(actor: UsersScreenActor): boolean {
+  return isOwner(actor)
+}
+
 /** Cada botón que puede aparecer en el menú "…" de una fila de ADM-27. */
 export type UserActionKind =
   | 'edit-roles'
+  | 'edit-name'
   | 'reset-password'
   | 'update-email'
   | 'sign-out'
@@ -112,6 +121,9 @@ export function getVisibleUserActions(
 
   if (canEditRolesAndCapabilities(actor)) {
     actions.push('edit-roles')
+  }
+  if (canEditPersonName(actor)) {
+    actions.push('edit-name')
   }
   if (!isDeactivated && canActOnUser(actor, user.roles)) {
     actions.push('reset-password', 'update-email', 'sign-out', 'deactivate')

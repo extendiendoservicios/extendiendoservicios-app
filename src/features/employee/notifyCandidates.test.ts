@@ -48,6 +48,8 @@ function baseAssignment(
     lastNoticeReportedBy: null,
     lastNoticeSource: null,
     lastNoticeAt: null,
+    lastNoticeEstimatedArrivalAt: null,
+    onTheWayExpiresAt: null,
     ...overrides,
   }
 }

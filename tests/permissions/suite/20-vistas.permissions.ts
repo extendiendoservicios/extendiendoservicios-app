@@ -25,6 +25,13 @@ describe.concurrent('lectura de vistas por perfil', () => {
     // Una vista que nadie ve (cero filas en origen) no probaría nada: se comprueba con la clave
     // de servicio que tiene filas.
     for (const spec of VISTAS) {
+      // Las vistas de "lo mío" (`propia`) no se pueden contar con la clave de servicio: no tiene
+      // `auth.uid()` y da cero filas. `v_employee_ratings` sí (0034: `service_role` pasa por
+      // `app.employee_ratings_visible()`), así que se cuenta como cualquier otra.
+      if (spec.propia) {
+        conFilas.set(spec.vista, 0)
+        continue
+      }
       const { count, error } = await servicio()
         .from(spec.vista as 'v_clients')
         .select('*', { count: 'exact', head: true })
@@ -77,6 +84,19 @@ describe.concurrent('lectura de vistas por perfil', () => {
       }
     })
   }
+
+  describe('vista v_employee_ratings con la clave de servicio (0034, P19.5e)', () => {
+    it('[service_role] v_employee_ratings.select -> lee una fila por empleado, sin error (RB-X02, P-084)', async () => {
+      const c = contexto()
+      const res = await tabla(servicio(), 'v_employee_ratings')
+        .select('*')
+        .in('employee_id', [c.ids.empleado1, c.ids.empleado2, c.ids.dual])
+      expect(res.error, describir(res)).toBeNull()
+      expect(claves(res, 'employee_id')).toEqual(
+        new Set([c.ids.empleado1, c.ids.empleado2, c.ids.dual]),
+      )
+    })
+  })
 
   describe('vista v_public_branding', () => {
     for (const perfil of PERFILES) {

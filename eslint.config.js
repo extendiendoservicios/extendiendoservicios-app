@@ -59,7 +59,7 @@ export default tseslint.config(
     // projectService, que ya cubre `scripts/**/*.ts` desde tsconfig.node.json), sumando los
     // globals de Node a los de browser en vez de reemplazarlos (ESLint flat config combina
     // `languageOptions.globals` de todas las configs que matchean un archivo).
-    files: ['scripts/**/*.ts'],
+    files: ['scripts/**/*.ts', 'docs/guias/**/*.ts'],
     languageOptions: {
       globals: globals.node,
     },

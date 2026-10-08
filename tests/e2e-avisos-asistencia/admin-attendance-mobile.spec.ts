@@ -67,9 +67,13 @@ test.describe('ATT-016: ADM-10/ADM-11 a 390 px', () => {
         // se ve por debajo de 1024 px, mismo criterio que `EmployeesPage`/`AttendanceTodayList`).
         await expect(page.getByRole('columnheader')).toHaveCount(0)
         await expect(page.getByText(site.name)).toBeVisible()
+        // `toHaveCount(1)` espera a que el filtro por nombre (con retardo) ya se haya aplicado: con
+        // `toBeVisible` el botón se leía sobre la lista completa del día y, cuantas más filas
+        // dejaban las corridas anteriores de esta suite, más seguro era el error de modo estricto
+        // (P19.5d: 15 y luego 18 botones en `App_dev`; no depende de los ajustes de la reunión).
         await expect(
           page.getByRole('button', { name: 'Registrar en nombre' }),
-        ).toBeVisible()
+        ).toHaveCount(1)
         // Sin scroll horizontal (RESP-003/RESP-005): el ancho de la página no debe superar el
         // viewport de 390 px.
         const scrollWidth = await page.evaluate(

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ProfilePage from './ProfilePage'
+import { ApiError } from '@/api/errors'
 import * as authModule from '@/features/auth/AuthProvider'
 import type { AuthContextValue } from '@/features/auth/AuthProvider'
 
@@ -28,28 +29,34 @@ type ProfilesUpdateResult = { data: null; error: null }
 // objeto (no un `let` suelto) para poder reasignar `.result` desde
 // `beforeEach`/los tests sin volver a declarar la variable que ya capturó
 // la factory.
-const { updateUserMock, profilesUpdateMock, companySettings } = vi.hoisted(
-  () => ({
-    updateUserMock:
-      vi.fn<(attributes: { password: string }) => Promise<UpdateUserResult>>(),
-    profilesUpdateMock:
-      vi.fn<
-        (
-          values: ProfilesUpdatePayload,
-          column: string,
-          value: unknown,
-        ) => Promise<ProfilesUpdateResult>
-      >(),
-    companySettings: {
-      result: {
-        data: {
-          location_consent_text: 'Texto legal de prueba de consentimiento.',
-        },
-        error: null,
+const {
+  updateUserMock,
+  profilesUpdateMock,
+  companySettings,
+  updatePersonNameMock,
+} = vi.hoisted(() => ({
+  updatePersonNameMock: vi.fn<(input: unknown) => Promise<void>>(),
+  updateUserMock:
+    vi.fn<(attributes: { password: string }) => Promise<UpdateUserResult>>(),
+  profilesUpdateMock:
+    vi.fn<
+      (
+        values: ProfilesUpdatePayload,
+        column: string,
+        value: unknown,
+      ) => Promise<ProfilesUpdateResult>
+    >(),
+  companySettings: {
+    result: {
+      data: {
+        location_consent_text: 'Texto legal de prueba de consentimiento.',
       },
+      error: null,
     },
-  }),
-)
+  },
+}))
+
+vi.mock('@/api/users', () => ({ updatePersonName: updatePersonNameMock }))
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
@@ -104,6 +111,7 @@ function authValue(overrides: Partial<AuthContextValue>): AuthContextValue {
 
 beforeEach(() => {
   updateUserMock.mockReset()
+  updatePersonNameMock.mockReset().mockResolvedValue(undefined)
   profilesUpdateMock.mockReset().mockResolvedValue({ data: null, error: null })
   companySettings.result = {
     data: { location_consent_text: 'Texto legal de prueba de consentimiento.' },
@@ -116,21 +124,80 @@ afterEach(() => {
 })
 
 describe('ProfilePage (COM-04)', () => {
-  it('muestra el nombre y el email de login de solo lectura, y los roles', () => {
+  it('muestra nombre y apellido editables, el email de login de solo lectura y los roles', () => {
     vi.spyOn(authModule, 'useAuth').mockReturnValue(
       authValue({ roles: ['employee', 'supervisor'] }),
     )
 
     render(<ProfilePage />)
 
-    expect(screen.getByLabelText('Nombre')).toHaveValue('Carlos Medina')
-    expect(screen.getByLabelText('Nombre')).toBeDisabled()
+    expect(screen.getByLabelText('Nombre')).toHaveValue('Carlos')
+    expect(screen.getByLabelText('Nombre')).toBeEnabled()
+    expect(screen.getByLabelText('Apellido')).toHaveValue('Medina')
     expect(screen.getByLabelText('Email de login')).toHaveValue(
       'carlos.medina@extendiendoservicios.com',
     )
     expect(screen.getByLabelText('Email de login')).toBeDisabled()
     expect(screen.getByText('Empleado')).toBeInTheDocument()
     expect(screen.getByText('Supervisor')).toBeInTheDocument()
+  })
+
+  it('guarda el nombre propio con update_person_name y refresca el perfil (AJ-01)', async () => {
+    const refreshProfile = vi.fn().mockResolvedValue(undefined)
+    vi.spyOn(authModule, 'useAuth').mockReturnValue(
+      authValue({ refreshProfile }),
+    )
+
+    render(<ProfilePage />)
+    fireEvent.change(screen.getByLabelText('Nombre'), {
+      target: { value: '  Carlos Alberto ' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar nombre' }))
+
+    expect(await screen.findByText('Guardamos tu nombre.')).toBeInTheDocument()
+    expect(updatePersonNameMock).toHaveBeenCalledWith({
+      profileId: 'user-1',
+      firstName: 'Carlos Alberto',
+      lastName: 'Medina',
+    })
+    expect(refreshProfile).toHaveBeenCalledTimes(1)
+  })
+
+  it('no guarda un nombre vacío y avisa (AJ-01)', async () => {
+    vi.spyOn(authModule, 'useAuth').mockReturnValue(authValue({}))
+
+    render(<ProfilePage />)
+    fireEvent.change(screen.getByLabelText('Apellido'), {
+      target: { value: '   ' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar nombre' }))
+
+    expect(await screen.findByText('Falta el apellido.')).toBeInTheDocument()
+    expect(updatePersonNameMock).not.toHaveBeenCalled()
+  })
+
+  it('muestra el mensaje del servidor si update_person_name falla (AJ-01)', async () => {
+    updatePersonNameMock.mockRejectedValue(
+      new ApiError(
+        'El nombre no puede superar los 100 caracteres.',
+        'NAME_TOO_LONG',
+      ),
+    )
+    const refreshProfile = vi.fn().mockResolvedValue(undefined)
+    vi.spyOn(authModule, 'useAuth').mockReturnValue(
+      authValue({ refreshProfile }),
+    )
+
+    render(<ProfilePage />)
+    fireEvent.change(screen.getByLabelText('Nombre'), {
+      target: { value: 'Carlitos' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar nombre' }))
+
+    expect(
+      await screen.findByText('El nombre no puede superar los 100 caracteres.'),
+    ).toBeInTheDocument()
+    expect(refreshProfile).not.toHaveBeenCalled()
   })
 
   it('guarda el email de contacto y el teléfono, y refresca el perfil', async () => {

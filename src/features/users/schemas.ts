@@ -31,3 +31,27 @@ export const updateEmailSchema = z.object({
   email: z.email('Ingresá un email válido.'),
 })
 export type UpdateEmailFormValues = z.infer<typeof updateEmailSchema>
+
+/** Tope de caracteres de nombre y apellido que impone el servidor (`NAME_TOO_LONG`). */
+export const PERSON_NAME_MAX_LENGTH = 100
+
+/** AJ-01: editar nombre y apellido (ADM-27 y Mi perfil). */
+export const updatePersonNameSchema = z.object({
+  firstName: z
+    .string()
+    .trim()
+    .min(1, 'Falta el nombre.')
+    .max(
+      PERSON_NAME_MAX_LENGTH,
+      `El nombre no puede pasar de ${PERSON_NAME_MAX_LENGTH} caracteres.`,
+    ),
+  lastName: z
+    .string()
+    .trim()
+    .min(1, 'Falta el apellido.')
+    .max(
+      PERSON_NAME_MAX_LENGTH,
+      `El apellido no puede pasar de ${PERSON_NAME_MAX_LENGTH} caracteres.`,
+    ),
+})
+export type UpdatePersonNameFormValues = z.infer<typeof updatePersonNameSchema>

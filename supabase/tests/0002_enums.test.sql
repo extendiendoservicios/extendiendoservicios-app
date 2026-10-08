@@ -94,8 +94,8 @@ select enum_has_labels(
 
 select enum_has_labels(
   'public', 'notice_kind',
-  array['delay', 'absence'],
-  'notice_kind tiene los valores exactos y en orden'
+  array['delay', 'absence', 'on_the_way'],
+  'notice_kind tiene los valores exactos y en orden (on_the_way agregado en 0032, P19.5a)'
 );
 
 select enum_has_labels(
@@ -116,9 +116,9 @@ select enum_has_labels(
     'sign_in', 'sign_in_failed', 'user_created', 'user_deactivated',
     'user_reactivated', 'password_reset_by_admin', 'sessions_revoked',
     'roles_changed', 'capabilities_changed', 'email_changed',
-    'admin_action_rejected'
+    'admin_action_rejected', 'name_changed'
   ],
-  'security_event_type tiene los valores exactos y en orden (04 sección 2.6; admin_action_rejected agregado en 0030, SEG-03)'
+  'security_event_type tiene los valores exactos y en orden (04 sección 2.6; admin_action_rejected agregado en 0030, SEG-03; name_changed en 0032, P19.5a)'
 );
 
 select * from finish();

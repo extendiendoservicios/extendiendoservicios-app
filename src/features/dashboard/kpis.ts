@@ -30,6 +30,14 @@ export interface DashboardKpis {
   /** Avisos vigentes de ausencia y de demora. */
   absenceNotices: number
   delayNotices: number
+  /**
+   * AJ-07: asignaciones con `display_status = late` (pasó el inicio hace
+   * hasta 15 min, sin registro) que no tenían una demora avisada: las que sí
+   * la tenían ya cuentan en `delayNotices`. Suman al total de "Avisos".
+   */
+  lateArrivals: number
+  /** AJ-02: asignaciones `on_the_way`. Informativo: no es una alerta ni suma a "Avisos". */
+  onTheWay: number
 }
 
 /** Instante de inicio de un turno a partir de su fecha y hora (hora de Argentina). */
@@ -86,6 +94,12 @@ export function computeKpis(
     ).length,
     delayNotices: liveAssignments.filter(
       (row) => row.status === 'delay_notified',
+    ).length,
+    lateArrivals: liveAssignments.filter(
+      (row) => row.displayStatus === 'late' && row.status === 'expected',
+    ).length,
+    onTheWay: liveAssignments.filter(
+      (row) => row.displayStatus === 'on_the_way',
     ).length,
   }
 }

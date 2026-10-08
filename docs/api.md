@@ -277,6 +277,24 @@ es `other`; en nombre del empleado se acepta también después del inicio
 mientras no haya inicio registrado (P14.0). Los motivos con sus etiquetas
 están en `src/lib/absenceReasons.ts`.
 
+`notifyOnTheWay(assignmentId, etaMinutes?)` (P19.5c, RPC `notify_on_the_way`,
+migración 0033): «Estoy en camino», solo el empleado de la asignación. Ventana:
+desde 3 horas antes del inicio efectivo hasta el fin; se rechaza si ya fichó el
+inicio, avisó ausencia o el turno está cancelado o terminado. `etaMinutes`
+opcional, de 1 a 240; el servidor calcula `estimated_arrival_at` con su reloj.
+Repetirla corrige la estimación (el último aviso manda) y no cambia el estado de
+la asignación. Errores nuevos: `ABSENCE_ALREADY_NOTIFIED`, `INVALID_ETA`,
+`ON_THE_WAY_TOO_EARLY`, `ON_THE_WAY_TOO_LATE`; sus textos de respaldo están en
+`src/features/employee/onTheWay.ts`. En la app, el botón y la hoja «¿En cuánto
+llegás?» son `OnTheWayAction` (Hoy y detalle del servicio), y el estado
+(«Avisaste que estás en camino · llegás ~HH:MM») sale de
+`v_my_day.last_notice_kind = 'on_the_way'` y `last_notice_estimated_arrival_at`.
+El aviso vence a la hora estimada + 15 min (`v_my_day.on_the_way_expires_at`,
+mapeado como `onTheWayExpiresAt`; migración 0034). Vencido, la tarjeta dice «Tu
+aviso de llegada venció. Si seguís en camino, avisá de nuevo.» y el botón pasa
+a «Avisar de nuevo». La vigencia usa el reloj del dispositivo solo para la UI
+(`useNow` cada 30 s en Hoy y en el detalle); el servidor manda.
+
 ### `checklists` (`src/api/checklists.ts`, P12.2 — TASK-003 a TASK-005)
 
 Plantillas de tareas por cliente y por sede (ADM-26, ADM-21, ADM-22). Igual
@@ -336,6 +354,19 @@ Los criterios de calificación (`fetchRatingCriteria`, ADM-30) viven en
 | ---------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `fetchRatings(filters?)`                                         | `from('ratings')`   | Filtros por empleado, supervisor, sede y rango de fechas, resueltos en el cliente (decisión propia, ver el reporte del encargo). O, A -- el empleado no ve esta tabla por ninguna vía (P-084, RLS de `0012`).                                                                                                                  |
 | `rateEmployee({ supervisionId, assignmentId, score, comment? })` | RPC `rate_employee` | Upsert (una fila por asignación). S (propia, dentro del plazo de P-083: hasta el fin del turno o de la supervisión, lo que ocurra último); O, A + `edit_ratings` (siempre, sin ventana). `SUPERVISION_NOT_ACTIVE`, `ASSIGNMENT_NOT_IN_SHIFT`, `SELF_RATING_NOT_ALLOWED` (CB-13), `SCORE_OUT_OF_RANGE`, `RATING_WINDOW_CLOSED`. |
+
+### Ajustes de la reunión del 6 oct 2026 (P19.5b — AJ-01 a AJ-10)
+
+Detalle y decisiones en `docs/features/ajustes-reunion-6-oct.md`.
+
+| Función                                                      | Canal                          | Notas                                                                                                                                            |
+| ------------------------------------------------------------ | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `users.updatePersonName({ profileId, firstName, lastName })` | RPC `update_person_name`       | Dueño a cualquiera (incluido él); cualquier persona activa a sí misma. `FORBIDDEN`, `PROFILE_NOT_FOUND`, `NAME_REQUIRED`, `NAME_TOO_LONG` (100). |
+| `ratings.fetchEmployeeRatingsSummary()`                      | `from('v_employee_ratings')`   | Una sola consulta para todos los empleados: mapa `employee_id` -> `{ average, count }`. Sin fila = sin calificaciones. Solo O, A.                |
+| `clients.fetchClientServiceSummary(clientId, from, to)`      | RPC `client_service_summary`   | Totales y turnos realizados con sus empleados. O, A. `INVALID_DATE_RANGE`, `CLIENT_NOT_FOUND`, `FORBIDDEN`.                                      |
+| `clients.fetchClientsWorkedMinutes(from, to)`                | RPC `clients_worked_minutes`   | Mapa `client_id` -> minutos (0 si no hubo trabajo), una llamada para todo el listado. O, A. `INVALID_DATE_RANGE`.                                |
+| `attendance` (columnas nuevas)                               | `from('v_assignments_board')`  | `AttendanceBoardRow` suma `lastNoticeEstimatedArrivalAt`, `plannedMinutes` y `workedMinutes`; `displayStatus` puede valer `on_the_way` y `late`. |
+| `supervisions` (columnas nuevas)                             | `from('v_supervisions_admin')` | `SupervisionListRow` suma `plannedMinutes` y `workedMinutes`.                                                                                    |
 
 ## Próximos dominios
 

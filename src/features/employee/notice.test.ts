@@ -48,6 +48,8 @@ function baseAssignment(
     lastNoticeReportedBy: null,
     lastNoticeSource: null,
     lastNoticeAt: null,
+    lastNoticeEstimatedArrivalAt: null,
+    onTheWayExpiresAt: null,
     ...overrides,
   }
 }
@@ -127,5 +129,100 @@ describe('getNoticeMessage', () => {
 
   it('no muestra nada si nunca hubo un aviso', () => {
     expect(getNoticeMessage(baseAssignment())).toBeNull()
+  })
+})
+
+describe('getNoticeMessage · en camino (P19.5c)', () => {
+  it('muestra la hora estimada en hora de Argentina', () => {
+    const message = getNoticeMessage(
+      baseAssignment({
+        lastNoticeKind: 'on_the_way',
+        lastNoticeEstimatedArrivalAt: '2026-10-07T11:40:00Z',
+      }),
+    )
+    expect(message?.text).toBe('Avisaste que estás en camino · llegás ~08:40')
+  })
+
+  it('sin estimación, avisa solo que está en camino', () => {
+    const message = getNoticeMessage(
+      baseAssignment({ lastNoticeKind: 'on_the_way' }),
+    )
+    expect(message?.text).toBe('Avisaste que estás en camino.')
+  })
+
+  it('deja de mostrarse cuando ya registró el inicio', () => {
+    const message = getNoticeMessage(
+      baseAssignment({
+        lastNoticeKind: 'on_the_way',
+        status: 'present',
+        checkInAt: '2026-10-07T11:00:00Z',
+      }),
+    )
+    expect(message).toBeNull()
+  })
+
+  it('si después avisó una demora, manda la demora', () => {
+    const message = getNoticeMessage(
+      baseAssignment({
+        status: 'delay_notified',
+        lastNoticeKind: 'delay',
+        lastNoticeMinutesLate: 20,
+      }),
+    )
+    expect(message?.text).toBe('Avisaste una demora de 20 min.')
+  })
+
+  describe('vencimiento del «en camino» (P19.5g)', () => {
+    const expiresAt = '2026-10-07T11:15:00Z'
+    const antes = new Date('2026-10-07T11:10:00Z')
+    const despues = new Date('2026-10-07T11:15:00Z')
+    const enCamino = {
+      lastNoticeKind: 'on_the_way' as const,
+      lastNoticeEstimatedArrivalAt: '2026-10-07T11:00:00Z',
+      onTheWayExpiresAt: expiresAt,
+    }
+
+    it('vigente con estimación: muestra la hora', () => {
+      const message = getNoticeMessage(baseAssignment(enCamino), antes)
+      expect(message?.text).toMatch(/^Avisaste que estás en camino · llegás ~/)
+    })
+
+    it('vigente sin estimación: avisa solo que está en camino', () => {
+      const message = getNoticeMessage(
+        baseAssignment({ ...enCamino, lastNoticeEstimatedArrivalAt: null }),
+        antes,
+      )
+      expect(message?.text).toBe('Avisaste que estás en camino.')
+    })
+
+    it('vencido: no muestra la hora pasada y pide avisar de nuevo', () => {
+      const message = getNoticeMessage(baseAssignment(enCamino), despues)
+      expect(message?.text).toBe(
+        'Tu aviso de llegada venció. Si seguís en camino, avisá de nuevo.',
+      )
+    })
+
+    it('una demora posterior manda sobre el vencimiento', () => {
+      const message = getNoticeMessage(
+        baseAssignment({
+          status: 'delay_notified',
+          lastNoticeKind: 'delay',
+          lastNoticeMinutesLate: 25,
+          onTheWayExpiresAt: null,
+        }),
+        despues,
+      )
+      expect(message?.text).toBe('Avisaste una demora de 25 min.')
+    })
+
+    it('tras fichar no se muestra nada, ni vigente ni vencido', () => {
+      const fichado = baseAssignment({
+        ...enCamino,
+        status: 'present',
+        checkInAt: '2026-10-07T11:05:00Z',
+      })
+      expect(getNoticeMessage(fichado, antes)).toBeNull()
+      expect(getNoticeMessage(fichado, despues)).toBeNull()
+    })
   })
 })

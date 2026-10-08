@@ -88,6 +88,7 @@ export const CONJUNTOS = [
   'sup',
   'perm',
   'a11y',
+  'ajustes',
 ] as const
 export type Conjunto = (typeof CONJUNTOS)[number]
 
@@ -134,6 +135,21 @@ const DEF_CONJUNTOS: Record<Conjunto, DefConjunto> = {
   // Auditoría de accesibilidad de administración (`accesibilidad.admin.ts`): solo mira con `admin`
   // y escribe con `empleado5`; va en su propio job para no alargar el de administración.
   a11y: { tag: 'ay', keys: ['admin', 'empleado5'] },
+  // Ajustes de la reunión del 6 oct 2026 (P19.5d, `tests/e2e-ajustes-reunion/`): administración,
+  // cuatro empleados (cada archivo usa los suyos), un supervisor y el doble rol. Corre al final de
+  // la corrida nocturna, después de `dueno`, porque cambia (y repone) el nombre del dueño del seed.
+  ajustes: {
+    tag: 'aj',
+    keys: [
+      'admin',
+      'empleado1',
+      'empleado2',
+      'empleado3',
+      'empleado4',
+      'supervisor1',
+      'dual',
+    ],
+  },
 }
 
 /** Conjunto activo: `E2E_CONJUNTO` (por omisión `base`). Un valor desconocido corta la corrida. */

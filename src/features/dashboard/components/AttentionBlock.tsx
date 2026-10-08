@@ -17,6 +17,10 @@ const KIND_META: Record<
   overdue: { title: 'sigue en curso pasada su hora de fin', severity: 'warn' },
   absence: { title: 'avisó que no va', severity: 'warn' },
   uncovered: { title: 'Turno sin cubrir', severity: 'crit' },
+  late: {
+    title: 'llegó tarde: todavía no registró el inicio',
+    severity: 'warn',
+  },
 }
 
 /**

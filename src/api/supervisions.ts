@@ -70,6 +70,10 @@ export interface SupervisionListRow {
   ratingsCount: number
   ratingsAvg: number | null
   assignedEmployeesCount: number
+  /** Minutos previstos de la franja (AJ-06). */
+  plannedMinutes: number | null
+  /** Minutos trabajados, de inicio a fin real; `null` sin fin registrado (AJ-06). */
+  workedMinutes: number | null
 }
 
 interface SupervisionListRawRow {
@@ -96,10 +100,12 @@ interface SupervisionListRawRow {
   ratings_count: number
   ratings_avg: number | null
   assigned_employees_count: number
+  planned_minutes: number | null
+  worked_minutes: number | null
 }
 
 const SUPERVISION_LIST_SELECT =
-  'id, shift_id, shift_date, client_id, client_legal_name, site_id, site_name, start_time, end_time, supervisor_id, supervisor_first_name, supervisor_last_name, status, assigned_at, check_in_at, check_out_at, general_notes, cancel_reason, not_done_reason, criteria_snapshot, ratings_count, ratings_avg, assigned_employees_count'
+  'id, shift_id, shift_date, client_id, client_legal_name, site_id, site_name, start_time, end_time, supervisor_id, supervisor_first_name, supervisor_last_name, status, assigned_at, check_in_at, check_out_at, general_notes, cancel_reason, not_done_reason, criteria_snapshot, ratings_count, ratings_avg, assigned_employees_count, planned_minutes, worked_minutes'
 
 function mapSupervisionListRow(row: SupervisionListRawRow): SupervisionListRow {
   return {
@@ -126,6 +132,8 @@ function mapSupervisionListRow(row: SupervisionListRawRow): SupervisionListRow {
     ratingsCount: row.ratings_count,
     ratingsAvg: row.ratings_avg,
     assignedEmployeesCount: row.assigned_employees_count,
+    plannedMinutes: row.planned_minutes,
+    workedMinutes: row.worked_minutes,
   }
 }
 

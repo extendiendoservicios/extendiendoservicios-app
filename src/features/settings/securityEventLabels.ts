@@ -19,6 +19,7 @@ export const SECURITY_EVENT_TYPE_LABELS: Record<SecurityEventType, string> = {
   capabilities_changed: 'Capacidades modificadas',
   email_changed: 'Email modificado',
   admin_action_rejected: 'Intento de acción administrativa rechazado',
+  name_changed: 'Nombre modificado',
 }
 
 export const SECURITY_EVENT_TYPES: SecurityEventType[] = [
@@ -33,4 +34,5 @@ export const SECURITY_EVENT_TYPES: SecurityEventType[] = [
   'capabilities_changed',
   'email_changed',
   'admin_action_rejected',
+  'name_changed',
 ]

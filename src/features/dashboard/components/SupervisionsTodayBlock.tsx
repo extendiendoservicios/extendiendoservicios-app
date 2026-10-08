@@ -46,14 +46,16 @@ function SupervisionsTodayBlock({
             >
               <Link
                 to={`/admin/supervisiones/${row.id}`}
-                className="min-w-0 text-[13px] text-text hover:text-primary-800"
+                className="min-w-0 text-[13px] text-text hover:text-primary-800 max-md:flex max-md:min-h-11 max-md:items-center"
               >
-                <span className="font-semibold">
-                  {row.startTime.slice(0, 5)}
-                </span>{' '}
-                {row.clientName} · {row.siteName}
-                <span className="block text-[12px] text-text-3">
-                  {row.supervisorFirstName} {row.supervisorLastName}
+                <span className="min-w-0">
+                  <span className="font-semibold">
+                    {row.startTime.slice(0, 5)}
+                  </span>{' '}
+                  {row.clientName} · {row.siteName}
+                  <span className="block text-[12px] text-text-3">
+                    {row.supervisorFirstName} {row.supervisorLastName}
+                  </span>
                 </span>
               </Link>
               <StatusBadge domain="supervision" status={row.status} />

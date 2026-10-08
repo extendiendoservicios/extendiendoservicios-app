@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
+import type { SortingState } from '@tanstack/react-table'
 import { Plus, Search, Users as UsersIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -36,8 +37,14 @@ import {
 import { canManageEmployeeAccounts } from '@/features/employees/permissions'
 import {
   useEmployeeClientPermissionsQuery,
+  useEmployeeRatingsSummaryQuery,
   useEmployeesQuery,
 } from '@/features/employees/queries'
+import { RatingSummary } from '@/features/employees/components/RatingSummary'
+import {
+  ratingSortValue,
+  sortByRating,
+} from '@/features/employees/ratingSummary'
 
 /**
  * ADM-16 "Empleados · listado" (EMP-002, `05` línea 65): tabla con foto y
@@ -98,6 +105,10 @@ export default function EmployeesPage() {
     status: statusFilter,
   })
   const clientPermissionsQuery = useEmployeeClientPermissionsQuery()
+  // AJ-04: una sola consulta de promedios para todo el listado.
+  const ratingsQuery = useEmployeeRatingsSummaryQuery()
+  const ratings = ratingsQuery.data
+  const [sorting, setSorting] = useState<SortingState>([])
   const clientOptionsQuery = useClientFilterOptionsQuery()
 
   const filteredRows = useMemo(() => {
@@ -107,12 +118,24 @@ export default function EmployeesPage() {
       clientFilter,
       clientPermissionsQuery.data ?? new Map<string, string[]>(),
     )
-    return filterEmployeesByDefaultStatus(byClient, statusFilter)
+    const byStatus = filterEmployeesByDefaultStatus(byClient, statusFilter)
+    // La columna de calificación se ordena sobre la lista completa, antes de
+    // paginar: ordenar solo la página visible confundiría.
+    const ratingSort = sorting.find((item) => item.id === 'rating')
+    return ratingSort
+      ? sortByRating(
+          byStatus,
+          (row) => ratings?.get(row.profileId),
+          ratingSort.desc ? 'desc' : 'asc',
+        )
+      : byStatus
   }, [
     employeesQuery.data,
     clientFilter,
     clientPermissionsQuery.data,
     statusFilter,
+    sorting,
+    ratings,
   ])
 
   // Cualquier cambio de filtro vuelve a la primera página (evita quedar en
@@ -167,6 +190,17 @@ export default function EmployeesPage() {
       meta: { card: 'meta', cardLabel: 'Estado' },
       cell: ({ row }) => (
         <StatusBadge domain="employee" status={row.original.effectiveStatus} />
+      ),
+    },
+    {
+      id: 'rating',
+      header: 'Calificación',
+      // `accessorFn` habilita el orden de la cabecera; el orden real se hace
+      // sobre la lista completa (ver `filteredRows`).
+      accessorFn: (row) => ratingSortValue(ratings?.get(row.profileId)),
+      meta: { card: 'meta', cardLabel: 'Calificación' },
+      cell: ({ row }) => (
+        <RatingSummary summary={ratings?.get(row.original.profileId)} />
       ),
     },
     {
@@ -259,6 +293,8 @@ export default function EmployeesPage() {
         caption="Empleados y supervisores"
         columns={columns}
         data={pageRows}
+        sorting={sorting}
+        onSortingChange={setSorting}
         getRowId={(row) => row.profileId}
         isLoading={employeesQuery.isLoading}
         pagination={pagination}

@@ -33,6 +33,7 @@ vi.mock('@/lib/supabase', () => ({
 // Import diferido: tiene que pasar DESPUÉS de `vi.mock` (hoisting de
 // vitest ya lo garantiza, pero el `await import` deja explícito el orden).
 const {
+  updatePersonName,
   fetchUsers,
   fetchLastSignIns,
   fetchAdminCapabilities,
@@ -350,4 +351,41 @@ describe('resetPassword', () => {
       },
     })
   })
+})
+
+describe('updatePersonName (AJ-01)', () => {
+  it('llama a update_person_name con los tres parámetros', async () => {
+    rpcMock.mockResolvedValue({ data: { id: 'p1' }, error: null })
+
+    await updatePersonName({
+      profileId: 'p1',
+      firstName: 'Ana',
+      lastName: 'Gómez',
+    })
+
+    expect(rpcMock).toHaveBeenCalledWith('update_person_name', {
+      p_profile_id: 'p1',
+      p_first_name: 'Ana',
+      p_last_name: 'Gómez',
+    })
+  })
+
+  it.each([
+    ['FORBIDDEN', 'No tenés permiso para cambiar este nombre.'],
+    ['PROFILE_NOT_FOUND', 'No encontramos a esa persona.'],
+    ['NAME_REQUIRED', 'El nombre y el apellido son obligatorios.'],
+    ['NAME_TOO_LONG', 'El nombre no puede superar los 100 caracteres.'],
+  ])(
+    'traduce %s a un error tipado con el mensaje del servidor',
+    async (hint, message) => {
+      rpcMock.mockResolvedValue({ data: null, error: { message, hint } })
+
+      await expect(
+        updatePersonName({ profileId: 'p1', firstName: 'A', lastName: 'B' }),
+      ).rejects.toSatisfy(
+        (error: unknown) =>
+          isApiError(error) && error.hint === hint && error.message === message,
+      )
+    },
+  )
 })
