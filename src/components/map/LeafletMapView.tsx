@@ -43,12 +43,10 @@ export interface MapViewProps {
   emptyTitle?: string
   emptyDescription?: string
   /**
-   * Desactiva el zoom con la rueda del mouse (SITE-005/P08.4): en un mapa
-   * de página completa (ADM-24) conviene dejarlo en `true`, pero en uno
-   * embebido dentro de una página con scroll (ADM-22) la rueda tiene que
-   * seguir haciendo scroll de la página, no zoom del mapa — mismo criterio
-   * que ya aplica `MapPicker` (`scrollWheelZoom={false}` fijo).
-   * `true` por omisión.
+   * Zoom con la rueda del mouse (SITE-005/P08.4). `true` por omisión: desde
+   * el 8 oct 2026 (pedido de Mike) la rueda sobre el mapa acerca y aleja
+   * también en los mapas embebidos (ADM-22, `MapPicker`); fuera del mapa
+   * sigue desplazando la página.
    */
   scrollWheelZoom?: boolean
 }

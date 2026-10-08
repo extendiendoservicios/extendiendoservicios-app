@@ -176,7 +176,9 @@ function MapPicker({
         <MapContainer
           center={[initialCenter.lat, initialCenter.lng]}
           zoom={value ? PICKED_ZOOM : defaultZoom}
-          scrollWheelZoom={false}
+          // La rueda sobre el mapa acerca y aleja; fuera del mapa sigue
+          // desplazando la página (pedido de Mike, 8 oct 2026).
+          scrollWheelZoom
           zoomControl={false}
           className="size-full"
         >
