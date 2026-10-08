@@ -1,14 +1,7 @@
 import * as React from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import {
-  MapContainer,
-  Marker,
-  Popup,
-  TileLayer,
-  useMap,
-  ZoomControl,
-} from 'react-leaflet'
+import { MapContainer, Marker, Popup, useMap, ZoomControl } from 'react-leaflet'
 import { MapPin } from 'lucide-react'
 import { cn } from 'cn'
 import { EmptyState } from '@/components/EmptyState'
@@ -19,6 +12,7 @@ import {
   type Coordinates,
 } from './coordinates'
 import { createMarkerIcon } from './markerIcon'
+import { BaseLayerToggle, BaseTileLayer, useBaseLayer } from './baseLayers'
 
 /** Un punto del mapa: una sede, en el uso principal de `MapView` (SITE-005, ADM-24). */
 export interface MapViewMarker {
@@ -97,6 +91,7 @@ function MapView({
   emptyDescription = 'Todavía no hay coordenadas cargadas.',
   scrollWheelZoom = true,
 }: MapViewProps) {
+  const [baseLayer, setBaseLayer] = useBaseLayer()
   if (markers.length === 0) {
     return (
       <div
@@ -118,7 +113,7 @@ function MapView({
   return (
     <div
       className={cn(
-        'isolate overflow-hidden rounded-lg border border-border',
+        'relative isolate overflow-hidden rounded-lg border border-border',
         className,
       )}
       style={{ height }}
@@ -130,10 +125,7 @@ function MapView({
         scrollWheelZoom={scrollWheelZoom}
         className="size-full"
       >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">colaboradores de OpenStreetMap</a>'
-        />
+        <BaseTileLayer kind={baseLayer} />
         <ZoomControl zoomInTitle="Acercar" zoomOutTitle="Alejar" />
         <FitToMarkers markers={markers} />
         {markers.map((marker) => (
@@ -153,6 +145,7 @@ function MapView({
           </Marker>
         ))}
       </MapContainer>
+      <BaseLayerToggle value={baseLayer} onChange={setBaseLayer} />
     </div>
   )
 }

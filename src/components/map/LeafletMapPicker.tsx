@@ -4,7 +4,6 @@ import 'leaflet/dist/leaflet.css'
 import {
   MapContainer,
   Marker,
-  TileLayer,
   useMap,
   useMapEvents,
   ZoomControl,
@@ -22,6 +21,7 @@ import {
 import { useAddressSearch } from './useAddressSearch'
 import { useCoordinateFields } from './useCoordinateFields'
 import { createMarkerIcon } from './markerIcon'
+import { BaseLayerToggle, BaseTileLayer, useBaseLayer } from './baseLayers'
 
 export interface MapPickerProps {
   /** Coordenadas actuales, o `null` cuando la sede todavía no tiene ubicación. */
@@ -106,6 +106,7 @@ function MapPicker({
     useAddressSearch()
 
   const initialCenter = value ?? defaultCenter
+  const [baseLayer, setBaseLayer] = useBaseLayer()
 
   function handlePickResult(result: { lat: number; lng: number }) {
     setCoordinates({ lat: result.lat, lng: result.lng })
@@ -168,7 +169,7 @@ function MapPicker({
 
       <div
         className={cn(
-          'isolate overflow-hidden rounded-lg border border-border',
+          'relative isolate overflow-hidden rounded-lg border border-border',
           disabled && 'opacity-60',
         )}
         style={{ height }}
@@ -182,10 +183,7 @@ function MapPicker({
           zoomControl={false}
           className="size-full"
         >
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">colaboradores de OpenStreetMap</a>'
-          />
+          <BaseTileLayer kind={baseLayer} />
           <ZoomControl zoomInTitle="Acercar" zoomOutTitle="Alejar" />
           <ClickToPlace onPick={setCoordinates} disabled={disabled} />
           <RecenterOnChange position={value} />
@@ -206,6 +204,7 @@ function MapPicker({
             />
           )}
         </MapContainer>
+        <BaseLayerToggle value={baseLayer} onChange={setBaseLayer} />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
