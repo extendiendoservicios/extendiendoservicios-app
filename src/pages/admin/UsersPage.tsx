@@ -53,11 +53,6 @@ export default function UsersPage() {
   const [showDeactivated, setShowDeactivated] = useState(false)
   const showDeactivatedId = useId()
 
-  function openRolesSheet(user: AdminUserRow) {
-    setRolesUserId(user.profileId)
-    setRolesSheetOpen(true)
-  }
-
   const allRows = useMemo<UserRowView[]>(() => {
     const users = usersQuery.data ?? []
     return users.map((user) => ({
@@ -86,68 +81,78 @@ export default function UsersPage() {
   // de salida del `Sheet`.
   const rolesUser = allRows.find((row) => row.profileId === rolesUserId) ?? null
 
-  const columns: DataTableColumnDef<UserRowView>[] = [
-    {
-      id: 'name',
-      header: 'Nombre',
-      meta: { card: 'title' },
-      cell: ({ row }) => (
-        <PersonCell
-          id={row.original.profileId}
-          name={`${row.original.firstName} ${row.original.lastName}`}
-          subtitle={
-            row.original.roles.map((role) => ROLE_LABELS[role]).join(', ') ||
-            'Sin rol asignado'
-          }
-        />
-      ),
-    },
-    {
-      id: 'status',
-      header: 'Estado',
-      meta: { card: 'meta', cardLabel: 'Estado' },
-      cell: ({ row }) => (
-        <StatusBadge
-          domain="user"
-          status={row.original.deletedAt ? 'desactivado' : 'activo'}
-        />
-      ),
-    },
-    // Solo para el dueño: un administrador no puede leer `security_events`,
-    // y una columna vacía diría "nunca entró" de gente que sí entró.
-    ...(isOwnerViewer
-      ? [
-          {
-            id: 'lastSignIn',
-            header: 'Último ingreso',
-            meta: { card: 'meta', cardLabel: 'Último ingreso' },
-            cell: ({ row }) => {
-              const value = row.original.lastSignInAt
-              if (!value) {
-                return <span className="text-text-3">—</span>
-              }
-              return (
-                <span>
-                  {formatShortDate(value)}, {formatTime(value)}
-                </span>
-              )
-            },
-          } satisfies DataTableColumnDef<UserRowView>,
-        ]
-      : []),
-    {
-      id: 'actions',
-      header: '',
-      meta: { card: 'trailing', align: 'end' },
-      cell: ({ row }) => (
-        <UserActionsMenu
-          user={row.original}
-          actor={actor}
-          onEditRolesAndCapabilities={() => openRolesSheet(row.original)}
-        />
-      ),
-    },
-  ]
+  // Memorizadas: `flexRender` monta cada `cell` como un componente, así que
+  // una función nueva en cada render desmonta la celda. Sin esto, el menú
+  // "Acciones" (y el diálogo que abre) se cerraba solo cuando llegaban los
+  // últimos ingresos o con el refresco de la lista.
+  const columns = useMemo<DataTableColumnDef<UserRowView>[]>(
+    () => [
+      {
+        id: 'name',
+        header: 'Nombre',
+        meta: { card: 'title' },
+        cell: ({ row }) => (
+          <PersonCell
+            id={row.original.profileId}
+            name={`${row.original.firstName} ${row.original.lastName}`}
+            subtitle={
+              row.original.roles.map((role) => ROLE_LABELS[role]).join(', ') ||
+              'Sin rol asignado'
+            }
+          />
+        ),
+      },
+      {
+        id: 'status',
+        header: 'Estado',
+        meta: { card: 'meta', cardLabel: 'Estado' },
+        cell: ({ row }) => (
+          <StatusBadge
+            domain="user"
+            status={row.original.deletedAt ? 'desactivado' : 'activo'}
+          />
+        ),
+      },
+      // Solo para el dueño: un administrador no puede leer `security_events`,
+      // y una columna vacía diría "nunca entró" de gente que sí entró.
+      ...(isOwnerViewer
+        ? [
+            {
+              id: 'lastSignIn',
+              header: 'Último ingreso',
+              meta: { card: 'meta', cardLabel: 'Último ingreso' },
+              cell: ({ row }) => {
+                const value = row.original.lastSignInAt
+                if (!value) {
+                  return <span className="text-text-3">—</span>
+                }
+                return (
+                  <span>
+                    {formatShortDate(value)}, {formatTime(value)}
+                  </span>
+                )
+              },
+            } satisfies DataTableColumnDef<UserRowView>,
+          ]
+        : []),
+      {
+        id: 'actions',
+        header: '',
+        meta: { card: 'trailing', align: 'end' },
+        cell: ({ row }) => (
+          <UserActionsMenu
+            user={row.original}
+            actor={actor}
+            onEditRolesAndCapabilities={() => {
+              setRolesUserId(row.original.profileId)
+              setRolesSheetOpen(true)
+            }}
+          />
+        ),
+      },
+    ],
+    [isOwnerViewer, actor],
+  )
 
   return (
     <div className="flex flex-col gap-4">

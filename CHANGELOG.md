@@ -7,6 +7,12 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.16.2] - 2026-10-08
+
+### Corregido
+
+- Usuarios y roles: el menú «Acciones» de cada persona (y el diálogo que abre, como «Editar nombre») ya no se cierra solo cuando termina de cargar «Último ingreso» o cuando la lista se actualiza.
+
 ## [0.16.1] - 2026-10-08
 
 ### Cambiado
