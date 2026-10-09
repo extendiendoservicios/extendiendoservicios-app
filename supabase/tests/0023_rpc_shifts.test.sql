@@ -50,8 +50,8 @@ select plan(40);
 
 -- Existencia y firma --------------------------------------------------------------------------
 
-select has_function('public', 'create_shift', array['uuid', 'uuid', 'date', 'time', 'time', 'smallint', 'uuid', 'text'], 'existe public.create_shift(...)');
-select has_function('public', 'update_shift_time', array['uuid', 'time', 'time'], 'existe public.update_shift_time(uuid, time, time)');
+select has_function('public', 'create_shift', array['uuid', 'uuid', 'date', 'time', 'time', 'smallint', 'uuid', 'text', 'boolean'], 'existe public.create_shift(...)');
+select has_function('public', 'update_shift_time', array['uuid', 'time', 'time', 'boolean'], 'existe public.update_shift_time(uuid, time, time, boolean)');
 select has_function('public', 'cancel_shift', array['uuid', 'text'], 'existe public.cancel_shift(uuid, text)');
 select has_function('public', 'reload_shift_tasks', array['uuid'], 'existe public.reload_shift_tasks(uuid)');
 

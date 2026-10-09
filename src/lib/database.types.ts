@@ -1262,6 +1262,7 @@ export type Database = {
           min_hours_month: number | null
           name: string
           notes: string | null
+          open_ended: boolean
           required_staff: number
           site_id: string
           start_time: string
@@ -1284,6 +1285,7 @@ export type Database = {
           min_hours_month?: number | null
           name: string
           notes?: string | null
+          open_ended?: boolean
           required_staff?: number
           site_id: string
           start_time: string
@@ -1306,6 +1308,7 @@ export type Database = {
           min_hours_month?: number | null
           name?: string
           notes?: string | null
+          open_ended?: boolean
           required_staff?: number
           site_id?: string
           start_time?: string
@@ -1457,6 +1460,7 @@ export type Database = {
           generated: boolean
           id: string
           notes: string | null
+          open_ended: boolean
           required_staff: number
           service_id: string | null
           shift_date: string
@@ -1481,6 +1485,7 @@ export type Database = {
           generated?: boolean
           id?: string
           notes?: string | null
+          open_ended?: boolean
           required_staff: number
           service_id?: string | null
           shift_date: string
@@ -1505,6 +1510,7 @@ export type Database = {
           generated?: boolean
           id?: string
           notes?: string | null
+          open_ended?: boolean
           required_staff?: number
           service_id?: string | null
           shift_date?: string
@@ -1892,6 +1898,7 @@ export type Database = {
           display_status: string | null
           effective_end_time: string | null
           effective_ends_at: string | null
+          effective_open_ended: boolean | null
           effective_start_time: string | null
           effective_starts_at: string | null
           employee_avatar_path: string | null
@@ -2163,6 +2170,7 @@ export type Database = {
           client_trade_name: string | null
           effective_end_time: string | null
           effective_ends_at: string | null
+          effective_open_ended: boolean | null
           effective_start_time: string | null
           effective_starts_at: string | null
           is_today: boolean | null
@@ -2178,6 +2186,7 @@ export type Database = {
           last_notice_source:
             | Database["public"]["Enums"]["attendance_source"]
             | null
+          no_checkout: boolean | null
           notes: string | null
           on_the_way_expires_at: string | null
           phone_restricted: boolean | null
@@ -2274,6 +2283,7 @@ export type Database = {
           not_done_reason: string | null
           shift_date: string | null
           shift_id: string | null
+          shift_open_ended: boolean | null
           site_access_instructions: string | null
           site_address: string | null
           site_building_hours: string | null
@@ -2397,7 +2407,9 @@ export type Database = {
           finished_count: number | null
           generated: boolean | null
           id: string | null
+          no_checkout_count: number | null
           notes: string | null
+          open_ended: boolean | null
           present_count: number | null
           required_staff: number | null
           service_id: string | null
@@ -2492,6 +2504,7 @@ export type Database = {
           ratings_count: number | null
           shift_date: string | null
           shift_id: string | null
+          shift_open_ended: boolean | null
           site_id: string | null
           site_name: string | null
           start_time: string | null
@@ -2644,6 +2657,7 @@ export type Database = {
           generated: boolean
           id: string
           notes: string | null
+          open_ended: boolean
           required_staff: number
           service_id: string | null
           shift_date: string
@@ -2771,6 +2785,7 @@ export type Database = {
           p_date: string
           p_end: string
           p_notes?: string
+          p_open_ended?: boolean
           p_required_staff: number
           p_service_id?: string
           p_site_id: string
@@ -3208,6 +3223,7 @@ export type Database = {
           generated: boolean
           id: string
           notes: string | null
+          open_ended: boolean
           required_staff: number
           service_id: string | null
           shift_date: string
@@ -3226,7 +3242,12 @@ export type Database = {
         }
       }
       update_shift_time: {
-        Args: { p_end: string; p_shift_id: string; p_start: string }
+        Args: {
+          p_end: string
+          p_open_ended?: boolean
+          p_shift_id: string
+          p_start: string
+        }
         Returns: {
           cancel_reason: string | null
           cancelled_at: string | null
@@ -3241,6 +3262,7 @@ export type Database = {
           generated: boolean
           id: string
           notes: string | null
+          open_ended: boolean
           required_staff: number
           service_id: string | null
           shift_date: string

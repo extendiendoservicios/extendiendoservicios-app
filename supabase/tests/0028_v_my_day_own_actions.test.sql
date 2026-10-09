@@ -70,7 +70,7 @@ select plan(14);
 
 select has_function('app', 'start_shift_if_needed', array['uuid'], 'existe app.start_shift_if_needed(uuid)');
 select has_function('app', 'complete_shift_if_done', array['uuid'], 'existe app.complete_shift_if_done(uuid)');
-select has_function('public', 'update_shift_time', array['uuid', 'time', 'time'], 'existe public.update_shift_time(uuid, time, time)');
+select has_function('public', 'update_shift_time', array['uuid', 'time', 'time', 'boolean'], 'existe public.update_shift_time(uuid, time, time, boolean)');
 select has_function('public', 'update_assignment_time', array['uuid', 'time', 'time'], 'existe public.update_assignment_time(uuid, time, time)');
 select has_function('public', 'update_shift_details', array['uuid', 'smallint', 'text'], 'existe public.update_shift_details(uuid, smallint, text)');
 
