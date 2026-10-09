@@ -317,6 +317,22 @@ export function useCreateEmployeeLeaveMutation(profileId: string) {
   })
 }
 
+export function useUpdateEmployeeLeaveMutation(profileId: string) {
+  const invalidate = useInvalidateEmployeeLeaves(profileId)
+  return useMutation({
+    mutationFn: ({
+      id,
+      input,
+      updatedBy,
+    }: {
+      id: string
+      input: EmployeeLeaveInput
+      updatedBy: string
+    }) => employeesApi.updateEmployeeLeave(id, input, updatedBy),
+    onSuccess: invalidate,
+  })
+}
+
 export function useDeactivateEmployeeLeaveMutation(profileId: string) {
   const invalidate = useInvalidateEmployeeLeaves(profileId)
   return useMutation({

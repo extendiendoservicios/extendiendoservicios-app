@@ -97,7 +97,7 @@ export async function fetchClients(
   const text = filters.text?.trim()
   if (text) {
     const escaped = text.replace(/[%_]/g, '\\$&')
-    // El CUIT se muestra como XX-XXXXXXXX-X y se guarda solo con d�gitos:
+    // El CUIT se muestra como XX-XXXXXXXX-X y se guarda solo con dígitos:
     // si lo que se busca parece un CUIT escrito con guiones, se busca limpio.
     const cuitText = /^[0-9][0-9.\s-]*$/.test(text) ? cleanTaxId(text) : escaped
     query = query.or(

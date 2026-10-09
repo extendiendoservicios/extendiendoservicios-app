@@ -75,7 +75,7 @@ describe('sortByEmployeeNumber', () => {
     { profileId: 'c', employeeNumber: 101 },
   ]
 
-  it('ordena por número de legajo ascendente (numérico, no de texto)', () => {
+  it('ordena por nÃºmero de legajo ascendente (numÃ©rico, no de texto)', () => {
     expect(sortByEmployeeNumber(unsorted).map((r) => r.profileId)).toEqual([
       'b',
       'a',

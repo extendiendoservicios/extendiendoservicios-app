@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
-import { CalendarOff, Plus } from 'lucide-react'
+import { CalendarOff, Pencil, Plus, Save } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,6 +28,7 @@ import {
   useCreateEmployeeLeaveMutation,
   useDeactivateEmployeeLeaveMutation,
   useEmployeeLeavesQuery,
+  useUpdateEmployeeLeaveMutation,
 } from '@/features/employees/queries'
 
 const LEAVE_STATUS_VARIANT: Record<
@@ -57,7 +58,10 @@ function EmployeeLeavesTab({
   const auth = useAuth()
   const leavesQuery = useEmployeeLeavesQuery(profileId)
   const createLeave = useCreateEmployeeLeaveMutation(profileId)
+  const updateLeave = useUpdateEmployeeLeaveMutation(profileId)
   const deactivateLeave = useDeactivateEmployeeLeaveMutation(profileId)
+  // AJ2-08: licencia que se está editando con el mismo formulario del alta.
+  const [editingLeave, setEditingLeave] = useState<EmployeeLeave | null>(null)
   const [leaveToEnd, setLeaveToEnd] = useState<EmployeeLeave | null>(null)
 
   const {
@@ -75,10 +79,43 @@ function EmployeeLeavesTab({
   // cuentan para "de licencia" ni para bloquear un rango de fechas.
   const leaves = leavesQuery.data ?? []
 
+  function startEditing(leave: EmployeeLeave) {
+    setEditingLeave(leave)
+    reset({
+      startsOn: leave.startsOn,
+      endsOn: leave.endsOn ?? '',
+      reason: leave.reason ?? '',
+    })
+  }
+
+  function cancelEditing() {
+    setEditingLeave(null)
+    reset({ startsOn: '', endsOn: '', reason: '' })
+  }
+
   async function onSubmit(values: EmployeeLeaveFormValues) {
+    const input = employeeLeaveFormValuesToInput(values)
+    if (editingLeave) {
+      try {
+        await updateLeave.mutateAsync({
+          id: editingLeave.id,
+          input,
+          updatedBy: auth.userId as string,
+        })
+        cancelEditing()
+        toast.success('Guardamos los cambios de la licencia.')
+      } catch (error) {
+        toast.error(
+          isApiError(error)
+            ? error.message
+            : 'No pudimos guardar los cambios de la licencia.',
+        )
+      }
+      return
+    }
     try {
       await createLeave.mutateAsync({
-        input: employeeLeaveFormValuesToInput(values),
+        input,
         createdBy: auth.userId as string,
       })
       reset({ startsOn: '', endsOn: '', reason: '' })
@@ -142,15 +179,25 @@ function EmployeeLeavesTab({
             <FieldLabel htmlFor="leave-reason">Motivo (opcional)</FieldLabel>
             <Input id="leave-reason" {...register('reason')} />
           </Field>
-          <div className="sm:col-span-4">
+          <div className="flex flex-wrap gap-2 sm:col-span-4">
             <Button
               type="submit"
               size="sm"
-              icon={Plus}
-              loading={createLeave.isPending}
+              icon={editingLeave ? Save : Plus}
+              loading={createLeave.isPending || updateLeave.isPending}
             >
-              Agregar licencia
+              {editingLeave ? 'Guardar cambios' : 'Agregar licencia'}
             </Button>
+            {editingLeave && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={cancelEditing}
+              >
+                Cancelar edición
+              </Button>
+            )}
           </div>
         </form>
       )}
@@ -200,14 +247,26 @@ function EmployeeLeavesTab({
                   )}
                 </div>
                 {canEdit && isActive && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setLeaveToEnd(leave)}
-                  >
-                    Dar de baja
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      icon={Pencil}
+                      aria-label={`Editar la licencia del ${formatCalendarDate(leave.startsOn)}`}
+                      onClick={() => startEditing(leave)}
+                    >
+                      Editar
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setLeaveToEnd(leave)}
+                    >
+                      Dar de baja
+                    </Button>
+                  </div>
                 )}
               </li>
             )

@@ -119,8 +119,8 @@ export default function EmployeesPage() {
       clientFilter,
       clientPermissionsQuery.data ?? new Map<string, string[]>(),
     )
-    // AJ2-01: orden base siempre por legajo; el de calificación (si se
-    // elige en la cabecera) se apoya en él porque `sortByRating` es estable.
+    // AJ2-01: orden base siempre por legajo; el de calificaciÃ³n (si se
+    // elige en la cabecera) se apoya en Ã©l porque `sortByRating` es estable.
     const byStatus = sortByEmployeeNumber(
       filterEmployeesByDefaultStatus(byClient, statusFilter),
     )
