@@ -52,6 +52,19 @@ export default function EmployeeFormPage() {
 // Alta (EMP-003)
 // -------------------------------------------------------------------------
 
+/**
+ * Campo que corresponde a cada dato repetido que rechaza el alta
+ * (`admin-users`, `create_user`).
+ */
+const DUPLICATE_FIELD_BY_CODE: Record<
+  string,
+  'dni' | 'employeeNumber' | 'email' | undefined
+> = {
+  DNI_IN_USE: 'dni',
+  EMPLOYEE_NUMBER_IN_USE: 'employeeNumber',
+  EMAIL_IN_USE: 'email',
+}
+
 function EmployeeCreateForm() {
   const navigate = useNavigate()
   const createEmployee = useCreateEmployeeMutation()
@@ -62,7 +75,8 @@ function EmployeeCreateForm() {
     register,
     handleSubmit,
     setValue,
-    formState: { errors, dirtyFields },
+    setError,
+    formState: { errors, dirtyFields, isSubmitting },
   } = useForm<EmployeeCreateFormValues>({
     resolver: zodResolver(employeeCreateSchema),
     defaultValues: {
@@ -99,18 +113,22 @@ function EmployeeCreateForm() {
     try {
       const input = employeeCreateFormValuesToInput(values)
       const result = await createEmployee.mutateAsync(input)
-      if (result.employeeNumberWarning) {
-        toast.warning(result.employeeNumberWarning)
-      } else {
-        toast.success(
-          `Creamos a ${values.firstName} ${values.lastName} con el legajo ${result.employeeNumber}.`,
-        )
-      }
+      toast.success(
+        `Creamos a ${values.firstName} ${values.lastName} con el legajo ${result.employeeNumber}.`,
+      )
       void navigate(`/admin/empleados/${result.profileId}`)
     } catch (error) {
-      toast.error(
-        isApiError(error) ? error.message : 'No pudimos crear a la persona.',
-      )
+      const message = isApiError(error)
+        ? error.message
+        : 'No pudimos crear a la persona.'
+      // El dato repetido queda marcado en su campo, además del aviso.
+      const field = isApiError(error)
+        ? DUPLICATE_FIELD_BY_CODE[error.hint ?? '']
+        : undefined
+      if (field) {
+        setError(field, { message }, { shouldFocus: true })
+      }
+      toast.error(message)
     }
   }
 
@@ -346,14 +364,17 @@ function EmployeeCreateForm() {
       </div>
 
       <div className="flex gap-2">
-        <Button type="submit" loading={createEmployee.isPending}>
+        <Button
+          type="submit"
+          loading={isSubmitting || createEmployee.isPending}
+        >
           Crear
         </Button>
         <Button
           type="button"
           variant="ghost"
           onClick={() => void navigate(-1)}
-          disabled={createEmployee.isPending}
+          disabled={isSubmitting || createEmployee.isPending}
         >
           Cancelar
         </Button>

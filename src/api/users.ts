@@ -284,6 +284,12 @@ async function invokeAdminUsers<T>(
  */
 export interface CreateUserEmployeeInput {
   dni: string
+  /**
+   * Legajo pedido. La ficha se crea directamente con este número; si ya está
+   * en uso, el alta se rechaza con `EMPLOYEE_NUMBER_IN_USE` antes de crear
+   * la cuenta. Sin legajo, la base usa el más alto + 1.
+   */
+  employeeNumber?: number | null
   cuil?: string | null
   address?: string | null
   birthDate?: string | null
@@ -319,11 +325,17 @@ export interface CreateAdminUserInput {
  * (una sola invocación, sin un segundo paso desde el cliente que pudiera
  * dejar un usuario de Auth huérfano -- ver el comentario de cabecera de
  * `actionCreateUser` en `admin-users/index.ts` y el reporte de EMP-003).
+ * Ficha, roles y capacidades se guardan en una sola transacción (0035); si
+ * un intento anterior dejó la cuenta del mismo email a medias, la función la
+ * retoma en vez de responder "email en uso".
  */
 export async function createAdminUser(
   input: CreateAdminUserInput,
-): Promise<{ profileId: string }> {
-  const result = await invokeAdminUsers<{ profile_id: string }>('create_user', {
+): Promise<{ profileId: string; employeeNumber: number | null }> {
+  const result = await invokeAdminUsers<{
+    profile_id: string
+    employee_number?: number | null
+  }>('create_user', {
     email: input.email,
     password: input.password,
     first_name: input.firstName,
@@ -333,6 +345,7 @@ export async function createAdminUser(
       ? {
           employee: {
             dni: input.employee.dni,
+            employee_number: input.employee.employeeNumber ?? null,
             cuil: input.employee.cuil ?? null,
             address: input.employee.address ?? null,
             birth_date: input.employee.birthDate ?? null,
@@ -347,7 +360,10 @@ export async function createAdminUser(
         }
       : {}),
   })
-  return { profileId: result.profile_id }
+  return {
+    profileId: result.profile_id,
+    employeeNumber: result.employee_number ?? null,
+  }
 }
 
 /** USERS-011: resetear contraseña (revoca las sesiones de la persona). */

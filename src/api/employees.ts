@@ -201,11 +201,9 @@ export async function fetchEmployeeClientPermissions(): Promise<
 
 /**
  * Próximo legajo sugerido para ADM-18 (P-036: "lo genera el sistema, pero
- * podría editarse"). La secuencia real (`employee_number_seq`) asigna el
- * definitivo al crear (la Edge Function no acepta un legajo elegido a mano
- * -- ver `createEmployeeUser` y el reporte de EMP-003): esto es solo una
- * sugerencia para mostrar en el formulario, `max(employee_number) + 1`
- * sobre los vigentes (1 si todavía no hay ninguno).
+ * podría editarse"). Es solo una sugerencia para el formulario,
+ * `max(employee_number) + 1` (1 si todavía no hay ninguno); el alta guarda
+ * el legajo que quede escrito (ver `createEmployeeUser`).
  */
 export async function fetchSuggestedEmployeeNumber(): Promise<number> {
   const { data, error } = await supabase
@@ -311,34 +309,23 @@ export interface EmployeeCreateInput {
 /**
  * Alta de un empleado o supervisor (EMP-003, `06` sección 3: "Crear | Edge
  * create_user | O; A + manage_users | Un empleado siempre tiene usuario
- * (P-016)"). Una sola llamada a la Edge Function: crea el usuario de Auth y
- * la fila de `employees` en la misma transacción del lado del servidor
- * (`admin-users/index.ts`, `actionCreateUser`), así que no hay paso
- * intermedio del lado del cliente que pudiera dejar un usuario de Auth
- * huérfano si algo falla a mitad de camino -- ver el reporte de EMP-003.
+ * (P-016)"). Una sola llamada a la Edge Function: crea (o retoma, si quedó a
+ * medias) la cuenta de Auth y guarda ficha y roles en una transacción
+ * (`admin-users/index.ts`, `actionCreateUser`, y `0035_altas_atomicas.sql`).
  *
- * El legajo (`employeeNumber`) NO se manda a la Edge Function: la acción
- * `create_user` no lo acepta como parámetro (`admin-users/index.ts`,
- * `EmployeeInput` no tiene ese campo) -- el servidor le asigna el que siga
- * de `employee_number_seq`. Si la persona que completa el formulario pidió
- * un legajo distinto del sugerido, `updateEmployeeNumberIfNeeded` lo aplica
- * después con un `update` directo (`employees_update_admin`, `06` sección
- * 3: "employee_number editable y único"). Si esa corrección fallara (por
- * ejemplo, otra alta se quedó con ese número mientras tanto), la persona ya
- * quedó creada con el legajo que le asignó la secuencia -- no un usuario
- * huérfano, solo un legajo distinto del pedido, corregible después desde la
- * ficha (EMP-004) -- por eso esta función nunca lanza por ese motivo:
- * `employeeNumberWarning` viene en `null` cuando todo salió como se pidió, o
- * con un texto para mostrar aparte (advertencia, no error) cuando el legajo
- * final no es el que se había pedido.
+ * El legajo pedido viaja en el alta y la ficha nace con ese número. Antes la
+ * ficha nacía con un legajo provisorio de `employee_number_seq` y se
+ * corregía después; cuando el provisorio coincidía con un legajo cargado a
+ * mano, el alta fallaba a mitad de camino (defecto del 9 oct 2026 en
+ * producción).
  */
 export async function createEmployeeUser(input: EmployeeCreateInput): Promise<{
   profileId: string
   employeeNumber: number
-  employeeNumberWarning: string | null
 }> {
   const employee: CreateUserEmployeeInput = {
     dni: input.dni,
+    employeeNumber: input.employeeNumber,
     cuil: input.cuil,
     address: input.address,
     birthDate: input.birthDate,
@@ -349,7 +336,7 @@ export async function createEmployeeUser(input: EmployeeCreateInput): Promise<{
     notes: input.notes,
   }
 
-  const { profileId } = await createAdminUser({
+  const { profileId, employeeNumber } = await createAdminUser({
     email: input.email,
     password: input.password,
     firstName: input.firstName,
@@ -358,57 +345,7 @@ export async function createEmployeeUser(input: EmployeeCreateInput): Promise<{
     employee,
   })
 
-  const { employeeNumber, warning } = await updateEmployeeNumberIfNeeded(
-    profileId,
-    input.employeeNumber,
-  )
-
-  return { profileId, employeeNumber, employeeNumberWarning: warning }
-}
-
-/**
- * Aplica el legajo pedido en el formulario si difiere del que asignó la
- * secuencia (ver el comentario de `createEmployeeUser`). Devuelve el legajo
- * que quedó guardado de verdad y, si el `update` falla, una advertencia en
- * español para mostrar aparte del éxito de la creación (la persona ya está
- * creada, esto nunca debería impedir seguir).
- */
-async function updateEmployeeNumberIfNeeded(
-  profileId: string,
-  requestedEmployeeNumber: number,
-): Promise<{ employeeNumber: number; warning: string | null }> {
-  const { data: current, error: readError } = await supabase
-    .from('employees')
-    .select('employee_number')
-    .eq('profile_id', profileId)
-    .single()
-  if (readError) {
-    // La persona ya se creó (Auth + employees): no se puede deshacer nada
-    // acá (P-014/P-105, nada se borra físicamente) -- se informa como
-    // advertencia, no como fallo de la creación.
-    return {
-      employeeNumber: requestedEmployeeNumber,
-      warning:
-        'Creamos a la persona, pero no pudimos confirmar el legajo que quedó guardado. Revisalo desde la ficha.',
-    }
-  }
-  if (current.employee_number === requestedEmployeeNumber) {
-    return { employeeNumber: current.employee_number, warning: null }
-  }
-
-  const { data: updated, error: updateError } = await supabase
-    .from('employees')
-    .update({ employee_number: requestedEmployeeNumber })
-    .eq('profile_id', profileId)
-    .select('employee_number')
-    .single()
-  if (updateError) {
-    return {
-      employeeNumber: current.employee_number,
-      warning: `Creamos a la persona con el legajo ${current.employee_number} porque el ${requestedEmployeeNumber} ya no estaba disponible. Podés cambiarlo después desde la ficha.`,
-    }
-  }
-  return { employeeNumber: updated.employee_number, warning: null }
+  return { profileId, employeeNumber: employeeNumber ?? input.employeeNumber }
 }
 
 export interface EmployeeUpdateInput {

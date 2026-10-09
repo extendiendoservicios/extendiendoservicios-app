@@ -91,6 +91,7 @@ type ErrorHint =
   | 'EMAIL_IN_USE'
   | 'EMPLOYEE_DATA_REQUIRED'
   | 'DNI_IN_USE'
+  | 'EMPLOYEE_NUMBER_IN_USE'
   | 'PROFILE_NOT_FOUND'
   | 'VALIDATION_ERROR'
   | 'RATE_LIMITED'
@@ -132,8 +133,24 @@ const errors = {
       'Para asignar el rol de empleado o supervisor hace falta cargar los datos de empleado (al menos el DNI).',
       400,
     ),
-  dniInUse: () =>
-    new DomainError('DNI_IN_USE', 'Ese DNI ya está registrado.', 409),
+  // `owner`: a quién pertenece (quien da de alta ya puede ver a todo el personal), así se nota si
+  // la persona ya había quedado cargada.
+  dniInUse: (owner?: string) =>
+    new DomainError(
+      'DNI_IN_USE',
+      owner
+        ? `Ese DNI ya está registrado: es de ${owner}.`
+        : 'Ese DNI ya está registrado.',
+      409,
+    ),
+  employeeNumberInUse: (employeeNumber?: number, owner?: string) =>
+    new DomainError(
+      'EMPLOYEE_NUMBER_IN_USE',
+      employeeNumber !== undefined && owner
+        ? `El legajo ${employeeNumber} ya es de ${owner}. Elegí otro.`
+        : 'Ese legajo ya está en uso. Elegí otro.',
+      409,
+    ),
   profileNotFound: () =>
     new DomainError('PROFILE_NOT_FOUND', 'No encontramos a esa persona.', 404),
   validation: (message: string) =>
@@ -379,6 +396,7 @@ async function logEvent(
 
 interface EmployeeInput {
   dni: string
+  employee_number?: number | null
   cuil?: string | null
   address?: string | null
   birth_date?: string | null
@@ -434,10 +452,23 @@ function assertValidCreateUserInput(
     if (typeof e.dni !== 'string' || e.dni.trim() === '') {
       throw errors.validation('Los datos de empleado necesitan un DNI.')
     }
-    employeeInput = { dni: e.dni, ...e } as EmployeeInput
+    if (
+      e.employee_number !== undefined &&
+      e.employee_number !== null &&
+      !(
+        typeof e.employee_number === 'number' &&
+        Number.isInteger(e.employee_number) &&
+        e.employee_number > 0
+      )
+    ) {
+      throw errors.validation(
+        'El legajo tiene que ser un número entero mayor que 0.',
+      )
+    }
+    employeeInput = { ...e, dni: e.dni.trim() } as EmployeeInput
   }
   return {
-    email,
+    email: email.trim(),
     password,
     first_name,
     last_name,
@@ -446,6 +477,53 @@ function assertValidCreateUserInput(
   }
 }
 
+/** "Nombre Apellido" de quien tiene la ficha, para los avisos de duplicado. */
+async function employeeName(
+  admin: SupabaseClient,
+  profileId: string,
+): Promise<string | undefined> {
+  const { data } = await admin
+    .from('profiles')
+    .select('first_name, last_name')
+    .eq('id', profileId)
+    .maybeSingle()
+  return data ? `${data.first_name} ${data.last_name}`.trim() : undefined
+}
+
+/** Traduce los errores P0001 de `admin_create_user_records` (0035) a los de esta función. */
+function mapRecordsError(error: {
+  message?: string
+  hint?: string | null
+}): DomainError {
+  switch (error.hint) {
+    case 'DNI_IN_USE':
+      return errors.dniInUse()
+    case 'EMPLOYEE_NUMBER_IN_USE':
+      return errors.employeeNumberInUse()
+    case 'EMPLOYEE_DATA_REQUIRED':
+      return errors.employeeDataRequired()
+    case 'PROFILE_NOT_FOUND':
+      return errors.profileNotFound()
+    case 'VALIDATION_ERROR':
+      return errors.validation(
+        error.message ?? 'Los datos de empleado no son válidos.',
+      )
+    default:
+      return errors.internal(
+        error.message ?? 'No se pudieron guardar los datos de la persona.',
+      )
+  }
+}
+
+// Alta en dos tramos (0035, defecto del 9 oct 2026 en producción):
+//   1. La cuenta de Auth: nueva, o la que quedó a medias de un intento anterior con el mismo
+//      email (sin roles ni ficha, `admin_find_orphan_account`), que se retoma con la contraseña
+//      y el nombre de ahora. Así un alta fallida nunca bloquea el email.
+//   2. Perfil, ficha de empleado, roles y capacidades en UNA transacción
+//      (`admin_create_user_records`). Si falla, la cuenta queda sin nada y el próximo intento la
+//      retoma.
+// Los chequeos de DNI y legajo van antes del tramo 1 para avisar a quién pertenece el dato
+// repetido sin tocar Auth; la restricción unique de la tabla sigue siendo la garantía final.
 export async function actionCreateUser(
   admin: SupabaseClient,
   actor: Actor,
@@ -474,136 +552,153 @@ export async function actionCreateUser(
     throw errors.employeeDataRequired()
   }
 
-  // Chequeo de DNI adelantado (antes de crear el usuario en Auth): así, en el caso más común de
-  // error (alguien ya cargado con ese DNI), no queda un usuario de Auth huérfano sin fila de
-  // empleado. No elimina la carrera con otra creación simultánea (eso lo va a atrapar igual la
-  // restricción unique de la tabla, mapeada más abajo), solo la reduce.
   if (input.employee) {
     const { data: existingDni, error: dniError } = await admin
       .from('employees')
-      .select('profile_id')
+      .select('profile_id, employee_number')
       .eq('dni', input.employee.dni)
       .maybeSingle()
     if (dniError) {
       throw errors.internal(dniError.message)
     }
     if (existingDni) {
-      throw errors.dniInUse()
-    }
-  }
-
-  const { data: created, error: createError } =
-    await admin.auth.admin.createUser({
-      email: input.email,
-      password: input.password,
-      email_confirm: true,
-      user_metadata: {
-        first_name: input.first_name,
-        last_name: input.last_name,
-      },
-    })
-  if (createError || !created.user) {
-    if (
-      createError?.message?.toLowerCase().includes('already been registered') ||
-      createError?.message?.toLowerCase().includes('already registered') ||
-      createError?.code === 'email_exists'
-    ) {
-      throw errors.emailInUse()
-    }
-    throw errors.internal(
-      createError?.message ?? 'No se pudo crear el usuario.',
-    )
-  }
-
-  const newProfileId = created.user.id
-
-  // app.handle_new_user() (0003) ya insertó la fila de profiles al crearse el usuario en Auth.
-  if (input.employee) {
-    const { error: employeeError } = await admin.from('employees').insert({
-      profile_id: newProfileId,
-      dni: input.employee.dni,
-      cuil: input.employee.cuil ?? null,
-      address: input.employee.address ?? null,
-      birth_date: input.employee.birth_date ?? null,
-      hire_date: input.employee.hire_date ?? null,
-      emergency_contact_name: input.employee.emergency_contact_name ?? null,
-      emergency_contact_phone: input.employee.emergency_contact_phone ?? null,
-      emergency_contact_relationship:
-        input.employee.emergency_contact_relationship ?? null,
-      notes: input.employee.notes ?? null,
-      created_by: actor.id,
-    })
-    if (employeeError) {
-      // No hay forma de deshacer el alta en Auth de forma confiable (auth.admin.deleteUser falla
-      // por diseño mientras exista la fila de profiles referenciada, P-014/P-105: nada se borra
-      // físicamente) -- se deja constancia clara del estado parcial en el mensaje, para que quien
-      // recibe el error sepa que tiene que revisar a mano en vez de reintentar a ciegas.
-      console.error(
-        'admin-users: create_user quedó a mitad de camino, el usuario de Auth ya existe',
-        newProfileId,
-        employeeError,
+      const name = await employeeName(admin, existingDni.profile_id)
+      throw errors.dniInUse(
+        name
+          ? `${name} (legajo ${existingDni.employee_number})`
+          : `la persona con legajo ${existingDni.employee_number}`,
       )
-      if (employeeError.code === '23505') {
-        throw errors.dniInUse()
+    }
+
+    const requestedNumber = input.employee.employee_number
+    if (requestedNumber !== undefined && requestedNumber !== null) {
+      const { data: existingNumber, error: numberError } = await admin
+        .from('employees')
+        .select('profile_id, employee_number')
+        .eq('employee_number', requestedNumber)
+        .maybeSingle()
+      if (numberError) {
+        throw errors.internal(numberError.message)
+      }
+      if (existingNumber) {
+        throw errors.employeeNumberInUse(
+          requestedNumber,
+          await employeeName(admin, existingNumber.profile_id),
+        )
+      }
+    }
+  }
+
+  const userMetadata = {
+    first_name: input.first_name,
+    last_name: input.last_name,
+  }
+
+  const { data: orphanId, error: orphanError } = await admin.rpc(
+    'admin_find_orphan_account',
+    { p_email: input.email },
+  )
+  if (orphanError) {
+    throw errors.internal(orphanError.message)
+  }
+
+  let profileId: string
+  const resumed = typeof orphanId === 'string'
+  if (resumed) {
+    profileId = orphanId as string
+    const { error: updateError } = await admin.auth.admin.updateUserById(
+      profileId,
+      {
+        password: input.password,
+        email_confirm: true,
+        user_metadata: userMetadata,
+      },
+    )
+    if (updateError) {
+      throw errors.internal(updateError.message)
+    }
+  } else {
+    const { data: created, error: createError } =
+      await admin.auth.admin.createUser({
+        email: input.email,
+        password: input.password,
+        email_confirm: true,
+        user_metadata: userMetadata,
+      })
+    if (createError || !created.user) {
+      if (
+        createError?.message
+          ?.toLowerCase()
+          .includes('already been registered') ||
+        createError?.message?.toLowerCase().includes('already registered') ||
+        createError?.code === 'email_exists'
+      ) {
+        throw errors.emailInUse()
       }
       throw errors.internal(
-        `El usuario se creó en Auth (id ${newProfileId}) pero no se pudieron guardar los datos de empleado: ${employeeError.message}`,
+        createError?.message ?? 'No se pudo crear el usuario.',
       )
     }
+    // app.handle_new_user() (0003) ya insertó la fila de profiles al crearse el usuario en Auth.
+    profileId = created.user.id
   }
 
-  const { error: rolesInsertError } = await admin.from('user_roles').insert(
-    input.roles.map((role) => ({
-      profile_id: newProfileId,
-      role,
-      granted_by: actor.id,
-    })),
+  const { data: records, error: recordsError } = await admin.rpc(
+    'admin_create_user_records',
+    {
+      p_profile_id: profileId,
+      p_actor_id: actor.id,
+      p_first_name: input.first_name,
+      p_last_name: input.last_name,
+      p_roles: input.roles,
+      p_employee: input.employee
+        ? {
+            dni: input.employee.dni,
+            employee_number: input.employee.employee_number ?? null,
+            cuil: input.employee.cuil ?? null,
+            address: input.employee.address ?? null,
+            birth_date: input.employee.birth_date ?? null,
+            hire_date: input.employee.hire_date ?? null,
+            emergency_contact_name:
+              input.employee.emergency_contact_name ?? null,
+            emergency_contact_phone:
+              input.employee.emergency_contact_phone ?? null,
+            emergency_contact_relationship:
+              input.employee.emergency_contact_relationship ?? null,
+            notes: input.employee.notes ?? null,
+          }
+        : null,
+    },
   )
-  if (rolesInsertError) {
+  if (recordsError) {
+    // La transacción no dejó nada: la cuenta de Auth queda sin roles ni ficha y el próximo
+    // intento con el mismo email la retoma (admin_find_orphan_account).
     console.error(
-      'admin-users: create_user no pudo guardar los roles',
-      newProfileId,
-      rolesInsertError,
+      'admin-users: create_user no pudo guardar ficha y roles; la cuenta queda para retomar',
+      profileId,
+      recordsError,
     )
-    throw errors.internal(
-      `El usuario se creó (id ${newProfileId}) pero no se pudieron guardar los roles: ${rolesInsertError.message}`,
-    )
-  }
-
-  if (input.roles.includes('admin')) {
-    const { error: capsError } = await admin.from('admin_capabilities').insert(
-      ALL_CAPABILITIES.map((capability) => ({
-        profile_id: newProfileId,
-        capability,
-        enabled: true,
-        updated_by: actor.id,
-      })),
-    )
-    if (capsError) {
-      console.error(
-        'admin-users: create_user no pudo guardar las capacidades por defecto',
-        newProfileId,
-        capsError,
-      )
-      throw errors.internal(
-        `El usuario se creó (id ${newProfileId}) pero no se pudieron guardar sus capacidades: ${capsError.message}`,
-      )
-    }
+    throw mapRecordsError(recordsError)
   }
 
   await logEvent(
     admin,
     'user_created',
     actor.id,
-    newProfileId,
+    profileId,
     {
       email: input.email,
       roles: input.roles,
+      ...(resumed ? { resumed: true } : {}),
     },
     ip,
   )
 
-  return { profile_id: newProfileId }
+  const employeeNumber =
+    (records as { employee_number?: number | null } | null)?.employee_number ??
+    null
+
+  return { profile_id: profileId, employee_number: employeeNumber }
 }
 
 export async function actionResetPassword(
