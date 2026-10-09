@@ -103,6 +103,18 @@ describe('fetchEmployees', () => {
     ])
   })
 
+  it('pide la lista ordenada por legajo ascendente (AJ2-01)', async () => {
+    const chain = makeChainable({ data: [], error: null })
+    const orderSpy = vi.fn(() => chain)
+    chain.order = orderSpy
+    fromMock.mockReturnValue(chain)
+    await fetchEmployees({ text: 'ana' })
+    expect(orderSpy).toHaveBeenCalledTimes(1)
+    expect(orderSpy).toHaveBeenCalledWith('employee_number', {
+      ascending: true,
+    })
+  })
+
   it('traduce un error de PostgREST a ApiError', async () => {
     fromMock.mockReturnValue(
       makeChainable({

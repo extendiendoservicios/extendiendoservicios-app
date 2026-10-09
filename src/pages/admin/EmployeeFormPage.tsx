@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Controller, useForm } from 'react-hook-form'
+import { formatTaxId, formatTaxIdWhileTyping } from '@/lib/taxId'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
@@ -265,12 +266,24 @@ function EmployeeCreateForm() {
         </Field>
         <Field data-invalid={Boolean(errors.cuil) || undefined}>
           <FieldLabel htmlFor="employee-cuil">CUIL</FieldLabel>
-          <Input
-            id="employee-cuil"
-            inputMode="numeric"
-            placeholder="20123456786"
-            aria-invalid={Boolean(errors.cuil)}
-            {...register('cuil')}
+          <Controller
+            control={control}
+            name="cuil"
+            render={({ field }) => (
+              <Input
+                id="employee-cuil"
+                inputMode="numeric"
+                placeholder="20-12345678-6"
+                aria-invalid={Boolean(errors.cuil)}
+                name={field.name}
+                ref={field.ref}
+                onBlur={field.onBlur}
+                value={field.value ?? ''}
+                onChange={(event) =>
+                  field.onChange(formatTaxIdWhileTyping(event.target.value))
+                }
+              />
+            )}
           />
           {errors.cuil && <FieldError>{errors.cuil.message}</FieldError>}
         </Field>
@@ -394,6 +407,7 @@ function EmployeeEditForm({ profileId }: { profileId: string }) {
   const updateEmployee = useUpdateEmployeeMutation()
 
   const {
+    control,
     register,
     handleSubmit,
     formState: { errors },
@@ -420,7 +434,7 @@ function EmployeeEditForm({ profileId }: { profileId: string }) {
           firstName: employeeQuery.data.firstName,
           lastName: employeeQuery.data.lastName,
           dni: employeeQuery.data.dni,
-          cuil: employeeQuery.data.cuil ?? '',
+          cuil: formatTaxId(employeeQuery.data.cuil) ?? '',
           employeeNumber: String(employeeQuery.data.employeeNumber),
           phone: employeeQuery.data.phone ?? '',
           address: employeeQuery.data.address ?? '',
@@ -527,12 +541,24 @@ function EmployeeEditForm({ profileId }: { profileId: string }) {
         </Field>
         <Field data-invalid={Boolean(errors.cuil) || undefined}>
           <FieldLabel htmlFor="employee-cuil">CUIL</FieldLabel>
-          <Input
-            id="employee-cuil"
-            inputMode="numeric"
-            placeholder="20123456786"
-            aria-invalid={Boolean(errors.cuil)}
-            {...register('cuil')}
+          <Controller
+            control={control}
+            name="cuil"
+            render={({ field }) => (
+              <Input
+                id="employee-cuil"
+                inputMode="numeric"
+                placeholder="20-12345678-6"
+                aria-invalid={Boolean(errors.cuil)}
+                name={field.name}
+                ref={field.ref}
+                onBlur={field.onBlur}
+                value={field.value ?? ''}
+                onChange={(event) =>
+                  field.onChange(formatTaxIdWhileTyping(event.target.value))
+                }
+              />
+            )}
           />
           {errors.cuil && <FieldError>{errors.cuil.message}</FieldError>}
         </Field>

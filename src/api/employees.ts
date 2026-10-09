@@ -56,7 +56,7 @@ function mapWriteError(error: {
     }
     if (error.message.includes('cuil')) {
       return new ApiError(
-        'El CUIL tiene que tener 11 dígitos, sin puntos ni guiones.',
+        'El CUIL tiene que tener 11 dígitos.',
         'VALIDATION_ERROR',
       )
     }
@@ -132,8 +132,8 @@ export async function fetchEmployees(
       'profile_id, first_name, last_name, employee_number, roles, effective_status, phone, avatar_path, dni',
     )
     .is('deleted_at', null)
-    .order('last_name', { ascending: true })
-    .order('first_name', { ascending: true })
+    // AJ2-01: siempre por n�mero de legajo ascendente.
+    .order('employee_number', { ascending: true })
 
   const text = filters.text?.trim()
   if (text) {

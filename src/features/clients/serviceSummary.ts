@@ -1,3 +1,4 @@
+import { formatTaxId } from '@/lib/taxId'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { ClientServiceSummary } from '@/api/clients'
@@ -84,7 +85,9 @@ export function buildClientSummarySheet(input: {
     title: CLIENT_SUMMARY_SHEET_TITLE,
     facts: [
       { label: 'Cliente', value: input.clientName },
-      ...(input.cuit ? [{ label: 'CUIT', value: input.cuit }] : []),
+      ...(input.cuit
+        ? [{ label: 'CUIT', value: formatTaxId(input.cuit) }]
+        : []),
       {
         label: 'Período',
         value: `${formatCalendarDate(summary.from)} al ${formatCalendarDate(summary.to)}`,
