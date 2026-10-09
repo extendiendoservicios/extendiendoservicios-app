@@ -2,6 +2,8 @@ import { formatTaxId } from '@/lib/taxId'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { ClientServiceSummary } from '@/api/clients'
+import type { AttendanceBoardRow } from '@/api/attendance'
+import { absenceDetail, isAbsence } from '@/features/attendance/absences'
 import type { PrintColumn, PrintRowData } from '@/features/print/PrintTable'
 import { formatCalendarDate, formatMinutes } from '@/lib/format'
 
@@ -53,32 +55,128 @@ export function shiftEmployeeNames(
     .map((employee) => `${employee.lastName}, ${employee.firstName}`)
 }
 
+/** Ids de los empleados que aparecen en la hoja (con inicio o con inasistencia), sin repetir. */
+export function summarySheetEmployeeIds(
+  summary: ClientServiceSummary,
+  absences: AttendanceBoardRow[],
+): string[] {
+  const ids = new Set<string>()
+  for (const shift of summary.shifts) {
+    for (const employee of shift.employees) {
+      if (employee.checkInAt != null) {
+        ids.add(employee.employeeId)
+      }
+    }
+  }
+  for (const row of absences) {
+    ids.add(row.employeeId)
+  }
+  return [...ids]
+}
+
+interface SheetLine {
+  key: string
+  shiftDate: string
+  startTime: string
+  siteName: string
+  lastName: string
+  firstName: string
+  employeeId: string
+  franja: string
+  novelty: string
+  hours: string
+}
+
 /**
  * Arma la hoja «Resumen de servicios» del cliente: datos del cliente y del
- * período, una fila por turno realizado (fecha, sede, franja, empleados y
- * horas) y los totales. Lleva un solo espacio de firma, el del responsable de
- * administración (no hay una segunda parte que conforme el resumen).
+ * período, una fila por persona y turno (fecha, sede, franja, nombre y
+ * apellido, DNI, novedad y horas) y los totales. Desde AJ2-14 incluye las
+ * inasistencias (`absences`: asignaciones sin inicio de turnos del período;
+ * se filtran con `isAbsence`), con el motivo del aviso si lo hay. Lleva un
+ * solo espacio de firma, el del responsable de administración (no hay una
+ * segunda parte que conforme el resumen).
  */
 export function buildClientSummarySheet(input: {
   clientName: string
   cuit: string | null
   summary: ClientServiceSummary
+  /** Asignaciones vigentes sin inicio del período (`fetchClientUnstartedAssignments`). */
+  absences?: AttendanceBoardRow[]
+  /** DNI por id de empleado (`fetchEmployeeDnisByIds`). */
+  dnis?: Map<string, string>
+  /** Inyectable para tests; por defecto el momento de armar la hoja. */
+  now?: Date
 }): ClientSummarySheetModel {
   const { summary } = input
+  const now = input.now ?? new Date()
+  const dnis = input.dnis ?? new Map<string, string>()
   const columns: PrintColumn[] = [
     { key: 'date', header: 'Fecha' },
     { key: 'site', header: 'Sede' },
     { key: 'franja', header: 'Franja' },
-    { key: 'employees', header: 'Empleados' },
+    { key: 'name', header: 'Nombre y Apellido' },
+    { key: 'dni', header: 'DNI' },
+    { key: 'novelty', header: 'Novedad' },
     { key: 'hours', header: 'Horas', align: 'right' },
   ]
-  const rows: PrintRowData[] = summary.shifts.map((shift) => ({
-    key: shift.shiftId,
-    date: formatCalendarDate(shift.shiftDate),
-    site: shift.siteName,
-    franja: `${shift.startTime.slice(0, 5)}–${shift.endTime.slice(0, 5)}`,
-    employees: shiftEmployeeNames(shift).join('; ') || '—',
-    hours: formatMinutes(shift.workedMinutes),
+
+  const lines: SheetLine[] = []
+  for (const shift of summary.shifts) {
+    for (const employee of shift.employees) {
+      if (employee.checkInAt == null) {
+        continue
+      }
+      lines.push({
+        key: employee.assignmentId,
+        shiftDate: shift.shiftDate,
+        startTime: shift.startTime,
+        siteName: shift.siteName,
+        lastName: employee.lastName,
+        firstName: employee.firstName,
+        employeeId: employee.employeeId,
+        franja: `${shift.startTime.slice(0, 5)}–${shift.endTime.slice(0, 5)}`,
+        novelty: '',
+        hours:
+          employee.workedMinutes != null
+            ? formatMinutes(employee.workedMinutes)
+            : '—',
+      })
+    }
+  }
+  const absentRows = (input.absences ?? []).filter((row) => isAbsence(row, now))
+  for (const row of absentRows) {
+    lines.push({
+      key: row.id,
+      shiftDate: row.shiftDate,
+      startTime: row.startTime,
+      siteName: row.siteName,
+      lastName: row.employeeLastName,
+      firstName: row.employeeFirstName,
+      employeeId: row.employeeId,
+      franja: `${row.startTime.slice(0, 5)}–${row.endTime.slice(0, 5)}`,
+      novelty: absenceDetail(row),
+      hours: '—',
+    })
+  }
+  lines.sort(
+    (a, b) =>
+      a.shiftDate.localeCompare(b.shiftDate) ||
+      a.startTime.localeCompare(b.startTime) ||
+      a.siteName.localeCompare(b.siteName) ||
+      a.lastName.localeCompare(b.lastName) ||
+      a.firstName.localeCompare(b.firstName) ||
+      a.key.localeCompare(b.key),
+  )
+
+  const rows: PrintRowData[] = lines.map((line) => ({
+    key: line.key,
+    date: formatCalendarDate(line.shiftDate),
+    site: line.siteName,
+    franja: line.franja,
+    name: `${line.firstName} ${line.lastName}`,
+    dni: dnis.get(line.employeeId) ?? '—',
+    novelty: line.novelty,
+    hours: line.hours,
   }))
 
   return {
@@ -100,6 +198,9 @@ export function buildClientSummarySheet(input: {
         label: 'Empleados distintos',
         value: String(summary.totals.employeesCount),
       },
+      ...(absentRows.length > 0
+        ? [{ label: 'Inasistencias', value: String(absentRows.length) }]
+        : []),
     ],
     columns,
     rows,

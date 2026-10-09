@@ -37,6 +37,7 @@ export const employeesKeys = {
   leaves: (profileId: string) =>
     [...employeesKeys.all, 'leaves', profileId] as const,
   ratingsSummary: () => [...employeesKeys.all, 'ratingsSummary'] as const,
+  dnis: (ids: string[]) => [...employeesKeys.all, 'dnis', ids] as const,
 }
 
 // -------------------------------------------------------------------------
@@ -49,6 +50,17 @@ export function useEmployeesQuery(filters: EmployeeListFilters) {
     queryFn: () => employeesApi.fetchEmployees(filters),
     staleTime: LIST_POLLING_MS,
     refetchInterval: LIST_POLLING_MS,
+  })
+}
+
+/** AJ2-16: DNI de las personas que salen en un imprimible (una sola consulta). */
+export function useEmployeeDnisQuery(ids: string[], enabled: boolean) {
+  const sortedIds = [...ids].sort()
+  return useQuery({
+    queryKey: employeesKeys.dnis(sortedIds),
+    queryFn: () => employeesApi.fetchEmployeeDnisByIds(sortedIds),
+    enabled: enabled && sortedIds.length > 0,
+    retry: false,
   })
 }
 

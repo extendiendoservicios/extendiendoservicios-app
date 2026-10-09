@@ -21,6 +21,7 @@ function makeChainable<T>(result: PostgrestResult<T>) {
     eq: () => chain,
     or: () => chain,
     contains: () => chain,
+    in: () => chain,
     order: () => chain,
     limit: () => chain,
     single: () => Promise.resolve(result),
@@ -60,6 +61,7 @@ const {
   createEmployeeLeave,
   updateEmployeeLeave,
   deactivateEmployeeLeave,
+  fetchEmployeeDnisByIds,
 } = await import('./employees')
 
 beforeEach(() => {
@@ -598,5 +600,25 @@ describe('updateEmployeeLeave (AJ2-08)', () => {
         'admin-1',
       ),
     ).rejects.toMatchObject({ hint: 'LEAVE_OVERLAP' })
+  })
+})
+
+describe('fetchEmployeeDnisByIds (AJ2-16)', () => {
+  it('devuelve un mapa id -> DNI y no consulta si no hay ids', async () => {
+    expect((await fetchEmployeeDnisByIds([])).size).toBe(0)
+    expect(fromMock).not.toHaveBeenCalled()
+
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: [
+          { profile_id: 'e1', dni: '30111222' },
+          { profile_id: 'e2', dni: '28999888' },
+        ],
+        error: null,
+      }),
+    )
+    const result = await fetchEmployeeDnisByIds(['e1', 'e2'])
+    expect(fromMock).toHaveBeenCalledWith('employees')
+    expect(result.get('e2')).toBe('28999888')
   })
 })

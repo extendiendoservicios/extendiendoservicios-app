@@ -243,6 +243,8 @@ export interface AttendanceBoardRow {
   plannedMinutes: number | null
   /** AJ-03: minutos trabajados (inicio a fin real, redondeados al minuto); `null` sin fin registrado. */
   workedMinutes: number | null
+  /** Asignación quitada del turno (el historial de un empleado las incluye): no cuenta como inasistencia. */
+  removedAt?: string | null
 }
 
 /** Todas las columnas de `v_assignments_board` que usa esta pantalla (`06` sección 10, P14.1). */
@@ -255,7 +257,7 @@ const ATTENDANCE_BOARD_SELECT = `
   minutes_late, minutes_early_leave,
   last_notice_kind, last_notice_minutes_late, last_notice_reason_code, last_notice_reason_text,
   last_notice_reported_by, last_notice_source, last_notice_at,
-  last_notice_estimated_arrival_at, planned_minutes, worked_minutes
+  last_notice_estimated_arrival_at, planned_minutes, worked_minutes, removed_at
 `
 
 interface AttendanceBoardRawRow {
@@ -296,6 +298,7 @@ interface AttendanceBoardRawRow {
   last_notice_estimated_arrival_at: string | null
   planned_minutes: number | null
   worked_minutes: number | null
+  removed_at: string | null
 }
 
 function mapAttendanceBoardRow(row: AttendanceBoardRawRow): AttendanceBoardRow {
@@ -337,6 +340,7 @@ function mapAttendanceBoardRow(row: AttendanceBoardRawRow): AttendanceBoardRow {
     lastNoticeEstimatedArrivalAt: row.last_notice_estimated_arrival_at,
     plannedMinutes: row.planned_minutes,
     workedMinutes: row.worked_minutes,
+    removedAt: row.removed_at,
   }
 }
 
@@ -374,6 +378,40 @@ export async function fetchAttendanceBoardByDate(
   }
 
   const { data, error } = await query
+    .order('effective_start_time', { ascending: true })
+    .order('id', { ascending: true })
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data ?? []).map((row) =>
+    mapAttendanceBoardRow(row as AttendanceBoardRawRow),
+  )
+}
+
+/**
+ * Asignaciones vigentes sin fichaje de inicio de los turnos de un cliente en
+ * un período (AJ2-14): candidatas a «inasistencia» en el resumen de servicios.
+ * `client_service_summary` solo lista turnos realizados (con algún inicio), así
+ * que un turno donde nadie fichó no aparece ahí; esta consulta los cubre y
+ * trae el aviso de ausencia con su motivo. Excluye turnos cancelados y
+ * asignaciones quitadas. Qué es inasistencia lo decide `isAbsence`.
+ */
+export async function fetchClientUnstartedAssignments(
+  clientId: string,
+  from: string,
+  to: string,
+): Promise<AttendanceBoardRow[]> {
+  const { data, error } = await supabase
+    .from('v_assignments_board')
+    .select(ATTENDANCE_BOARD_SELECT)
+    .eq('client_id', clientId)
+    .gte('shift_date', from)
+    .lte('shift_date', to)
+    .is('removed_at', null)
+    .is('check_in_at', null)
+    .neq('shift_status', 'cancelled')
+    .order('shift_date', { ascending: true })
     .order('effective_start_time', { ascending: true })
     .order('id', { ascending: true })
 

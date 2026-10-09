@@ -251,6 +251,7 @@ export default function EmployeeDetailPage() {
             profileId={employee.profileId}
             person={{
               name: `${employee.firstName} ${employee.lastName}`,
+              dni: employee.dni,
               employeeNumber: employee.employeeNumber,
               roles: employee.roles,
             }}

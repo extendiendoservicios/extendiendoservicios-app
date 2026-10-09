@@ -174,6 +174,27 @@ export async function fetchEmployees(
 }
 
 /**
+ * DNI de una lista de empleados, para los imprimibles (AJ2-16). Dueño y
+ * administradores leen `employees.dni` (no pasa por `v_assignments_board`).
+ */
+export async function fetchEmployeeDnisByIds(
+  employeeIds: string[],
+): Promise<Map<string, string>> {
+  if (employeeIds.length === 0) {
+    return new Map()
+  }
+  const { data, error } = await supabase
+    .from('employees')
+    .select('profile_id, dni')
+    .in('profile_id', employeeIds)
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return new Map((data ?? []).map((row) => [row.profile_id, row.dni]))
+}
+
+/**
  * Clientes habilitados por empleado (`employee_client_permissions`), para
  * el filtro "cliente habilitado" de ADM-16 (`employeeListFilters.ts`
  * resuelve la regla de lista vacía = habilitado para todos, no esta
