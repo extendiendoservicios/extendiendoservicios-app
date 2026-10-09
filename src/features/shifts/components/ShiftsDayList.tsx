@@ -20,7 +20,11 @@ import {
   canManageShiftTime,
   isShiftCancellable,
 } from '@/features/shifts/permissions'
-import { useShiftsByDateQuery } from '@/features/shifts/queries'
+import {
+  useShiftPeopleByDateQuery,
+  useShiftsByDateQuery,
+} from '@/features/shifts/queries'
+import { peopleOfShift, summarizeNames } from '@/features/shifts/shiftPeople'
 import { groupShiftsByFranja } from '@/features/shifts/grouping'
 import { UpdatedAgo } from './UpdatedAgo'
 import { CancelShiftDialog } from './CancelShiftDialog'
@@ -59,6 +63,9 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
 
   const isToday = date === todayInBuenosAires()
   const shiftsQuery = useShiftsByDateQuery(date, isToday)
+  // AJ2-18: nombres de los asignados y del supervisor (dos consultas por día).
+  const peopleQuery = useShiftPeopleByDateQuery(date, isToday)
+  const people = peopleQuery.data
   const franjaGroups = useMemo(
     () => groupShiftsByFranja(shiftsQuery.data ?? []),
     [shiftsQuery.data],
@@ -95,6 +102,40 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
       meta: { card: 'meta', cardLabel: 'Dotación', align: 'end' },
       cell: ({ row }) =>
         `${row.original.assignedCount}/${row.original.requiredStaff}`,
+    },
+    {
+      id: 'employees',
+      header: 'Asignados',
+      meta: { card: 'meta', cardLabel: 'Asignados' },
+      cell: ({ row }) => {
+        const { employees } = peopleOfShift(people, row.original.id)
+        if (employees.length === 0) {
+          return <span className="text-text-3">—</span>
+        }
+        const summary = summarizeNames(employees)
+        return (
+          <span className="block max-w-[14rem] truncate" title={summary.full}>
+            {summary.text}
+          </span>
+        )
+      },
+    },
+    {
+      id: 'supervisor',
+      header: 'Supervisor',
+      meta: { card: 'meta', cardLabel: 'Supervisor' },
+      cell: ({ row }) => {
+        const { supervisors } = peopleOfShift(people, row.original.id)
+        if (supervisors.length === 0) {
+          return <span className="text-text-3">—</span>
+        }
+        const summary = summarizeNames(supervisors, 1)
+        return (
+          <span className="block max-w-[10rem] truncate" title={summary.full}>
+            {summary.text}
+          </span>
+        )
+      },
     },
     {
       id: 'status',

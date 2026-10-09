@@ -1,5 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as shiftsApi from '@/api/shifts'
+import * as attendanceApi from '@/api/attendance'
+import * as supervisionsApi from '@/api/supervisions'
+import { groupShiftPeople } from '@/features/shifts/shiftPeople'
 import type { CreateShiftInput } from '@/api/shifts'
 
 /**
@@ -17,6 +20,8 @@ const LIST_POLLING_MS = 30_000
 export const shiftsKeys = {
   all: ['shifts'] as const,
   byDate: (date: string) => [...shiftsKeys.all, 'byDate', date] as const,
+  peopleByDate: (date: string) =>
+    [...shiftsKeys.all, 'peopleByDate', date] as const,
   edit: (id: string) => [...shiftsKeys.all, 'edit', id] as const,
   activeServicesForMonth: (year: number, month: number) =>
     [...shiftsKeys.all, 'activeServicesForMonth', year, month] as const,
@@ -27,6 +32,29 @@ export function useShiftsByDateQuery(date: string, poll: boolean) {
   return useQuery({
     queryKey: shiftsKeys.byDate(date),
     queryFn: () => shiftsApi.fetchShiftsByDate(date),
+    refetchInterval: poll ? LIST_POLLING_MS : false,
+  })
+}
+
+/**
+ * AJ2-18: empleados asignados y supervisor designado de todos los turnos de
+ * un día, en dos consultas por día (no una por turno): asignaciones vigentes
+ * (`v_assignments_board`) y supervisiones (`v_supervisions_admin`). Cuelga de
+ * `shiftsKeys.all`, así que las mutaciones de turnos lo invalidan.
+ */
+export function useShiftPeopleByDateQuery(date: string, poll: boolean) {
+  return useQuery({
+    queryKey: shiftsKeys.peopleByDate(date),
+    queryFn: async () => {
+      const [assignments, supervisions] = await Promise.all([
+        attendanceApi.fetchAttendanceBoardByDate(date),
+        supervisionsApi.fetchSupervisionsAdmin({
+          dateFrom: date,
+          dateTo: date,
+        }),
+      ])
+      return groupShiftPeople(assignments, supervisions)
+    },
     refetchInterval: poll ? LIST_POLLING_MS : false,
   })
 }
