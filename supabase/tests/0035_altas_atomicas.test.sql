@@ -38,15 +38,15 @@ where id = 'c3500000-0000-0000-0000-000000000005';
 -- Existencia y permisos ---------------------------------------------------------------------
 
 select has_function('public', 'admin_find_orphan_account', array['text']);
-select has_function('public', 'admin_create_user_records', array['uuid', 'uuid', 'text', 'text', 'app_role[]', 'jsonb']);
+select has_function('public', 'admin_create_user_records', array['uuid', 'uuid', 'text', 'text', 'app_role[]', 'jsonb', 'text']);
 
 select ok(
-  not has_function_privilege('authenticated', 'public.admin_create_user_records(uuid, uuid, text, text, public.app_role[], jsonb)', 'execute')
-  and not has_function_privilege('anon', 'public.admin_create_user_records(uuid, uuid, text, text, public.app_role[], jsonb)', 'execute'),
+  not has_function_privilege('authenticated', 'public.admin_create_user_records(uuid, uuid, text, text, public.app_role[], jsonb, text)', 'execute')
+  and not has_function_privilege('anon', 'public.admin_create_user_records(uuid, uuid, text, text, public.app_role[], jsonb, text)', 'execute'),
   'admin_create_user_records: ni authenticated ni anon la pueden ejecutar'
 );
 select ok(
-  has_function_privilege('service_role', 'public.admin_create_user_records(uuid, uuid, text, text, public.app_role[], jsonb)', 'execute'),
+  has_function_privilege('service_role', 'public.admin_create_user_records(uuid, uuid, text, text, public.app_role[], jsonb, text)', 'execute'),
   'admin_create_user_records: service_role la puede ejecutar'
 );
 select ok(
@@ -142,8 +142,8 @@ select results_eq(
 );
 select results_eq(
   $$ select role::text from public.user_roles
-     where profile_id = 'c3500000-0000-0000-0000-000000000003' order by role $$,
-  $$ values ('supervisor'), ('employee') $$,
+     where profile_id = 'c3500000-0000-0000-0000-000000000003' order by role::text $$,
+  $$ values ('employee'), ('supervisor') $$,
   'quedan los dos roles'
 );
 select results_eq(
@@ -183,7 +183,8 @@ select is(
     'Sin', 'Legajo', array['employee']::public.app_role[],
     jsonb_build_object('dni', '90350006')
   ) ->> 'employee_number')::int,
-  (select max(employee_number) from public.employees),
+  -- Mismo instante que la llamada: el máximo todavía no incluye la ficha que crea la función.
+  (select max(employee_number) + 1 from public.employees),
   'sin legajo pedido, toma el más alto + 1'
 );
 

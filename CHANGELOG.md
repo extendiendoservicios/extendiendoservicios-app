@@ -15,6 +15,7 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 - Alta de personas: ficha, roles y capacidades se guardan juntos (migración 0035). Si algo falla no queda nada a medias, y si un intento anterior dejó la cuenta del mismo email sin ficha ni roles, el alta la retoma con la contraseña y el nombre nuevos en vez de rechazarla.
 - Avisos de dato repetido: el DNI repetido dice de quién es («es de Nombre Apellido (legajo N)»), el legajo repetido tiene su propio aviso y el campo correspondiente queda marcado.
 - Alta de empleados: el botón «Crear» se deshabilita desde el primer clic, así un doble clic no manda dos altas.
+- Alta de empleados: el teléfono cargado en el alta ahora se guarda (antes solo quedaba si después se editaba la ficha). Migración 0036.
 
 ## [0.16.3] - 2026-10-08
 

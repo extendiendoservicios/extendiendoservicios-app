@@ -413,13 +413,15 @@ interface CreateUserInput {
   first_name: string
   last_name: string
   roles: AppRole[]
+  phone: string | null
   employee?: EmployeeInput
 }
 
 function assertValidCreateUserInput(
   body: Record<string, unknown>,
 ): CreateUserInput {
-  const { email, password, first_name, last_name, roles, employee } = body
+  const { email, password, first_name, last_name, roles, employee, phone } =
+    body
   if (typeof email !== 'string' || !email.includes('@')) {
     throw errors.validation('El email no es válido.')
   }
@@ -442,6 +444,9 @@ function assertValidCreateUserInput(
     )
   ) {
     throw errors.validation('Indicá al menos un rol válido.')
+  }
+  if (phone !== undefined && phone !== null && typeof phone !== 'string') {
+    throw errors.validation('El teléfono no es válido.')
   }
   let employeeInput: EmployeeInput | undefined
   if (employee !== undefined && employee !== null) {
@@ -473,6 +478,7 @@ function assertValidCreateUserInput(
     first_name,
     last_name,
     roles: roles as AppRole[],
+    phone: typeof phone === 'string' ? phone : null,
     employee: employeeInput,
   }
 }
@@ -651,6 +657,7 @@ export async function actionCreateUser(
       p_first_name: input.first_name,
       p_last_name: input.last_name,
       p_roles: input.roles,
+      p_phone: input.phone,
       p_employee: input.employee
         ? {
             dni: input.employee.dni,

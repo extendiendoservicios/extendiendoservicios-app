@@ -2571,6 +2571,19 @@ export type Database = {
       }
     }
     Functions: {
+      admin_create_user_records: {
+        Args: {
+          p_actor_id: string
+          p_employee?: Json
+          p_first_name: string
+          p_last_name: string
+          p_phone?: string
+          p_profile_id: string
+          p_roles: Database["public"]["Enums"]["app_role"][]
+        }
+        Returns: Json
+      }
+      admin_find_orphan_account: { Args: { p_email: string }; Returns: string }
       admin_record_attendance: {
         Args: {
           p_assignment_id: string

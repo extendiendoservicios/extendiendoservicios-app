@@ -196,6 +196,7 @@ describe('createEmployeeUser', () => {
     password: 'contraseña-larga',
     roles: ['employee'] as ('employee' | 'supervisor')[],
     employeeNumber: 5,
+    phone: '2477 123456',
     dni: '30111222',
     cuil: null,
     address: null,
@@ -223,6 +224,7 @@ describe('createEmployeeUser', () => {
         first_name: 'Ana',
         last_name: 'Gómez',
         roles: ['employee'],
+        phone: '2477 123456',
         employee: {
           dni: '30111222',
           employee_number: 5,

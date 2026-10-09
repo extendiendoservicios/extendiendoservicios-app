@@ -308,6 +308,7 @@ const EMPLEADO_BODY = {
   first_name: 'Nora',
   last_name: 'Celeste',
   roles: ['employee'],
+  phone: '2477 123456',
   employee: { dni: '30111222', employee_number: 21 },
 }
 
@@ -379,6 +380,8 @@ Deno.test(
         .employee_number,
       21,
     )
+    // El teléfono del alta viaja a la RPC (antes se perdía).
+    assertEquals(records?.params.p_phone, '2477 123456')
     assertEquals(
       (insertedEvents[0] as { details: { resumed: boolean } }).details.resumed,
       true,

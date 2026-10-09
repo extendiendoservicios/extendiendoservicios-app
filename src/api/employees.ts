@@ -295,6 +295,7 @@ export interface EmployeeCreateInput {
   password: string
   roles: Role[]
   employeeNumber: number
+  phone: string | null
   dni: string
   cuil: string | null
   address: string | null
@@ -342,6 +343,7 @@ export async function createEmployeeUser(input: EmployeeCreateInput): Promise<{
     firstName: input.firstName,
     lastName: input.lastName,
     roles: input.roles,
+    phone: input.phone,
     employee,
   })
 

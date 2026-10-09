@@ -311,6 +311,8 @@ export interface CreateAdminUserInput {
    * ambos.
    */
   roles: Role[]
+  /** Teléfono del perfil (`profiles.phone`). */
+  phone?: string | null
   /** Obligatorio cuando `roles` incluye `employee` o `supervisor` (`06` sección 2.1). */
   employee?: CreateUserEmployeeInput
 }
@@ -341,6 +343,7 @@ export async function createAdminUser(
     first_name: input.firstName,
     last_name: input.lastName,
     roles: input.roles,
+    ...(input.phone ? { phone: input.phone } : {}),
     ...(input.employee
       ? {
           employee: {
