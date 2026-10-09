@@ -196,6 +196,7 @@ describe('createEmployeeUser', () => {
     password: 'contraseña-larga',
     roles: ['employee'] as ('employee' | 'supervisor')[],
     employeeNumber: 5,
+    phone: '2477 123456',
     dni: '30111222',
     cuil: null,
     address: null,
@@ -207,20 +208,11 @@ describe('createEmployeeUser', () => {
     notes: null,
   }
 
-  it('crea el usuario vía Edge Function y aplica el legajo pedido si difiere del asignado', async () => {
+  it('crea el usuario vía Edge Function con el legajo pedido, sin corregirlo después', async () => {
     invokeMock.mockResolvedValue({
-      data: { data: { profile_id: 'e1' } },
+      data: { data: { profile_id: 'e1', employee_number: 5 } },
       error: null,
     })
-    // Primer `from('employees')`: lee el legajo que asignó la secuencia (6).
-    // Segundo `from('employees')`: aplica el legajo pedido (5).
-    fromMock
-      .mockReturnValueOnce(
-        makeChainable({ data: { employee_number: 6 }, error: null }),
-      )
-      .mockReturnValueOnce(
-        makeChainable({ data: { employee_number: 5 }, error: null }),
-      )
 
     const result = await createEmployeeUser(input)
 
@@ -232,8 +224,10 @@ describe('createEmployeeUser', () => {
         first_name: 'Ana',
         last_name: 'Gómez',
         roles: ['employee'],
+        phone: '2477 123456',
         employee: {
           dni: '30111222',
+          employee_number: 5,
           cuil: null,
           address: null,
           birth_date: null,
@@ -245,34 +239,25 @@ describe('createEmployeeUser', () => {
         },
       },
     })
-    expect(result).toEqual({
-      profileId: 'e1',
-      employeeNumber: 5,
-      employeeNumberWarning: null,
-    })
+    expect(result).toEqual({ profileId: 'e1', employeeNumber: 5 })
+    // Defecto del 9 oct 2026: ya no hay un segundo paso sobre employees.
+    expect(fromMock).not.toHaveBeenCalled()
   })
 
-  it('si el legajo pedido ya no está disponible, no lanza: devuelve una advertencia', async () => {
+  it('legajo en uso: rechaza con EMPLOYEE_NUMBER_IN_USE (antes llegaba como DNI repetido)', async () => {
     invokeMock.mockResolvedValue({
-      data: { data: { profile_id: 'e1' } },
+      data: {
+        error: {
+          message: 'El legajo 5 ya es de Yesica A. Elegí otro.',
+          hint: 'EMPLOYEE_NUMBER_IN_USE',
+        },
+      },
       error: null,
     })
-    fromMock
-      .mockReturnValueOnce(
-        makeChainable({ data: { employee_number: 6 }, error: null }),
-      )
-      .mockReturnValueOnce(
-        makeChainable({
-          data: null,
-          error: { message: 'duplicate key', code: '23505' },
-        }),
-      )
-
-    const result = await createEmployeeUser(input)
-
-    expect(result.profileId).toBe('e1')
-    expect(result.employeeNumber).toBe(6)
-    expect(result.employeeNumberWarning).toContain('legajo 6')
+    await expect(createEmployeeUser(input)).rejects.toMatchObject({
+      hint: 'EMPLOYEE_NUMBER_IN_USE',
+      message: 'El legajo 5 ya es de Yesica A. Elegí otro.',
+    })
   })
 
   it('si la Edge Function rechaza la creación, no llega a tocar employees (el DNI repetido, EMAIL_IN_USE, etc. ya se prueban en users.test.ts)', async () => {

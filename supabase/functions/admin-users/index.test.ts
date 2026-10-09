@@ -203,13 +203,28 @@ function fakeQueryBuilder(
 function createFakeAdminClient(config: {
   responder: (ctx: FakeQueryContext) => FakeResponse
   createUser?: (attrs: unknown) => Promise<FakeResponse>
+  updateUserById?: (id: string, attrs: unknown) => Promise<FakeResponse>
+  rpc?: (fn: string, params: Record<string, unknown>) => FakeResponse
 }) {
   return {
     from: (table: string) => fakeQueryBuilder(table, config.responder),
+    rpc: (fn: string, params: Record<string, unknown>) =>
+      Promise.resolve(
+        config.rpc
+          ? config.rpc(fn, params)
+          : { data: null, error: new Error(`rpc ${fn} no implementada`) },
+      ),
     auth: {
       admin: {
         createUser:
           config.createUser ??
+          (() =>
+            Promise.resolve({
+              data: { user: null },
+              error: new Error('no implementado en este test'),
+            })),
+        updateUserById:
+          config.updateUserById ??
           (() =>
             Promise.resolve({
               data: { user: null },
@@ -241,17 +256,20 @@ Deno.test(
 )
 
 Deno.test(
-  'actionCreateUser: el dueño crea un administrador y quedan sus siete capacidades',
+  'actionCreateUser: el dueño crea un administrador; roles y capacidades van juntos en admin_create_user_records',
   async () => {
-    const insertedRows: Record<string, unknown[]> = {}
+    const rpcCalls: Array<{ fn: string; params: Record<string, unknown> }> = []
     const admin = createFakeAdminClient({
-      responder: (ctx) => {
-        if (ctx.method === 'insert') {
-          insertedRows[ctx.table] = Array.isArray(ctx.payload)
-            ? (ctx.payload as unknown[])
-            : [ctx.payload]
+      responder: () => ({ data: null, error: null }),
+      rpc: (fn, params) => {
+        rpcCalls.push({ fn, params })
+        if (fn === 'admin_find_orphan_account') {
+          return { data: null, error: null }
         }
-        return { data: null, error: null }
+        return {
+          data: { profile_id: 'nuevo-admin-1', employee_number: null },
+          error: null,
+        }
       },
       createUser: () =>
         Promise.resolve({
@@ -273,13 +291,200 @@ Deno.test(
       null,
     )
 
-    assertEquals(result, { profile_id: 'nuevo-admin-1' })
-    assertEquals(
-      (insertedRows.user_roles as Array<{ role: string }>)[0].role,
-      'admin',
+    assertEquals(result, { profile_id: 'nuevo-admin-1', employee_number: null })
+    // Las siete capacidades las inserta la RPC (0035, cubierto por su pgTAP).
+    const records = rpcCalls.find((c) => c.fn === 'admin_create_user_records')
+    assertEquals(records?.params.p_profile_id, 'nuevo-admin-1')
+    assertEquals(records?.params.p_roles, ['admin'])
+    assertEquals(records?.params.p_employee, null)
+  },
+)
+
+// Defecto del 9 oct 2026 en producción: un alta que fallaba después de crear la cuenta de Auth
+// dejaba el email tomado. Ahora la cuenta a medias se retoma.
+const EMPLEADO_BODY = {
+  email: 'nueva.empleada@extendiendoservicios.example',
+  password: 'contraseña-larga-1',
+  first_name: 'Nora',
+  last_name: 'Celeste',
+  roles: ['employee'],
+  phone: '2477 123456',
+  employee: { dni: '30111222', employee_number: 21 },
+}
+
+async function captureDomainError(fn: () => Promise<unknown>) {
+  try {
+    await fn()
+  } catch (e) {
+    if (e instanceof DomainError) return e
+    throw e
+  }
+  throw new Error('se esperaba un DomainError')
+}
+
+Deno.test(
+  'actionCreateUser: retoma la cuenta a medias del mismo email (no crea otra) y manda el legajo pedido',
+  async () => {
+    const rpcCalls: Array<{ fn: string; params: Record<string, unknown> }> = []
+    const updated: Array<{ id: string; attrs: unknown }> = []
+    const insertedEvents: unknown[] = []
+    let createUserCalled = false
+    const admin = createFakeAdminClient({
+      responder: (ctx) => {
+        if (ctx.method === 'insert' && ctx.table === 'security_events') {
+          insertedEvents.push(ctx.payload)
+        }
+        // Ni el DNI ni el legajo están en uso.
+        return { data: null, error: null }
+      },
+      rpc: (fn, params) => {
+        rpcCalls.push({ fn, params })
+        if (fn === 'admin_find_orphan_account') {
+          return { data: 'cuenta-a-medias-1', error: null }
+        }
+        return {
+          data: { profile_id: 'cuenta-a-medias-1', employee_number: 21 },
+          error: null,
+        }
+      },
+      createUser: () => {
+        createUserCalled = true
+        return Promise.resolve({ data: { user: null }, error: null })
+      },
+      updateUserById: (id, attrs) => {
+        updated.push({ id, attrs })
+        return Promise.resolve({ data: { user: { id } }, error: null })
+      },
+    })
+
+    const result = await actionCreateUser(
+      admin,
+      OWNER_ACTOR,
+      EMPLEADO_BODY,
+      null,
     )
-    // Las siete capacidades (04 sección 2.1, CONFIRMADO por Mike en P07.0).
-    assertEquals((insertedRows.admin_capabilities as unknown[]).length, 7)
+
+    assertEquals(result, {
+      profile_id: 'cuenta-a-medias-1',
+      employee_number: 21,
+    })
+    assertEquals(createUserCalled, false)
+    assertEquals(updated[0].id, 'cuenta-a-medias-1')
+    assertEquals(
+      (updated[0].attrs as { password: string }).password,
+      'contraseña-larga-1',
+    )
+    const records = rpcCalls.find((c) => c.fn === 'admin_create_user_records')
+    assertEquals(
+      (records?.params.p_employee as { employee_number: number })
+        .employee_number,
+      21,
+    )
+    // El teléfono del alta viaja a la RPC (antes se perdía).
+    assertEquals(records?.params.p_phone, '2477 123456')
+    assertEquals(
+      (insertedEvents[0] as { details: { resumed: boolean } }).details.resumed,
+      true,
+    )
+  },
+)
+
+Deno.test(
+  'actionCreateUser: DNI repetido avisa a quién pertenece, sin tocar Auth',
+  async () => {
+    let authTouched = false
+    const admin = createFakeAdminClient({
+      responder: (ctx) => {
+        if (ctx.table === 'employees') {
+          return {
+            data: { profile_id: 'existente-1', employee_number: 7 },
+            error: null,
+          }
+        }
+        if (ctx.table === 'profiles') {
+          return {
+            data: { first_name: 'Stella Maris', last_name: 'L' },
+            error: null,
+          }
+        }
+        return { data: null, error: null }
+      },
+      createUser: () => {
+        authTouched = true
+        return Promise.resolve({ data: { user: null }, error: null })
+      },
+    })
+
+    const err = await captureDomainError(() =>
+      actionCreateUser(admin, OWNER_ACTOR, EMPLEADO_BODY, null),
+    )
+    assertEquals(err.hint, 'DNI_IN_USE')
+    assertEquals(
+      err.message,
+      'Ese DNI ya está registrado: es de Stella Maris L (legajo 7).',
+    )
+    assertEquals(authTouched, false)
+  },
+)
+
+Deno.test(
+  'actionCreateUser: legajo repetido es EMPLOYEE_NUMBER_IN_USE (antes salía como DNI repetido)',
+  async () => {
+    // El simulador no distingue filtros: la primera consulta a employees (por DNI) no encuentra
+    // nada y la segunda (por legajo) sí.
+    let employeesQueries = 0
+    const admin = createFakeAdminClient({
+      responder: (ctx) => {
+        if (ctx.table === 'employees') {
+          employeesQueries += 1
+          return employeesQueries === 1
+            ? { data: null, error: null }
+            : {
+                data: { profile_id: 'existente-2', employee_number: 21 },
+                error: null,
+              }
+        }
+        if (ctx.table === 'profiles') {
+          return { data: { first_name: 'Yesica', last_name: 'A' }, error: null }
+        }
+        return { data: null, error: null }
+      },
+    })
+
+    const err = await captureDomainError(() =>
+      actionCreateUser(admin, OWNER_ACTOR, EMPLEADO_BODY, null),
+    )
+    assertEquals(err.hint, 'EMPLOYEE_NUMBER_IN_USE')
+    assertEquals(err.message, 'El legajo 21 ya es de Yesica A. Elegí otro.')
+  },
+)
+
+Deno.test(
+  'actionCreateUser: si falla la transacción de ficha y roles, se informa el dato repetido real',
+  async () => {
+    const admin = createFakeAdminClient({
+      responder: () => ({ data: null, error: null }),
+      rpc: (fn) => {
+        if (fn === 'admin_find_orphan_account') {
+          return { data: null, error: null }
+        }
+        return {
+          data: null,
+          error: {
+            message: 'Ese legajo ya está en uso.',
+            hint: 'EMPLOYEE_NUMBER_IN_USE',
+          },
+        }
+      },
+      createUser: () =>
+        Promise.resolve({ data: { user: { id: 'nueva-1' } }, error: null }),
+    })
+
+    const err = await captureDomainError(() =>
+      actionCreateUser(admin, OWNER_ACTOR, EMPLEADO_BODY, null),
+    )
+    assertEquals(err.hint, 'EMPLOYEE_NUMBER_IN_USE')
+    assertEquals(err.status, 409)
   },
 )
 

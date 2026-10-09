@@ -266,7 +266,7 @@ describe('createAdminUser (Edge Function admin-users)', () => {
         roles: ['admin'],
       },
     })
-    expect(result).toEqual({ profileId: 'p9' })
+    expect(result).toEqual({ profileId: 'p9', employeeNumber: null })
   })
 
   it('traduce un FunctionsHttpError con EMAIL_IN_USE a ApiError', async () => {
