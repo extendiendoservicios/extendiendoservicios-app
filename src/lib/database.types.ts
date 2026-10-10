@@ -1384,6 +1384,63 @@ export type Database = {
           },
         ]
       }
+      service_fixed_employees: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          service_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          service_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_fixed_employees_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_fixed_employees_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "service_fixed_employees_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "v_employee_ratings"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "service_fixed_employees_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "v_employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "service_fixed_employees_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       services: {
         Row: {
           client_id: string
@@ -2979,6 +3036,7 @@ export type Database = {
         Args: {
           p_client_id: string
           p_date: string
+          p_employee_ids?: string[]
           p_end: string
           p_notes?: string
           p_open_ended?: boolean
@@ -3340,6 +3398,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      set_service_fixed_employees: {
+        Args: { p_employee_ids: string[]; p_service_id: string }
+        Returns: Json
       }
       set_user_roles: {
         Args: {

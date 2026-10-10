@@ -106,6 +106,37 @@ export interface EmployeeListRow {
   dni: string
 }
 
+/** AJ2-17: lo mínimo para elegir empleados en un selector múltiple. */
+export interface EmployeeOption {
+  profileId: string
+  name: string
+  employeeNumber: number
+}
+
+/**
+ * Empleados activos (estado guardado, igual que los candidatos de la
+ * asignación: quien está de licencia hoy puede figurar para un turno futuro),
+ * por legajo ascendente. Alimenta el selector de «Nuevo turno» y de
+ * «Empleados fijos» del servicio.
+ */
+export async function fetchActiveEmployeeOptions(): Promise<EmployeeOption[]> {
+  const { data, error } = await supabase
+    .from('v_employees')
+    .select('profile_id, first_name, last_name, employee_number')
+    .eq('status', 'active')
+    .is('deleted_at', null)
+    .order('employee_number', { ascending: true })
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data ?? []).map((row) => ({
+    profileId: row.profile_id as string,
+    name: `${row.first_name as string} ${row.last_name as string}`,
+    employeeNumber: row.employee_number as number,
+  }))
+}
+
 export interface EmployeeListFilters {
   /** Busca en nombre, apellido, DNI y legajo (si el texto es numérico). */
   text?: string

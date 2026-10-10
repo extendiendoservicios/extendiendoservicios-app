@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
@@ -21,6 +22,15 @@ import {
   useClientsQuery,
   useClientSitesQuery,
 } from '@/features/clients/queries'
+import { useActiveEmployeeOptionsQuery } from '@/features/employees/queries'
+import { EmployeeMultiPicker } from '@/features/planning/components/EmployeeMultiPicker'
+import { WARNING_MESSAGES } from '@/features/planning/components/AssignEmployeeSheet'
+import {
+  assignedWarningLines,
+  clampSelection,
+  rejectedLines,
+  rejectedTitle,
+} from '@/features/shifts/assignOnCreate'
 import { useHolidaysQuery } from '@/features/settings/queries'
 import { localDateToIsoDate } from '@/features/settings/dateOnly'
 import { canManageShiftTime } from '@/features/shifts/permissions'
@@ -92,6 +102,9 @@ function CreateShiftForm({
   canManage: boolean
 }) {
   const createShift = useCreateShiftMutation()
+  const employeeOptionsQuery = useActiveEmployeeOptionsQuery()
+  // AJ2-17: empleados que quedan asignados al crear el turno.
+  const [pickedEmployeeIds, setPickedEmployeeIds] = useState<string[]>([])
 
   const defaultValues: ShiftFormValues = {
     clientId: '',
@@ -120,8 +133,17 @@ function CreateShiftForm({
   const watchedClientId = watch('clientId')
   const watchedDate = watch('date')
   const watchedOpenEnded = watch('openEnded') ?? false
+  const watchedRequiredStaff = watch('requiredStaff')
   const clientsQuery = useClientsQuery({})
   const sitesQuery = useClientSitesQuery(watchedClientId || undefined)
+
+  // Tope = dotación pedida; si la dotación baja, se recorta lo elegido de más.
+  const staffNumber = Number(watchedRequiredStaff)
+  const staffLimit =
+    Number.isInteger(staffNumber) && staffNumber >= 1 && staffNumber <= 10
+      ? staffNumber
+      : 10
+  const employeeIds = clampSelection(pickedEmployeeIds, staffLimit)
 
   const holidayYear = watchedDate ? Number(watchedDate.slice(0, 4)) : undefined
   const holidaysQuery = useHolidaysQuery(
@@ -152,13 +174,54 @@ function CreateShiftForm({
   }
 
   async function onSubmit(values: ShiftFormValues) {
-    const input = shiftFormValuesToCreateInput(values)
+    const input = {
+      ...shiftFormValuesToCreateInput(values),
+      employeeIds,
+    }
     try {
       const result = await createShift.mutateAsync(input)
-      if (result.warnings.includes('HOLIDAY')) {
+      const names: Record<string, string> = Object.fromEntries(
+        (employeeOptionsQuery.data ?? []).map((option) => [
+          option.profileId,
+          option.name,
+        ]),
+      )
+      const warningLines = assignedWarningLines(
+        result.assigned,
+        names,
+        WARNING_MESSAGES,
+      )
+      if (result.rejected.length > 0 || warningLines.length > 0) {
+        // El turno se creó siempre: lo que no se pudo asignar o salió con
+        // advertencias queda a la vista unos segundos (no bloquea).
+        toast.warning(
+          result.rejected.length > 0
+            ? rejectedTitle(result.rejected.length)
+            : 'Creamos el turno y asignamos, con advertencias:',
+          {
+            duration: 20_000,
+            description: (
+              <ul className="list-disc pl-4">
+                {rejectedLines(result.rejected).map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+                {warningLines.map((line) => (
+                  <li key={line.employeeId}>
+                    {line.employeeName}: {line.messages.join(' ')}
+                  </li>
+                ))}
+              </ul>
+            ),
+          },
+        )
+      } else if (result.warnings.includes('HOLIDAY')) {
         toast.warning('Creamos el turno. Ojo: la fecha elegida es feriado.')
       } else {
-        toast.success('Creamos el turno.')
+        toast.success(
+          result.assigned.length > 0
+            ? 'Creamos el turno y asignamos a los empleados.'
+            : 'Creamos el turno.',
+        )
       }
       void navigate(`/admin/planificacion?vista=dia&fecha=${input.date}`)
     } catch (error) {
@@ -315,6 +378,23 @@ function CreateShiftForm({
           {errors.requiredStaff && (
             <FieldError>{errors.requiredStaff.message}</FieldError>
           )}
+        </Field>
+
+        <Field className="sm:col-span-2">
+          <FieldLabel>Empleados (opcional)</FieldLabel>
+          <EmployeeMultiPicker
+            aria-label="Empleados del turno"
+            options={employeeOptionsQuery.data ?? []}
+            loading={employeeOptionsQuery.isLoading}
+            value={employeeIds}
+            onValueChange={setPickedEmployeeIds}
+            max={staffLimit}
+            placeholder="Elegí quién va a este turno"
+          />
+          <p className="text-[11px] text-text-3">
+            Quedan asignados al crear el turno, hasta completar la dotación. Si
+            alguno no se puede asignar, el turno se crea igual y te avisamos.
+          </p>
         </Field>
 
         <Controller
