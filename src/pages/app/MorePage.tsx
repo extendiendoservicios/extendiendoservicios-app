@@ -2,6 +2,7 @@ import { type ComponentType } from 'react'
 import { Link } from 'react-router'
 import {
   AlertTriangle,
+  Megaphone,
   ChevronRight,
   Download,
   LogOut,
@@ -37,6 +38,7 @@ export default function MorePage() {
           icon={AlertTriangle}
           label="Avisar demora o ausencia"
         />
+        <MoreRow to="/app/anuncios" icon={Megaphone} label="Anuncios" />
         {isSupervisor && (
           <MoreRow to="/sup" icon={Shield} label="Supervisión" />
         )}

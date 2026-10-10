@@ -16,6 +16,7 @@ import {
 } from '@/features/employee/queries'
 import { OnTheWayAction } from '@/features/employee/components/OnTheWayAction'
 import { InstallBanner } from '@/components/InstallBanner'
+import { AnnouncementsBanner } from '@/features/announcements/mobile/AnnouncementsBanner'
 import { formatAssignmentRange } from '@/features/employee/shiftRange'
 
 /**
@@ -69,6 +70,7 @@ export default function TodayPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <AnnouncementsBanner />
       <InstallBanner />
       {changes.length > 0 && <ChangesBlock changes={changes} />}
 
