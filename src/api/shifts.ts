@@ -73,7 +73,10 @@ export interface ShiftListRow {
   /** AJ2-10: asignaciones de un turno «A terminar» que pasó el día sin salida. */
   noCheckoutCount: number
   generated: boolean
+  /** AJ2-15: observación del turno (solo administración; el resto la recibe en null). */
   notes: string | null
+  /** AJ2-15: casilla «mostrar en la impresión»; null si el turno no tiene observación. */
+  showInPrint?: boolean | null
 }
 
 export interface ShiftBoardRow {
@@ -99,6 +102,7 @@ export interface ShiftBoardRow {
   no_checkout_count: number
   generated: boolean
   notes: string | null
+  show_in_print: boolean | null
 }
 
 /**
@@ -130,11 +134,12 @@ export function mapShiftBoardRow(row: ShiftBoardRow): ShiftListRow {
     noCheckoutCount: row.no_checkout_count,
     generated: row.generated,
     notes: row.notes,
+    showInPrint: row.show_in_print,
   }
 }
 
 export const SHIFT_BOARD_SELECT =
-  'id, client_id, client_legal_name, client_trade_name, site_id, site_name, site_city, shift_date, start_time, end_time, required_staff, status, display_status, assigned_count, present_count, finished_count, absent_count, delayed_count, open_ended, no_checkout_count, generated, notes'
+  'id, client_id, client_legal_name, client_trade_name, site_id, site_name, site_city, shift_date, start_time, end_time, required_staff, status, display_status, assigned_count, present_count, finished_count, absent_count, delayed_count, open_ended, no_checkout_count, generated, notes, show_in_print'
 
 /**
  * ADM-05 mínima (SHIFT-010): turnos de una fecha, ordenados por hora
@@ -174,6 +179,8 @@ export interface ShiftEditRow {
   requiredStaff: number
   status: ShiftStatus
   notes: string | null
+  /** AJ2-15: null si no hay observación (al editar se trata como tildada). */
+  showInPrint: boolean | null
 }
 
 export async function fetchShiftForEdit(id: string): Promise<ShiftEditRow> {
@@ -200,6 +207,7 @@ export async function fetchShiftForEdit(id: string): Promise<ShiftEditRow> {
     requiredStaff: row.required_staff,
     status: row.status,
     notes: row.notes,
+    showInPrint: row.show_in_print,
   }
 }
 
@@ -218,7 +226,10 @@ export interface CreateShiftInput {
   openEnded?: boolean
   requiredStaff: number
   serviceId?: string
+  /** AJ2-15: observación del turno. */
   notes?: string | null
+  /** AJ2-15: «mostrar en la impresión»; por defecto tildada. */
+  showInPrint?: boolean
 }
 
 export interface CreateShiftResult {
@@ -245,6 +256,7 @@ export async function createShift(
     p_required_staff: input.requiredStaff,
     p_service_id: input.serviceId,
     p_notes: input.notes ?? undefined,
+    p_show_in_print: input.showInPrint ?? true,
   })
 
   if (error) {

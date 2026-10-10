@@ -17,6 +17,16 @@ import { EmptyState } from '@/components/EmptyState'
 import { savePhoto } from '@/api/photos'
 import { isApiError } from '@/api/errors'
 import { useAuth } from '@/features/auth/AuthProvider'
+import { BankDetailsFields } from '@/features/bank/components/BankDetailsFields'
+import {
+  bankDetailsToFormValues,
+  bankFormValuesToInput,
+  isBankFormEmpty,
+} from '@/features/bank/schemas'
+import {
+  useEmployeeBankDetailsQuery,
+  useSetEmployeeBankDetailsMutation,
+} from '@/features/bank/queries'
 import {
   employeeCreateFormValuesToInput,
   employeeCreateSchema,
@@ -72,6 +82,7 @@ function EmployeeCreateForm() {
   const navigate = useNavigate()
   const createEmployee = useCreateEmployeeMutation()
   const suggestedNumberQuery = useSuggestedEmployeeNumberQuery(true)
+  const setBankDetails = useSetEmployeeBankDetailsMutation()
   // AJ2-07: foto elegida en el alta; se sube después de crear la cuenta.
   const [pendingPhoto, setPendingPhoto] = useState<Blob | null>(null)
 
@@ -102,12 +113,21 @@ function EmployeeCreateForm() {
       isSupervisorRole: false,
       email: '',
       password: '',
+      bankName: '',
+      cbu: '',
+      alias: '',
     },
   })
 
-  const [watchedFirstName, watchedLastName] = useWatch({
+  const [
+    watchedFirstName,
+    watchedLastName,
+    watchedBankName,
+    watchedCbu,
+    watchedAlias,
+  ] = useWatch({
     control,
-    name: ['firstName', 'lastName'],
+    name: ['firstName', 'lastName', 'bankName', 'cbu', 'alias'],
   })
 
   // Legajo sugerido: se completa solo mientras la persona no haya tocado el
@@ -125,6 +145,20 @@ function EmployeeCreateForm() {
       const result = await createEmployee.mutateAsync(input)
       const fullName = `${values.firstName} ${values.lastName}`
       let photoFailed = false
+      // AJ2-04: la cuenta ya está creada; los datos bancarios van por RPC aparte.
+      let bankError: string | null = null
+      if (!isBankFormEmpty(values)) {
+        try {
+          await setBankDetails.mutateAsync({
+            profileId: result.profileId,
+            input: bankFormValuesToInput(values),
+          })
+        } catch (bankFailure) {
+          bankError = isApiError(bankFailure)
+            ? bankFailure.message
+            : 'No pudimos guardar los datos bancarios.'
+        }
+      }
       if (pendingPhoto) {
         // La cuenta ya está creada: si la foto falla, el alta no se deshace.
         try {
@@ -133,7 +167,11 @@ function EmployeeCreateForm() {
           photoFailed = true
         }
       }
-      if (photoFailed) {
+      if (bankError) {
+        toast.warning(
+          `Se creó ${fullName}, pero no se guardaron los datos bancarios: ${bankError} Cargalos de nuevo desde Editar.`,
+        )
+      } else if (photoFailed) {
         toast.warning(
           `Se creó ${fullName}, pero no se pudo guardar la foto. Probá de nuevo desde Editar.`,
         )
@@ -409,6 +447,26 @@ function EmployeeCreateForm() {
         </Field>
       </div>
 
+      <BankDetailsFields
+        id="employee"
+        values={{
+          bankName: watchedBankName,
+          cbu: watchedCbu,
+          alias: watchedAlias,
+        }}
+        errors={{
+          bankName: errors.bankName?.message,
+          cbu: errors.cbu?.message,
+          alias: errors.alias?.message,
+        }}
+        onChange={(field, value) =>
+          setValue(field, value, {
+            shouldDirty: true,
+            shouldValidate: Boolean(errors[field]),
+          })
+        }
+      />
+
       <div className="flex gap-2">
         <Button
           type="submit"
@@ -438,11 +496,14 @@ function EmployeeEditForm({ profileId }: { profileId: string }) {
   const auth = useAuth()
   const employeeQuery = useEmployeeDetailQuery(profileId)
   const updateEmployee = useUpdateEmployeeMutation()
+  const bankQuery = useEmployeeBankDetailsQuery(profileId)
+  const setBankDetails = useSetEmployeeBankDetailsMutation()
 
   const {
     control,
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<EmployeeEditFormValues>({
     resolver: zodResolver(employeeEditSchema),
@@ -461,26 +522,37 @@ function EmployeeEditForm({ profileId }: { profileId: string }) {
       emergencyContactRelationship: '',
       notes: '',
       contactEmail: '',
+      bankName: '',
+      cbu: '',
+      alias: '',
     },
-    values: employeeQuery.data
-      ? {
-          firstName: employeeQuery.data.firstName,
-          lastName: employeeQuery.data.lastName,
-          dni: employeeQuery.data.dni,
-          cuil: formatTaxId(employeeQuery.data.cuil) ?? '',
-          employeeNumber: String(employeeQuery.data.employeeNumber),
-          phone: employeeQuery.data.phone ?? '',
-          address: employeeQuery.data.address ?? '',
-          birthDate: employeeQuery.data.birthDate ?? '',
-          hireDate: employeeQuery.data.hireDate ?? '',
-          emergencyContactName: employeeQuery.data.emergencyContactName ?? '',
-          emergencyContactPhone: employeeQuery.data.emergencyContactPhone ?? '',
-          emergencyContactRelationship:
-            employeeQuery.data.emergencyContactRelationship ?? '',
-          notes: employeeQuery.data.notes ?? '',
-          contactEmail: employeeQuery.data.contactEmail ?? '',
-        }
-      : undefined,
+    values:
+      employeeQuery.data && !bankQuery.isLoading
+        ? {
+            firstName: employeeQuery.data.firstName,
+            lastName: employeeQuery.data.lastName,
+            dni: employeeQuery.data.dni,
+            cuil: formatTaxId(employeeQuery.data.cuil) ?? '',
+            employeeNumber: String(employeeQuery.data.employeeNumber),
+            phone: employeeQuery.data.phone ?? '',
+            address: employeeQuery.data.address ?? '',
+            birthDate: employeeQuery.data.birthDate ?? '',
+            hireDate: employeeQuery.data.hireDate ?? '',
+            emergencyContactName: employeeQuery.data.emergencyContactName ?? '',
+            emergencyContactPhone:
+              employeeQuery.data.emergencyContactPhone ?? '',
+            emergencyContactRelationship:
+              employeeQuery.data.emergencyContactRelationship ?? '',
+            notes: employeeQuery.data.notes ?? '',
+            contactEmail: employeeQuery.data.contactEmail ?? '',
+            ...bankDetailsToFormValues(bankQuery.data),
+          }
+        : undefined,
+  })
+
+  const [watchedBankName, watchedCbu, watchedAlias] = useWatch({
+    control,
+    name: ['bankName', 'cbu', 'alias'],
   })
 
   async function onSubmit(formValues: EmployeeEditFormValues) {
@@ -491,6 +563,26 @@ function EmployeeEditForm({ profileId }: { profileId: string }) {
         input,
         updatedBy: auth.userId as string,
       })
+      // AJ2-04: datos bancarios por RPC aparte. Si la lectura de lo guardado
+      // falló no se pisa nada; sin datos previos ni nuevos, no se llama.
+      const skipBank =
+        bankQuery.isError || (isBankFormEmpty(formValues) && !bankQuery.data)
+      if (!skipBank) {
+        try {
+          await setBankDetails.mutateAsync({
+            profileId,
+            input: bankFormValuesToInput(formValues),
+          })
+        } catch (bankFailure) {
+          const detail = isApiError(bankFailure)
+            ? bankFailure.message
+            : 'No pudimos guardar los datos bancarios.'
+          toast.warning(
+            `Guardamos los cambios, pero no los datos bancarios: ${detail}`,
+          )
+          return
+        }
+      }
       toast.success('Guardamos los cambios.')
       void navigate(`/admin/empleados/${profileId}`)
     } catch (error) {
@@ -500,7 +592,7 @@ function EmployeeEditForm({ profileId }: { profileId: string }) {
     }
   }
 
-  if (employeeQuery.isLoading) {
+  if (employeeQuery.isLoading || bankQuery.isLoading) {
     return (
       <div className="flex max-w-xl flex-col gap-3">
         <Skeleton className="h-9" />
@@ -698,8 +790,31 @@ function EmployeeEditForm({ profileId }: { profileId: string }) {
         </Field>
       </div>
 
+      <BankDetailsFields
+        id="employee"
+        values={{
+          bankName: watchedBankName,
+          cbu: watchedCbu,
+          alias: watchedAlias,
+        }}
+        errors={{
+          bankName: errors.bankName?.message,
+          cbu: errors.cbu?.message,
+          alias: errors.alias?.message,
+        }}
+        onChange={(field, value) =>
+          setValue(field, value, {
+            shouldDirty: true,
+            shouldValidate: Boolean(errors[field]),
+          })
+        }
+      />
+
       <div className="flex gap-2">
-        <Button type="submit" loading={updateEmployee.isPending}>
+        <Button
+          type="submit"
+          loading={updateEmployee.isPending || setBankDetails.isPending}
+        >
           Guardar cambios
         </Button>
         <Button

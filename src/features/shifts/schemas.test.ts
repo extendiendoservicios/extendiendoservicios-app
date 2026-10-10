@@ -76,7 +76,16 @@ describe('shiftFormValuesToCreateInput', () => {
       openEnded: false,
       requiredStaff: 2,
       notes: 'Llevar insumos propios',
+      showInPrint: true,
     })
+  })
+
+  it('AJ2-15: la casilla «mostrar en la impresión» va tildada por defecto y respeta si se destilda', () => {
+    expect(shiftFormValuesToCreateInput(VALID_VALUES).showInPrint).toBe(true)
+    expect(
+      shiftFormValuesToCreateInput({ ...VALID_VALUES, showInPrint: false })
+        .showInPrint,
+    ).toBe(false)
   })
 
   it('deja notas en null cuando viene vacío', () => {
@@ -223,7 +232,7 @@ describe('shiftEditFormValuesToInputs', () => {
     })
     expect(inputs).toEqual({
       time: { start: '08:00', end: '12:00', openEnded: false },
-      details: { requiredStaff: 4, notes: 'Llevar insumos' },
+      details: { requiredStaff: 4, notes: 'Llevar insumos', showInPrint: true },
     })
   })
 

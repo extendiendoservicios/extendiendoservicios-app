@@ -397,12 +397,12 @@ export async function updateAssignmentTime(
 export interface ShiftDetailsRow {
   id: string
   requiredStaff: number
-  notes: string | null
   status: Database['public']['Enums']['shift_status']
 }
 
 /**
- * Edita la dotación y las notas administrativas de un turno (`06` sección 7,
+ * Edita la dotación y la observación de un turno (AJ2-15: la observación vive en
+ * `shift_observations`, no en `shifts.notes`) (`06` sección 7,
  * corregida en `0024_rpc_assignments.sql`: `update_shift_details`, no un
  * `update` directo de `shifts.notes` -- ver la nota grande de
  * `src/api/shifts.ts`).
@@ -411,11 +411,13 @@ export async function updateShiftDetails(
   shiftId: string,
   requiredStaff: number,
   notes?: string | null,
+  showInPrint?: boolean,
 ): Promise<ShiftDetailsRow> {
   const { data, error } = await supabase.rpc('update_shift_details', {
     p_shift_id: shiftId,
     p_required_staff: requiredStaff,
     p_notes: notes ?? undefined,
+    p_show_in_print: showInPrint,
   })
 
   if (error) {
@@ -424,13 +426,11 @@ export async function updateShiftDetails(
   const row = data as {
     id: string
     required_staff: number
-    notes: string | null
     status: Database['public']['Enums']['shift_status']
   }
   return {
     id: row.id,
     requiredStaff: row.required_staff,
-    notes: row.notes,
     status: row.status,
   }
 }
@@ -493,7 +493,10 @@ export interface ShiftDetail {
   status: ShiftStatus
   /** `true` si viene de un servicio recurrente; `false` si es puntual (ADM-06: "origen"). */
   fromService: boolean
+  /** AJ2-15: observación del turno (de `shift_observations`; solo la ve administración). */
   notes: string | null
+  /** AJ2-15: casilla «mostrar en la impresión»; null si no hay observación. */
+  showInPrint: boolean | null
   generated: boolean
   /** Solo las vigentes (`removed_at is null`): las quitadas quedan para historia (P-049), no se muestran acá. */
   assignments: ShiftDetailAssignment[]
@@ -519,7 +522,8 @@ export interface ShiftDetail {
  * `src/api/settings.ts` (`security_events`).
  */
 const SHIFT_DETAIL_SELECT = `
-  id, client_id, site_id, shift_date, start_time, end_time, open_ended, required_staff, status, notes, generated, service_id, starts_at,
+  id, client_id, site_id, shift_date, start_time, end_time, open_ended, required_staff, status, generated, service_id, starts_at,
+  observation:shift_observations(observation, show_in_print),
   client:clients(id, legal_name, trade_name),
   site:sites(id, name, city),
   assignments(
@@ -543,8 +547,8 @@ interface ShiftDetailRawRow {
   open_ended: boolean
   required_staff: number
   status: ShiftStatus
-  notes: string | null
   generated: boolean
+  observation: { observation: string | null; show_in_print: boolean } | null
   service_id: string | null
   starts_at: string | null
   client: { id: string; legal_name: string; trade_name: string | null } | null
@@ -613,7 +617,8 @@ export async function fetchShiftDetail(shiftId: string): Promise<ShiftDetail> {
     requiredStaff: row.required_staff,
     status: row.status,
     fromService: row.service_id != null,
-    notes: row.notes,
+    notes: row.observation?.observation ?? null,
+    showInPrint: row.observation?.show_in_print ?? null,
     generated: row.generated,
     assignments: row.assignments
       .filter((a) => a.removed_at == null)

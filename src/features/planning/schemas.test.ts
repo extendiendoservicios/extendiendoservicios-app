@@ -85,6 +85,15 @@ describe('shiftDetailsSchema', () => {
       requiredStaff: '3',
       notes: '   ',
     })
-    expect(input).toEqual({ requiredStaff: 3, notes: null })
+    expect(input).toEqual({ requiredStaff: 3, notes: null, showInPrint: true })
+  })
+
+  it('AJ2-15: conserva la casilla «mostrar en la impresión» destildada', () => {
+    const input = shiftDetailsFormValuesToInput({
+      requiredStaff: '3',
+      notes: 'Llevar llaves',
+      showInPrint: false,
+    })
+    expect(input.showInPrint).toBe(false)
   })
 })

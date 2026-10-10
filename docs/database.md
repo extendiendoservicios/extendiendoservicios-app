@@ -1805,6 +1805,27 @@ firmas de `create_shift`/`update_shift_time` (0023, 0028) y dos valores de horas
 - `v_clients` suma `photo_path` al final. `v_clients_basic` y `v_search` no cambian.
 - Guardar la foto: subir el archivo y después `update clients set photo_path = ...` (la RLS de `clients` ya limita a owner/admin).
 
+## Datos bancarios y observación del turno (migración `0040`, P19.6 paquete D, AJ2-04 y AJ2-15)
+
+### Banco, CBU y alias (AJ2-04)
+
+- **Diseño: tablas aparte**, no columnas en `clients` ni `employees`. `authenticated` tiene `select` de tabla completa y varias vistas leen esas tablas; una tabla con su propia RLS no se filtra por ninguna vista, existente ni futura. Hay un test que exige que las únicas relaciones con columnas `cbu`/`bank_name` sean las dos tablas nuevas.
+- `client_bank_details(client_id pk → clients, bank_name, cbu, alias, created_at, updated_at, created_by, updated_by)` y `employee_bank_details(profile_id pk → employees, ...)`. Todos los datos son opcionales (null).
+- Checks: `cbu ~ '^[0-9]{22}$'`; `alias ~ '^[A-Za-z0-9.-]{6,20}$'`; `bank_name` no vacío, hasta 100 caracteres.
+- RLS (solo `select`; `authenticated` no tiene insert/update/delete): clientes, dueño y administrador; empleados, dueño, administrador y la propia persona (`profile_id = app.current_uid()`). Supervisor y compañeros no leen nada; `anon` tampoco.
+- Escritura por RPC (`security definer`, dueño o administrador; `FORBIDDEN` si no): `set_client_bank_details(p_client_id, p_bank_name, p_cbu, p_alias)` y `set_employee_bank_details(p_profile_id, ...)`, que hacen alta o cambio de la fila y la devuelven. Aceptan el CBU con espacios, guiones o puntos y lo guardan solo con dígitos (`app.normalize_cbu`); el alias se recorta (`app.normalize_bank_alias`); lo vacío se guarda como null. Errores: `CLIENT_NOT_FOUND`, `PROFILE_NOT_FOUND` (la persona no tiene ficha en `employees`), `INVALID_CBU`, `INVALID_ALIAS`, `BANK_NAME_TOO_LONG`.
+- El empleado (o supervisor) lee los suyos con `from('employee_bank_details').select(...).eq('profile_id', uid)` (la RLS ya lo limita a su fila); es solo lectura. No hay `my_bank_details()`.
+
+### Observación del turno (AJ2-15)
+
+- **Diseño: tabla aparte** `shift_observations(shift_id pk → shifts, observation text, show_in_print boolean not null default true, created_at, updated_at, created_by, updated_by)`. `select` solo para dueño y administrador (RLS); supervisor y empleado asignados no la leen ni por la tabla ni por las vistas (son `security_invoker`). `authenticated` no tiene insert/update/delete.
+- **`shifts.notes` quedó vacía y en desuso** (se conserva la columna para no romper selects del front ni fixtures viejos; la migración copió lo existente a la tabla nueva con `show_in_print = false`, sin mover `updated_at`, y la dejó en null). Ninguna RPC la vuelve a escribir. Un turno sin fila no tiene observación.
+- `create_shift(..., p_open_ended, p_show_in_print boolean default true)` (10 parámetros) y `update_shift_details(p_shift_id, p_required_staff, p_notes, p_show_in_print boolean default null)` (null = no cambia la casilla; `p_notes` siempre reemplaza). Escriben en `shift_observations`. `create_shift` devuelve `shift` con `notes` y `show_in_print` agregados; `update_shift_details` devuelve la fila de `shifts` con `notes` cargada con la observación (no hay `show_in_print` en esa fila: se lee de `v_shifts_board`).
+- `v_shifts_board`: `notes` sale de la tabla nueva y se suma `show_in_print` al final (null si no hay observación, y null para quien no es administración).
+- `v_assignments_board`: columna nueva al final `shift_observation` (la observación si `show_in_print`, solo administración). Alimenta la columna «Observaciones» de la planilla de asistencia.
+- `client_service_summary`: cada elemento de `shifts` suma `observation` al final.
+- `v_my_day` y `v_my_supervisions` no cambian ni traen la observación (hay un test).
+
 ## Enumeraciones (04 sección 3)
 
 Las 15 enumeraciones del modelo, en el esquema `public`, migración `0002_enums.sql`. Agregar un
@@ -1876,6 +1897,7 @@ empleado y observación" más arriba. En F14 (P14.1, ABS-002, ATT-007):
 `0032_p19_5a_enums.sql` y `0033_p19_5a_ajustes_reunion.sql` -- ver "Ajustes de la reunión del
 6 oct 2026" más arriba. En F19 (P19.5e, vencimiento de «En camino» y permiso de
 `v_employee_ratings`): `0034_p19_5e_en_camino_vence.sql` -- ver "Vencimiento de «En camino»". En F19 (P19.6 paquete B, AJ2-09 y AJ2-10): `0037_p19_6b_tope_de_horas_y_a_terminar.sql` X
+En F19 (P19.6 paquete D, AJ2-04 y AJ2-15): `0040_p19_6d_banco_y_observacion.sql` -- ver "Datos bancarios y observación del turno".
 
 ## Cómo escribir una migración
 

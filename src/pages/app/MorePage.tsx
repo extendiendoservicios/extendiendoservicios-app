@@ -11,6 +11,9 @@ import {
 import { cn } from 'cn'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { AppVersion } from '@/components/AppVersion'
+import { BankDetailsList } from '@/features/bank/components/BankDetailsCard'
+import { useEmployeeBankDetailsQuery } from '@/features/bank/queries'
+import { isBankDetailsEmpty } from '@/api/bankDetails'
 import { useInstallPrompt } from '@/hooks/useInstallPrompt'
 
 /**
@@ -22,6 +25,8 @@ export default function MorePage() {
   const auth = useAuth()
   const { available: canInstall, promptInstall } = useInstallPrompt()
   const isSupervisor = auth.roles.includes('supervisor')
+  // AJ2-04: banco, CBU y alias propios, solo lectura. Sin datos cargados no se muestra la sección.
+  const bankQuery = useEmployeeBankDetailsQuery(auth.userId ?? undefined)
 
   return (
     <div className="flex flex-col gap-4">
@@ -43,6 +48,15 @@ export default function MorePage() {
           />
         )}
       </div>
+
+      {!isBankDetailsEmpty(bankQuery.data) && bankQuery.data && (
+        <section className="rounded-xl border border-border bg-surface px-4 py-3">
+          <h2 className="mb-2 text-[13px] font-semibold text-text">
+            Mis datos bancarios
+          </h2>
+          <BankDetailsList details={bankQuery.data} />
+        </section>
+      )}
 
       <button
         type="button"

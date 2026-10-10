@@ -68,6 +68,7 @@ export const shiftDetailsSchema = z.object({
       'La dotación tiene que ser de 1 a 10 personas.',
     ),
   notes: z.string().trim().optional(),
+  showInPrint: z.boolean().optional(),
 })
 
 export type ShiftDetailsFormValues = z.infer<typeof shiftDetailsSchema>
@@ -76,5 +77,6 @@ export function shiftDetailsFormValuesToInput(values: ShiftDetailsFormValues) {
   return {
     requiredStaff: Number(values.requiredStaff),
     notes: values.notes?.trim() ? values.notes.trim() : null,
+    showInPrint: values.showInPrint ?? true,
   }
 }
