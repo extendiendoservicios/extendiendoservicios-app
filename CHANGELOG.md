@@ -7,6 +7,34 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.17.0] - 2026-10-10
+
+Ajustes de la reunión del 9 de octubre (P19.6).
+
+### Agregado
+
+- Avisos y anuncios: sección nueva en administración para publicar anuncios a empleados, supervisores, todos o personas elegidas, con fecha «hasta» opcional. En el celular aparecen arriba de la portada y cada persona los cierra con «Entendido»; administración ve quién lo leyó y cuándo. Migración 0042.
+- Turnos «A terminar» (sin hora de fin), en el servicio o turno por turno: las horas van desde el inicio hasta el fichaje de salida; si a las 23:59 nadie fichó la salida, queda «Sin salida» hasta que administración cargue la hora. Migración 0037.
+- Nuevo turno: se eligen los empleados al crearlo y quedan asignados; si a alguno no se lo puede asignar, el turno se crea igual y se avisa por qué.
+- Servicios: «Empleados fijos», que la generación del mes asigna solos en cada turno nuevo; el resultado informa los que no se pudieron asignar (licencia, disponibilidad, superposición). Migración 0041.
+- Foto de clientes, y foto al dar de alta un cliente o un empleado. Migración 0039.
+- Datos bancarios (banco, CBU y alias) de clientes y empleados, visibles solo para dueños y administradores; cada empleado ve los suyos en «Más». Migración 0040.
+- Observación del turno con la casilla «Mostrar en la impresión» y columna en el imprimible. La ve solo administración. Las notas de turnos existentes pasan a esta observación con la casilla destildada.
+- Imprimibles: inasistencias en la planilla, «Nombre y Apellido» y DNI.
+- Planificación por día con los nombres de los asignados y del supervisor.
+- Licencias: se pueden editar.
+
+### Cambiado
+
+- Tope de horas: cuenta solo lo fichado dentro de la franja del empleado (ni antes del inicio ni después del fin). Recalcula también los meses anteriores. El supervisor no lleva tope. Migraciones 0037 y 0038.
+- Empleados ordenados por legajo en todas las listas.
+- CUIL y CUIT se escriben sin guiones y se muestran `XX-XXXXXXXX-X` en todos lados.
+- Usuarios y roles: muestra las fotos y un clic en la persona abre su ficha.
+
+### Corregido
+
+- Después de publicar una versión nueva, una pantalla que no cargaba mostraba un error en inglés: ahora la app se recarga sola o muestra «Hay una versión nueva de la app» con el botón «Recargar».
+
 ## [0.16.4] - 2026-10-09
 
 ### Corregido
