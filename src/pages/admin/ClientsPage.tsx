@@ -13,6 +13,8 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DataTable, type DataTableColumnDef } from '@/components/DataTable'
+import { Avatar } from '@/components/Avatar'
+import { clientPhotoUrl } from '@/api/photos'
 import { StatusBadge, getStatusMeta } from '@/components/status'
 import { MapView, type MapViewMarker } from '@/components/map'
 import type { ClientListRow, ClientStatus } from '@/api/clients'
@@ -131,14 +133,21 @@ function ClientsListTab() {
         return (
           <Link
             to={`/admin/clientes/${client.id}`}
-            className="font-semibold text-text hover:text-primary-800 hover:underline"
+            className="flex min-w-0 items-center gap-[9px] font-semibold text-text hover:text-primary-800 hover:underline"
           >
-            {primaryName}
-            {secondaryName && (
-              <span className="block text-[11px] font-normal text-text-3">
-                {secondaryName}
-              </span>
-            )}
+            <Avatar
+              id={client.id}
+              name={primaryName}
+              src={client.photoPath ? clientPhotoUrl(client.photoPath) : null}
+            />
+            <span className="min-w-0">
+              {primaryName}
+              {secondaryName && (
+                <span className="block text-[11px] font-normal text-text-3">
+                  {secondaryName}
+                </span>
+              )}
+            </span>
           </Link>
         )
       },
