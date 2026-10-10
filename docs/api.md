@@ -382,6 +382,26 @@ Detalle y decisiones en `docs/features/ajustes-reunion-9-oct-paquete-f.md`. Base
 | `services.fetchServiceLabels(ids)`                  | `from('services')`                    | Servicio, cliente y sede por id, para rotular los «sin asignar» de ADM-09.                                                                                                                                                                                                                                                                                                                                       |
 | `employees.fetchActiveEmployeeOptions()`            | `from('v_employees')`                 | Empleados con estado guardado `active`, por legajo: `{ profileId, name, employeeNumber }`. Alimenta el selector múltiple.                                                                                                                                                                                                                                                                                        |
 
+### Avisos y anuncios de administración (AJ2-03, paquete E)
+
+`src/api/announcements.ts`. Nada que ver con `notices.ts` (avisos de demora y
+ausencia). Lo que ve y cierra la persona en el celular está en
+`myAnnouncements.ts` (paquete móvil). Los errores de las RPC llegan como
+`ApiError` con el `message` del servidor y el `hint` en mayúsculas.
+
+| Función                             | Canal                               | Notas                                                                                                                                                                                                                                                   |
+| ----------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fetchAnnouncements(status?)`       | `from('v_announcements_admin')`     | Por fecha de alta descendente. `status`: `active`, `expired`, `archived`; sin él trae todos. Incluye `recipientCount` y `readCount`. Solo O, A (para el resto la vista sale vacía).                                                                     |
+| `fetchAnnouncement(id)`             | `from('v_announcements_admin')`     | Una fila o `null`.                                                                                                                                                                                                                                      |
+| `fetchAnnouncementRecipients(id)`   | `from('v_announcement_recipients')` | Destinatarios actuales con `readAt` (`null` = todavía no). El orden lo arma `sortRecipients` (primero quienes no lo leyeron).                                                                                                                           |
+| `fetchAnnouncementRecipientIds(id)` | `from('announcement_recipients')`   | Personas guardadas de un anuncio `custom`, para precargar la edición.                                                                                                                                                                                   |
+| `createAnnouncement(input)`         | RPC `create_announcement`           | Devuelve el id. Fuera de `custom` no se mandan destinatarios. `TITLE_REQUIRED`, `TITLE_TOO_LONG` (120), `BODY_REQUIRED`, `BODY_TOO_LONG` (2000), `AUDIENCE_REQUIRED`, `VISIBLE_UNTIL_IN_PAST`, `RECIPIENTS_REQUIRED`, `RECIPIENT_INVALID`, `FORBIDDEN`. |
+| `updateAnnouncement(id, input)`     | RPC `update_announcement`           | Reemplaza todos los campos (`visibleUntil: null` quita el vencimiento). Suma `ANNOUNCEMENT_NOT_FOUND` y `ANNOUNCEMENT_ARCHIVED`. Cambiar título o texto hace que quienes ya lo leyeron lo vuelvan a ver.                                                |
+| `archiveAnnouncement(id)`           | RPC `archive_announcement`          | Idempotente. `ANNOUNCEMENT_NOT_FOUND`, `FORBIDDEN`.                                                                                                                                                                                                     |
+
+Hooks en `src/features/announcements/queries.ts` (claves `['announcements', ...]`;
+polling de 60 s en listado, detalle y lecturas).
+
 ## Próximos dominios
 
 Cada paquete de F10 en adelante agrega su sección acá (`myDay`) siguiendo
