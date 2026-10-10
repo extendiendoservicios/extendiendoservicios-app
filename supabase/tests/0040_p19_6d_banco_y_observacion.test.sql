@@ -1,7 +1,7 @@
 -- pgTAP de la migración 0040_p19_6d_banco_y_observacion.sql (P19.6 paquete D):
 --   AJ2-04: tablas client_bank_details y employee_bank_details (banco, CBU, alias), sus checks, su
 --           RLS por rol y las RPC set_client_bank_details / set_employee_bank_details.
---   AJ2-15: shifts.show_in_print, la observación del turno (shifts.notes) solo para administración,
+--   AJ2-15: tabla shift_observations (observación del turno + casilla show_in_print) legible solo por administración,
 --           v_assignments_board.shift_observation, client_service_summary[].shifts[].observation,
 --           create_shift y update_shift_details con la casilla.
 --
@@ -46,7 +46,7 @@ $$;
 
 grant execute on function tests.as_user(text) to authenticated, anon;
 
-select plan(69);
+select plan(79);
 
 -- Estructura -----------------------------------------------------------------------------------
 
@@ -74,13 +74,19 @@ select ok(
     and not has_table_privilege('anon', 'public.employee_bank_details', 'select'),
   'anon: sin select en las tablas de banco'
 );
-select col_type_is('public', 'shifts', 'show_in_print', 'boolean', 'shifts.show_in_print es boolean');
-select col_not_null('public', 'shifts', 'show_in_print', 'shifts.show_in_print not null');
-select col_default_is('public', 'shifts', 'show_in_print', 'true', 'shifts.show_in_print nace en true');
+select has_table('public', 'shift_observations', 'existe public.shift_observations');
+select ok((select relrowsecurity from pg_class where oid = 'public.shift_observations'::regclass), 'shift_observations tiene RLS habilitada');
+select col_default_is('public', 'shift_observations', 'show_in_print', 'true', 'shift_observations.show_in_print nace en true');
+select ok(
+  not has_table_privilege('authenticated', 'public.shift_observations', 'insert')
+    and not has_table_privilege('authenticated', 'public.shift_observations', 'update')
+    and not has_table_privilege('authenticated', 'public.shift_observations', 'delete')
+    and not has_table_privilege('anon', 'public.shift_observations', 'select'),
+  'shift_observations: authenticated sin insert/update/delete y anon sin select (se escribe por RPC)'
+);
 select is(
-  (select attname::text from pg_attribute
-   where attrelid = 'public.shifts'::regclass and attnum > 0 and not attisdropped order by attnum desc limit 1),
-  'show_in_print', 'shifts.show_in_print es la última columna'
+  (select count(*)::int from public.shifts where notes is not null), 0,
+  'shifts.notes quedó vacía (la observación vive en shift_observations)'
 );
 select is(
   (select attname::text from pg_attribute
@@ -251,10 +257,15 @@ select is(
 
 set local role postgres;
 
-insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_time, required_staff, status, notes, show_in_print) values
-  ('f4400000-0000-0000-0000-000000000051', 'f4400000-0000-0000-0000-0000000000c1', 'f4400000-0000-0000-0000-0000000000a1', app.today() + 5, '10:00', '11:00', 2, 'assigned', 'Obs con casilla', true),
-  ('f4400000-0000-0000-0000-000000000052', 'f4400000-0000-0000-0000-0000000000c1', 'f4400000-0000-0000-0000-0000000000a1', app.today() - 2, '10:00', '11:00', 1, 'completed', 'Obs impresa', true),
-  ('f4400000-0000-0000-0000-000000000053', 'f4400000-0000-0000-0000-0000000000c1', 'f4400000-0000-0000-0000-0000000000a1', app.today() - 1, '10:00', '11:00', 1, 'completed', 'Obs oculta', false);
+insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_time, required_staff, status) values
+  ('f4400000-0000-0000-0000-000000000051', 'f4400000-0000-0000-0000-0000000000c1', 'f4400000-0000-0000-0000-0000000000a1', app.today() + 5, '10:00', '11:00', 2, 'assigned'),
+  ('f4400000-0000-0000-0000-000000000052', 'f4400000-0000-0000-0000-0000000000c1', 'f4400000-0000-0000-0000-0000000000a1', app.today() - 2, '10:00', '11:00', 1, 'completed'),
+  ('f4400000-0000-0000-0000-000000000053', 'f4400000-0000-0000-0000-0000000000c1', 'f4400000-0000-0000-0000-0000000000a1', app.today() - 1, '10:00', '11:00', 1, 'completed');
+
+insert into public.shift_observations (shift_id, observation, show_in_print) values
+  ('f4400000-0000-0000-0000-000000000051', 'Obs con casilla', true),
+  ('f4400000-0000-0000-0000-000000000052', 'Obs impresa', true),
+  ('f4400000-0000-0000-0000-000000000053', 'Obs oculta', false);
 
 insert into public.assignments (id, shift_id, employee_id, status) values
   ('f4400000-0000-0000-0000-000000000061', 'f4400000-0000-0000-0000-000000000051', 'f4400000-0000-0000-0000-000000000004', 'expected'),
@@ -301,6 +312,14 @@ select is(
   (select count(*)::int from public.v_shifts_board where id = 'f4400000-0000-0000-0000-000000000051'),
   1, 'supervisor: igual ve el turno en v_shifts_board'
 );
+select is(
+  (select count(*)::int from public.shift_observations), 0,
+  'supervisor del turno: no lee shift_observations'
+);
+select is(
+  (select notes from public.shifts where id = 'f4400000-0000-0000-0000-000000000051'),
+  null, 'supervisor del turno: shifts.notes está vacía (no hay observación legible por la tabla shifts)'
+);
 
 -- Empleado 1: ve solo los suyos ---------------------------------------------------------------------
 
@@ -321,6 +340,14 @@ select is(
 select throws_ok(
   $$select public.set_employee_bank_details('f4400000-0000-0000-0000-000000000004', 'X', null, null)$$,
   'P0001', 'No tenés permiso para hacer esto.', 'empleado: no puede cambiar ni sus propios datos bancarios (solo lectura)'
+);
+select is(
+  (select count(*)::int from public.shift_observations), 0,
+  'empleado asignado al turno: no lee shift_observations'
+);
+select is(
+  (select notes from public.shifts where id = 'f4400000-0000-0000-0000-000000000051'),
+  null, 'empleado asignado al turno: shifts.notes está vacía'
 );
 select is(
   (select count(*)::int from public.v_assignments_board where shift_observation is not null),
@@ -351,7 +378,24 @@ select is(
   'false', 'create_shift: p_show_in_print = false destilda la casilla'
 );
 select is(
-  (select show_in_print from public.update_shift_details('f4400000-0000-0000-0000-000000000051', 2::smallint, 'Obs nueva', false)),
+  (select count(*)::int from public.shift_observations o join public.shifts sh on sh.id = o.shift_id where sh.shift_date = app.today() + 20 and o.observation = 'Llevar llave'),
+  1, 'create_shift: guarda la observación en shift_observations'
+);
+select is(
+  (select count(*)::int from public.shifts where shift_date in (app.today() + 20, app.today() + 21) and notes is not null), 0,
+  'create_shift: no escribe en shifts.notes'
+);
+select is(
+  (select (public.create_shift('f4400000-0000-0000-0000-0000000000c1', 'f4400000-0000-0000-0000-0000000000a1',
+                       app.today() + 22, '08:00', '12:00', 2::smallint) -> 'shift' ->> 'notes')),
+  null, 'create_shift sin observación: notes null en el objeto devuelto'
+);
+select is(
+  (select (public.update_shift_details('f4400000-0000-0000-0000-000000000051', 2::smallint, 'Obs nueva', false)).notes),
+  'Obs nueva', 'update_shift_details: devuelve la observación en notes'
+);
+select is(
+  (select show_in_print from public.shift_observations where shift_id = 'f4400000-0000-0000-0000-000000000051'),
   false, 'update_shift_details: p_show_in_print = false destilda'
 );
 select is(
@@ -359,11 +403,15 @@ select is(
   'Obs nueva 2', 'update_shift_details: guarda la observación'
 );
 select is(
-  (select show_in_print from public.shifts where id = 'f4400000-0000-0000-0000-000000000051'),
+  (select show_in_print from public.shift_observations where shift_id = 'f4400000-0000-0000-0000-000000000051'),
   false, 'update_shift_details: sin el parámetro la casilla no cambia'
 );
 select is(
-  (select show_in_print from public.update_shift_details('f4400000-0000-0000-0000-000000000051', 2::smallint, 'Obs nueva 2', true)),
+  (select count(*)::int from public.update_shift_details('f4400000-0000-0000-0000-000000000051', 2::smallint, 'Obs nueva 2', true) where id is not null),
+  1, 'update_shift_details: p_show_in_print = true se acepta'
+);
+select is(
+  (select show_in_print from public.shift_observations where shift_id = 'f4400000-0000-0000-0000-000000000051'),
   true, 'update_shift_details: p_show_in_print = true tilda'
 );
 

@@ -19,25 +19,28 @@
 --   Checks: CBU exactamente 22 dígitos; alias de 6 a 20 caracteres de letras, números, punto y
 --   guion (formato de alias de CBU, sin la @ ni espacios); banco texto libre.
 --
--- AJ2-15 -- `shifts.notes` («notas administrativas», 04 sección 2.3) ya cumple el papel de
---   observación: la escribe solo administración (create_shift / update_shift_details) y ninguna
---   vista del celular la expone (v_my_day y v_my_supervisions no la traen). Se agrega solo la
---   casilla `shifts.show_in_print` (default true para los turnos nuevos). Los turnos que ya
---   tenían nota quedan con la casilla DESTILDADA: eran notas internas escritas antes de que la
---   nota pudiera imprimirse, y no deben aparecer de golpe en las hojas de los clientes.
---   Cambios:
---     - v_shifts_board: `notes` y `show_in_print` (al final) solo con valor para administración.
+-- AJ2-15 -- diseño: TABLA APARTE `public.shift_observations` (shift_id pk → shifts, observation,
+--   show_in_print), con RLS de lectura solo para dueño y administrador. Mismo motivo que el banco:
+--   `shifts` la leen el supervisor y el empleado asignados (fila completa, 0012) y `authenticated`
+--   tiene `select` de tabla (0017), así que una observación guardada en `shifts` quedaría legible
+--   por la API para quien no corresponde. Cambios:
+--     - La observación que antes vivía en `shifts.notes` (notas administrativas) se migra a la
+--       tabla nueva con la casilla DESTILDADA (decisión de Mike: lo existente no se imprime) y
+--       `shifts.notes` se VACÍA. La columna se conserva (no se elimina) y deja de escribirse:
+--       así no se rompen los select del front que la nombran ni los tests/fixtures viejos; el
+--       front pasa a leer la observación de v_shifts_board / shift_observations. Un turno sin fila
+--       en la tabla nueva no tiene observación.
+--     - v_shifts_board: `notes` sale de la tabla nueva y `show_in_print` se suma al final (null si
+--       no hay observación). Como la vista es security_invoker, para supervisor y empleado la RLS
+--       de la tabla nueva los deja en null.
 --     - v_assignments_board: `shift_observation` al final (alimenta la planilla de asistencia):
---       la nota solo si la casilla está tildada y solo para administración.
+--       la observación solo si la casilla está tildada; null para quien no es administración.
 --     - client_service_summary: cada turno de `shifts` trae `observation` al final (null si no
---       hay nota o si no se imprime).
+--       hay observación o si no se imprime).
 --     - create_shift: parámetro nuevo al final `p_show_in_print boolean default true`.
 --     - update_shift_details: parámetro nuevo al final `p_show_in_print boolean default null`
---       (null = no cambia la casilla).
---   Límite conocido, ya existente: un supervisor o empleado asignado al turno puede leer
---   `shifts.notes` pidiendo la tabla directo por la API (la política de `shifts` da la fila
---   completa, 0012, y el test 0017 exige `select` de tabla). Ninguna pantalla lo hace; cerrarlo
---   exige un cambio de grants por columna sobre `shifts` que se deja como decisión aparte.
+--       (null = no cambia la casilla). Ambas escriben en shift_observations, nunca en shifts.notes.
+--     - Escritura solo por esas dos RPC (`authenticated` no tiene insert/update/delete).
 
 -- ---------------------------------------------------------------------------------------------
 -- 1. Datos bancarios de clientes
@@ -268,22 +271,51 @@ comment on function public.set_employee_bank_details(uuid, text, text, text) is
   'Guarda (alta o cambio) banco, CBU y alias de un empleado o supervisor (0040, AJ2-04). O, A; FORBIDDEN si no. PROFILE_NOT_FOUND (no tiene ficha en employees), INVALID_CBU, INVALID_ALIAS, BANK_NAME_TOO_LONG: mismas reglas que set_client_bank_details. Devuelve la fila.';
 
 -- ---------------------------------------------------------------------------------------------
--- 4. shifts.show_in_print (AJ2-15)
+-- 4. shift_observations (AJ2-15)
 -- ---------------------------------------------------------------------------------------------
 
--- Se crea con default false para que los turnos que ya tienen nota queden sin imprimir, y recién
--- después se pasa el default a true para los turnos nuevos (ver el encabezado). Va al final.
-alter table public.shifts add column show_in_print boolean not null default false;
-alter table public.shifts alter column show_in_print set default true;
+create table public.shift_observations (
+  shift_id uuid primary key references public.shifts (id),
+  observation text,
+  show_in_print boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  created_by uuid references public.profiles (id),
+  updated_by uuid references public.profiles (id)
+);
 
-comment on column public.shifts.show_in_print is
-  'Casilla «mostrar en la impresión» de la observación del turno (shifts.notes), AJ2-15 (0040). Por defecto true en los turnos nuevos; los anteriores a 0040 quedan en false.';
+comment on table public.shift_observations is
+  'Observación del turno y casilla «mostrar en la impresión» (0040, AJ2-15). Tabla aparte para que supervisor y empleado asignados no la lean por shifts: select solo dueño y administrador; se escribe por create_shift y update_shift_details. Reemplaza a shifts.notes, que quedó vacía y sin uso.';
+
+alter table public.shift_observations enable row level security;
+
+create trigger trg_set_updated_at
+before update on public.shift_observations
+for each row execute function app.set_updated_at();
+
+create policy shift_observations_select_admin
+  on public.shift_observations for select to authenticated
+  using (app.is_admin());
+
+-- Migración de lo existente: casilla destildada (lo ya cargado no se imprime de golpe). El update
+-- que vacía shifts.notes no debe mover updated_at (dispararía el aviso de cambios de v_my_day).
+insert into public.shift_observations (shift_id, observation, show_in_print, created_by)
+select sh.id, sh.notes, false, sh.updated_by
+from public.shifts sh
+where sh.notes is not null and btrim(sh.notes) <> '';
+
+alter table public.shifts disable trigger trg_set_updated_at;
+update public.shifts set notes = null where notes is not null;
+alter table public.shifts enable trigger trg_set_updated_at;
+
+comment on column public.shifts.notes is
+  'En desuso desde 0040 (AJ2-15): siempre null. La observación del turno vive en shift_observations (solo administración la lee).';
 
 -- ---------------------------------------------------------------------------------------------
 -- 5. Vistas y resumen del cliente
 -- ---------------------------------------------------------------------------------------------
 
--- v_shifts_board: `notes` solo para administración y `show_in_print` al final (create or replace no
+-- v_shifts_board: `notes` viene de shift_observations y `show_in_print` va al final (create or replace no
 -- permite reordenar columnas).
 create or replace view public.v_shifts_board
 with (security_invoker = true)
@@ -309,7 +341,7 @@ select
   sh.cancelled_at,
   sh.cancelled_by,
   sh.cancel_reason,
-  case when app.is_admin() then sh.notes end as notes,
+  o.observation as notes,
   coalesce(counts.assigned_count, 0) as assigned_count,
   coalesce(counts.present_count, 0) as present_count,
   coalesce(counts.finished_count, 0) as finished_count,
@@ -333,10 +365,11 @@ select
   sh.deleted_at,
   sh.open_ended,
   coalesce(counts.no_checkout_count, 0) as no_checkout_count,
-  case when app.is_admin() then sh.show_in_print end as show_in_print
+  o.show_in_print as show_in_print
 from public.shifts sh
 join public.clients cl on cl.id = sh.client_id
 join public.sites si on si.id = sh.site_id
+left join public.shift_observations o on o.shift_id = sh.id
 left join lateral (
   select
     count(*) filter (where a.removed_at is null) as assigned_count,
@@ -358,7 +391,7 @@ left join lateral (
 where sh.deleted_at is null;
 
 comment on view public.v_shifts_board is
-  'Planificación, asistencia de hoy y tablero (04 sección 4). display_status agrega los derivados uncovered/upcoming sobre shifts.status (fórmula en el comentario de 0011). open_ended (0037, AJ2-10): turno «A terminar»; el front muestra «A terminar» en vez de end_time (que queda en 23:59). no_checkout_count (0037): asignaciones vigentes «Sin salida» (present, turno abierto, sin fin propio, pasadas las 23:59). notes y show_in_print (0040, AJ2-15): observación del turno y casilla «mostrar en la impresión»; solo los ve administración (null para supervisor y empleado). security_invoker: visibilidad de filas por RLS de shifts/clients/sites (0012, DB-014).';
+  'Planificación, asistencia de hoy y tablero (04 sección 4). display_status agrega los derivados uncovered/upcoming sobre shifts.status (fórmula en el comentario de 0011). open_ended (0037, AJ2-10): turno «A terminar»; el front muestra «A terminar» en vez de end_time (que queda en 23:59). no_checkout_count (0037): asignaciones vigentes «Sin salida» (present, turno abierto, sin fin propio, pasadas las 23:59). notes y show_in_print (0040, AJ2-15): observación del turno y casilla «mostrar en la impresión», leídas de shift_observations; solo los ve administración (null para supervisor y empleado por la RLS de esa tabla; show_in_print también es null si el turno no tiene observación). security_invoker: visibilidad de filas por RLS de shifts/clients/sites (0012, DB-014).';
 
 -- v_assignments_board: `shift_observation` al final.
 create or replace view public.v_assignments_board
@@ -453,9 +486,10 @@ select
     else app.capped_worked_minutes(ci.recorded_at, co.recorded_at, lower(a."window"), upper(a."window"))
   end as worked_minutes,
   (sh.open_ended and a.end_time is null) as effective_open_ended,
-  case when app.is_admin() and sh.show_in_print then nullif(btrim(sh.notes), '') end as shift_observation
+  case when o.show_in_print then nullif(btrim(o.observation), '') end as shift_observation
 from public.assignments a
 join public.shifts sh on sh.id = a.shift_id
+left join public.shift_observations o on o.shift_id = sh.id
 join public.clients cl on cl.id = sh.client_id
 join public.sites si on si.id = sh.site_id
 join public.profiles p on p.id = a.employee_id
@@ -471,7 +505,7 @@ left join lateral (
 ) notice on true;
 
 comment on view public.v_assignments_board is
-  'Filas del tablero y de asistencia de hoy, e historial de un empleado (04 sección 4, 06_API.md sección 10). display_status deriva (no se persiste), sobre expected/delay_notified sin inicio registrado y en este orden: on_the_way (último aviso en camino, franja sin terminar y now() <= vencimiento del aviso: hora estimada + app.late_grace_minutes(), o inicio efectivo + app.late_grace_minutes() si no indicó estimación; 0034), late («Llegada tarde»: pasó el inicio efectivo hace app.late_grace_minutes() = 15 minutos o menos, P19.5a) y no_record (más de esos minutos, P-071); no_checkout («Sin salida», 0037, AJ2-10): asignación present de un turno «A terminar» sin fin propio, vigente, pasadas las 23:59 del día del turno; en los demás casos es assignments.status. minutes_late / minutes_early_leave (P-076) comparan contra la franja efectiva (assignments."window"); minutes_early_leave es null en una asignación «A terminar» (no tiene fin previsto). planned_minutes: duración de la franja efectiva, null si la asignación es «A terminar» (0037). worked_minutes (AJ2-09, 0037): minutos de [inicio fichado, fin fichado] dentro de la franja efectiva (app.capped_worked_minutes), redondeados al minuto, nunca negativos; null si falta alguno; 0 si está «Sin salida». El front muestra tilde si worked_minutes >= planned_minutes sin margen y advertencia si es menor o hubo salida anticipada. effective_open_ended (0037): la asignación es «A terminar» (turno abierto y sin fin propio); el front muestra «A terminar» en vez de effective_end_time (23:59). check_in_source/check_in_recorded_by, check_out_source/check_out_recorded_by (0027). last_notice_*: último aviso de la asignación (por created_at). Incluye asignaciones quitadas (removed_at not null). security_invoker: visibilidad de filas por RLS de assignments/shifts/clients/sites/profiles/attendance_records/attendance_notices. shift_observation (0040, AJ2-15): observación del turno para la columna «Observaciones» del imprimible; solo si el turno tiene la casilla «mostrar en la impresión» tildada y solo para administración (null para los demás roles).';
+  'Filas del tablero y de asistencia de hoy, e historial de un empleado (04 sección 4, 06_API.md sección 10). display_status deriva (no se persiste), sobre expected/delay_notified sin inicio registrado y en este orden: on_the_way (último aviso en camino, franja sin terminar y now() <= vencimiento del aviso: hora estimada + app.late_grace_minutes(), o inicio efectivo + app.late_grace_minutes() si no indicó estimación; 0034), late («Llegada tarde»: pasó el inicio efectivo hace app.late_grace_minutes() = 15 minutos o menos, P19.5a) y no_record (más de esos minutos, P-071); no_checkout («Sin salida», 0037, AJ2-10): asignación present de un turno «A terminar» sin fin propio, vigente, pasadas las 23:59 del día del turno; en los demás casos es assignments.status. minutes_late / minutes_early_leave (P-076) comparan contra la franja efectiva (assignments."window"); minutes_early_leave es null en una asignación «A terminar» (no tiene fin previsto). planned_minutes: duración de la franja efectiva, null si la asignación es «A terminar» (0037). worked_minutes (AJ2-09, 0037): minutos de [inicio fichado, fin fichado] dentro de la franja efectiva (app.capped_worked_minutes), redondeados al minuto, nunca negativos; null si falta alguno; 0 si está «Sin salida». El front muestra tilde si worked_minutes >= planned_minutes sin margen y advertencia si es menor o hubo salida anticipada. effective_open_ended (0037): la asignación es «A terminar» (turno abierto y sin fin propio); el front muestra «A terminar» en vez de effective_end_time (23:59). check_in_source/check_in_recorded_by, check_out_source/check_out_recorded_by (0027). last_notice_*: último aviso de la asignación (por created_at). Incluye asignaciones quitadas (removed_at not null). security_invoker: visibilidad de filas por RLS de assignments/shifts/clients/sites/profiles/attendance_records/attendance_notices. shift_observation (0040, AJ2-15): observación del turno para la columna «Observaciones» del imprimible; solo si el turno tiene la casilla «mostrar en la impresión» tildada y solo para administración (lee shift_observations; null para los demás roles).';
 
 -- client_service_summary: `observation` al final de cada turno (misma función que 0037).
 create or replace function public.client_service_summary(
@@ -511,9 +545,10 @@ begin
   with done_shifts as (
     select sh.id, sh.shift_date, sh.site_id, si.name as site_name, sh.start_time, sh.end_time,
            sh.status, sh.open_ended,
-           case when sh.show_in_print then nullif(btrim(sh.notes), '') end as observation
+           case when o.show_in_print then nullif(btrim(o.observation), '') end as observation
     from public.shifts sh
     join public.sites si on si.id = sh.site_id
+    left join public.shift_observations o on o.shift_id = sh.id
     where sh.client_id = p_client_id
       and sh.deleted_at is null
       and sh.status <> 'cancelled'
@@ -686,12 +721,17 @@ begin
 
   insert into public.shifts (
     service_id, client_id, site_id, shift_date, start_time, end_time, open_ended,
-    required_staff, status, generated, notes, show_in_print, created_by
+    required_staff, status, generated, created_by
   ) values (
     p_service_id, p_client_id, p_site_id, p_date, p_start, v_end, coalesce(p_open_ended, false),
-    p_required_staff, 'scheduled', false, p_notes, coalesce(p_show_in_print, true), auth.uid()
+    p_required_staff, 'scheduled', false, auth.uid()
   )
   returning * into v_shift;
+
+  if nullif(btrim(p_notes), '') is not null or p_show_in_print is false then
+    insert into public.shift_observations (shift_id, observation, show_in_print, created_by)
+    values (v_shift.id, nullif(btrim(p_notes), ''), coalesce(p_show_in_print, true), auth.uid());
+  end if;
 
   perform app.copy_checklist_to_shift(v_shift.id);
 
@@ -701,7 +741,15 @@ begin
 
   select * into v_shift from public.shifts where id = v_shift.id;
 
-  return jsonb_build_object('shift', to_jsonb(v_shift), 'warnings', v_warnings);
+  -- La observación no vive en shifts: se agrega al objeto devuelto para no cambiar el contrato.
+  return jsonb_build_object(
+    'shift',
+    to_jsonb(v_shift) || jsonb_build_object(
+      'notes', (select o.observation from public.shift_observations o where o.shift_id = v_shift.id),
+      'show_in_print', coalesce((select o.show_in_print from public.shift_observations o where o.shift_id = v_shift.id), true)
+    ),
+    'warnings', v_warnings
+  );
 end;
 $$;
 
@@ -766,8 +814,6 @@ begin
   update public.shifts
   set
     required_staff = p_required_staff,
-    notes = p_notes,
-    show_in_print = coalesce(p_show_in_print, show_in_print),
     status = case
       when status = 'scheduled' and v_assigned_count >= p_required_staff then 'assigned'
       when status = 'assigned' and v_assigned_count < p_required_staff then 'scheduled'
@@ -776,6 +822,22 @@ begin
     updated_by = auth.uid()
   where id = p_shift_id
   returning * into v_shift;
+
+  -- La observación se guarda aparte. p_notes siempre reemplaza (como antes con shifts.notes);
+  -- p_show_in_print null = no cambia (si no había fila, nace tildada).
+  if nullif(btrim(p_notes), '') is not null
+     or p_show_in_print is not null
+     or exists (select 1 from public.shift_observations o where o.shift_id = p_shift_id) then
+    insert into public.shift_observations (shift_id, observation, show_in_print, created_by, updated_by)
+    values (p_shift_id, nullif(btrim(p_notes), ''), coalesce(p_show_in_print, true), auth.uid(), auth.uid())
+    on conflict (shift_id) do update
+      set observation = excluded.observation,
+          show_in_print = coalesce(p_show_in_print, public.shift_observations.show_in_print),
+          updated_by = auth.uid();
+  end if;
+
+  -- La fila devuelta lleva la observación en `notes` (no se guarda en shifts) para no cambiar el contrato.
+  select o.observation into v_shift.notes from public.shift_observations o where o.shift_id = p_shift_id;
 
   return v_shift;
 end;

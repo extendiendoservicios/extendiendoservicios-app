@@ -1818,13 +1818,13 @@ firmas de `create_shift`/`update_shift_time` (0023, 0028) y dos valores de horas
 
 ### Observación del turno (AJ2-15)
 
-- `shifts.notes` («notas administrativas») ya es la observación: solo administración la escribe (`create_shift`, `update_shift_details`) y las vistas del celular no la traen. Se agregó `shifts.show_in_print boolean not null` (última columna), default `true` en los turnos nuevos; **los turnos que ya tenían nota quedaron en `false`** para que no aparezcan de golpe en las hojas.
-- `create_shift(..., p_open_ended, p_show_in_print boolean default true)` (10 parámetros) y `update_shift_details(p_shift_id, p_required_staff, p_notes, p_show_in_print boolean default null)` (null = no cambia la casilla). Cambiaron de firma (drop + create).
-- `v_shifts_board`: `notes` pasa a ser `null` para quien no es administración y suma `show_in_print` al final (también `null` para los demás).
-- `v_assignments_board`: columna nueva al final `shift_observation` = la nota recortada, solo si `show_in_print` y solo para administración (null en los demás casos). Alimenta la columna «Observaciones» de la planilla de asistencia.
-- `client_service_summary`: cada elemento de `shifts` suma `observation` al final (la nota si `show_in_print`, si no `null`). Resumen del cliente, solo administración como siempre.
+- **Diseño: tabla aparte** `shift_observations(shift_id pk → shifts, observation text, show_in_print boolean not null default true, created_at, updated_at, created_by, updated_by)`. `select` solo para dueño y administrador (RLS); supervisor y empleado asignados no la leen ni por la tabla ni por las vistas (son `security_invoker`). `authenticated` no tiene insert/update/delete.
+- **`shifts.notes` quedó vacía y en desuso** (se conserva la columna para no romper selects del front ni fixtures viejos; la migración copió lo existente a la tabla nueva con `show_in_print = false`, sin mover `updated_at`, y la dejó en null). Ninguna RPC la vuelve a escribir. Un turno sin fila no tiene observación.
+- `create_shift(..., p_open_ended, p_show_in_print boolean default true)` (10 parámetros) y `update_shift_details(p_shift_id, p_required_staff, p_notes, p_show_in_print boolean default null)` (null = no cambia la casilla; `p_notes` siempre reemplaza). Escriben en `shift_observations`. `create_shift` devuelve `shift` con `notes` y `show_in_print` agregados; `update_shift_details` devuelve la fila de `shifts` con `notes` cargada con la observación (no hay `show_in_print` en esa fila: se lee de `v_shifts_board`).
+- `v_shifts_board`: `notes` sale de la tabla nueva y se suma `show_in_print` al final (null si no hay observación, y null para quien no es administración).
+- `v_assignments_board`: columna nueva al final `shift_observation` (la observación si `show_in_print`, solo administración). Alimenta la columna «Observaciones» de la planilla de asistencia.
+- `client_service_summary`: cada elemento de `shifts` suma `observation` al final.
 - `v_my_day` y `v_my_supervisions` no cambian ni traen la observación (hay un test).
-- Límite conocido que ya existía: un supervisor o empleado asignado al turno podría leer `shifts.notes` pidiendo la tabla `shifts` directo por la API (la política de `shifts` da la fila completa y `0017` exige `select` de tabla). Ninguna pantalla lo hace; cerrarlo requiere grants por columna sobre `shifts` (decisión aparte).
 
 ## Enumeraciones (04 sección 3)
 
