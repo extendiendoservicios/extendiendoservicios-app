@@ -556,6 +556,7 @@ export type Database = {
           legal_name: string
           longitude: number | null
           notes: string | null
+          photo_path: string | null
           status: Database["public"]["Enums"]["client_status"]
           trade_name: string | null
           updated_at: string | null
@@ -572,6 +573,7 @@ export type Database = {
           legal_name: string
           longitude?: number | null
           notes?: string | null
+          photo_path?: string | null
           status?: Database["public"]["Enums"]["client_status"]
           trade_name?: string | null
           updated_at?: string | null
@@ -588,6 +590,7 @@ export type Database = {
           legal_name?: string
           longitude?: number | null
           notes?: string | null
+          photo_path?: string | null
           status?: Database["public"]["Enums"]["client_status"]
           trade_name?: string | null
           updated_at?: string | null
@@ -2049,6 +2052,7 @@ export type Database = {
           legal_name: string | null
           longitude: number | null
           notes: string | null
+          photo_path: string | null
           sites_count: number | null
           status: Database["public"]["Enums"]["client_status"] | null
           trade_name: string | null
@@ -2231,14 +2235,14 @@ export type Database = {
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_out_recorded_by"]
+            columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_in_recorded_by"]
+            columns: ["check_out_recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
