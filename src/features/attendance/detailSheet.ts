@@ -2,6 +2,7 @@ import type { AttendanceBoardRow } from '@/api/attendance'
 import type { SupervisionListRow } from '@/api/supervisions'
 import { formatCalendarDate, formatMinutes, formatTime } from '@/lib/format'
 import type { PrintColumn, PrintRowData } from '@/features/print/PrintTable'
+import { formatShiftRange } from '@/features/shifts/openEnded'
 import { absenceDetail, isAbsence } from '@/features/attendance/absences'
 
 /**
@@ -84,9 +85,13 @@ export function sumWorkedMinutes(entries: AttendanceDetailEntry[]): number {
   )
 }
 
-/** Franja `08:00–12:00` de la fila. */
+/** Franja `08:00–12:00` de la fila (`08:00–A terminar` en un turno abierto). */
 export function entryFranja(entry: AttendanceDetailEntry): string {
-  return `${entry.row.startTime.slice(0, 5)}–${entry.row.endTime.slice(0, 5)}`
+  return formatShiftRange(
+    entry.row.startTime,
+    entry.row.endTime,
+    entry.kind === 'service' ? entry.row.openEnded : entry.row.shiftOpenEnded,
+  )
 }
 
 export const ENTRY_KIND_LABELS = {

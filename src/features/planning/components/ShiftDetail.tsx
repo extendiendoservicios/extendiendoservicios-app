@@ -34,6 +34,7 @@ import {
 import { useShiftDetailQuery } from '@/features/planning/queries'
 import { canManageSupervisions } from '@/features/supervisions/permissions'
 import { CancelShiftAction } from '@/features/shifts/components/CancelShiftAction'
+import { formatShiftRange } from '@/features/shifts/openEnded'
 import { AdminTaskList } from './AdminTaskList'
 import { AssignEmployeeSheet } from './AssignEmployeeSheet'
 import { AssignmentTimeDialog } from './AssignmentTimeDialog'
@@ -144,8 +145,8 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
           <StatusBadge domain="shift" status={shift.status} />
         </div>
         <p className="text-[12.5px] text-text-3 capitalize">
-          {formatDateOnly(shift.shiftDate)} · {shift.startTime.slice(0, 5)}–
-          {shift.endTime.slice(0, 5)}
+          {formatDateOnly(shift.shiftDate)} ·{' '}
+          {formatShiftRange(shift.startTime, shift.endTime, shift.openEnded)}
           {shift.siteCity ? ` · ${shift.siteCity}` : ''}
         </p>
         <p className="text-[11.5px] text-text-3">
@@ -155,6 +156,16 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
           <div className="flex flex-wrap gap-2 pt-1">
             <Button asChild variant="ghost" size="sm" icon={Pencil}>
               <Link to={`/admin/turnos/${shift.id}/editar`}>Editar franja</Link>
+            </Button>
+          </div>
+        )}
+        {shift.status === 'completed' && shift.openEnded && canManage && (
+          // AJ2-10: a un turno «A terminar» finalizado todavía se le puede poner la hora de fin.
+          <div className="flex flex-wrap gap-2 pt-1">
+            <Button asChild variant="ghost" size="sm" icon={Pencil}>
+              <Link to={`/admin/turnos/${shift.id}/editar`}>
+                Poner hora de fin
+              </Link>
             </Button>
           </div>
         )}
@@ -225,8 +236,10 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
                     name={`${assignment.employeeFirstName} ${assignment.employeeLastName}`}
                     subtitle={
                       assignment.startTime && assignment.endTime
-                        ? `Franja propia: ${assignment.startTime.slice(0, 5)}–${assignment.endTime.slice(0, 5)}`
-                        : `Franja del turno: ${shift.startTime.slice(0, 5)}–${shift.endTime.slice(0, 5)}`
+                        ? `Franja propia: ${formatShiftRange(assignment.startTime, assignment.endTime, false)}`
+                        : shift.openEnded && assignment.startTime
+                          ? `Franja propia: ${formatShiftRange(assignment.startTime, null, true)}`
+                          : `Franja del turno: ${formatShiftRange(shift.startTime, shift.endTime, shift.openEnded)}`
                     }
                   />
                   <div className="flex flex-wrap items-center gap-2">
@@ -372,6 +385,7 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
           shiftDate={shift.shiftDate}
           shiftStartTime={shift.startTime}
           shiftEndTime={shift.endTime}
+          shiftOpenEnded={shift.openEnded}
           excludeEmployeeIds={shift.assignments.map((a) => a.employeeId)}
           open={isAssignOpen}
           onOpenChange={setAssignOpen}
@@ -407,6 +421,7 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
           employeeName={`${timeTarget.employeeFirstName} ${timeTarget.employeeLastName}`}
           currentStartTime={timeTarget.startTime}
           currentEndTime={timeTarget.endTime}
+          shiftOpenEnded={shift.openEnded}
           open={timeTarget != null}
           onOpenChange={(open) => {
             if (!open) {

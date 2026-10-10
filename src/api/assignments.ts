@@ -181,6 +181,8 @@ export interface AssignmentBoardRow {
   /** Franja efectiva: la propia de la asignación si tiene, si no la del turno (`effective_*`). */
   startTime: string
   endTime: string
+  /** AJ2-10: turno «A terminar» y sin fin propio (`effective_open_ended`): el fin 23:59 no se muestra. */
+  openEnded: boolean
   status: AssignmentStatus
   notes: string | null
 }
@@ -198,12 +200,13 @@ interface AssignmentBoardRawRow {
   client_legal_name: string
   effective_start_time: string | null
   effective_end_time: string | null
+  effective_open_ended: boolean | null
   status: AssignmentStatus
   notes: string | null
 }
 
 const ASSIGNMENT_BOARD_SELECT =
-  'id, shift_id, shift_date, shift_status, employee_id, employee_first_name, employee_last_name, site_id, site_name, client_legal_name, effective_start_time, effective_end_time, status, notes'
+  'id, shift_id, shift_date, shift_status, employee_id, employee_first_name, employee_last_name, site_id, site_name, client_legal_name, effective_start_time, effective_end_time, effective_open_ended, status, notes'
 
 /**
  * A diferencia de `v_shifts_board` (que trae `client_legal_name` y
@@ -226,6 +229,7 @@ function mapAssignmentBoardRow(row: AssignmentBoardRawRow): AssignmentBoardRow {
     clientName: row.client_legal_name,
     startTime: row.effective_start_time ?? '',
     endTime: row.effective_end_time ?? '',
+    openEnded: row.effective_open_ended ?? false,
     status: row.status,
     notes: row.notes,
   }
@@ -481,6 +485,8 @@ export interface ShiftDetail {
   shiftDate: string
   startTime: string
   endTime: string
+  /** AJ2-10: turno «A terminar». Una asignación con fin propio muestra su fin; sin fin propio, «A terminar». */
+  openEnded: boolean
   /** Instante de inicio (`shifts.starts_at`, ADM-08/ADM-06: "después del inicio del turno" de `06` sección 8). */
   startsAt: string | null
   requiredStaff: number
@@ -513,7 +519,7 @@ export interface ShiftDetail {
  * `src/api/settings.ts` (`security_events`).
  */
 const SHIFT_DETAIL_SELECT = `
-  id, client_id, site_id, shift_date, start_time, end_time, required_staff, status, notes, generated, service_id, starts_at,
+  id, client_id, site_id, shift_date, start_time, end_time, open_ended, required_staff, status, notes, generated, service_id, starts_at,
   client:clients(id, legal_name, trade_name),
   site:sites(id, name, city),
   assignments(
@@ -534,6 +540,7 @@ interface ShiftDetailRawRow {
   shift_date: string
   start_time: string
   end_time: string
+  open_ended: boolean
   required_staff: number
   status: ShiftStatus
   notes: string | null
@@ -601,6 +608,7 @@ export async function fetchShiftDetail(shiftId: string): Promise<ShiftDetail> {
     shiftDate: row.shift_date,
     startTime: row.start_time,
     endTime: row.end_time,
+    openEnded: row.open_ended,
     startsAt: row.starts_at,
     requiredStaff: row.required_staff,
     status: row.status,
@@ -654,6 +662,8 @@ export interface AssignCandidateConflict {
   siteName: string
   startTime: string
   endTime: string
+  /** AJ2-10: el otro turno es «A terminar» y la asignación no tiene fin propio. */
+  openEnded: boolean
   /** Se pisa con la franja del turno: `assign_employee` va a devolver `ASSIGNMENT_OVERLAP` salvo que se use una franja propia que lo evite (P-046). */
   overlaps: boolean
 }
@@ -690,6 +700,7 @@ interface SameDayAssignmentRow {
   shift: {
     start_time: string
     end_time: string
+    open_ended: boolean
     site: { name: string } | null
   } | null
 }
@@ -755,7 +766,7 @@ export async function fetchAssignCandidates(
       supabase
         .from('assignments')
         .select(
-          'employee_id, shift_id, start_time, end_time, shift:shifts(start_time, end_time, site:sites(name))',
+          'employee_id, shift_id, start_time, end_time, shift:shifts(start_time, end_time, open_ended, site:sites(name))',
         )
         .in('employee_id', employeeIds)
         .eq('shift_date', params.shiftDate)
@@ -806,6 +817,7 @@ export async function fetchAssignCandidates(
       siteName: row.shift?.site?.name ?? '',
       startTime,
       endTime,
+      openEnded: row.end_time == null && (row.shift?.open_ended ?? false),
       // Mismo día (la consulta filtra por `shift_date`) y franjas sin cruce de
       // medianoche (`shifts_time_range_check`): alcanza con comparar horas.
       overlaps: startTime < params.endTime && params.startTime < endTime,

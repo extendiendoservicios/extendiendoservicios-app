@@ -24,9 +24,10 @@ import {
   useAssignEmployeeMutation,
 } from '@/features/planning/queries'
 import {
-  assignmentTimeSchema,
+  buildAssignmentTimeSchema,
   type AssignmentTimeFormValues,
 } from '@/features/planning/schemas'
+import { formatShiftRange } from '@/features/shifts/openEnded'
 
 /** Mensajes de las tres advertencias de `assign_employee` (P-033, P-034, P-035): no bloquean, se muestran tal cual las devuelve la RPC. */
 const WARNING_MESSAGES: Record<AssignEmployeeWarning, string> = {
@@ -50,6 +51,8 @@ interface AssignEmployeeSheetProps {
   shiftDate: string
   shiftStartTime: string
   shiftEndTime: string
+  /** AJ2-10: turno «A terminar» (el fin guardado, 23:59, no se muestra). */
+  shiftOpenEnded?: boolean
   /** Empleados con una asignación vigente en este turno: no se ofrecen de nuevo. */
   excludeEmployeeIds: string[]
   open: boolean
@@ -62,6 +65,7 @@ function AssignEmployeeSheet({
   shiftDate,
   shiftStartTime,
   shiftEndTime,
+  shiftOpenEnded = false,
   excludeEmployeeIds,
   open,
   onOpenChange,
@@ -93,7 +97,7 @@ function AssignEmployeeSheet({
     reset,
     formState: { errors },
   } = useForm<AssignmentTimeFormValues>({
-    resolver: zodResolver(assignmentTimeSchema),
+    resolver: zodResolver(buildAssignmentTimeSchema(shiftOpenEnded)),
     defaultValues: { startTime: '', endTime: '' },
   })
 
@@ -285,8 +289,12 @@ function AssignEmployeeSheet({
                             {conflict.overlaps
                               ? 'Se superpone con'
                               : 'También en'}{' '}
-                            {conflict.siteName} {conflict.startTime.slice(0, 5)}
-                            –{conflict.endTime.slice(0, 5)}
+                            {conflict.siteName}{' '}
+                            {formatShiftRange(
+                              conflict.startTime,
+                              conflict.endTime,
+                              conflict.openEnded,
+                            )}
                           </Badge>
                         ))}
                       </div>
@@ -304,8 +312,14 @@ function AssignEmployeeSheet({
                             <p className="text-[11px] text-text-2">
                               Horario solo para este empleado. Dejalo vacío para
                               que cubra el turno completo (
-                              {shiftStartTime.slice(0, 5)}–
-                              {shiftEndTime.slice(0, 5)}).
+                              {formatShiftRange(
+                                shiftStartTime,
+                                shiftEndTime,
+                                shiftOpenEnded,
+                              )}
+                              ).
+                              {shiftOpenEnded &&
+                                ' Sin hora de fin sigue «A terminar»; si cargás una, cuenta solo lo trabajado dentro de esa franja.'}
                             </p>
                             <div className="grid grid-cols-2 gap-4">
                               <Field
@@ -354,8 +368,12 @@ function AssignEmployeeSheet({
                           <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-text-2">
                             <span>
                               Cubre el turno completo:{' '}
-                              {shiftStartTime.slice(0, 5)}–
-                              {shiftEndTime.slice(0, 5)}.
+                              {formatShiftRange(
+                                shiftStartTime,
+                                shiftEndTime,
+                                shiftOpenEnded,
+                              )}
+                              .
                             </span>
                             <Button
                               type="button"

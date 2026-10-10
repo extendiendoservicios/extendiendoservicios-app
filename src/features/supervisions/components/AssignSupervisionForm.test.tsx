@@ -34,6 +34,8 @@ function shift(overrides: Partial<ShiftListRow>): ShiftListRow {
     finishedCount: 0,
     absentCount: 0,
     delayedCount: 0,
+    openEnded: false,
+    noCheckoutCount: 0,
     generated: false,
     notes: null,
     ...overrides,

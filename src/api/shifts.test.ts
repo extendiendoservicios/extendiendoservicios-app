@@ -73,6 +73,8 @@ const SHIFT_BOARD_ROW = {
   finished_count: 0,
   absent_count: 0,
   delayed_count: 0,
+  open_ended: false,
+  no_checkout_count: 0,
   generated: true,
   notes: null,
 }
@@ -105,6 +107,8 @@ describe('fetchShiftsByDate', () => {
         finishedCount: 0,
         absentCount: 0,
         delayedCount: 0,
+        openEnded: false,
+        noCheckoutCount: 0,
         generated: true,
         notes: null,
       },
@@ -156,6 +160,7 @@ describe('fetchShiftForEdit', () => {
       shiftDate: '2026-10-05',
       startTime: '08:00:00',
       endTime: '12:00:00',
+      openEnded: false,
       requiredStaff: 2,
       status: 'scheduled',
       notes: null,
@@ -206,11 +211,34 @@ describe('createShift', () => {
       p_date: '2026-12-25',
       p_start: '08:00',
       p_end: '12:00',
+      p_open_ended: false,
       p_required_staff: 2,
       p_service_id: undefined,
       p_notes: undefined,
     })
     expect(result).toEqual({ shiftId: 'sh1', warnings: ['HOLIDAY'] })
+  })
+
+  it('AJ2-10: con «A terminar» manda p_open_ended y no depende de la hora de fin', async () => {
+    rpcMock.mockResolvedValue({
+      data: { shift: { id: 'sh2' }, warnings: [] },
+      error: null,
+    })
+
+    await createShift({
+      clientId: 'c1',
+      siteId: 'si1',
+      date: '2026-10-12',
+      start: '08:00',
+      end: null,
+      openEnded: true,
+      requiredStaff: 1,
+    })
+
+    expect(rpcMock).toHaveBeenCalledWith(
+      'create_shift',
+      expect.objectContaining({ p_open_ended: true, p_start: '08:00' }),
+    )
   })
 
   it('traduce CLIENT_NOT_ACTIVE (P0001) a ApiError con el mismo mensaje del servidor', async () => {
@@ -281,6 +309,25 @@ describe('updateShiftTime', () => {
       p_shift_id: 'sh1',
       p_start: '09:00',
       p_end: '13:00',
+      p_open_ended: false,
+    })
+  })
+
+  it('AJ2-10: pasa a «A terminar» y vuelve a ponerle fin', async () => {
+    rpcMock.mockResolvedValue({ data: {}, error: null })
+
+    await updateShiftTime('sh1', '09:00', null, true)
+    expect(rpcMock).toHaveBeenLastCalledWith(
+      'update_shift_time',
+      expect.objectContaining({ p_open_ended: true }),
+    )
+
+    await updateShiftTime('sh1', '09:00', '12:00')
+    expect(rpcMock).toHaveBeenLastCalledWith('update_shift_time', {
+      p_shift_id: 'sh1',
+      p_start: '09:00',
+      p_end: '12:00',
+      p_open_ended: false,
     })
   })
 

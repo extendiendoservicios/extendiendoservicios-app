@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
+import { OpenEndedToggle } from '@/features/shifts/components/OpenEndedToggle'
+import { OPEN_ENDED_LABEL } from '@/features/shifts/openEnded'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import {
   Select,
@@ -86,6 +88,7 @@ export default function ServiceFormPage() {
     weekdays: [],
     startTime: '',
     endTime: '',
+    openEnded: false,
     requiredStaff: '1',
     validFrom: '',
     validTo: '',
@@ -116,7 +119,10 @@ export default function ServiceFormPage() {
             name: serviceQuery.data.name,
             weekdays: serviceQuery.data.weekdays.map(String),
             startTime: serviceQuery.data.startTime.slice(0, 5),
-            endTime: serviceQuery.data.endTime.slice(0, 5),
+            endTime: serviceQuery.data.openEnded
+              ? ''
+              : serviceQuery.data.endTime.slice(0, 5),
+            openEnded: serviceQuery.data.openEnded,
             requiredStaff: String(serviceQuery.data.requiredStaff),
             validFrom: serviceQuery.data.validFrom,
             validTo: serviceQuery.data.validTo ?? '',
@@ -137,6 +143,7 @@ export default function ServiceFormPage() {
   })
 
   const watchedClientId = watch('clientId')
+  const watchedOpenEnded = watch('openEnded') ?? false
   const clientsQuery = useClientsQuery({})
   const sitesQuery = useClientSitesQuery(watchedClientId || undefined)
 
@@ -372,19 +379,41 @@ export default function ServiceFormPage() {
               <FieldError>{errors.startTime.message}</FieldError>
             )}
           </Field>
-          <Field data-invalid={Boolean(errors.endTime) || undefined}>
-            <FieldLabel htmlFor="service-end-time">Hasta</FieldLabel>
-            <Input
-              id="service-end-time"
-              type="time"
-              aria-invalid={Boolean(errors.endTime)}
-              {...register('endTime')}
-            />
-            {errors.endTime && (
-              <FieldError>{errors.endTime.message}</FieldError>
-            )}
-          </Field>
+          {watchedOpenEnded ? (
+            <Field>
+              <FieldLabel>Hasta</FieldLabel>
+              <p className="flex h-9 items-center text-[13px] text-text-2">
+                {OPEN_ENDED_LABEL}
+              </p>
+            </Field>
+          ) : (
+            <Field data-invalid={Boolean(errors.endTime) || undefined}>
+              <FieldLabel htmlFor="service-end-time">Hasta</FieldLabel>
+              <Input
+                id="service-end-time"
+                type="time"
+                aria-invalid={Boolean(errors.endTime)}
+                {...register('endTime')}
+              />
+              {errors.endTime && (
+                <FieldError>{errors.endTime.message}</FieldError>
+              )}
+            </Field>
+          )}
         </div>
+
+        <Controller
+          control={control}
+          name="openEnded"
+          render={({ field }) => (
+            <OpenEndedToggle
+              id="service-open-ended"
+              checked={field.value ?? false}
+              onCheckedChange={field.onChange}
+              hint="Los turnos que se generen quedan «A terminar»: cada empleado cuenta las horas desde que ficha el inicio hasta que ficha la salida."
+            />
+          )}
+        />
 
         <label
           htmlFor="service-works-on-holidays"

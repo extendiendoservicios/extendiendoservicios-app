@@ -4,6 +4,7 @@ import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { formatMinutes } from '@/lib/format'
+import { formatShiftRange } from '@/features/shifts/openEnded'
 import { shiftFranjaLabel } from '../labels'
 import type { AttentionItem, AttentionKind } from '../attention'
 import { RowActions } from './RowActions'
@@ -14,6 +15,10 @@ const KIND_META: Record<
   { title: string; severity: 'crit' | 'warn' }
 > = {
   noRecord: { title: 'no registró el inicio', severity: 'crit' },
+  noCheckout: {
+    title: 'quedó sin salida: cargá la hora para cerrar sus horas',
+    severity: 'warn',
+  },
   overdue: { title: 'sigue en curso pasada su hora de fin', severity: 'warn' },
   absence: { title: 'avisó que no va', severity: 'warn' },
   uncovered: { title: 'Turno sin cubrir', severity: 'crit' },
@@ -41,7 +46,7 @@ function describeItem(item: AttentionItem): { title: string; detail: string } {
     const name = `${row.employeeFirstName} ${row.employeeLastName}`
     return {
       title: `${name} ${meta.title}`,
-      detail: `${row.clientName} · ${row.siteName} · ${row.startTime.slice(0, 5)}–${row.endTime.slice(0, 5)}${since}`,
+      detail: `${row.clientName} · ${row.siteName} · ${formatShiftRange(row.startTime, row.endTime, row.openEnded)}${since}`,
     }
   }
   const shift = item.shift

@@ -73,6 +73,7 @@ describe('shiftFormValuesToCreateInput', () => {
       date: '2026-10-05',
       start: '08:00',
       end: '12:00',
+      openEnded: false,
       requiredStaff: 2,
       notes: 'Llevar insumos propios',
     })
@@ -124,6 +125,94 @@ describe('shiftEditFormSchema', () => {
   })
 })
 
+describe('AJ2-10: turnos «A terminar»', () => {
+  it('con «A terminar» no pide hora de fin ni la compara con el inicio', () => {
+    const result = shiftFormSchema.safeParse({
+      ...VALID_VALUES,
+      endTime: '',
+      openEnded: true,
+    })
+    expect(result.success).toBe(true)
+    const early = shiftFormSchema.safeParse({
+      ...VALID_VALUES,
+      startTime: '12:00',
+      endTime: '08:00',
+      openEnded: true,
+    })
+    expect(early.success).toBe(true)
+  })
+
+  it('con «A terminar» el inicio no puede ser 23:59', () => {
+    const result = shiftFormSchema.safeParse({
+      ...VALID_VALUES,
+      startTime: '23:59',
+      endTime: '',
+      openEnded: true,
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('sin «A terminar» la hora de fin sigue siendo obligatoria', () => {
+    const result = shiftFormSchema.safeParse({
+      ...VALID_VALUES,
+      endTime: '',
+      openEnded: false,
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0]?.message).toBe('Falta la hora de fin.')
+    }
+  })
+
+  it('el alta manda fin null y openEnded', () => {
+    const input = shiftFormValuesToCreateInput({
+      ...VALID_VALUES,
+      endTime: '',
+      openEnded: true,
+    })
+    expect(input.end).toBeNull()
+    expect(input.openEnded).toBe(true)
+  })
+
+  it('la edición puede pasar a «A terminar» y volver a ponerle fin', () => {
+    const toOpen = shiftEditFormSchema.safeParse({
+      startTime: '08:00',
+      endTime: '',
+      openEnded: true,
+      requiredStaff: '2',
+    })
+    expect(toOpen.success).toBe(true)
+    const back = shiftEditFormValuesToInputs({
+      startTime: '08:00',
+      endTime: '12:00',
+      openEnded: false,
+      requiredStaff: '2',
+    })
+    expect(back.time).toEqual({
+      start: '08:00',
+      end: '12:00',
+      openEnded: false,
+    })
+    const open = shiftEditFormValuesToInputs({
+      startTime: '08:00',
+      endTime: '',
+      openEnded: true,
+      requiredStaff: '2',
+    })
+    expect(open.time).toEqual({ start: '08:00', end: null, openEnded: true })
+  })
+
+  it('la franja del turno también admite «A terminar»', () => {
+    expect(
+      shiftTimeFormSchema.safeParse({
+        startTime: '08:00',
+        endTime: '',
+        openEnded: true,
+      }).success,
+    ).toBe(true)
+  })
+})
+
 describe('shiftEditFormValuesToInputs', () => {
   it('separa la franja de la dotación y las notas, y recorta el texto', () => {
     const inputs = shiftEditFormValuesToInputs({
@@ -133,7 +222,7 @@ describe('shiftEditFormValuesToInputs', () => {
       notes: '  Llevar insumos  ',
     })
     expect(inputs).toEqual({
-      time: { start: '08:00', end: '12:00' },
+      time: { start: '08:00', end: '12:00', openEnded: false },
       details: { requiredStaff: 4, notes: 'Llevar insumos' },
     })
   })

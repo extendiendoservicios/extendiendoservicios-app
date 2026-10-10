@@ -1,4 +1,5 @@
 import type { ShiftListRow } from '@/api/shifts'
+import { formatShiftRange } from '@/features/shifts/openEnded'
 
 /**
  * Agrupado por franja de ADM-05 (ASSIGN-010, `05` línea 39: "agrupados por
@@ -10,11 +11,11 @@ import type { ShiftListRow } from '@/api/shifts'
  * calendario mensual (cliente · sede · franja).
  */
 
-/** Franja (`"08:00–16:00"`) de un turno, sin segundos. */
+/** Franja (`"08:00–16:00"`, o `"08:00–A terminar"`) de un turno, sin segundos. */
 export function shiftFranjaKey(
-  shift: Pick<ShiftListRow, 'startTime' | 'endTime'>,
+  shift: Pick<ShiftListRow, 'startTime' | 'endTime' | 'openEnded'>,
 ): string {
-  return `${shift.startTime.slice(0, 5)}–${shift.endTime.slice(0, 5)}`
+  return formatShiftRange(shift.startTime, shift.endTime, shift.openEnded)
 }
 
 /** Turnos de un día, agrupados por franja y ordenados por hora de inicio. */

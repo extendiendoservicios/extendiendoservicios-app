@@ -32,6 +32,7 @@ const cases: Array<[StatusBadgeInput, string, string]> = [
   [{ domain: 'assignment', status: 'present' }, 'Presente', 'success'],
   [{ domain: 'assignment', status: 'finished' }, 'Finalizado', 'success'],
   [{ domain: 'assignment', status: 'no_record' }, 'Sin registro', 'danger'],
+  [{ domain: 'assignment', status: 'no_checkout' }, 'Sin salida', 'warning'],
   [
     { domain: 'assignment', status: 'early_leave' },
     'Salida anticipada',

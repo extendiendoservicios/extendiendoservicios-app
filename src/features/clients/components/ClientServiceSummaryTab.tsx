@@ -32,6 +32,10 @@ import {
   localDateToIsoDate,
 } from '@/features/settings/dateOnly'
 import { formatMinutes } from '@/lib/format'
+import {
+  formatShiftRange,
+  NO_CHECKOUT_LABEL,
+} from '@/features/shifts/openEnded'
 
 function isoDateToDate(isoDate: string): Date {
   return new Date(`${isoDate}T00:00:00`)
@@ -110,7 +114,11 @@ function ClientServiceSummaryTab({
       header: 'Franja',
       meta: { card: 'meta', cardLabel: 'Franja' },
       cell: ({ row }) =>
-        `${row.original.startTime.slice(0, 5)}–${row.original.endTime.slice(0, 5)}`,
+        formatShiftRange(
+          row.original.startTime,
+          row.original.endTime,
+          row.original.openEnded,
+        ),
     },
     {
       id: 'employees',
@@ -122,11 +130,22 @@ function ClientServiceSummaryTab({
       id: 'hours',
       header: 'Horas',
       meta: { card: 'meta', cardLabel: 'Horas', align: 'end' },
-      cell: ({ row }) => (
-        <span className="tabular-nums">
-          {formatMinutes(row.original.workedMinutes)}
-        </span>
-      ),
+      cell: ({ row }) => {
+        // AJ2-10: quienes quedaron «Sin salida» suman 0 horas hasta que administración cargue la hora.
+        const noCheckout = row.original.employees.filter(
+          (employee) => employee.noCheckout,
+        ).length
+        return (
+          <span className="tabular-nums">
+            {formatMinutes(row.original.workedMinutes)}
+            {noCheckout > 0 && (
+              <span className="ml-1 text-warning-800">
+                · {noCheckout} {NO_CHECKOUT_LABEL.toLowerCase()}
+              </span>
+            )}
+          </span>
+        )
+      },
     },
   ]
 
@@ -205,6 +224,15 @@ function ClientServiceSummaryTab({
               value={formatMinutes(summary.totals.workedMinutes)}
             />
           </section>
+          {summary.totals.openEndedShifts > 0 && (
+            <p className="text-[12px] text-text-3">
+              {summary.totals.openEndedShifts === 1
+                ? 'Hay 1 turno «A terminar»'
+                : `Hay ${summary.totals.openEndedShifts} turnos «A terminar»`}
+              : no tienen horas previstas y las horas de cada empleado van desde
+              su inicio hasta su salida fichada.
+            </p>
+          )}
           <DataTable
             caption="Turnos realizados del período"
             columns={columns}

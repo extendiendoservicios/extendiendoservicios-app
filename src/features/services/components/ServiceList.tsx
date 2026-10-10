@@ -25,6 +25,7 @@ import {
   useServicesBySiteQuery,
 } from '@/features/services/queries'
 import { formatWeekdays } from '@/features/services/weekdays'
+import { OPEN_ENDED_LABEL } from '@/features/shifts/openEnded'
 import { ChangeServiceStatusDialog } from './ChangeServiceStatusDialog'
 
 /** `"HH:mm:ss"` (columna `time` de Postgres) → `"HH:mm"`. */
@@ -83,7 +84,10 @@ function ServiceList(
                 )}
                 <p className="mt-1 text-[12px] text-text-2">
                   {formatWeekdays(service.weekdays)} ·{' '}
-                  {shortTime(service.startTime)} a {shortTime(service.endTime)}
+                  {shortTime(service.startTime)} a{' '}
+                  {service.openEnded
+                    ? OPEN_ENDED_LABEL
+                    : shortTime(service.endTime)}
                 </p>
                 <p className="mt-1 flex items-center gap-1 text-[11px] text-text-3">
                   <Users aria-hidden="true" className="size-[12px]" />

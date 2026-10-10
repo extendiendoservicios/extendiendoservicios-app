@@ -17,6 +17,7 @@ import { PersonCell } from '@/components/PersonCell'
 import { StatusBadge } from '@/components/status'
 import { avatarUrl } from '@/lib/avatarUrl'
 import { formatMinutes, formatTime } from '@/lib/format'
+import { formatShiftRange } from '@/features/shifts/openEnded'
 import { useAuth } from '@/features/auth/AuthProvider'
 import {
   addDaysToIsoDate,
@@ -183,7 +184,11 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
       header: 'Franja',
       meta: { card: 'meta', cardLabel: 'Franja' },
       cell: ({ row }) =>
-        `${row.original.startTime.slice(0, 5)}–${row.original.endTime.slice(0, 5)}`,
+        formatShiftRange(
+          row.original.startTime,
+          row.original.endTime,
+          row.original.openEnded,
+        ),
     },
     {
       id: 'checkIn',

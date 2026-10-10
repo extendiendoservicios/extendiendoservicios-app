@@ -213,11 +213,13 @@ export interface AttendanceBoardRow {
   /** Franja efectiva (propia de la asignación, o la del turno). */
   startTime: string
   endTime: string
+  /** AJ2-10: asignación «A terminar» (turno abierto y sin fin propio): en pantalla va «A terminar», no 23:59. */
+  openEnded: boolean
   /** Instante de inicio y fin de la franja efectiva (para decidir "antes/después del inicio" en el cliente). */
   startsAt: string | null
   endsAt: string | null
   status: AssignmentStatus
-  /** `04` sección 5: agrega `no_record` cuando el estado es `expected`/`delay_notified` y ya pasó el inicio. */
+  /** `04` sección 5: agrega `no_record` cuando el estado es `expected`/`delay_notified` y ya pasó el inicio, y `no_checkout` («Sin salida», AJ2-10) en un turno «A terminar» que pasó el día sin fichaje de salida. */
   displayStatus: string
   notes: string | null
   checkInAt: string | null
@@ -239,9 +241,9 @@ export interface AttendanceBoardRow {
   lastNoticeAt: string | null
   /** AJ-02: hora de llegada que informó el empleado con «En camino» (instante), si la informó. */
   lastNoticeEstimatedArrivalAt: string | null
-  /** AJ-03: minutos previstos de la franja efectiva. */
+  /** AJ-03: minutos previstos de la franja efectiva; `null` en una asignación «A terminar» (AJ2-10: sin comparación ni tilde). */
   plannedMinutes: number | null
-  /** AJ-03: minutos trabajados (inicio a fin real, redondeados al minuto); `null` sin fin registrado. */
+  /** AJ-03 / AJ2-09: minutos trabajados dentro de la franja efectiva (con tope), redondeados; `null` sin fin registrado; 0 en «Sin salida». */
   workedMinutes: number | null
   /** Asignación quitada del turno (el historial de un empleado las incluye): no cuenta como inasistencia. */
   removedAt?: string | null
@@ -251,7 +253,7 @@ export interface AttendanceBoardRow {
 const ATTENDANCE_BOARD_SELECT = `
   id, shift_id, shift_date, shift_status, client_id, client_legal_name, site_id, site_name,
   employee_id, employee_first_name, employee_last_name, employee_avatar_path,
-  effective_start_time, effective_end_time, effective_starts_at, effective_ends_at,
+  effective_start_time, effective_end_time, effective_open_ended, effective_starts_at, effective_ends_at,
   status, display_status, notes,
   check_in_at, check_out_at, check_in_source, check_in_recorded_by, check_out_source, check_out_recorded_by,
   minutes_late, minutes_early_leave,
@@ -275,6 +277,7 @@ interface AttendanceBoardRawRow {
   employee_avatar_path: string | null
   effective_start_time: string
   effective_end_time: string
+  effective_open_ended: boolean | null
   effective_starts_at: string | null
   effective_ends_at: string | null
   status: AssignmentStatus
@@ -317,6 +320,7 @@ function mapAttendanceBoardRow(row: AttendanceBoardRawRow): AttendanceBoardRow {
     employeeAvatarPath: row.employee_avatar_path,
     startTime: row.effective_start_time,
     endTime: row.effective_end_time,
+    openEnded: row.effective_open_ended ?? false,
     startsAt: row.effective_starts_at,
     endsAt: row.effective_ends_at,
     status: row.status,

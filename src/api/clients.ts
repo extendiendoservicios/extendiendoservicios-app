@@ -503,8 +503,13 @@ export interface ClientSummaryEmployee {
   status: string
   checkInAt: string | null
   checkOutAt: string | null
+  /** `null` en una asignación «A terminar»: no hay franja prevista y no suma a las previstas (AJ2-10). */
   plannedMinutes: number | null
   workedMinutes: number | null
+  /** AJ2-10: asignación «A terminar» (turno abierto y sin fin propio). */
+  openEnded: boolean
+  /** AJ2-10: «Sin salida»: pasó el día y nadie cargó la salida; suma 0 horas. */
+  noCheckout: boolean
 }
 
 /** Un turno realizado dentro del período. */
@@ -515,6 +520,8 @@ export interface ClientSummaryShift {
   siteName: string
   startTime: string
   endTime: string
+  /** AJ2-10: turno «A terminar» (el fin 23:59 no se muestra). */
+  openEnded: boolean
   status: string
   workedMinutes: number
   plannedMinutes: number
@@ -530,6 +537,8 @@ export interface ClientServiceSummary {
     employeesCount: number
     workedMinutes: number
     plannedMinutes: number
+    /** AJ2-10: cantidad de turnos «A terminar» del período. */
+    openEndedShifts: number
   }
   shifts: ClientSummaryShift[]
 }
@@ -543,6 +552,7 @@ interface ClientServiceSummaryRaw {
     employees_count: number
     worked_minutes: number
     planned_minutes: number
+    open_ended_shifts?: number
   }
   shifts: {
     shift_id: string
@@ -551,6 +561,7 @@ interface ClientServiceSummaryRaw {
     site_name: string
     start_time: string
     end_time: string
+    open_ended?: boolean
     status: string
     worked_minutes: number
     planned_minutes: number
@@ -564,6 +575,8 @@ interface ClientServiceSummaryRaw {
       check_out_at: string | null
       planned_minutes: number | null
       worked_minutes: number | null
+      open_ended?: boolean
+      no_checkout?: boolean
     }[]
   }[]
 }
@@ -581,6 +594,7 @@ export function mapClientServiceSummary(
       employeesCount: raw.totals.employees_count,
       workedMinutes: raw.totals.worked_minutes,
       plannedMinutes: raw.totals.planned_minutes,
+      openEndedShifts: raw.totals.open_ended_shifts ?? 0,
     },
     shifts: (raw.shifts ?? []).map((shift) => ({
       shiftId: shift.shift_id,
@@ -589,6 +603,7 @@ export function mapClientServiceSummary(
       siteName: shift.site_name,
       startTime: shift.start_time,
       endTime: shift.end_time,
+      openEnded: shift.open_ended ?? false,
       status: shift.status,
       workedMinutes: shift.worked_minutes,
       plannedMinutes: shift.planned_minutes,
@@ -602,6 +617,8 @@ export function mapClientServiceSummary(
         checkOutAt: employee.check_out_at,
         plannedMinutes: employee.planned_minutes,
         workedMinutes: employee.worked_minutes,
+        openEnded: employee.open_ended ?? false,
+        noCheckout: employee.no_checkout ?? false,
       })),
     })),
   }

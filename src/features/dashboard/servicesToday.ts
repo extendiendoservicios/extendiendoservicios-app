@@ -1,4 +1,5 @@
 import type { AttendanceBoardRow } from '@/api/attendance'
+import { formatShiftRange } from '@/features/shifts/openEnded'
 
 /**
  * Filtro "hoy / por franja" de la tabla "Servicios de hoy" (DASH-003): la
@@ -7,9 +8,9 @@ import type { AttendanceBoardRow } from '@/api/attendance'
 export const ALL_DAY_FILTER = 'all'
 
 export function franjaOf(
-  row: Pick<AttendanceBoardRow, 'startTime' | 'endTime'>,
+  row: Pick<AttendanceBoardRow, 'startTime' | 'endTime' | 'openEnded'>,
 ): string {
-  return `${row.startTime.slice(0, 5)}–${row.endTime.slice(0, 5)}`
+  return formatShiftRange(row.startTime, row.endTime, row.openEnded)
 }
 
 /** Franjas distintas del día, ordenadas por hora de inicio. */

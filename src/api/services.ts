@@ -79,6 +79,9 @@ function mapWriteError(error: {
   return fromPostgrestError(error)
 }
 
+/** Con «A terminar» el trigger de la base fija el fin en 23:59 (AJ2-10); el insert igual lo pide. */
+const OPEN_ENDED_WIRE_END = '23:59:00'
+
 // -------------------------------------------------------------------------
 // 1. Listas de ADM-21 (pestaña Servicios) y ADM-22 (sección Servicios)
 // -------------------------------------------------------------------------
@@ -93,6 +96,8 @@ export interface ServiceSummary {
   weekdays: number[]
   startTime: string
   endTime: string
+  /** AJ2-10: servicio «A terminar» (el fin guardado, 23:59, no se muestra). */
+  openEnded: boolean
   requiredStaff: number
   validFrom: string
   validTo: string | null
@@ -107,6 +112,7 @@ interface ServiceSummaryRow {
   weekdays: number[]
   start_time: string
   end_time: string
+  open_ended: boolean
   required_staff: number
   valid_from: string
   valid_to: string | null
@@ -124,6 +130,7 @@ function mapServiceSummaryRow(row: ServiceSummaryRow): ServiceSummary {
     weekdays: row.weekdays,
     startTime: row.start_time,
     endTime: row.end_time,
+    openEnded: row.open_ended,
     requiredStaff: row.required_staff,
     validFrom: row.valid_from,
     validTo: row.valid_to,
@@ -132,7 +139,7 @@ function mapServiceSummaryRow(row: ServiceSummaryRow): ServiceSummary {
 }
 
 const SERVICE_SUMMARY_SELECT =
-  'id, client_id, site_id, name, weekdays, start_time, end_time, required_staff, valid_from, valid_to, status, sites(name)'
+  'id, client_id, site_id, name, weekdays, start_time, end_time, open_ended, required_staff, valid_from, valid_to, status, sites(name)'
 
 /** Pestaña "Servicios" de ADM-21 (`06` sección 6: "Listar por cliente o sede"). */
 export async function fetchServicesByClient(
@@ -184,6 +191,7 @@ export interface ServiceDetail {
   weekdays: number[]
   startTime: string
   endTime: string
+  openEnded: boolean
   requiredStaff: number
   validFrom: string
   validTo: string | null
@@ -204,6 +212,7 @@ interface ServiceRowWithNames {
   weekdays: number[]
   start_time: string
   end_time: string
+  open_ended: boolean
   required_staff: number
   valid_from: string
   valid_to: string | null
@@ -229,6 +238,7 @@ function mapServiceDetailRow(row: ServiceRowWithNames): ServiceDetail {
     weekdays: row.weekdays,
     startTime: row.start_time,
     endTime: row.end_time,
+    openEnded: row.open_ended,
     requiredStaff: row.required_staff,
     validFrom: row.valid_from,
     validTo: row.valid_to,
@@ -264,7 +274,9 @@ export interface ServiceFormInput {
   name: string
   weekdays: number[]
   startTime: string
-  endTime: string
+  /** Con `openEnded` se ignora: la base fija el fin en 23:59 (AJ2-10). */
+  endTime: string | null
+  openEnded: boolean
   requiredStaff: number
   validFrom: string
   validTo: string | null
@@ -288,7 +300,8 @@ export async function createService(
       name: input.name,
       weekdays: input.weekdays,
       start_time: input.startTime,
-      end_time: input.endTime,
+      end_time: input.openEnded ? OPEN_ENDED_WIRE_END : (input.endTime ?? ''),
+      open_ended: input.openEnded,
       required_staff: input.requiredStaff,
       valid_from: input.validFrom,
       valid_to: input.validTo,
@@ -327,7 +340,8 @@ export async function updateService(
       name: input.name,
       weekdays: input.weekdays,
       start_time: input.startTime,
-      end_time: input.endTime,
+      end_time: input.openEnded ? OPEN_ENDED_WIRE_END : (input.endTime ?? ''),
+      open_ended: input.openEnded,
       required_staff: input.requiredStaff,
       valid_from: input.validFrom,
       valid_to: input.validTo,

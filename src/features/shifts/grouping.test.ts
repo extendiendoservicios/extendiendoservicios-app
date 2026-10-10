@@ -21,6 +21,8 @@ function makeShift(overrides: Partial<ShiftListRow> = {}): ShiftListRow {
     finishedCount: 0,
     absentCount: 0,
     delayedCount: 0,
+    openEnded: false,
+    noCheckoutCount: 0,
     generated: true,
     notes: null,
     ...overrides,
@@ -29,9 +31,13 @@ function makeShift(overrides: Partial<ShiftListRow> = {}): ShiftListRow {
 
 describe('shiftFranjaKey', () => {
   it('arma "HH:MM–HH:MM" sin segundos', () => {
-    expect(shiftFranjaKey({ startTime: '08:00:00', endTime: '16:00:00' })).toBe(
-      '08:00–16:00',
-    )
+    expect(
+      shiftFranjaKey({
+        startTime: '08:00:00',
+        endTime: '16:00:00',
+        openEnded: false,
+      }),
+    ).toBe('08:00–16:00')
   })
 })
 
