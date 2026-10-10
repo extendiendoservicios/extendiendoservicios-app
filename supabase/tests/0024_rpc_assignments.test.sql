@@ -518,10 +518,10 @@ select is(
 
 set local role postgres;
 
+select is(
   (select observation from public.shift_observations where shift_id = 'e2400000-0000-0000-0000-000000000071'),
-  (select notes from public.shifts where id = 'e2400000-0000-0000-0000-000000000071'),
+  'Se necesita una persona más',
   'update_shift_details: guarda la observación del turno (desde 0040, en shift_observations)'
-  'update_shift_details: guarda las notas administrativas'
 );
 
 -- Bajarla de nuevo a 2 (igual a los asignados) vuelve a completar la dotación -> assigned.
