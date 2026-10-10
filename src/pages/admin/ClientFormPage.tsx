@@ -1,4 +1,5 @@
 import { Controller, useForm } from 'react-hook-form'
+import { formatTaxId, formatTaxIdWhileTyping } from '@/lib/taxId'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
@@ -70,7 +71,7 @@ export default function ClientFormPage() {
       ? {
           legalName: clientQuery.data.legalName,
           tradeName: clientQuery.data.tradeName ?? '',
-          cuit: clientQuery.data.cuit ?? '',
+          cuit: formatTaxId(clientQuery.data.cuit) ?? '',
           adminAddress: clientQuery.data.adminAddress ?? '',
           coordinates:
             clientQuery.data.latitude != null &&
@@ -156,12 +157,24 @@ export default function ClientFormPage() {
 
         <Field data-invalid={Boolean(errors.cuit) || undefined}>
           <FieldLabel htmlFor="client-cuit">CUIT</FieldLabel>
-          <Input
-            id="client-cuit"
-            inputMode="numeric"
-            placeholder="20123456786"
-            aria-invalid={Boolean(errors.cuit)}
-            {...register('cuit')}
+          <Controller
+            control={control}
+            name="cuit"
+            render={({ field }) => (
+              <Input
+                id="client-cuit"
+                inputMode="numeric"
+                placeholder="20-12345678-6"
+                aria-invalid={Boolean(errors.cuit)}
+                name={field.name}
+                ref={field.ref}
+                onBlur={field.onBlur}
+                value={field.value ?? ''}
+                onChange={(event) =>
+                  field.onChange(formatTaxIdWhileTyping(event.target.value))
+                }
+              />
+            )}
           />
           {errors.cuit && <FieldError>{errors.cuit.message}</FieldError>}
         </Field>

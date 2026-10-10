@@ -1,3 +1,4 @@
+import { formatTaxId } from '@/lib/taxId'
 import { useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import {
@@ -250,6 +251,7 @@ export default function EmployeeDetailPage() {
             profileId={employee.profileId}
             person={{
               name: `${employee.firstName} ${employee.lastName}`,
+              dni: employee.dni,
               employeeNumber: employee.employeeNumber,
               roles: employee.roles,
             }}
@@ -325,7 +327,7 @@ function EmployeeDataTab({
         </h3>
         <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-3">
           <LabeledValue label="DNI" value={employee.dni} />
-          <LabeledValue label="CUIL" value={employee.cuil} />
+          <LabeledValue label="CUIL" value={formatTaxId(employee.cuil)} />
           <LabeledValue label="Teléfono" value={employee.phone} />
           <LabeledValue label="Domicilio" value={employee.address} />
           <LabeledValue

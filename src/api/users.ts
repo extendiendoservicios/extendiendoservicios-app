@@ -39,6 +39,8 @@ export interface AdminUserRow {
   isActive: boolean
   deletedAt: string | null
   roles: Role[]
+  /** Ruta de la foto en el bucket `avatars` (AJ2-11). */
+  avatarPath: string | null
 }
 
 /**
@@ -64,7 +66,7 @@ export async function fetchUsers(): Promise<AdminUserRow[]> {
   const { data, error } = await supabase
     .from('profiles')
     .select(
-      'id, first_name, last_name, is_active, deleted_at, user_roles!user_roles_profile_id_fkey(role)',
+      'id, first_name, last_name, avatar_path, is_active, deleted_at, user_roles!user_roles_profile_id_fkey(role)',
     )
     .order('last_name', { ascending: true })
     .order('first_name', { ascending: true })
@@ -79,6 +81,7 @@ export async function fetchUsers(): Promise<AdminUserRow[]> {
     lastName: row.last_name,
     isActive: row.is_active,
     deletedAt: row.deleted_at,
+    avatarPath: row.avatar_path,
     roles: (row.user_roles ?? []).map((userRole) => userRole.role),
   }))
 }

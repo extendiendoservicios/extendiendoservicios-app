@@ -21,6 +21,7 @@ function makeChainable<T>(result: PostgrestResult<T>) {
     eq: () => chain,
     or: () => chain,
     contains: () => chain,
+    in: () => chain,
     order: () => chain,
     limit: () => chain,
     single: () => Promise.resolve(result),
@@ -58,7 +59,9 @@ const {
   deleteEmployeeAvailability,
   fetchEmployeeLeaves,
   createEmployeeLeave,
+  updateEmployeeLeave,
   deactivateEmployeeLeave,
+  fetchEmployeeDnisByIds,
 } = await import('./employees')
 
 beforeEach(() => {
@@ -101,6 +104,18 @@ describe('fetchEmployees', () => {
         dni: '30111222',
       },
     ])
+  })
+
+  it('pide la lista ordenada por legajo ascendente (AJ2-01)', async () => {
+    const chain = makeChainable({ data: [], error: null })
+    const orderSpy = vi.fn(() => chain)
+    chain.order = orderSpy
+    fromMock.mockReturnValue(chain)
+    await fetchEmployees({ text: 'ana' })
+    expect(orderSpy).toHaveBeenCalledTimes(1)
+    expect(orderSpy).toHaveBeenCalledWith('employee_number', {
+      ascending: true,
+    })
   })
 
   it('traduce un error de PostgREST a ApiError', async () => {
@@ -541,5 +556,69 @@ describe('deactivateEmployeeLeave', () => {
     fromMock.mockReturnValue(makeChainable({ data: [], error: null }))
     await deactivateEmployeeLeave('l1', 'admin-1')
     expect(fromMock).toHaveBeenCalledWith('employee_leaves')
+  })
+})
+
+describe('updateEmployeeLeave (AJ2-08)', () => {
+  it('actualiza fechas y motivo de la misma fila', async () => {
+    const chain = makeChainable({ data: null, error: null })
+    const updateSpy = vi.fn(() => chain)
+    const eqSpy = vi.fn(() => chain)
+    chain.update = updateSpy
+    chain.eq = eqSpy
+    fromMock.mockReturnValue(chain)
+    await updateEmployeeLeave(
+      'l1',
+      { startsOn: '2026-01-10', endsOn: '2026-01-20', reason: 'Viaje' },
+      'admin-1',
+    )
+    expect(fromMock).toHaveBeenCalledWith('employee_leaves')
+    expect(updateSpy).toHaveBeenCalledWith({
+      starts_on: '2026-01-10',
+      ends_on: '2026-01-20',
+      reason: 'Viaje',
+      updated_by: 'admin-1',
+    })
+    expect(eqSpy).toHaveBeenCalledWith('id', 'l1')
+  })
+
+  it('traduce la superposición con otra licencia a LEAVE_OVERLAP', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: null,
+        error: {
+          message:
+            'conflicting key value violates exclusion constraint "employee_leaves_no_overlap"',
+          code: '23P01',
+        },
+      }),
+    )
+    await expect(
+      updateEmployeeLeave(
+        'l1',
+        { startsOn: '2026-01-10', endsOn: null, reason: null },
+        'admin-1',
+      ),
+    ).rejects.toMatchObject({ hint: 'LEAVE_OVERLAP' })
+  })
+})
+
+describe('fetchEmployeeDnisByIds (AJ2-16)', () => {
+  it('devuelve un mapa id -> DNI y no consulta si no hay ids', async () => {
+    expect((await fetchEmployeeDnisByIds([])).size).toBe(0)
+    expect(fromMock).not.toHaveBeenCalled()
+
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: [
+          { profile_id: 'e1', dni: '30111222' },
+          { profile_id: 'e2', dni: '28999888' },
+        ],
+        error: null,
+      }),
+    )
+    const result = await fetchEmployeeDnisByIds(['e1', 'e2'])
+    expect(fromMock).toHaveBeenCalledWith('employees')
+    expect(result.get('e2')).toBe('28999888')
   })
 })

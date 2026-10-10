@@ -2,6 +2,7 @@ import type { AttendanceBoardRow } from '@/api/attendance'
 import type { SupervisionListRow } from '@/api/supervisions'
 import { formatCalendarDate, formatMinutes, formatTime } from '@/lib/format'
 import type { PrintColumn, PrintRowData } from '@/features/print/PrintTable'
+import { absenceDetail, isAbsence } from '@/features/attendance/absences'
 
 /**
  * Detalle de asistencia de una persona (AJ-06): lógica sin React que arma las
@@ -99,6 +100,8 @@ export const ENTRY_KIND_LABELS = {
 
 export interface AttendanceSheetPerson {
   name: string
+  /** DNI de la persona (AJ2-16); si no viene, la hoja lo muestra como «—». */
+  dni?: string | null
   employeeNumber: number
   /** Etiquetas de rol en español: «Empleado», «Supervisor». */
   roleLabels: string[]
@@ -133,14 +136,31 @@ export function personSignerLabel(roleLabels: string[]): string {
 }
 
 /**
+ * Es una inasistencia (AJ2-14): servicio sin fichaje de inicio, con aviso de
+ * ausencia o con la franja ya terminada (ver `isAbsence`). Las supervisiones
+ * no se tratan acá.
+ */
+export function isAbsenceEntry(
+  entry: AttendanceDetailEntry,
+  now: Date,
+): boolean {
+  return entry.kind === 'service' && isAbsence(entry.row, now)
+}
+
+/**
  * Qué filas entran en la hoja: las que tienen un inicio registrado (trabajo
- * efectivo o en curso). Quedan afuera los turnos cancelados, las ausencias y
- * los «sin registro»: la hoja deja constancia de horas, no de faltas.
+ * efectivo o en curso) y, desde AJ2-14, las inasistencias (turnos asignados
+ * sin inicio cuya franja terminó, o con aviso de ausencia). Quedan afuera los
+ * turnos cancelados, las asignaciones quitadas y los turnos que todavía no
+ * empezaron.
  */
 export function printableEntries(
   entries: AttendanceDetailEntry[],
+  now: Date = new Date(),
 ): AttendanceDetailEntry[] {
-  return entries.filter((entry) => entryCheckIn(entry) != null)
+  return entries.filter(
+    (entry) => entryCheckIn(entry) != null || isAbsenceEntry(entry, now),
+  )
 }
 
 function formatPeriodDate(isoDate: string): string {
@@ -156,8 +176,11 @@ export function buildAttendanceSheet(input: {
   from: string
   to: string
   entries: AttendanceDetailEntry[]
+  /** Inyectable para tests; por defecto el momento de armar la hoja. */
+  now?: Date
 }): AttendanceSheetModel {
-  const lines = printableEntries(input.entries).sort(
+  const now = input.now ?? new Date()
+  const lines = printableEntries(input.entries, now).sort(
     (a, b) =>
       a.date.localeCompare(b.date) ||
       a.startTime.localeCompare(b.startTime) ||
@@ -165,6 +188,9 @@ export function buildAttendanceSheet(input: {
   )
   const hasSupervisions = lines.some((entry) => entry.kind === 'supervision')
   const totalMinutes = sumWorkedMinutes(lines)
+  const absencesCount = lines.filter((entry) =>
+    isAbsenceEntry(entry, now),
+  ).length
 
   const columns: PrintColumn[] = [
     { key: 'date', header: 'Fecha' },
@@ -174,6 +200,7 @@ export function buildAttendanceSheet(input: {
     { key: 'franja', header: 'Franja' },
     { key: 'start', header: 'Inicio' },
     { key: 'end', header: 'Fin' },
+    { key: 'novelty', header: 'Observaciones' },
     { key: 'hours', header: 'Horas', align: 'right' },
   ]
 
@@ -181,6 +208,7 @@ export function buildAttendanceSheet(input: {
     const checkIn = entryCheckIn(entry)
     const checkOut = entryCheckOut(entry)
     const worked = entryWorkedMinutes(entry)
+    const absent = isAbsenceEntry(entry, now)
     return {
       key: entry.key,
       date: formatPeriodDate(entry.date),
@@ -190,6 +218,8 @@ export function buildAttendanceSheet(input: {
       franja: entryFranja(entry),
       start: checkIn ? formatTime(checkIn) : '—',
       end: checkOut ? formatTime(checkOut) : '—',
+      novelty:
+        absent && entry.kind === 'service' ? absenceDetail(entry.row) : '',
       hours: worked != null ? formatMinutes(worked) : '—',
     }
   })
@@ -198,10 +228,14 @@ export function buildAttendanceSheet(input: {
   return {
     title: ATTENDANCE_SHEET_TITLE,
     facts: [
-      { label: 'Persona', value: input.person.name },
+      { label: 'Nombre y Apellido', value: input.person.name },
+      { label: 'DNI', value: input.person.dni || '—' },
       { label: 'Legajo', value: String(input.person.employeeNumber) },
       { label: 'Rol', value: input.person.roleLabels.join(', ') || '—' },
       { label: 'Período', value: fullPeriod },
+      ...(absencesCount > 0
+        ? [{ label: 'Inasistencias', value: String(absencesCount) }]
+        : []),
     ],
     columns,
     rows,

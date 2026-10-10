@@ -1,3 +1,4 @@
+import { formatTaxId } from '@/lib/taxId'
 import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { Building2, Pencil, Plus, RefreshCw } from 'lucide-react'
@@ -100,7 +101,7 @@ export default function ClientDetailPage() {
           <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 text-[12px] text-text-2 sm:grid-cols-2">
             <div>
               <dt className="inline font-semibold">CUIT: </dt>
-              <dd className="inline">{client.cuit ?? '—'}</dd>
+              <dd className="inline">{formatTaxId(client.cuit) ?? '—'}</dd>
             </div>
             <div>
               <dt className="inline font-semibold">

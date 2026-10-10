@@ -1,3 +1,4 @@
+import { formatTaxId } from '@/lib/taxId'
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { Building2, Plus, Search } from 'lucide-react'
@@ -146,7 +147,7 @@ function ClientsListTab() {
       id: 'cuit',
       header: 'CUIT',
       meta: { card: 'meta', cardLabel: 'CUIT' },
-      cell: ({ row }) => row.original.cuit ?? '—',
+      cell: ({ row }) => formatTaxId(row.original.cuit) ?? '—',
     },
     {
       id: 'sites',

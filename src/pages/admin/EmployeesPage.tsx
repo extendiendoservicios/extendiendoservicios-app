@@ -33,6 +33,7 @@ import {
   EMPLOYEE_ROLE_FILTER_OPTIONS,
   filterEmployeesByClient,
   filterEmployeesByDefaultStatus,
+  sortByEmployeeNumber,
 } from '@/features/employees/employeeListFilters'
 import { canManageEmployeeAccounts } from '@/features/employees/permissions'
 import {
@@ -118,7 +119,11 @@ export default function EmployeesPage() {
       clientFilter,
       clientPermissionsQuery.data ?? new Map<string, string[]>(),
     )
-    const byStatus = filterEmployeesByDefaultStatus(byClient, statusFilter)
+    // AJ2-01: orden base siempre por legajo; el de calificación (si se
+    // elige en la cabecera) se apoya en él porque `sortByRating` es estable.
+    const byStatus = sortByEmployeeNumber(
+      filterEmployeesByDefaultStatus(byClient, statusFilter),
+    )
     // La columna de calificación se ordena sobre la lista completa, antes de
     // paginar: ordenar solo la página visible confundiría.
     const ratingSort = sorting.find((item) => item.id === 'rating')

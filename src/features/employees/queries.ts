@@ -37,6 +37,7 @@ export const employeesKeys = {
   leaves: (profileId: string) =>
     [...employeesKeys.all, 'leaves', profileId] as const,
   ratingsSummary: () => [...employeesKeys.all, 'ratingsSummary'] as const,
+  dnis: (ids: string[]) => [...employeesKeys.all, 'dnis', ids] as const,
 }
 
 // -------------------------------------------------------------------------
@@ -49,6 +50,17 @@ export function useEmployeesQuery(filters: EmployeeListFilters) {
     queryFn: () => employeesApi.fetchEmployees(filters),
     staleTime: LIST_POLLING_MS,
     refetchInterval: LIST_POLLING_MS,
+  })
+}
+
+/** AJ2-16: DNI de las personas que salen en un imprimible (una sola consulta). */
+export function useEmployeeDnisQuery(ids: string[], enabled: boolean) {
+  const sortedIds = [...ids].sort()
+  return useQuery({
+    queryKey: employeesKeys.dnis(sortedIds),
+    queryFn: () => employeesApi.fetchEmployeeDnisByIds(sortedIds),
+    enabled: enabled && sortedIds.length > 0,
+    retry: false,
   })
 }
 
@@ -313,6 +325,22 @@ export function useCreateEmployeeLeaveMutation(profileId: string) {
       input: EmployeeLeaveInput
       createdBy: string
     }) => employeesApi.createEmployeeLeave(profileId, input, createdBy),
+    onSuccess: invalidate,
+  })
+}
+
+export function useUpdateEmployeeLeaveMutation(profileId: string) {
+  const invalidate = useInvalidateEmployeeLeaves(profileId)
+  return useMutation({
+    mutationFn: ({
+      id,
+      input,
+      updatedBy,
+    }: {
+      id: string
+      input: EmployeeLeaveInput
+      updatedBy: string
+    }) => employeesApi.updateEmployeeLeave(id, input, updatedBy),
     onSuccess: invalidate,
   })
 }
