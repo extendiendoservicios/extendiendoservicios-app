@@ -784,7 +784,7 @@ select is(
   'la asignación abierta con inicio propio y sin salida (turno 16) está «Sin salida»'
 );
 
--- Supervisión sobre un turno «A terminar» (horas de supervisor con tope).
+-- Supervisión sobre un turno «A terminar» (horas de supervisor: sin tope desde 0038).
 insert into public.supervisions (id, shift_id, supervisor_id, status, assigned_by)
 values ('e3700000-0000-0000-0000-0000000004a1', tests.shf(6), 'e3700000-0000-0000-0000-000000000085', 'completed', 'e3700000-0000-0000-0000-000000000081');
 insert into public.supervision_attendance (supervision_id, kind, recorded_at) values
@@ -794,8 +794,8 @@ select tests.as_user('test-db037-owner@example.com');
 select is(
   (select coalesce(planned_minutes::text, 'null') || '|' || worked_minutes || '|' || shift_open_ended::text
    from public.v_supervisions_admin where id = 'e3700000-0000-0000-0000-0000000004a1'),
-  '240|180|false',
-  'v_supervisions_admin: el turno 6 ya tiene fin 12:00; el supervisor entró 7:30 y salió 11:00: worked 180 (desde las 8:00), planned 240'
+  '240|210|false',
+  'v_supervisions_admin: el turno 6 ya tiene fin 12:00; el supervisor entró 7:30 y salió 11:00: worked 210 sin tope (0038), planned 240'
 );
 select tests.as_user('test-db037-supervisor@example.com');
 select is(
