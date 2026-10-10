@@ -112,7 +112,7 @@ select col_default_is('public', 'services', 'open_ended', 'false', 'services.ope
 select has_function('app', 'capped_worked_minutes',
   array['timestamp with time zone', 'timestamp with time zone', 'timestamp with time zone', 'timestamp with time zone'],
   'existe app.capped_worked_minutes(timestamptz x4)');
-select has_function('public', 'create_shift', array['uuid', 'uuid', 'date', 'time', 'time', 'smallint', 'uuid', 'text', 'boolean', 'boolean'],
+select has_function('public', 'create_shift', array['uuid', 'uuid', 'date', 'time', 'time', 'smallint', 'uuid', 'text', 'boolean', 'boolean', 'uuid[]'],
   'create_shift tiene p_open_ended');
 select has_function('public', 'update_shift_time', array['uuid', 'time', 'time', 'boolean'],
   'update_shift_time tiene p_open_ended');
@@ -121,8 +121,8 @@ select hasnt_function('public', 'update_shift_time', array['uuid', 'time', 'time
 select hasnt_function('public', 'create_shift', array['uuid', 'uuid', 'date', 'time', 'time', 'smallint', 'uuid', 'text'],
   'ya no existe create_shift de ocho parámetros');
 select ok(
-  not has_function_privilege('anon', 'public.create_shift(uuid, uuid, date, time, time, smallint, uuid, text, boolean, boolean)', 'execute')
-    and has_function_privilege('authenticated', 'public.create_shift(uuid, uuid, date, time, time, smallint, uuid, text, boolean, boolean)', 'execute')
+  not has_function_privilege('anon', 'public.create_shift(uuid, uuid, date, time, time, smallint, uuid, text, boolean, boolean, uuid[])', 'execute')
+    and has_function_privilege('authenticated', 'public.create_shift(uuid, uuid, date, time, time, smallint, uuid, text, boolean, boolean, uuid[])', 'execute')
     and not has_function_privilege('anon', 'public.update_shift_time(uuid, time, time, boolean)', 'execute')
     and has_function_privilege('authenticated', 'public.update_shift_time(uuid, time, time, boolean)', 'execute'),
   'grants de create_shift/update_shift_time: anon no, authenticated sí'

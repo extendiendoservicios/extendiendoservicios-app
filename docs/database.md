@@ -1826,6 +1826,15 @@ firmas de `create_shift`/`update_shift_time` (0023, 0028) y dos valores de horas
 - `client_service_summary`: cada elemento de `shifts` suma `observation` al final.
 - `v_my_day` y `v_my_supervisions` no cambian ni traen la observación (hay un test).
 
+## Asignar empleados al crear turnos (migración `0041`, P19.6 paquete F, AJ2-17)
+
+- **`app.assign_employee_core(p_shift_id, p_employee_id, p_start, p_end, p_strict)`**: el cuerpo de `assign_employee` sin el control de rol (no la puede llamar `authenticated`). `public.assign_employee` es ahora un envoltorio (misma firma y contrato). `create_shift` y `generate_shifts` usan la misma función, así que las reglas son una sola: `EMPLOYEE_NOT_ACTIVE`, `ALREADY_ASSIGNED`, `SHIFT_FULL` (la dotación nunca queda superada), `ASSIGNMENT_OVERLAP` (superposición, incluido «A terminar» hasta las 23:59), `SHIFT_STARTED`, franja propia, y las advertencias `NOT_ENABLED_FOR_CLIENT`, `OUTSIDE_AVAILABILITY` y `ON_LEAVE`. Con `p_strict = true` (solo `generate_shifts`) `ON_LEAVE` y `OUTSIDE_AVAILABILITY` bloquean con ese mismo código.
+- **`create_shift(..., p_show_in_print, p_employee_ids uuid[] default null)`** (11 parámetros; la de 10 se eliminó). El turno se crea siempre; a cada empleado (en el orden recibido, sin repetidos ni nulos) se lo asigna con las reglas de arriba. Devuelve `{ shift, warnings, assigned, rejected }`: `assigned = [{ employee_id, assignment_id, warnings }]` (las advertencias no bloquean, como en la asignación manual) y `rejected = [{ employee_id, employee_name, code, message }]` con `code` = el hint de la regla que lo frenó. Un rechazo no afecta a los demás ni al turno. Los errores propios del turno (`INVALID_TIME_RANGE`, `CLIENT_NOT_ACTIVE`, `SITE_NOT_ACTIVE`, `FORBIDDEN`) siguen cortando todo antes de crear nada.
+- **`service_fixed_employees(service_id, employee_id, created_by, created_at)`**, PK `(service_id, employee_id)`. RLS y grants iguales a `services` (dueño y administrador leen y escriben; supervisor, empleado y `anon` nada). Triggers: no más fijos que `required_staff` del servicio (`FIXED_EXCEEDS_STAFF`, también en escrituras directas) y no se puede bajar `required_staff` por debajo de la cantidad de fijos (mismo código).
+- **`set_service_fixed_employees(p_service_id, p_employee_ids uuid[])`**: reemplaza la lista (null o vacío = sin fijos). Dueño y administrador. `SERVICE_NOT_FOUND`, `FIXED_EXCEEDS_STAFF`, `EMPLOYEE_NOT_ACTIVE` (solo se exige empleado activo a los que se suman). Devuelve `{ service_id, employee_ids }`. No toca turnos ya generados.
+- **`generate_shifts(p_year, p_month)`**: a cada turno recién creado le asigna los fijos de su servicio. Lo que no se puede (licencia, no disponible, superposición, inactivo, dotación) se saltea sin frenar la generación. Resultado: las claves de siempre más `assigned` (cantidad de asignaciones hechas), `unassigned` (`[{ shift_id, shift_date, service_id, employee_id, employee_name, code, message }]`) y `past_without_fixed` (turnos creados que ya habían empezado: no reciben fijos, para no inventar inasistencias). Un turno que ya existía no se toca (idempotente: una segunda corrida da `assigned = 0` y `unassigned = []`).
+- Vistas: no hay `v_services`; el front lee los fijos con `from('service_fixed_employees')`.
+
 ## Enumeraciones (04 sección 3)
 
 Las 15 enumeraciones del modelo, en el esquema `public`, migración `0002_enums.sql`. Agregar un
@@ -1898,6 +1907,7 @@ empleado y observación" más arriba. En F14 (P14.1, ABS-002, ATT-007):
 6 oct 2026" más arriba. En F19 (P19.5e, vencimiento de «En camino» y permiso de
 `v_employee_ratings`): `0034_p19_5e_en_camino_vence.sql` -- ver "Vencimiento de «En camino»". En F19 (P19.6 paquete B, AJ2-09 y AJ2-10): `0037_p19_6b_tope_de_horas_y_a_terminar.sql` X
 En F19 (P19.6 paquete D, AJ2-04 y AJ2-15): `0040_p19_6d_banco_y_observacion.sql` -- ver "Datos bancarios y observación del turno".
+En F19 (P19.6 paquete F, AJ2-17): `0041_p19_6f_asignar_al_crear.sql` -- ver "Asignar empleados al crear turnos".
 
 ## Cómo escribir una migración
 
