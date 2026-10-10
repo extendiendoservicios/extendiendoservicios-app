@@ -45,8 +45,15 @@ function assignment(overrides: Partial<MyDayAssignment>) {
     endTime: '18:00:00',
     endsAt: null,
     ...overrides,
-  } as Pick<MyDayAssignment, 'shiftDate' | 'endTime' | 'endsAt'>
+  } as Pick<MyDayAssignment, 'shiftDate' | 'endTime' | 'endsAt' | 'openEnded'>
 }
+
+describe('isEarlyLeave en un turno «A terminar»', () => {
+  it('nunca es salida anticipada (no hay hora de fin)', () => {
+    const a = assignment({ openEnded: true, endTime: '23:59:00' })
+    expect(isEarlyLeave(new Date('2026-09-26T13:00:00-03:00'), a)).toBe(false)
+  })
+})
 
 describe('scheduledEndInstant', () => {
   it('usa `endsAt` cuando la asignación tiene franja propia', () => {

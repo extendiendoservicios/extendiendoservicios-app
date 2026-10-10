@@ -12,6 +12,7 @@ import {
   type MySupervision,
   type SupervisionRatingsSummary,
 } from '@/api/mySupervisions'
+import { formatSupervisionRange } from '@/features/employee/shiftRange'
 
 /**
  * SUP-08 · Historial (MOB-SUP-008, `05` fila SUP-08, `06` sección 12): las
@@ -97,8 +98,7 @@ function HistoryRow({
           </div>
           <p className="text-[12.5px] text-text-2">
             {formatCalendarDate(supervision.shiftDate)} ·{' '}
-            {formatTimeOfDay(supervision.startTime)}–
-            {formatTimeOfDay(supervision.endTime)}
+            {formatSupervisionRange(supervision)}
           </p>
           {supervision.status === 'completed' && total > 0 && (
             <div className="flex items-center gap-2">
@@ -126,9 +126,4 @@ function HistoryRow({
       </Card>
     </Link>
   )
-}
-
-/** Mismo criterio que el resto de la vía: `"HH:MM:SS"` es hora de pared, no un instante. */
-function formatTimeOfDay(time: string): string {
-  return time.slice(0, 5)
 }

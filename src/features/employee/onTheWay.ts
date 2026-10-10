@@ -67,6 +67,7 @@ export function canNotifyOnTheWay(
   return (
     assignment.shiftStatus !== 'cancelled' &&
     assignment.shiftStatus !== 'completed' &&
+    !assignment.noCheckout &&
     assignment.checkInAt == null &&
     assignment.status !== 'absence_notified' &&
     assignment.status !== 'present' &&

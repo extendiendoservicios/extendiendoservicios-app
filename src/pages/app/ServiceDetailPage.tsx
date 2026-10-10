@@ -5,7 +5,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { PersonCell } from '@/components/PersonCell'
 import { TaskList } from '@/components/TaskList'
-import { StatusBadge } from '@/components/status'
+import { AssignmentStatusBadge } from '@/features/employee/components/AssignmentStatusBadge'
 import { formatMinutes } from '@/lib/format'
 import { avatarUrl } from '@/lib/avatarUrl'
 import { OnTheWayAction } from '@/features/employee/components/OnTheWayAction'
@@ -22,6 +22,7 @@ import {
   useShiftPeersQuery,
   useShiftTasksReadOnlyQuery,
 } from '@/features/employee/queries'
+import { formatAssignmentRange } from '@/features/employee/shiftRange'
 
 /**
  * EMP-04 · Detalle del servicio (MOB-EMP-004, `05` fila EMP-04): cliente,
@@ -82,10 +83,10 @@ export default function ServiceDetailPage() {
     )
   }
 
-  const durationMinutes = minutesBetween(
-    assignment.startTime,
-    assignment.endTime,
-  )
+  // AJ2-10: un turno «A terminar» no tiene duración prevista.
+  const durationMinutes = assignment.openEnded
+    ? null
+    : minutesBetween(assignment.startTime, assignment.endTime)
   const cancelled = assignment.shiftStatus === 'cancelled'
   const notice = cancelled ? null : getNoticeMessage(assignment, now)
   const siteInfo: SiteInfoData = {
@@ -110,16 +111,11 @@ export default function ServiceDetailPage() {
             <CardTitle>{assignment.clientName}</CardTitle>
             <p className="text-[12px] text-text-3">{assignment.siteName}</p>
           </div>
-          {cancelled ? (
-            <StatusBadge domain="shift" status="cancelled" />
-          ) : (
-            <StatusBadge domain="assignment" status={assignment.status} />
-          )}
+          <AssignmentStatusBadge assignment={assignment} />
         </CardHeader>
         <CardContent className="flex flex-col gap-[10px]">
           <p className="text-[13px] text-text-2">
-            {formatTimeOfDay(assignment.startTime)}–
-            {formatTimeOfDay(assignment.endTime)}
+            {formatAssignmentRange(assignment)}
             {durationMinutes != null && (
               <span className="text-text-3">
                 {' '}
@@ -211,11 +207,6 @@ export default function ServiceDetailPage() {
       )}
     </div>
   )
-}
-
-/** Mismo criterio que `TodayPage.tsx`: `"HH:MM:SS"` es hora de pared, no un instante. */
-function formatTimeOfDay(time: string): string {
-  return time.slice(0, 5)
 }
 
 /** Minutos entre dos horas `"HH:MM:SS"` del mismo día (las franjas no cruzan la medianoche, `shifts_time_range_check`). */

@@ -2,6 +2,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import type { MyDayAssignment } from '@/api/myDay'
+import { formatAssignmentRange } from '@/features/employee/shiftRange'
 
 /**
  * `RegisterStartScreen` (EMP-05, MOB-EMP-007, `05` fila EMP-05): el servicio
@@ -14,7 +15,8 @@ export interface RegisterStartScreenProps {
   assignment: Pick<
     MyDayAssignment,
     'clientName' | 'siteName' | 'startTime' | 'endTime'
-  >
+  > &
+    Partial<Pick<MyDayAssignment, 'openEnded'>>
   /** Hora actual del dispositivo, ya formateada (`"HH:mm"`) -- solo de referencia, ver la nota debajo del reloj. */
   nowLabel: string
   onConfirm: () => void
@@ -42,8 +44,7 @@ export function RegisterStartScreen({
           </p>
           <p className="text-[12px] text-text-3">{assignment.siteName}</p>
           <p className="mt-1 text-[12px] text-text-3">
-            {formatTimeOfDay(assignment.startTime)}–
-            {formatTimeOfDay(assignment.endTime)}
+            {formatAssignmentRange(assignment)}
           </p>
         </CardContent>
       </Card>
@@ -82,8 +83,4 @@ export function RegisterStartScreen({
       </Button>
     </div>
   )
-}
-
-function formatTimeOfDay(time: string): string {
-  return time.slice(0, 5)
 }

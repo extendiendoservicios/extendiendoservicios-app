@@ -8,6 +8,7 @@ import { isApiError } from '@/api/errors'
 import { getCurrentPositionSafe } from '@/lib/geolocation'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { useOnlineStatus } from '@/features/employee/useOnlineStatus'
+import { OPEN_SHIFT_DAY_ENDED_MESSAGE } from '@/features/employee/shiftRange'
 import { useNow } from '@/features/employee/useNow'
 import {
   countPendingRequiredTasks,
@@ -68,6 +69,10 @@ export default function FinishPage() {
   if (assignment.checkOutAt != null) {
     return <Navigate to={`/app/resumen/${assignment.assignmentId}`} replace />
   }
+  // AJ2-09: «Sin salida» (pasó el día del turno «A terminar»): lo carga la administración.
+  if (assignment.noCheckout) {
+    return <Navigate to={`/app/servicio/${assignment.assignmentId}`} replace />
+  }
 
   const hasConsent = auth.profile?.locationConsentAt != null
   const pendingRequired = tasks ? countPendingRequiredTasks(tasks) : 0
@@ -88,7 +93,9 @@ export default function FinishPage() {
     } catch (mutationError) {
       setError(
         isApiError(mutationError)
-          ? mutationError.message
+          ? mutationError.hint === 'OPEN_SHIFT_DAY_ENDED'
+            ? OPEN_SHIFT_DAY_ENDED_MESSAGE
+            : mutationError.message
           : 'No pudimos registrar el fin. Probá de nuevo.',
       )
     }

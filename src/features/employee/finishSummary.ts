@@ -35,7 +35,10 @@ export function scheduledEndInstant(
 /** `true` si `now` todavía no llegó a la hora de fin prevista (P-076: solo informativo, nunca bloquea). */
 export function isEarlyLeave(
   now: Date,
-  assignment: Pick<MyDayAssignment, 'shiftDate' | 'endTime' | 'endsAt'>,
+  assignment: Pick<MyDayAssignment, 'shiftDate' | 'endTime' | 'endsAt'> &
+    Partial<Pick<MyDayAssignment, 'openEnded'>>,
 ): boolean {
+  // AJ2-10: un turno «A terminar» no tiene hora de fin: nunca es salida anticipada.
+  if (assignment.openEnded) return false
   return now.getTime() < scheduledEndInstant(assignment).getTime()
 }
