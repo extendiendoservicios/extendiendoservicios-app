@@ -7,6 +7,7 @@ import {
   type RouteObject,
 } from 'react-router'
 import { NotFoundPage } from '@/pages/common/NotFoundPage'
+import { RouteErrorPage } from '@/pages/common/RouteErrorPage'
 import { StagingBanner } from '@/components/StagingBanner'
 import { RequireRole } from '@/features/auth/RequireRole'
 import { useAuth } from '@/features/auth/AuthProvider'
@@ -179,6 +180,9 @@ const routes: RouteObject[] = [
     // (el chunk de la pantalla pedida), se muestra el mismo fallback que usan
     // los shells: un spinner centrado a pantalla completa, sin saltos.
     HydrateFallback: RouteFallback,
+    // Cualquier error al cargar o mostrar una pantalla (p. ej. un chunk que
+    // falta tras un despliegue): pantalla propia en español con «Recargar».
+    errorElement: <RouteErrorPage />,
     children: rootChildren,
   },
 ]
