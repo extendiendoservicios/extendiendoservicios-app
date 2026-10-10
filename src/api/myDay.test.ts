@@ -117,7 +117,9 @@ describe('fetchMyDay', () => {
   it('mapea effective_open_ended y no_checkout (AJ2-09, AJ2-10)', async () => {
     fromMock.mockReturnValue(
       makeChainable({
-        data: [{ ...MY_DAY_ROW, effective_open_ended: true, no_checkout: true }],
+        data: [
+          { ...MY_DAY_ROW, effective_open_ended: true, no_checkout: true },
+        ],
         error: null,
       }),
     )
@@ -130,7 +132,9 @@ describe('fetchMyDay', () => {
   it('tolera null en los campos nuevos', async () => {
     fromMock.mockReturnValue(
       makeChainable({
-        data: [{ ...MY_DAY_ROW, effective_open_ended: null, no_checkout: null }],
+        data: [
+          { ...MY_DAY_ROW, effective_open_ended: null, no_checkout: null },
+        ],
         error: null,
       }),
     )

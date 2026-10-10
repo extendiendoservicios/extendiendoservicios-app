@@ -5,6 +5,7 @@ Parte de las vías móviles (empleado y supervisor). La base está en las migrac
 ## Qué cambia en pantalla
 
 ### Empleado (`/app`)
+
 - **Turno «A terminar»:** en Hoy, próximos días, detalle del servicio, avisar, Fichar (elegir servicio, consentimiento y Registrar inicio) la franja sale `08:00–A terminar`; nunca 23:59. Usa `effective_open_ended` de `v_my_day` (manda sobre el turno: una franja propia con fin deja de ser «A terminar»).
 - **Detalle del servicio:** sin duración prevista en un turno «A terminar».
 - **En curso:** en vez de «fin previsto» dice «registrá la salida cuando termines».
@@ -13,10 +14,12 @@ Parte de las vías móviles (empleado y supervisor). La base está en las migrac
 - **Error `OPEN_SHIFT_DAY_ENDED`:** si igual se intenta fichar la salida, se muestra ese mismo mensaje claro.
 
 ### Supervisor (`/sup`)
+
 - Hoy, Supervisiones, Historial, detalle y Registrar inicio muestran `A terminar` cuando `v_my_supervisions.shift_open_ended` es verdadero.
 - El supervisor no lleva tope de horas (migración 0038). El plazo de calificación sigue calculándose igual que la RPC (fin del turno guardado o fin registrado, el mayor); calificar y completar solo piden el fin registrado de la supervisión, nunca el fin del turno.
 
 ## Código
+
 - `src/api/myDay.ts`: `openEnded`, `noCheckout`. `src/api/mySupervisions.ts`: `shiftOpenEnded`.
 - `src/features/employee/shiftRange.ts`: `formatAssignmentRange`, `formatSupervisionRange` y los mensajes. Usa `src/features/shifts/openEnded.ts` (compartido con administración).
 - `src/features/employee/components/AssignmentStatusBadge.tsx`: insignia de estado con «Sin salida».

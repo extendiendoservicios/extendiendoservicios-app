@@ -7,7 +7,9 @@ describe('formatShiftRange', () => {
   })
 
   it('un turno «A terminar» no muestra 23:59', () => {
-    expect(formatShiftRange('08:00:00', '23:59:00', true)).toBe('08:00–A terminar')
+    expect(formatShiftRange('08:00:00', '23:59:00', true)).toBe(
+      '08:00–A terminar',
+    )
   })
 
   it('sin fin también es «A terminar»', () => {

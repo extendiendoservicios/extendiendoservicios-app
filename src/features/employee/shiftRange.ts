@@ -1,4 +1,7 @@
-import { formatShiftRange, NO_CHECKOUT_LABEL } from '@/features/shifts/openEnded'
+import {
+  formatShiftRange,
+  NO_CHECKOUT_LABEL,
+} from '@/features/shifts/openEnded'
 
 /**
  * AJ2-10: franja «inicio–fin» de una asignación para el celular del empleado.
