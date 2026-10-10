@@ -1,6 +1,13 @@
 import { type ComponentType } from 'react'
 import { Link } from 'react-router'
-import { Briefcase, ChevronRight, Download, LogOut, User } from 'lucide-react'
+import {
+  Briefcase,
+  ChevronRight,
+  Download,
+  LogOut,
+  Megaphone,
+  User,
+} from 'lucide-react'
 import { cn } from 'cn'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { AppVersion } from '@/components/AppVersion'
@@ -24,6 +31,7 @@ export default function SupervisorMorePage() {
     <div className="flex flex-col gap-4">
       <div className="overflow-hidden rounded-xl border border-border bg-surface">
         <MoreRow to="/perfil" icon={User} label="Mi perfil" />
+        <MoreRow to="/sup/anuncios" icon={Megaphone} label="Anuncios" />
         {isEmployee && (
           <MoreRow to="/app" icon={Briefcase} label="Mis servicios" />
         )}

@@ -104,6 +104,15 @@ export const employeeRoutes: RouteObject[] = [
     },
   },
   {
+    path: 'anuncios',
+    ...lazyPage(() => import('@/pages/app/AnnouncementsPage')),
+    handle: {
+      screenId: 'EMP-ANU',
+      title: 'Anuncios',
+      subtitle: 'Lo que publica administración',
+    },
+  },
+  {
     path: 'mas',
     ...lazyPage(() => import('@/pages/app/MorePage')),
     handle: {
