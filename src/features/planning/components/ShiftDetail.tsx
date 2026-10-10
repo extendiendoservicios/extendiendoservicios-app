@@ -17,6 +17,7 @@ import { PersonCell } from '@/components/PersonCell'
 import { StatusBadge } from '@/components/status'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { formatDateOnly } from '@/features/settings/dateOnly'
+import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
 import type { ShiftDetailAssignment } from '@/api/assignments'
 import { canEditChecklists } from '@/features/checklists/permissions'
 import { AssignmentAttendanceDetail } from '@/features/attendance/components/AssignmentAttendanceDetail'
@@ -129,6 +130,13 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
   const isEditable =
     shift.status !== 'cancelled' && shift.status !== 'completed'
   const remainingSlots = shift.requiredStaff - shift.assignments.length
+  // AJ2-09: «Sin salida» como en asistencia: presente en un turno «A terminar»
+  // sin fin propio, con el día ya terminado.
+  const isNoCheckout = (assignment: ShiftDetailAssignment) =>
+    assignment.status === 'present' &&
+    shift.openEnded &&
+    assignment.endTime == null &&
+    shift.shiftDate < todayInBuenosAires()
   // "Solo en turnos no empezados" (regla del encargo): `reload_shift_tasks`
   // (0025_rpc_tasks.sql) exige `status in (scheduled, assigned)`.
   const canReloadTasksNow =
@@ -144,9 +152,9 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
           </h2>
           <StatusBadge domain="shift" status={shift.status} />
         </div>
-        <p className="text-[12.5px] text-text-3 capitalize">
-          {formatDateOnly(shift.shiftDate)} ·{' '}
-          {formatShiftRange(shift.startTime, shift.endTime, shift.openEnded)}
+        <p className="text-[12.5px] text-text-3">
+          <span className="capitalize">{formatDateOnly(shift.shiftDate)}</span>{' '}
+          · {formatShiftRange(shift.startTime, shift.endTime, shift.openEnded)}
           {shift.siteCity ? ` · ${shift.siteCity}` : ''}
         </p>
         <p className="text-[11.5px] text-text-3">
@@ -245,7 +253,11 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge
                       domain="assignment"
-                      status={assignment.status}
+                      status={
+                        isNoCheckout(assignment)
+                          ? 'no_checkout'
+                          : assignment.status
+                      }
                     />
                     {canAssignNow && isEditable && (
                       <>
