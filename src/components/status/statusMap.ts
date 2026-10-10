@@ -45,6 +45,8 @@ const ASSIGNMENT_STATUS_MAP: Record<AssignmentStatus, StatusMeta> = {
   // AJ-02 y AJ-07: avisos "En camino" (informativo) y llegada tarde (alerta).
   on_the_way: { variant: 'info', label: 'En camino' },
   late: { variant: 'warning', label: 'Llegada tarde' },
+  // AJ2-10: «A terminar» sin salida fichada pasadas las 23:59.
+  no_checkout: { variant: 'warning', label: 'Sin salida' },
 }
 
 const TASK_STATUS_MAP: Record<TaskStatus, StatusMeta> = {
@@ -158,6 +160,7 @@ const WARNING_ASSIGNMENT_STATUSES: ReadonlySet<AssignmentStatus> = new Set([
   'delay_notified',
   'early_leave',
   'late',
+  'no_checkout',
 ])
 
 export type TableRowVariant = 'crit' | 'warn' | 'info'

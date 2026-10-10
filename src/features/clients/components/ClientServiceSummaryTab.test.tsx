@@ -48,6 +48,7 @@ const summary: ClientServiceSummary = {
     employeesCount: 2,
     workedMinutes: 750,
     plannedMinutes: 780,
+    openEndedShifts: 0,
   },
   shifts: [
     {
@@ -60,6 +61,7 @@ const summary: ClientServiceSummary = {
       status: 'completed',
       workedMinutes: 240,
       plannedMinutes: 240,
+      openEnded: false,
       employees: [
         {
           assignmentId: 'a1',
@@ -71,6 +73,8 @@ const summary: ClientServiceSummary = {
           checkOutAt: '2026-10-05T15:00:00Z',
           plannedMinutes: 240,
           workedMinutes: 240,
+          openEnded: false,
+          noCheckout: false,
         },
       ],
     },

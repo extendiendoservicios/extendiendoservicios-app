@@ -174,6 +174,7 @@ describe('fetchAssignmentsBoardByRange', () => {
     client_legal_name: 'Limpiadora SRL',
     effective_start_time: '08:00:00',
     effective_end_time: '12:00:00',
+    effective_open_ended: false,
     status: 'expected' as const,
     notes: null,
   }
@@ -200,6 +201,7 @@ describe('fetchAssignmentsBoardByRange', () => {
         clientName: 'Limpiadora SRL',
         startTime: '08:00:00',
         endTime: '12:00:00',
+        openEnded: false,
         status: 'expected',
         notes: null,
       },
@@ -580,6 +582,7 @@ describe('fetchAssignCandidates', () => {
         siteName: 'Sede Norte',
         startTime: '14:00:00',
         endTime: '18:00:00',
+        openEnded: false,
         overlaps: false,
       },
     ])

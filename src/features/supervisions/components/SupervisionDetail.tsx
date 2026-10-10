@@ -17,6 +17,7 @@ import {
 } from '@/features/supervisions/permissions'
 import { useSupervisionDetailQuery } from '@/features/supervisions/queries'
 import { CancelSupervisionDialog } from './CancelSupervisionDialog'
+import { formatShiftRange } from '@/features/shifts/openEnded'
 import { MarkSupervisionNotDoneDialog } from './MarkSupervisionNotDoneDialog'
 import { RateEmployeeDialog } from './RateEmployeeDialog'
 
@@ -88,8 +89,12 @@ function SupervisionDetail({ supervisionId }: SupervisionDetailProps) {
           <StatusBadge domain="supervision" status={detail.status} />
         </div>
         <p className="text-[12.5px] text-text-3 capitalize">
-          {formatDateOnly(detail.shiftDate)} · {detail.startTime.slice(0, 5)}–
-          {detail.endTime.slice(0, 5)}
+          {formatDateOnly(detail.shiftDate)} ·{' '}
+          {formatShiftRange(
+            detail.startTime,
+            detail.endTime,
+            detail.shiftOpenEnded,
+          )}
         </p>
         <PersonCell
           id={detail.supervisorId}

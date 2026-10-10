@@ -112,11 +112,13 @@ export function useUpdateShiftTimeMutation(date: string) {
       shiftId,
       start,
       end,
+      openEnded,
     }: {
       shiftId: string
       start: string
-      end: string
-    }) => shiftsApi.updateShiftTime(shiftId, start, end),
+      end: string | null
+      openEnded?: boolean
+    }) => shiftsApi.updateShiftTime(shiftId, start, end, openEnded),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({
         queryKey: shiftsKeys.byDate(date),

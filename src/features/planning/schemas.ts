@@ -8,24 +8,42 @@ import { z } from 'zod'
  * todavía: quedan listos para ADM-06/ADM-08 (P11.3).
  */
 
-/** Franja propia opcional de una asignación (P-046): las dos horas van juntas, o ninguna. */
-export const assignmentTimeSchema = z
-  .object({
-    startTime: z.string().trim().optional(),
-    endTime: z.string().trim().optional(),
-  })
-  .refine((values) => Boolean(values.startTime) === Boolean(values.endTime), {
-    message: 'Si cargás una franja propia, completá las dos horas.',
-    path: ['endTime'],
-  })
-  .refine(
-    (values) =>
-      !values.startTime || !values.endTime || values.endTime > values.startTime,
-    {
-      message: 'La hora de fin tiene que ser posterior a la de inicio.',
-      path: ['endTime'],
-    },
-  )
+/**
+ * Franja propia opcional de una asignación (P-046): las dos horas van juntas, o ninguna.
+ * AJ2-10: en un turno «A terminar» (`openEnded`) alcanza con el inicio propio; sin fin propio la
+ * asignación sigue «A terminar», y con fin propio queda con tope (AJ2-09).
+ */
+export function buildAssignmentTimeSchema(openEnded = false) {
+  return z
+    .object({
+      startTime: z.string().trim().optional(),
+      endTime: z.string().trim().optional(),
+    })
+    .refine(
+      (values) =>
+        openEnded
+          ? !values.endTime || Boolean(values.startTime)
+          : Boolean(values.startTime) === Boolean(values.endTime),
+      {
+        message: openEnded
+          ? 'Si cargás una hora de fin propia, cargá también la de inicio.'
+          : 'Si cargás una franja propia, completá las dos horas.',
+        path: ['endTime'],
+      },
+    )
+    .refine(
+      (values) =>
+        !values.startTime ||
+        !values.endTime ||
+        values.endTime > values.startTime,
+      {
+        message: 'La hora de fin tiene que ser posterior a la de inicio.',
+        path: ['endTime'],
+      },
+    )
+}
+
+export const assignmentTimeSchema = buildAssignmentTimeSchema(false)
 
 export type AssignmentTimeFormValues = z.infer<typeof assignmentTimeSchema>
 

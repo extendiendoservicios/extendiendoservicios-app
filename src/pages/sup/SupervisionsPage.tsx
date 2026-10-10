@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { StatusBadge } from '@/components/status'
 import { formatCalendarDate } from '@/lib/format'
 import { useMySupervisionsPendingQuery } from '@/api/mySupervisions'
+import { formatSupervisionRange } from '@/features/employee/shiftRange'
 
 /**
  * SUP-07 · Supervisiones (tab) (MOB-SUP-003, `06` sección 12, `05` fila
@@ -65,8 +66,7 @@ export default function SupervisionsPage() {
               </div>
               <p className="text-[12.5px] text-text-2">
                 {formatCalendarDate(supervision.shiftDate)} ·{' '}
-                {formatTimeOfDay(supervision.startTime)}–
-                {formatTimeOfDay(supervision.endTime)}
+                {formatSupervisionRange(supervision)}
               </p>
             </CardContent>
           </Card>
@@ -74,9 +74,4 @@ export default function SupervisionsPage() {
       ))}
     </div>
   )
-}
-
-/** Mismo criterio que el resto de la vía: `"HH:MM:SS"` es hora de pared, no un instante. */
-function formatTimeOfDay(time: string): string {
-  return time.slice(0, 5)
 }

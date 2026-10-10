@@ -8,6 +8,7 @@ import { formatCalendarDate } from '@/lib/format'
 import { useMySupervisionsUpcomingQuery } from '@/api/mySupervisions'
 import type { MySupervision } from '@/api/mySupervisions'
 import { InstallBanner } from '@/components/InstallBanner'
+import { formatSupervisionRange } from '@/features/employee/shiftRange'
 
 /**
  * SUP-02 · Hoy (MOB-SUP-002, `06` sección 12, `05` fila SUP-02): las
@@ -99,8 +100,7 @@ function SupervisionCard({ supervision }: { supervision: MySupervision }) {
             <StatusBadge domain="supervision" status={supervision.status} />
           </div>
           <p className="text-[13px] font-semibold text-text-2">
-            {formatTimeOfDay(supervision.startTime)}–
-            {formatTimeOfDay(supervision.endTime)}
+            {formatSupervisionRange(supervision)}
           </p>
           {supervision.assignedEmployees.length > 0 && (
             <p className="flex items-center gap-[6px] text-[11.5px] text-text-3">
@@ -131,16 +131,10 @@ function UpcomingRow({ supervision }: { supervision: MySupervision }) {
           {formatCalendarDate(supervision.shiftDate)} · {supervision.siteName}
         </p>
         <p className="truncate text-[11px] text-text-3">
-          {formatTimeOfDay(supervision.startTime)}–
-          {formatTimeOfDay(supervision.endTime)}
+          {formatSupervisionRange(supervision)}
         </p>
       </div>
       <StatusBadge domain="supervision" status={supervision.status} />
     </Link>
   )
-}
-
-/** `start_time`/`end_time` de `v_my_supervisions` son `"HH:MM:SS"` (columna `time`, hora de pared, mismo criterio que `TodayPage.tsx` del empleado). */
-function formatTimeOfDay(time: string): string {
-  return time.slice(0, 5)
 }

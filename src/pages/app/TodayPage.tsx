@@ -4,7 +4,7 @@ import { AlertTriangle, Bell, CalendarX, MapPin } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { EmptyState } from '@/components/EmptyState'
-import { StatusBadge } from '@/components/status'
+import { AssignmentStatusBadge } from '@/features/employee/components/AssignmentStatusBadge'
 import { formatCalendarDate } from '@/lib/format'
 import { isRelevantChange, type MyDayAssignment } from '@/api/myDay'
 import { getNoticeMessage } from '@/features/employee/notice'
@@ -16,6 +16,7 @@ import {
 } from '@/features/employee/queries'
 import { OnTheWayAction } from '@/features/employee/components/OnTheWayAction'
 import { InstallBanner } from '@/components/InstallBanner'
+import { formatAssignmentRange } from '@/features/employee/shiftRange'
 
 /**
  * EMP-03 · Hoy (MOB-EMP-002, MOB-EMP-003, `06` sección 10, P-092, P-093):
@@ -137,7 +138,7 @@ export function pickFeatured(
   const active = today.filter((a) => a.shiftStatus !== 'cancelled')
   if (active.length === 0) return undefined
   const inProgress = active.find(
-    (a) => a.checkInAt != null && a.checkOutAt == null,
+    (a) => a.checkInAt != null && a.checkOutAt == null && !a.noCheckout,
   )
   if (inProgress) return inProgress
   const pending = active.find(
@@ -201,8 +202,7 @@ function ServiceCard({
             </p>
           )}
           <p className="text-[13px] font-semibold text-text-2">
-            {formatTimeOfDay(assignment.startTime)}–
-            {formatTimeOfDay(assignment.endTime)}
+            {formatAssignmentRange(assignment)}
           </p>
           {notice && (
             <p className="text-[11.5px] font-semibold text-warning-800">
@@ -215,13 +215,9 @@ function ServiceCard({
   )
 }
 
-/** Un turno cancelado se muestra como "Cancelado" (CB-03), no con el estado propio. */
+/** Un turno cancelado se muestra como "Cancelado" (CB-03) y uno sin salida como "Sin salida" (AJ2-09). */
 function AssignmentBadge({ assignment }: { assignment: MyDayAssignment }) {
-  return assignment.shiftStatus === 'cancelled' ? (
-    <StatusBadge domain="shift" status="cancelled" />
-  ) : (
-    <StatusBadge domain="assignment" status={assignment.status} />
-  )
+  return <AssignmentStatusBadge assignment={assignment} />
 }
 
 function UpcomingRow({ assignment }: { assignment: MyDayAssignment }) {
@@ -235,24 +231,10 @@ function UpcomingRow({ assignment }: { assignment: MyDayAssignment }) {
           {formatCalendarDate(assignment.shiftDate)} · {assignment.siteName}
         </p>
         <p className="truncate text-[11px] text-text-3">
-          {formatTimeOfDay(assignment.startTime)}–
-          {formatTimeOfDay(assignment.endTime)}
+          {formatAssignmentRange(assignment)}
         </p>
       </div>
       <AssignmentBadge assignment={assignment} />
     </Link>
   )
-}
-
-/**
- * `effective_start_time`/`_end_time` de `v_my_day` son `"HH:MM:SS"` (columna
- * `time`, sin fecha ni zona horaria — ya es la hora de pared del turno, no
- * un instante). `formatTime` (`src/lib/format.ts`) espera una fecha/hora
- * completa y hace una conversión de zona con `@date-fns/tz` que no aplica
- * acá (haría falta inventarle una fecha, y correría el riesgo de un
- * corrimiento de zona en el navegador de quien lo mire, aunque el valor ya
- * es la hora correcta): alcanza con cortar los segundos.
- */
-function formatTimeOfDay(time: string): string {
-  return time.slice(0, 5)
 }

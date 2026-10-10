@@ -21,6 +21,7 @@ import {
 import { groupAssignmentsByEmployeeAndDate } from '@/features/planning/grouping'
 import { useAssignmentsBoardRangeQuery } from '@/features/planning/queries'
 import { formatDateOnly } from '@/features/settings/dateOnly'
+import { formatShiftRange } from '@/features/shifts/openEnded'
 
 const DESKTOP_QUERY = '(min-width: 1024px)'
 
@@ -217,8 +218,11 @@ function WeekGrid() {
                                 >
                                   {assignment.siteName}
                                   <br />
-                                  {assignment.startTime.slice(0, 5)}–
-                                  {assignment.endTime.slice(0, 5)}
+                                  {formatShiftRange(
+                                    assignment.startTime,
+                                    assignment.endTime,
+                                    assignment.openEnded,
+                                  )}
                                 </Link>
                               ))}
                             </div>
@@ -278,8 +282,11 @@ function WeekGrid() {
                             className="flex min-h-11 items-center text-left text-[13px] font-medium text-primary-800"
                           >
                             {assignment.siteName} ·{' '}
-                            {assignment.startTime.slice(0, 5)}–
-                            {assignment.endTime.slice(0, 5)}
+                            {formatShiftRange(
+                              assignment.startTime,
+                              assignment.endTime,
+                              assignment.openEnded,
+                            )}
                           </Link>
                         ))}
                       </div>

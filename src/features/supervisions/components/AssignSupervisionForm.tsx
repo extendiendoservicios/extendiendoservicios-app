@@ -19,6 +19,7 @@ import { isApiError } from '@/api/errors'
 import type { SupervisionWarning } from '@/api/supervisions'
 import { localDateToIsoDate } from '@/features/settings/dateOnly'
 import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
+import { formatShiftRange } from '@/features/shifts/openEnded'
 import { useShiftsByDateQuery } from '@/features/shifts/queries'
 import {
   useAssignSupervisionMutation,
@@ -157,7 +158,11 @@ function AssignSupervisionForm({
               {supervisableShifts.map((shift) => (
                 <SelectItem key={shift.id} value={shift.id}>
                   {shift.clientName} · {shift.siteName} ·{' '}
-                  {shift.startTime.slice(0, 5)}–{shift.endTime.slice(0, 5)}
+                  {formatShiftRange(
+                    shift.startTime,
+                    shift.endTime,
+                    shift.openEnded,
+                  )}
                 </SelectItem>
               ))}
             </SelectContent>

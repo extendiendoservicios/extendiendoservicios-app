@@ -41,6 +41,7 @@ function supervision(overrides: Partial<MySupervision>): MySupervision {
     // Lejos en el futuro a propósito: la ventana de P-083 no puede depender
     // del reloj real de la máquina que corre el test.
     endsAt: '2030-01-01T12:00:00Z',
+    shiftOpenEnded: false,
     status: 'in_progress',
     assignedAt: '2026-09-20T10:00:00Z',
     notDoneReason: null,

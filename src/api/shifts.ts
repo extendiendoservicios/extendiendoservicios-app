@@ -2,6 +2,9 @@ import { supabase } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
 import { fromPostgrestError } from './errors'
 
+/** Con «A terminar» la base ignora `p_end` (AJ2-10); el tipo generado lo pide igual. */
+const OPEN_ENDED_WIRE_END = '23:59:00'
+
 /**
  * `src/api/shifts.ts` (SHIFT-007, mismo patrón que `src/api/services.ts` y
  * `src/api/users.ts` — ver `src/api/README.md`): turnos de ADM-05, ADM-07 y
@@ -60,11 +63,15 @@ export interface ShiftListRow {
   status: ShiftStatus
   /** `scheduled`/`assigned`/`in_progress`/`completed`/`cancelled`, o los derivados `uncovered`/`upcoming` (`04` sección 4). */
   displayStatus: string
+  /** AJ2-10: turno «A terminar» (la base guarda el fin en 23:59; en pantalla va «A terminar»). */
+  openEnded: boolean
   assignedCount: number
   presentCount: number
   finishedCount: number
   absentCount: number
   delayedCount: number
+  /** AJ2-10: asignaciones de un turno «A terminar» que pasó el día sin salida. */
+  noCheckoutCount: number
   generated: boolean
   notes: string | null
 }
@@ -88,6 +95,8 @@ export interface ShiftBoardRow {
   finished_count: number
   absent_count: number
   delayed_count: number
+  open_ended: boolean
+  no_checkout_count: number
   generated: boolean
   notes: string | null
 }
@@ -117,13 +126,15 @@ export function mapShiftBoardRow(row: ShiftBoardRow): ShiftListRow {
     finishedCount: row.finished_count,
     absentCount: row.absent_count,
     delayedCount: row.delayed_count,
+    openEnded: row.open_ended,
+    noCheckoutCount: row.no_checkout_count,
     generated: row.generated,
     notes: row.notes,
   }
 }
 
 export const SHIFT_BOARD_SELECT =
-  'id, client_id, client_legal_name, client_trade_name, site_id, site_name, site_city, shift_date, start_time, end_time, required_staff, status, display_status, assigned_count, present_count, finished_count, absent_count, delayed_count, generated, notes'
+  'id, client_id, client_legal_name, client_trade_name, site_id, site_name, site_city, shift_date, start_time, end_time, required_staff, status, display_status, assigned_count, present_count, finished_count, absent_count, delayed_count, open_ended, no_checkout_count, generated, notes'
 
 /**
  * ADM-05 mínima (SHIFT-010): turnos de una fecha, ordenados por hora
@@ -159,6 +170,7 @@ export interface ShiftEditRow {
   shiftDate: string
   startTime: string
   endTime: string
+  openEnded: boolean
   requiredStaff: number
   status: ShiftStatus
   notes: string | null
@@ -184,6 +196,7 @@ export async function fetchShiftForEdit(id: string): Promise<ShiftEditRow> {
     shiftDate: row.shift_date,
     startTime: row.start_time,
     endTime: row.end_time,
+    openEnded: row.open_ended,
     requiredStaff: row.required_staff,
     status: row.status,
     notes: row.notes,
@@ -199,7 +212,10 @@ export interface CreateShiftInput {
   siteId: string
   date: string
   start: string
-  end: string
+  /** Con `openEnded` se ignora (puede ir `null`). */
+  end: string | null
+  /** AJ2-10: turno «A terminar». */
+  openEnded?: boolean
   requiredStaff: number
   serviceId?: string
   notes?: string | null
@@ -224,7 +240,8 @@ export async function createShift(
     p_site_id: input.siteId,
     p_date: input.date,
     p_start: input.start,
-    p_end: input.end,
+    p_end: input.openEnded ? OPEN_ENDED_WIRE_END : (input.end ?? ''),
+    p_open_ended: input.openEnded ?? false,
     p_required_staff: input.requiredStaff,
     p_service_id: input.serviceId,
     p_notes: input.notes ?? undefined,
@@ -321,12 +338,14 @@ export async function generateShifts(
 export async function updateShiftTime(
   shiftId: string,
   start: string,
-  end: string,
+  end: string | null,
+  openEnded = false,
 ): Promise<void> {
   const { error } = await supabase.rpc('update_shift_time', {
     p_shift_id: shiftId,
     p_start: start,
-    p_end: end,
+    p_end: openEnded ? OPEN_ENDED_WIRE_END : (end ?? ''),
+    p_open_ended: openEnded,
   })
 
   if (error) {

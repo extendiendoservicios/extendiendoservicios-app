@@ -25,7 +25,8 @@ import {
   useShiftsByDateQuery,
 } from '@/features/shifts/queries'
 import { peopleOfShift, summarizeNames } from '@/features/shifts/shiftPeople'
-import { groupShiftsByFranja } from '@/features/shifts/grouping'
+import { groupShiftsByFranja, shiftFranjaKey } from '@/features/shifts/grouping'
+import { NO_CHECKOUT_LABEL } from '@/features/shifts/openEnded'
 import { UpdatedAgo } from './UpdatedAgo'
 import { CancelShiftDialog } from './CancelShiftDialog'
 
@@ -81,8 +82,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
           to={`/admin/turnos/${row.original.id}`}
           className="font-semibold whitespace-nowrap text-text hover:text-primary-800"
         >
-          {row.original.startTime.slice(0, 5)}–
-          {row.original.endTime.slice(0, 5)}
+          {shiftFranjaKey(row.original)}
         </Link>
       ),
     },
@@ -100,8 +100,16 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
       id: 'staffing',
       header: 'Dotación',
       meta: { card: 'meta', cardLabel: 'Dotación', align: 'end' },
-      cell: ({ row }) =>
-        `${row.original.assignedCount}/${row.original.requiredStaff}`,
+      cell: ({ row }) => (
+        <span>
+          {row.original.assignedCount}/{row.original.requiredStaff}
+          {row.original.noCheckoutCount > 0 && (
+            <span className="ml-1 text-warning-800">
+              · {row.original.noCheckoutCount} {NO_CHECKOUT_LABEL.toLowerCase()}
+            </span>
+          )}
+        </span>
+      ),
     },
     {
       id: 'employees',

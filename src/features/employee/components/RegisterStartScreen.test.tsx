@@ -25,6 +25,19 @@ describe('RegisterStartScreen', () => {
     expect(screen.getByText(/la hora que vale/i)).toBeInTheDocument()
   })
 
+  it('muestra «A terminar» y no 23:59 en un turno abierto (AJ2-10)', () => {
+    render(
+      <RegisterStartScreen
+        assignment={{ ...assignment, endTime: '23:59:00', openEnded: true }}
+        nowLabel="08:03"
+        onConfirm={() => {}}
+      />,
+    )
+
+    expect(screen.getByText('08:00–A terminar')).toBeInTheDocument()
+    expect(screen.queryByText(/23:59/)).not.toBeInTheDocument()
+  })
+
   it('llama a onConfirm al tocar "Registrar inicio"', () => {
     const onConfirm = vi.fn()
     render(

@@ -19,6 +19,7 @@ const summary: ClientServiceSummary = {
     employeesCount: 2,
     workedMinutes: 718,
     plannedMinutes: 720,
+    openEndedShifts: 0,
   },
   shifts: [
     {
@@ -31,6 +32,7 @@ const summary: ClientServiceSummary = {
       status: 'completed',
       workedMinutes: 478,
       plannedMinutes: 480,
+      openEnded: false,
       employees: [
         {
           assignmentId: 'a1',
@@ -42,6 +44,8 @@ const summary: ClientServiceSummary = {
           checkOutAt: '2026-10-05T15:00:00Z',
           plannedMinutes: 240,
           workedMinutes: 239,
+          openEnded: false,
+          noCheckout: false,
         },
         {
           assignmentId: 'a2',
@@ -53,6 +57,8 @@ const summary: ClientServiceSummary = {
           checkOutAt: '2026-10-05T15:00:00Z',
           plannedMinutes: 240,
           workedMinutes: 239,
+          openEnded: false,
+          noCheckout: false,
         },
         {
           assignmentId: 'a3',
@@ -64,6 +70,8 @@ const summary: ClientServiceSummary = {
           checkOutAt: null,
           plannedMinutes: 240,
           workedMinutes: null,
+          openEnded: false,
+          noCheckout: false,
         },
       ],
     },
@@ -77,6 +85,7 @@ const summary: ClientServiceSummary = {
       status: 'in_progress',
       workedMinutes: 240,
       plannedMinutes: 240,
+      openEnded: false,
       employees: [],
     },
   ],
@@ -103,6 +112,54 @@ describe('período y formato del mes (AJ-10)', () => {
     expect(formatWorkedHours(undefined)).toBe('0 h')
     expect(formatWorkedHours(0)).toBe('0 h')
     expect(formatWorkedHours(750)).toBe('12 h 30 min')
+  })
+})
+
+describe('buildClientSummarySheet: «A terminar» (AJ2-10)', () => {
+  it('muestra «A terminar» en la franja, marca «Sin salida» con 0 h y cuenta los turnos abiertos', () => {
+    const open: ClientServiceSummary = {
+      ...summary,
+      totals: { ...summary.totals, openEndedShifts: 1 },
+      shifts: [
+        {
+          ...summary.shifts[0]!,
+          endTime: '23:59:00',
+          openEnded: true,
+          employees: [
+            {
+              ...summary.shifts[0]!.employees[0]!,
+              plannedMinutes: null,
+              workedMinutes: 310,
+              openEnded: true,
+            },
+            {
+              ...summary.shifts[0]!.employees[1]!,
+              plannedMinutes: null,
+              workedMinutes: 0,
+              checkOutAt: null,
+              openEnded: true,
+              noCheckout: true,
+            },
+          ],
+        },
+      ],
+    }
+    const sheet = buildClientSummarySheet({
+      clientName: 'Logística Central',
+      cuit: null,
+      summary: open,
+    })
+    expect(sheet.rows.map((row) => row.franja)).toEqual([
+      '08:00–A terminar',
+      '08:00–A terminar',
+    ])
+    expect(JSON.stringify(sheet.rows)).not.toContain('23:59')
+    expect(sheet.rows.map((row) => row.hours)).toEqual(['5 h 10 min', '0 h'])
+    expect(sheet.rows[1]?.novelty).toBe('Sin salida')
+    expect(sheet.facts).toContainEqual({
+      label: 'Turnos «A terminar»',
+      value: '1',
+    })
   })
 })
 

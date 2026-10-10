@@ -25,6 +25,32 @@ const baseValues = {
   notes: '',
 }
 
+describe('serviceFormSchema: «A terminar» (AJ2-10)', () => {
+  it('no pide hora de fin con «A terminar» y manda fin null', () => {
+    const values = { ...baseValues, endTime: '', openEnded: true }
+    const result = serviceFormSchema.safeParse(values)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      const input = serviceFormValuesToInput(result.data)
+      expect(input.openEnded).toBe(true)
+      expect(input.endTime).toBeNull()
+    }
+  })
+
+  it('sin «A terminar» exige el fin y que sea posterior al inicio', () => {
+    expect(
+      serviceFormSchema.safeParse({ ...baseValues, endTime: '' }).success,
+    ).toBe(false)
+    expect(
+      serviceFormSchema.safeParse({
+        ...baseValues,
+        startTime: '12:00',
+        endTime: '08:00',
+      }).success,
+    ).toBe(false)
+  })
+})
+
 describe('serviceFormSchema', () => {
   it('acepta un alta completa', () => {
     const result = serviceFormSchema.safeParse(baseValues)

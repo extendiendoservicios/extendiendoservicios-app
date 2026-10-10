@@ -16,7 +16,7 @@ import {
 import { isApiError } from '@/api/errors'
 import { useUpdateAssignmentTimeMutation } from '@/features/planning/queries'
 import {
-  assignmentTimeSchema,
+  buildAssignmentTimeSchema,
   type AssignmentTimeFormValues,
 } from '@/features/planning/schemas'
 
@@ -30,6 +30,8 @@ interface AssignmentTimeDialogProps {
   employeeName: string
   currentStartTime: string | null
   currentEndTime: string | null
+  /** AJ2-10: turno «A terminar»; la hora de fin propia es opcional y, sin ella, la asignación sigue «A terminar». */
+  shiftOpenEnded?: boolean
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -39,6 +41,7 @@ function AssignmentTimeDialog({
   employeeName,
   currentStartTime,
   currentEndTime,
+  shiftOpenEnded = false,
   open,
   onOpenChange,
 }: AssignmentTimeDialogProps) {
@@ -50,7 +53,7 @@ function AssignmentTimeDialog({
     reset,
     formState: { errors },
   } = useForm<AssignmentTimeFormValues>({
-    resolver: zodResolver(assignmentTimeSchema),
+    resolver: zodResolver(buildAssignmentTimeSchema(shiftOpenEnded)),
     defaultValues: {
       startTime: currentStartTime?.slice(0, 5) ?? '',
       endTime: currentEndTime?.slice(0, 5) ?? '',
@@ -92,6 +95,8 @@ function AssignmentTimeDialog({
           <DialogDescription>
             Dejá las dos horas en blanco para que la asignación vuelva a heredar
             la franja del turno.
+            {shiftOpenEnded &&
+              ' Como el turno es «A terminar», podés cargar solo la hora de inicio: sin hora de fin la asignación sigue «A terminar». Con hora de fin, las horas cuentan solo dentro de esa franja.'}
           </DialogDescription>
         </DialogHeader>
         <form

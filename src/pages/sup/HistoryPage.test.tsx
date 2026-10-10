@@ -36,6 +36,7 @@ function supervision(overrides: Partial<MySupervision>): MySupervision {
     endTime: '12:00:00',
     startsAt: null,
     endsAt: '2026-09-20T12:00:00Z',
+    shiftOpenEnded: false,
     status: 'completed',
     assignedAt: '2026-09-19T10:00:00Z',
     notDoneReason: null,

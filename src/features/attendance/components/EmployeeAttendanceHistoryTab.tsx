@@ -236,6 +236,11 @@ function EmployeeAttendanceHistoryTab({
           }
           checkInAt={row.original.row.checkInAt}
           checkOutAt={row.original.row.checkOutAt}
+          displayStatus={
+            row.original.kind === 'service'
+              ? row.original.row.displayStatus
+              : undefined
+          }
         />
       ),
     },

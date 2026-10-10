@@ -19,6 +19,44 @@ const requiredStaffSchema = z
     'La dotación tiene que ser de 1 a 10 personas.',
   )
 
+/**
+ * AJ2-10: con «A terminar» la hora de fin no se pide ni se compara con el inicio (la base la
+ * guarda en 23:59). Sin «A terminar» rige lo de siempre: fin obligatorio y posterior al inicio.
+ */
+const OPEN_ENDED_LAST_START = '23:59'
+
+function checkEndTime(
+  values: { startTime: string; endTime: string; openEnded?: boolean },
+  ctx: z.RefinementCtx,
+) {
+  if (values.openEnded) {
+    // La base guarda el fin en 23:59: un inicio igual o posterior no entra.
+    if (values.startTime >= OPEN_ENDED_LAST_START) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Con «A terminar» el inicio tiene que ser antes de las 23:59.',
+        path: ['startTime'],
+      })
+    }
+    return
+  }
+  if (!values.endTime) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'Falta la hora de fin.',
+      path: ['endTime'],
+    })
+    return
+  }
+  if (values.endTime <= values.startTime) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'La hora de fin tiene que ser posterior a la de inicio.',
+      path: ['endTime'],
+    })
+  }
+}
+
 /** Alta puntual o edición de franja (ADM-07). `clientId`/`siteId`/`date` solo hacen falta al crear: en edición son de solo lectura. */
 export const shiftFormSchema = z
   .object({
@@ -26,14 +64,12 @@ export const shiftFormSchema = z
     siteId: z.string().trim().min(1, 'Elegí una sede.'),
     date: z.string().trim().min(1, 'Falta la fecha.'),
     startTime: z.string().trim().min(1, 'Falta la hora de inicio.'),
-    endTime: z.string().trim().min(1, 'Falta la hora de fin.'),
+    endTime: z.string().trim(),
+    openEnded: z.boolean().optional(),
     requiredStaff: requiredStaffSchema,
     notes: z.string().trim().optional(),
   })
-  .refine((values) => values.endTime > values.startTime, {
-    message: 'La hora de fin tiene que ser posterior a la de inicio.',
-    path: ['endTime'],
-  })
+  .superRefine(checkEndTime)
 
 export type ShiftFormValues = z.infer<typeof shiftFormSchema>
 
@@ -44,7 +80,8 @@ export function shiftFormValuesToCreateInput(values: ShiftFormValues) {
     siteId: values.siteId,
     date: values.date,
     start: values.startTime,
-    end: values.endTime,
+    end: values.openEnded ? null : values.endTime,
+    openEnded: Boolean(values.openEnded),
     requiredStaff: Number(values.requiredStaff),
     notes: values.notes?.trim() ? values.notes.trim() : null,
   }
@@ -60,12 +97,10 @@ export function shiftFormValuesToCreateInput(values: ShiftFormValues) {
 export const shiftTimeFormSchema = z
   .object({
     startTime: z.string().trim().min(1, 'Falta la hora de inicio.'),
-    endTime: z.string().trim().min(1, 'Falta la hora de fin.'),
+    endTime: z.string().trim(),
+    openEnded: z.boolean().optional(),
   })
-  .refine((values) => values.endTime > values.startTime, {
-    message: 'La hora de fin tiene que ser posterior a la de inicio.',
-    path: ['endTime'],
-  })
+  .superRefine(checkEndTime)
 
 export type ShiftTimeFormValues = z.infer<typeof shiftTimeFormSchema>
 
@@ -73,20 +108,22 @@ export type ShiftTimeFormValues = z.infer<typeof shiftTimeFormSchema>
 export const shiftEditFormSchema = z
   .object({
     startTime: z.string().trim().min(1, 'Falta la hora de inicio.'),
-    endTime: z.string().trim().min(1, 'Falta la hora de fin.'),
+    endTime: z.string().trim(),
+    openEnded: z.boolean().optional(),
     requiredStaff: requiredStaffSchema,
     notes: z.string().trim().optional(),
   })
-  .refine((values) => values.endTime > values.startTime, {
-    message: 'La hora de fin tiene que ser posterior a la de inicio.',
-    path: ['endTime'],
-  })
+  .superRefine(checkEndTime)
 
 export type ShiftEditFormValues = z.infer<typeof shiftEditFormSchema>
 
 export function shiftEditFormValuesToInputs(values: ShiftEditFormValues) {
   return {
-    time: { start: values.startTime, end: values.endTime },
+    time: {
+      start: values.startTime,
+      end: values.openEnded ? null : values.endTime,
+      openEnded: Boolean(values.openEnded),
+    },
     details: {
       requiredStaff: Number(values.requiredStaff),
       notes: values.notes?.trim() ? values.notes.trim() : null,

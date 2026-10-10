@@ -1,4 +1,4 @@
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
@@ -7,6 +7,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { OpenEndedToggle } from '@/features/shifts/components/OpenEndedToggle'
+import { OPEN_ENDED_LABEL } from '@/features/shifts/openEnded'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/EmptyState'
@@ -97,6 +99,7 @@ function CreateShiftForm({
     date: dateFromQuery ?? '',
     startTime: '',
     endTime: '',
+    openEnded: false,
     requiredStaff: '1',
     notes: '',
   }
@@ -115,6 +118,7 @@ function CreateShiftForm({
 
   const watchedClientId = watch('clientId')
   const watchedDate = watch('date')
+  const watchedOpenEnded = watch('openEnded') ?? false
   const clientsQuery = useClientsQuery({})
   const sitesQuery = useClientSitesQuery(watchedClientId || undefined)
 
@@ -260,18 +264,40 @@ function CreateShiftForm({
               <FieldError>{errors.startTime.message}</FieldError>
             )}
           </Field>
-          <Field data-invalid={Boolean(errors.endTime) || undefined}>
-            <FieldLabel htmlFor="shift-end-time">Hasta</FieldLabel>
-            <Input
-              id="shift-end-time"
-              type="time"
-              aria-invalid={Boolean(errors.endTime)}
-              {...register('endTime')}
+          {watchedOpenEnded ? (
+            <Field>
+              <FieldLabel>Hasta</FieldLabel>
+              <p className="flex h-9 items-center text-[13px] text-text-2">
+                {OPEN_ENDED_LABEL}
+              </p>
+            </Field>
+          ) : (
+            <Field data-invalid={Boolean(errors.endTime) || undefined}>
+              <FieldLabel htmlFor="shift-end-time">Hasta</FieldLabel>
+              <Input
+                id="shift-end-time"
+                type="time"
+                aria-invalid={Boolean(errors.endTime)}
+                {...register('endTime')}
+              />
+              {errors.endTime && (
+                <FieldError>{errors.endTime.message}</FieldError>
+              )}
+            </Field>
+          )}
+          <div className="col-span-2">
+            <Controller
+              control={control}
+              name="openEnded"
+              render={({ field }) => (
+                <OpenEndedToggle
+                  id="shift-open-ended"
+                  checked={field.value ?? false}
+                  onCheckedChange={field.onChange}
+                />
+              )}
             />
-            {errors.endTime && (
-              <FieldError>{errors.endTime.message}</FieldError>
-            )}
-          </Field>
+          </div>
         </div>
 
         <Field data-invalid={Boolean(errors.requiredStaff) || undefined}>
@@ -330,6 +356,7 @@ function EditShiftTimeForm({
   const isSaving = updateShiftTime.isPending || updateShiftDetails.isPending
 
   const {
+    control,
     register,
     handleSubmit,
     formState: { errors },
@@ -338,12 +365,17 @@ function EditShiftTimeForm({
     values: shiftQuery.data
       ? {
           startTime: shiftQuery.data.startTime.slice(0, 5),
-          endTime: shiftQuery.data.endTime.slice(0, 5),
+          endTime: shiftQuery.data.openEnded
+            ? ''
+            : shiftQuery.data.endTime.slice(0, 5),
+          openEnded: shiftQuery.data.openEnded,
           requiredStaff: String(shiftQuery.data.requiredStaff),
           notes: shiftQuery.data.notes ?? '',
         }
       : undefined,
   })
+
+  const watchedOpenEnded = useWatch({ control, name: 'openEnded' }) ?? false
 
   // Franja (`update_shift_time`) y dotación/notas (`update_shift_details`)
   // son dos RPC separadas (`06` sección 7, ASSIGN-013): un solo formulario
@@ -351,17 +383,26 @@ function EditShiftTimeForm({
   async function onSubmit(values: ShiftEditFormValues) {
     const inputs = shiftEditFormValuesToInputs(values)
     try {
+      // Un turno «A terminar» finalizado solo admite ponerle la hora de fin
+      // (AJ2-10): ni la dotación ni las notas se tocan.
+      const onlyEndTime =
+        shiftQuery.data?.status === 'completed' && shiftQuery.data.openEnded
       await Promise.all([
         updateShiftTime.mutateAsync({
           shiftId: id,
           start: inputs.time.start,
           end: inputs.time.end,
+          openEnded: inputs.time.openEnded,
         }),
-        updateShiftDetails.mutateAsync({
-          shiftId: id,
-          requiredStaff: inputs.details.requiredStaff,
-          notes: inputs.details.notes,
-        }),
+        ...(onlyEndTime
+          ? []
+          : [
+              updateShiftDetails.mutateAsync({
+                shiftId: id,
+                requiredStaff: inputs.details.requiredStaff,
+                notes: inputs.details.notes,
+              }),
+            ]),
       ])
       toast.success('Actualizamos el turno.')
       void navigate(
@@ -395,8 +436,11 @@ function EditShiftTimeForm({
   }
 
   const shift = shiftQuery.data
+  // AJ2-10: un turno «A terminar» finalizado todavía admite la hora de fin.
+  const isCompletedOpenEnded = shift.status === 'completed' && shift.openEnded
   const isCancelledOrCompleted =
-    shift.status === 'cancelled' || shift.status === 'completed'
+    shift.status === 'cancelled' ||
+    (shift.status === 'completed' && !isCompletedOpenEnded)
   const isInProgress = shift.status === 'in_progress'
 
   if (!canManage) {
@@ -447,13 +491,22 @@ function EditShiftTimeForm({
               </AlertDescription>
             </Alert>
           )}
+          {isCompletedOpenEnded && (
+            <Alert variant="info">
+              <AlertDescription>
+                Este turno «A terminar» ya finalizó. Podés ponerle la hora de
+                fin: las horas de cada empleado se recalculan contando solo lo
+                que cae dentro de esa franja.
+              </AlertDescription>
+            </Alert>
+          )}
           <div className="grid grid-cols-2 gap-4 rounded-lg border border-border bg-surface p-5">
             <Field data-invalid={Boolean(errors.startTime) || undefined}>
               <FieldLabel htmlFor="shift-start-time">Desde</FieldLabel>
               <Input
                 id="shift-start-time"
                 type="time"
-                disabled={isInProgress}
+                disabled={isInProgress || isCompletedOpenEnded}
                 aria-invalid={Boolean(errors.startTime)}
                 {...register('startTime')}
               />
@@ -461,37 +514,67 @@ function EditShiftTimeForm({
                 <FieldError>{errors.startTime.message}</FieldError>
               )}
             </Field>
-            <Field data-invalid={Boolean(errors.endTime) || undefined}>
-              <FieldLabel htmlFor="shift-end-time">Hasta</FieldLabel>
-              <Input
-                id="shift-end-time"
-                type="time"
-                aria-invalid={Boolean(errors.endTime)}
-                {...register('endTime')}
+            {watchedOpenEnded ? (
+              <Field>
+                <FieldLabel>Hasta</FieldLabel>
+                <p className="flex h-9 items-center text-[13px] text-text-2">
+                  {OPEN_ENDED_LABEL}
+                </p>
+              </Field>
+            ) : (
+              <Field data-invalid={Boolean(errors.endTime) || undefined}>
+                <FieldLabel htmlFor="shift-end-time">Hasta</FieldLabel>
+                <Input
+                  id="shift-end-time"
+                  type="time"
+                  aria-invalid={Boolean(errors.endTime)}
+                  {...register('endTime')}
+                />
+                {errors.endTime && (
+                  <FieldError>{errors.endTime.message}</FieldError>
+                )}
+              </Field>
+            )}
+            <div className="col-span-2">
+              <Controller
+                control={control}
+                name="openEnded"
+                render={({ field }) => (
+                  <OpenEndedToggle
+                    id="shift-open-ended"
+                    checked={field.value ?? false}
+                    onCheckedChange={field.onChange}
+                  />
+                )}
               />
-              {errors.endTime && (
-                <FieldError>{errors.endTime.message}</FieldError>
-              )}
-            </Field>
-            <Field data-invalid={Boolean(errors.requiredStaff) || undefined}>
-              <FieldLabel htmlFor="shift-required-staff">Dotación</FieldLabel>
-              <Input
-                id="shift-required-staff"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={10}
-                aria-invalid={Boolean(errors.requiredStaff)}
-                {...register('requiredStaff')}
-              />
-              {errors.requiredStaff && (
-                <FieldError>{errors.requiredStaff.message}</FieldError>
-              )}
-            </Field>
-            <Field className="sm:col-span-2">
-              <FieldLabel htmlFor="shift-notes">Notas</FieldLabel>
-              <Textarea id="shift-notes" rows={3} {...register('notes')} />
-            </Field>
+            </div>
+            {!isCompletedOpenEnded && (
+              <>
+                <Field
+                  data-invalid={Boolean(errors.requiredStaff) || undefined}
+                >
+                  <FieldLabel htmlFor="shift-required-staff">
+                    Dotación
+                  </FieldLabel>
+                  <Input
+                    id="shift-required-staff"
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={10}
+                    aria-invalid={Boolean(errors.requiredStaff)}
+                    {...register('requiredStaff')}
+                  />
+                  {errors.requiredStaff && (
+                    <FieldError>{errors.requiredStaff.message}</FieldError>
+                  )}
+                </Field>
+                <Field className="sm:col-span-2">
+                  <FieldLabel htmlFor="shift-notes">Notas</FieldLabel>
+                  <Textarea id="shift-notes" rows={3} {...register('notes')} />
+                </Field>
+              </>
+            )}
           </div>
 
           <div className="flex gap-2">

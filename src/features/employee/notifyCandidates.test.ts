@@ -26,6 +26,8 @@ function baseAssignment(
     endTime: '12:00:00',
     startsAt: null,
     endsAt: null,
+    openEnded: false,
+    noCheckout: false,
     status: 'expected',
     shiftStatus: 'scheduled',
     notes: null,

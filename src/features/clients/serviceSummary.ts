@@ -6,6 +6,10 @@ import type { AttendanceBoardRow } from '@/api/attendance'
 import { absenceDetail, isAbsence } from '@/features/attendance/absences'
 import type { PrintColumn, PrintRowData } from '@/features/print/PrintTable'
 import { formatCalendarDate, formatMinutes } from '@/lib/format'
+import {
+  formatShiftRange,
+  NO_CHECKOUT_LABEL,
+} from '@/features/shifts/openEnded'
 
 /**
  * Lógica sin React del resumen de servicios por cliente (AJ-09) y de la
@@ -134,10 +138,17 @@ export function buildClientSummarySheet(input: {
         lastName: employee.lastName,
         firstName: employee.firstName,
         employeeId: employee.employeeId,
-        franja: `${shift.startTime.slice(0, 5)}–${shift.endTime.slice(0, 5)}`,
-        novelty: '',
-        hours:
-          employee.workedMinutes != null
+        // AJ2-10: en un turno «A terminar» la franja dice «A terminar», nunca 23:59.
+        franja: formatShiftRange(
+          shift.startTime,
+          shift.endTime,
+          shift.openEnded,
+        ),
+        // «Sin salida» (AJ2-10): suma 0 horas hasta que administración cargue la hora.
+        novelty: employee.noCheckout ? NO_CHECKOUT_LABEL : '',
+        hours: employee.noCheckout
+          ? '0 h'
+          : employee.workedMinutes != null
             ? formatMinutes(employee.workedMinutes)
             : '—',
       })
@@ -153,7 +164,7 @@ export function buildClientSummarySheet(input: {
       lastName: row.employeeLastName,
       firstName: row.employeeFirstName,
       employeeId: row.employeeId,
-      franja: `${row.startTime.slice(0, 5)}–${row.endTime.slice(0, 5)}`,
+      franja: formatShiftRange(row.startTime, row.endTime, row.openEnded),
       novelty: absenceDetail(row),
       hours: '—',
     })
@@ -198,6 +209,14 @@ export function buildClientSummarySheet(input: {
         label: 'Empleados distintos',
         value: String(summary.totals.employeesCount),
       },
+      ...(summary.totals.openEndedShifts > 0
+        ? [
+            {
+              label: 'Turnos «A terminar»',
+              value: String(summary.totals.openEndedShifts),
+            },
+          ]
+        : []),
       ...(absentRows.length > 0
         ? [{ label: 'Inasistencias', value: String(absentRows.length) }]
         : []),

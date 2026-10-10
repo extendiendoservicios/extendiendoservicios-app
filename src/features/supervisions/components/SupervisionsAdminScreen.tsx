@@ -33,6 +33,7 @@ import {
   useRatingsQuery,
   useSupervisionsAdminQuery,
 } from '@/features/supervisions/queries'
+import { formatShiftRange } from '@/features/shifts/openEnded'
 import { UpdatedAgo } from './UpdatedAgo'
 
 /** "YYYY-MM-DD" → `Date` para `DatePicker` (mismo criterio que `ShiftsDayList`/`AttendanceTodayList`). */
@@ -194,8 +195,11 @@ function SupervisionsAdminScreen({
       cell: ({ row }) => (
         <span>
           {row.original.clientName} · {row.original.siteName} ·{' '}
-          {row.original.startTime.slice(0, 5)}–
-          {row.original.endTime.slice(0, 5)}
+          {formatShiftRange(
+            row.original.startTime,
+            row.original.endTime,
+            row.original.shiftOpenEnded,
+          )}
         </span>
       ),
     },

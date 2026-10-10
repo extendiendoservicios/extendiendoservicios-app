@@ -49,6 +49,7 @@ function supervision(overrides: Partial<MySupervision>): MySupervision {
     // el test) -- el único test que verifica la ventana cerrada la pisa con
     // una fecha bien pasada.
     endsAt: '2030-01-01T12:00:00Z',
+    shiftOpenEnded: false,
     status: 'assigned',
     assignedAt: '2026-09-20T10:00:00Z',
     notDoneReason: null,

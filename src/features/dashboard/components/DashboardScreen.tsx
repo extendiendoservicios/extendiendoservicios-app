@@ -208,6 +208,7 @@ function DashboardScreen() {
           shiftDate={assignTarget.shiftDate}
           shiftStartTime={assignTarget.startTime}
           shiftEndTime={assignTarget.endTime}
+          shiftOpenEnded={assignTarget.openEnded}
           excludeEmployeeIds={assignments
             .filter((row) => row.shiftId === assignTarget.id)
             .map((row) => row.employeeId)}
