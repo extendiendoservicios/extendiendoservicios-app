@@ -27,7 +27,9 @@ select columns_are(
   'public', 'clients',
   array[
     'id', 'legal_name', 'trade_name', 'cuit', 'admin_address', 'latitude', 'longitude',
-    'status', 'notes', 'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at'
+    'status', 'notes', 'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
+    -- 0039 (AJ2-06): foto del cliente.
+    'photo_path'
   ],
   'clients tiene exactamente las columnas de 04 sección 2.2'
 );
