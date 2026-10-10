@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { useEffect, useState } from 'react'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { formatTaxId, formatTaxIdWhileTyping } from '@/lib/taxId'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useParams } from 'react-router'
@@ -12,7 +12,9 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AvatarUpload } from '@/components/AvatarUpload'
+import { PendingPhotoPicker } from '@/components/PendingPhotoPicker'
 import { EmptyState } from '@/components/EmptyState'
+import { savePhoto } from '@/api/photos'
 import { isApiError } from '@/api/errors'
 import { useAuth } from '@/features/auth/AuthProvider'
 import {
@@ -70,6 +72,8 @@ function EmployeeCreateForm() {
   const navigate = useNavigate()
   const createEmployee = useCreateEmployeeMutation()
   const suggestedNumberQuery = useSuggestedEmployeeNumberQuery(true)
+  // AJ2-07: foto elegida en el alta; se sube después de crear la cuenta.
+  const [pendingPhoto, setPendingPhoto] = useState<Blob | null>(null)
 
   const {
     control,
@@ -101,6 +105,11 @@ function EmployeeCreateForm() {
     },
   })
 
+  const [watchedFirstName, watchedLastName] = useWatch({
+    control,
+    name: ['firstName', 'lastName'],
+  })
+
   // Legajo sugerido: se completa solo mientras la persona no haya tocado el
   // campo a mano (así no le pisa un valor que ya cambió).
   useEffect(() => {
@@ -114,9 +123,25 @@ function EmployeeCreateForm() {
     try {
       const input = employeeCreateFormValuesToInput(values)
       const result = await createEmployee.mutateAsync(input)
-      toast.success(
-        `Creamos a ${values.firstName} ${values.lastName} con el legajo ${result.employeeNumber}.`,
-      )
+      const fullName = `${values.firstName} ${values.lastName}`
+      let photoFailed = false
+      if (pendingPhoto) {
+        // La cuenta ya está creada: si la foto falla, el alta no se deshace.
+        try {
+          await savePhoto('profile', result.profileId, pendingPhoto)
+        } catch {
+          photoFailed = true
+        }
+      }
+      if (photoFailed) {
+        toast.warning(
+          `Se creó ${fullName}, pero no se pudo guardar la foto. Probá de nuevo desde Editar.`,
+        )
+      } else {
+        toast.success(
+          `Creamos a ${fullName} con el legajo ${result.employeeNumber}.`,
+        )
+      }
       void navigate(`/admin/empleados/${result.profileId}`)
     } catch (error) {
       const message = isApiError(error)
@@ -222,10 +247,18 @@ function EmployeeCreateForm() {
             )}
           </Field>
         </div>
-        <p className="mt-3 text-[11px] text-text-3">
-          Vas a poder cargar la foto de perfil después de crear la cuenta, desde
-          la ficha de la persona.
-        </p>
+      </div>
+
+      <div className="rounded-lg border border-border bg-surface p-5">
+        <h2 className="mb-3 text-[14px] font-semibold text-text">
+          Foto de perfil
+        </h2>
+        <PendingPhotoPicker
+          name={`${watchedFirstName} ${watchedLastName}`.trim()}
+          value={pendingPhoto}
+          onChange={setPendingPhoto}
+          label="Elegir foto de perfil"
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 rounded-lg border border-border bg-surface p-5 sm:grid-cols-2">

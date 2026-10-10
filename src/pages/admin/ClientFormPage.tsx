@@ -1,6 +1,8 @@
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { formatTaxId, formatTaxIdWhileTyping } from '@/lib/taxId'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -16,9 +18,13 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { MapPicker } from '@/components/map'
+import { ClientPhotoUpload } from '@/components/ClientPhotoUpload'
+import { PendingPhotoPicker } from '@/components/PendingPhotoPicker'
+import { savePhoto } from '@/api/photos'
 import { isApiError } from '@/api/errors'
 import { useAuth } from '@/features/auth/AuthProvider'
 import {
+  clientsKeys,
   useClientDetailQuery,
   useCreateClientMutation,
   useUpdateClientMutation,
@@ -50,6 +56,9 @@ export default function ClientFormPage() {
   const createClient = useCreateClientMutation()
   const updateClient = useUpdateClientMutation()
   const isSaving = createClient.isPending || updateClient.isPending
+  const queryClient = useQueryClient()
+  // AJ2-07: foto elegida en el alta; se sube después de crear el cliente.
+  const [pendingPhoto, setPendingPhoto] = useState<Blob | null>(null)
 
   const {
     control,
@@ -87,6 +96,11 @@ export default function ClientFormPage() {
       : undefined,
   })
 
+  const [watchedTradeName, watchedLegalName] = useWatch({
+    control,
+    name: ['tradeName', 'legalName'],
+  })
+
   async function onSubmit(values: ClientFormValues) {
     const input = clientFormValuesToInput(values)
     try {
@@ -103,7 +117,22 @@ export default function ClientFormPage() {
           input,
           createdBy: auth.userId as string,
         })
-        toast.success('Creamos el cliente.')
+        const clientName =
+          (values.tradeName ?? '').trim() || values.legalName.trim()
+        if (pendingPhoto) {
+          // El alta ya está hecha: si la foto falla, no se deshace (AJ2-07).
+          try {
+            await savePhoto('client', client.id, pendingPhoto)
+            void queryClient.invalidateQueries({ queryKey: clientsKeys.all })
+            toast.success('Creamos el cliente.')
+          } catch {
+            toast.warning(
+              `Se creó ${clientName}, pero no se pudo guardar la foto. Probá de nuevo desde Editar.`,
+            )
+          }
+        } else {
+          toast.success('Creamos el cliente.')
+        }
         void navigate(`/admin/clientes/${client.id}`)
       }
     } catch (error) {
@@ -132,6 +161,29 @@ export default function ClientFormPage() {
       onSubmit={(event) => void handleSubmit(onSubmit)(event)}
       className="flex max-w-2xl flex-col gap-4"
     >
+      <div className="rounded-lg border border-border bg-surface p-5">
+        <h2 className="mb-3 text-[14px] font-semibold text-text">
+          Foto del cliente
+        </h2>
+        {isEditMode && clientQuery.data ? (
+          <ClientPhotoUpload
+            clientId={clientQuery.data.id}
+            name={clientQuery.data.tradeName ?? clientQuery.data.legalName}
+            photoPath={clientQuery.data.photoPath}
+            onChange={() =>
+              void queryClient.invalidateQueries({ queryKey: clientsKeys.all })
+            }
+          />
+        ) : (
+          <PendingPhotoPicker
+            name={watchedTradeName || watchedLegalName || ''}
+            value={pendingPhoto}
+            onChange={setPendingPhoto}
+            label="Elegir foto del cliente"
+          />
+        )}
+      </div>
+
       <div className="grid grid-cols-1 gap-4 rounded-lg border border-border bg-surface p-5 sm:grid-cols-2">
         <Field data-invalid={Boolean(errors.legalName) || undefined}>
           <FieldLabel htmlFor="client-legal-name">Razón social</FieldLabel>
