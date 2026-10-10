@@ -17,6 +17,9 @@ import type { CreateShiftInput } from '@/api/shifts'
 
 const LIST_POLLING_MS = 30_000
 
+/** Raíz de `planningKeys` (`features/planning/queries.ts`); literal acá para no importar en círculo. */
+const PLANNING_KEY_ROOT = ['planning'] as const
+
 export const shiftsKeys = {
   all: ['shifts'] as const,
   byDate: (date: string) => [...shiftsKeys.all, 'byDate', date] as const,
@@ -88,6 +91,9 @@ export function useCreateShiftMutation() {
       void queryClient.invalidateQueries({
         queryKey: shiftsKeys.byDate(variables.date),
       })
+      // AJ2-17: el turno puede traer asignaciones (planificación y personas del día).
+      void queryClient.invalidateQueries({ queryKey: shiftsKeys.all })
+      void queryClient.invalidateQueries({ queryKey: PLANNING_KEY_ROOT })
     },
   })
 }
@@ -100,6 +106,8 @@ export function useGenerateShiftsMutation() {
       shiftsApi.generateShifts(year, month),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: shiftsKeys.all })
+      // AJ2-17: la generación asigna los empleados fijos.
+      void queryClient.invalidateQueries({ queryKey: PLANNING_KEY_ROOT })
     },
   })
 }

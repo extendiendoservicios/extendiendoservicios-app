@@ -20,6 +20,9 @@ export const servicesKeys = {
     [...servicesKeys.all, 'byClient', clientId] as const,
   bySite: (siteId: string) => [...servicesKeys.all, 'bySite', siteId] as const,
   detail: (id: string) => [...servicesKeys.all, 'detail', id] as const,
+  fixedEmployees: (id: string) =>
+    [...servicesKeys.all, 'fixedEmployees', id] as const,
+  labels: (ids: string[]) => [...servicesKeys.all, 'labels', ids] as const,
 }
 
 // -------------------------------------------------------------------------
@@ -159,5 +162,48 @@ export function useSetServiceStatusMutation() {
       )
       queryClient.setQueryData(servicesKeys.detail(service.id), service)
     },
+  })
+}
+
+// -------------------------------------------------------------------------
+// Empleados fijos (AJ2-17)
+// -------------------------------------------------------------------------
+
+/** Ids de los empleados fijos de un servicio (formulario de edición de ADM-25). */
+export function useServiceFixedEmployeesQuery(id: string | undefined) {
+  return useQuery({
+    queryKey: servicesKeys.fixedEmployees(id ?? ''),
+    queryFn: () => servicesApi.fetchServiceFixedEmployees(id as string),
+    enabled: id != null,
+    // El formulario carga la lista una vez y la edita en memoria.
+    staleTime: 0,
+    gcTime: 0,
+  })
+}
+
+export function useSetServiceFixedEmployeesMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      serviceId,
+      employeeIds,
+    }: {
+      serviceId: string
+      employeeIds: string[]
+    }) => servicesApi.setServiceFixedEmployees(serviceId, employeeIds),
+    onSuccess: (_ids, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: servicesKeys.fixedEmployees(variables.serviceId),
+      })
+    },
+  })
+}
+
+/** Nombres de servicio, cliente y sede para la lista de «sin asignar» de ADM-09. */
+export function useServiceLabelsQuery(ids: string[]) {
+  return useQuery({
+    queryKey: servicesKeys.labels(ids),
+    queryFn: () => servicesApi.fetchServiceLabels(ids),
+    enabled: ids.length > 0,
   })
 }

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
@@ -30,10 +31,15 @@ import {
   useClientSitesQuery,
 } from '@/features/clients/queries'
 import { useSiteDetailQuery } from '@/features/sites/queries'
+import { useActiveEmployeeOptionsQuery } from '@/features/employees/queries'
+import { EmployeeMultiPicker } from '@/features/planning/components/EmployeeMultiPicker'
+import { fixedEmployeesError } from '@/features/shifts/assignOnCreate'
 import { localDateToIsoDate } from '@/features/settings/dateOnly'
 import {
   useCreateServiceMutation,
   useServiceDetailQuery,
+  useServiceFixedEmployeesQuery,
+  useSetServiceFixedEmployeesMutation,
   useUpdateServiceMutation,
 } from '@/features/services/queries'
 import {
@@ -47,6 +53,11 @@ import {
 /** `"YYYY-MM-DD"` (columna `date` de Postgres, o cadena vacía) → `Date` para `DatePicker`. */
 function isoDateToDate(isoDate: string | undefined): Date | undefined {
   return isoDate ? new Date(`${isoDate}T00:00:00`) : undefined
+}
+
+/** Misma lista de ids sin importar el orden. */
+function sameIds(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((value) => b.includes(value))
 }
 
 /**
@@ -79,7 +90,21 @@ export default function ServiceFormPage() {
     serviceQuery.data?.clientId ?? '',
     serviceQuery.data?.siteId ?? '',
   )
-  const isSaving = createService.isPending || updateService.isPending
+  const setFixedEmployees = useSetServiceFixedEmployeesMutation()
+  const isSaving =
+    createService.isPending ||
+    updateService.isPending ||
+    setFixedEmployees.isPending
+
+  // AJ2-17: empleados fijos. `fixedDraft` en null = sin tocar (en edición se
+  // usa lo guardado); la lista se guarda con su propia RPC después del servicio.
+  const employeeOptionsQuery = useActiveEmployeeOptionsQuery()
+  const fixedQuery = useServiceFixedEmployeesQuery(id)
+  const [fixedDraft, setFixedDraft] = useState<string[] | null>(null)
+  const savedFixedIds = fixedQuery.data
+  const fixedIds = fixedDraft ?? savedFixedIds ?? []
+  const fixedChanged =
+    fixedDraft !== null && !sameIds(fixedDraft, savedFixedIds ?? [])
 
   const defaultValues: ServiceFormValues = {
     clientId: clientIdFromQuery ?? '',
@@ -144,6 +169,14 @@ export default function ServiceFormPage() {
 
   const watchedClientId = watch('clientId')
   const watchedOpenEnded = watch('openEnded') ?? false
+  const watchedRequiredStaff = Number(watch('requiredStaff'))
+  const fixedLimit =
+    Number.isInteger(watchedRequiredStaff) &&
+    watchedRequiredStaff >= 1 &&
+    watchedRequiredStaff <= 10
+      ? watchedRequiredStaff
+      : 10
+  const fixedError = fixedEmployeesError(fixedIds.length, fixedLimit)
   const clientsQuery = useClientsQuery({})
   const sitesQuery = useClientSitesQuery(watchedClientId || undefined)
 
@@ -179,13 +212,43 @@ export default function ServiceFormPage() {
 
   async function onSubmit(values: ServiceFormValues) {
     const input = serviceFormValuesToInput(values)
+    if (fixedEmployeesError(fixedIds.length, input.requiredStaff)) {
+      // Se ve debajo del selector; el servidor igual lo vuelve a verificar.
+      toast.error('Revisá los empleados fijos: son más que la dotación.')
+      return
+    }
+    // En edición solo se llama a la RPC si la lista cambió; sin lista cargada
+    // (falló la lectura) no se toca, para no pisar nada.
+    const mustSaveFixed = isEditMode
+      ? fixedChanged && savedFixedIds !== undefined
+      : fixedIds.length > 0
+    let serviceSaved = false
     try {
       if (isEditMode) {
+        // Si la dotación baja, primero se achica la lista de fijos (el
+        // servidor no deja bajarla por debajo de los fijos); si sube, primero
+        // el servicio, así entran más fijos.
+        const lowersStaff =
+          serviceQuery.data != null &&
+          input.requiredStaff < serviceQuery.data.requiredStaff
+        if (mustSaveFixed && lowersStaff) {
+          await setFixedEmployees.mutateAsync({
+            serviceId: id,
+            employeeIds: fixedIds,
+          })
+        }
         const service = await updateService.mutateAsync({
           id,
           input,
           updatedBy: auth.userId as string,
         })
+        serviceSaved = true
+        if (mustSaveFixed && !lowersStaff) {
+          await setFixedEmployees.mutateAsync({
+            serviceId: id,
+            employeeIds: fixedIds,
+          })
+        }
         toast.success('Guardamos los cambios del servicio.')
         void navigate(`/admin/clientes/${service.clientId}?pestana=servicios`)
       } else {
@@ -193,12 +256,38 @@ export default function ServiceFormPage() {
           input,
           createdBy: auth.userId as string,
         })
+        serviceSaved = true
+        if (mustSaveFixed) {
+          try {
+            await setFixedEmployees.mutateAsync({
+              serviceId: service.id,
+              employeeIds: fixedIds,
+            })
+          } catch (fixedFailure) {
+            // El servicio ya existe: se sigue en su edición para reintentar.
+            toast.warning(
+              `Creamos el servicio, pero no se guardaron los empleados fijos: ${
+                isApiError(fixedFailure)
+                  ? fixedFailure.message
+                  : 'ocurrió un error inesperado.'
+              }`,
+              { duration: 15_000 },
+            )
+            void navigate(`/admin/servicios/${service.id}/editar`)
+            return
+          }
+        }
         toast.success('Creamos el servicio.')
         void navigate(`/admin/clientes/${service.clientId}?pestana=servicios`)
       }
     } catch (error) {
+      const message = isApiError(error)
+        ? error.message
+        : 'No pudimos guardar el servicio.'
       toast.error(
-        isApiError(error) ? error.message : 'No pudimos guardar el servicio.',
+        serviceSaved
+          ? `Guardamos el servicio, pero no los empleados fijos: ${message}`
+          : message,
       )
     }
   }
@@ -332,6 +421,33 @@ export default function ServiceFormPage() {
             <FieldError>{errors.requiredStaff.message}</FieldError>
           )}
         </Field>
+      </div>
+
+      <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-5">
+        <h2 className="text-[14px] font-semibold text-text">Empleados fijos</h2>
+        <p className="text-[12.5px] text-text-3">
+          Se asignan solos en cada turno que se genere. No cambia los turnos ya
+          generados.
+        </p>
+        <EmployeeMultiPicker
+          aria-label="Empleados fijos"
+          options={employeeOptionsQuery.data ?? []}
+          loading={
+            employeeOptionsQuery.isLoading ||
+            (isEditMode && fixedQuery.isLoading)
+          }
+          value={fixedIds}
+          onValueChange={setFixedDraft}
+          max={fixedLimit}
+          placeholder="Elegí empleados fijos (opcional)"
+        />
+        {isEditMode && fixedQuery.isError && (
+          <p className="text-[11px] text-danger">
+            No pudimos leer los empleados fijos actuales. Si guardás, no se
+            tocan.
+          </p>
+        )}
+        {fixedError && <p className="text-[11px] text-danger">{fixedError}</p>}
       </div>
 
       <div className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-5">

@@ -230,12 +230,33 @@ export interface CreateShiftInput {
   notes?: string | null
   /** AJ2-15: «mostrar en la impresión»; por defecto tildada. */
   showInPrint?: boolean
+  /** AJ2-17: empleados que quedan asignados en la misma operación (opcional). */
+  employeeIds?: string[]
+}
+
+/** AJ2-17: un empleado que `create_shift` asignó, con sus advertencias (no bloquean). */
+export interface CreateShiftAssigned {
+  employeeId: string
+  assignmentId: string
+  warnings: string[]
+}
+
+/** AJ2-17: un empleado que `create_shift` no pudo asignar (el turno se crea igual). */
+export interface CreateShiftRejected {
+  employeeId: string
+  employeeName: string
+  /** `ASSIGNMENT_OVERLAP`, `EMPLOYEE_NOT_ACTIVE`, `SHIFT_FULL` o `SHIFT_STARTED`. */
+  code: string
+  /** Texto en español del servidor: se muestra tal cual. */
+  message: string
 }
 
 export interface CreateShiftResult {
   shiftId: string
   /** `'HOLIDAY'` es la única advertencia que documenta `06` sección 7 (informativa, no bloquea). */
   warnings: string[]
+  assigned: CreateShiftAssigned[]
+  rejected: CreateShiftRejected[]
 }
 
 /**
@@ -257,24 +278,74 @@ export async function createShift(
     p_service_id: input.serviceId,
     p_notes: input.notes ?? undefined,
     p_show_in_print: input.showInPrint ?? true,
+    p_employee_ids:
+      input.employeeIds && input.employeeIds.length > 0
+        ? input.employeeIds
+        : undefined,
   })
 
   if (error) {
     throw fromPostgrestError(error)
   }
 
-  const payload = data as { shift: { id: string }; warnings: string[] }
-  return { shiftId: payload.shift.id, warnings: payload.warnings ?? [] }
+  const payload = data as {
+    shift: { id: string }
+    warnings: string[]
+    assigned?: Array<{
+      employee_id: string
+      assignment_id: string
+      warnings?: string[]
+    }>
+    rejected?: Array<{
+      employee_id: string
+      employee_name: string
+      code: string
+      message: string
+    }>
+  }
+  return {
+    shiftId: payload.shift.id,
+    warnings: payload.warnings ?? [],
+    assigned: (payload.assigned ?? []).map((item) => ({
+      employeeId: item.employee_id,
+      assignmentId: item.assignment_id,
+      warnings: item.warnings ?? [],
+    })),
+    rejected: (payload.rejected ?? []).map((item) => ({
+      employeeId: item.employee_id,
+      employeeName: item.employee_name,
+      code: item.code,
+      message: item.message,
+    })),
+  }
 }
 
 // -------------------------------------------------------------------------
 // 3. generate_shifts (ADM-09 — SHIFT-009)
 // -------------------------------------------------------------------------
 
+/** AJ2-17: un empleado fijo que `generate_shifts` no pudo asignar a un turno recién creado. */
+export interface GenerateUnassigned {
+  shiftId: string
+  shiftDate: string
+  serviceId: string
+  employeeId: string
+  employeeName: string
+  /** `ON_LEAVE`, `OUTSIDE_AVAILABILITY`, `ASSIGNMENT_OVERLAP`, `EMPLOYEE_NOT_ACTIVE` o `SHIFT_FULL`. */
+  code: string
+  message: string
+}
+
 export interface GenerateShiftsResult {
   created: number
   skipped: number
   holidaysSkipped: number
+  /** AJ2-17: asignaciones de empleados fijos hechas al generar. */
+  assigned: number
+  /** AJ2-17: fijos que no se pudieron asignar (administración lo resuelve a mano). */
+  unassigned: GenerateUnassigned[]
+  /** AJ2-17: turnos de días que ya empezaron: no reciben fijos. */
+  pastWithoutFixed: number
 }
 
 /**
@@ -330,11 +401,33 @@ export async function generateShifts(
     created: number
     skipped: number
     holidays_skipped: number
+    assigned?: number
+    unassigned?: Array<{
+      shift_id: string
+      shift_date: string
+      service_id: string
+      employee_id: string
+      employee_name: string
+      code: string
+      message: string
+    }>
+    past_without_fixed?: number
   }
   return {
     created: payload.created,
     skipped: payload.skipped,
     holidaysSkipped: payload.holidays_skipped,
+    assigned: payload.assigned ?? 0,
+    unassigned: (payload.unassigned ?? []).map((item) => ({
+      shiftId: item.shift_id,
+      shiftDate: item.shift_date,
+      serviceId: item.service_id,
+      employeeId: item.employee_id,
+      employeeName: item.employee_name,
+      code: item.code,
+      message: item.message,
+    })),
+    pastWithoutFixed: payload.past_without_fixed ?? 0,
   }
 }
 

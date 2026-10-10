@@ -104,7 +104,7 @@ select is(
      and column_name in ('show_in_print', 'shift_observation', 'observation')),
   0, 'las vistas del celular (v_my_day, v_my_supervisions) no traen la observación ni la casilla'
 );
-select has_function('public', 'create_shift', array['uuid', 'uuid', 'date', 'time', 'time', 'smallint', 'uuid', 'text', 'boolean', 'boolean'], 'create_shift tiene p_show_in_print');
+select has_function('public', 'create_shift', array['uuid', 'uuid', 'date', 'time', 'time', 'smallint', 'uuid', 'text', 'boolean', 'boolean', 'uuid[]'], 'create_shift tiene p_show_in_print');
 select has_function('public', 'update_shift_details', array['uuid', 'smallint', 'text', 'boolean'], 'update_shift_details tiene p_show_in_print');
 select has_function('public', 'set_client_bank_details', array['uuid', 'text', 'text', 'text'], 'existe set_client_bank_details');
 select has_function('public', 'set_employee_bank_details', array['uuid', 'text', 'text', 'text'], 'existe set_employee_bank_details');

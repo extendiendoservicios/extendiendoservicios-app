@@ -385,3 +385,77 @@ export async function setServiceStatus(
   }
   return mapServiceDetailRow(data)
 }
+
+// -------------------------------------------------------------------------
+// 5. Empleados fijos del servicio (AJ2-17)
+// -------------------------------------------------------------------------
+
+/**
+ * Ids de los empleados fijos de un servicio (tabla `service_fixed_employees`,
+ * solo dueño y administrador; no hay vista). Se asignan solos a cada turno
+ * que genera `generate_shifts`.
+ */
+export async function fetchServiceFixedEmployees(
+  serviceId: string,
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('service_fixed_employees')
+    .select('employee_id')
+    .eq('service_id', serviceId)
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data ?? []).map((row) => row.employee_id)
+}
+
+/**
+ * Reemplaza la lista de fijos (`set_service_fixed_employees`; vacía = sin
+ * fijos). Errores: `SERVICE_NOT_FOUND`, `FIXED_EXCEEDS_STAFF`,
+ * `EMPLOYEE_NOT_ACTIVE`. No toca los turnos ya generados.
+ */
+export async function setServiceFixedEmployees(
+  serviceId: string,
+  employeeIds: string[],
+): Promise<string[]> {
+  const { data, error } = await supabase.rpc('set_service_fixed_employees', {
+    p_service_id: serviceId,
+    p_employee_ids: employeeIds,
+  })
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  const payload = data as { service_id: string; employee_ids: string[] }
+  return payload.employee_ids ?? []
+}
+
+/** Nombre de servicio, cliente y sede por id: rotula la lista de «sin asignar» de la generación. */
+export interface ServiceLabel {
+  id: string
+  name: string
+  clientName: string
+  siteName: string
+}
+
+export async function fetchServiceLabels(
+  ids: string[],
+): Promise<ServiceLabel[]> {
+  if (ids.length === 0) {
+    return []
+  }
+  const { data, error } = await supabase
+    .from('services')
+    .select('id, name, clients(legal_name, trade_name), sites(name)')
+    .in('id', ids)
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    name: row.name,
+    clientName: row.clients?.trade_name ?? row.clients?.legal_name ?? '',
+    siteName: row.sites?.name ?? '',
+  }))
+}

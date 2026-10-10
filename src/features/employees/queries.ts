@@ -44,6 +44,15 @@ export const employeesKeys = {
 // Listado (ADM-16)
 // -------------------------------------------------------------------------
 
+/** AJ2-17: opciones del selector múltiple de empleados activos (sin polling: se carga al abrir el formulario). */
+export function useActiveEmployeeOptionsQuery() {
+  return useQuery({
+    queryKey: [...employeesKeys.all, 'activeOptions'] as const,
+    queryFn: () => employeesApi.fetchActiveEmployeeOptions(),
+    staleTime: LIST_POLLING_MS,
+  })
+}
+
 export function useEmployeesQuery(filters: EmployeeListFilters) {
   return useQuery({
     queryKey: employeesKeys.list(filters),

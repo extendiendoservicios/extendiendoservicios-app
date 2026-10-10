@@ -216,8 +216,69 @@ describe('createShift', () => {
       p_service_id: undefined,
       p_notes: undefined,
       p_show_in_print: true,
+      p_employee_ids: undefined,
     })
-    expect(result).toEqual({ shiftId: 'sh1', warnings: ['HOLIDAY'] })
+    expect(result).toEqual({
+      shiftId: 'sh1',
+      warnings: ['HOLIDAY'],
+      assigned: [],
+      rejected: [],
+    })
+  })
+
+  it('AJ2-17: manda p_employee_ids y traduce asignados y rechazados', async () => {
+    rpcMock.mockResolvedValue({
+      data: {
+        shift: { id: 'sh9' },
+        warnings: [],
+        assigned: [
+          {
+            employee_id: 'e1',
+            assignment_id: 'as1',
+            warnings: ['OUTSIDE_AVAILABILITY'],
+          },
+        ],
+        rejected: [
+          {
+            employee_id: 'e2',
+            employee_name: 'Beto Gómez',
+            code: 'ASSIGNMENT_OVERLAP',
+            message: 'Ya tiene otro turno en ese horario.',
+          },
+        ],
+      },
+      error: null,
+    })
+
+    const result = await createShift({
+      clientId: 'c1',
+      siteId: 'si1',
+      date: '2026-10-20',
+      start: '08:00',
+      end: '12:00',
+      requiredStaff: 2,
+      employeeIds: ['e1', 'e2'],
+    })
+
+    expect(rpcMock).toHaveBeenCalledWith(
+      'create_shift',
+      expect.objectContaining({ p_employee_ids: ['e1', 'e2'] }),
+    )
+    expect(result.assigned).toEqual([
+      {
+        employeeId: 'e1',
+        assignmentId: 'as1',
+        warnings: ['OUTSIDE_AVAILABILITY'],
+      },
+    ])
+    expect(result.rejected).toEqual([
+      {
+        employeeId: 'e2',
+        employeeName: 'Beto Gómez',
+        code: 'ASSIGNMENT_OVERLAP',
+        message: 'Ya tiene otro turno en ese horario.',
+      },
+    ])
   })
 
   it('AJ2-15: manda la observación y la casilla «mostrar en la impresión»', async () => {
@@ -308,7 +369,54 @@ describe('generateShifts', () => {
       p_year: 2026,
       p_month: 10,
     })
-    expect(result).toEqual({ created: 40, skipped: 5, holidaysSkipped: 2 })
+    expect(result).toEqual({
+      created: 40,
+      skipped: 5,
+      holidaysSkipped: 2,
+      assigned: 0,
+      unassigned: [],
+      pastWithoutFixed: 0,
+    })
+  })
+
+  it('AJ2-17: traduce asignaciones de fijos, sin asignar y días pasados', async () => {
+    rpcMock.mockResolvedValue({
+      data: {
+        created: 10,
+        skipped: 0,
+        holidays_skipped: 0,
+        assigned: 8,
+        unassigned: [
+          {
+            shift_id: 's1',
+            shift_date: '2026-10-13',
+            service_id: 'sv1',
+            employee_id: 'e1',
+            employee_name: 'Ana Pérez',
+            code: 'ON_LEAVE',
+            message: 'Tiene licencia.',
+          },
+        ],
+        past_without_fixed: 2,
+      },
+      error: null,
+    })
+
+    const result = await generateShifts(2026, 10)
+
+    expect(result.assigned).toBe(8)
+    expect(result.pastWithoutFixed).toBe(2)
+    expect(result.unassigned).toEqual([
+      {
+        shiftId: 's1',
+        shiftDate: '2026-10-13',
+        serviceId: 'sv1',
+        employeeId: 'e1',
+        employeeName: 'Ana Pérez',
+        code: 'ON_LEAVE',
+        message: 'Tiene licencia.',
+      },
+    ])
   })
 
   it('traduce FORBIDDEN cuando falta la capacidad generate_shifts', async () => {
