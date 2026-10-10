@@ -1835,6 +1835,19 @@ firmas de `create_shift`/`update_shift_time` (0023, 0028) y dos valores de horas
 - **`generate_shifts(p_year, p_month)`**: a cada turno recién creado le asigna los fijos de su servicio. Lo que no se puede (licencia, no disponible, superposición, inactivo, dotación) se saltea sin frenar la generación. Resultado: las claves de siempre más `assigned` (cantidad de asignaciones hechas), `unassigned` (`[{ shift_id, shift_date, service_id, employee_id, employee_name, code, message }]`) y `past_without_fixed` (turnos creados que ya habían empezado: no reciben fijos, para no inventar inasistencias). Un turno que ya existía no se toca (idempotente: una segunda corrida da `assigned = 0` y `unassigned = []`).
 - Vistas: no hay `v_services`; el front lee los fijos con `from('service_fixed_employees')`.
 
+## Avisos y anuncios (migración `0042`, P19.6 paquete E, AJ2-03)
+
+Anuncios de administración para empleados y supervisores. No tiene relación con `notices` / `attendance_notices` (avisos de demora y ausencia del empleado): todo lo nuevo se llama `announcements`.
+
+- **Tablas** (RLS activa; `authenticated` solo con `select`, se escribe por RPC): `announcements(id, title ≤120, body ≤2000, audience, visible_until date null, content_updated_at, archived_at, archived_by, created_*, updated_*)`; `announcement_recipients(announcement_id, profile_id)` (solo `custom`); `announcement_reads(announcement_id, profile_id, read_at)`. Enum `announcement_audience`: `employees`, `supervisors`, `all`, `custom`.
+- **Quién lo ve**: por rol de `user_roles` (JWT): `employees` = rol `employee`; `supervisors` = rol `supervisor`; `all` = cualquiera de los dos; `custom` = los de la lista (solo se admiten personas activas con rol employee o supervisor). Con ambos roles alcanza que uno coincida. Dueño y administrador no reciben anuncios en su portada (la portada es del celular de empleado/supervisor); los ven y gestionan en administración.
+- **Vigencia**: `visible_until` inclusive, fecha de Buenos Aires (`app.today()`); se muestra si no está archivado y (`visible_until is null` o `>= hoy`).
+- **RLS**: dueño/administrador leen todo; los demás leen `announcements` solo si les corresponde, está vigente y no archivado (`app.announcement_targets_me`), y de `announcement_recipients` / `announcement_reads` solo sus propias filas.
+- **Editar y lecturas**: `update_announcement` reemplaza todos los campos. Si cambia el título o el texto se actualiza `content_updated_at`: las lecturas anteriores dejan de contar (la persona vuelve a ver el anuncio, con `was_edited = true`) pero la fila vieja se conserva hasta que vuelva a dar «Entendido». Cambiar audiencia, destinatarios o fecha no reinicia nada.
+- **Destinatarios para el conteo** (administración): se calculan al consultar sobre personas activas (`profiles.is_active` y sin `deleted_at`) con el rol de la audiencia; en `custom`, las de la lista que sigan activas. Las lecturas de quien dejó de ser destinatario se conservan pero no se cuentan.
+- **Vistas** (`security_invoker`): `v_my_announcements` (celular: `id, title, body, audience, visible_until, created_at, content_updated_at, read_at, was_edited`; portada = `where read_at is null`; vacía para quien no es destinatario); `v_announcements_admin` (`+ updated_at, archived_at, created_by, created_by_name, status` = `active` | `expired` | `archived`, `recipient_count`, `read_count`); `v_announcement_recipients` (`announcement_id, profile_id, first_name, last_name, roles text[], read_at`). Las dos de administración salen vacías para quien no es dueño/administrador.
+- **RPC** (`security definer`): `create_announcement(p_title, p_body, p_audience, p_visible_until default null, p_recipient_ids default null)`, `update_announcement(p_id, p_title, p_body, p_audience, p_visible_until default null, p_recipient_ids default null)`, `archive_announcement(p_id)` (idempotente): dueño o administrador, `FORBIDDEN` si no; devuelven la fila de `announcements`. `acknowledge_announcement(p_id)`: cualquier persona activa; idempotente; devuelve la fila de `announcement_reads`. Errores: `TITLE_REQUIRED`, `TITLE_TOO_LONG`, `BODY_REQUIRED`, `BODY_TOO_LONG`, `AUDIENCE_REQUIRED`, `VISIBLE_UNTIL_IN_PAST` (al editar solo si la fecha cambia), `RECIPIENTS_REQUIRED`, `RECIPIENT_INVALID`, `ANNOUNCEMENT_NOT_FOUND`, `ANNOUNCEMENT_ARCHIVED` (al editar), `ANNOUNCEMENT_NOT_AVAILABLE` (al dar «Entendido» a uno inexistente, archivado, vencido o ajeno). Fuera de `custom` se ignoran y limpian los destinatarios.
+
 ## Enumeraciones (04 sección 3)
 
 Las 15 enumeraciones del modelo, en el esquema `public`, migración `0002_enums.sql`. Agregar un
@@ -1908,6 +1921,7 @@ empleado y observación" más arriba. En F14 (P14.1, ABS-002, ATT-007):
 `v_employee_ratings`): `0034_p19_5e_en_camino_vence.sql` -- ver "Vencimiento de «En camino»". En F19 (P19.6 paquete B, AJ2-09 y AJ2-10): `0037_p19_6b_tope_de_horas_y_a_terminar.sql` X
 En F19 (P19.6 paquete D, AJ2-04 y AJ2-15): `0040_p19_6d_banco_y_observacion.sql` -- ver "Datos bancarios y observación del turno".
 En F19 (P19.6 paquete F, AJ2-17): `0041_p19_6f_asignar_al_crear.sql` -- ver "Asignar empleados al crear turnos".
+En F19 (P19.6 paquete E, AJ2-03): `0042_p19_6e_avisos_y_anuncios.sql` -- ver "Avisos y anuncios".
 
 ## Cómo escribir una migración
 
