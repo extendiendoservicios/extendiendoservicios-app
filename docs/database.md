@@ -1735,6 +1735,68 @@ check_out_at, planned_minutes, worked_minutes } ] } ]`.
 - Índice nuevo `shifts_client_id_shift_date_idx (client_id, shift_date) where deleted_at is null`.
 - Errores: `FORBIDDEN`, `INVALID_DATE_RANGE`, `CLIENT_NOT_FOUND`.
 
+## Tope de horas y turnos «A terminar» (migración `0037`, P19.6 paquete B, AJ2-09 y AJ2-10)
+
+Decisiones de Mike (9 oct 2026).
+
+### Tope de horas (AJ2-09)
+
+`app.capped_worked_minutes(check_in, check_out, franja_desde, franja_hasta)` es el único lugar donde
+se calculan las horas trabajadas: minutos de `[entrada, salida] ∩ [franja_desde, franja_hasta]`,
+redondeados al minuto, nunca negativos; `null` si falta la entrada o la salida; una punta nula de la
+franja es «sin tope de ese lado». La franja es la efectiva de la asignación (`assignments."window"`:
+la propia si la tiene, si no la del turno). Llegar tarde o salir antes descuenta aunque esté dentro
+de los 15 minutos de tolerancia (que solo decide `late`); llegar antes o salir después no suma.
+`minutes_late` y `minutes_early_leave` no cambian: los fichajes reales se siguen marcando.
+
+La usan: `v_assignments_board.worked_minutes`, `v_supervisions_admin.worked_minutes` (contra la franja
+del turno), `client_service_summary` y `clients_worked_minutes`. Como las horas se calculan al vuelo,
+los meses anteriores se recalculan solos. Ejemplos (turno 8 a 12): 7:45 a 11:45 = 225; 8:00 a 12:30
+= 240; 8:05 a 12:00 = 235.
+
+### «A terminar» (AJ2-10)
+
+- Representación: `services.open_ended` y `shifts.open_ended` (`boolean not null default false`). Con
+  la columna prendida, `end_time` queda siempre en `23:59` (trigger `app.normalize_open_ended` y
+  check `*_open_ended_end_check`): no es una hora de fin, es el tope del día. Así la restricción de
+  exclusión de asignaciones, `shifts.ends_at` y todo lo que ya lee la hora de fin siguen andando, y
+  un turno «A terminar» ocupa al empleado desde su inicio hasta las 23:59. No hay turnos que crucen
+  la medianoche (ADR-019).
+- `create_shift(..., p_open_ended boolean default false)` y `update_shift_time(p_shift_id, p_start,
+p_end, p_open_ended boolean default false)`: con `true`, `p_end` se ignora. Cambian de firma (se
+  reemplazan con `drop` + `create`, con sus grants). `INVALID_TIME_RANGE` si falta `p_end` y no es
+  «A terminar», o si el inicio es 23:59 o posterior.
+- `update_shift_time` permite ponerle la hora de fin (`p_open_ended = false`, mismo inicio) a un
+  turno «A terminar» ya `completed`: las horas se recalculan con el tope. Cualquier otro cambio en
+  un turno finalizado sigue dando `SHIFT_COMPLETED`.
+- `generate_shifts` copia `open_ended` del servicio: los turnos generados de un servicio «A terminar»
+  nacen «A terminar».
+- Horas: desde `max(entrada, inicio de la franja)` hasta la salida real (la franja de una asignación
+  «A terminar» llega hasta las 23:59). `planned_minutes` es `null` en una asignación «A terminar»
+  (no suma a las horas previstas) y `minutes_early_leave` también.
+- Franja propia (A CONFIRMAR con Mike): se permiten inicio propio y fin propio. Sin fin propio, la
+  asignación hereda «A terminar» (abierta). Con fin propio, para esa persona el fin está definido:
+  tiene tope, horas previstas y no puede quedar «Sin salida».
+- «Finalizado»: no cambia (`app.complete_shift_if_done`: el turno pasa a `completed` cuando todos los
+  asignados vigentes ficharon salida o avisaron ausencia).
+- «Sin salida»: asignación `present` (con inicio, sin fin) abierta, vigente, de un turno no cancelado,
+  pasadas las 23:59 del día del turno. Se deriva en las vistas: `v_assignments_board.display_status =
+'no_checkout'` con `worked_minutes = 0`; `v_my_day.no_checkout`; `v_shifts_board.no_checkout_count`.
+  `record_check_out` rechaza el fin propio de una asignación abierta pasadas las 23:59
+  (`OPEN_SHIFT_DAY_ENDED`): la hora la carga administración con `admin_record_attendance` o
+  `close_assignment` (entonces la asignación pasa a `finished` y vale la hora cargada, con el tope).
+- Columnas nuevas (al final de cada vista): `v_shifts_board.open_ended`, `no_checkout_count`;
+  `v_assignments_board.effective_open_ended`; `v_my_day.effective_open_ended`, `no_checkout`;
+  `v_supervisions_admin.shift_open_ended`; `v_my_supervisions.shift_open_ended`.
+  `client_service_summary` suma `totals.open_ended_shifts`, `shifts[].open_ended` y
+  `employees[].open_ended` / `no_checkout`; las asignaciones «A terminar» traen `planned_minutes`
+  `null` y no suman a `totals.planned_minutes`.
+
+Pruebas: `supabase/tests/0037_p19_6b_tope_de_horas_y_a_terminar.test.sql` (106 aserciones). Cambios
+de expectativa en pruebas viejas: columnas de `services`/`shifts` y de las vistas (0007, 0033, 0034),
+firmas de `create_shift`/`update_shift_time` (0023, 0028) y dos valores de horas (0033: la jornada de
+8:03 a 16:10 pasa de 487 a 477 minutos, y el total del rango de 957 a 947, por el tope).
+
 ## Enumeraciones (04 sección 3)
 
 Las 15 enumeraciones del modelo, en el esquema `public`, migración `0002_enums.sql`. Agregar un
@@ -1805,7 +1867,7 @@ empleado y observación" más arriba. En F14 (P14.1, ABS-002, ATT-007):
 "Correcciones de P18.6" más arriba. En F19 (P19.5a, ajustes de la reunión del 6 oct 2026):
 `0032_p19_5a_enums.sql` y `0033_p19_5a_ajustes_reunion.sql` -- ver "Ajustes de la reunión del
 6 oct 2026" más arriba. En F19 (P19.5e, vencimiento de «En camino» y permiso de
-`v_employee_ratings`): `0034_p19_5e_en_camino_vence.sql` -- ver "Vencimiento de «En camino»".
+`v_employee_ratings`): `0034_p19_5e_en_camino_vence.sql` -- ver "Vencimiento de «En camino»". En F19 (P19.6 paquete B, AJ2-09 y AJ2-10): `0037_p19_6b_tope_de_horas_y_a_terminar.sql` -- ver "Tope de horas y turnos «A terminar»".
 
 ## Cómo escribir una migración
 
