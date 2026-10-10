@@ -247,6 +247,8 @@ export interface AttendanceBoardRow {
   workedMinutes: number | null
   /** Asignación quitada del turno (el historial de un empleado las incluye): no cuenta como inasistencia. */
   removedAt?: string | null
+  /** AJ2-15: observación del turno, solo si tiene tildado «mostrar en la impresión» (null para quien no es administración). Va a la planilla impresa. */
+  shiftObservation?: string | null
 }
 
 /** Todas las columnas de `v_assignments_board` que usa esta pantalla (`06` sección 10, P14.1). */
@@ -259,7 +261,7 @@ const ATTENDANCE_BOARD_SELECT = `
   minutes_late, minutes_early_leave,
   last_notice_kind, last_notice_minutes_late, last_notice_reason_code, last_notice_reason_text,
   last_notice_reported_by, last_notice_source, last_notice_at,
-  last_notice_estimated_arrival_at, planned_minutes, worked_minutes, removed_at
+  last_notice_estimated_arrival_at, planned_minutes, worked_minutes, removed_at, shift_observation
 `
 
 interface AttendanceBoardRawRow {
@@ -302,6 +304,7 @@ interface AttendanceBoardRawRow {
   planned_minutes: number | null
   worked_minutes: number | null
   removed_at: string | null
+  shift_observation: string | null
 }
 
 function mapAttendanceBoardRow(row: AttendanceBoardRawRow): AttendanceBoardRow {
@@ -345,6 +348,7 @@ function mapAttendanceBoardRow(row: AttendanceBoardRawRow): AttendanceBoardRow {
     plannedMinutes: row.planned_minutes,
     workedMinutes: row.worked_minutes,
     removedAt: row.removed_at,
+    shiftObservation: row.shift_observation,
   }
 }
 

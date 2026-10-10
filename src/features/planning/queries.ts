@@ -135,11 +135,19 @@ export function useUpdateShiftDetailsMutation() {
       shiftId,
       requiredStaff,
       notes,
+      showInPrint,
     }: {
       shiftId: string
       requiredStaff: number
       notes?: string | null
-    }) => assignmentsApi.updateShiftDetails(shiftId, requiredStaff, notes),
+      showInPrint?: boolean
+    }) =>
+      assignmentsApi.updateShiftDetails(
+        shiftId,
+        requiredStaff,
+        notes,
+        showInPrint,
+      ),
     onSuccess: () => invalidatePlanningAndShifts(queryClient),
   })
 }

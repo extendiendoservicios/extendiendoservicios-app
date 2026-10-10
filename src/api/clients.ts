@@ -531,6 +531,8 @@ export interface ClientSummaryShift {
   status: string
   workedMinutes: number
   plannedMinutes: number
+  /** AJ2-15: observación del turno, solo si tiene tildado «mostrar en la impresión». */
+  observation?: string | null
   employees: ClientSummaryEmployee[]
 }
 
@@ -571,6 +573,7 @@ interface ClientServiceSummaryRaw {
     status: string
     worked_minutes: number
     planned_minutes: number
+    observation?: string | null
     employees: {
       assignment_id: string
       employee_id: string
@@ -613,6 +616,7 @@ export function mapClientServiceSummary(
       status: shift.status,
       workedMinutes: shift.worked_minutes,
       plannedMinutes: shift.planned_minutes,
+      observation: shift.observation ?? null,
       employees: (shift.employees ?? []).map((employee) => ({
         assignmentId: employee.assignment_id,
         employeeId: employee.employee_id,

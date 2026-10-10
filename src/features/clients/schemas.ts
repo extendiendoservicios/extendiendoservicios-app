@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { cleanTaxId } from '@/lib/taxId'
 import type { Coordinates } from '@/components/map'
 import { CLIENT_STATUS_LABELS, type ClientStatus } from '@/api/clients'
+import { bankFieldsShape } from '@/features/bank/schemas'
 
 /**
  * Esquemas zod de ADM-20 y del panel de contactos de ADM-21 (CLIENT-001):
@@ -49,6 +50,8 @@ export const clientFormSchema = z.object({
   coordinates: z.custom<Coordinates | null>(),
   status: z.enum(['active', 'suspended', 'closed']),
   notes: z.string().trim().optional(),
+  // AJ2-04: datos bancarios (solo dueño y administrador); se guardan por RPC aparte.
+  ...bankFieldsShape,
 })
 
 export type ClientFormValues = z.infer<typeof clientFormSchema>

@@ -68,6 +68,7 @@ export const shiftFormSchema = z
     openEnded: z.boolean().optional(),
     requiredStaff: requiredStaffSchema,
     notes: z.string().trim().optional(),
+    showInPrint: z.boolean().optional(),
   })
   .superRefine(checkEndTime)
 
@@ -84,6 +85,7 @@ export function shiftFormValuesToCreateInput(values: ShiftFormValues) {
     openEnded: Boolean(values.openEnded),
     requiredStaff: Number(values.requiredStaff),
     notes: values.notes?.trim() ? values.notes.trim() : null,
+    showInPrint: values.showInPrint ?? true,
   }
 }
 
@@ -112,6 +114,7 @@ export const shiftEditFormSchema = z
     openEnded: z.boolean().optional(),
     requiredStaff: requiredStaffSchema,
     notes: z.string().trim().optional(),
+    showInPrint: z.boolean().optional(),
   })
   .superRefine(checkEndTime)
 
@@ -127,6 +130,7 @@ export function shiftEditFormValuesToInputs(values: ShiftEditFormValues) {
     details: {
       requiredStaff: Number(values.requiredStaff),
       notes: values.notes?.trim() ? values.notes.trim() : null,
+      showInPrint: values.showInPrint ?? true,
     },
   }
 }

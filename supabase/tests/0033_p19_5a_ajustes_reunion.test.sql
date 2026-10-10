@@ -169,7 +169,7 @@ select is(
   (select array_agg(attname::text order by attnum) from pg_attribute
    where attrelid = 'public.v_assignments_board'::regclass and attnum > 0 and not attisdropped
    and attnum > (select attnum from pg_attribute where attrelid = 'public.v_assignments_board'::regclass and attname = 'last_notice_at')),
-  array['last_notice_estimated_arrival_at', 'planned_minutes', 'worked_minutes', 'effective_open_ended'],
+  array['last_notice_estimated_arrival_at', 'planned_minutes', 'worked_minutes', 'effective_open_ended', 'shift_observation'],
   'v_assignments_board: last_notice_estimated_arrival_at, planned_minutes y worked_minutes van al final (0037 agrega effective_open_ended después)'
 );
 select is(

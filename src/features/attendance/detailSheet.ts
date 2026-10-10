@@ -4,6 +4,7 @@ import { formatCalendarDate, formatMinutes, formatTime } from '@/lib/format'
 import type { PrintColumn, PrintRowData } from '@/features/print/PrintTable'
 import { formatShiftRange } from '@/features/shifts/openEnded'
 import { absenceDetail, isAbsence } from '@/features/attendance/absences'
+import { joinObservations } from '@/features/shifts/observation'
 
 /**
  * Detalle de asistencia de una persona (AJ-06): lógica sin React que arma las
@@ -223,8 +224,14 @@ export function buildAttendanceSheet(input: {
       franja: entryFranja(entry),
       start: checkIn ? formatTime(checkIn) : '—',
       end: checkOut ? formatTime(checkOut) : '—',
+      // AJ2-15: la observación del turno (si tiene tildado «mostrar en la impresión») va junto a la novedad.
       novelty:
-        absent && entry.kind === 'service' ? absenceDetail(entry.row) : '',
+        entry.kind === 'service'
+          ? joinObservations(
+              absent ? absenceDetail(entry.row) : '',
+              entry.row.shiftObservation,
+            )
+          : '',
       hours: worked != null ? formatMinutes(worked) : '—',
     }
   })

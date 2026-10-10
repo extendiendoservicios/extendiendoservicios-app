@@ -6,7 +6,7 @@ import { CalendarClock, TriangleAlert } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { ShiftObservationField } from '@/features/shifts/components/ShiftObservationField'
 import { OpenEndedToggle } from '@/features/shifts/components/OpenEndedToggle'
 import { OPEN_ENDED_LABEL } from '@/features/shifts/openEnded'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
@@ -102,6 +102,7 @@ function CreateShiftForm({
     openEnded: false,
     requiredStaff: '1',
     notes: '',
+    showInPrint: true,
   }
 
   const {
@@ -316,10 +317,19 @@ function CreateShiftForm({
           )}
         </Field>
 
-        <Field className="sm:col-span-2">
-          <FieldLabel htmlFor="shift-notes">Notas</FieldLabel>
-          <Textarea id="shift-notes" rows={3} {...register('notes')} />
-        </Field>
+        <Controller
+          control={control}
+          name="showInPrint"
+          render={({ field }) => (
+            <ShiftObservationField
+              id="shift-new"
+              className="sm:col-span-2"
+              textareaProps={register('notes')}
+              showInPrint={field.value ?? true}
+              onShowInPrintChange={field.onChange}
+            />
+          )}
+        />
       </div>
 
       <div className="flex gap-2">
@@ -371,6 +381,7 @@ function EditShiftTimeForm({
           openEnded: shiftQuery.data.openEnded,
           requiredStaff: String(shiftQuery.data.requiredStaff),
           notes: shiftQuery.data.notes ?? '',
+          showInPrint: shiftQuery.data.showInPrint ?? true,
         }
       : undefined,
   })
@@ -401,6 +412,7 @@ function EditShiftTimeForm({
                 shiftId: id,
                 requiredStaff: inputs.details.requiredStaff,
                 notes: inputs.details.notes,
+                showInPrint: inputs.details.showInPrint,
               }),
             ]),
       ])
@@ -569,10 +581,19 @@ function EditShiftTimeForm({
                     <FieldError>{errors.requiredStaff.message}</FieldError>
                   )}
                 </Field>
-                <Field className="sm:col-span-2">
-                  <FieldLabel htmlFor="shift-notes">Notas</FieldLabel>
-                  <Textarea id="shift-notes" rows={3} {...register('notes')} />
-                </Field>
+                <Controller
+                  control={control}
+                  name="showInPrint"
+                  render={({ field }) => (
+                    <ShiftObservationField
+                      id="shift-edit"
+                      className="sm:col-span-2"
+                      textareaProps={register('notes')}
+                      showInPrint={field.value ?? true}
+                      onShowInPrintChange={field.onChange}
+                    />
+                  )}
+                />
               </>
             )}
           </div>

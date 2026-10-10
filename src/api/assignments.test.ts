@@ -357,7 +357,7 @@ describe('updateShiftDetails', () => {
       data: {
         id: 'sh1',
         required_staff: 3,
-        notes: 'Llevar insumos',
+        notes: null,
         status: 'scheduled',
       },
       error: null,
@@ -369,12 +369,29 @@ describe('updateShiftDetails', () => {
       p_shift_id: 'sh1',
       p_required_staff: 3,
       p_notes: 'Llevar insumos',
+      p_show_in_print: undefined,
     })
+    // AJ2-15: la observación ya no vuelve en la fila de `shifts`.
     expect(result).toEqual({
       id: 'sh1',
       requiredStaff: 3,
-      notes: 'Llevar insumos',
       status: 'scheduled',
+    })
+  })
+
+  it('AJ2-15: manda la casilla «mostrar en la impresión» cuando se indica', async () => {
+    rpcMock.mockResolvedValue({
+      data: { id: 'sh1', required_staff: 3, status: 'scheduled' },
+      error: null,
+    })
+
+    await updateShiftDetails('sh1', 3, 'Llevar insumos', false)
+
+    expect(rpcMock).toHaveBeenCalledWith('update_shift_details', {
+      p_shift_id: 'sh1',
+      p_required_staff: 3,
+      p_notes: 'Llevar insumos',
+      p_show_in_print: false,
     })
   })
 
@@ -405,7 +422,7 @@ describe('fetchShiftDetail', () => {
     end_time: '12:00:00',
     required_staff: 2,
     status: 'assigned' as const,
-    notes: 'Llevar insumos',
+    observation: { observation: 'Llevar insumos', show_in_print: false },
     generated: true,
     service_id: 'sv1',
     starts_at: '2026-10-05T11:00:00+00:00',
@@ -485,6 +502,9 @@ describe('fetchShiftDetail', () => {
     expect(fromMock).toHaveBeenCalledWith('shifts')
     expect(detail.clientName).toBe('Limpia Ya')
     expect(detail.fromService).toBe(true)
+    // AJ2-15: la observación sale de `shift_observations`, no de `shifts.notes`.
+    expect(detail.notes).toBe('Llevar insumos')
+    expect(detail.showInPrint).toBe(false)
     expect(detail.assignments).toHaveLength(1)
     expect(detail.assignments[0]).toEqual(
       expect.objectContaining({
@@ -500,6 +520,20 @@ describe('fetchShiftDetail', () => {
         supervisorLastName: 'Ríos',
       }),
     )
+  })
+
+  it('AJ2-15: un turno sin observación vuelve con notes y showInPrint en null', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: { ...SHIFT_DETAIL_ROW, observation: null },
+        error: null,
+      }),
+    )
+
+    const detail = await fetchShiftDetail('sh1')
+
+    expect(detail.notes).toBeNull()
+    expect(detail.showInPrint).toBeNull()
   })
 
   it('traduce un error de Postgres a ApiError', async () => {

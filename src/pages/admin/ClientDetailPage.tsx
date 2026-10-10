@@ -13,6 +13,8 @@ import {
   useClientDetailQuery,
   useClientSitesQuery,
 } from '@/features/clients/queries'
+import { BankDetailsCard } from '@/features/bank/components/BankDetailsCard'
+import { useClientBankDetailsQuery } from '@/features/bank/queries'
 import { ClientServiceSummaryTab } from '@/features/clients/components/ClientServiceSummaryTab'
 import { ClientContactsPanel } from '@/features/clients/components/ClientContactsPanel'
 import { ChangeClientStatusDialog } from '@/features/clients/components/ChangeClientStatusDialog'
@@ -62,6 +64,7 @@ export default function ClientDetailPage() {
 
   const clientQuery = useClientDetailQuery(id)
   const sitesQuery = useClientSitesQuery(activeTab === 'sedes' ? id : undefined)
+  const bankQuery = useClientBankDetailsQuery(id)
 
   if (!id) {
     return null
@@ -138,6 +141,11 @@ export default function ClientDetailPage() {
           </Button>
         </div>
       </div>
+
+      <BankDetailsCard
+        details={bankQuery.data}
+        isLoading={bankQuery.isLoading}
+      />
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
