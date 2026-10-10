@@ -135,8 +135,8 @@ select is(
 );
 select is(
   (select a.attname::text from pg_attribute a where a.attrelid = 'public.v_assignments_board'::regclass and a.attnum > 0 and not a.attisdropped order by a.attnum desc limit 1),
-  'effective_open_ended',
-  'v_assignments_board conserva sus columnas (0037 agrega effective_open_ended al final)'
+  'shift_observation',
+  'v_assignments_board conserva sus columnas (0037 agrega effective_open_ended y 0040 shift_observation al final)'
 );
 select ok(
   (select c.reloptions @> array['security_invoker=true'] from pg_class c where c.oid = 'public.v_my_day'::regclass)

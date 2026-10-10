@@ -52,9 +52,9 @@ select columns_are(
     'required_staff', 'status', 'generated', 'checklist_template_id',
     'cancelled_at', 'cancelled_by', 'cancel_reason', 'notes',
     'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
-    'starts_at', 'ends_at', 'open_ended'
+    'starts_at', 'ends_at', 'open_ended', 'show_in_print'
   ],
-  'shifts tiene exactamente las columnas de 04 sección 2.3 (más starts_at/ends_at generadas y open_ended, 0037)'
+  'shifts tiene exactamente las columnas de 04 sección 2.3 (más starts_at/ends_at generadas open_ended, 0037, y show_in_print, 0040)'
 );
 
 select columns_are(

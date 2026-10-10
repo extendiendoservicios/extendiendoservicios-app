@@ -112,7 +112,7 @@ select col_default_is('public', 'services', 'open_ended', 'false', 'services.ope
 select has_function('app', 'capped_worked_minutes',
   array['timestamp with time zone', 'timestamp with time zone', 'timestamp with time zone', 'timestamp with time zone'],
   'existe app.capped_worked_minutes(timestamptz x4)');
-select has_function('public', 'create_shift', array['uuid', 'uuid', 'date', 'time', 'time', 'smallint', 'uuid', 'text', 'boolean'],
+select has_function('public', 'create_shift', array['uuid', 'uuid', 'date', 'time', 'time', 'smallint', 'uuid', 'text', 'boolean', 'boolean'],
   'create_shift tiene p_open_ended');
 select has_function('public', 'update_shift_time', array['uuid', 'time', 'time', 'boolean'],
   'update_shift_time tiene p_open_ended');
@@ -121,8 +121,8 @@ select hasnt_function('public', 'update_shift_time', array['uuid', 'time', 'time
 select hasnt_function('public', 'create_shift', array['uuid', 'uuid', 'date', 'time', 'time', 'smallint', 'uuid', 'text'],
   'ya no existe create_shift de ocho parámetros');
 select ok(
-  not has_function_privilege('anon', 'public.create_shift(uuid, uuid, date, time, time, smallint, uuid, text, boolean)', 'execute')
-    and has_function_privilege('authenticated', 'public.create_shift(uuid, uuid, date, time, time, smallint, uuid, text, boolean)', 'execute')
+  not has_function_privilege('anon', 'public.create_shift(uuid, uuid, date, time, time, smallint, uuid, text, boolean, boolean)', 'execute')
+    and has_function_privilege('authenticated', 'public.create_shift(uuid, uuid, date, time, time, smallint, uuid, text, boolean, boolean)', 'execute')
     and not has_function_privilege('anon', 'public.update_shift_time(uuid, time, time, boolean)', 'execute')
     and has_function_privilege('authenticated', 'public.update_shift_time(uuid, time, time, boolean)', 'execute'),
   'grants de create_shift/update_shift_time: anon no, authenticated sí'
@@ -138,15 +138,15 @@ select is(
   (select array_agg(attname::text order by attnum) from pg_attribute
    where attrelid = 'public.v_shifts_board'::regclass and attnum > 0 and not attisdropped
    and attnum >= (select attnum from pg_attribute where attrelid = 'public.v_shifts_board'::regclass and attname = 'deleted_at')),
-  array['deleted_at', 'open_ended', 'no_checkout_count'],
-  'v_shifts_board: open_ended y no_checkout_count van después de deleted_at'
+  array['deleted_at', 'open_ended', 'no_checkout_count', 'show_in_print'],
+  'v_shifts_board: open_ended y no_checkout_count van después de deleted_at (0040 agrega show_in_print al final)'
 );
 select is(
   (select array_agg(attname::text order by attnum) from pg_attribute
    where attrelid = 'public.v_assignments_board'::regclass and attnum > 0 and not attisdropped
    and attnum >= (select attnum from pg_attribute where attrelid = 'public.v_assignments_board'::regclass and attname = 'planned_minutes')),
-  array['planned_minutes', 'worked_minutes', 'effective_open_ended'],
-  'v_assignments_board: effective_open_ended va después de worked_minutes'
+  array['planned_minutes', 'worked_minutes', 'effective_open_ended', 'shift_observation'],
+  'v_assignments_board: effective_open_ended va después de worked_minutes (0040 agrega shift_observation al final)'
 );
 select is(
   (select array_agg(attname::text order by attnum) from pg_attribute
