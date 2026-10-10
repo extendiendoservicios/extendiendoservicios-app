@@ -79,7 +79,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
       cell: ({ row }) => (
         <Link
           to={`/admin/turnos/${row.original.id}`}
-          className="font-semibold text-text hover:text-primary-800"
+          className="font-semibold whitespace-nowrap text-text hover:text-primary-800"
         >
           {row.original.startTime.slice(0, 5)}–
           {row.original.endTime.slice(0, 5)}

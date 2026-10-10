@@ -200,7 +200,7 @@ export function buildAttendanceSheet(input: {
     { key: 'franja', header: 'Franja' },
     { key: 'start', header: 'Inicio' },
     { key: 'end', header: 'Fin' },
-    { key: 'novelty', header: 'Novedad' },
+    { key: 'novelty', header: 'Observaciones' },
     { key: 'hours', header: 'Horas', align: 'right' },
   ]
 

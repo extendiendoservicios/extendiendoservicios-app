@@ -116,7 +116,7 @@ export function buildClientSummarySheet(input: {
     { key: 'franja', header: 'Franja' },
     { key: 'name', header: 'Nombre y Apellido' },
     { key: 'dni', header: 'DNI' },
-    { key: 'novelty', header: 'Novedad' },
+    { key: 'novelty', header: 'Observaciones' },
     { key: 'hours', header: 'Horas', align: 'right' },
   ]
 

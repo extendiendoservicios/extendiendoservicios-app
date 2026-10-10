@@ -132,7 +132,7 @@ describe('buildClientSummarySheet (AJ-09)', () => {
       'Franja',
       'Nombre y Apellido',
       'DNI',
-      'Novedad',
+      'Observaciones',
       'Horas',
     ])
     // Una fila por persona y turno; DNI «—» si no se pasó.

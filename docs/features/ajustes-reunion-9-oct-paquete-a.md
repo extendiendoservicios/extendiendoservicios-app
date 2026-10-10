@@ -63,7 +63,7 @@ servicios del cliente** (`features/clients/serviceSummary.ts`).
 Inasistencia (`features/attendance/absences.ts`, `isAbsence`): asignación
 vigente de un turno no cancelado, sin fichaje de inicio, con aviso de ausencia
 o con la franja ya terminada. Un turno que todavía no terminó y sin aviso no
-cuenta. En ambas hojas sale con la columna «Novedad» («Ausencia avisada:
+cuenta. En ambas hojas sale con la columna «Observaciones» («Ausencia avisada:
 Enfermedad», «Inasistencia: sin fichaje de inicio»), horas «—» (no suman) y un
 dato «Inasistencias: N» en el encabezado.
 

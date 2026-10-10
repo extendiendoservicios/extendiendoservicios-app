@@ -125,7 +125,7 @@ describe('buildAttendanceSheet (AJ-06)', () => {
       'Franja',
       'Inicio',
       'Fin',
-      'Novedad',
+      'Observaciones',
       'Horas',
     ])
     expect(
