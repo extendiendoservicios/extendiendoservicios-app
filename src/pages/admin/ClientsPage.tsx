@@ -156,7 +156,11 @@ function ClientsListTab() {
       id: 'cuit',
       header: 'CUIT',
       meta: { card: 'meta', cardLabel: 'CUIT' },
-      cell: ({ row }) => formatTaxId(row.original.cuit) ?? '—',
+      cell: ({ row }) => (
+        <span className="whitespace-nowrap">
+          {formatTaxId(row.original.cuit) ?? '—'}
+        </span>
+      ),
     },
     {
       id: 'sites',
