@@ -67,6 +67,8 @@ export interface ClientListRow {
   status: ClientStatus
   sitesCount: number
   activeServicesCount: number
+  /** Ruta de la foto en `client-photos` (AJ2-06), o `null`. */
+  photoPath: string | null
 }
 
 export interface ClientListFilters {
@@ -89,7 +91,7 @@ export async function fetchClients(
   let query = supabase
     .from('v_clients')
     .select(
-      'id, legal_name, trade_name, cuit, status, sites_count, active_services_count',
+      'id, legal_name, trade_name, cuit, status, sites_count, active_services_count, photo_path',
     )
     .is('deleted_at', null)
     .order('legal_name', { ascending: true })
@@ -121,6 +123,7 @@ export async function fetchClients(
     status: row.status as ClientStatus,
     sitesCount: row.sites_count ?? 0,
     activeServicesCount: row.active_services_count ?? 0,
+    photoPath: row.photo_path,
   }))
 }
 
@@ -163,6 +166,8 @@ export interface ClientDetail {
   longitude: number | null
   status: ClientStatus
   notes: string | null
+  /** Ruta de la foto en `client-photos` (AJ2-06), o `null`. */
+  photoPath: string | null
   createdAt: string
   updatedAt: string | null
 }
@@ -180,6 +185,7 @@ function mapClientRow(
     longitude: row.longitude,
     status: row.status,
     notes: row.notes,
+    photoPath: row.photo_path,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
