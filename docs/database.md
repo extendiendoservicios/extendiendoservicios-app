@@ -1797,6 +1797,14 @@ de expectativa en pruebas viejas: columnas de `services`/`shifts` y de las vista
 firmas de `create_shift`/`update_shift_time` (0023, 0028) y dos valores de horas (0033: la jornada de
 8:03 a 16:10 pasa de 487 a 477 minutos, y el total del rango de 957 a 947, por el tope).
 
+## Foto de clientes (migración `0039`, P19.6 paquete C, AJ2-06)
+
+- `clients.photo_path text` (última columna): ruta de la foto dentro del bucket `client-photos`; null si no tiene.
+- Bucket `client-photos`: público, 2 MB, solo `image/jpeg`. Ruta `{client_id}/{uuid}.jpg` (el front redimensiona y comprime a JPEG como con `avatars`). Bucket propio y no carpeta de `avatars` porque el primer segmento acá es un `client_id` y allá un `profile_id`.
+- Políticas sobre `storage.objects`: `client_photos_select_admin_or_supervisor` (listar/descargar por API: owner/admin y el supervisor de turnos de ese cliente; el empleado no ve la foto), `client_photos_insert_admin`, `client_photos_update_admin`, `client_photos_delete_admin` (solo owner/admin, mismo criterio que editar clientes). Las fotos se sirven por `/object/public/...` (`getPublicUrl`), igual que `avatars`.
+- `v_clients` suma `photo_path` al final. `v_clients_basic` y `v_search` no cambian.
+- Guardar la foto: subir el archivo y después `update clients set photo_path = ...` (la RLS de `clients` ya limita a owner/admin).
+
 ## Enumeraciones (04 sección 3)
 
 Las 15 enumeraciones del modelo, en el esquema `public`, migración `0002_enums.sql`. Agregar un
@@ -1867,7 +1875,7 @@ empleado y observación" más arriba. En F14 (P14.1, ABS-002, ATT-007):
 "Correcciones de P18.6" más arriba. En F19 (P19.5a, ajustes de la reunión del 6 oct 2026):
 `0032_p19_5a_enums.sql` y `0033_p19_5a_ajustes_reunion.sql` -- ver "Ajustes de la reunión del
 6 oct 2026" más arriba. En F19 (P19.5e, vencimiento de «En camino» y permiso de
-`v_employee_ratings`): `0034_p19_5e_en_camino_vence.sql` -- ver "Vencimiento de «En camino»". En F19 (P19.6 paquete B, AJ2-09 y AJ2-10): `0037_p19_6b_tope_de_horas_y_a_terminar.sql` -- ver "Tope de horas y turnos «A terminar»".
+`v_employee_ratings`): `0034_p19_5e_en_camino_vence.sql` -- ver "Vencimiento de «En camino»". En F19 (P19.6 paquete B, AJ2-09 y AJ2-10): `0037_p19_6b_tope_de_horas_y_a_terminar.sql` X
 
 ## Cómo escribir una migración
 
