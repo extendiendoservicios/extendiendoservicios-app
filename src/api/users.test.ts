@@ -59,6 +59,7 @@ describe('fetchUsers', () => {
         last_name: string
         is_active: boolean
         deleted_at: string | null
+        avatar_path: string | null
         user_roles: { role: string }[]
       }[]
     > = {
@@ -69,6 +70,7 @@ describe('fetchUsers', () => {
           last_name: 'Gómez',
           is_active: true,
           deleted_at: null,
+          avatar_path: 'p1/foto.jpg',
           user_roles: [{ role: 'admin' }],
         },
         {
@@ -77,6 +79,7 @@ describe('fetchUsers', () => {
           last_name: 'Ruiz',
           is_active: false,
           deleted_at: '2026-09-01T00:00:00Z',
+          avatar_path: null,
           user_roles: [],
         },
       ],
@@ -100,6 +103,7 @@ describe('fetchUsers', () => {
         lastName: 'Gómez',
         isActive: true,
         deletedAt: null,
+        avatarPath: 'p1/foto.jpg',
         roles: ['admin'],
       },
       {
@@ -108,6 +112,7 @@ describe('fetchUsers', () => {
         lastName: 'Ruiz',
         isActive: false,
         deletedAt: '2026-09-01T00:00:00Z',
+        avatarPath: null,
         roles: [],
       },
     ])

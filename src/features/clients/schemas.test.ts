@@ -42,7 +42,18 @@ describe('clientFormSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it.each(['2012345678', '201234567861', '20-12345678-6', 'abcdefghijk'])(
+  it('acepta un CUIT con guiones y lo guarda solo con dígitos (AJ2-05)', () => {
+    const result = clientFormSchema.safeParse({
+      ...baseValues,
+      cuit: '20-12345678-6',
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(clientFormValuesToInput(result.data).cuit).toBe('20123456786')
+    }
+  })
+
+  it.each(['2012345678', '201234567861', 'abcdefghijk'])(
     'rechaza un CUIT con formato inválido (%s)',
     (cuit) => {
       const result = clientFormSchema.safeParse({ ...baseValues, cuit })

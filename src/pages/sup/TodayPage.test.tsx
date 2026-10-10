@@ -5,6 +5,11 @@ import SupervisorTodayPage, { employeeNames } from './TodayPage'
 import * as mySupervisionsModule from '@/api/mySupervisions'
 import type { MySupervision } from '@/api/mySupervisions'
 
+// Los anuncios tienen sus propios tests; acá no se prueban.
+vi.mock('@/features/announcements/mobile/AnnouncementsBanner', () => ({
+  AnnouncementsBanner: () => null,
+}))
+
 /**
  * SUP-02 (MOB-SUP-002): las supervisiones de hoy, el bloque "Próximos días"
  * y el estado vacío. Mismo patrón de mocks que el resto de la vía: se
@@ -36,6 +41,7 @@ function supervision(overrides: Partial<MySupervision>): MySupervision {
     endTime: '12:00:00',
     startsAt: null,
     endsAt: null,
+    shiftOpenEnded: false,
     status: 'assigned',
     assignedAt: '2026-09-20T10:00:00Z',
     notDoneReason: null,

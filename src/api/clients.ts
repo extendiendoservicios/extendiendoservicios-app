@@ -1,3 +1,4 @@
+import { cleanTaxId } from '@/lib/taxId'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
 import { ApiError, fromPostgrestError } from './errors'
@@ -66,6 +67,8 @@ export interface ClientListRow {
   status: ClientStatus
   sitesCount: number
   activeServicesCount: number
+  /** Ruta de la foto en `client-photos` (AJ2-06), o `null`. */
+  photoPath: string | null
 }
 
 export interface ClientListFilters {
@@ -88,7 +91,7 @@ export async function fetchClients(
   let query = supabase
     .from('v_clients')
     .select(
-      'id, legal_name, trade_name, cuit, status, sites_count, active_services_count',
+      'id, legal_name, trade_name, cuit, status, sites_count, active_services_count, photo_path',
     )
     .is('deleted_at', null)
     .order('legal_name', { ascending: true })
@@ -96,8 +99,11 @@ export async function fetchClients(
   const text = filters.text?.trim()
   if (text) {
     const escaped = text.replace(/[%_]/g, '\\$&')
+    // El CUIT se muestra como XX-XXXXXXXX-X y se guarda solo con dígitos:
+    // si lo que se busca parece un CUIT escrito con guiones, se busca limpio.
+    const cuitText = /^[0-9][0-9.\s-]*$/.test(text) ? cleanTaxId(text) : escaped
     query = query.or(
-      `legal_name.ilike.%${escaped}%,trade_name.ilike.%${escaped}%,cuit.ilike.%${escaped}%`,
+      `legal_name.ilike.%${escaped}%,trade_name.ilike.%${escaped}%,cuit.ilike.%${cuitText}%`,
     )
   }
   if (filters.status && filters.status !== 'all') {
@@ -117,6 +123,7 @@ export async function fetchClients(
     status: row.status as ClientStatus,
     sitesCount: row.sites_count ?? 0,
     activeServicesCount: row.active_services_count ?? 0,
+    photoPath: row.photo_path,
   }))
 }
 
@@ -159,6 +166,8 @@ export interface ClientDetail {
   longitude: number | null
   status: ClientStatus
   notes: string | null
+  /** Ruta de la foto en `client-photos` (AJ2-06), o `null`. */
+  photoPath: string | null
   createdAt: string
   updatedAt: string | null
 }
@@ -176,6 +185,7 @@ function mapClientRow(
     longitude: row.longitude,
     status: row.status,
     notes: row.notes,
+    photoPath: row.photo_path,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -499,8 +509,13 @@ export interface ClientSummaryEmployee {
   status: string
   checkInAt: string | null
   checkOutAt: string | null
+  /** `null` en una asignación «A terminar»: no hay franja prevista y no suma a las previstas (AJ2-10). */
   plannedMinutes: number | null
   workedMinutes: number | null
+  /** AJ2-10: asignación «A terminar» (turno abierto y sin fin propio). */
+  openEnded: boolean
+  /** AJ2-10: «Sin salida»: pasó el día y nadie cargó la salida; suma 0 horas. */
+  noCheckout: boolean
 }
 
 /** Un turno realizado dentro del período. */
@@ -511,9 +526,13 @@ export interface ClientSummaryShift {
   siteName: string
   startTime: string
   endTime: string
+  /** AJ2-10: turno «A terminar» (el fin 23:59 no se muestra). */
+  openEnded: boolean
   status: string
   workedMinutes: number
   plannedMinutes: number
+  /** AJ2-15: observación del turno, solo si tiene tildado «mostrar en la impresión». */
+  observation?: string | null
   employees: ClientSummaryEmployee[]
 }
 
@@ -526,6 +545,8 @@ export interface ClientServiceSummary {
     employeesCount: number
     workedMinutes: number
     plannedMinutes: number
+    /** AJ2-10: cantidad de turnos «A terminar» del período. */
+    openEndedShifts: number
   }
   shifts: ClientSummaryShift[]
 }
@@ -539,6 +560,7 @@ interface ClientServiceSummaryRaw {
     employees_count: number
     worked_minutes: number
     planned_minutes: number
+    open_ended_shifts?: number
   }
   shifts: {
     shift_id: string
@@ -547,9 +569,11 @@ interface ClientServiceSummaryRaw {
     site_name: string
     start_time: string
     end_time: string
+    open_ended?: boolean
     status: string
     worked_minutes: number
     planned_minutes: number
+    observation?: string | null
     employees: {
       assignment_id: string
       employee_id: string
@@ -560,6 +584,8 @@ interface ClientServiceSummaryRaw {
       check_out_at: string | null
       planned_minutes: number | null
       worked_minutes: number | null
+      open_ended?: boolean
+      no_checkout?: boolean
     }[]
   }[]
 }
@@ -577,6 +603,7 @@ export function mapClientServiceSummary(
       employeesCount: raw.totals.employees_count,
       workedMinutes: raw.totals.worked_minutes,
       plannedMinutes: raw.totals.planned_minutes,
+      openEndedShifts: raw.totals.open_ended_shifts ?? 0,
     },
     shifts: (raw.shifts ?? []).map((shift) => ({
       shiftId: shift.shift_id,
@@ -585,9 +612,11 @@ export function mapClientServiceSummary(
       siteName: shift.site_name,
       startTime: shift.start_time,
       endTime: shift.end_time,
+      openEnded: shift.open_ended ?? false,
       status: shift.status,
       workedMinutes: shift.worked_minutes,
       plannedMinutes: shift.planned_minutes,
+      observation: shift.observation ?? null,
       employees: (shift.employees ?? []).map((employee) => ({
         assignmentId: employee.assignment_id,
         employeeId: employee.employee_id,
@@ -598,6 +627,8 @@ export function mapClientServiceSummary(
         checkOutAt: employee.check_out_at,
         plannedMinutes: employee.planned_minutes,
         workedMinutes: employee.worked_minutes,
+        openEnded: employee.open_ended ?? false,
+        noCheckout: employee.no_checkout ?? false,
       })),
     })),
   }

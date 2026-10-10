@@ -1,6 +1,8 @@
 import { z } from 'zod'
+import { cleanTaxId } from '@/lib/taxId'
 import type { Coordinates } from '@/components/map'
 import { CLIENT_STATUS_LABELS, type ClientStatus } from '@/api/clients'
+import { bankFieldsShape } from '@/features/bank/schemas'
 
 /**
  * Esquemas zod de ADM-20 y del panel de contactos de ADM-21 (CLIENT-001):
@@ -29,8 +31,8 @@ const cuitSchema = z
   .trim()
   .optional()
   .refine(
-    (value) => !value || /^[0-9]{11}$/.test(value),
-    'El CUIT tiene que tener 11 dígitos, sin puntos ni guiones.',
+    (value) => !value || /^[0-9]{11}$/.test(cleanTaxId(value)),
+    'El CUIT tiene que tener 11 dígitos.',
   )
 
 export const clientFormSchema = z.object({
@@ -48,6 +50,8 @@ export const clientFormSchema = z.object({
   coordinates: z.custom<Coordinates | null>(),
   status: z.enum(['active', 'suspended', 'closed']),
   notes: z.string().trim().optional(),
+  // AJ2-04: datos bancarios (solo dueño y administrador); se guardan por RPC aparte.
+  ...bankFieldsShape,
 })
 
 export type ClientFormValues = z.infer<typeof clientFormSchema>
@@ -57,7 +61,7 @@ export function clientFormValuesToInput(values: ClientFormValues) {
   return {
     legalName: values.legalName.trim(),
     tradeName: emptyToNull(values.tradeName),
-    cuit: emptyToNull(values.cuit),
+    cuit: emptyToNull(values.cuit ? cleanTaxId(values.cuit) : values.cuit),
     adminAddress: emptyToNull(values.adminAddress),
     latitude: values.coordinates?.lat ?? null,
     longitude: values.coordinates?.lng ?? null,

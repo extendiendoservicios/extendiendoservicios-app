@@ -19,6 +19,7 @@ function makeChainable<T>(result: PostgrestResult<T>) {
     gte: () => chain,
     lte: () => chain,
     in: () => chain,
+    neq: () => chain,
     order: () => chain,
     then: (
       resolve: (value: PostgrestResult<T>) => void,
@@ -47,6 +48,7 @@ const {
   fetchEmployeeAttendanceHistory,
   fetchAssignmentsAttendance,
   fetchEmployeePhonesByIds,
+  fetchClientUnstartedAssignments,
   fetchPeopleNamesByIds,
   fetchAttendanceTimeline,
 } = await import('./attendance')
@@ -430,5 +432,29 @@ describe('fetchAttendanceTimeline', () => {
     expect(events).toHaveLength(2)
     expect(events?.[0]?.kind).toBe('delay')
     expect(events?.[1]?.kind).toBe('check_in')
+  })
+})
+
+describe('fetchClientUnstartedAssignments (AJ2-14)', () => {
+  it('lee v_assignments_board del cliente, sin inicio, vigentes y sin turnos cancelados', async () => {
+    const chain = makeChainable({ data: [], error: null })
+    const isSpy = vi.fn(() => chain)
+    const neqSpy = vi.fn(() => chain)
+    const eqSpy = vi.fn(() => chain)
+    chain.is = isSpy
+    chain.neq = neqSpy
+    chain.eq = eqSpy
+    fromMock.mockReturnValue(chain)
+    const rows = await fetchClientUnstartedAssignments(
+      'c1',
+      '2026-10-01',
+      '2026-10-31',
+    )
+    expect(rows).toEqual([])
+    expect(fromMock).toHaveBeenCalledWith('v_assignments_board')
+    expect(eqSpy).toHaveBeenCalledWith('client_id', 'c1')
+    expect(isSpy).toHaveBeenCalledWith('removed_at', null)
+    expect(isSpy).toHaveBeenCalledWith('check_in_at', null)
+    expect(neqSpy).toHaveBeenCalledWith('shift_status', 'cancelled')
   })
 })

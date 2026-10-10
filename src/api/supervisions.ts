@@ -56,6 +56,8 @@ export interface SupervisionListRow {
   siteName: string
   startTime: string
   endTime: string
+  /** AJ2-10: el turno supervisado es «A terminar» (el fin 23:59 no se muestra). */
+  shiftOpenEnded: boolean
   supervisorId: string
   supervisorFirstName: string
   supervisorLastName: string
@@ -70,7 +72,7 @@ export interface SupervisionListRow {
   ratingsCount: number
   ratingsAvg: number | null
   assignedEmployeesCount: number
-  /** Minutos previstos de la franja (AJ-06). */
+  /** Minutos previstos de la franja (AJ-06); `null` si el turno es «A terminar» (AJ2-10). */
   plannedMinutes: number | null
   /** Minutos trabajados, de inicio a fin real; `null` sin fin registrado (AJ-06). */
   workedMinutes: number | null
@@ -86,6 +88,7 @@ interface SupervisionListRawRow {
   site_name: string
   start_time: string
   end_time: string
+  shift_open_ended: boolean | null
   supervisor_id: string
   supervisor_first_name: string
   supervisor_last_name: string
@@ -105,7 +108,7 @@ interface SupervisionListRawRow {
 }
 
 const SUPERVISION_LIST_SELECT =
-  'id, shift_id, shift_date, client_id, client_legal_name, site_id, site_name, start_time, end_time, supervisor_id, supervisor_first_name, supervisor_last_name, status, assigned_at, check_in_at, check_out_at, general_notes, cancel_reason, not_done_reason, criteria_snapshot, ratings_count, ratings_avg, assigned_employees_count, planned_minutes, worked_minutes'
+  'id, shift_id, shift_date, client_id, client_legal_name, site_id, site_name, start_time, end_time, supervisor_id, supervisor_first_name, supervisor_last_name, status, assigned_at, check_in_at, check_out_at, general_notes, cancel_reason, not_done_reason, criteria_snapshot, ratings_count, ratings_avg, assigned_employees_count, planned_minutes, worked_minutes, shift_open_ended'
 
 function mapSupervisionListRow(row: SupervisionListRawRow): SupervisionListRow {
   return {
@@ -118,6 +121,7 @@ function mapSupervisionListRow(row: SupervisionListRawRow): SupervisionListRow {
     siteName: row.site_name,
     startTime: row.start_time,
     endTime: row.end_time,
+    shiftOpenEnded: row.shift_open_ended ?? false,
     supervisorId: row.supervisor_id,
     supervisorFirstName: row.supervisor_first_name,
     supervisorLastName: row.supervisor_last_name,

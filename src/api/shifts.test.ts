@@ -73,6 +73,8 @@ const SHIFT_BOARD_ROW = {
   finished_count: 0,
   absent_count: 0,
   delayed_count: 0,
+  open_ended: false,
+  no_checkout_count: 0,
   generated: true,
   notes: null,
 }
@@ -105,6 +107,8 @@ describe('fetchShiftsByDate', () => {
         finishedCount: 0,
         absentCount: 0,
         delayedCount: 0,
+        openEnded: false,
+        noCheckoutCount: 0,
         generated: true,
         notes: null,
       },
@@ -156,6 +160,7 @@ describe('fetchShiftForEdit', () => {
       shiftDate: '2026-10-05',
       startTime: '08:00:00',
       endTime: '12:00:00',
+      openEnded: false,
       requiredStaff: 2,
       status: 'scheduled',
       notes: null,
@@ -206,11 +211,122 @@ describe('createShift', () => {
       p_date: '2026-12-25',
       p_start: '08:00',
       p_end: '12:00',
+      p_open_ended: false,
       p_required_staff: 2,
       p_service_id: undefined,
       p_notes: undefined,
+      p_show_in_print: true,
+      p_employee_ids: undefined,
     })
-    expect(result).toEqual({ shiftId: 'sh1', warnings: ['HOLIDAY'] })
+    expect(result).toEqual({
+      shiftId: 'sh1',
+      warnings: ['HOLIDAY'],
+      assigned: [],
+      rejected: [],
+    })
+  })
+
+  it('AJ2-17: manda p_employee_ids y traduce asignados y rechazados', async () => {
+    rpcMock.mockResolvedValue({
+      data: {
+        shift: { id: 'sh9' },
+        warnings: [],
+        assigned: [
+          {
+            employee_id: 'e1',
+            assignment_id: 'as1',
+            warnings: ['OUTSIDE_AVAILABILITY'],
+          },
+        ],
+        rejected: [
+          {
+            employee_id: 'e2',
+            employee_name: 'Beto Gómez',
+            code: 'ASSIGNMENT_OVERLAP',
+            message: 'Ya tiene otro turno en ese horario.',
+          },
+        ],
+      },
+      error: null,
+    })
+
+    const result = await createShift({
+      clientId: 'c1',
+      siteId: 'si1',
+      date: '2026-10-20',
+      start: '08:00',
+      end: '12:00',
+      requiredStaff: 2,
+      employeeIds: ['e1', 'e2'],
+    })
+
+    expect(rpcMock).toHaveBeenCalledWith(
+      'create_shift',
+      expect.objectContaining({ p_employee_ids: ['e1', 'e2'] }),
+    )
+    expect(result.assigned).toEqual([
+      {
+        employeeId: 'e1',
+        assignmentId: 'as1',
+        warnings: ['OUTSIDE_AVAILABILITY'],
+      },
+    ])
+    expect(result.rejected).toEqual([
+      {
+        employeeId: 'e2',
+        employeeName: 'Beto Gómez',
+        code: 'ASSIGNMENT_OVERLAP',
+        message: 'Ya tiene otro turno en ese horario.',
+      },
+    ])
+  })
+
+  it('AJ2-15: manda la observación y la casilla «mostrar en la impresión»', async () => {
+    rpcMock.mockResolvedValue({
+      data: { shift: { id: 'sh3' }, warnings: [] },
+      error: null,
+    })
+
+    await createShift({
+      clientId: 'c1',
+      siteId: 'si1',
+      date: '2026-10-12',
+      start: '08:00',
+      end: '12:00',
+      requiredStaff: 1,
+      notes: 'Llevar llaves',
+      showInPrint: false,
+    })
+
+    expect(rpcMock).toHaveBeenCalledWith(
+      'create_shift',
+      expect.objectContaining({
+        p_notes: 'Llevar llaves',
+        p_show_in_print: false,
+      }),
+    )
+  })
+
+  it('AJ2-10: con «A terminar» manda p_open_ended y no depende de la hora de fin', async () => {
+    rpcMock.mockResolvedValue({
+      data: { shift: { id: 'sh2' }, warnings: [] },
+      error: null,
+    })
+
+    await createShift({
+      clientId: 'c1',
+      siteId: 'si1',
+      date: '2026-10-12',
+      start: '08:00',
+      end: null,
+      openEnded: true,
+      requiredStaff: 1,
+    })
+
+    expect(rpcMock).toHaveBeenCalledWith(
+      'create_shift',
+      expect.objectContaining({ p_open_ended: true, p_start: '08:00' }),
+    )
   })
 
   it('traduce CLIENT_NOT_ACTIVE (P0001) a ApiError con el mismo mensaje del servidor', async () => {
@@ -253,7 +369,54 @@ describe('generateShifts', () => {
       p_year: 2026,
       p_month: 10,
     })
-    expect(result).toEqual({ created: 40, skipped: 5, holidaysSkipped: 2 })
+    expect(result).toEqual({
+      created: 40,
+      skipped: 5,
+      holidaysSkipped: 2,
+      assigned: 0,
+      unassigned: [],
+      pastWithoutFixed: 0,
+    })
+  })
+
+  it('AJ2-17: traduce asignaciones de fijos, sin asignar y días pasados', async () => {
+    rpcMock.mockResolvedValue({
+      data: {
+        created: 10,
+        skipped: 0,
+        holidays_skipped: 0,
+        assigned: 8,
+        unassigned: [
+          {
+            shift_id: 's1',
+            shift_date: '2026-10-13',
+            service_id: 'sv1',
+            employee_id: 'e1',
+            employee_name: 'Ana Pérez',
+            code: 'ON_LEAVE',
+            message: 'Tiene licencia.',
+          },
+        ],
+        past_without_fixed: 2,
+      },
+      error: null,
+    })
+
+    const result = await generateShifts(2026, 10)
+
+    expect(result.assigned).toBe(8)
+    expect(result.pastWithoutFixed).toBe(2)
+    expect(result.unassigned).toEqual([
+      {
+        shiftId: 's1',
+        shiftDate: '2026-10-13',
+        serviceId: 'sv1',
+        employeeId: 'e1',
+        employeeName: 'Ana Pérez',
+        code: 'ON_LEAVE',
+        message: 'Tiene licencia.',
+      },
+    ])
   })
 
   it('traduce FORBIDDEN cuando falta la capacidad generate_shifts', async () => {
@@ -281,6 +444,25 @@ describe('updateShiftTime', () => {
       p_shift_id: 'sh1',
       p_start: '09:00',
       p_end: '13:00',
+      p_open_ended: false,
+    })
+  })
+
+  it('AJ2-10: pasa a «A terminar» y vuelve a ponerle fin', async () => {
+    rpcMock.mockResolvedValue({ data: {}, error: null })
+
+    await updateShiftTime('sh1', '09:00', null, true)
+    expect(rpcMock).toHaveBeenLastCalledWith(
+      'update_shift_time',
+      expect.objectContaining({ p_open_ended: true }),
+    )
+
+    await updateShiftTime('sh1', '09:00', '12:00')
+    expect(rpcMock).toHaveBeenLastCalledWith('update_shift_time', {
+      p_shift_id: 'sh1',
+      p_start: '09:00',
+      p_end: '12:00',
+      p_open_ended: false,
     })
   })
 

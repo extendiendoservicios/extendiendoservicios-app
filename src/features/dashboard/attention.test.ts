@@ -230,6 +230,52 @@ describe('computeAttention (bordes)', () => {
   })
 })
 
+describe('computeAttention: «Sin salida» (AJ2-10)', () => {
+  it('un turno «A terminar» sin salida aparece como algo a atender, no como fin pasado común', () => {
+    const shifts = [makeShift({ id: 's1', openEnded: true })]
+    const assignments = [
+      makeAssignment({
+        id: 'a-open',
+        status: 'present',
+        displayStatus: 'no_checkout',
+        shiftStatus: 'in_progress',
+        openEnded: true,
+        checkInAt: at('08:05'),
+        endsAt: at('10:00'),
+      }),
+    ]
+    const items = computeAttention(shifts, assignments, NOW)
+    expect(items.map((item) => item.kind)).toEqual(['noCheckout'])
+    expect(items[0]?.minutesSince).toBe(60)
+  })
+
+  it('va después de «sin registro» y antes de una ausencia avisada', () => {
+    const assignments = [
+      makeAssignment({ id: 'a-abs', status: 'absence_notified' }),
+      makeAssignment({
+        id: 'a-nc',
+        status: 'present',
+        displayStatus: 'no_checkout',
+        checkInAt: at('08:05'),
+      }),
+      makeAssignment({ id: 'a-nr', displayStatus: 'no_record' }),
+    ]
+    const items = computeAttention([makeShift()], assignments, NOW)
+    expect(items.map((item) => item.kind)).toEqual([
+      'noRecord',
+      'noCheckout',
+      'absence',
+    ])
+  })
+
+  it('las franjas del tablero dicen «A terminar» en vez de 23:59', () => {
+    const rows = [
+      makeAssignment({ id: 'a1', endTime: '23:59:00', openEnded: true }),
+    ]
+    expect(listFranjas(rows)).toEqual(['08:00–A terminar'])
+  })
+})
+
 describe('filtro por franja', () => {
   const rows = [
     makeAssignment({ id: 'a1' }),

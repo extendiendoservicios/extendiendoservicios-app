@@ -2,6 +2,9 @@ import { supabase } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
 import { fromPostgrestError } from './errors'
 
+/** Con «A terminar» la base ignora `p_end` (AJ2-10); el tipo generado lo pide igual. */
+const OPEN_ENDED_WIRE_END = '23:59:00'
+
 /**
  * `src/api/shifts.ts` (SHIFT-007, mismo patrón que `src/api/services.ts` y
  * `src/api/users.ts` — ver `src/api/README.md`): turnos de ADM-05, ADM-07 y
@@ -60,13 +63,20 @@ export interface ShiftListRow {
   status: ShiftStatus
   /** `scheduled`/`assigned`/`in_progress`/`completed`/`cancelled`, o los derivados `uncovered`/`upcoming` (`04` sección 4). */
   displayStatus: string
+  /** AJ2-10: turno «A terminar» (la base guarda el fin en 23:59; en pantalla va «A terminar»). */
+  openEnded: boolean
   assignedCount: number
   presentCount: number
   finishedCount: number
   absentCount: number
   delayedCount: number
+  /** AJ2-10: asignaciones de un turno «A terminar» que pasó el día sin salida. */
+  noCheckoutCount: number
   generated: boolean
+  /** AJ2-15: observación del turno (solo administración; el resto la recibe en null). */
   notes: string | null
+  /** AJ2-15: casilla «mostrar en la impresión»; null si el turno no tiene observación. */
+  showInPrint?: boolean | null
 }
 
 export interface ShiftBoardRow {
@@ -88,8 +98,11 @@ export interface ShiftBoardRow {
   finished_count: number
   absent_count: number
   delayed_count: number
+  open_ended: boolean
+  no_checkout_count: number
   generated: boolean
   notes: string | null
+  show_in_print: boolean | null
 }
 
 /**
@@ -117,13 +130,16 @@ export function mapShiftBoardRow(row: ShiftBoardRow): ShiftListRow {
     finishedCount: row.finished_count,
     absentCount: row.absent_count,
     delayedCount: row.delayed_count,
+    openEnded: row.open_ended,
+    noCheckoutCount: row.no_checkout_count,
     generated: row.generated,
     notes: row.notes,
+    showInPrint: row.show_in_print,
   }
 }
 
 export const SHIFT_BOARD_SELECT =
-  'id, client_id, client_legal_name, client_trade_name, site_id, site_name, site_city, shift_date, start_time, end_time, required_staff, status, display_status, assigned_count, present_count, finished_count, absent_count, delayed_count, generated, notes'
+  'id, client_id, client_legal_name, client_trade_name, site_id, site_name, site_city, shift_date, start_time, end_time, required_staff, status, display_status, assigned_count, present_count, finished_count, absent_count, delayed_count, open_ended, no_checkout_count, generated, notes, show_in_print'
 
 /**
  * ADM-05 mínima (SHIFT-010): turnos de una fecha, ordenados por hora
@@ -159,9 +175,12 @@ export interface ShiftEditRow {
   shiftDate: string
   startTime: string
   endTime: string
+  openEnded: boolean
   requiredStaff: number
   status: ShiftStatus
   notes: string | null
+  /** AJ2-15: null si no hay observación (al editar se trata como tildada). */
+  showInPrint: boolean | null
 }
 
 export async function fetchShiftForEdit(id: string): Promise<ShiftEditRow> {
@@ -184,9 +203,11 @@ export async function fetchShiftForEdit(id: string): Promise<ShiftEditRow> {
     shiftDate: row.shift_date,
     startTime: row.start_time,
     endTime: row.end_time,
+    openEnded: row.open_ended,
     requiredStaff: row.required_staff,
     status: row.status,
     notes: row.notes,
+    showInPrint: row.show_in_print,
   }
 }
 
@@ -199,16 +220,43 @@ export interface CreateShiftInput {
   siteId: string
   date: string
   start: string
-  end: string
+  /** Con `openEnded` se ignora (puede ir `null`). */
+  end: string | null
+  /** AJ2-10: turno «A terminar». */
+  openEnded?: boolean
   requiredStaff: number
   serviceId?: string
+  /** AJ2-15: observación del turno. */
   notes?: string | null
+  /** AJ2-15: «mostrar en la impresión»; por defecto tildada. */
+  showInPrint?: boolean
+  /** AJ2-17: empleados que quedan asignados en la misma operación (opcional). */
+  employeeIds?: string[]
+}
+
+/** AJ2-17: un empleado que `create_shift` asignó, con sus advertencias (no bloquean). */
+export interface CreateShiftAssigned {
+  employeeId: string
+  assignmentId: string
+  warnings: string[]
+}
+
+/** AJ2-17: un empleado que `create_shift` no pudo asignar (el turno se crea igual). */
+export interface CreateShiftRejected {
+  employeeId: string
+  employeeName: string
+  /** `ASSIGNMENT_OVERLAP`, `EMPLOYEE_NOT_ACTIVE`, `SHIFT_FULL` o `SHIFT_STARTED`. */
+  code: string
+  /** Texto en español del servidor: se muestra tal cual. */
+  message: string
 }
 
 export interface CreateShiftResult {
   shiftId: string
   /** `'HOLIDAY'` es la única advertencia que documenta `06` sección 7 (informativa, no bloquea). */
   warnings: string[]
+  assigned: CreateShiftAssigned[]
+  rejected: CreateShiftRejected[]
 }
 
 /**
@@ -224,28 +272,80 @@ export async function createShift(
     p_site_id: input.siteId,
     p_date: input.date,
     p_start: input.start,
-    p_end: input.end,
+    p_end: input.openEnded ? OPEN_ENDED_WIRE_END : (input.end ?? ''),
+    p_open_ended: input.openEnded ?? false,
     p_required_staff: input.requiredStaff,
     p_service_id: input.serviceId,
     p_notes: input.notes ?? undefined,
+    p_show_in_print: input.showInPrint ?? true,
+    p_employee_ids:
+      input.employeeIds && input.employeeIds.length > 0
+        ? input.employeeIds
+        : undefined,
   })
 
   if (error) {
     throw fromPostgrestError(error)
   }
 
-  const payload = data as { shift: { id: string }; warnings: string[] }
-  return { shiftId: payload.shift.id, warnings: payload.warnings ?? [] }
+  const payload = data as {
+    shift: { id: string }
+    warnings: string[]
+    assigned?: Array<{
+      employee_id: string
+      assignment_id: string
+      warnings?: string[]
+    }>
+    rejected?: Array<{
+      employee_id: string
+      employee_name: string
+      code: string
+      message: string
+    }>
+  }
+  return {
+    shiftId: payload.shift.id,
+    warnings: payload.warnings ?? [],
+    assigned: (payload.assigned ?? []).map((item) => ({
+      employeeId: item.employee_id,
+      assignmentId: item.assignment_id,
+      warnings: item.warnings ?? [],
+    })),
+    rejected: (payload.rejected ?? []).map((item) => ({
+      employeeId: item.employee_id,
+      employeeName: item.employee_name,
+      code: item.code,
+      message: item.message,
+    })),
+  }
 }
 
 // -------------------------------------------------------------------------
 // 3. generate_shifts (ADM-09 — SHIFT-009)
 // -------------------------------------------------------------------------
 
+/** AJ2-17: un empleado fijo que `generate_shifts` no pudo asignar a un turno recién creado. */
+export interface GenerateUnassigned {
+  shiftId: string
+  shiftDate: string
+  serviceId: string
+  employeeId: string
+  employeeName: string
+  /** `ON_LEAVE`, `OUTSIDE_AVAILABILITY`, `ASSIGNMENT_OVERLAP`, `EMPLOYEE_NOT_ACTIVE` o `SHIFT_FULL`. */
+  code: string
+  message: string
+}
+
 export interface GenerateShiftsResult {
   created: number
   skipped: number
   holidaysSkipped: number
+  /** AJ2-17: asignaciones de empleados fijos hechas al generar. */
+  assigned: number
+  /** AJ2-17: fijos que no se pudieron asignar (administración lo resuelve a mano). */
+  unassigned: GenerateUnassigned[]
+  /** AJ2-17: turnos de días que ya empezaron: no reciben fijos. */
+  pastWithoutFixed: number
 }
 
 /**
@@ -301,11 +401,33 @@ export async function generateShifts(
     created: number
     skipped: number
     holidays_skipped: number
+    assigned?: number
+    unassigned?: Array<{
+      shift_id: string
+      shift_date: string
+      service_id: string
+      employee_id: string
+      employee_name: string
+      code: string
+      message: string
+    }>
+    past_without_fixed?: number
   }
   return {
     created: payload.created,
     skipped: payload.skipped,
     holidaysSkipped: payload.holidays_skipped,
+    assigned: payload.assigned ?? 0,
+    unassigned: (payload.unassigned ?? []).map((item) => ({
+      shiftId: item.shift_id,
+      shiftDate: item.shift_date,
+      serviceId: item.service_id,
+      employeeId: item.employee_id,
+      employeeName: item.employee_name,
+      code: item.code,
+      message: item.message,
+    })),
+    pastWithoutFixed: payload.past_without_fixed ?? 0,
   }
 }
 
@@ -321,12 +443,14 @@ export async function generateShifts(
 export async function updateShiftTime(
   shiftId: string,
   start: string,
-  end: string,
+  end: string | null,
+  openEnded = false,
 ): Promise<void> {
   const { error } = await supabase.rpc('update_shift_time', {
     p_shift_id: shiftId,
     p_start: start,
-    p_end: end,
+    p_end: openEnded ? OPEN_ENDED_WIRE_END : (end ?? ''),
+    p_open_ended: openEnded,
   })
 
   if (error) {

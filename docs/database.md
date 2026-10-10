@@ -1735,6 +1735,119 @@ check_out_at, planned_minutes, worked_minutes } ] } ]`.
 - Índice nuevo `shifts_client_id_shift_date_idx (client_id, shift_date) where deleted_at is null`.
 - Errores: `FORBIDDEN`, `INVALID_DATE_RANGE`, `CLIENT_NOT_FOUND`.
 
+## Tope de horas y turnos «A terminar» (migración `0037`, P19.6 paquete B, AJ2-09 y AJ2-10)
+
+Decisiones de Mike (9 oct 2026).
+
+### Tope de horas (AJ2-09)
+
+`app.capped_worked_minutes(check_in, check_out, franja_desde, franja_hasta)` es el único lugar donde
+se calculan las horas trabajadas: minutos de `[entrada, salida] ∩ [franja_desde, franja_hasta]`,
+redondeados al minuto, nunca negativos; `null` si falta la entrada o la salida; una punta nula de la
+franja es «sin tope de ese lado». La franja es la efectiva de la asignación (`assignments."window"`:
+la propia si la tiene, si no la del turno). Llegar tarde o salir antes descuenta aunque esté dentro
+de los 15 minutos de tolerancia (que solo decide `late`); llegar antes o salir después no suma.
+`minutes_late` y `minutes_early_leave` no cambian: los fichajes reales se siguen marcando.
+
+La usan: `v_assignments_board.worked_minutes`, `v_supervisions_admin.worked_minutes` (contra la franja
+del turno), `client_service_summary` y `clients_worked_minutes`. Como las horas se calculan al vuelo,
+los meses anteriores se recalculan solos. Ejemplos (turno 8 a 12): 7:45 a 11:45 = 225; 8:00 a 12:30
+= 240; 8:05 a 12:00 = 235.
+
+### «A terminar» (AJ2-10)
+
+- Representación: `services.open_ended` y `shifts.open_ended` (`boolean not null default false`). Con
+  la columna prendida, `end_time` queda siempre en `23:59` (trigger `app.normalize_open_ended` y
+  check `*_open_ended_end_check`): no es una hora de fin, es el tope del día. Así la restricción de
+  exclusión de asignaciones, `shifts.ends_at` y todo lo que ya lee la hora de fin siguen andando, y
+  un turno «A terminar» ocupa al empleado desde su inicio hasta las 23:59. No hay turnos que crucen
+  la medianoche (ADR-019).
+- `create_shift(..., p_open_ended boolean default false)` y `update_shift_time(p_shift_id, p_start,
+p_end, p_open_ended boolean default false)`: con `true`, `p_end` se ignora. Cambian de firma (se
+  reemplazan con `drop` + `create`, con sus grants). `INVALID_TIME_RANGE` si falta `p_end` y no es
+  «A terminar», o si el inicio es 23:59 o posterior.
+- `update_shift_time` permite ponerle la hora de fin (`p_open_ended = false`, mismo inicio) a un
+  turno «A terminar» ya `completed`: las horas se recalculan con el tope. Cualquier otro cambio en
+  un turno finalizado sigue dando `SHIFT_COMPLETED`.
+- `generate_shifts` copia `open_ended` del servicio: los turnos generados de un servicio «A terminar»
+  nacen «A terminar».
+- Horas: desde `max(entrada, inicio de la franja)` hasta la salida real (la franja de una asignación
+  «A terminar» llega hasta las 23:59). `planned_minutes` es `null` en una asignación «A terminar»
+  (no suma a las horas previstas) y `minutes_early_leave` también.
+- Franja propia (A CONFIRMAR con Mike): se permiten inicio propio y fin propio. Sin fin propio, la
+  asignación hereda «A terminar» (abierta). Con fin propio, para esa persona el fin está definido:
+  tiene tope, horas previstas y no puede quedar «Sin salida».
+- «Finalizado»: no cambia (`app.complete_shift_if_done`: el turno pasa a `completed` cuando todos los
+  asignados vigentes ficharon salida o avisaron ausencia).
+- «Sin salida»: asignación `present` (con inicio, sin fin) abierta, vigente, de un turno no cancelado,
+  pasadas las 23:59 del día del turno. Se deriva en las vistas: `v_assignments_board.display_status =
+'no_checkout'` con `worked_minutes = 0`; `v_my_day.no_checkout`; `v_shifts_board.no_checkout_count`.
+  `record_check_out` rechaza el fin propio de una asignación abierta pasadas las 23:59
+  (`OPEN_SHIFT_DAY_ENDED`): la hora la carga administración con `admin_record_attendance` o
+  `close_assignment` (entonces la asignación pasa a `finished` y vale la hora cargada, con el tope).
+- Columnas nuevas (al final de cada vista): `v_shifts_board.open_ended`, `no_checkout_count`;
+  `v_assignments_board.effective_open_ended`; `v_my_day.effective_open_ended`, `no_checkout`;
+  `v_supervisions_admin.shift_open_ended`; `v_my_supervisions.shift_open_ended`.
+  `client_service_summary` suma `totals.open_ended_shifts`, `shifts[].open_ended` y
+  `employees[].open_ended` / `no_checkout`; las asignaciones «A terminar» traen `planned_minutes`
+  `null` y no suman a `totals.planned_minutes`.
+
+Pruebas: `supabase/tests/0037_p19_6b_tope_de_horas_y_a_terminar.test.sql` (106 aserciones). Cambios
+de expectativa en pruebas viejas: columnas de `services`/`shifts` y de las vistas (0007, 0033, 0034),
+firmas de `create_shift`/`update_shift_time` (0023, 0028) y dos valores de horas (0033: la jornada de
+8:03 a 16:10 pasa de 487 a 477 minutos, y el total del rango de 957 a 947, por el tope).
+
+## Foto de clientes (migración `0039`, P19.6 paquete C, AJ2-06)
+
+- `clients.photo_path text` (última columna): ruta de la foto dentro del bucket `client-photos`; null si no tiene.
+- Bucket `client-photos`: público, 2 MB, solo `image/jpeg`. Ruta `{client_id}/{uuid}.jpg` (el front redimensiona y comprime a JPEG como con `avatars`). Bucket propio y no carpeta de `avatars` porque el primer segmento acá es un `client_id` y allá un `profile_id`.
+- Políticas sobre `storage.objects`: `client_photos_select_admin_or_supervisor` (listar/descargar por API: owner/admin y el supervisor de turnos de ese cliente; el empleado no ve la foto), `client_photos_insert_admin`, `client_photos_update_admin`, `client_photos_delete_admin` (solo owner/admin, mismo criterio que editar clientes). Las fotos se sirven por `/object/public/...` (`getPublicUrl`), igual que `avatars`.
+- `v_clients` suma `photo_path` al final. `v_clients_basic` y `v_search` no cambian.
+- Guardar la foto: subir el archivo y después `update clients set photo_path = ...` (la RLS de `clients` ya limita a owner/admin).
+
+## Datos bancarios y observación del turno (migración `0040`, P19.6 paquete D, AJ2-04 y AJ2-15)
+
+### Banco, CBU y alias (AJ2-04)
+
+- **Diseño: tablas aparte**, no columnas en `clients` ni `employees`. `authenticated` tiene `select` de tabla completa y varias vistas leen esas tablas; una tabla con su propia RLS no se filtra por ninguna vista, existente ni futura. Hay un test que exige que las únicas relaciones con columnas `cbu`/`bank_name` sean las dos tablas nuevas.
+- `client_bank_details(client_id pk → clients, bank_name, cbu, alias, created_at, updated_at, created_by, updated_by)` y `employee_bank_details(profile_id pk → employees, ...)`. Todos los datos son opcionales (null).
+- Checks: `cbu ~ '^[0-9]{22}$'`; `alias ~ '^[A-Za-z0-9.-]{6,20}$'`; `bank_name` no vacío, hasta 100 caracteres.
+- RLS (solo `select`; `authenticated` no tiene insert/update/delete): clientes, dueño y administrador; empleados, dueño, administrador y la propia persona (`profile_id = app.current_uid()`). Supervisor y compañeros no leen nada; `anon` tampoco.
+- Escritura por RPC (`security definer`, dueño o administrador; `FORBIDDEN` si no): `set_client_bank_details(p_client_id, p_bank_name, p_cbu, p_alias)` y `set_employee_bank_details(p_profile_id, ...)`, que hacen alta o cambio de la fila y la devuelven. Aceptan el CBU con espacios, guiones o puntos y lo guardan solo con dígitos (`app.normalize_cbu`); el alias se recorta (`app.normalize_bank_alias`); lo vacío se guarda como null. Errores: `CLIENT_NOT_FOUND`, `PROFILE_NOT_FOUND` (la persona no tiene ficha en `employees`), `INVALID_CBU`, `INVALID_ALIAS`, `BANK_NAME_TOO_LONG`.
+- El empleado (o supervisor) lee los suyos con `from('employee_bank_details').select(...).eq('profile_id', uid)` (la RLS ya lo limita a su fila); es solo lectura. No hay `my_bank_details()`.
+
+### Observación del turno (AJ2-15)
+
+- **Diseño: tabla aparte** `shift_observations(shift_id pk → shifts, observation text, show_in_print boolean not null default true, created_at, updated_at, created_by, updated_by)`. `select` solo para dueño y administrador (RLS); supervisor y empleado asignados no la leen ni por la tabla ni por las vistas (son `security_invoker`). `authenticated` no tiene insert/update/delete.
+- **`shifts.notes` quedó vacía y en desuso** (se conserva la columna para no romper selects del front ni fixtures viejos; la migración copió lo existente a la tabla nueva con `show_in_print = false`, sin mover `updated_at`, y la dejó en null). Ninguna RPC la vuelve a escribir. Un turno sin fila no tiene observación.
+- `create_shift(..., p_open_ended, p_show_in_print boolean default true)` (10 parámetros) y `update_shift_details(p_shift_id, p_required_staff, p_notes, p_show_in_print boolean default null)` (null = no cambia la casilla; `p_notes` siempre reemplaza). Escriben en `shift_observations`. `create_shift` devuelve `shift` con `notes` y `show_in_print` agregados; `update_shift_details` devuelve la fila de `shifts` con `notes` cargada con la observación (no hay `show_in_print` en esa fila: se lee de `v_shifts_board`).
+- `v_shifts_board`: `notes` sale de la tabla nueva y se suma `show_in_print` al final (null si no hay observación, y null para quien no es administración).
+- `v_assignments_board`: columna nueva al final `shift_observation` (la observación si `show_in_print`, solo administración). Alimenta la columna «Observaciones» de la planilla de asistencia.
+- `client_service_summary`: cada elemento de `shifts` suma `observation` al final.
+- `v_my_day` y `v_my_supervisions` no cambian ni traen la observación (hay un test).
+
+## Asignar empleados al crear turnos (migración `0041`, P19.6 paquete F, AJ2-17)
+
+- **`app.assign_employee_core(p_shift_id, p_employee_id, p_start, p_end, p_strict)`**: el cuerpo de `assign_employee` sin el control de rol (no la puede llamar `authenticated`). `public.assign_employee` es ahora un envoltorio (misma firma y contrato). `create_shift` y `generate_shifts` usan la misma función, así que las reglas son una sola: `EMPLOYEE_NOT_ACTIVE`, `ALREADY_ASSIGNED`, `SHIFT_FULL` (la dotación nunca queda superada), `ASSIGNMENT_OVERLAP` (superposición, incluido «A terminar» hasta las 23:59), `SHIFT_STARTED`, franja propia, y las advertencias `NOT_ENABLED_FOR_CLIENT`, `OUTSIDE_AVAILABILITY` y `ON_LEAVE`. Con `p_strict = true` (solo `generate_shifts`) `ON_LEAVE` y `OUTSIDE_AVAILABILITY` bloquean con ese mismo código.
+- **`create_shift(..., p_show_in_print, p_employee_ids uuid[] default null)`** (11 parámetros; la de 10 se eliminó). El turno se crea siempre; a cada empleado (en el orden recibido, sin repetidos ni nulos) se lo asigna con las reglas de arriba. Devuelve `{ shift, warnings, assigned, rejected }`: `assigned = [{ employee_id, assignment_id, warnings }]` (las advertencias no bloquean, como en la asignación manual) y `rejected = [{ employee_id, employee_name, code, message }]` con `code` = el hint de la regla que lo frenó. Un rechazo no afecta a los demás ni al turno. Los errores propios del turno (`INVALID_TIME_RANGE`, `CLIENT_NOT_ACTIVE`, `SITE_NOT_ACTIVE`, `FORBIDDEN`) siguen cortando todo antes de crear nada.
+- **`service_fixed_employees(service_id, employee_id, created_by, created_at)`**, PK `(service_id, employee_id)`. RLS y grants iguales a `services` (dueño y administrador leen y escriben; supervisor, empleado y `anon` nada). Triggers: no más fijos que `required_staff` del servicio (`FIXED_EXCEEDS_STAFF`, también en escrituras directas) y no se puede bajar `required_staff` por debajo de la cantidad de fijos (mismo código).
+- **`set_service_fixed_employees(p_service_id, p_employee_ids uuid[])`**: reemplaza la lista (null o vacío = sin fijos). Dueño y administrador. `SERVICE_NOT_FOUND`, `FIXED_EXCEEDS_STAFF`, `EMPLOYEE_NOT_ACTIVE` (solo se exige empleado activo a los que se suman). Devuelve `{ service_id, employee_ids }`. No toca turnos ya generados.
+- **`generate_shifts(p_year, p_month)`**: a cada turno recién creado le asigna los fijos de su servicio. Lo que no se puede (licencia, no disponible, superposición, inactivo, dotación) se saltea sin frenar la generación. Resultado: las claves de siempre más `assigned` (cantidad de asignaciones hechas), `unassigned` (`[{ shift_id, shift_date, service_id, employee_id, employee_name, code, message }]`) y `past_without_fixed` (turnos creados que ya habían empezado: no reciben fijos, para no inventar inasistencias). Un turno que ya existía no se toca (idempotente: una segunda corrida da `assigned = 0` y `unassigned = []`).
+- Vistas: no hay `v_services`; el front lee los fijos con `from('service_fixed_employees')`.
+
+## Avisos y anuncios (migración `0042`, P19.6 paquete E, AJ2-03)
+
+Anuncios de administración para empleados y supervisores. No tiene relación con `notices` / `attendance_notices` (avisos de demora y ausencia del empleado): todo lo nuevo se llama `announcements`.
+
+- **Tablas** (RLS activa; `authenticated` solo con `select`, se escribe por RPC): `announcements(id, title ≤120, body ≤2000, audience, visible_until date null, content_updated_at, archived_at, archived_by, created_*, updated_*)`; `announcement_recipients(announcement_id, profile_id)` (solo `custom`); `announcement_reads(announcement_id, profile_id, read_at)`. Enum `announcement_audience`: `employees`, `supervisors`, `all`, `custom`.
+- **Quién lo ve**: por rol de `user_roles` (JWT): `employees` = rol `employee`; `supervisors` = rol `supervisor`; `all` = cualquiera de los dos; `custom` = los de la lista (solo se admiten personas activas con rol employee o supervisor). Con ambos roles alcanza que uno coincida. Dueño y administrador no reciben anuncios en su portada (la portada es del celular de empleado/supervisor); los ven y gestionan en administración.
+- **Vigencia**: `visible_until` inclusive, fecha de Buenos Aires (`app.today()`); se muestra si no está archivado y (`visible_until is null` o `>= hoy`).
+- **RLS**: dueño/administrador leen todo; los demás leen `announcements` solo si les corresponde, está vigente y no archivado (`app.announcement_targets_me`), y de `announcement_recipients` / `announcement_reads` solo sus propias filas.
+- **Editar y lecturas**: `update_announcement` reemplaza todos los campos. Si cambia el título o el texto se actualiza `content_updated_at`: las lecturas anteriores dejan de contar (la persona vuelve a ver el anuncio, con `was_edited = true`) pero la fila vieja se conserva hasta que vuelva a dar «Entendido». Cambiar audiencia, destinatarios o fecha no reinicia nada.
+- **Destinatarios para el conteo** (administración): se calculan al consultar sobre personas activas (`profiles.is_active` y sin `deleted_at`) con el rol de la audiencia; en `custom`, las de la lista que sigan activas. Las lecturas de quien dejó de ser destinatario se conservan pero no se cuentan.
+- **Vistas** (`security_invoker`): `v_my_announcements` (celular: `id, title, body, audience, visible_until, created_at, content_updated_at, read_at, was_edited`; portada = `where read_at is null`; vacía para quien no es destinatario); `v_announcements_admin` (`+ updated_at, archived_at, created_by, created_by_name, status` = `active` | `expired` | `archived`, `recipient_count`, `read_count`); `v_announcement_recipients` (`announcement_id, profile_id, first_name, last_name, roles text[], read_at`). Las dos de administración salen vacías para quien no es dueño/administrador.
+- **RPC** (`security definer`): `create_announcement(p_title, p_body, p_audience, p_visible_until default null, p_recipient_ids default null)`, `update_announcement(p_id, p_title, p_body, p_audience, p_visible_until default null, p_recipient_ids default null)`, `archive_announcement(p_id)` (idempotente): dueño o administrador, `FORBIDDEN` si no; devuelven la fila de `announcements`. `acknowledge_announcement(p_id)`: cualquier persona activa; idempotente; devuelve la fila de `announcement_reads`. Errores: `TITLE_REQUIRED`, `TITLE_TOO_LONG`, `BODY_REQUIRED`, `BODY_TOO_LONG`, `AUDIENCE_REQUIRED`, `VISIBLE_UNTIL_IN_PAST` (al editar solo si la fecha cambia), `RECIPIENTS_REQUIRED`, `RECIPIENT_INVALID`, `ANNOUNCEMENT_NOT_FOUND`, `ANNOUNCEMENT_ARCHIVED` (al editar), `ANNOUNCEMENT_NOT_AVAILABLE` (al dar «Entendido» a uno inexistente, archivado, vencido o ajeno). Fuera de `custom` se ignoran y limpian los destinatarios.
+
 ## Enumeraciones (04 sección 3)
 
 Las 15 enumeraciones del modelo, en el esquema `public`, migración `0002_enums.sql`. Agregar un
@@ -1805,7 +1918,10 @@ empleado y observación" más arriba. En F14 (P14.1, ABS-002, ATT-007):
 "Correcciones de P18.6" más arriba. En F19 (P19.5a, ajustes de la reunión del 6 oct 2026):
 `0032_p19_5a_enums.sql` y `0033_p19_5a_ajustes_reunion.sql` -- ver "Ajustes de la reunión del
 6 oct 2026" más arriba. En F19 (P19.5e, vencimiento de «En camino» y permiso de
-`v_employee_ratings`): `0034_p19_5e_en_camino_vence.sql` -- ver "Vencimiento de «En camino»".
+`v_employee_ratings`): `0034_p19_5e_en_camino_vence.sql` -- ver "Vencimiento de «En camino»". En F19 (P19.6 paquete B, AJ2-09 y AJ2-10): `0037_p19_6b_tope_de_horas_y_a_terminar.sql` X
+En F19 (P19.6 paquete D, AJ2-04 y AJ2-15): `0040_p19_6d_banco_y_observacion.sql` -- ver "Datos bancarios y observación del turno".
+En F19 (P19.6 paquete F, AJ2-17): `0041_p19_6f_asignar_al_crear.sql` -- ver "Asignar empleados al crear turnos".
+En F19 (P19.6 paquete E, AJ2-03): `0042_p19_6e_avisos_y_anuncios.sql` -- ver "Avisos y anuncios".
 
 ## Cómo escribir una migración
 

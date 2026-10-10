@@ -37,6 +37,7 @@ function activeUser(overrides: Partial<AdminUserRow> = {}): AdminUserRow {
     lastName: 'Gómez',
     isActive: true,
     deletedAt: null,
+    avatarPath: null,
     roles: ['employee'],
     ...overrides,
   }

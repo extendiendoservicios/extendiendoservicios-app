@@ -33,6 +33,8 @@ function assignment(overrides: Partial<MyDayAssignment> = {}): MyDayAssignment {
     endTime: '12:00:00',
     startsAt: '2026-10-07T11:00:00Z',
     endsAt: '2026-10-07T15:00:00Z',
+    openEnded: false,
+    noCheckout: false,
     status: 'expected',
     shiftStatus: 'scheduled',
     notes: null,
@@ -99,6 +101,11 @@ describe('isInOnTheWayWindow', () => {
 })
 
 describe('canNotifyOnTheWay / onTheWayAction', () => {
+  it('no ofrece avisar si la asignación quedó «Sin salida» (AJ2-09)', () => {
+    const a = assignment({ noCheckout: true })
+    expect(canNotifyOnTheWay(a, new Date('2026-10-07T12:00:00Z'))).toBe(false)
+  })
+
   const now = at('2026-10-07T10:00:00Z')
 
   it('ofrece "notify" dentro de la ventana, sin inicio ni ausencia', () => {

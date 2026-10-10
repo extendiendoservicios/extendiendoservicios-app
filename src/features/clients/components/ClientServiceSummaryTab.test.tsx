@@ -8,6 +8,23 @@ const { summaryQueryMock } = vi.hoisted(() => ({
   summaryQueryMock: vi.fn(),
 }))
 
+vi.mock('@/features/attendance/queries', () => ({
+  useClientUnstartedAssignmentsQuery: () => ({
+    data: [],
+    isLoading: false,
+    isSuccess: true,
+    isError: false,
+  }),
+}))
+
+vi.mock('@/features/employees/queries', () => ({
+  useEmployeeDnisQuery: () => ({
+    data: new Map([['e1', '30111222']]),
+    isLoading: false,
+    isError: false,
+  }),
+}))
+
 vi.mock('@/features/clients/queries', () => ({
   useClientServiceSummaryQuery: summaryQueryMock,
 }))
@@ -31,6 +48,7 @@ const summary: ClientServiceSummary = {
     employeesCount: 2,
     workedMinutes: 750,
     plannedMinutes: 780,
+    openEndedShifts: 0,
   },
   shifts: [
     {
@@ -43,6 +61,7 @@ const summary: ClientServiceSummary = {
       status: 'completed',
       workedMinutes: 240,
       plannedMinutes: 240,
+      openEnded: false,
       employees: [
         {
           assignmentId: 'a1',
@@ -54,6 +73,8 @@ const summary: ClientServiceSummary = {
           checkOutAt: '2026-10-05T15:00:00Z',
           plannedMinutes: 240,
           workedMinutes: 240,
+          openEnded: false,
+          noCheckout: false,
         },
       ],
     },
@@ -116,6 +137,14 @@ describe('ClientServiceSummaryTab (AJ-09)', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('Responsable (administración)')).toBeInTheDocument()
     expect(screen.queryByText('Empleado', { selector: 'p' })).toBeNull()
+    // AJ2-16: columnas «Nombre y Apellido» y «DNI» en la hoja.
+    expect(
+      screen.getByRole('columnheader', { name: 'Nombre y Apellido' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('columnheader', { name: 'DNI' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('30111222')).toBeInTheDocument()
   })
 
   it('muestra el mensaje del servidor si el resumen falla (CLIENT_NOT_FOUND)', () => {

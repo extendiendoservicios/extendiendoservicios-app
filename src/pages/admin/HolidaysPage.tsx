@@ -13,6 +13,8 @@ import { OwnerOnlyNotice } from '@/features/settings/components/OwnerOnlyNotice'
 import { SimpleConfirmDialog } from '@/features/settings/components/SimpleConfirmDialog'
 import { YearPicker } from '@/features/settings/components/YearPicker'
 import { formatDateOnly } from '@/features/settings/dateOnly'
+import { NextYearHolidaysNotice } from '@/features/settings/components/NextYearHolidaysNotice'
+import { describeNationalHolidaysLoad } from '@/features/settings/holidayReminder'
 import { canViewOwnerOnlyConfig } from '@/features/settings/permissions'
 import {
   useDeactivateHolidayMutation,
@@ -69,16 +71,7 @@ export default function HolidaysPage() {
       const result = await loadNationalHolidays.mutateAsync({
         createdBy: auth.userId as string,
       })
-      const parts: string[] = []
-      if (result.created > 0) parts.push(`${result.created} nuevos`)
-      if (result.reactivated > 0)
-        parts.push(`${result.reactivated} reactivados`)
-      if (result.skipped > 0) parts.push(`${result.skipped} ya existían`)
-      toast.success(
-        parts.length > 0
-          ? `Feriados nacionales de ${year}: ${parts.join(', ')}.`
-          : `No agregamos feriados nuevos de ${year}.`,
-      )
+      toast.success(describeNationalHolidaysLoad(year, result))
     } catch (error) {
       toast.error(
         isApiError(error)
@@ -127,6 +120,10 @@ export default function HolidaysPage() {
         <OwnerOnlyNotice />
       ) : (
         <>
+          <NextYearHolidaysNotice
+            userId={auth.userId as string}
+            selectedYear={year}
+          />
           <div className="flex flex-wrap items-center justify-between gap-3">
             <YearPicker year={year} onYearChange={setYear} />
             <div className="flex flex-wrap items-center gap-2">

@@ -1,4 +1,5 @@
 import { useId, useMemo, useState } from 'react'
+import { Link } from 'react-router'
 import { UserPlus, Users as UsersIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -19,6 +20,8 @@ import {
 } from '@/features/users/permissions'
 import { useLastSignInsQuery, useUsersQuery } from '@/features/users/queries'
 import { filterUsersByStatus } from '@/features/users/userListFilters'
+import { avatarUrl } from '@/lib/avatarUrl'
+import { userDetailPath } from '@/features/users/userNavigation'
 import { formatShortDate, formatTime } from '@/lib/format'
 
 /**
@@ -91,16 +94,35 @@ export default function UsersPage() {
         id: 'name',
         header: 'Nombre',
         meta: { card: 'title' },
-        cell: ({ row }) => (
-          <PersonCell
-            id={row.original.profileId}
-            name={`${row.original.firstName} ${row.original.lastName}`}
-            subtitle={
-              row.original.roles.map((role) => ROLE_LABELS[role]).join(', ') ||
-              'Sin rol asignado'
-            }
-          />
-        ),
+        cell: ({ row }) => {
+          // AJ2-11 y AJ2-12: foto de la persona y clic que abre su ficha.
+          // El vínculo vive solo en esta celda: el menú "Acciones" queda
+          // aparte y no dispara la navegación.
+          const person = (
+            <PersonCell
+              id={row.original.profileId}
+              name={`${row.original.firstName} ${row.original.lastName}`}
+              subtitle={
+                row.original.roles
+                  .map((role) => ROLE_LABELS[role])
+                  .join(', ') || 'Sin rol asignado'
+              }
+              avatarSrc={
+                row.original.avatarPath
+                  ? avatarUrl(row.original.avatarPath)
+                  : null
+              }
+            />
+          )
+          const path = userDetailPath(row.original)
+          return path ? (
+            <Link to={path} className="hover:text-primary-800">
+              {person}
+            </Link>
+          ) : (
+            person
+          )
+        },
       },
       {
         id: 'status',

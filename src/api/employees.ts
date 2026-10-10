@@ -56,7 +56,7 @@ function mapWriteError(error: {
     }
     if (error.message.includes('cuil')) {
       return new ApiError(
-        'El CUIL tiene que tener 11 dígitos, sin puntos ni guiones.',
+        'El CUIL tiene que tener 11 dígitos.',
         'VALIDATION_ERROR',
       )
     }
@@ -82,7 +82,7 @@ function mapWriteError(error: {
   // "Solapamiento bloqueado por exclusión → LEAVE_OVERLAP").
   if (error.code === '23P01' && error.message.includes('employee_leaves')) {
     return new ApiError(
-      'Esa persona ya tiene una licencia cargada que se superpone con esas fechas.',
+      'Esas fechas se superponen con otra licencia ya cargada de esa persona.',
       'LEAVE_OVERLAP',
     )
   }
@@ -104,6 +104,37 @@ export interface EmployeeListRow {
   phone: string | null
   avatarPath: string | null
   dni: string
+}
+
+/** AJ2-17: lo mínimo para elegir empleados en un selector múltiple. */
+export interface EmployeeOption {
+  profileId: string
+  name: string
+  employeeNumber: number
+}
+
+/**
+ * Empleados activos (estado guardado, igual que los candidatos de la
+ * asignación: quien está de licencia hoy puede figurar para un turno futuro),
+ * por legajo ascendente. Alimenta el selector de «Nuevo turno» y de
+ * «Empleados fijos» del servicio.
+ */
+export async function fetchActiveEmployeeOptions(): Promise<EmployeeOption[]> {
+  const { data, error } = await supabase
+    .from('v_employees')
+    .select('profile_id, first_name, last_name, employee_number')
+    .eq('status', 'active')
+    .is('deleted_at', null)
+    .order('employee_number', { ascending: true })
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data ?? []).map((row) => ({
+    profileId: row.profile_id as string,
+    name: `${row.first_name as string} ${row.last_name as string}`,
+    employeeNumber: row.employee_number as number,
+  }))
 }
 
 export interface EmployeeListFilters {
@@ -132,8 +163,8 @@ export async function fetchEmployees(
       'profile_id, first_name, last_name, employee_number, roles, effective_status, phone, avatar_path, dni',
     )
     .is('deleted_at', null)
-    .order('last_name', { ascending: true })
-    .order('first_name', { ascending: true })
+    // AJ2-01: siempre por número de legajo ascendente.
+    .order('employee_number', { ascending: true })
 
   const text = filters.text?.trim()
   if (text) {
@@ -171,6 +202,27 @@ export async function fetchEmployees(
     avatarPath: row.avatar_path,
     dni: row.dni as string,
   }))
+}
+
+/**
+ * DNI de una lista de empleados, para los imprimibles (AJ2-16). Dueño y
+ * administradores leen `employees.dni` (no pasa por `v_assignments_board`).
+ */
+export async function fetchEmployeeDnisByIds(
+  employeeIds: string[],
+): Promise<Map<string, string>> {
+  if (employeeIds.length === 0) {
+    return new Map()
+  }
+  const { data, error } = await supabase
+    .from('employees')
+    .select('profile_id, dni')
+    .in('profile_id', employeeIds)
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return new Map((data ?? []).map((row) => [row.profile_id, row.dni]))
 }
 
 /**
@@ -666,6 +718,31 @@ export async function createEmployeeLeave(
     reason: input.reason,
     created_by: createdBy,
   })
+  if (error) {
+    throw mapWriteError(error)
+  }
+}
+
+/**
+ * Edición de una licencia (AJ2-08): fechas y motivo, con el mismo formulario
+ * del alta. Es un update de la misma fila, así que la exclusión de
+ * solapamiento no la compara consigo misma; sí choca contra otras licencias
+ * vigentes (`LEAVE_OVERLAP`).
+ */
+export async function updateEmployeeLeave(
+  id: string,
+  input: EmployeeLeaveInput,
+  updatedBy: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('employee_leaves')
+    .update({
+      starts_on: input.startsOn,
+      ends_on: input.endsOn,
+      reason: input.reason,
+      updated_by: updatedBy,
+    })
+    .eq('id', id)
   if (error) {
     throw mapWriteError(error)
   }

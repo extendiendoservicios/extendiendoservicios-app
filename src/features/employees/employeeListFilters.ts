@@ -53,3 +53,14 @@ export const EMPLOYEE_ROLE_FILTER_OPTIONS: {
 ]
 
 export type { EmployeeListRow }
+
+/**
+ * AJ2-01: el listado de empleados va siempre por número de legajo
+ * ascendente (sin mutar la lista de entrada). Es el orden por defecto, el de
+ * las tarjetas del celular y el que queda después de buscar o filtrar.
+ */
+export function sortByEmployeeNumber<T extends { employeeNumber: number }>(
+  rows: T[],
+): T[] {
+  return [...rows].sort((a, b) => a.employeeNumber - b.employeeNumber)
+}

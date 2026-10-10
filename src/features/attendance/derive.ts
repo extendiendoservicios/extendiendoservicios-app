@@ -90,8 +90,8 @@ export interface AttendanceStatusBadgeInput {
 
 /**
  * Traduce una `AttendanceBoardRow` al estado que pinta `StatusBadge` (`04`
- * sección 4 y 5, `07` sección 3): `on_the_way` / `late` / `no_record` si
- * `display_status` lo marca (AJ-02, AJ-07; un turno cancelado manda sobre
+ * sección 4 y 5, `07` sección 3): `on_the_way` / `late` / `no_record` /
+ * `no_checkout` («Sin salida», AJ2-10) si `display_status` lo marca (AJ-02, AJ-07; un turno cancelado manda sobre
  * `on_the_way` y `late`, la vista no los excluye); `early_leave` (derivado,
  * sin estado propio en el servidor) si terminó con salida anticipada;
  * `delay_notified` con los minutos del último aviso (el check-in real
@@ -113,6 +113,10 @@ export function getAttendanceStatusBadgeInput(
   }
   if (row.displayStatus === 'no_record') {
     return { status: 'no_record' }
+  }
+  // AJ2-10: «A terminar» sin salida fichada pasadas las 23:59.
+  if (row.displayStatus === 'no_checkout') {
+    return { status: 'no_checkout' }
   }
   if (
     row.status === 'finished' &&
@@ -172,6 +176,7 @@ export function getAttendanceRowVariant(
   }
   if (
     display === 'late' ||
+    display === 'no_checkout' ||
     row.status === 'delay_notified' ||
     (row.minutesEarlyLeave != null && row.minutesEarlyLeave > 0)
   ) {
@@ -207,10 +212,17 @@ export function getArrivalHint(
  * menos lo previsto (sin margen) y sin salida anticipada; advertencia si
  * trabajó menos o salió antes. Sin fin registrado: «en curso» si ya empezó,
  * si no, sin dato.
+ *
+ * AJ2-10: en una asignación «A terminar» no hay horas previstas
+ * (`plannedMinutes` null): se muestra solo lo trabajado, sin tilde ni
+ * comparación (`plain`). Con «Sin salida» (`display_status = no_checkout`) las
+ * horas son 0 hasta que administración cargue la salida (`no_checkout`).
  */
 export type WorkedHoursIndicator =
   | { kind: 'none' }
   | { kind: 'in_progress' }
+  | { kind: 'plain'; workedMinutes: number; text: string }
+  | { kind: 'no_checkout'; workedMinutes: number; text: string; reason: string }
   | { kind: 'ok'; workedMinutes: number; text: string }
   | { kind: 'warning'; workedMinutes: number; text: string; reason: string }
 
@@ -222,8 +234,17 @@ export function getWorkedHoursIndicator(
     | 'minutesEarlyLeave'
     | 'checkInAt'
     | 'checkOutAt'
-  >,
+  > &
+    Partial<Pick<AttendanceBoardRow, 'displayStatus'>>,
 ): WorkedHoursIndicator {
+  if (row.displayStatus === 'no_checkout') {
+    return {
+      kind: 'no_checkout',
+      workedMinutes: 0,
+      text: formatMinutes(0),
+      reason: 'Sin salida: falta cargar la hora de salida',
+    }
+  }
   if (row.workedMinutes == null) {
     return row.checkInAt != null && row.checkOutAt == null
       ? { kind: 'in_progress' }
@@ -231,9 +252,11 @@ export function getWorkedHoursIndicator(
   }
   const worked = row.workedMinutes
   const text = formatMinutes(worked)
+  if (row.plannedMinutes == null) {
+    return { kind: 'plain', workedMinutes: worked, text }
+  }
   const leftEarly = row.minutesEarlyLeave != null
-  const missing =
-    row.plannedMinutes != null ? Math.max(0, row.plannedMinutes - worked) : 0
+  const missing = Math.max(0, row.plannedMinutes - worked)
   if (!leftEarly && missing === 0) {
     return { kind: 'ok', workedMinutes: worked, text }
   }

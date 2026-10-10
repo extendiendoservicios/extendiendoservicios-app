@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { CalendarClock, CalendarRange } from 'lucide-react'
+import { CalendarClock, CalendarRange, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { EmptyState } from '@/components/EmptyState'
@@ -10,6 +10,11 @@ import { isApiError } from '@/api/errors'
 import type { GenerateShiftsResult } from '@/api/shifts'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { useHolidaysQuery } from '@/features/settings/queries'
+import { useServiceLabelsQuery } from '@/features/services/queries'
+import {
+  summarizeGeneration,
+  unassignedRows,
+} from '@/features/shifts/assignOnCreate'
 import { canGenerateShifts } from '@/features/shifts/permissions'
 import {
   useActiveServicesCountForMonthQuery,
@@ -52,6 +57,25 @@ export default function ShiftsGeneratePage() {
   ).length
 
   const generateShifts = useGenerateShiftsMutation()
+
+  // AJ2-17: para rotular «sin asignar» con cliente, sede y servicio.
+  const unassignedServiceIds = useMemo(
+    () => [...new Set((result?.unassigned ?? []).map((u) => u.serviceId))],
+    [result],
+  )
+  const serviceLabelsQuery = useServiceLabelsQuery(unassignedServiceIds)
+  const serviceLabels = Object.fromEntries(
+    (serviceLabelsQuery.data ?? []).map((label) => [
+      label.id,
+      [label.clientName, label.siteName, label.name]
+        .filter(Boolean)
+        .join(' · '),
+    ]),
+  )
+  const summary = result ? summarizeGeneration(result) : null
+  const unassigned = result
+    ? unassignedRows(result.unassigned, serviceLabels)
+    : []
 
   function handleMonthChange(date: Date) {
     setMonth({ year: date.getFullYear(), month: date.getMonth() + 1 })
@@ -136,6 +160,46 @@ export default function ShiftsGeneratePage() {
               Se crearon {result.created} turno
               {result.created === 1 ? '' : 's'}, se omitieron {result.skipped}{' '}
               por ya existir y {result.holidaysSkipped} por caer en feriado.
+              {result.assigned > 0 || result.unassigned.length > 0
+                ? ` Además, ${summary?.fixedAssignments}.`
+                : ''}
+            </AlertDescription>
+          </div>
+        </Alert>
+      )}
+
+      {summary?.pastWithoutFixed && (
+        <Alert variant="warn">
+          <TriangleAlert />
+          <AlertDescription>{summary.pastWithoutFixed}</AlertDescription>
+        </Alert>
+      )}
+
+      {summary?.hasUnassigned && (
+        <Alert variant="warn">
+          <TriangleAlert />
+          <div className="w-full">
+            <AlertTitle>
+              No se pudo asignar a {unassigned.length} empleado
+              {unassigned.length === 1 ? '' : 's'} fijo
+              {unassigned.length === 1 ? '' : 's'}
+            </AlertTitle>
+            <AlertDescription>
+              <p>
+                Los turnos se crearon igual. Asignalos a mano desde la
+                planificación:
+              </p>
+              <ul
+                className="mt-2 flex flex-col gap-1"
+                aria-label="Fijos sin asignar"
+              >
+                {unassigned.map((row) => (
+                  <li key={row.key}>
+                    <span className="font-semibold">{row.date}</span> ·{' '}
+                    {row.serviceLabel} · {row.employeeName}: {row.reason}
+                  </li>
+                ))}
+              </ul>
             </AlertDescription>
           </div>
         </Alert>

@@ -76,6 +76,7 @@ interface EmployeeAttendanceHistoryTabProps {
   /** Datos de la persona para la hoja imprimible y para saber si es supervisor. */
   person: {
     name: string
+    dni?: string | null
     employeeNumber: number
     roles: Role[]
   }
@@ -143,6 +144,7 @@ function EmployeeAttendanceHistoryTab({
       .map((role) => ROLE_LABELS[role])
     return {
       name: person.name,
+      dni: person.dni,
       employeeNumber: person.employeeNumber,
       roleLabels,
       signerLabel: personSignerLabel(roleLabels),
@@ -234,6 +236,11 @@ function EmployeeAttendanceHistoryTab({
           }
           checkInAt={row.original.row.checkInAt}
           checkOutAt={row.original.row.checkOutAt}
+          displayStatus={
+            row.original.kind === 'service'
+              ? row.original.row.displayStatus
+              : undefined
+          }
         />
       ),
     },

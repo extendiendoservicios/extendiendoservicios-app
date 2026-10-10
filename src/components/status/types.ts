@@ -32,6 +32,8 @@ export type AssignmentStatus =
   // AJ-02/AJ-07: `display_status` ahora también vale `on_the_way` y `late`.
   | 'on_the_way'
   | 'late'
+  // AJ2-10: turno «A terminar» que pasó el día sin fichaje de salida (0 horas hasta que administración cargue la hora).
+  | 'no_checkout'
 
 export type TaskStatus = 'pending' | 'in_progress' | 'done' | 'not_done'
 

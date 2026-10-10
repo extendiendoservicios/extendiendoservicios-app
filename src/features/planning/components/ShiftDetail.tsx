@@ -17,6 +17,7 @@ import { PersonCell } from '@/components/PersonCell'
 import { StatusBadge } from '@/components/status'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { formatDateOnly } from '@/features/settings/dateOnly'
+import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
 import type { ShiftDetailAssignment } from '@/api/assignments'
 import { canEditChecklists } from '@/features/checklists/permissions'
 import { AssignmentAttendanceDetail } from '@/features/attendance/components/AssignmentAttendanceDetail'
@@ -34,6 +35,7 @@ import {
 import { useShiftDetailQuery } from '@/features/planning/queries'
 import { canManageSupervisions } from '@/features/supervisions/permissions'
 import { CancelShiftAction } from '@/features/shifts/components/CancelShiftAction'
+import { formatShiftRange } from '@/features/shifts/openEnded'
 import { AdminTaskList } from './AdminTaskList'
 import { AssignEmployeeSheet } from './AssignEmployeeSheet'
 import { AssignmentTimeDialog } from './AssignmentTimeDialog'
@@ -128,6 +130,13 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
   const isEditable =
     shift.status !== 'cancelled' && shift.status !== 'completed'
   const remainingSlots = shift.requiredStaff - shift.assignments.length
+  // AJ2-09: «Sin salida» como en asistencia: presente en un turno «A terminar»
+  // sin fin propio, con el día ya terminado.
+  const isNoCheckout = (assignment: ShiftDetailAssignment) =>
+    assignment.status === 'present' &&
+    shift.openEnded &&
+    assignment.endTime == null &&
+    shift.shiftDate < todayInBuenosAires()
   // "Solo en turnos no empezados" (regla del encargo): `reload_shift_tasks`
   // (0025_rpc_tasks.sql) exige `status in (scheduled, assigned)`.
   const canReloadTasksNow =
@@ -143,9 +152,9 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
           </h2>
           <StatusBadge domain="shift" status={shift.status} />
         </div>
-        <p className="text-[12.5px] text-text-3 capitalize">
-          {formatDateOnly(shift.shiftDate)} · {shift.startTime.slice(0, 5)}–
-          {shift.endTime.slice(0, 5)}
+        <p className="text-[12.5px] text-text-3">
+          <span className="capitalize">{formatDateOnly(shift.shiftDate)}</span>{' '}
+          · {formatShiftRange(shift.startTime, shift.endTime, shift.openEnded)}
           {shift.siteCity ? ` · ${shift.siteCity}` : ''}
         </p>
         <p className="text-[11.5px] text-text-3">
@@ -155,6 +164,16 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
           <div className="flex flex-wrap gap-2 pt-1">
             <Button asChild variant="ghost" size="sm" icon={Pencil}>
               <Link to={`/admin/turnos/${shift.id}/editar`}>Editar franja</Link>
+            </Button>
+          </div>
+        )}
+        {shift.status === 'completed' && shift.openEnded && canManage && (
+          // AJ2-10: a un turno «A terminar» finalizado todavía se le puede poner la hora de fin.
+          <div className="flex flex-wrap gap-2 pt-1">
+            <Button asChild variant="ghost" size="sm" icon={Pencil}>
+              <Link to={`/admin/turnos/${shift.id}/editar`}>
+                Poner hora de fin
+              </Link>
             </Button>
           </div>
         )}
@@ -225,14 +244,20 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
                     name={`${assignment.employeeFirstName} ${assignment.employeeLastName}`}
                     subtitle={
                       assignment.startTime && assignment.endTime
-                        ? `Franja propia: ${assignment.startTime.slice(0, 5)}–${assignment.endTime.slice(0, 5)}`
-                        : `Franja del turno: ${shift.startTime.slice(0, 5)}–${shift.endTime.slice(0, 5)}`
+                        ? `Franja propia: ${formatShiftRange(assignment.startTime, assignment.endTime, false)}`
+                        : shift.openEnded && assignment.startTime
+                          ? `Franja propia: ${formatShiftRange(assignment.startTime, null, true)}`
+                          : `Franja del turno: ${formatShiftRange(shift.startTime, shift.endTime, shift.openEnded)}`
                     }
                   />
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge
                       domain="assignment"
-                      status={assignment.status}
+                      status={
+                        isNoCheckout(assignment)
+                          ? 'no_checkout'
+                          : assignment.status
+                      }
                     />
                     {canAssignNow && isEditable && (
                       <>
@@ -356,11 +381,14 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
 
       {shift.notes && (
         <section className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-5">
-          <h3 className="text-[13px] font-semibold text-text">
-            Notas administrativas
-          </h3>
+          <h3 className="text-[13px] font-semibold text-text">Observación</h3>
           <p className="text-[12.5px] whitespace-pre-wrap text-text-2">
             {shift.notes}
+          </p>
+          <p className="text-[12px] text-text-3">
+            {shift.showInPrint === false
+              ? 'No se muestra en la impresión.'
+              : 'Se muestra en la impresión.'}
           </p>
         </section>
       )}
@@ -372,6 +400,7 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
           shiftDate={shift.shiftDate}
           shiftStartTime={shift.startTime}
           shiftEndTime={shift.endTime}
+          shiftOpenEnded={shift.openEnded}
           excludeEmployeeIds={shift.assignments.map((a) => a.employeeId)}
           open={isAssignOpen}
           onOpenChange={setAssignOpen}
@@ -383,6 +412,7 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
           shiftId={shift.id}
           currentRequiredStaff={shift.requiredStaff}
           currentNotes={shift.notes}
+          currentShowInPrint={shift.showInPrint}
           open={isDetailsOpen}
           onOpenChange={setDetailsOpen}
         />
@@ -407,6 +437,7 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
           employeeName={`${timeTarget.employeeFirstName} ${timeTarget.employeeLastName}`}
           currentStartTime={timeTarget.startTime}
           currentEndTime={timeTarget.endTime}
+          shiftOpenEnded={shift.openEnded}
           open={timeTarget != null}
           onOpenChange={(open) => {
             if (!open) {

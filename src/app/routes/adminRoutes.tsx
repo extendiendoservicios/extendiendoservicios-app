@@ -275,4 +275,40 @@ export const adminRoutes: RouteObject[] = [
       subtitle: 'Consultar inicios de sesión y cambios de acceso',
     },
   },
+  {
+    path: 'anuncios',
+    ...lazyPage(() => import('@/pages/admin/AnnouncementsPage')),
+    handle: {
+      screenId: 'ADM-AN-01',
+      title: 'Avisos y anuncios',
+      subtitle: 'Publicar y seguir quién lo leyó',
+    },
+  },
+  {
+    path: 'anuncios/nuevo',
+    ...lazyPage(() => import('@/pages/admin/AnnouncementFormPage')),
+    handle: {
+      screenId: 'ADM-AN-02',
+      title: 'Nuevo anuncio',
+      subtitle: 'Escribir el anuncio y elegir a quién le llega',
+    },
+  },
+  {
+    path: 'anuncios/:id',
+    ...lazyPage(() => import('@/pages/admin/AnnouncementDetailPage')),
+    handle: {
+      screenId: 'ADM-AN-03',
+      title: 'Anuncio',
+      subtitle: 'Ver el anuncio y quién lo leyó',
+    },
+  },
+  {
+    path: 'anuncios/:id/editar',
+    ...lazyPage(() => import('@/pages/admin/AnnouncementFormPage')),
+    handle: {
+      screenId: 'ADM-AN-02',
+      title: 'Editar anuncio',
+      subtitle: 'Cambiar el texto, los destinatarios o la fecha',
+    },
+  },
 ]

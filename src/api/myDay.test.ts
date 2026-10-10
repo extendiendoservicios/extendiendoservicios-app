@@ -64,6 +64,8 @@ const MY_DAY_ROW = {
   effective_end_time: '12:00:00',
   effective_starts_at: '2026-09-26T11:00:00Z',
   effective_ends_at: '2026-09-26T15:00:00Z',
+  effective_open_ended: false,
+  no_checkout: false,
   status: 'expected' as const,
   shift_status: 'scheduled' as const,
   notes: null,
@@ -110,6 +112,36 @@ describe('fetchMyDay', () => {
         lastNoticeKind: null,
       }),
     ])
+  })
+
+  it('mapea effective_open_ended y no_checkout (AJ2-09, AJ2-10)', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: [
+          { ...MY_DAY_ROW, effective_open_ended: true, no_checkout: true },
+        ],
+        error: null,
+      }),
+    )
+    const [row] = await fetchMyDay()
+    expect(row).toEqual(
+      expect.objectContaining({ openEnded: true, noCheckout: true }),
+    )
+  })
+
+  it('tolera null en los campos nuevos', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: [
+          { ...MY_DAY_ROW, effective_open_ended: null, no_checkout: null },
+        ],
+        error: null,
+      }),
+    )
+    const [row] = await fetchMyDay()
+    expect(row).toEqual(
+      expect.objectContaining({ openEnded: false, noCheckout: false }),
+    )
   })
 
   it('propaga el error traducido si la consulta falla', async () => {
@@ -175,6 +207,8 @@ function baseAssignment() {
     endTime: '12:00:00',
     startsAt: null,
     endsAt: null,
+    openEnded: false,
+    noCheckout: false,
     status: 'expected' as const,
     shiftStatus: 'scheduled' as const,
     notes: null,

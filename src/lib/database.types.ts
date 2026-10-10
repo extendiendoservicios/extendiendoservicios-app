@@ -70,11 +70,235 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "admin_capabilities_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "admin_capabilities_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_capabilities_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      announcement_reads: {
+        Row: {
+          announcement_id: string
+          profile_id: string
+          read_at: string
+        }
+        Insert: {
+          announcement_id: string
+          profile_id: string
+          read_at?: string
+        }
+        Update: {
+          announcement_id?: string
+          profile_id?: string
+          read_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_reads_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_reads_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["announcement_id"]
+          },
+          {
+            foreignKeyName: "announcement_reads_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "v_announcements_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_reads_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "v_my_announcements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_reads_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_reads_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      announcement_recipients: {
+        Row: {
+          announcement_id: string
+          created_at: string
+          profile_id: string
+        }
+        Insert: {
+          announcement_id: string
+          created_at?: string
+          profile_id: string
+        }
+        Update: {
+          announcement_id?: string
+          created_at?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_recipients_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_recipients_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["announcement_id"]
+          },
+          {
+            foreignKeyName: "announcement_recipients_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "v_announcements_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_recipients_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "v_my_announcements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_recipients_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_recipients_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      announcements: {
+        Row: {
+          archived_at: string | null
+          archived_by: string | null
+          audience: Database["public"]["Enums"]["announcement_audience"]
+          body: string
+          content_updated_at: string
+          created_at: string
+          created_by: string | null
+          id: string
+          title: string
+          updated_at: string | null
+          updated_by: string | null
+          visible_until: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
+          audience: Database["public"]["Enums"]["announcement_audience"]
+          body: string
+          content_updated_at?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          title: string
+          updated_at?: string | null
+          updated_by?: string | null
+          visible_until?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          archived_by?: string | null
+          audience?: Database["public"]["Enums"]["announcement_audience"]
+          body?: string
+          content_updated_at?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          title?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          visible_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcements_archived_by_fkey"
+            columns: ["archived_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcements_archived_by_fkey"
+            columns: ["archived_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "announcements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "announcements_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcements_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -142,6 +366,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "assignments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "assignments_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
@@ -170,6 +401,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "assignments_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "assignments_shift_id_fkey"
             columns: ["shift_id"]
             isOneToOne: false
@@ -189,6 +427,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -257,6 +502,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_notices_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -329,6 +581,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
         ]
       }
       checklist_template_items: {
@@ -380,6 +639,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "checklist_template_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "checklist_template_items_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
@@ -392,6 +658,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_template_items_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -455,6 +728,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "checklist_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "checklist_templates_site_id_client_id_fkey"
             columns: ["site_id", "client_id"]
             isOneToOne: false
@@ -467,6 +747,89 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_templates_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      client_bank_details: {
+        Row: {
+          alias: string | null
+          bank_name: string | null
+          cbu: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          alias?: string | null
+          bank_name?: string | null
+          cbu?: string | null
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          alias?: string | null
+          bank_name?: string | null
+          cbu?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_bank_details_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_bank_details_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "v_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_bank_details_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_bank_details_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "client_bank_details_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_bank_details_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -536,11 +899,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "client_contacts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "client_contacts_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_contacts_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -556,6 +933,7 @@ export type Database = {
           legal_name: string
           longitude: number | null
           notes: string | null
+          photo_path: string | null
           status: Database["public"]["Enums"]["client_status"]
           trade_name: string | null
           updated_at: string | null
@@ -572,6 +950,7 @@ export type Database = {
           legal_name: string
           longitude?: number | null
           notes?: string | null
+          photo_path?: string | null
           status?: Database["public"]["Enums"]["client_status"]
           trade_name?: string | null
           updated_at?: string | null
@@ -588,6 +967,7 @@ export type Database = {
           legal_name?: string
           longitude?: number | null
           notes?: string | null
+          photo_path?: string | null
           status?: Database["public"]["Enums"]["client_status"]
           trade_name?: string | null
           updated_at?: string | null
@@ -602,11 +982,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "clients_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "clients_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -645,6 +1039,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -691,6 +1092,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "employee_availability_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "employee_availability_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
@@ -717,6 +1125,96 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_availability_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      employee_bank_details: {
+        Row: {
+          alias: string | null
+          bank_name: string | null
+          cbu: string | null
+          created_at: string
+          created_by: string | null
+          profile_id: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          alias?: string | null
+          bank_name?: string | null
+          cbu?: string | null
+          created_at?: string
+          created_by?: string | null
+          profile_id: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          alias?: string | null
+          bank_name?: string | null
+          cbu?: string | null
+          created_at?: string
+          created_by?: string | null
+          profile_id?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_bank_details_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_bank_details_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employee_bank_details_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employee_bank_details_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "v_employee_ratings"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_bank_details_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "v_employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employee_bank_details_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_bank_details_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -760,6 +1258,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_client_permissions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "employee_client_permissions_employee_id_fkey"
@@ -830,6 +1335,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "employee_leaves_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "employee_leaves_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
@@ -856,6 +1368,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_leaves_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -929,6 +1448,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "employees_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "employees_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: true
@@ -936,11 +1462,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "employees_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "employees_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -984,11 +1524,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "holidays_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "holidays_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "holidays_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -1050,11 +1604,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "profiles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "profiles_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -1104,11 +1672,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "rating_criteria_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "rating_criteria_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rating_criteria_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -1176,6 +1758,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ratings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "ratings_supervision_id_fkey"
             columns: ["supervision_id"]
             isOneToOne: false
@@ -1202,6 +1791,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ratings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -1242,10 +1838,88 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "security_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "security_events_target_id_fkey"
             columns: ["target_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_events_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      service_fixed_employees: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          service_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          service_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_fixed_employees_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_fixed_employees_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "service_fixed_employees_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "service_fixed_employees_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "v_employee_ratings"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "service_fixed_employees_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "v_employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "service_fixed_employees_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
             referencedColumns: ["id"]
           },
         ]
@@ -1262,6 +1936,7 @@ export type Database = {
           min_hours_month: number | null
           name: string
           notes: string | null
+          open_ended: boolean
           required_staff: number
           site_id: string
           start_time: string
@@ -1284,6 +1959,7 @@ export type Database = {
           min_hours_month?: number | null
           name: string
           notes?: string | null
+          open_ended?: boolean
           required_staff?: number
           site_id: string
           start_time: string
@@ -1306,6 +1982,7 @@ export type Database = {
           min_hours_month?: number | null
           name?: string
           notes?: string | null
+          open_ended?: boolean
           required_staff?: number
           site_id?: string
           start_time?: string
@@ -1340,6 +2017,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "services_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "services_site_id_client_id_fkey"
             columns: ["site_id", "client_id"]
             isOneToOne: false
@@ -1352,6 +2036,86 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      shift_observations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          observation: string | null
+          shift_id: string
+          show_in_print: boolean
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          observation?: string | null
+          shift_id: string
+          show_in_print?: boolean
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          observation?: string | null
+          shift_id?: string
+          show_in_print?: boolean
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_observations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_observations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "shift_observations_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: true
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_observations_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: true
+            referencedRelation: "v_shifts_board"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_observations_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_observations_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -1413,6 +2177,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "shift_tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "shift_tasks_shift_id_fkey"
             columns: ["shift_id"]
             isOneToOne: false
@@ -1434,11 +2205,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "shift_tasks_status_changed_by_fkey"
+            columns: ["status_changed_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "shift_tasks_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_tasks_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -1457,6 +2242,7 @@ export type Database = {
           generated: boolean
           id: string
           notes: string | null
+          open_ended: boolean
           required_staff: number
           service_id: string | null
           shift_date: string
@@ -1481,6 +2267,7 @@ export type Database = {
           generated?: boolean
           id?: string
           notes?: string | null
+          open_ended?: boolean
           required_staff: number
           service_id?: string | null
           shift_date: string
@@ -1505,6 +2292,7 @@ export type Database = {
           generated?: boolean
           id?: string
           notes?: string | null
+          open_ended?: boolean
           required_staff?: number
           service_id?: string | null
           shift_date?: string
@@ -1522,6 +2310,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "shifts_checklist_template_id_fkey"
@@ -1552,6 +2347,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "shifts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "shifts_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
@@ -1571,6 +2373,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -1664,11 +2473,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "sites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "sites_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sites_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -1785,11 +2608,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "supervisions_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "supervisions_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "supervisions_shift_id_fkey"
@@ -1833,6 +2670,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "supervisions_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
         ]
       }
       user_roles: {
@@ -1863,16 +2707,75 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "user_roles_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "user_roles_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_roles_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
         ]
       }
     }
     Views: {
+      v_announcement_recipients: {
+        Row: {
+          announcement_id: string | null
+          first_name: string | null
+          last_name: string | null
+          profile_id: string | null
+          read_at: string | null
+          roles: string[] | null
+        }
+        Relationships: []
+      }
+      v_announcements_admin: {
+        Row: {
+          archived_at: string | null
+          audience: Database["public"]["Enums"]["announcement_audience"] | null
+          body: string | null
+          content_updated_at: string | null
+          created_at: string | null
+          created_by: string | null
+          created_by_name: string | null
+          id: string | null
+          read_count: number | null
+          recipient_count: number | null
+          status: string | null
+          title: string | null
+          updated_at: string | null
+          visible_until: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       v_assignments_board: {
         Row: {
           check_in_at: string | null
@@ -1892,6 +2795,7 @@ export type Database = {
           display_status: string | null
           effective_end_time: string | null
           effective_ends_at: string | null
+          effective_open_ended: boolean | null
           effective_start_time: string | null
           effective_starts_at: string | null
           employee_avatar_path: string | null
@@ -1920,6 +2824,7 @@ export type Database = {
           removed_reason: string | null
           shift_date: string | null
           shift_id: string | null
+          shift_observation: string | null
           shift_status: Database["public"]["Enums"]["shift_status"] | null
           site_id: string | null
           site_name: string | null
@@ -1935,6 +2840,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "assignments_employee_id_fkey"
@@ -1965,6 +2877,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "assignments_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "assignments_shift_id_fkey"
             columns: ["shift_id"]
             isOneToOne: false
@@ -1986,8 +2905,29 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "assignments_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "attendance_notices_reported_by_fkey"
             columns: ["last_notice_reported_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_notices_reported_by_fkey"
+            columns: ["last_notice_reported_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -2003,8 +2943,15 @@ export type Database = {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_in_recorded_by"]
             isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_out_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "shifts_client_id_fkey"
@@ -2042,6 +2989,7 @@ export type Database = {
           legal_name: string | null
           longitude: number | null
           notes: string | null
+          photo_path: string | null
           sites_count: number | null
           status: Database["public"]["Enums"]["client_status"] | null
           trade_name: string | null
@@ -2057,11 +3005,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "clients_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "clients_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -2086,6 +3048,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_profile_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -2127,11 +3096,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "employees_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "employees_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "employees_updated_by_fkey"
@@ -2140,7 +3123,28 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "employees_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
         ]
+      }
+      v_my_announcements: {
+        Row: {
+          audience: Database["public"]["Enums"]["announcement_audience"] | null
+          body: string | null
+          content_updated_at: string | null
+          created_at: string | null
+          id: string | null
+          read_at: string | null
+          title: string | null
+          visible_until: string | null
+          was_edited: boolean | null
+        }
+        Relationships: []
       }
       v_my_day: {
         Row: {
@@ -2163,6 +3167,7 @@ export type Database = {
           client_trade_name: string | null
           effective_end_time: string | null
           effective_ends_at: string | null
+          effective_open_ended: boolean | null
           effective_start_time: string | null
           effective_starts_at: string | null
           is_today: boolean | null
@@ -2178,6 +3183,7 @@ export type Database = {
           last_notice_source:
             | Database["public"]["Enums"]["attendance_source"]
             | null
+          no_checkout: boolean | null
           notes: string | null
           on_the_way_expires_at: string | null
           phone_restricted: boolean | null
@@ -2221,6 +3227,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "attendance_notices_reported_by_fkey"
+            columns: ["last_notice_reported_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_out_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_in_recorded_by"]
             isOneToOne: false
@@ -2231,8 +3251,15 @@ export type Database = {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_out_recorded_by"]
             isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_in_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "shifts_client_id_fkey"
@@ -2274,6 +3301,7 @@ export type Database = {
           not_done_reason: string | null
           shift_date: string | null
           shift_id: string | null
+          shift_open_ended: boolean | null
           site_access_instructions: string | null
           site_address: string | null
           site_building_hours: string | null
@@ -2397,11 +3425,14 @@ export type Database = {
           finished_count: number | null
           generated: boolean | null
           id: string | null
+          no_checkout_count: number | null
           notes: string | null
+          open_ended: boolean | null
           present_count: number | null
           required_staff: number | null
           service_id: string | null
           shift_date: string | null
+          show_in_print: boolean | null
           site_city: string | null
           site_id: string | null
           site_name: string | null
@@ -2418,6 +3449,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "shifts_checklist_template_id_fkey"
@@ -2448,6 +3486,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "shifts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "shifts_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
@@ -2467,6 +3512,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -2492,6 +3544,7 @@ export type Database = {
           ratings_count: number | null
           shift_date: string | null
           shift_id: string | null
+          shift_open_ended: boolean | null
           site_id: string | null
           site_name: string | null
           start_time: string | null
@@ -2533,6 +3586,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "supervisions_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "supervisions_shift_id_fkey"
             columns: ["shift_id"]
             isOneToOne: false
@@ -2571,6 +3631,20 @@ export type Database = {
       }
     }
     Functions: {
+      acknowledge_announcement: {
+        Args: { p_id: string }
+        Returns: {
+          announcement_id: string
+          profile_id: string
+          read_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "announcement_reads"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       admin_create_user_records: {
         Args: {
           p_actor_id: string
@@ -2615,6 +3689,29 @@ export type Database = {
         Args: { p_profile_id: string }
         Returns: undefined
       }
+      archive_announcement: {
+        Args: { p_id: string }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          audience: Database["public"]["Enums"]["announcement_audience"]
+          body: string
+          content_updated_at: string
+          created_at: string
+          created_by: string | null
+          id: string
+          title: string
+          updated_at: string | null
+          updated_by: string | null
+          visible_until: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "announcements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       assign_employee: {
         Args: {
           p_employee_id: string
@@ -2644,6 +3741,7 @@ export type Database = {
           generated: boolean
           id: string
           notes: string | null
+          open_ended: boolean
           required_staff: number
           service_id: string | null
           shift_date: string
@@ -2765,14 +3863,46 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_announcement: {
+        Args: {
+          p_audience: Database["public"]["Enums"]["announcement_audience"]
+          p_body: string
+          p_recipient_ids?: string[]
+          p_title: string
+          p_visible_until?: string
+        }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          audience: Database["public"]["Enums"]["announcement_audience"]
+          body: string
+          content_updated_at: string
+          created_at: string
+          created_by: string | null
+          id: string
+          title: string
+          updated_at: string | null
+          updated_by: string | null
+          visible_until: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "announcements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_shift: {
         Args: {
           p_client_id: string
           p_date: string
+          p_employee_ids?: string[]
           p_end: string
           p_notes?: string
+          p_open_ended?: boolean
           p_required_staff: number
           p_service_id?: string
+          p_show_in_print?: boolean
           p_site_id: string
           p_start: string
         }
@@ -3081,6 +4211,58 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      set_client_bank_details: {
+        Args: {
+          p_alias?: string
+          p_bank_name?: string
+          p_cbu?: string
+          p_client_id: string
+        }
+        Returns: {
+          alias: string | null
+          bank_name: string | null
+          cbu: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "client_bank_details"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_employee_bank_details: {
+        Args: {
+          p_alias?: string
+          p_bank_name?: string
+          p_cbu?: string
+          p_profile_id: string
+        }
+        Returns: {
+          alias: string | null
+          bank_name: string | null
+          cbu: string | null
+          created_at: string
+          created_by: string | null
+          profile_id: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "employee_bank_details"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_service_fixed_employees: {
+        Args: { p_employee_ids: string[]; p_service_id: string }
+        Returns: Json
+      }
       set_user_roles: {
         Args: {
           p_profile_id: string
@@ -3132,6 +4314,36 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "supervision_attendance"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_announcement: {
+        Args: {
+          p_audience: Database["public"]["Enums"]["announcement_audience"]
+          p_body: string
+          p_id: string
+          p_recipient_ids?: string[]
+          p_title: string
+          p_visible_until?: string
+        }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          audience: Database["public"]["Enums"]["announcement_audience"]
+          body: string
+          content_updated_at: string
+          created_at: string
+          created_by: string | null
+          id: string
+          title: string
+          updated_at: string | null
+          updated_by: string | null
+          visible_until: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "announcements"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -3193,7 +4405,12 @@ export type Database = {
         }
       }
       update_shift_details: {
-        Args: { p_notes?: string; p_required_staff: number; p_shift_id: string }
+        Args: {
+          p_notes?: string
+          p_required_staff: number
+          p_shift_id: string
+          p_show_in_print?: boolean
+        }
         Returns: {
           cancel_reason: string | null
           cancelled_at: string | null
@@ -3208,6 +4425,7 @@ export type Database = {
           generated: boolean
           id: string
           notes: string | null
+          open_ended: boolean
           required_staff: number
           service_id: string | null
           shift_date: string
@@ -3226,7 +4444,12 @@ export type Database = {
         }
       }
       update_shift_time: {
-        Args: { p_end: string; p_shift_id: string; p_start: string }
+        Args: {
+          p_end: string
+          p_open_ended?: boolean
+          p_shift_id: string
+          p_start: string
+        }
         Returns: {
           cancel_reason: string | null
           cancelled_at: string | null
@@ -3241,6 +4464,7 @@ export type Database = {
           generated: boolean
           id: string
           notes: string | null
+          open_ended: boolean
           required_staff: number
           service_id: string | null
           shift_date: string
@@ -3303,6 +4527,7 @@ export type Database = {
         | "manage_attendance"
         | "generate_shifts"
         | "manage_supervisions"
+      announcement_audience: "employees" | "supervisors" | "all" | "custom"
       app_role: "owner" | "admin" | "supervisor" | "employee"
       assignment_status:
         | "expected"
@@ -3489,6 +4714,7 @@ export const Constants = {
         "generate_shifts",
         "manage_supervisions",
       ],
+      announcement_audience: ["employees", "supervisors", "all", "custom"],
       app_role: ["owner", "admin", "supervisor", "employee"],
       assignment_status: [
         "expected",

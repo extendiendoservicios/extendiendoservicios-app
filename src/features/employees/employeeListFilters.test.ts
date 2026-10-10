@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   filterEmployeesByClient,
   filterEmployeesByDefaultStatus,
+  sortByEmployeeNumber,
 } from './employeeListFilters'
 
 /**
@@ -63,5 +64,28 @@ describe('filterEmployeesByDefaultStatus', () => {
     expect(filterEmployeesByDefaultStatus(statusRows, 'active')).toEqual(
       statusRows,
     )
+  })
+})
+
+/** AJ2-01: la lista de empleados va siempre por legajo ascendente. */
+describe('sortByEmployeeNumber', () => {
+  const unsorted = [
+    { profileId: 'a', employeeNumber: 12 },
+    { profileId: 'b', employeeNumber: 3 },
+    { profileId: 'c', employeeNumber: 101 },
+  ]
+
+  it('ordena por número de legajo ascendente (numérico, no de texto)', () => {
+    expect(sortByEmployeeNumber(unsorted).map((r) => r.profileId)).toEqual([
+      'b',
+      'a',
+      'c',
+    ])
+  })
+
+  it('no muta la lista de entrada', () => {
+    const copy = [...unsorted]
+    sortByEmployeeNumber(unsorted)
+    expect(unsorted).toEqual(copy)
   })
 })

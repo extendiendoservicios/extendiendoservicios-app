@@ -49,6 +49,10 @@ export interface MyDayAssignment {
   endTime: string
   startsAt: string | null
   endsAt: string | null
+  /** AJ2-10: la asignación es «A terminar» (turno abierto y sin fin propio): no hay hora de fin y `endTime` (23:59) no se muestra. */
+  openEnded: boolean
+  /** AJ2-09/AJ2-10: «Sin salida» (presente en un turno «A terminar» que pasó las 23:59 sin salida). No se puede fichar la salida desde el celular. */
+  noCheckout: boolean
   status: AssignmentStatus
   shiftStatus: ShiftStatus
   notes: string | null
@@ -117,6 +121,8 @@ interface MyDayRawRow {
   effective_end_time: string
   effective_starts_at: string | null
   effective_ends_at: string | null
+  effective_open_ended: boolean | null
+  no_checkout: boolean | null
   status: AssignmentStatus
   shift_status: ShiftStatus
   notes: string | null
@@ -165,6 +171,8 @@ function mapMyDayRow(row: MyDayRawRow): MyDayAssignment {
     endTime: row.effective_end_time,
     startsAt: row.effective_starts_at,
     endsAt: row.effective_ends_at,
+    openEnded: row.effective_open_ended ?? false,
+    noCheckout: row.no_checkout ?? false,
     status: row.status,
     shiftStatus: row.shift_status,
     notes: row.notes,

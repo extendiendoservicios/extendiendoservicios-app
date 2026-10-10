@@ -1,15 +1,20 @@
+import { formatTaxId } from '@/lib/taxId'
 import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { Building2, Pencil, Plus, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Avatar } from '@/components/Avatar'
+import { clientPhotoUrl } from '@/api/photos'
 import { EmptyState } from '@/components/EmptyState'
 import { StatusBadge } from '@/components/status'
 import {
   useClientDetailQuery,
   useClientSitesQuery,
 } from '@/features/clients/queries'
+import { BankDetailsCard } from '@/features/bank/components/BankDetailsCard'
+import { useClientBankDetailsQuery } from '@/features/bank/queries'
 import { ClientServiceSummaryTab } from '@/features/clients/components/ClientServiceSummaryTab'
 import { ClientContactsPanel } from '@/features/clients/components/ClientContactsPanel'
 import { ChangeClientStatusDialog } from '@/features/clients/components/ChangeClientStatusDialog'
@@ -59,6 +64,7 @@ export default function ClientDetailPage() {
 
   const clientQuery = useClientDetailQuery(id)
   const sitesQuery = useClientSitesQuery(activeTab === 'sedes' ? id : undefined)
+  const bankQuery = useClientBankDetailsQuery(id)
 
   if (!id) {
     return null
@@ -87,31 +93,39 @@ export default function ClientDetailPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-border bg-surface p-5">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-[16px] font-semibold text-text">
-              {client.tradeName ?? client.legalName}
-            </h2>
-            <StatusBadge domain="client" status={client.status} />
+        <div className="flex min-w-0 items-start gap-4">
+          <Avatar
+            id={client.id}
+            name={client.tradeName ?? client.legalName}
+            src={client.photoPath ? clientPhotoUrl(client.photoPath) : null}
+            size="lg"
+          />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-[16px] font-semibold text-text">
+                {client.tradeName ?? client.legalName}
+              </h2>
+              <StatusBadge domain="client" status={client.status} />
+            </div>
+            {client.tradeName && (
+              <p className="text-[12px] text-text-3">{client.legalName}</p>
+            )}
+            <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 text-[12px] text-text-2 sm:grid-cols-2">
+              <div>
+                <dt className="inline font-semibold">CUIT: </dt>
+                <dd className="inline">{formatTaxId(client.cuit) ?? '—'}</dd>
+              </div>
+              <div>
+                <dt className="inline font-semibold">
+                  Dirección administrativa:{' '}
+                </dt>
+                <dd className="inline">{client.adminAddress ?? '—'}</dd>
+              </div>
+            </dl>
+            {client.notes && (
+              <p className="mt-2 text-[12px] text-text-3">{client.notes}</p>
+            )}
           </div>
-          {client.tradeName && (
-            <p className="text-[12px] text-text-3">{client.legalName}</p>
-          )}
-          <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 text-[12px] text-text-2 sm:grid-cols-2">
-            <div>
-              <dt className="inline font-semibold">CUIT: </dt>
-              <dd className="inline">{client.cuit ?? '—'}</dd>
-            </div>
-            <div>
-              <dt className="inline font-semibold">
-                Dirección administrativa:{' '}
-              </dt>
-              <dd className="inline">{client.adminAddress ?? '—'}</dd>
-            </div>
-          </dl>
-          {client.notes && (
-            <p className="mt-2 text-[12px] text-text-3">{client.notes}</p>
-          )}
         </div>
         <div className="flex shrink-0 gap-2">
           <Button
@@ -127,6 +141,11 @@ export default function ClientDetailPage() {
           </Button>
         </div>
       </div>
+
+      <BankDetailsCard
+        details={bankQuery.data}
+        isLoading={bankQuery.isLoading}
+      />
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>

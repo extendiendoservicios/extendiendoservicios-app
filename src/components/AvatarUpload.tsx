@@ -1,39 +1,24 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type PointerEvent as ReactPointerEvent,
-} from 'react'
+import { useRef, useState } from 'react'
 import { Camera, Trash2 } from 'lucide-react'
 import { cn } from 'cn'
 import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { supabase } from '@/lib/supabase'
-import { avatarUrl } from '@/lib/avatarUrl'
+import {
+  photoPublicUrl,
+  removePhoto,
+  savePhoto,
+  type PhotoKind,
+} from '@/api/photos'
 import {
   AVATAR_ACCEPTED_MIME_TYPES,
-  AVATAR_CROP_VIEWPORT_PX,
-  AVATAR_MAX_ZOOM,
-  AVATAR_MIN_ZOOM,
-  avatarOffsetToCropRect,
-  avatarStoragePath,
-  centeredAvatarOffset,
-  clampAvatarOffset,
-  computeAvatarDisplayScale,
   cropAndResizeToBlob,
-  loadImageFromFile,
-  validateAvatarSourceFile,
-  zoomAvatarOffsetAroundCenter,
 } from '@/lib/avatarImage'
+import {
+  PhotoCropDialog,
+  prepareCropState,
+  type CropDialogState,
+} from '@/components/PhotoCropDialog'
 
 /**
  * `AvatarUpload` (EMP-011, `07` fila FileUpload/AvatarUpload): elegir una
@@ -57,8 +42,14 @@ import {
  * repetir la subida.
  */
 export interface AvatarUploadProps {
-  /** Perfil dueño de la foto (`profiles.id`): define la carpeta en `avatars` y a quién se le guarda `avatar_path`. */
+  /**
+   * Dueño de la foto: `profiles.id` (carpeta en `avatars`, se guarda
+   * `avatar_path`) o, con `kind="client"`, `clients.id` (carpeta en
+   * `client-photos`, se guarda `photo_path`).
+   */
   profileId: string
+  /** Qué foto es: de una persona (por defecto) o de un cliente (AJ2-06). */
+  kind?: PhotoKind
   /** Nombre completo: color e iniciales del fallback, y lo que anuncia un lector de pantalla. */
   name: string
   /** `profiles.avatar_path` actual, o `null` sin foto todavía. */
@@ -73,17 +64,20 @@ type UploadStatus = 'idle' | 'uploading' | 'removing'
 
 export function AvatarUpload({
   profileId,
+  kind = 'profile',
   name,
   avatarPath,
   onChange,
   className,
 }: AvatarUploadProps) {
+  const changeLabel =
+    kind === 'client' ? 'Cambiar foto del cliente' : 'Cambiar foto de perfil'
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [status, setStatus] = useState<UploadStatus>('idle')
   const [error, setError] = useState<string | null>(null)
   const [cropState, setCropState] = useState<CropDialogState | null>(null)
 
-  const photoUrl = avatarPath ? avatarUrl(avatarPath) : null
+  const photoUrl = avatarPath ? photoPublicUrl(kind, avatarPath) : null
   const busy = status !== 'idle'
 
   function openPicker() {
@@ -100,29 +94,12 @@ export function AvatarUpload({
     event.target.value = ''
     if (!file) return
 
-    const validationError = validateAvatarSourceFile(file)
-    if (validationError) {
-      setError(validationError)
+    const prepared = await prepareCropState(file)
+    if ('error' in prepared) {
+      setError(prepared.error)
       return
     }
-
-    try {
-      const image = await loadImageFromFile(file)
-      // Arranca centrado: con 0/0 la imagen quedaba pegada arriba a la
-      // izquierda y una foto apaisada se recortaba por el borde izquierdo.
-      setCropState({
-        image,
-        zoom: AVATAR_MIN_ZOOM,
-        ...centeredAvatarOffset({
-          naturalWidth: image.naturalWidth,
-          naturalHeight: image.naturalHeight,
-          viewportPx: AVATAR_CROP_VIEWPORT_PX,
-          zoom: AVATAR_MIN_ZOOM,
-        }),
-      })
-    } catch {
-      setError('No pudimos leer esa imagen. Probá con otro archivo.')
-    }
+    setCropState(prepared.state)
   }
 
   async function handleConfirmCrop(cropRect: {
@@ -138,37 +115,7 @@ export function AvatarUpload({
     setError(null)
     try {
       const blob = await cropAndResizeToBlob(image, cropRect)
-      const path = avatarStoragePath(profileId)
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(path, blob, { contentType: 'image/jpeg', upsert: false })
-      if (uploadError) {
-        throw new Error(
-          'No pudimos subir la foto. Revisá tu conexión y probá de nuevo.',
-        )
-      }
-
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ avatar_path: path })
-        .eq('id', profileId)
-      if (updateError) {
-        // La foto ya se subió: se intenta borrar para no dejar un objeto
-        // huérfano en el bucket (mejor esfuerzo, sin bloquear el aviso del
-        // error real a la persona).
-        await supabase.storage.from('avatars').remove([path])
-        throw new Error(
-          'No pudimos guardar la foto en el perfil. Probá de nuevo.',
-        )
-      }
-
-      const previousPath = avatarPath
-      if (previousPath) {
-        // Mejor esfuerzo: si falla, queda un archivo viejo sin referencia
-        // (no rompe nada, solo ocupa espacio) — no es un error para mostrar.
-        await supabase.storage.from('avatars').remove([previousPath])
-      }
-
+      const path = await savePhoto(kind, profileId, blob, avatarPath)
       onChange?.(path)
     } catch (err) {
       setError(
@@ -185,17 +132,17 @@ export function AvatarUpload({
     if (!avatarPath) return
     setStatus('removing')
     setError(null)
-    const pathToRemove = avatarPath
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ avatar_path: null })
-      .eq('id', profileId)
-    if (updateError) {
-      setError('No pudimos quitar la foto. Probá de nuevo.')
+    try {
+      await removePhoto(kind, profileId, avatarPath)
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No pudimos quitar la foto. Probá de nuevo.',
+      )
       setStatus('idle')
       return
     }
-    await supabase.storage.from('avatars').remove([pathToRemove])
     onChange?.(null)
     setStatus('idle')
   }
@@ -208,7 +155,7 @@ export function AvatarUpload({
           type="button"
           onClick={openPicker}
           disabled={busy}
-          aria-label="Cambiar foto de perfil"
+          aria-label={changeLabel}
           className="absolute -right-1 -bottom-1 flex size-8 after:absolute after:-inset-2 md:after:hidden items-center justify-center rounded-full border-2 border-surface bg-primary text-white outline-none focus-visible:ring-3 focus-visible:ring-ring disabled:opacity-50"
         >
           <Camera aria-hidden="true" className="size-[15px]" />
@@ -255,14 +202,14 @@ export function AvatarUpload({
       <input
         ref={fileInputRef}
         type="file"
-        aria-label="Cambiar foto de perfil"
+        aria-label={changeLabel}
         accept={AVATAR_ACCEPTED_MIME_TYPES.join(',')}
         className="sr-only"
         onChange={(event) => void handleFileSelected(event)}
       />
 
       {cropState && (
-        <AvatarCropDialog
+        <PhotoCropDialog
           state={cropState}
           onChangeState={setCropState}
           onCancel={() => setCropState(null)}
@@ -270,243 +217,5 @@ export function AvatarUpload({
         />
       )}
     </div>
-  )
-}
-
-interface CropDialogState {
-  image: HTMLImageElement
-  zoom: number
-  offsetX: number
-  offsetY: number
-}
-
-/**
- * Diálogo de recorte: arrastrar la foto dentro del recuadro cuadrado
- * (puntero o flechas del teclado) y una barra de zoom. La geometría vive en
- * `lib/avatarImage.ts` — acá solo se traduce a estilos y eventos.
- */
-function AvatarCropDialog({
-  state,
-  onChangeState,
-  onCancel,
-  onConfirm,
-}: {
-  state: CropDialogState
-  onChangeState: (state: CropDialogState) => void
-  onCancel: () => void
-  onConfirm: (cropRect: { x: number; y: number; size: number }) => void
-}) {
-  const { image, zoom, offsetX, offsetY } = state
-  const draggingRef = useRef<{
-    pointerId: number
-    startX: number
-    startY: number
-    startOffsetX: number
-    startOffsetY: number
-  } | null>(null)
-
-  const displayScale = computeAvatarDisplayScale(
-    image.naturalWidth,
-    image.naturalHeight,
-    AVATAR_CROP_VIEWPORT_PX,
-    zoom,
-  )
-  const displayWidth = image.naturalWidth * displayScale
-  const displayHeight = image.naturalHeight * displayScale
-
-  // Al cambiar el zoom, vuelve a acotar el desplazamiento actual para que la
-  // imagen siga cubriendo todo el recuadro (si no, un zoom hacia afuera
-  // podría dejar un hueco en un borde).
-  useEffect(() => {
-    const clampedX = clampAvatarOffset(
-      offsetX,
-      displayWidth,
-      AVATAR_CROP_VIEWPORT_PX,
-    )
-    const clampedY = clampAvatarOffset(
-      offsetY,
-      displayHeight,
-      AVATAR_CROP_VIEWPORT_PX,
-    )
-    if (clampedX !== offsetX || clampedY !== offsetY) {
-      onChangeState({ ...state, offsetX: clampedX, offsetY: clampedY })
-    }
-    // Solo cuando cambian las dimensiones mostradas (por el zoom): el resto
-    // del estado ya está reflejado en las dependencias indirectamente.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [displayWidth, displayHeight])
-
-  /** Fija el desplazamiento a un valor absoluto (arrastre con el puntero), acotado al recuadro. */
-  function setOffset(nextOffsetX: number, nextOffsetY: number) {
-    onChangeState({
-      ...state,
-      offsetX: clampAvatarOffset(
-        nextOffsetX,
-        displayWidth,
-        AVATAR_CROP_VIEWPORT_PX,
-      ),
-      offsetY: clampAvatarOffset(
-        nextOffsetY,
-        displayHeight,
-        AVATAR_CROP_VIEWPORT_PX,
-      ),
-    })
-  }
-
-  /** Desplaza en `deltaX`/`deltaY` desde la posición actual (flechas del teclado). */
-  function moveBy(deltaX: number, deltaY: number) {
-    setOffset(offsetX + deltaX, offsetY + deltaY)
-  }
-
-  function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
-    event.currentTarget.setPointerCapture(event.pointerId)
-    draggingRef.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      startOffsetX: offsetX,
-      startOffsetY: offsetY,
-    }
-  }
-
-  function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
-    const drag = draggingRef.current
-    if (!drag || drag.pointerId !== event.pointerId) return
-    setOffset(
-      drag.startOffsetX + (event.clientX - drag.startX),
-      drag.startOffsetY + (event.clientY - drag.startY),
-    )
-  }
-
-  function handlePointerUp(event: ReactPointerEvent<HTMLDivElement>) {
-    if (draggingRef.current?.pointerId === event.pointerId) {
-      draggingRef.current = null
-    }
-  }
-
-  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
-    const step = 12
-    if (event.key === 'ArrowLeft') {
-      event.preventDefault()
-      moveBy(step, 0)
-    } else if (event.key === 'ArrowRight') {
-      event.preventDefault()
-      moveBy(-step, 0)
-    } else if (event.key === 'ArrowUp') {
-      event.preventDefault()
-      moveBy(0, step)
-    } else if (event.key === 'ArrowDown') {
-      event.preventDefault()
-      moveBy(0, -step)
-    }
-  }
-
-  function handleConfirm() {
-    onConfirm(
-      avatarOffsetToCropRect({
-        offsetX,
-        offsetY,
-        displayScale,
-        viewportPx: AVATAR_CROP_VIEWPORT_PX,
-      }),
-    )
-  }
-
-  return (
-    <Dialog open onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Ajustar la foto</DialogTitle>
-          <DialogDescription>
-            Arrastrá la imagen o usá las flechas del teclado para ubicarla, y la
-            barra para acercar o alejar.
-          </DialogDescription>
-        </DialogHeader>
-
-        {/* No hay un rol ARIA estándar para "arrastrar una imagen dentro de
-            un recuadro en dos ejes" (no es un slider de un solo valor):
-            `role="group"` describe mejor el contenido para un lector de
-            pantalla, con las flechas del teclado como alternativa completa
-            al arrastre (`handleKeyDown`) — mismo criterio que
-            `input-group.tsx` para su propio caso de un elemento no
-            interactivo por definición de ARIA con manejo de puntero propio. */}
-        {/* eslint-disable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex */}
-        <div
-          role="group"
-          aria-label="Recorte de la foto"
-          tabIndex={0}
-          onKeyDown={handleKeyDown}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          className="relative mx-auto overflow-hidden rounded-full bg-bg outline-none focus-visible:ring-3 focus-visible:ring-ring"
-          style={{
-            width: AVATAR_CROP_VIEWPORT_PX,
-            height: AVATAR_CROP_VIEWPORT_PX,
-            touchAction: 'none',
-            cursor: 'grab',
-          }}
-        >
-          {/* eslint-enable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex */}
-          <img
-            src={image.src}
-            alt=""
-            aria-hidden="true"
-            draggable={false}
-            className="pointer-events-none absolute max-w-none select-none"
-            style={{
-              width: displayWidth,
-              height: displayHeight,
-              left: offsetX,
-              top: offsetY,
-            }}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label
-            htmlFor="avatar-crop-zoom"
-            className="text-[11.5px] font-medium text-text-2"
-          >
-            Zoom
-          </label>
-          <input
-            id="avatar-crop-zoom"
-            type="range"
-            min={AVATAR_MIN_ZOOM}
-            max={AVATAR_MAX_ZOOM}
-            step={0.01}
-            value={zoom}
-            onChange={(event) => {
-              const nextZoom = Number(event.target.value)
-              // Acerca sobre el centro del recuadro; el efecto de más arriba
-              // acota el resultado para que no queden huecos.
-              onChangeState({
-                ...state,
-                zoom: nextZoom,
-                ...zoomAvatarOffsetAroundCenter({
-                  offsetX,
-                  offsetY,
-                  fromZoom: zoom,
-                  toZoom: nextZoom,
-                  viewportPx: AVATAR_CROP_VIEWPORT_PX,
-                }),
-              })
-            }}
-            className="w-full accent-primary"
-          />
-        </div>
-
-        <DialogFooter>
-          <Button type="button" variant="ghost" onClick={onCancel}>
-            Cancelar
-          </Button>
-          <Button type="button" variant="primary" onClick={handleConfirm}>
-            Usar esta foto
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   )
 }

@@ -169,21 +169,23 @@ select is(
   (select array_agg(attname::text order by attnum) from pg_attribute
    where attrelid = 'public.v_assignments_board'::regclass and attnum > 0 and not attisdropped
    and attnum > (select attnum from pg_attribute where attrelid = 'public.v_assignments_board'::regclass and attname = 'last_notice_at')),
-  array['last_notice_estimated_arrival_at', 'planned_minutes', 'worked_minutes'],
-  'v_assignments_board: last_notice_estimated_arrival_at, planned_minutes y worked_minutes van al final'
+  array['last_notice_estimated_arrival_at', 'planned_minutes', 'worked_minutes', 'effective_open_ended', 'shift_observation'],
+  'v_assignments_board: last_notice_estimated_arrival_at, planned_minutes y worked_minutes van al final (0037 agrega effective_open_ended después)'
 );
 select is(
-  (select attname::text from pg_attribute where attrelid = 'public.v_my_day'::regclass and attnum > 0 and not attisdropped order by attnum desc offset 1 limit 1),
-  'last_notice_estimated_arrival_at',
-  'v_my_day: last_notice_estimated_arrival_at es la penúltima (0034 agrega on_the_way_expires_at al final)'
+  (select array_agg(attname::text order by attnum) from pg_attribute
+   where attrelid = 'public.v_my_day'::regclass and attnum > 0 and not attisdropped
+   and attnum >= (select attnum from pg_attribute where attrelid = 'public.v_my_day'::regclass and attname = 'last_notice_estimated_arrival_at')),
+  array['last_notice_estimated_arrival_at', 'on_the_way_expires_at', 'effective_open_ended', 'no_checkout'],
+  'v_my_day: last_notice_estimated_arrival_at conserva su lugar (0034 agrega on_the_way_expires_at y 0037 effective_open_ended y no_checkout después)'
 );
 select is(
   (select array_agg(attname::text order by attnum) from (
      select attname, attnum from pg_attribute
      where attrelid = 'public.v_supervisions_admin'::regclass and attnum > 0 and not attisdropped
-     order by attnum desc limit 2) x),
-  array['planned_minutes', 'worked_minutes'],
-  'v_supervisions_admin: planned_minutes y worked_minutes son las últimas columnas'
+     order by attnum desc limit 3) x),
+  array['planned_minutes', 'worked_minutes', 'shift_open_ended'],
+  'v_supervisions_admin: planned_minutes y worked_minutes conservan su lugar (0037 agrega shift_open_ended después)'
 );
 
 -- Grants: anon no ejecuta nada de esto; authenticated sí.
@@ -673,8 +675,8 @@ select tests.as_user('test-db033-admin@example.com');
 
 select is(
   (select planned_minutes || '|' || worked_minutes || '|' || coalesce(minutes_early_leave::text, 'null') from public.v_assignments_board where id = tests.asg(37)),
-  '480|487|null',
-  'jornada completa con 10 minutos de más: planned 480, worked 487 (tilde verde: worked >= planned)'
+  '480|477|null',
+  'llega 3 min tarde y sale 10 min después: planned 480, worked 477 (tope de AJ2-09: lo de después del fin no suma y los 3 min de demora se descuentan)'
 );
 select is(
   (select planned_minutes || '|' || worked_minutes || '|' || coalesce(minutes_early_leave::text, 'null') from public.v_assignments_board where id = tests.asg(38)),
@@ -713,8 +715,8 @@ select tests.as_user('test-db033-owner@example.com');
 select is(
   (select sum(worked_minutes)::int from public.v_assignments_board
    where employee_id in (tests.emp(37), tests.emp(38)) and shift_date = app.today() - 3),
-  957,
-  'el total del rango se suma de worked_minutes de las filas del historial (487 + 470)'
+  947,
+  'el total del rango se suma de worked_minutes de las filas del historial (477 + 470)'
 );
 
 -- ---------------------------------------------------------------------------------------------

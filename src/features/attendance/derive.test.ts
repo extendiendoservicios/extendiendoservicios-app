@@ -241,6 +241,61 @@ describe('estados nuevos en camino y llegada tarde (AJ-02, AJ-07)', () => {
   })
 })
 
+describe('«A terminar» y «Sin salida» (AJ2-10)', () => {
+  const open = {
+    workedMinutes: 310,
+    plannedMinutes: null,
+    minutesEarlyLeave: null,
+    checkInAt: '2026-10-09T10:50:00Z',
+    checkOutAt: '2026-10-09T16:10:00Z',
+  }
+
+  it('sin horas previstas muestra solo lo trabajado, sin tilde ni comparación', () => {
+    expect(getWorkedHoursIndicator(open)).toEqual({
+      kind: 'plain',
+      workedMinutes: 310,
+      text: '5 h 10 min',
+    })
+  })
+
+  it('«Sin salida» da 0 horas con su motivo', () => {
+    expect(
+      getWorkedHoursIndicator({
+        ...open,
+        workedMinutes: 0,
+        checkOutAt: null,
+        displayStatus: 'no_checkout',
+      }),
+    ).toMatchObject({ kind: 'no_checkout', workedMinutes: 0 })
+  })
+
+  it('«Sin salida» tiene su propia etiqueta y pinta la fila de advertencia', () => {
+    const row = {
+      status: 'present' as const,
+      displayStatus: 'no_checkout',
+      shiftStatus: 'in_progress' as const,
+      minutesEarlyLeave: null,
+      lastNoticeMinutesLate: null,
+    }
+    expect(getAttendanceStatusBadgeInput(row)).toEqual({
+      status: 'no_checkout',
+    })
+    expect(getAttendanceRowVariant(row)).toBe('warn')
+  })
+
+  it('con «Sin salida» el administrador puede cargar la salida', () => {
+    expect(
+      getAvailableAttendanceActions({
+        shiftStatus: 'in_progress',
+        status: 'present',
+        checkInAt: '2026-10-09T10:50:00Z',
+        checkOutAt: null,
+        startsAt: '2026-10-09T11:00:00Z',
+      }),
+    ).toEqual(expect.arrayContaining(['check_out', 'close']))
+  })
+})
+
 describe('getWorkedHoursIndicator (AJ-03)', () => {
   const row = {
     workedMinutes: 240,

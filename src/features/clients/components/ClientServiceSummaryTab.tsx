@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { CalendarClock, Clock, FileText, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -16,10 +17,14 @@ import {
 import { isApiError } from '@/api/errors'
 import type { ClientServiceSummary, ClientSummaryShift } from '@/api/clients'
 import { useClientServiceSummaryQuery } from '@/features/clients/queries'
+import { useClientUnstartedAssignmentsQuery } from '@/features/attendance/queries'
+import { useEmployeeDnisQuery } from '@/features/employees/queries'
+import type { AttendanceBoardRow } from '@/api/attendance'
 import {
   buildClientSummarySheet,
   currentMonthRange,
   shiftEmployeeNames,
+  summarySheetEmployeeIds,
 } from '@/features/clients/serviceSummary'
 import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
 import {
@@ -27,6 +32,10 @@ import {
   localDateToIsoDate,
 } from '@/features/settings/dateOnly'
 import { formatMinutes } from '@/lib/format'
+import {
+  formatShiftRange,
+  NO_CHECKOUT_LABEL,
+} from '@/features/shifts/openEnded'
 
 function isoDateToDate(isoDate: string): Date {
   return new Date(`${isoDate}T00:00:00`)
@@ -63,6 +72,25 @@ function ClientServiceSummaryTab({
     isRangeValid,
   )
   const summary = summaryQuery.data
+  // AJ2-14 y AJ2-16: inasistencias y DNI para la hoja imprimible. Se piden
+  // solo al abrir la hoja (el resto de la pestaña no los usa).
+  const unstartedQuery = useClientUnstartedAssignmentsQuery(
+    clientId,
+    from,
+    to,
+    isSheetOpen && isRangeValid,
+  )
+  const sheetEmployeeIds = useMemo(
+    () =>
+      summary && unstartedQuery.data
+        ? summarySheetEmployeeIds(summary, unstartedQuery.data)
+        : [],
+    [summary, unstartedQuery.data],
+  )
+  const dnisQuery = useEmployeeDnisQuery(
+    sheetEmployeeIds,
+    isSheetOpen && unstartedQuery.isSuccess,
+  )
 
   const columns: DataTableColumnDef<ClientSummaryShift>[] = [
     {
@@ -86,7 +114,11 @@ function ClientServiceSummaryTab({
       header: 'Franja',
       meta: { card: 'meta', cardLabel: 'Franja' },
       cell: ({ row }) =>
-        `${row.original.startTime.slice(0, 5)}–${row.original.endTime.slice(0, 5)}`,
+        formatShiftRange(
+          row.original.startTime,
+          row.original.endTime,
+          row.original.openEnded,
+        ),
     },
     {
       id: 'employees',
@@ -98,11 +130,22 @@ function ClientServiceSummaryTab({
       id: 'hours',
       header: 'Horas',
       meta: { card: 'meta', cardLabel: 'Horas', align: 'end' },
-      cell: ({ row }) => (
-        <span className="tabular-nums">
-          {formatMinutes(row.original.workedMinutes)}
-        </span>
-      ),
+      cell: ({ row }) => {
+        // AJ2-10: quienes quedaron «Sin salida» suman 0 horas hasta que administración cargue la hora.
+        const noCheckout = row.original.employees.filter(
+          (employee) => employee.noCheckout,
+        ).length
+        return (
+          <span className="tabular-nums">
+            {formatMinutes(row.original.workedMinutes)}
+            {noCheckout > 0 && (
+              <span className="ml-1 text-warning-800">
+                · {noCheckout} {NO_CHECKOUT_LABEL.toLowerCase()}
+              </span>
+            )}
+          </span>
+        )
+      },
     },
   ]
 
@@ -132,6 +175,9 @@ function ClientServiceSummaryTab({
           variant="ghost"
           icon={FileText}
           disabled={!summary || !isRangeValid}
+          loading={
+            isSheetOpen && (unstartedQuery.isLoading || dnisQuery.isLoading)
+          }
           onClick={() => setSheetOpen(true)}
         >
           Descargar resumen
@@ -178,6 +224,15 @@ function ClientServiceSummaryTab({
               value={formatMinutes(summary.totals.workedMinutes)}
             />
           </section>
+          {summary.totals.openEndedShifts > 0 && (
+            <p className="text-[12px] text-text-3">
+              {summary.totals.openEndedShifts === 1
+                ? 'Hay 1 turno «A terminar»'
+                : `Hay ${summary.totals.openEndedShifts} turnos «A terminar»`}
+              : no tienen horas previstas y las horas de cada empleado van desde
+              su inicio hasta su salida fichada.
+            </p>
+          )}
           <DataTable
             caption="Turnos realizados del período"
             columns={columns}
@@ -192,10 +247,17 @@ function ClientServiceSummaryTab({
       )}
 
       {isSheetOpen && summary && (
-        <ClientSummarySheet
+        <ClientSummarySheetLoader
           clientName={clientName}
           cuit={cuit}
           summary={summary}
+          absences={unstartedQuery.data}
+          dnis={dnisQuery.data}
+          isLoading={
+            unstartedQuery.isLoading ||
+            (sheetEmployeeIds.length > 0 && dnisQuery.isLoading)
+          }
+          hasError={unstartedQuery.isError || dnisQuery.isError}
           onClose={() => setSheetOpen(false)}
         />
       )}
@@ -203,23 +265,63 @@ function ClientServiceSummaryTab({
   )
 }
 
+/**
+ * Espera los datos extra de la hoja (inasistencias y DNI, AJ2-14 y AJ2-16)
+ * antes de armarla, para que lo que se imprime esté completo. Si alguna de
+ * las dos consultas falla, avisa en lugar de imprimir una hoja incompleta.
+ */
+function ClientSummarySheetLoader({
+  isLoading,
+  hasError,
+  onClose,
+  ...sheetProps
+}: {
+  clientName: string
+  cuit: string | null
+  summary: ClientServiceSummary
+  absences: AttendanceBoardRow[] | undefined
+  dnis: Map<string, string> | undefined
+  isLoading: boolean
+  hasError: boolean
+  onClose: () => void
+}) {
+  useEffect(() => {
+    if (hasError) {
+      toast.error(
+        'No pudimos preparar la hoja con las inasistencias y los DNI. Probá de nuevo.',
+      )
+      onClose()
+    }
+  }, [hasError, onClose])
+
+  if (isLoading || hasError) {
+    return null
+  }
+  return <ClientSummarySheet {...sheetProps} onClose={onClose} />
+}
+
 /** Hoja membretada «Resumen de servicios» (AJ-09). */
 function ClientSummarySheet({
   clientName,
   cuit,
   summary,
+  absences,
+  dnis,
   onClose,
   issuedAt,
 }: {
   clientName: string
   cuit: string | null
   summary: ClientServiceSummary
+  absences?: AttendanceBoardRow[]
+  dnis?: Map<string, string>
   onClose: () => void
   issuedAt?: Date
 }) {
   const sheet = useMemo(
-    () => buildClientSummarySheet({ clientName, cuit, summary }),
-    [clientName, cuit, summary],
+    () =>
+      buildClientSummarySheet({ clientName, cuit, summary, absences, dnis }),
+    [clientName, cuit, summary, absences, dnis],
   )
   const emittedAt = useMemo(() => issuedAt ?? new Date(), [issuedAt])
 
@@ -231,7 +333,7 @@ function ClientSummarySheet({
         columns={sheet.columns}
         rows={sheet.rows}
         footer={sheet.footer}
-        emptyText="No hubo turnos realizados en este período."
+        emptyText="No hubo turnos realizados ni inasistencias en este período."
       />
       <PrintSignatures signers={sheet.signers} />
     </PrintSheet>

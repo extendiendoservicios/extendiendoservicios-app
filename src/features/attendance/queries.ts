@@ -38,6 +38,8 @@ export const attendanceKeys = {
     [...attendanceKeys.all, 'timeline', assignmentIds] as const,
   employeePhones: (employeeIds: string[]) =>
     [...attendanceKeys.all, 'employeePhones', employeeIds] as const,
+  clientUnstarted: (clientId: string, from: string, to: string) =>
+    [...attendanceKeys.all, 'clientUnstarted', clientId, from, to] as const,
   peopleNames: (profileIds: string[]) =>
     [...attendanceKeys.all, 'peopleNames', profileIds] as const,
 }
@@ -52,6 +54,30 @@ export function useAttendanceBoardByDateQuery(
     queryKey: attendanceKeys.boardByDate(date, filters),
     queryFn: () => attendanceApi.fetchAttendanceBoardByDate(date, filters),
     refetchInterval: poll ? ATTENDANCE_LIST_POLLING_MS : false,
+  })
+}
+
+/**
+ * AJ2-14: asignaciones sin inicio de los turnos de un cliente en un período,
+ * para listar las inasistencias en el resumen imprimible. Se abre a demanda:
+ * sin polling.
+ */
+export function useClientUnstartedAssignmentsQuery(
+  clientId: string | undefined,
+  from: string,
+  to: string,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: attendanceKeys.clientUnstarted(clientId ?? '', from, to),
+    queryFn: () =>
+      attendanceApi.fetchClientUnstartedAssignments(
+        clientId as string,
+        from,
+        to,
+      ),
+    enabled: enabled && clientId != null && from <= to,
+    retry: false,
   })
 }
 

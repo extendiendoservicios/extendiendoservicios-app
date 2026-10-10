@@ -56,7 +56,7 @@ select plan(48);
 select has_function('public', 'assign_employee', array['uuid', 'uuid', 'time', 'time'], 'existe public.assign_employee(...)');
 select has_function('public', 'remove_assignment', array['uuid', 'text'], 'existe public.remove_assignment(uuid, text)');
 select has_function('public', 'update_assignment_time', array['uuid', 'time', 'time'], 'existe public.update_assignment_time(uuid, time, time)');
-select has_function('public', 'update_shift_details', array['uuid', 'smallint', 'text'], 'existe public.update_shift_details(uuid, smallint, text)');
+select has_function('public', 'update_shift_details', array['uuid', 'smallint', 'text', 'boolean'], 'existe public.update_shift_details(uuid, smallint, text, boolean)');
 
 -- ---------------------------------------------------------------------------------------------
 -- Fixtures: dos clientes (para NOT_ENABLED_FOR_CLIENT), una sede, personas con los cuatro roles
@@ -519,9 +519,9 @@ select is(
 set local role postgres;
 
 select is(
-  (select notes from public.shifts where id = 'e2400000-0000-0000-0000-000000000071'),
+  (select observation from public.shift_observations where shift_id = 'e2400000-0000-0000-0000-000000000071'),
   'Se necesita una persona más',
-  'update_shift_details: guarda las notas administrativas'
+  'update_shift_details: guarda la observación del turno (desde 0040, en shift_observations)'
 );
 
 -- Bajarla de nuevo a 2 (igual a los asignados) vuelve a completar la dotación -> assigned.

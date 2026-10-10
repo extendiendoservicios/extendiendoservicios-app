@@ -12,16 +12,20 @@ import { shiftStartInstant } from './kpis'
  *   `absence` (que ofrece "Asignar reemplazo" sobre ese mismo turno), así que
  *   no se duplica.
  * - `noRecord`: sin registro pasada la hora de inicio.
+ * - `noCheckout` (AJ2-10): «Sin salida», turno «A terminar» que pasó el día
+ *   sin fichaje de salida; suma 0 horas hasta que administración cargue la
+ *   hora. No se trata como un fin pasado común (`overdue`).
  * - `overdue`: en curso pasada la hora de fin sin fin registrado.
  * - `late` (AJ-07): llegada tarde (pasó el inicio hace hasta 15 min, sin
  *   registro). Es una alerta amarilla y va última. `on_the_way` (AJ-02) no
  *   entra: es informativo y no negativo.
  */
 export type AttentionKind =
-  'absence' | 'uncovered' | 'noRecord' | 'overdue' | 'late'
+  'absence' | 'uncovered' | 'noRecord' | 'noCheckout' | 'overdue' | 'late'
 
 export const ATTENTION_ORDER: AttentionKind[] = [
   'noRecord',
+  'noCheckout',
   'overdue',
   'absence',
   'uncovered',
@@ -33,7 +37,7 @@ export interface AttentionItem {
   /** Clave estable para React. */
   key: string
   shiftId: string
-  /** Presente en `absence`, `noRecord`, `overdue` y `late`. */
+  /** Presente en `absence`, `noRecord`, `noCheckout`, `overdue` y `late`. */
   assignment?: AttendanceBoardRow
   /** Turno de `v_shifts_board`, si está cargado (para "Asignar reemplazo"). */
   shift?: ShiftListRow
@@ -86,6 +90,17 @@ export function computeAttention(
         shift: shiftById.get(row.shiftId),
         minutesSince: row.startsAt
           ? minutesBetween(new Date(row.startsAt), now)
+          : null,
+      })
+    } else if (row.displayStatus === 'no_checkout') {
+      items.push({
+        kind: 'noCheckout',
+        key: `noCheckout-${row.id}`,
+        shiftId: row.shiftId,
+        assignment: row,
+        shift: shiftById.get(row.shiftId),
+        minutesSince: row.endsAt
+          ? minutesBetween(new Date(row.endsAt), now)
           : null,
       })
     } else if (

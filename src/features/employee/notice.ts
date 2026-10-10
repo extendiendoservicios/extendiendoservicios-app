@@ -5,6 +5,7 @@ import {
   hasActiveOnTheWay,
   hasExpiredOnTheWay,
 } from '@/features/employee/onTheWay'
+import { NO_CHECKOUT_MESSAGE } from '@/features/employee/shiftRange'
 
 /**
  * ABS-005 (`05_Pantallas_y_Navegacion.md` fila EMP-03/EMP-04): el aviso
@@ -38,6 +39,11 @@ export function getNoticeMessage(
   now: Date = new Date(),
 ): NoticeMessage | null {
   const byAdmin = assignment.lastNoticeSource === 'admin'
+
+  // AJ2-09: pasó el día de un turno «A terminar» sin fichar la salida.
+  if (assignment.noCheckout) {
+    return { text: NO_CHECKOUT_MESSAGE, byAdmin: false }
+  }
 
   // P19.5c: «en camino» es un aviso más y el último manda; no cambia el
   // estado de la asignación, así que se reconoce por `lastNoticeKind`.

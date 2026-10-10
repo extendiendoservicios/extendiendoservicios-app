@@ -28,10 +28,13 @@ function makeChainable<T>(result: PostgrestResult<T>) {
   return chain
 }
 
-const { fromMock } = vi.hoisted(() => ({ fromMock: vi.fn() }))
+const { fromMock, rpcMock } = vi.hoisted(() => ({
+  fromMock: vi.fn(),
+  rpcMock: vi.fn(),
+}))
 
 vi.mock('@/lib/supabase', () => ({
-  supabase: { from: fromMock },
+  supabase: { from: fromMock, rpc: rpcMock },
 }))
 
 const {
@@ -41,10 +44,13 @@ const {
   fetchServiceDetail,
   fetchServicesByClient,
   fetchServicesBySite,
+  fetchServiceFixedEmployees,
+  setServiceFixedEmployees,
 } = await import('./services')
 
 beforeEach(() => {
   fromMock.mockReset()
+  rpcMock.mockReset()
 })
 
 const SERVICE_ROW = {
@@ -55,6 +61,7 @@ const SERVICE_ROW = {
   weekdays: [1, 2, 3, 4, 5],
   start_time: '08:00:00',
   end_time: '12:00:00',
+  open_ended: false,
   required_staff: 2,
   valid_from: '2026-01-01',
   valid_to: null,
@@ -77,6 +84,7 @@ const SERVICE_SUMMARY_ROW = {
   weekdays: [1, 2, 3, 4, 5],
   start_time: '08:00:00',
   end_time: '12:00:00',
+  open_ended: false,
   required_staff: 2,
   valid_from: '2026-01-01',
   valid_to: null,
@@ -91,6 +99,7 @@ const FORM_INPUT = {
   weekdays: [1, 2, 3, 4, 5],
   startTime: '08:00',
   endTime: '12:00',
+  openEnded: false,
   requiredStaff: 2,
   validFrom: '2026-01-01',
   validTo: null,
@@ -115,6 +124,7 @@ describe('fetchServiceDetail', () => {
       weekdays: [1, 2, 3, 4, 5],
       startTime: '08:00:00',
       endTime: '12:00:00',
+      openEnded: false,
       requiredStaff: 2,
       validFrom: '2026-01-01',
       validTo: null,
@@ -159,6 +169,7 @@ describe('fetchServicesByClient', () => {
         weekdays: [1, 2, 3, 4, 5],
         startTime: '08:00:00',
         endTime: '12:00:00',
+        openEnded: false,
         requiredStaff: 2,
         validFrom: '2026-01-01',
         validTo: null,
@@ -277,5 +288,77 @@ describe('setServiceStatus', () => {
     )
     const result = await setServiceStatus('s1', 'paused', 'admin-1')
     expect(result.status).toBe('paused')
+  })
+})
+
+describe('empleados fijos (AJ2-17)', () => {
+  it('lee los ids de service_fixed_employees', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: [{ employee_id: 'e1' }, { employee_id: 'e2' }],
+        error: null,
+      }),
+    )
+
+    await expect(fetchServiceFixedEmployees('sv1')).resolves.toEqual([
+      'e1',
+      'e2',
+    ])
+    expect(fromMock).toHaveBeenCalledWith('service_fixed_employees')
+  })
+
+  it('llama set_service_fixed_employees y devuelve la lista guardada', async () => {
+    rpcMock.mockResolvedValue({
+      data: { service_id: 'sv1', employee_ids: ['e1'] },
+      error: null,
+    })
+
+    await expect(setServiceFixedEmployees('sv1', ['e1'])).resolves.toEqual([
+      'e1',
+    ])
+    expect(rpcMock).toHaveBeenCalledWith('set_service_fixed_employees', {
+      p_service_id: 'sv1',
+      p_employee_ids: ['e1'],
+    })
+  })
+
+  it('pasa FIXED_EXCEEDS_STAFF con el mensaje del servidor', async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: {
+        message:
+          'Los empleados fijos no pueden ser más que la dotación del servicio (1).',
+        code: 'P0001',
+        hint: 'FIXED_EXCEEDS_STAFF',
+      },
+    })
+
+    await expect(
+      setServiceFixedEmployees('sv1', ['e1', 'e2']),
+    ).rejects.toSatisfy(
+      (error: unknown) =>
+        isApiError(error) &&
+        error.hint === 'FIXED_EXCEEDS_STAFF' &&
+        error.message.includes('dotación'),
+    )
+  })
+
+  it('FIXED_EXCEEDS_STAFF al bajar la dotación en el update del servicio también llega con hint', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: null,
+        error: {
+          message:
+            'El servicio tiene más empleados fijos que la dotación pedida. Sacá fijos antes de bajarla.',
+          code: 'P0001',
+          hint: 'FIXED_EXCEEDS_STAFF',
+        },
+      }),
+    )
+
+    await expect(setServiceStatus('sv1', 'active', 'u1')).rejects.toSatisfy(
+      (error: unknown) =>
+        isApiError(error) && error.hint === 'FIXED_EXCEEDS_STAFF',
+    )
   })
 })

@@ -2,9 +2,32 @@ import { describe, expect, it } from 'vitest'
 import {
   assignEmployeeSchema,
   assignmentTimeSchema,
+  buildAssignmentTimeSchema,
   shiftDetailsFormValuesToInput,
   shiftDetailsSchema,
 } from './schemas'
+
+describe('buildAssignmentTimeSchema (AJ2-10)', () => {
+  it('en un turno «A terminar» alcanza con el inicio propio', () => {
+    const schema = buildAssignmentTimeSchema(true)
+    expect(schema.safeParse({ startTime: '09:00' }).success).toBe(true)
+    expect(
+      schema.safeParse({ startTime: '09:00', endTime: '13:00' }).success,
+    ).toBe(true)
+  })
+
+  it('en un turno «A terminar» el fin propio sin inicio propio se rechaza', () => {
+    const schema = buildAssignmentTimeSchema(true)
+    expect(schema.safeParse({ endTime: '13:00' }).success).toBe(false)
+  })
+
+  it('un turno común sigue pidiendo las dos horas', () => {
+    expect(
+      buildAssignmentTimeSchema(false).safeParse({ startTime: '09:00' })
+        .success,
+    ).toBe(false)
+  })
+})
 
 describe('assignmentTimeSchema', () => {
   it('acepta sin franja propia (hereda la del turno, P-046)', () => {
@@ -62,6 +85,15 @@ describe('shiftDetailsSchema', () => {
       requiredStaff: '3',
       notes: '   ',
     })
-    expect(input).toEqual({ requiredStaff: 3, notes: null })
+    expect(input).toEqual({ requiredStaff: 3, notes: null, showInPrint: true })
+  })
+
+  it('AJ2-15: conserva la casilla «mostrar en la impresión» destildada', () => {
+    const input = shiftDetailsFormValuesToInput({
+      requiredStaff: '3',
+      notes: 'Llevar llaves',
+      showInPrint: false,
+    })
+    expect(input.showInPrint).toBe(false)
   })
 })

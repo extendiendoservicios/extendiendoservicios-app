@@ -34,6 +34,7 @@ import {
   absenceReasonSchema,
   delayMinutesSchema,
 } from '@/features/employee/notifySchemas'
+import { formatAssignmentRange } from '@/features/employee/shiftRange'
 
 /**
  * EMP-12 · Avisar demora o ausencia (MOB-EMP-020, `05` fila EMP-12, ABS-004,
@@ -365,7 +366,7 @@ function ServiceStep({
             key={candidate.assignmentId}
             value={candidate.assignmentId}
             title={`${candidate.clientName} · ${candidate.siteName}`}
-            description={`${formatCalendarDate(candidate.shiftDate)} · ${formatTimeOfDay(candidate.startTime)}–${formatTimeOfDay(candidate.endTime)}`}
+            description={`${formatCalendarDate(candidate.shiftDate)} · ${formatAssignmentRange(candidate)}`}
           />
         ))}
       </RadioGroup>
@@ -386,8 +387,7 @@ function TypeStep({
     <div className="flex flex-col gap-4">
       <p className="text-[12.5px] text-text-3">
         {assignment.clientName} · {assignment.siteName} ·{' '}
-        {formatTimeOfDay(assignment.startTime)}–
-        {formatTimeOfDay(assignment.endTime)}
+        {formatAssignmentRange(assignment)}
       </p>
       <SegmentedControl
         mobile
@@ -520,8 +520,7 @@ function ConfirmStep({
         </p>
         <p className="text-[12px] text-text-3">
           {formatCalendarDate(assignment.shiftDate)} ·{' '}
-          {formatTimeOfDay(assignment.startTime)}–
-          {formatTimeOfDay(assignment.endTime)}
+          {formatAssignmentRange(assignment)}
         </p>
         <p className="mt-2 text-[13px] text-text-2">
           {kind === 'delay'
@@ -553,9 +552,4 @@ function ResultStep({ kind, minutes }: { kind: NoticeKind; minutes: number }) {
       </AlertDescription>
     </Alert>
   )
-}
-
-/** Mismo criterio que `TodayPage.tsx`: `"HH:MM:SS"` es hora de pared, no un instante. */
-function formatTimeOfDay(time: string): string {
-  return time.slice(0, 5)
 }

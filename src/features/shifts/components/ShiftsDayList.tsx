@@ -20,8 +20,13 @@ import {
   canManageShiftTime,
   isShiftCancellable,
 } from '@/features/shifts/permissions'
-import { useShiftsByDateQuery } from '@/features/shifts/queries'
-import { groupShiftsByFranja } from '@/features/shifts/grouping'
+import {
+  useShiftPeopleByDateQuery,
+  useShiftsByDateQuery,
+} from '@/features/shifts/queries'
+import { peopleOfShift, summarizeNames } from '@/features/shifts/shiftPeople'
+import { groupShiftsByFranja, shiftFranjaKey } from '@/features/shifts/grouping'
+import { NO_CHECKOUT_LABEL } from '@/features/shifts/openEnded'
 import { UpdatedAgo } from './UpdatedAgo'
 import { CancelShiftDialog } from './CancelShiftDialog'
 
@@ -59,6 +64,9 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
 
   const isToday = date === todayInBuenosAires()
   const shiftsQuery = useShiftsByDateQuery(date, isToday)
+  // AJ2-18: nombres de los asignados y del supervisor (dos consultas por día).
+  const peopleQuery = useShiftPeopleByDateQuery(date, isToday)
+  const people = peopleQuery.data
   const franjaGroups = useMemo(
     () => groupShiftsByFranja(shiftsQuery.data ?? []),
     [shiftsQuery.data],
@@ -72,10 +80,9 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
       cell: ({ row }) => (
         <Link
           to={`/admin/turnos/${row.original.id}`}
-          className="font-semibold text-text hover:text-primary-800"
+          className="font-semibold whitespace-nowrap text-text hover:text-primary-800"
         >
-          {row.original.startTime.slice(0, 5)}–
-          {row.original.endTime.slice(0, 5)}
+          {shiftFranjaKey(row.original)}
         </Link>
       ),
     },
@@ -93,8 +100,50 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
       id: 'staffing',
       header: 'Dotación',
       meta: { card: 'meta', cardLabel: 'Dotación', align: 'end' },
-      cell: ({ row }) =>
-        `${row.original.assignedCount}/${row.original.requiredStaff}`,
+      cell: ({ row }) => (
+        <span>
+          {row.original.assignedCount}/{row.original.requiredStaff}
+          {row.original.noCheckoutCount > 0 && (
+            <span className="ml-1 text-warning-800">
+              · {row.original.noCheckoutCount} {NO_CHECKOUT_LABEL.toLowerCase()}
+            </span>
+          )}
+        </span>
+      ),
+    },
+    {
+      id: 'employees',
+      header: 'Asignados',
+      meta: { card: 'meta', cardLabel: 'Asignados' },
+      cell: ({ row }) => {
+        const { employees } = peopleOfShift(people, row.original.id)
+        if (employees.length === 0) {
+          return <span className="text-text-3">—</span>
+        }
+        const summary = summarizeNames(employees)
+        return (
+          <span className="block max-w-[14rem] truncate" title={summary.full}>
+            {summary.text}
+          </span>
+        )
+      },
+    },
+    {
+      id: 'supervisor',
+      header: 'Supervisor',
+      meta: { card: 'meta', cardLabel: 'Supervisor' },
+      cell: ({ row }) => {
+        const { supervisors } = peopleOfShift(people, row.original.id)
+        if (supervisors.length === 0) {
+          return <span className="text-text-3">—</span>
+        }
+        const summary = summarizeNames(supervisors, 1)
+        return (
+          <span className="block max-w-[10rem] truncate" title={summary.full}>
+            {summary.text}
+          </span>
+        )
+      },
     },
     {
       id: 'status',

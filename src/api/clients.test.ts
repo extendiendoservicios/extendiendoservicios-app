@@ -323,6 +323,7 @@ describe('fetchClientServiceSummary (AJ-09)', () => {
           employees_count: 1,
           worked_minutes: 239,
           planned_minutes: 240,
+          open_ended_shifts: 1,
         },
         shifts: [
           {
@@ -335,6 +336,7 @@ describe('fetchClientServiceSummary (AJ-09)', () => {
             status: 'completed',
             worked_minutes: 239,
             planned_minutes: 240,
+            open_ended: true,
             employees: [
               {
                 assignment_id: 'a1',
@@ -346,6 +348,8 @@ describe('fetchClientServiceSummary (AJ-09)', () => {
                 check_out_at: '2026-10-05T15:00:00Z',
                 planned_minutes: 240,
                 worked_minutes: 239,
+                open_ended: true,
+                no_checkout: false,
               },
             ],
           },
@@ -370,10 +374,14 @@ describe('fetchClientServiceSummary (AJ-09)', () => {
       employeesCount: 1,
       workedMinutes: 239,
       plannedMinutes: 240,
+      openEndedShifts: 1,
     })
+    expect(summary.shifts[0]?.openEnded).toBe(true)
     expect(summary.shifts[0]?.employees[0]).toMatchObject({
       firstName: 'Carlos',
       workedMinutes: 239,
+      openEnded: true,
+      noCheckout: false,
     })
   })
 

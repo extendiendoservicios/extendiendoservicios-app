@@ -213,11 +213,13 @@ export interface AttendanceBoardRow {
   /** Franja efectiva (propia de la asignación, o la del turno). */
   startTime: string
   endTime: string
+  /** AJ2-10: asignación «A terminar» (turno abierto y sin fin propio): en pantalla va «A terminar», no 23:59. */
+  openEnded: boolean
   /** Instante de inicio y fin de la franja efectiva (para decidir "antes/después del inicio" en el cliente). */
   startsAt: string | null
   endsAt: string | null
   status: AssignmentStatus
-  /** `04` sección 5: agrega `no_record` cuando el estado es `expected`/`delay_notified` y ya pasó el inicio. */
+  /** `04` sección 5: agrega `no_record` cuando el estado es `expected`/`delay_notified` y ya pasó el inicio, y `no_checkout` («Sin salida», AJ2-10) en un turno «A terminar» que pasó el día sin fichaje de salida. */
   displayStatus: string
   notes: string | null
   checkInAt: string | null
@@ -239,23 +241,27 @@ export interface AttendanceBoardRow {
   lastNoticeAt: string | null
   /** AJ-02: hora de llegada que informó el empleado con «En camino» (instante), si la informó. */
   lastNoticeEstimatedArrivalAt: string | null
-  /** AJ-03: minutos previstos de la franja efectiva. */
+  /** AJ-03: minutos previstos de la franja efectiva; `null` en una asignación «A terminar» (AJ2-10: sin comparación ni tilde). */
   plannedMinutes: number | null
-  /** AJ-03: minutos trabajados (inicio a fin real, redondeados al minuto); `null` sin fin registrado. */
+  /** AJ-03 / AJ2-09: minutos trabajados dentro de la franja efectiva (con tope), redondeados; `null` sin fin registrado; 0 en «Sin salida». */
   workedMinutes: number | null
+  /** Asignación quitada del turno (el historial de un empleado las incluye): no cuenta como inasistencia. */
+  removedAt?: string | null
+  /** AJ2-15: observación del turno, solo si tiene tildado «mostrar en la impresión» (null para quien no es administración). Va a la planilla impresa. */
+  shiftObservation?: string | null
 }
 
 /** Todas las columnas de `v_assignments_board` que usa esta pantalla (`06` sección 10, P14.1). */
 const ATTENDANCE_BOARD_SELECT = `
   id, shift_id, shift_date, shift_status, client_id, client_legal_name, site_id, site_name,
   employee_id, employee_first_name, employee_last_name, employee_avatar_path,
-  effective_start_time, effective_end_time, effective_starts_at, effective_ends_at,
+  effective_start_time, effective_end_time, effective_open_ended, effective_starts_at, effective_ends_at,
   status, display_status, notes,
   check_in_at, check_out_at, check_in_source, check_in_recorded_by, check_out_source, check_out_recorded_by,
   minutes_late, minutes_early_leave,
   last_notice_kind, last_notice_minutes_late, last_notice_reason_code, last_notice_reason_text,
   last_notice_reported_by, last_notice_source, last_notice_at,
-  last_notice_estimated_arrival_at, planned_minutes, worked_minutes
+  last_notice_estimated_arrival_at, planned_minutes, worked_minutes, removed_at, shift_observation
 `
 
 interface AttendanceBoardRawRow {
@@ -273,6 +279,7 @@ interface AttendanceBoardRawRow {
   employee_avatar_path: string | null
   effective_start_time: string
   effective_end_time: string
+  effective_open_ended: boolean | null
   effective_starts_at: string | null
   effective_ends_at: string | null
   status: AssignmentStatus
@@ -296,6 +303,8 @@ interface AttendanceBoardRawRow {
   last_notice_estimated_arrival_at: string | null
   planned_minutes: number | null
   worked_minutes: number | null
+  removed_at: string | null
+  shift_observation: string | null
 }
 
 function mapAttendanceBoardRow(row: AttendanceBoardRawRow): AttendanceBoardRow {
@@ -314,6 +323,7 @@ function mapAttendanceBoardRow(row: AttendanceBoardRawRow): AttendanceBoardRow {
     employeeAvatarPath: row.employee_avatar_path,
     startTime: row.effective_start_time,
     endTime: row.effective_end_time,
+    openEnded: row.effective_open_ended ?? false,
     startsAt: row.effective_starts_at,
     endsAt: row.effective_ends_at,
     status: row.status,
@@ -337,6 +347,8 @@ function mapAttendanceBoardRow(row: AttendanceBoardRawRow): AttendanceBoardRow {
     lastNoticeEstimatedArrivalAt: row.last_notice_estimated_arrival_at,
     plannedMinutes: row.planned_minutes,
     workedMinutes: row.worked_minutes,
+    removedAt: row.removed_at,
+    shiftObservation: row.shift_observation,
   }
 }
 
@@ -374,6 +386,40 @@ export async function fetchAttendanceBoardByDate(
   }
 
   const { data, error } = await query
+    .order('effective_start_time', { ascending: true })
+    .order('id', { ascending: true })
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data ?? []).map((row) =>
+    mapAttendanceBoardRow(row as AttendanceBoardRawRow),
+  )
+}
+
+/**
+ * Asignaciones vigentes sin fichaje de inicio de los turnos de un cliente en
+ * un período (AJ2-14): candidatas a «inasistencia» en el resumen de servicios.
+ * `client_service_summary` solo lista turnos realizados (con algún inicio), así
+ * que un turno donde nadie fichó no aparece ahí; esta consulta los cubre y
+ * trae el aviso de ausencia con su motivo. Excluye turnos cancelados y
+ * asignaciones quitadas. Qué es inasistencia lo decide `isAbsence`.
+ */
+export async function fetchClientUnstartedAssignments(
+  clientId: string,
+  from: string,
+  to: string,
+): Promise<AttendanceBoardRow[]> {
+  const { data, error } = await supabase
+    .from('v_assignments_board')
+    .select(ATTENDANCE_BOARD_SELECT)
+    .eq('client_id', clientId)
+    .gte('shift_date', from)
+    .lte('shift_date', to)
+    .is('removed_at', null)
+    .is('check_in_at', null)
+    .neq('shift_status', 'cancelled')
+    .order('shift_date', { ascending: true })
     .order('effective_start_time', { ascending: true })
     .order('id', { ascending: true })
 

@@ -73,6 +73,15 @@ export const supervisorRoutes: RouteObject[] = [
     },
   },
   {
+    path: 'anuncios',
+    ...lazyPage(() => import('@/pages/sup/AnnouncementsPage')),
+    handle: {
+      screenId: 'SUP-ANU',
+      title: 'Anuncios',
+      subtitle: 'Lo que publica administración',
+    },
+  },
+  {
     path: 'mas',
     ...lazyPage(() => import('@/pages/sup/MorePage')),
     handle: {

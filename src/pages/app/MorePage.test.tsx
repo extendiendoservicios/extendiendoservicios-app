@@ -1,10 +1,12 @@
 import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import MorePage from './MorePage'
 import * as authModule from '@/features/auth/AuthProvider'
 import type { AuthContextValue } from '@/features/auth/AuthProvider'
 import * as installPromptModule from '@/hooks/useInstallPrompt'
+import * as bankApi from '@/api/bankDetails'
 
 /**
  * EMP-13 (MOB-EMP-013, MOB-EMP-020): la fila "Avisar demora o ausencia"
@@ -32,10 +34,19 @@ afterEach(() => {
 })
 
 function renderMorePage() {
+  // AJ2-04: «Más» lee los datos bancarios propios; por defecto, sin datos cargados.
+  if (!vi.isMockFunction(bankApi.fetchEmployeeBankDetails)) {
+    vi.spyOn(bankApi, 'fetchEmployeeBankDetails').mockResolvedValue(null)
+  }
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
   return render(
-    <MemoryRouter>
-      <MorePage />
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <MorePage />
+      </MemoryRouter>
+    </QueryClientProvider>,
   )
 }
 
@@ -95,5 +106,39 @@ describe('MorePage (EMP-13)', () => {
     screen.getByText('Cerrar sesión').click()
 
     expect(signOut).toHaveBeenCalledTimes(1)
+  })
+
+  it('AJ2-04: muestra los datos bancarios propios, solo lectura, cuando están cargados', async () => {
+    vi.spyOn(authModule, 'useAuth').mockReturnValue(authValue({}))
+    vi.spyOn(installPromptModule, 'useInstallPrompt').mockReturnValue({
+      available: false,
+      promptInstall: vi.fn(),
+    })
+    vi.spyOn(bankApi, 'fetchEmployeeBankDetails').mockResolvedValue({
+      bankName: 'Banco Nación',
+      cbu: '0170099220000067797370',
+      alias: 'mi.alias',
+    })
+
+    renderMorePage()
+
+    expect(await screen.findByText('Mis datos bancarios')).toBeInTheDocument()
+    expect(screen.getByText('Banco Nación')).toBeInTheDocument()
+    expect(screen.getByText('01700992 20000067797370')).toBeInTheDocument()
+    expect(screen.getByText('mi.alias')).toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  })
+
+  it('AJ2-04: sin datos bancarios cargados no muestra la sección', async () => {
+    vi.spyOn(authModule, 'useAuth').mockReturnValue(authValue({}))
+    vi.spyOn(installPromptModule, 'useInstallPrompt').mockReturnValue({
+      available: false,
+      promptInstall: vi.fn(),
+    })
+
+    renderMorePage()
+
+    expect(await screen.findByText('Cerrar sesión')).toBeInTheDocument()
+    expect(screen.queryByText('Mis datos bancarios')).not.toBeInTheDocument()
   })
 })

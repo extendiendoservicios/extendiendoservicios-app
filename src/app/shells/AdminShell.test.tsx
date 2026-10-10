@@ -259,11 +259,12 @@ describe('AdminShell — menos de 1024 px', () => {
       '/admin/empleados',
       '/admin/clientes',
       '/admin/tareas',
+      '/admin/anuncios',
       '/admin/configuracion/usuarios',
     ])
   })
 
-  it('las ocho secciones de P-121 se alcanzan entre la tabbar y "Más"', () => {
+  it('las secciones de administración (P-121 más Avisos y anuncios) se alcanzan entre la tabbar y "Más"', () => {
     mockViewportWidth(390)
     renderAdminShell()
 
@@ -293,6 +294,7 @@ describe('AdminShell — menos de 1024 px', () => {
       '/admin/empleados',
       '/admin/clientes',
       '/admin/tareas',
+      '/admin/anuncios',
       '/admin/configuracion/usuarios',
     ])
   })

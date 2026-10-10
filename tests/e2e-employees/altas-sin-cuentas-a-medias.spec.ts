@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { readE2eEmployeesEnv, MISSING_ENV_MESSAGE } from './helpers/env.ts'
 import {
   disposableDni,
@@ -20,9 +21,28 @@ import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 const env = readE2eEmployeesEnv()
 test.skip(!env, MISSING_ENV_MESSAGE)
 
-/** Legajo alto y único por corrida, lejos de los del seed. */
-function disposableEmployeeNumber(): number {
-  return 70_000 + Math.floor(Math.random() * 10_000)
+/**
+ * Legajo libre por debajo del más alto: así la prueba no sube el legajo que el formulario sugiere
+ * (máximo + 1) para las altas reales de App_dev.
+ */
+async function disposableEmployeeNumber(
+  admin: SupabaseClient,
+): Promise<number> {
+  const { data, error } = await admin
+    .from('employees')
+    .select('employee_number')
+  expect(error).toBeNull()
+  const used = new Set((data ?? []).map((row) => row.employee_number as number))
+  const max = Math.max(0, ...used)
+  const free: number[] = []
+  for (let n = 1; n < max; n += 1) {
+    if (!used.has(n)) free.push(n)
+  }
+  expect(
+    free.length,
+    'no hay legajos libres por debajo del máximo',
+  ).toBeGreaterThan(0)
+  return free[Math.floor(Math.random() * free.length)]
 }
 
 interface FormInput {
@@ -67,7 +87,7 @@ test.describe('0.16.4: altas sin cuentas a medias', () => {
       dni: disposableDni(),
       email: disposableEmail('telefono'),
       password: `${env!.seedPassword}Aa1`,
-      employeeNumber: disposableEmployeeNumber(),
+      employeeNumber: await disposableEmployeeNumber(admin),
       phone: '2477 123456',
     }
     let profileId: string | null = null
@@ -105,7 +125,7 @@ test.describe('0.16.4: altas sin cuentas a medias', () => {
       dni: disposableDni(),
       email: disposableEmail('legajo-uno'),
       password: `${env!.seedPassword}Aa1`,
-      employeeNumber: disposableEmployeeNumber(),
+      employeeNumber: await disposableEmployeeNumber(admin),
     }
     const second: FormInput = {
       ...first,
@@ -146,7 +166,7 @@ test.describe('0.16.4: altas sin cuentas a medias', () => {
       dni: disposableDni(),
       email: disposableEmail('retomada'),
       password: `${env!.seedPassword}Aa1`,
-      employeeNumber: disposableEmployeeNumber(),
+      employeeNumber: await disposableEmployeeNumber(admin),
     }
     // Lo que dejaba un alta fallida antes del arreglo: cuenta de Auth (y su perfil) sin roles
     // ni ficha.

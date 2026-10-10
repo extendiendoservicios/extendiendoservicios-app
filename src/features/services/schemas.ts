@@ -77,7 +77,8 @@ export const serviceFormSchema = z
     name: z.string().trim().min(1, 'Falta el nombre del servicio.'),
     weekdays: z.array(z.string()).min(1, 'Elegí al menos un día de la semana.'),
     startTime: z.string().trim().min(1, 'Falta la hora de inicio.'),
-    endTime: z.string().trim().min(1, 'Falta la hora de fin.'),
+    endTime: z.string().trim(),
+    openEnded: z.boolean().optional(),
     requiredStaff: requiredStaffSchema,
     validFrom: z
       .string()
@@ -90,9 +91,32 @@ export const serviceFormSchema = z
     status: z.enum(['active', 'paused', 'ended']),
     notes: z.string().trim().optional(),
   })
-  .refine((values) => values.endTime > values.startTime, {
-    message: 'La hora de fin tiene que ser posterior a la de inicio.',
-    path: ['endTime'],
+  .superRefine((values, ctx) => {
+    // AJ2-10: con «A terminar» no hay hora de fin que pedir ni comparar.
+    if (values.openEnded) {
+      if (values.startTime >= '23:59') {
+        ctx.addIssue({
+          code: 'custom',
+          message:
+            'Con «A terminar» el inicio tiene que ser antes de las 23:59.',
+          path: ['startTime'],
+        })
+      }
+      return
+    }
+    if (!values.endTime) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Falta la hora de fin.',
+        path: ['endTime'],
+      })
+    } else if (values.endTime <= values.startTime) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'La hora de fin tiene que ser posterior a la de inicio.',
+        path: ['endTime'],
+      })
+    }
   })
   .refine((values) => !values.validTo || values.validTo >= values.validFrom, {
     message: 'La fecha "hasta" no puede ser anterior a la fecha "desde".',
@@ -119,7 +143,8 @@ export function serviceFormValuesToInput(values: ServiceFormValues) {
     name: values.name.trim(),
     weekdays: [...new Set(values.weekdays.map(Number))].sort((a, b) => a - b),
     startTime: values.startTime,
-    endTime: values.endTime,
+    endTime: values.openEnded ? null : values.endTime,
+    openEnded: Boolean(values.openEnded),
     requiredStaff: Number(values.requiredStaff),
     validFrom: values.validFrom,
     validTo: emptyToNull(values.validTo),

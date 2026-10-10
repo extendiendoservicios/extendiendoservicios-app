@@ -130,13 +130,13 @@ select plan(32);
 select col_type_is('public', 'v_my_day', 'on_the_way_expires_at', 'timestamp with time zone', 'v_my_day.on_the_way_expires_at existe (timestamptz)');
 select is(
   (select a.attname::text from pg_attribute a where a.attrelid = 'public.v_my_day'::regclass and a.attnum > 0 and not a.attisdropped order by a.attnum desc limit 1),
-  'on_the_way_expires_at',
-  'v_my_day: on_the_way_expires_at es la última columna'
+  'no_checkout',
+  'v_my_day: on_the_way_expires_at conserva su lugar (0037 agrega effective_open_ended y no_checkout después)'
 );
 select is(
   (select a.attname::text from pg_attribute a where a.attrelid = 'public.v_assignments_board'::regclass and a.attnum > 0 and not a.attisdropped order by a.attnum desc limit 1),
-  'worked_minutes',
-  'v_assignments_board conserva la última columna (worked_minutes)'
+  'shift_observation',
+  'v_assignments_board conserva sus columnas (0037 agrega effective_open_ended y 0040 shift_observation al final)'
 );
 select ok(
   (select c.reloptions @> array['security_invoker=true'] from pg_class c where c.oid = 'public.v_my_day'::regclass)
