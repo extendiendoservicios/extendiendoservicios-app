@@ -8,6 +8,7 @@ import { formatCalendarDate } from '@/lib/format'
 import { useMySupervisionsUpcomingQuery } from '@/api/mySupervisions'
 import type { MySupervision } from '@/api/mySupervisions'
 import { InstallBanner } from '@/components/InstallBanner'
+import { AnnouncementsBanner } from '@/features/announcements/mobile/AnnouncementsBanner'
 import { formatSupervisionRange } from '@/features/employee/shiftRange'
 
 /**
@@ -47,6 +48,7 @@ export default function SupervisorTodayPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <AnnouncementsBanner />
       <InstallBanner />
 
       {today.length === 0 ? (
