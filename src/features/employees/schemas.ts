@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { Role } from '@/api/users'
+import { bankFieldsShape } from '@/features/bank/schemas'
 
 /**
  * Esquemas zod de ADM-18 (EMP-001, EMP-003, EMP-004): repiten las
@@ -86,6 +87,8 @@ const employeeCommonFieldsSchema = z.object({
   notes: z.string().trim().optional(),
   isEmployeeRole: z.boolean(),
   isSupervisorRole: z.boolean(),
+  // AJ2-04: datos bancarios (solo dueño y administrador); se guardan por RPC aparte.
+  ...bankFieldsShape,
 })
 
 function refineAtLeastOneRole<

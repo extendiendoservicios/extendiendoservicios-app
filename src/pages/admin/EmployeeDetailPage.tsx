@@ -18,6 +18,8 @@ import { StatusBadge } from '@/components/status'
 import { avatarUrl } from '@/lib/avatarUrl'
 import { formatCalendarDate } from '@/lib/format'
 import { useAuth } from '@/features/auth/AuthProvider'
+import { BankDetailsCard } from '@/features/bank/components/BankDetailsCard'
+import { useEmployeeBankDetailsQuery } from '@/features/bank/queries'
 import { ROLE_LABELS } from '@/features/auth/session'
 import { EmployeeAttendanceHistoryTab } from '@/features/attendance/components/EmployeeAttendanceHistoryTab'
 import {
@@ -319,6 +321,7 @@ function EmployeeDataTab({
   canEditRoles: boolean
   onEditRoles: () => void
 }) {
+  const bankQuery = useEmployeeBankDetailsQuery(employee.profileId)
   return (
     <div className="flex flex-col gap-4">
       <section className="rounded-lg border border-border bg-surface p-5">
@@ -367,6 +370,11 @@ function EmployeeDataTab({
           <p className="mt-3 text-[12px] text-text-2">{employee.notes}</p>
         )}
       </section>
+
+      <BankDetailsCard
+        details={bankQuery.data}
+        isLoading={bankQuery.isLoading}
+      />
 
       <section className="rounded-lg border border-border bg-surface p-5">
         <h3 className="mb-3 text-[13px] font-semibold text-text">

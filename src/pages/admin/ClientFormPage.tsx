@@ -23,6 +23,16 @@ import { PendingPhotoPicker } from '@/components/PendingPhotoPicker'
 import { savePhoto } from '@/api/photos'
 import { isApiError } from '@/api/errors'
 import { useAuth } from '@/features/auth/AuthProvider'
+import { BankDetailsFields } from '@/features/bank/components/BankDetailsFields'
+import {
+  bankDetailsToFormValues,
+  bankFormValuesToInput,
+  isBankFormEmpty,
+} from '@/features/bank/schemas'
+import {
+  useClientBankDetailsQuery,
+  useSetClientBankDetailsMutation,
+} from '@/features/bank/queries'
 import {
   clientsKeys,
   useClientDetailQuery,
@@ -55,7 +65,10 @@ export default function ClientFormPage() {
   const clientQuery = useClientDetailQuery(id)
   const createClient = useCreateClientMutation()
   const updateClient = useUpdateClientMutation()
-  const isSaving = createClient.isPending || updateClient.isPending
+  const bankQuery = useClientBankDetailsQuery(id)
+  const setBankDetails = useSetClientBankDetailsMutation()
+  const isSaving =
+    createClient.isPending || updateClient.isPending || setBankDetails.isPending
   const queryClient = useQueryClient()
   // AJ2-07: foto elegida en el alta; se sube después de crear el cliente.
   const [pendingPhoto, setPendingPhoto] = useState<Blob | null>(null)
@@ -64,6 +77,7 @@ export default function ClientFormPage() {
     control,
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<ClientFormValues>({
     resolver: zodResolver(clientFormSchema),
@@ -75,31 +89,67 @@ export default function ClientFormPage() {
       coordinates: null,
       status: 'active',
       notes: '',
+      bankName: '',
+      cbu: '',
+      alias: '',
     },
-    values: clientQuery.data
-      ? {
-          legalName: clientQuery.data.legalName,
-          tradeName: clientQuery.data.tradeName ?? '',
-          cuit: formatTaxId(clientQuery.data.cuit) ?? '',
-          adminAddress: clientQuery.data.adminAddress ?? '',
-          coordinates:
-            clientQuery.data.latitude != null &&
-            clientQuery.data.longitude != null
-              ? {
-                  lat: clientQuery.data.latitude,
-                  lng: clientQuery.data.longitude,
-                }
-              : null,
-          status: clientQuery.data.status,
-          notes: clientQuery.data.notes ?? '',
-        }
-      : undefined,
+    values:
+      clientQuery.data && !bankQuery.isLoading
+        ? {
+            legalName: clientQuery.data.legalName,
+            tradeName: clientQuery.data.tradeName ?? '',
+            cuit: formatTaxId(clientQuery.data.cuit) ?? '',
+            adminAddress: clientQuery.data.adminAddress ?? '',
+            coordinates:
+              clientQuery.data.latitude != null &&
+              clientQuery.data.longitude != null
+                ? {
+                    lat: clientQuery.data.latitude,
+                    lng: clientQuery.data.longitude,
+                  }
+                : null,
+            status: clientQuery.data.status,
+            notes: clientQuery.data.notes ?? '',
+            ...bankDetailsToFormValues(bankQuery.data),
+          }
+        : undefined,
   })
 
-  const [watchedTradeName, watchedLegalName] = useWatch({
+  const [
+    watchedTradeName,
+    watchedLegalName,
+    watchedBankName,
+    watchedCbu,
+    watchedAlias,
+  ] = useWatch({
     control,
-    name: ['tradeName', 'legalName'],
+    name: ['tradeName', 'legalName', 'bankName', 'cbu', 'alias'],
   })
+
+  // AJ2-04: se guardan por RPC aparte, después del cliente. Si la lectura de lo
+  // guardado falló no se pisa nada, y si no había datos ni se cargaron, no se llama.
+  async function saveBankDetails(
+    clientId: string,
+    values: ClientFormValues,
+  ): Promise<string | null> {
+    if (isEditMode && bankQuery.isError) {
+      return null
+    }
+    if (isBankFormEmpty(values) && !bankQuery.data) {
+      return null
+    }
+    try {
+      await setBankDetails.mutateAsync({
+        clientId,
+        input: bankFormValuesToInput(values),
+      })
+      return null
+    } catch (error) {
+      return isApiError(error)
+        ? error.message
+        : 'No pudimos guardar los datos bancarios.'
+    }
+  }
 
   async function onSubmit(values: ClientFormValues) {
     const input = clientFormValuesToInput(values)
@@ -110,6 +160,13 @@ export default function ClientFormPage() {
           input,
           updatedBy: auth.userId as string,
         })
+        const bankError = await saveBankDetails(client.id, values)
+        if (bankError) {
+          toast.warning(
+            `Guardamos los cambios del cliente, pero no los datos bancarios: ${bankError}`,
+          )
+          return
+        }
         toast.success('Guardamos los cambios del cliente.')
         void navigate(`/admin/clientes/${client.id}`)
       } else {
@@ -119,6 +176,15 @@ export default function ClientFormPage() {
         })
         const clientName =
           (values.tradeName ?? '').trim() || values.legalName.trim()
+        // El alta ya está hecha: si los datos bancarios fallan, se avisa y se sigue.
+        const bankError = await saveBankDetails(client.id, values)
+        if (bankError) {
+          toast.warning(
+            `Se creó ${clientName}, pero no se guardaron los datos bancarios: ${bankError} Cargalos de nuevo desde Editar.`,
+          )
+          void navigate(`/admin/clientes/${client.id}`)
+          return
+        }
         if (pendingPhoto) {
           // El alta ya está hecha: si la foto falla, no se deshace (AJ2-07).
           try {
@@ -144,7 +210,7 @@ export default function ClientFormPage() {
 
   // A la espera del detalle en modo edición: mismo esqueleto que
   // `CompanySettingsPage`, no bloquea el formulario entero.
-  if (isEditMode && clientQuery.isLoading) {
+  if (isEditMode && (clientQuery.isLoading || bankQuery.isLoading)) {
     return (
       <div className="flex max-w-xl flex-col gap-3">
         <Skeleton className="h-9" />
@@ -275,6 +341,26 @@ export default function ClientFormPage() {
           {errors.notes && <FieldError>{errors.notes.message}</FieldError>}
         </Field>
       </div>
+
+      <BankDetailsFields
+        id="client"
+        values={{
+          bankName: watchedBankName,
+          cbu: watchedCbu,
+          alias: watchedAlias,
+        }}
+        errors={{
+          bankName: errors.bankName?.message,
+          cbu: errors.cbu?.message,
+          alias: errors.alias?.message,
+        }}
+        onChange={(field, value) =>
+          setValue(field, value, {
+            shouldDirty: true,
+            shouldValidate: Boolean(errors[field]),
+          })
+        }
+      />
 
       <div className="rounded-lg border border-border bg-surface p-5">
         <h2 className="mb-1 text-[14px] font-semibold text-text">

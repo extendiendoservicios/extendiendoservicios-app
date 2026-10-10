@@ -4,6 +4,7 @@ import { es } from 'date-fns/locale'
 import type { ClientServiceSummary } from '@/api/clients'
 import type { AttendanceBoardRow } from '@/api/attendance'
 import { absenceDetail, isAbsence } from '@/features/attendance/absences'
+import { joinObservations } from '@/features/shifts/observation'
 import type { PrintColumn, PrintRowData } from '@/features/print/PrintTable'
 import { formatCalendarDate, formatMinutes } from '@/lib/format'
 import {
@@ -145,7 +146,11 @@ export function buildClientSummarySheet(input: {
           shift.openEnded,
         ),
         // «Sin salida» (AJ2-10): suma 0 horas hasta que administración cargue la hora.
-        novelty: employee.noCheckout ? NO_CHECKOUT_LABEL : '',
+        // AJ2-15: la observación del turno (si se imprime) va junto a la novedad.
+        novelty: joinObservations(
+          employee.noCheckout ? NO_CHECKOUT_LABEL : '',
+          shift.observation,
+        ),
         hours: employee.noCheckout
           ? '0 h'
           : employee.workedMinutes != null
@@ -165,7 +170,7 @@ export function buildClientSummarySheet(input: {
       firstName: row.employeeFirstName,
       employeeId: row.employeeId,
       franja: formatShiftRange(row.startTime, row.endTime, row.openEnded),
-      novelty: absenceDetail(row),
+      novelty: joinObservations(absenceDetail(row), row.shiftObservation),
       hours: '—',
     })
   }

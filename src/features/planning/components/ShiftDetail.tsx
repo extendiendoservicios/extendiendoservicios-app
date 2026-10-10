@@ -381,11 +381,14 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
 
       {shift.notes && (
         <section className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-5">
-          <h3 className="text-[13px] font-semibold text-text">
-            Notas administrativas
-          </h3>
+          <h3 className="text-[13px] font-semibold text-text">Observación</h3>
           <p className="text-[12.5px] whitespace-pre-wrap text-text-2">
             {shift.notes}
+          </p>
+          <p className="text-[12px] text-text-3">
+            {shift.showInPrint === false
+              ? 'No se muestra en la impresión.'
+              : 'Se muestra en la impresión.'}
           </p>
         </section>
       )}
@@ -409,6 +412,7 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
           shiftId={shift.id}
           currentRequiredStaff={shift.requiredStaff}
           currentNotes={shift.notes}
+          currentShowInPrint={shift.showInPrint}
           open={isDetailsOpen}
           onOpenChange={setDetailsOpen}
         />

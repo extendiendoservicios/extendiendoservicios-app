@@ -215,8 +215,35 @@ describe('createShift', () => {
       p_required_staff: 2,
       p_service_id: undefined,
       p_notes: undefined,
+      p_show_in_print: true,
     })
     expect(result).toEqual({ shiftId: 'sh1', warnings: ['HOLIDAY'] })
+  })
+
+  it('AJ2-15: manda la observación y la casilla «mostrar en la impresión»', async () => {
+    rpcMock.mockResolvedValue({
+      data: { shift: { id: 'sh3' }, warnings: [] },
+      error: null,
+    })
+
+    await createShift({
+      clientId: 'c1',
+      siteId: 'si1',
+      date: '2026-10-12',
+      start: '08:00',
+      end: '12:00',
+      requiredStaff: 1,
+      notes: 'Llevar llaves',
+      showInPrint: false,
+    })
+
+    expect(rpcMock).toHaveBeenCalledWith(
+      'create_shift',
+      expect.objectContaining({
+        p_notes: 'Llevar llaves',
+        p_show_in_print: false,
+      }),
+    )
   })
 
   it('AJ2-10: con «A terminar» manda p_open_ended y no depende de la hora de fin', async () => {
