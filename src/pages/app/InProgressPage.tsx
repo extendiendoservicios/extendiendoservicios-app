@@ -69,6 +69,11 @@ export default function InProgressPage() {
     return <Navigate to={`/app/resumen/${assignment.assignmentId}`} replace />
   }
 
+  // AJ2-09: pasó el día de un turno «A terminar» sin salida: ya no se ficha desde el celular.
+  if (assignment.noCheckout) {
+    return <Navigate to={`/app/servicio/${assignment.assignmentId}`} replace />
+  }
+
   const seconds = elapsedSeconds(assignment.checkInAt, now)
   const progress =
     assignment.tasksTotal > 0
@@ -101,8 +106,10 @@ export default function InProgressPage() {
           {formatElapsed(seconds)}
         </p>
         <p className="text-[11px] text-text-3">
-          Iniciado a las {formatTime(assignment.checkInAt)} · fin previsto{' '}
-          {formatTimeOfDay(assignment.endTime)}
+          Iniciado a las {formatTime(assignment.checkInAt)}
+          {assignment.openEnded
+            ? ' · registrá la salida cuando termines'
+            : ` · fin previsto ${formatTimeOfDay(assignment.endTime)}`}
         </p>
       </div>
 

@@ -26,6 +26,8 @@ function baseAssignment(
     endTime: '12:00:00',
     startsAt: null,
     endsAt: null,
+    openEnded: false,
+    noCheckout: false,
     status: 'expected',
     shiftStatus: 'scheduled',
     notes: null,
@@ -53,6 +55,16 @@ function baseAssignment(
     ...overrides,
   }
 }
+
+describe('getNoticeMessage · Sin salida (AJ2-09)', () => {
+  it('avisa que el día terminó y que lo cargue la oficina', () => {
+    const notice = getNoticeMessage(
+      baseAssignment({ noCheckout: true, status: 'present' }),
+    )
+    expect(notice?.text).toContain('Sin salida')
+    expect(notice?.text).toContain('supervisor o a la oficina')
+  })
+})
 
 describe('getNoticeMessage', () => {
   it('arma el mensaje de una demora avisada', () => {

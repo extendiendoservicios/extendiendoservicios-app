@@ -25,6 +25,7 @@ import {
   type SiteInfoData,
 } from '@/features/sites/components/SiteInfo'
 import { RatingCriteriaGuide } from '@/features/supervisions/components/RatingCriteriaGuide'
+import { formatSupervisionRange } from '@/features/employee/shiftRange'
 
 /**
  * SUP-03 · Detalle de la supervisión (MOB-SUP-004, `05` fila SUP-03, `06`
@@ -124,8 +125,7 @@ export default function SupervisionDetailPage() {
         </CardHeader>
         <CardContent>
           <p className="text-[13px] text-text-2">
-            {formatTimeOfDay(supervision.startTime)}–
-            {formatTimeOfDay(supervision.endTime)}
+            {formatSupervisionRange(supervision)}
           </p>
           {supervision.checkInAt && (
             <p className="text-[12px] text-text-3">
@@ -308,9 +308,4 @@ function EmployeeRow({
       </div>
     </div>
   )
-}
-
-/** Mismo criterio que el resto de la vía: `"HH:MM:SS"` es hora de pared, no un instante. */
-function formatTimeOfDay(time: string): string {
-  return time.slice(0, 5)
 }

@@ -176,6 +176,7 @@ export default function SupervisionAttendancePage() {
           siteName: supervision.siteName,
           startTime: supervision.startTime,
           endTime: supervision.endTime,
+          openEnded: supervision.shiftOpenEnded,
         }}
         nowLabel={formatTime(now)}
         onConfirm={() => void handleCheckIn()}

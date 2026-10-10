@@ -20,6 +20,7 @@ import {
 } from '@/features/employee/queries'
 import { RegisterStartScreen } from '@/features/employee/components/RegisterStartScreen'
 import type { MyDayAssignment } from '@/api/myDay'
+import { formatAssignmentRange } from '@/features/employee/shiftRange'
 
 /** La hora de referencia de EMP-05 no necesita actualizarse segundo a segundo. */
 const CLOCK_TICK_MS = 15_000
@@ -54,8 +55,9 @@ export default function ClockTabPage() {
 
   const today =
     data?.filter((a) => a.isToday && a.shiftStatus !== 'cancelled') ?? []
+  // AJ2-09: una asignación «Sin salida» ya no se puede cerrar desde el celular.
   const inProgress = today.find(
-    (a) => a.checkInAt != null && a.checkOutAt == null,
+    (a) => a.checkInAt != null && a.checkOutAt == null && !a.noCheckout,
   )
 
   if (isLoading) {
@@ -88,7 +90,9 @@ export default function ClockTabPage() {
         title={
           today.length === 0
             ? 'No tenés servicios para fichar hoy'
-            : 'Ya fichaste todos tus servicios de hoy'
+            : today.some((a) => a.noCheckout)
+              ? 'Tenés un servicio sin salida registrada: avisale a tu supervisor o a la oficina'
+              : 'Ya fichaste todos tus servicios de hoy'
         }
         className="mt-4"
       />
@@ -151,7 +155,7 @@ function ChooseService({
             key={assignment.assignmentId}
             value={assignment.assignmentId}
             title={assignment.siteName}
-            description={`${assignment.startTime.slice(0, 5)}–${assignment.endTime.slice(0, 5)}`}
+            description={formatAssignmentRange(assignment)}
           />
         ))}
       </RadioGroup>
@@ -174,7 +178,7 @@ function ConsentNeeded({
             {assignment.siteName}
           </p>
           <p className="text-[12px] text-text-3">
-            {assignment.startTime.slice(0, 5)}–{assignment.endTime.slice(0, 5)}
+            {formatAssignmentRange(assignment)}
           </p>
         </CardContent>
       </Card>

@@ -91,6 +91,8 @@ export interface MySupervision {
   endTime: string
   startsAt: string | null
   endsAt: string | null
+  /** AJ2-10: el turno es «A terminar»; `endTime` (23:59) no se muestra como fin. */
+  shiftOpenEnded: boolean
   status: SupervisionStatus
   assignedAt: string | null
   notDoneReason: string | null
@@ -167,6 +169,7 @@ function mapMySupervisionRow(row: MySupervisionRawRow): MySupervision {
     endTime: row.end_time as string,
     startsAt: row.starts_at,
     endsAt: row.ends_at,
+    shiftOpenEnded: row.shift_open_ended ?? false,
     status: row.status as SupervisionStatus,
     assignedAt: row.assigned_at,
     notDoneReason: row.not_done_reason,
@@ -591,6 +594,10 @@ export async function fetchSupervisionRatings(
 //    puesto en el teléfono). Solo aplica a la rama del supervisor: el dueño
 //    y el administrador con `edit_ratings` no tienen ventana y no pasan por
 //    esta pantalla (SUP-05 es exclusiva de la vía `/sup`).
+//    AJ2-10: en un turno «A terminar» (`shiftOpenEnded`) el fin del turno
+//    guardado es 23:59; la RPC sigue usándolo, así que el plazo se cuenta
+//    igual (nunca se bloquea por "fin no alcanzado": calificar y completar
+//    solo piden el fin REGISTRADO de la supervisión).
 // -------------------------------------------------------------------------
 
 export function isRatingWindowClosed(
