@@ -282,15 +282,23 @@ select is(
   (select count(*)::int from public.v_my_announcements where title like 'T42%'), 0,
   'administrador sin rol de empleado/supervisor: nada en su portada (v_my_announcements)'
 );
-select is((select count(*)::int from public.announcement_reads), 6, 'administrador: ve todas las lecturas');
+select is((select count(*)::int from public.announcement_reads where announcement_id::text like 'f4200000-%'), 6, 'administrador: ve todas las lecturas');
 select throws_ok(
   $$select public.acknowledge_announcement('f4200000-0000-0000-0000-0000000000a1')$$,
   'P0001', 'Ese anuncio ya no está disponible para vos.', 'administrador: no es destinatario, «Entendido» se rechaza'
 );
 
--- Conteos: destinatarios (personas activas) y lecturas
+-- Conteos: destinatarios (personas activas) y lecturas. La base puede tener otras personas
+-- (App_dev tiene el seed): se descuentan las que no son de este fixture.
 select results_eq(
-  $$select title, recipient_count, read_count, status from public.v_announcements_admin where title like 'T42%' order by title$$,
+  $$select a.title, a.recipient_count - o.others, a.read_count - o.others_read, a.status
+    from public.v_announcements_admin a
+    cross join lateral (
+      select count(*)::int as others, count(vr.read_at)::int as others_read
+      from public.v_announcement_recipients vr
+      where vr.announcement_id = a.id and vr.profile_id::text not like 'f4200000-%'
+    ) o
+    where a.title like 'T42%' order by a.title$$,
   $$values
     ('T42 archivado'::text, 4, 0, 'archived'::text),
     ('T42 ayer', 4, 0, 'expired'),
@@ -304,7 +312,8 @@ select results_eq(
 );
 select results_eq(
   $$select first_name, roles, read_at is not null from public.v_announcement_recipients
-    where announcement_id = 'f4200000-0000-0000-0000-0000000000a3' order by first_name$$,
+    where announcement_id = 'f4200000-0000-0000-0000-0000000000a3' and profile_id::text like 'f4200000-%'
+    order by first_name$$,
   $$values
     ('Dual'::text, array['employee', 'supervisor']::text[], true),
     ('Emp', array['employee']::text[], true),
