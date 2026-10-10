@@ -470,6 +470,68 @@ export type Database = {
           },
         ]
       }
+      client_bank_details: {
+        Row: {
+          alias: string | null
+          bank_name: string | null
+          cbu: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          alias?: string | null
+          bank_name?: string | null
+          cbu?: string | null
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          alias?: string | null
+          bank_name?: string | null
+          cbu?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_bank_details_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_bank_details_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "v_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_bank_details_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_bank_details_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_contacts: {
         Row: {
           client_id: string
@@ -716,6 +778,75 @@ export type Database = {
           },
           {
             foreignKeyName: "employee_availability_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_bank_details: {
+        Row: {
+          alias: string | null
+          bank_name: string | null
+          cbu: string | null
+          created_at: string
+          created_by: string | null
+          profile_id: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          alias?: string | null
+          bank_name?: string | null
+          cbu?: string | null
+          created_at?: string
+          created_by?: string | null
+          profile_id: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          alias?: string | null
+          bank_name?: string | null
+          cbu?: string | null
+          created_at?: string
+          created_by?: string | null
+          profile_id?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_bank_details_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_bank_details_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employee_bank_details_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "v_employee_ratings"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_bank_details_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "v_employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employee_bank_details_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -1361,6 +1492,65 @@ export type Database = {
           },
         ]
       }
+      shift_observations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          observation: string | null
+          shift_id: string
+          show_in_print: boolean
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          observation?: string | null
+          shift_id: string
+          show_in_print?: boolean
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          observation?: string | null
+          shift_id?: string
+          show_in_print?: boolean
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_observations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_observations_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: true
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_observations_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: true
+            referencedRelation: "v_shifts_board"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_observations_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shift_tasks: {
         Row: {
           created_at: string
@@ -1930,6 +2120,7 @@ export type Database = {
           removed_reason: string | null
           shift_date: string | null
           shift_id: string | null
+          shift_observation: string | null
           shift_status: Database["public"]["Enums"]["shift_status"] | null
           site_id: string | null
           site_name: string | null
@@ -2235,14 +2426,14 @@ export type Database = {
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_in_recorded_by"]
+            columns: ["check_out_recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_out_recorded_by"]
+            columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -2418,6 +2609,7 @@ export type Database = {
           required_staff: number | null
           service_id: string | null
           shift_date: string | null
+          show_in_print: boolean | null
           site_city: string | null
           site_id: string | null
           site_name: string | null
@@ -2792,6 +2984,7 @@ export type Database = {
           p_open_ended?: boolean
           p_required_staff: number
           p_service_id?: string
+          p_show_in_print?: boolean
           p_site_id: string
           p_start: string
         }
@@ -3100,6 +3293,54 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      set_client_bank_details: {
+        Args: {
+          p_alias?: string
+          p_bank_name?: string
+          p_cbu?: string
+          p_client_id: string
+        }
+        Returns: {
+          alias: string | null
+          bank_name: string | null
+          cbu: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "client_bank_details"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_employee_bank_details: {
+        Args: {
+          p_alias?: string
+          p_bank_name?: string
+          p_cbu?: string
+          p_profile_id: string
+        }
+        Returns: {
+          alias: string | null
+          bank_name: string | null
+          cbu: string | null
+          created_at: string
+          created_by: string | null
+          profile_id: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "employee_bank_details"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       set_user_roles: {
         Args: {
           p_profile_id: string
@@ -3212,7 +3453,12 @@ export type Database = {
         }
       }
       update_shift_details: {
-        Args: { p_notes?: string; p_required_staff: number; p_shift_id: string }
+        Args: {
+          p_notes?: string
+          p_required_staff: number
+          p_shift_id: string
+          p_show_in_print?: boolean
+        }
         Returns: {
           cancel_reason: string | null
           cancelled_at: string | null
