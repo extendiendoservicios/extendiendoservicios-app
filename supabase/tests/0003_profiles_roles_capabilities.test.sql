@@ -30,7 +30,8 @@ select columns_are(
   array[
     'id', 'first_name', 'last_name', 'contact_email', 'phone', 'avatar_path',
     'location_consent_at', 'last_seen_changes_at', 'is_active',
-    'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at'
+    'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
+    'high_contrast'
   ],
   'profiles tiene exactamente las columnas de 04 sección 2.1'
 );

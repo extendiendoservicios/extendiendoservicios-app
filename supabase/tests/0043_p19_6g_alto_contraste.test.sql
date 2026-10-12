@@ -46,7 +46,7 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('f4300000-0000-0000-0000-000000000001', 'test-aj2g-uno@example.com', jsonb_build_object('first_name', 'Uno', 'last_name', 'Gé')),
   ('f4300000-0000-0000-0000-000000000002', 'test-aj2g-dos@example.com', jsonb_build_object('first_name', 'Dos', 'last_name', 'Gé'));
 
-insert into public.user_roles (user_id, role) values
+insert into public.user_roles (profile_id, role) values
   ('f4300000-0000-0000-0000-000000000001', 'employee'),
   ('f4300000-0000-0000-0000-000000000002', 'employee');
 

@@ -170,7 +170,6 @@ export class EscenarioLighthouse {
         start_time: '00:00',
         end_time: '23:59',
         required_staff: 1,
-        notes: `${PREFIJO} turno de prueba`,
       })
       .select('id')
       .single()

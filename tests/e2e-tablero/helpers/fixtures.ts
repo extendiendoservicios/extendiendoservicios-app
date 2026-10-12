@@ -272,7 +272,6 @@ export class TableroScenario {
         start_time: startTime,
         end_time: endTime,
         required_staff: requiredStaff,
-        notes: `${E2E_PREFIX} turno de prueba`,
       })
       .select('id')
       .single()
