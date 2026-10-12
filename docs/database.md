@@ -1843,6 +1843,15 @@ firmas de `create_shift`/`update_shift_time` (0023, 0028) y dos valores de horas
 - **`service_delete_preview(p_service_id)`** y **`delete_service(p_service_id)`**: dueño y administrador (como editar servicios; ninguna capacidad lo protege). Borrado físico del servicio y de sus turnos con asignaciones, tareas del turno, observaciones y empleados fijos, en una transacción. Bloquean: fichajes (`attendance_records`), avisos de asistencia (`attendance_notices`) y supervisiones (con sus calificaciones) en cualquier turno del servicio. `SERVICE_NOT_FOUND`, `SERVICE_HAS_ATTENDANCE`, `SERVICE_HAS_SUPERVISIONS`, `FORBIDDEN`. Deja `service_deleted` en `security_events` (valor nuevo del enum; `target_id` = servicio; `details` con nombre, cliente, sede y cantidades).
 - `app.service_delete_blockers(p_service_id)`: interna, sin acceso para `authenticated`.
 
+## Turno suelto repetido (migración `0046`, P19.7 paquete R, AJ3-08)
+
+- **`shifts.series_id uuid`** (null): mismo valor en todos los turnos creados juntos por `create_shift_series`. Sin FK y solo informativa: cada turno es independiente (se edita, cancela y asigna de a uno). Índice parcial `shifts_series_id_idx`.
+- **`app.create_shift_core(...)`**: el cuerpo de `create_shift` (0041) sin el control de rol y con `p_series_id`. `create_shift` queda como envoltorio con la misma firma y el mismo comportamiento (`require_role('owner', 'admin')`).
+- **`app.shift_series_dates(p_from, p_to, p_weekdays, p_weeks_of_month)`**: valida y devuelve las fechas candidatas (`shift_date`, `is_holiday`). Interna, sin acceso para `authenticated`.
+- **`preview_shift_series(p_from, p_to, p_weekdays, p_weeks_of_month default null, p_works_on_holidays default false)`**: dueño y administrador; no escribe. Devuelve `{dates, holidays_skipped, count}`. Si ninguna fecha cumple devuelve `count` 0.
+- **`create_shift_series(p_client_id, p_site_id, p_start, p_end, p_required_staff, p_from, p_to, p_weekdays, p_weeks_of_month default null, p_works_on_holidays default false, p_notes, p_open_ended, p_show_in_print, p_employee_ids)`**: dueño y administrador (los mismos que `create_shift`). Una transacción: si el turno de una fecha falla por una validación falla todo y el mensaje termina con `(turno del DD/MM/AAAA)`; las asignaciones rechazadas no frenan y se informan por fecha. Devuelve `{series_id, created: [{shift_id, shift_date, warnings, assigned, rejected}], holidays_skipped}`.
+- Errores propios (`hint`): `SERIES_RANGE_INVALID` (hasta < desde o falta alguna), `SERIES_RANGE_TOO_LONG` (hasta > desde + 3 meses), `SERIES_EMPTY` (no queda ninguna fecha), `INVALID_WEEKDAYS`, `INVALID_WEEKS_OF_MONTH`.
+
 ## Avisos y anuncios (migración `0042`, P19.6 paquete E, AJ2-03)
 
 Anuncios de administración para empleados y supervisores. No tiene relación con `notices` / `attendance_notices` (avisos de demora y ausencia del empleado): todo lo nuevo se llama `announcements`.
@@ -1931,6 +1940,7 @@ En F19 (P19.6 paquete D, AJ2-04 y AJ2-15): `0040_p19_6d_banco_y_observacion.sql`
 En F19 (P19.6 paquete F, AJ2-17): `0041_p19_6f_asignar_al_crear.sql` -- ver "Asignar empleados al crear turnos".
 En F19 (P19.6 paquete E, AJ2-03): `0042_p19_6e_avisos_y_anuncios.sql` -- ver "Avisos y anuncios".
 En F19 (P19.7 paquete B, AJ3-05 y AJ3-01): `0044_p19_7_servicios.sql` -- ver "Servicios: repetición mensual y eliminación".
+En F19 (P19.7 paquete R, AJ3-08): `0046_p19_7_turno_repetido.sql` -- ver "Turno suelto repetido".
 
 ## Cómo escribir una migración
 

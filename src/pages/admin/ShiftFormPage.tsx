@@ -7,6 +7,9 @@ import { CalendarClock, TriangleAlert } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
+import { RepeatFields } from '@/features/services/components/RepeatFields'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { ShiftObservationField } from '@/features/shifts/components/ShiftObservationField'
 import { OpenEndedToggle } from '@/features/shifts/components/OpenEndedToggle'
 import { OPEN_ENDED_LABEL } from '@/features/shifts/openEnded'
@@ -32,18 +35,32 @@ import {
   rejectedTitle,
 } from '@/features/shifts/assignOnCreate'
 import { useHolidaysQuery } from '@/features/settings/queries'
-import { localDateToIsoDate } from '@/features/settings/dateOnly'
+import {
+  formatDateOnly,
+  localDateToIsoDate,
+} from '@/features/settings/dateOnly'
 import { canManageShiftTime } from '@/features/shifts/permissions'
 import {
   useCreateShiftMutation,
+  useCreateShiftSeriesMutation,
   useShiftForEditQuery,
+  useShiftSeriesPreviewQuery,
   useUpdateShiftTimeMutation,
 } from '@/features/shifts/queries'
 import {
+  describeSeriesPreview,
+  seriesIssuesByDate,
+  seriesIssuesTitle,
+  seriesSuccessMessage,
+} from '@/features/shifts/series'
+import {
+  defaultWeekdayForDate,
+  maxSeriesDate,
   shiftEditFormSchema,
   shiftEditFormValuesToInputs,
   shiftFormSchema,
   shiftFormValuesToCreateInput,
+  shiftFormValuesToSeriesRule,
   type ShiftEditFormValues,
   type ShiftFormValues,
 } from '@/features/shifts/schemas'
@@ -102,6 +119,7 @@ function CreateShiftForm({
   canManage: boolean
 }) {
   const createShift = useCreateShiftMutation()
+  const createShiftSeries = useCreateShiftSeriesMutation()
   const employeeOptionsQuery = useActiveEmployeeOptionsQuery()
   // AJ2-17: empleados que quedan asignados al crear el turno.
   const [pickedEmployeeIds, setPickedEmployeeIds] = useState<string[]>([])
@@ -116,6 +134,13 @@ function CreateShiftForm({
     requiredStaff: '1',
     notes: '',
     showInPrint: true,
+    // AJ3-08: «Repetir este turno» apagado = alta de un solo turno, como siempre.
+    repeat: false,
+    weekdays: [],
+    weeksMode: 'all',
+    weeksOfMonth: [],
+    repeatTo: '',
+    worksOnHolidays: false,
   }
 
   const {
@@ -134,6 +159,40 @@ function CreateShiftForm({
   const watchedDate = watch('date')
   const watchedOpenEnded = watch('openEnded') ?? false
   const watchedRequiredStaff = watch('requiredStaff')
+  const watchedRepeat = watch('repeat') ?? false
+  const watchedWeekdays = watch('weekdays') ?? []
+  const watchedWeeksMode = watch('weeksMode') ?? 'all'
+  const watchedWeeksOfMonth = watch('weeksOfMonth') ?? []
+  const watchedRepeatTo = watch('repeatTo') ?? ''
+  const watchedWorksOnHolidays = watch('worksOnHolidays') ?? false
+  // Mientras no toquen los días, siguen al día de la semana de la fecha.
+  const [weekdaysTouched, setWeekdaysTouched] = useState(false)
+
+  // Vista previa en vivo (AJ3-08): solo con la regla completa y dentro del
+  // tope, y con debounce. Se debouncea la clave en texto, no el objeto (que
+  // cambia de identidad en cada render).
+  const liveRule = shiftFormValuesToSeriesRule({
+    repeat: watchedRepeat,
+    date: watchedDate,
+    repeatTo: watchedRepeatTo,
+    weekdays: watchedWeekdays,
+    weeksMode: watchedWeeksMode,
+    weeksOfMonth: watchedWeeksOfMonth,
+    worksOnHolidays: watchedWorksOnHolidays,
+  })
+  const liveRuleKey = liveRule ? JSON.stringify(liveRule) : ''
+  const debouncedRuleKey = useDebouncedValue(liveRuleKey, 400)
+  const previewQuery = useShiftSeriesPreviewQuery(
+    debouncedRuleKey ? (JSON.parse(debouncedRuleKey) as typeof liveRule) : null,
+  )
+  const previewPending =
+    liveRuleKey !== '' &&
+    (liveRuleKey !== debouncedRuleKey || previewQuery.isFetching)
+  const previewText =
+    liveRuleKey !== '' && !previewPending && previewQuery.data
+      ? describeSeriesPreview(previewQuery.data)
+      : null
+  const noDatesMatch = watchedRepeat && previewText?.kind === 'none'
   const clientsQuery = useClientsQuery({})
   const sitesQuery = useClientSitesQuery(watchedClientId || undefined)
 
@@ -173,7 +232,84 @@ function CreateShiftForm({
     setValue('siteId', '', { shouldValidate: true, shouldDirty: true })
   }
 
+  function handleDateChange(iso: string) {
+    setValue('date', iso, { shouldValidate: true, shouldDirty: true })
+    if (!weekdaysTouched) {
+      setValue('weekdays', defaultWeekdayForDate(iso), { shouldDirty: true })
+    }
+  }
+
+  function handleRepeatChange(checked: boolean) {
+    setValue('repeat', checked, { shouldDirty: true })
+    if (checked && !weekdaysTouched && watchedWeekdays.length === 0) {
+      setValue('weekdays', defaultWeekdayForDate(watchedDate), {
+        shouldDirty: true,
+      })
+    }
+  }
+
+  async function onSubmitSeries(values: ShiftFormValues) {
+    const rule = shiftFormValuesToSeriesRule(values)
+    if (!rule) {
+      toast.error('Revisá los días y la fecha «hasta» de la repetición.')
+      return
+    }
+    const { date: _date, ...single } = shiftFormValuesToCreateInput(values)
+    try {
+      const result = await createShiftSeries.mutateAsync({
+        ...single,
+        ...rule,
+        employeeIds,
+      })
+      const names: Record<string, string> = Object.fromEntries(
+        (employeeOptionsQuery.data ?? []).map((option) => [
+          option.profileId,
+          option.name,
+        ]),
+      )
+      const issues = seriesIssuesByDate(result.created, names, WARNING_MESSAGES)
+      const hasRejected = result.created.some(
+        (item) => item.rejected.length > 0,
+      )
+      if (issues.length > 0) {
+        // Los turnos se crearon todos: lo que no se pudo asignar queda a la
+        // vista, fecha por fecha (no bloquea).
+        toast.warning(seriesIssuesTitle(result.created.length, hasRejected), {
+          duration: 30_000,
+          description: (
+            <ul className="list-disc pl-4">
+              {issues.map((issue) => (
+                <li key={issue.date}>
+                  {formatDateOnly(issue.date)}: {issue.lines.join(' · ')}
+                </li>
+              ))}
+            </ul>
+          ),
+        })
+      } else {
+        toast.success(
+          seriesSuccessMessage(
+            result.created.length,
+            result.holidaysSkipped.length,
+          ),
+        )
+      }
+      // Se vuelve a Planificación, en la lista del día del primer turno creado.
+      void navigate(
+        `/admin/planificacion?vista=dia&fecha=${result.created[0]?.shiftDate ?? rule.from}`,
+      )
+    } catch (error) {
+      toast.error(
+        isApiError(error) ? error.message : 'No pudimos crear los turnos.',
+      )
+    }
+  }
+
   async function onSubmit(values: ShiftFormValues) {
+    if (values.repeat) {
+      await onSubmitSeries(values)
+      return
+    }
     const input = {
       ...shiftFormValuesToCreateInput(values),
       employeeIds,
@@ -290,22 +426,28 @@ function CreateShiftForm({
           className="sm:col-span-2"
           data-invalid={Boolean(errors.date) || undefined}
         >
-          <FieldLabel htmlFor="shift-date">Fecha</FieldLabel>
+          <FieldLabel htmlFor="shift-date">
+            {watchedRepeat ? 'Desde' : 'Fecha'}
+          </FieldLabel>
           <Controller
             control={control}
             name="date"
             render={({ field }) => (
               <DatePicker
-                aria-label="Fecha del turno"
+                aria-label={
+                  watchedRepeat
+                    ? 'Primera fecha de la repetición'
+                    : 'Fecha del turno'
+                }
                 value={isoDateToDate(field.value)}
                 onValueChange={(date) =>
-                  field.onChange(date ? localDateToIsoDate(date) : '')
+                  handleDateChange(date ? localDateToIsoDate(date) : '')
                 }
               />
             )}
           />
           {errors.date && <FieldError>{errors.date.message}</FieldError>}
-          {isHoliday && (
+          {isHoliday && !watchedRepeat && (
             <Alert variant="warn" className="mt-1">
               <TriangleAlert />
               <AlertDescription>
@@ -314,6 +456,132 @@ function CreateShiftForm({
             </Alert>
           )}
         </Field>
+
+        {/* AJ3-08: repetir el turno con la misma regla que los servicios. */}
+        <div className="flex flex-col gap-4 sm:col-span-2">
+          <label
+            htmlFor="shift-repeat"
+            className="flex items-center justify-between gap-3 text-[13px] font-medium text-text"
+          >
+            Repetir este turno
+            <Switch
+              id="shift-repeat"
+              checked={watchedRepeat}
+              onCheckedChange={handleRepeatChange}
+            />
+          </label>
+          {watchedRepeat && (
+            <div className="flex flex-col gap-4 rounded-md border border-border p-4">
+              <RepeatFields
+                idPrefix="shift"
+                weekdays={watchedWeekdays}
+                onWeekdaysChange={(next) => {
+                  setWeekdaysTouched(true)
+                  setValue('weekdays', next, {
+                    shouldDirty: true,
+                    shouldValidate: Boolean(errors.weekdays),
+                  })
+                }}
+                weeksMode={watchedWeeksMode}
+                onWeeksModeChange={(next) =>
+                  setValue('weeksMode', next, { shouldDirty: true })
+                }
+                weeksOfMonth={watchedWeeksOfMonth}
+                onWeeksOfMonthChange={(next) =>
+                  setValue('weeksOfMonth', next, {
+                    shouldDirty: true,
+                    shouldValidate: Boolean(errors.weeksOfMonth),
+                  })
+                }
+                weekdaysError={errors.weekdays?.message}
+                weeksOfMonthError={errors.weeksOfMonth?.message}
+              />
+
+              <Field data-invalid={Boolean(errors.repeatTo) || undefined}>
+                <FieldLabel htmlFor="shift-repeat-to">Hasta</FieldLabel>
+                <Controller
+                  control={control}
+                  name="repeatTo"
+                  render={({ field }) => (
+                    <DatePicker
+                      aria-label="Repetir hasta"
+                      disabled={!watchedDate}
+                      minDate={isoDateToDate(watchedDate)}
+                      maxDate={
+                        watchedDate
+                          ? isoDateToDate(maxSeriesDate(watchedDate))
+                          : undefined
+                      }
+                      value={isoDateToDate(field.value)}
+                      onValueChange={(date) =>
+                        field.onChange(date ? localDateToIsoDate(date) : '')
+                      }
+                    />
+                  )}
+                />
+                <p className="text-[11px] text-text-3">
+                  {watchedDate
+                    ? 'Como máximo 3 meses después de la fecha «Desde».'
+                    : 'Elegí primero la fecha «Desde».'}
+                </p>
+                {errors.repeatTo && (
+                  <FieldError>{errors.repeatTo.message}</FieldError>
+                )}
+              </Field>
+
+              <label
+                htmlFor="shift-works-on-holidays"
+                className="flex items-center justify-between gap-3 text-[13px] font-medium text-text"
+              >
+                Crear también en feriados
+                <Switch
+                  id="shift-works-on-holidays"
+                  checked={watchedWorksOnHolidays}
+                  onCheckedChange={(checked) =>
+                    setValue('worksOnHolidays', checked, { shouldDirty: true })
+                  }
+                />
+              </label>
+
+              <div aria-live="polite" className="text-[13px]">
+                {liveRuleKey === '' && (
+                  <p className="text-text-3">
+                    Completá los días y la fecha «hasta» para ver cuántos turnos
+                    se crean.
+                  </p>
+                )}
+                {previewPending && (
+                  <p className="text-text-3">Calculando las fechas…</p>
+                )}
+                {!previewPending &&
+                  previewQuery.isError &&
+                  liveRuleKey !== '' && (
+                    <Alert variant="crit">
+                      <TriangleAlert />
+                      <AlertDescription>
+                        {isApiError(previewQuery.error)
+                          ? previewQuery.error.message
+                          : 'No pudimos calcular las fechas.'}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                {previewText && (
+                  <Alert
+                    variant={previewText.kind === 'none' ? 'warn' : 'info'}
+                  >
+                    <AlertDescription>
+                      <p className="font-medium">{previewText.headline}</p>
+                      {previewText.datesLine && <p>{previewText.datesLine}</p>}
+                      {previewText.holidaysLine && (
+                        <p>{previewText.holidaysLine}</p>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
         <div className="grid grid-cols-2 gap-4 sm:col-span-2">
           <Field data-invalid={Boolean(errors.startTime) || undefined}>
@@ -392,8 +660,9 @@ function CreateShiftForm({
             placeholder="Elegí quién va a este turno"
           />
           <p className="text-[11px] text-text-3">
-            Quedan asignados al crear el turno, hasta completar la dotación. Si
-            alguno no se puede asignar, el turno se crea igual y te avisamos.
+            {watchedRepeat
+              ? 'Quedan asignados en cada turno de la repetición, hasta completar la dotación. Si alguno no se puede asignar en una fecha, el turno se crea igual y te avisamos.'
+              : 'Quedan asignados al crear el turno, hasta completar la dotación. Si alguno no se puede asignar, el turno se crea igual y te avisamos.'}
           </p>
         </Field>
 
@@ -413,14 +682,18 @@ function CreateShiftForm({
       </div>
 
       <div className="flex gap-2">
-        <Button type="submit" loading={createShift.isPending}>
-          Crear turno
+        <Button
+          type="submit"
+          loading={createShift.isPending || createShiftSeries.isPending}
+          disabled={noDatesMatch}
+        >
+          {watchedRepeat ? 'Crear turnos' : 'Crear turno'}
         </Button>
         <Button
           type="button"
           variant="ghost"
           onClick={() => void navigate(-1)}
-          disabled={createShift.isPending}
+          disabled={createShift.isPending || createShiftSeries.isPending}
         >
           Cancelar
         </Button>

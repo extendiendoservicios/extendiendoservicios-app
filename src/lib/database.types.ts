@@ -2250,6 +2250,7 @@ export type Database = {
           notes: string | null
           open_ended: boolean
           required_staff: number
+          series_id: string | null
           service_id: string | null
           shift_date: string
           site_id: string
@@ -2275,6 +2276,7 @@ export type Database = {
           notes?: string | null
           open_ended?: boolean
           required_staff: number
+          series_id?: string | null
           service_id?: string | null
           shift_date: string
           site_id: string
@@ -2300,6 +2302,7 @@ export type Database = {
           notes?: string | null
           open_ended?: boolean
           required_staff?: number
+          series_id?: string | null
           service_id?: string | null
           shift_date?: string
           site_id?: string
@@ -3749,6 +3752,7 @@ export type Database = {
           notes: string | null
           open_ended: boolean
           required_staff: number
+          series_id: string | null
           service_id: string | null
           shift_date: string
           site_id: string
@@ -3914,6 +3918,25 @@ export type Database = {
         }
         Returns: Json
       }
+      create_shift_series: {
+        Args: {
+          p_client_id: string
+          p_employee_ids?: string[]
+          p_end: string
+          p_from: string
+          p_notes?: string
+          p_open_ended?: boolean
+          p_required_staff: number
+          p_show_in_print?: boolean
+          p_site_id: string
+          p_start: string
+          p_to: string
+          p_weekdays: number[]
+          p_weeks_of_month?: number[]
+          p_works_on_holidays?: boolean
+        }
+        Returns: Json
+      }
       delete_service: { Args: { p_service_id: string }; Returns: Json }
       generate_shifts: {
         Args: { p_month: number; p_year: number }
@@ -4040,6 +4063,16 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      preview_shift_series: {
+        Args: {
+          p_from: string
+          p_to: string
+          p_weekdays: number[]
+          p_weeks_of_month?: number[]
+          p_works_on_holidays?: boolean
+        }
+        Returns: Json
       }
       rate_employee: {
         Args: {
@@ -4438,6 +4471,7 @@ export type Database = {
           notes: string | null
           open_ended: boolean
           required_staff: number
+          series_id: string | null
           service_id: string | null
           shift_date: string
           site_id: string
@@ -4477,6 +4511,7 @@ export type Database = {
           notes: string | null
           open_ended: boolean
           required_staff: number
+          series_id: string | null
           service_id: string | null
           shift_date: string
           site_id: string
