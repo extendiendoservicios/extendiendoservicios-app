@@ -77,6 +77,35 @@ export function useAssignmentsBoardRangeQuery(
   })
 }
 
+/**
+ * AJ3-04: próximos turnos de un empleado (pestaña de la ficha, ADM-17):
+ * asignaciones vigentes (no quitadas) entre `from` y `to`, ordenadas por
+ * fecha y hora. Refresca cada 60 s como el resto de las listas.
+ */
+export function useEmployeeUpcomingAssignmentsQuery(
+  employeeId: string | undefined,
+  from: string,
+  to: string,
+) {
+  return useQuery({
+    queryKey: [
+      ...planningKeys.all,
+      'employeeUpcoming',
+      employeeId,
+      from,
+      to,
+    ] as const,
+    queryFn: () =>
+      assignmentsApi.fetchAssignmentsBoardByRange(from, to, {
+        employeeId,
+        onlyActive: true,
+      }),
+    enabled: Boolean(employeeId),
+    staleTime: LIST_STALE_TIME_MS,
+    refetchInterval: LIST_STALE_TIME_MS,
+  })
+}
+
 /** Invalida el tablero de planificación y la lista del día de ADM-05 (mismos datos, otra vista). */
 function invalidatePlanningAndShifts(
   queryClient: ReturnType<typeof useQueryClient>,

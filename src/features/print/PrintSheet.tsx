@@ -1,6 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Printer, X } from 'lucide-react'
+import { PencilLine, Printer, Undo2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import './print.css'
 
@@ -22,8 +22,34 @@ interface PrintSheetProps {
  * Al imprimir, `print.css` oculta la app y la barra: el navegador imprime solo
  * la hoja (A4, con márgenes) o la guarda como PDF desde su diálogo. Sin
  * librerías de PDF.
+ *
+ * AJ3-03: «Editar texto» vuelve `contentEditable` el contenido de la hoja
+ * (menos el membrete, que se marca `contentEditable={false}`) para corregir
+ * texto antes de imprimir. Los cambios viven solo en el DOM de esta vista
+ * previa: no se guardan. Para que React no pise lo escrito, al empezar a
+ * editar se congela el contenido (`frozen`) y los refrescos de datos ya no se
+ * reflejan hasta «Deshacer cambios» (que descarta lo editado y re-renderiza
+ * con otra `key`). Como todos los imprimibles pasan por `PrintSheet`, la
+ * edición vale para todos.
  */
 function PrintSheet({ children, onClose, documentTitle }: PrintSheetProps) {
+  const [isEditing, setEditing] = useState(false)
+  // Contenido congelado desde la primera edición: null = se sigue al original.
+  const [frozen, setFrozen] = useState<React.ReactNode | null>(null)
+  const [contentKey, setContentKey] = useState(0)
+
+  function toggleEditing() {
+    if (!isEditing && frozen === null) {
+      setFrozen(children)
+    }
+    setEditing(!isEditing)
+  }
+
+  function undoChanges() {
+    setFrozen(isEditing ? children : null)
+    setContentKey((key) => key + 1)
+  }
+
   useEffect(() => {
     const previousTitle = document.title
     document.title = documentTitle
@@ -34,13 +60,14 @@ function PrintSheet({ children, onClose, documentTitle }: PrintSheetProps) {
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
+      // Mientras se edita, Escape no cierra: se perdería lo escrito.
+      if (event.key === 'Escape' && !isEditing) {
         onClose()
       }
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  }, [onClose, isEditing])
 
   return createPortal(
     <div
@@ -53,7 +80,26 @@ function PrintSheet({ children, onClose, documentTitle }: PrintSheetProps) {
         <p className="text-[13px] font-semibold text-text">
           Vista previa para imprimir
         </p>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant={isEditing ? 'primary' : 'ghost'}
+            icon={PencilLine}
+            aria-pressed={isEditing}
+            onClick={toggleEditing}
+          >
+            {isEditing ? 'Terminar edición' : 'Editar texto'}
+          </Button>
+          {frozen !== null && (
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={Undo2}
+              onClick={undoChanges}
+            >
+              Deshacer cambios
+            </Button>
+          )}
           <Button
             size="sm"
             icon={Printer}
@@ -68,8 +114,29 @@ function PrintSheet({ children, onClose, documentTitle }: PrintSheetProps) {
           </Button>
         </div>
       </div>
+      {isEditing && (
+        <p
+          role="status"
+          className="mx-auto w-full max-w-[210mm] px-4 pt-3 text-[12px] text-text-2 print:hidden"
+        >
+          Los cambios valen solo para esta impresión: no se guardan en la app.
+        </p>
+      )}
       <div className="print-sheet mx-auto my-4 w-full max-w-[210mm] bg-white p-4 text-[12px] text-black shadow-card sm:p-[15mm] print:m-0 print:max-w-none print:p-0 print:shadow-none">
-        {children}
+        <div
+          key={contentKey}
+          data-testid="print-content"
+          contentEditable={isEditing || undefined}
+          suppressContentEditableWarning
+          spellCheck={isEditing}
+          className={
+            isEditing
+              ? 'rounded-sm bg-warning-bg/40 outline-2 outline-offset-4 outline-primary outline-dashed print:bg-transparent print:outline-none'
+              : undefined
+          }
+        >
+          {frozen ?? children}
+        </div>
       </div>
     </div>,
     document.body,
