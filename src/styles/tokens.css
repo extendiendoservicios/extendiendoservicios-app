@@ -150,15 +150,15 @@
  * al normal. Cada persona lo activa en "Mi perfil" > Accesibilidad; la app
  * pone `data-contrast="high"` en <html> (ver `src/lib/contrast.ts`).
  * Sigue siendo fondo blanco (no es un tema oscuro). Objetivo WCAG AAA:
- * texto y botones >= 7:1; bordes oscuros bien visibles; foco grueso.
+ * texto >= 7:1, botones primarios >= 4,5:1 (cerca del color de marca); bordes oscuros bien visibles; foco grueso.
  * Redefine solo los tokens crudos del bloque 1; los alias de shadcn y el
  * mapeo de Tailwind los siguen por `var()`. Para sumar un token nuevo al
  * tema, agregalo acá con el mismo nombre que en `:root`.
  */
 :root[data-contrast='high'] {
-  --primary: #235057; /* texto blanco encima: >= 9:1 */
-  --primary-700: #173a3f;
-  --primary-800: #1b4349;
+  --primary: #3a767c; /* más oscuro que el normal pero cerca; texto blanco encima: 5,2:1 */
+  --primary-700: #2f6368; /* hover: 6,8:1 */
+  --primary-800: #2f6368; /* texto de marca y enlaces sobre blanco: 6,8:1 */
   --primary-100: #d9ebed;
   --primary-050: #eef6f7;
   --primary-200: #5f9097;
@@ -212,11 +212,6 @@
 :root[data-contrast='high'] :focus-visible {
   outline: 3px solid var(--ring);
   outline-offset: 2px;
-}
-
-/* Los enlaces dentro de texto se distinguen por subrayado, no solo por color. */
-:root[data-contrast='high'] a:not([class*='btn']) {
-  text-decoration: underline;
 }
 
 /*
