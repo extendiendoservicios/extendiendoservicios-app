@@ -2,6 +2,9 @@ import * as React from 'react'
 import { cn } from 'cn'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+// El español de react-day-picker suma las etiquetas de accesibilidad (por ejemplo «Ir al mes
+// siguiente»); el de date-fns solo traduce fechas y deja esas etiquetas en inglés.
+import { es as esDayPicker } from 'react-day-picker/locale'
 import { CalendarIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -64,7 +67,7 @@ function DatePicker({
       <PopoverContent align="start" className="w-auto p-0">
         <Calendar
           mode="single"
-          locale={es}
+          locale={esDayPicker}
           weekStartsOn={1}
           selected={value}
           defaultMonth={value ?? minDate}
