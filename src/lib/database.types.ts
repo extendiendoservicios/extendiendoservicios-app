@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   graphql_public: {
     Tables: {
@@ -1949,6 +1949,7 @@ export type Database = {
           valid_from: string
           valid_to: string | null
           weekdays: number[]
+          weeks_of_month: number[] | null
           works_on_holidays: boolean
         }
         Insert: {
@@ -1972,6 +1973,7 @@ export type Database = {
           valid_from: string
           valid_to?: string | null
           weekdays: number[]
+          weeks_of_month?: number[] | null
           works_on_holidays?: boolean
         }
         Update: {
@@ -1995,6 +1997,7 @@ export type Database = {
           valid_from?: string
           valid_to?: string | null
           weekdays?: number[]
+          weeks_of_month?: number[] | null
           works_on_holidays?: boolean
         }
         Relationships: [
@@ -3911,6 +3914,7 @@ export type Database = {
         }
         Returns: Json
       }
+      delete_service: { Args: { p_service_id: string }; Returns: Json }
       generate_shifts: {
         Args: { p_month: number; p_year: number }
         Returns: Json
@@ -4168,6 +4172,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      service_delete_preview: { Args: { p_service_id: string }; Returns: Json }
       set_admin_capability: {
         Args: {
           p_capability: Database["public"]["Enums"]["admin_capability"]
@@ -4559,6 +4564,7 @@ export type Database = {
         | "email_changed"
         | "admin_action_rejected"
         | "name_changed"
+        | "service_deleted"
       service_status: "active" | "paused" | "ended"
       shift_status:
         | "scheduled"
@@ -4747,6 +4753,7 @@ export const Constants = {
         "email_changed",
         "admin_action_rejected",
         "name_changed",
+        "service_deleted",
       ],
       service_status: ["active", "paused", "ended"],
       shift_status: [

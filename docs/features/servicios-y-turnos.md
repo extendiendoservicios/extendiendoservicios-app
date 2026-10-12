@@ -326,3 +326,51 @@ employeeLeaveStatus.ts`** en vez de duplicarse una vez más: ya es un
   pantalla que la use todavía (es de ADM-06, P11.3).
 - e2e de "servicio → generar → lista del día → cancelar uno" (SHIFT-012)
   queda para qa-pruebas.
+
+## P19.7 paquete B: repetición mensual y eliminación de servicios (AJ3-05, AJ3-01)
+
+Base: migración `0044` (ver `docs/database.md` y la sección nueva de `docs/api.md`).
+
+### Repetición mensual (AJ3-05)
+
+- **Formulario (ADM-25, alta y edición):** debajo de los días de la semana
+  hay un control «Se repite»: «Todas las semanas» (por defecto, guarda
+  `weeks_of_month = null`) o «Solo algunas semanas del mes», que muestra las
+  casillas «1.ª», «2.ª», «3.ª», «4.ª» y «Última» (valores 1 a 5). Con la
+  segunda opción hay que tildar al menos una. Ayuda: «Por ejemplo, lunes +
+  1.ª y 2.ª = los dos primeros lunes de cada mes.»
+- **Esquema (`schemas.ts`):** `weeksOfMonthSchema` replica el check
+  (`services_weeks_of_month_check`: no vacío, sin repetidos, 1 a 5);
+  `weeksOfMonthToFormValues` y `weeksOfMonthFromFormValues` convierten desde
+  y hacia la columna. Los campos del formulario son `weeksMode`
+  (`all` o `some`) y `weeksOfMonth` (texto).
+- **Texto de los días:** `formatServiceDays` (en `weekdays.ts`) agrega la
+  repetición: «lun · 1.ª y 2.ª semana del mes», «mar y jue · última semana
+  del mes». Lo usan las listas de servicios de ADM-21 y ADM-22.
+- **Estimación de ADM-09:** `fetchActiveServicesCountForMonth` ya no cuenta
+  con `count`: trae los servicios activos vigentes y cuenta solo los que
+  tienen alguna fecha del mes que cumpla vigencia, día de la semana y semanas
+  del mes (`weeksOfMonth.ts`, que replica `app.date_matches_weeks_of_month`:
+  día 1-7 = 1.ª, 8-14 = 2.ª, 15-21 = 3.ª, 22-28 = 4.ª; 5 = la última, cuando
+  día + 7 ya cae en el mes siguiente). Sigue siendo orientativo: el conteo
+  real de turnos lo da `generate_shifts`.
+- Editar la repetición no toca los turnos ya generados.
+
+### Eliminar un servicio (AJ3-01)
+
+- **Dónde:** menú de los tres puntitos de la lista de servicios (ADM-21 y
+  ADM-22), junto a «Editar» y «Cambiar estado». No hay menú equivalente en
+  la pantalla de edición (ADM-25), así que ahí no se agregó.
+- **Diálogo (`DeleteServiceDialog`):** consulta `service_delete_preview` al
+  abrirse (sin caché).
+  - Si `can_delete`: «Se van a eliminar el servicio, N turnos y M
+    asignaciones. No se puede deshacer.» y botón «Eliminar servicio».
+  - Si no: explica los motivos (fichajes, avisos de asistencia,
+    supervisiones), lista hasta 5 fechas de turnos que bloquean y ofrece
+    «Dar de baja», que abre el diálogo de cambiar estado. No hay botón de
+    eliminar.
+- **Al confirmar:** `delete_service`, toast de éxito e invalidación de
+  servicios, clientes, turnos, planificación y asistencia.
+- **Errores (`mapServiceDeleteError`, `src/api/services.ts`):** `FORBIDDEN`,
+  `SERVICE_NOT_FOUND`, `SERVICE_HAS_ATTENDANCE` y `SERVICE_HAS_SUPERVISIONS`
+  con mensaje en español; el resto cae en el genérico de `fromPostgrestError`.

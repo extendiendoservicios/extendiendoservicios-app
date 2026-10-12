@@ -6,6 +6,7 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  Trash2,
   Users,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -24,9 +25,10 @@ import {
   useServicesByClientQuery,
   useServicesBySiteQuery,
 } from '@/features/services/queries'
-import { formatWeekdays } from '@/features/services/weekdays'
+import { formatServiceDays } from '@/features/services/weekdays'
 import { OPEN_ENDED_LABEL } from '@/features/shifts/openEnded'
 import { ChangeServiceStatusDialog } from './ChangeServiceStatusDialog'
+import { DeleteServiceDialog } from './DeleteServiceDialog'
 
 /** `"HH:mm:ss"` (columna `time` de Postgres) → `"HH:mm"`. */
 function shortTime(time: string): string {
@@ -51,6 +53,10 @@ function ServiceList(
 
   const [serviceToChangeStatus, setServiceToChangeStatus] =
     useState<ServiceSummary | null>(null)
+
+  const [serviceToDelete, setServiceToDelete] = useState<ServiceSummary | null>(
+    null,
+  )
 
   const services = query.data ?? []
 
@@ -83,7 +89,7 @@ function ServiceList(
                   <p className="text-[11px] text-text-3">{service.siteName}</p>
                 )}
                 <p className="mt-1 text-[12px] text-text-2">
-                  {formatWeekdays(service.weekdays)} ·{' '}
+                  {formatServiceDays(service.weekdays, service.weeksOfMonth)} ·{' '}
                   {shortTime(service.startTime)} a{' '}
                   {service.openEnded
                     ? OPEN_ENDED_LABEL
@@ -115,6 +121,13 @@ function ServiceList(
                     <RefreshCw aria-hidden="true" />
                     Cambiar estado
                   </DropdownMenuItem>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onSelect={() => setServiceToDelete(service)}
+                  >
+                    <Trash2 aria-hidden="true" />
+                    Eliminar
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </li>
@@ -127,6 +140,15 @@ function ServiceList(
           service={serviceToChangeStatus}
           open={serviceToChangeStatus != null}
           onOpenChange={(open) => !open && setServiceToChangeStatus(null)}
+        />
+      )}
+
+      {serviceToDelete && (
+        <DeleteServiceDialog
+          service={serviceToDelete}
+          open={serviceToDelete != null}
+          onOpenChange={(open) => !open && setServiceToDelete(null)}
+          onDeactivate={() => setServiceToChangeStatus(serviceToDelete)}
         />
       )}
     </div>

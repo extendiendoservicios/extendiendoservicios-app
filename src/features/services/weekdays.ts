@@ -56,3 +56,36 @@ export function formatWeekdays(weekdays: number[]): string {
     )
     .join(', ')
 }
+
+/** Texto de las semanas del mes: `[1,2]` → `"1.ª y 2.ª"`, `[5]` → `"última"`. */
+function formatWeeksOfMonth(weeksOfMonth: number[]): string {
+  const labels = [...weeksOfMonth]
+    .sort((a, b) => a - b)
+    .map((week) => (week === 5 ? 'última' : `${week}.ª`))
+  if (labels.length === 1) {
+    return labels[0] as string
+  }
+  return `${labels.slice(0, -1).join(', ')} y ${labels.at(-1)}`
+}
+
+/**
+ * AJ3-05: días del servicio con su repetición mensual. Sin `weeksOfMonth`
+ * (o `null`: todas las semanas) es igual a `formatWeekdays`; con semanas:
+ * `"lun · 1.ª y 2.ª semana del mes"`, `"mar y jue · última semana del mes"`.
+ */
+export function formatServiceDays(
+  weekdays: number[],
+  weeksOfMonth?: number[] | null,
+): string {
+  const days = formatWeekdays(weekdays)
+  if (!weeksOfMonth || weeksOfMonth.length === 0) {
+    return days
+  }
+  // Para dos o tres días sueltos suena mejor "mar y jue" que "mar, jue".
+  const lastComma = days.lastIndexOf(', ')
+  const spoken =
+    lastComma >= 0
+      ? `${days.slice(0, lastComma)} y ${days.slice(lastComma + 2)}`
+      : days
+  return `${spoken} · ${formatWeeksOfMonth(weeksOfMonth)} semana del mes`
+}

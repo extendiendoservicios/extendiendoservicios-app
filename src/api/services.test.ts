@@ -46,6 +46,8 @@ const {
   fetchServicesBySite,
   fetchServiceFixedEmployees,
   setServiceFixedEmployees,
+  fetchServiceDeletePreview,
+  deleteService,
 } = await import('./services')
 
 beforeEach(() => {
@@ -59,6 +61,7 @@ const SERVICE_ROW = {
   site_id: 'si1',
   name: 'Limpieza mañana',
   weekdays: [1, 2, 3, 4, 5],
+  weeks_of_month: null,
   start_time: '08:00:00',
   end_time: '12:00:00',
   open_ended: false,
@@ -82,6 +85,7 @@ const SERVICE_SUMMARY_ROW = {
   site_id: 'si1',
   name: 'Limpieza mañana',
   weekdays: [1, 2, 3, 4, 5],
+  weeks_of_month: null,
   start_time: '08:00:00',
   end_time: '12:00:00',
   open_ended: false,
@@ -97,6 +101,7 @@ const FORM_INPUT = {
   siteId: 'si1',
   name: 'Limpieza mañana',
   weekdays: [1, 2, 3, 4, 5],
+  weeksOfMonth: null,
   startTime: '08:00',
   endTime: '12:00',
   openEnded: false,
@@ -122,6 +127,7 @@ describe('fetchServiceDetail', () => {
       siteName: 'Sede Centro',
       name: 'Limpieza mañana',
       weekdays: [1, 2, 3, 4, 5],
+      weeksOfMonth: null,
       startTime: '08:00:00',
       endTime: '12:00:00',
       openEnded: false,
@@ -166,6 +172,7 @@ describe('fetchServicesByClient', () => {
         siteId: 'si1',
         siteName: 'Sede Centro',
         name: 'Limpieza mañana',
+        weeksOfMonth: null,
         weekdays: [1, 2, 3, 4, 5],
         startTime: '08:00:00',
         endTime: '12:00:00',
@@ -360,5 +367,125 @@ describe('empleados fijos (AJ2-17)', () => {
       (error: unknown) =>
         isApiError(error) && error.hint === 'FIXED_EXCEEDS_STAFF',
     )
+  })
+})
+
+describe('repetición mensual (AJ3-05)', () => {
+  it('lee weeks_of_month como weeksOfMonth', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: { ...SERVICE_ROW, weeks_of_month: [1, 2] },
+        error: null,
+      }),
+    )
+    const result = await fetchServiceDetail('s1')
+    expect(result.weeksOfMonth).toEqual([1, 2])
+  })
+
+  it('escribe weeks_of_month al crear y editar', async () => {
+    const insert = vi.fn(() =>
+      makeChainable({ data: SERVICE_ROW, error: null }),
+    )
+    const update = vi.fn(() =>
+      makeChainable({ data: SERVICE_ROW, error: null }),
+    )
+    fromMock.mockReturnValue({ insert, update })
+
+    await createService({ ...FORM_INPUT, weeksOfMonth: [5] }, 'admin-1')
+    await updateService('s1', { ...FORM_INPUT, weeksOfMonth: null }, 'admin-1')
+
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({ weeks_of_month: [5] }),
+    )
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({ weeks_of_month: null }),
+    )
+  })
+
+  it('el check de semanas se traduce al español', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: null,
+        error: {
+          message:
+            'new row for relation "services" violates check constraint "services_weeks_of_month_check"',
+          code: '23514',
+        },
+      }),
+    )
+    await expect(createService(FORM_INPUT, 'admin-1')).rejects.toMatchObject({
+      message: 'Elegí al menos una semana del mes, sin repetir.',
+    })
+  })
+})
+
+describe('eliminar un servicio (AJ3-01)', () => {
+  it('service_delete_preview mapea la respuesta', async () => {
+    rpcMock.mockResolvedValue({
+      data: {
+        service_id: 's1',
+        service_name: 'Limpieza',
+        shifts_to_delete: 4,
+        assignments_to_delete: 6,
+        blocking_shifts: [
+          {
+            shift_id: 'sh1',
+            shift_date: '2026-10-05',
+            reasons: ['ATTENDANCE_RECORDS'],
+          },
+        ],
+        can_delete: false,
+      },
+      error: null,
+    })
+    const preview = await fetchServiceDeletePreview('s1')
+    expect(rpcMock).toHaveBeenCalledWith('service_delete_preview', {
+      p_service_id: 's1',
+    })
+    expect(preview.canDelete).toBe(false)
+    expect(preview.shiftsToDelete).toBe(4)
+    expect(preview.blockingShifts[0]).toEqual({
+      shiftId: 'sh1',
+      shiftDate: '2026-10-05',
+      reasons: ['ATTENDANCE_RECORDS'],
+    })
+  })
+
+  it('delete_service devuelve las cantidades borradas', async () => {
+    rpcMock.mockResolvedValue({
+      data: { service_id: 's1', shifts_deleted: 4, assignments_deleted: 6 },
+      error: null,
+    })
+    expect(await deleteService('s1')).toEqual({
+      serviceId: 's1',
+      shiftsDeleted: 4,
+      assignmentsDeleted: 6,
+    })
+  })
+
+  it.each([
+    ['FORBIDDEN', 'dueña o un administrador'],
+    ['SERVICE_NOT_FOUND', 'No encontramos el servicio'],
+    ['SERVICE_HAS_ATTENDANCE', 'fichajes o avisos de asistencia'],
+    ['SERVICE_HAS_SUPERVISIONS', 'supervisiones'],
+  ])('mapea el hint %s a un mensaje en español', async (hint, fragment) => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: { message: 'texto del servidor', code: 'P0001', hint },
+    })
+    await expect(deleteService('s1')).rejects.toSatisfy(
+      (error: unknown) =>
+        isApiError(error) &&
+        error.hint === hint &&
+        error.message.includes(fragment),
+    )
+  })
+
+  it('un error sin hint conocido cae en el genérico', async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: { message: 'boom', code: 'XX000' },
+    })
+    await expect(fetchServiceDeletePreview('s1')).rejects.toSatisfy(isApiError)
   })
 })

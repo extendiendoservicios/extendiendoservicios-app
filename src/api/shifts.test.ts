@@ -169,23 +169,55 @@ describe('fetchShiftForEdit', () => {
 })
 
 describe('fetchActiveServicesCountForMonth', () => {
-  it('cuenta con el rango del mes pedido', async () => {
+  function mockServices(rows: unknown[]) {
     fromMock.mockReturnValue({
       select: () => ({
         eq: () => ({
           is: () => ({
             lte: () => ({
-              or: () => Promise.resolve({ count: 3, error: null }),
+              or: () => Promise.resolve({ data: rows, error: null }),
             }),
           }),
         }),
       }),
     })
+  }
+
+  it('cuenta los servicios con alguna fecha en el mes pedido', async () => {
+    mockServices([
+      {
+        weekdays: [1],
+        weeks_of_month: null,
+        valid_from: '2026-01-01',
+        valid_to: null,
+      },
+      {
+        weekdays: [2],
+        weeks_of_month: [1, 2],
+        valid_from: '2026-01-01',
+        valid_to: null,
+      },
+    ])
 
     const count = await fetchActiveServicesCountForMonth(2026, 2)
 
     expect(fromMock).toHaveBeenCalledWith('services')
-    expect(count).toBe(3)
+    expect(count).toBe(2)
+  })
+
+  it('no cuenta un servicio de semanas que el mes no alcanza (AJ3-05)', async () => {
+    // Lunes de octubre 2026: 5, 12, 19 y 26. Vigente solo hasta el 20 y solo
+    // la última semana: ningún lunes cumple.
+    mockServices([
+      {
+        weekdays: [1],
+        weeks_of_month: [5],
+        valid_from: '2026-01-01',
+        valid_to: '2026-10-20',
+      },
+    ])
+
+    expect(await fetchActiveServicesCountForMonth(2026, 10)).toBe(0)
   })
 })
 

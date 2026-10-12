@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
+import { serviceHasDateInMonth } from '@/features/services/weeksOfMonth'
 import { fromPostgrestError } from './errors'
 
 /** Con «A terminar» la base ignora `p_end` (AJ2-10); el tipo generado lo pide igual. */
@@ -365,9 +366,9 @@ export async function fetchActiveServicesCountForMonth(
   const lastDay = new Date(year, month, 0).getDate()
   const to = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
 
-  const { count, error } = await supabase
+  const { data, error } = await supabase
     .from('services')
-    .select('id', { count: 'exact', head: true })
+    .select('weekdays, weeks_of_month, valid_from, valid_to')
     .eq('status', 'active')
     .is('deleted_at', null)
     .lte('valid_from', to)
@@ -376,7 +377,20 @@ export async function fetchActiveServicesCountForMonth(
   if (error) {
     throw fromPostgrestError(error)
   }
-  return count ?? 0
+  // AJ3-05: un servicio que se repite solo algunas semanas del mes puede no
+  // tener ninguna fecha en este mes; se cuenta solo si tiene alguna.
+  return (data ?? []).filter((service) =>
+    serviceHasDateInMonth(
+      {
+        weekdays: service.weekdays,
+        weeksOfMonth: service.weeks_of_month,
+        validFrom: service.valid_from,
+        validTo: service.valid_to,
+      },
+      year,
+      month,
+    ),
+  ).length
 }
 
 /**
