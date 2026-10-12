@@ -7,9 +7,10 @@ import { cn } from 'cn'
  * Table (base de `DataTable`, DS-008): `07` sección 2.3 — encabezado
  * `#FAFBFC` mayúsculas 10 px, celdas 12 px (`.tbl`/`.tbl thead
  * th`/`.tbl tbody td`, `Mockup/assets/ds.css`). `05` sección 7: con scroll
- * horizontal entre 1024 y 1279 px (sidebar colapsada) cuando la tabla no
- * entra — por eso el contenedor sigue siendo `overflow-x-auto` (por debajo
- * de 1024 px, `DataTable` ni siquiera renderiza esta tabla: usa `RowCard`).
+ * horizontal con la sidebar en pantalla (1024 px o más, completa de 236 px o
+ * contraída a íconos por la persona) cuando la tabla no entra — por eso el
+ * contenedor sigue siendo `overflow-x-auto` (por debajo de 1024 px,
+ * `DataTable` ni siquiera renderiza esta tabla: usa `RowCard`).
  */
 function Table({ className, ...props }: React.ComponentProps<'table'>) {
   return (

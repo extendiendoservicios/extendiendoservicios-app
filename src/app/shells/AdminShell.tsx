@@ -1,6 +1,12 @@
 import { useState, type ReactNode } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router'
-import { LogOut, MoreHorizontal, User } from 'lucide-react'
+import {
+  LogOut,
+  MoreHorizontal,
+  PanelLeftClose,
+  PanelLeftOpen,
+  User,
+} from 'lucide-react'
 import { cn } from 'cn'
 import { Avatar } from '@/components/Avatar'
 import { PwaUpdateBanner } from '@/components/PwaUpdateBanner'
@@ -37,6 +43,11 @@ import { BackButton } from './BackButton'
 import { isAdminRootPath, useGoBack } from './backNavigation'
 import { MobileBrandBar } from './MobileBrandBar'
 import {
+  readSidebarPreference,
+  writeSidebarPreference,
+  type SidebarPreference,
+} from './sidebarPreference'
+import {
   ADMIN_MORE_ITEMS,
   ADMIN_NAV_CONFIGURATION,
   ADMIN_NAV_OPERATION,
@@ -47,9 +58,11 @@ import {
 
 /**
  * `AdminShell` (DS-013): sidebar teal de 236 px con las ocho secciones de
- * P-121, colapsada a íconos entre 1024 y 1279 px, y tabbar inferior por
- * debajo de 1024 (`07_Design_System.md` sección 2.4,
- * `05_Pantallas_y_Navegacion.md` sección 7).
+ * P-121, completa por defecto desde 1024 px, y tabbar inferior por debajo
+ * de 1024 (`07_Design_System.md` sección 2.4,
+ * `05_Pantallas_y_Navegacion.md` sección 7). Con sidebar, un botón la fija
+ * abierta o contraída a íconos (60 px) y la elección se recuerda por
+ * usuario en el navegador (AJ3-07, `sidebarPreference.ts`).
  *
  * Layout de ruta: se monta como `element` de un grupo `/admin/*` en
  * `router.tsx`, dentro de `RequireRole`, y renderiza cada pantalla por
@@ -72,7 +85,7 @@ export function AdminShell({
 } = {}) {
   const location = useLocation()
   const navigate = useNavigate()
-  const { displayName, roles, signOut, profile } = useAuth()
+  const { displayName, roles, signOut, profile, userId } = useAuth()
   const handle = useRouteHandle()
   const [moreOpen, setMoreOpen] = useState(false)
   const goBack = useGoBack('/admin')
@@ -81,10 +94,20 @@ export function AdminShell({
   // `LoginPage` -- sin logo cargado, se sigue viendo el isotipo de `Images/`.
   const { branding } = useBranding()
 
-  // xl (1280px): sidebar completa. lg (1024px) a xl: colapsada a íconos.
-  // Por debajo de lg: tabbar en vez de sidebar (05 sección 7).
-  const isSidebarExpanded = useMediaQuery('(min-width: 1280px)')
+  // Desde lg (1024px): sidebar, completa por defecto. Por debajo de lg:
+  // tabbar en vez de sidebar (05 sección 7). La preferencia guardada de la
+  // persona (botón de la sidebar) pisa el automático en ambos sentidos.
   const showSidebar = useMediaQuery('(min-width: 1024px)')
+  const [preference, setPreference] = useState<SidebarPreference | null>(() =>
+    readSidebarPreference(userId),
+  )
+  const isSidebarExpanded = preference !== 'collapsed'
+
+  function toggleSidebar() {
+    const next: SidebarPreference = isSidebarExpanded ? 'collapsed' : 'expanded'
+    setPreference(next)
+    writeSidebarPreference(userId, next)
+  }
   const showTabbar = !showSidebar
   // Teclado virtual abierto (RESP-008): la tabbar se oculta mientras se escribe.
   const editing = useEditingField()
@@ -108,6 +131,7 @@ export function AdminShell({
       {showSidebar && (
         <AdminSidebar
           collapsed={!isSidebarExpanded}
+          onToggle={toggleSidebar}
           pathname={location.pathname}
           displayName={displayName}
           avatarPath={profile?.avatarPath ?? null}
@@ -252,6 +276,7 @@ export function AdminShell({
 
 function AdminSidebar({
   collapsed,
+  onToggle,
   pathname,
   displayName,
   avatarPath,
@@ -260,6 +285,8 @@ function AdminSidebar({
   logoAlt,
 }: {
   collapsed: boolean
+  /** Fija la barra abierta o contraída (AJ3-07). */
+  onToggle: () => void
   pathname: string
   displayName: string
   /** `profiles.avatar_path` propio (EMP-011). `null` sin foto cargada. */
@@ -340,6 +367,7 @@ function AdminSidebar({
         />
 
         <div className="mt-auto border-t border-white/16 pt-3">
+          <SidebarToggle collapsed={collapsed} onToggle={onToggle} />
           <div
             className={cn(
               'flex items-center gap-[10px] rounded-md px-2 py-[6px]',
@@ -368,6 +396,41 @@ function AdminSidebar({
         </div>
       </aside>
     </TooltipProvider>
+  )
+}
+
+function SidebarToggle({
+  collapsed,
+  onToggle,
+}: {
+  collapsed: boolean
+  onToggle: () => void
+}) {
+  const label = collapsed ? 'Expandir menú' : 'Contraer menú'
+  const Icon = collapsed ? PanelLeftOpen : PanelLeftClose
+  const button = (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={label}
+      aria-expanded={!collapsed}
+      className={cn(
+        'mb-2 flex items-center rounded-md text-[13px] text-white/82 outline-none hover:bg-white/10 hover:text-white focus-visible:ring-3 focus-visible:ring-ring',
+        collapsed
+          ? 'size-11 justify-center p-0'
+          : 'min-h-11 w-full gap-[11px] px-[11px] py-[9px]',
+      )}
+    >
+      <Icon aria-hidden="true" className="size-4 shrink-0" />
+      {!collapsed && <span className="truncate">Contraer menú</span>}
+    </button>
+  )
+  if (!collapsed) return button
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{button}</TooltipTrigger>
+      <TooltipContent side="right">{label}</TooltipContent>
+    </Tooltip>
   )
 }
 

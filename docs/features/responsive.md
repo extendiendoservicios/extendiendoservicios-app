@@ -11,14 +11,13 @@ Acá no se repite lo que ya está ahí: cada sección remite a la suya.
 Los breakpoints de Tailwind (`tokens.css`) son `sm` 480, `md` 768, `lg` 1024 y `xl` 1280 px. Los anchos
 **390 / 768 / 1024 / 1280** son los que se usan para diseñar y probar: 390 es un celular típico, y los
 otros tres coinciden con los cortes `md`, `lg` y `xl`. Los dos que cambian la estructura son 1024
-(`useMediaQuery('(min-width: 1024px)')`: shell, tablas, drawers) y 1280 (ancho de la sidebar).
+(`useMediaQuery('(min-width: 1024px)')`: shell, sidebar, tablas, drawers) y 1280 (ancho de diseño habitual de escritorio).
 
-| Ancho           | Qué se ve                                                                                                  |
-| --------------- | ---------------------------------------------------------------------------------------------------------- |
-| menos de 768 px | Celular. Tabbar, tarjetas, paneles de acción a pantalla completa, objetivos táctiles de 44 px.             |
-| 768 a 1023 px   | Tablet. Igual que el celular, pero los paneles de acción miden 452 px y los controles vuelven a su tamaño. |
-| 1024 a 1279 px  | Escritorio chico. Sidebar de 60 px (solo íconos), tablas, drawers de 452 px.                               |
-| 1280 px o más   | Escritorio. Sidebar de 236 px con texto.                                                                   |
+| Ancho           | Qué se ve                                                                                                                 |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| menos de 768 px | Celular. Tabbar, tarjetas, paneles de acción a pantalla completa, objetivos táctiles de 44 px.                            |
+| 768 a 1023 px   | Tablet. Igual que el celular, pero los paneles de acción miden 452 px y los controles vuelven a su tamaño.                |
+| 1024 px o más   | Escritorio. Sidebar de 236 px con texto por defecto (contraíble a 60 px con el botón del pie), tablas, drawers de 452 px. |
 
 Las vías de empleado y supervisor (`/app`, `/sup`) son móviles en todos los anchos: en escritorio se
 ven centradas en una columna de 480 px (`MobileShell`, P-016).
@@ -40,8 +39,12 @@ ven centradas en una columna de 480 px (`MobileShell`, P-016).
   activo cuando la pantalla actual es una de esas cuatro. Así las ocho secciones se alcanzan a 390 px
   sin scroll horizontal. La tabbar de empleado es Hoy, Fichar (el botón central) y Más; la de
   supervisor, Hoy, Supervisiones, Historial y Más (`src/app/shells/mobileNav.ts`).
-- **Sidebar.** 236 px desde 1280; entre 1024 y 1279 se colapsa a 60 px con solo el isotipo y los
-  íconos, con un tooltip por ítem.
+- **Sidebar.** Desde 1024 px se ve completa (236 px) por defecto. Un botón al pie («Contraer menú» /
+  «Expandir menú», `aria-expanded`) la fija abierta o contraída a 60 px con solo el isotipo y los
+  íconos (tooltip por ítem). La elección se recuerda por usuario en ese navegador (`localStorage`,
+  clave `es.sidebar.<id>`, `src/app/shells/sidebarPreference.ts`); sin preferencia manda el automático.
+  Se cambió el corte de 1280 a 1024 porque con la escala de Windows algunas pantallas trabajan a ~1090 px
+  (AJ3-07).
 - **Tablas a `RowCard`.** `DataTable` decide por ancho y cada pantalla le da el `RowCard` de sus filas;
   `RowCard` lleva `data-slot="row-card"` (la suite responsive lo usa para detectarlo). Detalle en
   `design-system.md`, "`DataTable` y `RowCard`".
