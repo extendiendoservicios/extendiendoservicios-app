@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { serviceFormSchema, serviceFormValuesToInput } from './schemas'
+import {
+  serviceFormSchema,
+  serviceFormValuesToInput,
+  weeksOfMonthFromFormValues,
+  weeksOfMonthSchema,
+  weeksOfMonthToFormValues,
+} from './schemas'
 
 /**
  * SERVICE-001: esquema zod de ADM-25, replica las restricciones de
@@ -150,5 +156,78 @@ describe('serviceFormValuesToInput', () => {
     const parsed = serviceFormSchema.parse(baseValues)
     const input = serviceFormValuesToInput(parsed)
     expect(input.worksOnHolidays).toBe(true)
+  })
+})
+
+describe('serviceFormSchema: repetición mensual (AJ3-05)', () => {
+  it('sin elegir nada se repite todas las semanas (null)', () => {
+    const result = serviceFormSchema.safeParse(baseValues)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(serviceFormValuesToInput(result.data).weeksOfMonth).toBeNull()
+    }
+  })
+
+  it('«Todas las semanas» manda null aunque haya casillas tildadas', () => {
+    const result = serviceFormSchema.safeParse({
+      ...baseValues,
+      weeksMode: 'all',
+      weeksOfMonth: ['1'],
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(serviceFormValuesToInput(result.data).weeksOfMonth).toBeNull()
+    }
+  })
+
+  it('«Solo algunas semanas» exige al menos una', () => {
+    const result = serviceFormSchema.safeParse({
+      ...baseValues,
+      weeksMode: 'some',
+      weeksOfMonth: [],
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0]?.path).toEqual(['weeksOfMonth'])
+      expect(result.error.issues[0]?.message).toBe(
+        'Elegí al menos una semana del mes.',
+      )
+    }
+  })
+
+  it('manda las semanas como números ordenados', () => {
+    const result = serviceFormSchema.safeParse({
+      ...baseValues,
+      weeksMode: 'some',
+      weeksOfMonth: ['5', '1', '2'],
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(serviceFormValuesToInput(result.data).weeksOfMonth).toEqual([
+        1, 2, 5,
+      ])
+    }
+  })
+
+  it('weeksOfMonthSchema replica el check: no vacío, sin repetidos, 1 a 5', () => {
+    expect(weeksOfMonthSchema.safeParse([1, 5]).success).toBe(true)
+    expect(weeksOfMonthSchema.safeParse([]).success).toBe(false)
+    expect(weeksOfMonthSchema.safeParse([1, 1]).success).toBe(false)
+    expect(weeksOfMonthSchema.safeParse([0]).success).toBe(false)
+    expect(weeksOfMonthSchema.safeParse([6]).success).toBe(false)
+  })
+
+  it('mapea desde y hacia la columna', () => {
+    expect(weeksOfMonthToFormValues(null)).toEqual({
+      weeksMode: 'all',
+      weeksOfMonth: [],
+    })
+    expect(weeksOfMonthToFormValues([2, 5])).toEqual({
+      weeksMode: 'some',
+      weeksOfMonth: ['2', '5'],
+    })
+    expect(
+      weeksOfMonthFromFormValues(weeksOfMonthToFormValues([2, 5])),
+    ).toEqual([2, 5])
   })
 })

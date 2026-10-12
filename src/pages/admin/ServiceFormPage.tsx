@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { OpenEndedToggle } from '@/features/shifts/components/OpenEndedToggle'
 import { OPEN_ENDED_LABEL } from '@/features/shifts/openEnded'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
@@ -47,8 +48,10 @@ import {
   WEEKDAY_OPTIONS,
   serviceFormSchema,
   serviceFormValuesToInput,
+  weeksOfMonthToFormValues,
   type ServiceFormValues,
 } from '@/features/services/schemas'
+import { WEEKS_OF_MONTH_OPTIONS } from '@/features/services/weeksOfMonth'
 
 /** `"YYYY-MM-DD"` (columna `date` de Postgres, o cadena vacía) → `Date` para `DatePicker`. */
 function isoDateToDate(isoDate: string | undefined): Date | undefined {
@@ -111,6 +114,8 @@ export default function ServiceFormPage() {
     siteId: '',
     name: '',
     weekdays: [],
+    weeksMode: 'all',
+    weeksOfMonth: [],
     startTime: '',
     endTime: '',
     openEnded: false,
@@ -143,6 +148,7 @@ export default function ServiceFormPage() {
             siteId: serviceQuery.data.siteId,
             name: serviceQuery.data.name,
             weekdays: serviceQuery.data.weekdays.map(String),
+            ...weeksOfMonthToFormValues(serviceQuery.data.weeksOfMonth),
             startTime: serviceQuery.data.startTime.slice(0, 5),
             endTime: serviceQuery.data.openEnded
               ? ''
@@ -169,6 +175,7 @@ export default function ServiceFormPage() {
 
   const watchedClientId = watch('clientId')
   const watchedOpenEnded = watch('openEnded') ?? false
+  const watchedWeeksMode = watch('weeksMode') ?? 'all'
   const watchedRequiredStaff = Number(watch('requiredStaff'))
   const fixedLimit =
     Number.isInteger(watchedRequiredStaff) &&
@@ -481,6 +488,81 @@ export default function ServiceFormPage() {
         {errors.weekdays && (
           <p className="text-[11px] text-danger">{errors.weekdays.message}</p>
         )}
+
+        {/* AJ3-05: repetición mensual. «Todas las semanas» guarda null. */}
+        <Field data-invalid={Boolean(errors.weeksOfMonth) || undefined}>
+          <FieldLabel>Se repite</FieldLabel>
+          <Controller
+            control={control}
+            name="weeksMode"
+            render={({ field }) => (
+              <RadioGroup
+                aria-label="Se repite"
+                value={field.value ?? 'all'}
+                onValueChange={field.onChange}
+                className="gap-2"
+              >
+                <label
+                  htmlFor="service-weeks-all"
+                  className="flex items-center gap-[6px] text-[13px] text-text"
+                >
+                  <RadioGroupItem id="service-weeks-all" value="all" />
+                  Todas las semanas
+                </label>
+                <label
+                  htmlFor="service-weeks-some"
+                  className="flex items-center gap-[6px] text-[13px] text-text"
+                >
+                  <RadioGroupItem id="service-weeks-some" value="some" />
+                  Solo algunas semanas del mes
+                </label>
+              </RadioGroup>
+            )}
+          />
+          {watchedWeeksMode === 'some' && (
+            <>
+              <Controller
+                control={control}
+                name="weeksOfMonth"
+                render={({ field }) => (
+                  <div
+                    role="group"
+                    aria-label="Semanas del mes"
+                    className="flex flex-wrap gap-3"
+                  >
+                    {WEEKS_OF_MONTH_OPTIONS.map((option) => {
+                      const value = String(option.value)
+                      const current = field.value ?? []
+                      return (
+                        <label
+                          key={value}
+                          htmlFor={`service-week-${value}`}
+                          className="flex items-center gap-[6px] text-[13px] text-text"
+                        >
+                          <Checkbox
+                            id={`service-week-${value}`}
+                            checked={current.includes(value)}
+                            onCheckedChange={() =>
+                              toggleWeekday(current, value, field.onChange)
+                            }
+                          />
+                          {option.label}
+                        </label>
+                      )
+                    })}
+                  </div>
+                )}
+              />
+              <p className="text-[12px] text-text-3">
+                Por ejemplo, lunes + 1.ª y 2.ª = los dos primeros lunes de cada
+                mes.
+              </p>
+            </>
+          )}
+          {errors.weeksOfMonth && (
+            <FieldError>{errors.weeksOfMonth.message}</FieldError>
+          )}
+        </Field>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field data-invalid={Boolean(errors.startTime) || undefined}>

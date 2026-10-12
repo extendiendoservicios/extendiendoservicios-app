@@ -2,6 +2,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as servicesApi from '@/api/services'
 import type { ServiceFormInput, ServiceStatus } from '@/api/services'
 import { clientsKeys } from '@/features/clients/queries'
+import { shiftsKeys } from '@/features/shifts/queries'
+import { planningKeys } from '@/features/planning/queries'
+import { attendanceKeys } from '@/features/attendance/queries'
 
 /**
  * Hooks de TanStack Query de ADM-21, ADM-22 y ADM-25 (SERVICE-001). Patrón
@@ -22,6 +25,8 @@ export const servicesKeys = {
   detail: (id: string) => [...servicesKeys.all, 'detail', id] as const,
   fixedEmployees: (id: string) =>
     [...servicesKeys.all, 'fixedEmployees', id] as const,
+  deletePreview: (id: string) =>
+    [...servicesKeys.all, 'deletePreview', id] as const,
   labels: (ids: string[]) => [...servicesKeys.all, 'labels', ids] as const,
 }
 
@@ -205,5 +210,35 @@ export function useServiceLabelsQuery(ids: string[]) {
     queryKey: servicesKeys.labels(ids),
     queryFn: () => servicesApi.fetchServiceLabels(ids),
     enabled: ids.length > 0,
+  })
+}
+
+// -------------------------------------------------------------------------
+// Eliminar un servicio (AJ3-01)
+// -------------------------------------------------------------------------
+
+/** Qué pasaría al borrar: siempre fresco, porque depende de fichajes que cambian. */
+export function useServiceDeletePreviewQuery(id: string | undefined) {
+  return useQuery({
+    queryKey: servicesKeys.deletePreview(id ?? ''),
+    queryFn: () => servicesApi.fetchServiceDeletePreview(id as string),
+    enabled: id != null,
+    staleTime: 0,
+    gcTime: 0,
+  })
+}
+
+/** Borra el servicio y sus turnos: invalida servicios, turnos, planificación, asistencia y clientes. */
+export function useDeleteServiceMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (serviceId: string) => servicesApi.deleteService(serviceId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: servicesKeys.all })
+      void queryClient.invalidateQueries({ queryKey: clientsKeys.all })
+      void queryClient.invalidateQueries({ queryKey: shiftsKeys.all })
+      void queryClient.invalidateQueries({ queryKey: planningKeys.all })
+      void queryClient.invalidateQueries({ queryKey: attendanceKeys.all })
+    },
   })
 }
