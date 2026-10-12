@@ -4263,10 +4263,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      set_my_high_contrast: {
-        Args: { p_enabled: boolean }
-        Returns: undefined
-      }
+      set_my_high_contrast: { Args: { p_enabled: boolean }; Returns: undefined }
       set_service_fixed_employees: {
         Args: { p_employee_ids: string[]; p_service_id: string }
         Returns: Json
