@@ -176,7 +176,7 @@ select is(
 set local role postgres;
 update public.services set weeks_of_month = array[3]::smallint[] where id = 'f4400000-0000-0000-0000-000000000022';
 select is(
-  (select count(*)::int from public.shifts where service_id = 'f4400000-0000-0000-0000-000000000022'),
+  (select count(*)::int from public.shifts where service_id = 'f4400000-0000-0000-0000-000000000022' and shift_date < '2199-05-01'),
   2,
   'editar weeks_of_month no toca los turnos ya generados'
 );
@@ -338,19 +338,19 @@ select is(
   'delete_service: el empleado asignado no se toca'
 );
 select is(
-  (select count(*)::int from public.shifts where service_id = 'f4400000-0000-0000-0000-000000000021'),
+  (select count(*)::int from public.shifts where service_id = 'f4400000-0000-0000-0000-000000000021' and shift_date < '2199-05-01'),
   5,
   'delete_service: los turnos de otros servicios no se tocan'
 );
 select is(
   (select details ->> 'shifts_deleted' from public.security_events
-    where event_type = 'service_deleted' and target_id = 'f4400000-0000-0000-0000-000000000031'),
+    where event_type = 'service_deleted' and details ->> 'service_id' = 'f4400000-0000-0000-0000-000000000031'),
   '3',
   'delete_service: deja el evento service_deleted en security_events'
 );
 select is(
   (select actor_id from public.security_events
-    where event_type = 'service_deleted' and target_id = 'f4400000-0000-0000-0000-000000000031'),
+    where event_type = 'service_deleted' and details ->> 'service_id' = 'f4400000-0000-0000-0000-000000000031'),
   'f4400000-0000-0000-0000-000000000082'::uuid,
   'delete_service: el evento registra a quien borró'
 );

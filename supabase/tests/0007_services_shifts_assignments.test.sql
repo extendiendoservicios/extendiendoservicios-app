@@ -40,9 +40,9 @@ select columns_are(
     'required_staff', 'valid_from', 'valid_to', 'works_on_holidays', 'min_hours_month',
     'max_hours_month', 'status', 'notes',
     'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
-    'open_ended'
+    'open_ended', 'weeks_of_month'
   ],
-  'services tiene exactamente las columnas de 04 sección 2.3 (más open_ended, 0037)'
+  'services tiene exactamente las columnas de 04 sección 2.3 (más open_ended, 0037, y weeks_of_month, 0044)'
 );
 
 select columns_are(
