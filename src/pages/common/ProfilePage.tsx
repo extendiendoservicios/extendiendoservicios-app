@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { LogOut, MapPin } from 'lucide-react'
+import { toast } from 'sonner'
 import { AvatarUpload } from '@/components/AvatarUpload'
 import {
   Card,
@@ -15,11 +16,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
 import { Field, FieldLabel, FieldError } from '@/components/ui/field'
+import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { supabase } from '@/lib/supabase'
 import { isApiError } from '@/api/errors'
 import { updatePersonName } from '@/api/users'
+import { setMyHighContrast } from '@/api/profile'
+import { setHighContrast } from '@/lib/contrast'
 import {
   updatePersonNameSchema,
   type UpdatePersonNameFormValues,
@@ -198,6 +202,24 @@ export default function ProfilePage() {
     setConsentBusy(false)
     if (!error) {
       await auth.refreshProfile()
+    }
+  }
+
+  // Alto contraste (AJ2-02): optimista; si la RPC falla vuelve atrás.
+  const [pendingContrast, setPendingContrast] = useState<boolean | null>(null)
+  const highContrast = pendingContrast ?? auth.profile?.highContrast ?? false
+
+  async function onToggleHighContrast(next: boolean) {
+    const previous = highContrast
+    setPendingContrast(next)
+    setHighContrast(next)
+    try {
+      await setMyHighContrast(next)
+      await auth.refreshProfile()
+    } catch {
+      setPendingContrast(null)
+      setHighContrast(previous)
+      toast.error('No pudimos guardar el cambio. Probá de nuevo.')
     }
   }
 
@@ -450,6 +472,36 @@ export default function ProfilePage() {
             </Button>
           )}
         </CardFooter>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Accesibilidad</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-0.5">
+              <label
+                htmlFor="profile-high-contrast"
+                className="text-[13px] font-semibold text-text"
+              >
+                Alto contraste
+              </label>
+              <p
+                id="profile-high-contrast-help"
+                className="text-[12px] text-text-2"
+              >
+                Colores más marcados y bordes más visibles para leer mejor.
+              </p>
+            </div>
+            <Switch
+              id="profile-high-contrast"
+              aria-describedby="profile-high-contrast-help"
+              checked={highContrast}
+              onCheckedChange={(next) => void onToggleHighContrast(next)}
+            />
+          </div>
+        </CardContent>
       </Card>
 
       <Button
