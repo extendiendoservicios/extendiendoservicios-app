@@ -1835,6 +1835,14 @@ firmas de `create_shift`/`update_shift_time` (0023, 0028) y dos valores de horas
 - **`generate_shifts(p_year, p_month)`**: a cada turno recién creado le asigna los fijos de su servicio. Lo que no se puede (licencia, no disponible, superposición, inactivo, dotación) se saltea sin frenar la generación. Resultado: las claves de siempre más `assigned` (cantidad de asignaciones hechas), `unassigned` (`[{ shift_id, shift_date, service_id, employee_id, employee_name, code, message }]`) y `past_without_fixed` (turnos creados que ya habían empezado: no reciben fijos, para no inventar inasistencias). Un turno que ya existía no se toca (idempotente: una segunda corrida da `assigned = 0` y `unassigned = []`).
 - Vistas: no hay `v_services`; el front lee los fijos con `from('service_fixed_employees')`.
 
+## Servicios: repetición mensual y eliminación (migración `0044`, P19.7 paquete B, AJ3-05 y AJ3-01)
+
+- **`services.weeks_of_month smallint[]`** (null = todas las semanas, lo de siempre). Valores 1 a 5, no vacío, sin repetidos (check `services_weeks_of_month_check` con `app.valid_weeks_of_month`). 1 a 4 = 1.ª a 4.ª ocurrencia de cada día de `weekdays` en el mes (día del mes 1-7, 8-14, 15-21, 22-28); **5 = la última ocurrencia** del mes (puede coincidir con la 4.ª: se genera un solo turno). Un día 29 a 31 solo cuadra con 5. Grants y RLS: los de `services` (escritura directa de O y A).
+- **`app.date_matches_weeks_of_month(p_date, p_weeks)`** inmutable: la regla de arriba.
+- **`generate_shifts`**: además del día de la semana exige `date_matches_weeks_of_month(fecha, weeks_of_month)`. Conserva todo lo de 0037, 0040 y 0041. Editar el servicio no toca los turnos ya generados.
+- **`service_delete_preview(p_service_id)`** y **`delete_service(p_service_id)`**: dueño y administrador (como editar servicios; ninguna capacidad lo protege). Borrado físico del servicio y de sus turnos con asignaciones, tareas del turno, observaciones y empleados fijos, en una transacción. Bloquean: fichajes (`attendance_records`), avisos de asistencia (`attendance_notices`) y supervisiones (con sus calificaciones) en cualquier turno del servicio. `SERVICE_NOT_FOUND`, `SERVICE_HAS_ATTENDANCE`, `SERVICE_HAS_SUPERVISIONS`, `FORBIDDEN`. Deja `service_deleted` en `security_events` (valor nuevo del enum; `target_id` = servicio; `details` con nombre, cliente, sede y cantidades).
+- `app.service_delete_blockers(p_service_id)`: interna, sin acceso para `authenticated`.
+
 ## Avisos y anuncios (migración `0042`, P19.6 paquete E, AJ2-03)
 
 Anuncios de administración para empleados y supervisores. No tiene relación con `notices` / `attendance_notices` (avisos de demora y ausencia del empleado): todo lo nuevo se llama `announcements`.
@@ -1922,6 +1930,7 @@ empleado y observación" más arriba. En F14 (P14.1, ABS-002, ATT-007):
 En F19 (P19.6 paquete D, AJ2-04 y AJ2-15): `0040_p19_6d_banco_y_observacion.sql` -- ver "Datos bancarios y observación del turno".
 En F19 (P19.6 paquete F, AJ2-17): `0041_p19_6f_asignar_al_crear.sql` -- ver "Asignar empleados al crear turnos".
 En F19 (P19.6 paquete E, AJ2-03): `0042_p19_6e_avisos_y_anuncios.sql` -- ver "Avisos y anuncios".
+En F19 (P19.7 paquete B, AJ3-05 y AJ3-01): `0044_p19_7_servicios.sql` -- ver "Servicios: repetición mensual y eliminación".
 
 ## Cómo escribir una migración
 

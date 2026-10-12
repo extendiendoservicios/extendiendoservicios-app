@@ -382,6 +382,16 @@ Detalle y decisiones en `docs/features/ajustes-reunion-9-oct-paquete-f.md`. Base
 | `services.fetchServiceLabels(ids)`                  | `from('services')`                    | Servicio, cliente y sede por id, para rotular los «sin asignar» de ADM-09.                                                                                                                                                                                                                                                                                                                                       |
 | `employees.fetchActiveEmployeeOptions()`            | `from('v_employees')`                 | Empleados con estado guardado `active`, por legajo: `{ profileId, name, employeeNumber }`. Alimenta el selector múltiple.                                                                                                                                                                                                                                                                                        |
 
+### Servicios: repetición mensual y eliminación (P19.7 paquete B — AJ3-05 y AJ3-01)
+
+Base: migración `0044`. Detalle en `docs/database.md`.
+
+| Función                                     | Canal                                         | Notas                                                                                                                                                                                                                                                         |
+| ------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Repetición mensual                          | `from('services')` (columna `weeks_of_month`) | `smallint[]`, null = todas las semanas. 1 a 4 = 1.ª a 4.ª ocurrencia del día en el mes; 5 = la última. No vacío, sin repetidos (violación = check `services_weeks_of_month_check`). `generate_shifts` la respeta; editarla no toca turnos ya generados.       |
+| `service_delete_preview(p_service_id uuid)` | RPC                                           | O, A. Devuelve `{ service_id, service_name, shifts_to_delete, assignments_to_delete, blocking_shifts: [{ shift_id, shift_date, reasons: ['ATTENDANCE_RECORDS' \| 'ATTENDANCE_NOTICES' \| 'SUPERVISIONS'] }], can_delete }`. `SERVICE_NOT_FOUND`, `FORBIDDEN`. |
+| `delete_service(p_service_id uuid)`         | RPC                                           | O, A. Borra el servicio y sus turnos. Devuelve `{ service_id, shifts_deleted, assignments_deleted }`. `SERVICE_NOT_FOUND`, `SERVICE_HAS_ATTENDANCE` (fichajes o avisos), `SERVICE_HAS_SUPERVISIONS`, `FORBIDDEN`. Los dos de bloqueo sugieren «Dar de baja».  |
+
 ### Avisos y anuncios de administración (AJ2-03, paquete E)
 
 `src/api/announcements.ts`. Nada que ver con `notices.ts` (avisos de demora y
