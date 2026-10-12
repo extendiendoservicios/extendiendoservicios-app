@@ -7,6 +7,30 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.18.0] - 2026-10-12
+
+Alto contraste (último punto de la reunión del 9 de octubre) y observaciones de uso de los dueños del 12 de octubre (P19.7).
+
+### Agregado
+
+- Tema de alto contraste: cada persona lo activa en «Mi perfil» → «Accesibilidad» y vale en administración y en el celular. El tema normal no cambia. Migración 0043.
+- Servicios: «Se repite» con «Todas las semanas» o «Solo algunas semanas del mes» (1.ª, 2.ª, 3.ª, 4.ª y última), por ejemplo los dos primeros lunes de cada mes. La generación del mes lo respeta. Migración 0044.
+- Servicios: «Eliminar» en el menú de cada servicio, para los cargados por duplicado. Borra el servicio y sus turnos después de avisar cuántos; si algún turno tiene fichajes, avisos de asistencia o supervisiones, no deja y sugiere «Dar de baja». Queda registrado en los eventos de seguridad. Migraciones 0044 y 0045.
+- Nuevo turno: «Repetir este turno» con la misma regla que los servicios, hasta una fecha de como máximo 3 meses, con aviso previo de cuántos turnos se crean y de los feriados que se saltean. Cada turno queda independiente. Migración 0046.
+- Ficha del empleado: la pestaña «Próximos turnos» muestra sus turnos asignados de los próximos 30 días.
+- Imprimibles: «Editar texto» en la vista previa para corregir la hoja antes de imprimir (los cambios no se guardan en la app).
+- Menú lateral: botón para contraerlo o expandirlo, que se recuerda por persona en cada navegador.
+
+### Cambiado
+
+- El menú lateral se ve completo desde 1024 px de ancho (antes, desde 1280 px; en pantallas con escala de Windows quedaba siempre en íconos).
+- Detalle del turno: la observación está siempre a la vista, arriba, con «Guardar» ahí mismo. El botón «Editar dotación y notas» pasa a «Editar dotación».
+
+### Corregido
+
+- Planificación semanal: ya no muestra a las personas quitadas de un turno.
+- Calendario: los botones de mes anterior y siguiente se anunciaban en inglés a los lectores de pantalla.
+
 ## [0.17.0] - 2026-10-10
 
 Ajustes de la reunión del 9 de octubre (P19.6).
