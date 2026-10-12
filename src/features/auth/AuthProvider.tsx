@@ -12,6 +12,7 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { decodeAccessTokenClaims, type Capability } from './claims'
 import type { Role } from './session'
+import { setHighContrast } from '@/lib/contrast'
 
 /**
  * `AuthProvider`/`useAuth` (AUTH-002, AUTH-008, AUTH-010): reemplaza la
@@ -126,6 +127,8 @@ export interface AuthProfile {
   avatarPath: string | null
   /** `null` = no dio su consentimiento (P-091). COM-04 lo muestra; EMP-06 (front-movil) lo pide. */
   locationConsentAt: string | null
+  /** Preferencia de alto contraste (AJ2-02); vale en administración y celular. */
+  highContrast: boolean
 }
 
 type AuthState =
@@ -181,7 +184,7 @@ async function fetchProfile(userId: string): Promise<AuthProfile | null> {
   const { data, error } = await supabase
     .from('profiles')
     .select(
-      'id, first_name, last_name, contact_email, phone, avatar_path, location_consent_at',
+      'id, first_name, last_name, contact_email, phone, avatar_path, location_consent_at, high_contrast',
     )
     .eq('id', userId)
     .maybeSingle()
@@ -199,6 +202,7 @@ async function fetchProfile(userId: string): Promise<AuthProfile | null> {
     phone: data.phone,
     avatarPath: data.avatar_path,
     locationConsentAt: data.location_consent_at,
+    highContrast: data.high_contrast,
   }
 }
 
@@ -296,6 +300,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
     return () => subscription.unsubscribe()
   }, [applySession])
+
+  // Alto contraste (AJ2-02): el perfil manda sobre lo guardado en el
+  // dispositivo; al cerrar sesión se quita para la próxima persona.
+  const profileHighContrast =
+    state.status === 'authenticated'
+      ? (state.profile?.highContrast ?? null)
+      : null
+  useEffect(() => {
+    if (state.status === 'unauthenticated') setHighContrast(false)
+    else if (profileHighContrast !== null) setHighContrast(profileHighContrast)
+  }, [state.status, profileHighContrast])
 
   const signOut = useCallback(async () => {
     // Cierre local (`06_API.md` sección 1: "Cerrar sesión | auth.signOut() |

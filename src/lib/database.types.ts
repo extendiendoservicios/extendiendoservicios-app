@@ -1554,6 +1554,7 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           first_name: string
+          high_contrast: boolean
           id: string
           is_active: boolean
           last_name: string
@@ -1570,6 +1571,7 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           first_name: string
+          high_contrast?: boolean
           id: string
           is_active?: boolean
           last_name: string
@@ -1586,6 +1588,7 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           first_name?: string
+          high_contrast?: boolean
           id?: string
           is_active?: boolean
           last_name?: string
@@ -3921,6 +3924,7 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           first_name: string
+          high_contrast: boolean
           id: string
           is_active: boolean
           last_name: string
@@ -4259,6 +4263,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      set_my_high_contrast: { Args: { p_enabled: boolean }; Returns: undefined }
       set_service_fixed_employees: {
         Args: { p_employee_ids: string[]; p_service_id: string }
         Returns: Json
@@ -4388,6 +4393,7 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           first_name: string
+          high_contrast: boolean
           id: string
           is_active: boolean
           last_name: string

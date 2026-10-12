@@ -145,6 +145,7 @@ describe('SupervisionAttendancePage (SUP-04)', () => {
           phone: null,
           avatarPath: null,
           locationConsentAt: '2026-09-01T00:00:00Z',
+          highContrast: false,
         },
       }),
     )
@@ -178,6 +179,7 @@ describe('SupervisionAttendancePage (SUP-04)', () => {
           phone: null,
           avatarPath: null,
           locationConsentAt: '2026-09-01T00:00:00Z',
+          highContrast: false,
         },
       }),
     )
@@ -218,6 +220,7 @@ describe('SupervisionAttendancePage (SUP-04)', () => {
           phone: null,
           avatarPath: null,
           locationConsentAt: '2026-09-01T00:00:00Z',
+          highContrast: false,
         },
       }),
     )

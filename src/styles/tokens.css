@@ -146,6 +146,75 @@
 }
 
 /*
+ * Alto contraste (AJ2-02, paquete G de P19.6): tema ADICIONAL, no reemplaza
+ * al normal. Cada persona lo activa en "Mi perfil" > Accesibilidad; la app
+ * pone `data-contrast="high"` en <html> (ver `src/lib/contrast.ts`).
+ * Sigue siendo fondo blanco (no es un tema oscuro). Objetivo WCAG AAA:
+ * texto >= 7:1, botones primarios >= 4,5:1 (cerca del color de marca); bordes oscuros bien visibles; foco grueso.
+ * Redefine solo los tokens crudos del bloque 1; los alias de shadcn y el
+ * mapeo de Tailwind los siguen por `var()`. Para sumar un token nuevo al
+ * tema, agregalo acá con el mismo nombre que en `:root`.
+ */
+:root[data-contrast='high'] {
+  --primary: #3a767c; /* más oscuro que el normal pero cerca; texto blanco encima: 5,2:1 */
+  --primary-700: #2f6368; /* hover: 6,8:1 */
+  --primary-800: #2f6368; /* texto de marca y enlaces sobre blanco: 6,8:1 */
+  --primary-100: #d9ebed;
+  --primary-050: #eef6f7;
+  --primary-200: #5f9097;
+  --dark: #0a0b10;
+
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --border: #4a5061;
+  --border-strong: #2b2f3b;
+  --text: #0a0b10;
+  --text-2: #1f2330;
+  --text-3: #363b4a;
+
+  --success: #17603c;
+  --success-bg: #dcf2e6;
+  --success-800: #0f4d2e;
+  --warning: #7a4f00;
+  --warning-bg: #fbe9c4;
+  --warning-800: #5e3d00;
+  --warning-border: #7a4f00;
+  --danger: #9b2229;
+  --danger-bg: #f8dcde;
+  --danger-800: #751d22;
+  --danger-border: #9b2229;
+  --info: #234e96;
+  --info-bg: #dce8f8;
+  --info-800: #173a73;
+
+  --avatar-a: var(--primary);
+  --avatar-b: #3f4f78;
+  --avatar-c: #5b4a7a;
+  --avatar-d: #7a5030;
+  --avatar-e: #35664f;
+  --avatar-f: #7a4560;
+
+  /* Foco: anillo sólido y oscuro (los componentes lo dibujan con 3 px). */
+  --ring: #0a0b10;
+  --ring-soft: rgba(10, 11, 16, 0.16);
+
+  --secondary: #e6e9ef;
+  --muted: #e6e9ef;
+  --table-header-bg: #eef0f4;
+
+  --sh-card: 0 0 0 1px #4a5061;
+  --sh-pop: 0 0 0 1px #2b2f3b, 0 8px 24px rgba(10, 11, 16, 0.25);
+  --sh-fab: 0 0 0 2px #ffffff, 0 4px 12px rgba(10, 11, 16, 0.4);
+  --sh-hero: 0 0 0 1px #4a5061;
+}
+
+/* Contorno extra en el foco por teclado, además del anillo de cada componente. */
+:root[data-contrast='high'] :focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/*
  * Mapeo a Tailwind CSS 4 (ADR-021: reemplaza a `tailwind.config.ts`).
  * `inline` porque los valores son `var()` que apuntan a los tokens de arriba
  * (no literales): así, cuando exista el tema oscuro, las utilidades de

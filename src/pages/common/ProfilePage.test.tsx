@@ -57,6 +57,11 @@ const {
 }))
 
 vi.mock('@/api/users', () => ({ updatePersonName: updatePersonNameMock }))
+const { setMyHighContrastMock } = vi.hoisted(() => ({
+  setMyHighContrastMock: vi.fn<(enabled: boolean) => Promise<void>>(),
+}))
+vi.mock('@/api/profile', () => ({ setMyHighContrast: setMyHighContrastMock }))
+vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
@@ -100,6 +105,7 @@ function authValue(overrides: Partial<AuthContextValue>): AuthContextValue {
       phone: null,
       avatarPath: null,
       locationConsentAt: null,
+      highContrast: false,
     },
     displayName: 'Carlos Medina',
     isPasswordRecovery: false,
@@ -306,6 +312,7 @@ describe('ProfilePage (COM-04)', () => {
           contactEmail: null,
           phone: null,
           avatarPath: null,
+          highContrast: false,
           locationConsentAt: '2026-08-13T11:00:00.000Z',
         },
       }),
