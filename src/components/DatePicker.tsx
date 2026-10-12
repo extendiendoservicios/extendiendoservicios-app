@@ -23,6 +23,10 @@ interface DatePickerProps {
   disabled?: boolean
   'aria-label'?: string
   className?: string
+  /** AJ3-08: primera fecha elegible (las anteriores quedan deshabilitadas). */
+  minDate?: Date
+  /** AJ3-08: última fecha elegible (las posteriores quedan deshabilitadas). */
+  maxDate?: Date
 }
 
 function DatePicker({
@@ -32,6 +36,8 @@ function DatePicker({
   disabled,
   'aria-label': ariaLabel,
   className,
+  minDate,
+  maxDate,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
 
@@ -61,6 +67,11 @@ function DatePicker({
           locale={es}
           weekStartsOn={1}
           selected={value}
+          defaultMonth={value ?? minDate}
+          disabled={[
+            ...(minDate ? [{ before: minDate }] : []),
+            ...(maxDate ? [{ after: maxDate }] : []),
+          ]}
           onSelect={(date) => {
             onValueChange(date)
             setOpen(false)

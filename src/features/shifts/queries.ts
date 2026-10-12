@@ -3,7 +3,11 @@ import * as shiftsApi from '@/api/shifts'
 import * as attendanceApi from '@/api/attendance'
 import * as supervisionsApi from '@/api/supervisions'
 import { groupShiftPeople } from '@/features/shifts/shiftPeople'
-import type { CreateShiftInput } from '@/api/shifts'
+import type {
+  CreateShiftInput,
+  CreateShiftSeriesInput,
+  ShiftSeriesRule,
+} from '@/api/shifts'
 
 /**
  * Hooks de TanStack Query de ADM-05, ADM-07 y ADM-09 (SHIFT-007). Patrón de
@@ -20,12 +24,17 @@ const LIST_POLLING_MS = 30_000
 /** Raíz de `planningKeys` (`features/planning/queries.ts`); literal acá para no importar en círculo. */
 const PLANNING_KEY_ROOT = ['planning'] as const
 
+/** Raíz de `attendanceKeys` (`features/attendance/queries.ts`); literal acá por la misma razón. */
+const ATTENDANCE_KEY_ROOT = ['attendance'] as const
+
 export const shiftsKeys = {
   all: ['shifts'] as const,
   byDate: (date: string) => [...shiftsKeys.all, 'byDate', date] as const,
   peopleByDate: (date: string) =>
     [...shiftsKeys.all, 'peopleByDate', date] as const,
   edit: (id: string) => [...shiftsKeys.all, 'edit', id] as const,
+  seriesPreview: (rule: ShiftSeriesRule) =>
+    [...shiftsKeys.all, 'seriesPreview', rule] as const,
   activeServicesForMonth: (year: number, month: number) =>
     [...shiftsKeys.all, 'activeServicesForMonth', year, month] as const,
 }
@@ -94,6 +103,43 @@ export function useCreateShiftMutation() {
       // AJ2-17: el turno puede traer asignaciones (planificación y personas del día).
       void queryClient.invalidateQueries({ queryKey: shiftsKeys.all })
       void queryClient.invalidateQueries({ queryKey: PLANNING_KEY_ROOT })
+    },
+  })
+}
+
+/**
+ * Vista previa de «Repetir este turno» (AJ3-08). Solo corre con la regla
+ * completa y válida (`rule` en `null` = sin consulta); el debounce lo aplica
+ * quien arma la regla. Sin polling: es un formulario.
+ */
+export function useShiftSeriesPreviewQuery(rule: ShiftSeriesRule | null) {
+  return useQuery({
+    queryKey: shiftsKeys.seriesPreview(
+      rule ?? {
+        from: '',
+        to: '',
+        weekdays: [],
+        weeksOfMonth: null,
+        worksOnHolidays: false,
+      },
+    ),
+    queryFn: () => shiftsApi.previewShiftSeries(rule as ShiftSeriesRule),
+    enabled: rule != null,
+    staleTime: 0,
+    retry: false,
+  })
+}
+
+/** Alta repetida de ADM-07 (AJ3-08): invalida turnos, planificación (incluye el tablero) y asistencia. */
+export function useCreateShiftSeriesMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CreateShiftSeriesInput) =>
+      shiftsApi.createShiftSeries(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: shiftsKeys.all })
+      void queryClient.invalidateQueries({ queryKey: PLANNING_KEY_ROOT })
+      void queryClient.invalidateQueries({ queryKey: ATTENDANCE_KEY_ROOT })
     },
   })
 }

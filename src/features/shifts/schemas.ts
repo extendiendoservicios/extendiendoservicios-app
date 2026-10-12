@@ -1,4 +1,9 @@
+import { addMonths, format } from 'date-fns'
 import { z } from 'zod'
+import {
+  weeksOfMonthFromFormValues,
+  weeksOfMonthSchema,
+} from '@/features/services/schemas'
 
 /**
  * Esquemas zod de ADM-07 (SHIFT-008): repiten las restricciones que ya
@@ -57,6 +62,28 @@ function checkEndTime(
   }
 }
 
+/** `"AAAA-MM-DD"` → `Date` local (sin pasar por UTC). */
+function parseIsoDate(isoDate: string): Date {
+  const [year, month, day] = isoDate.split('-').map(Number)
+  return new Date(year as number, (month as number) - 1, day)
+}
+
+/**
+ * Última fecha que admite «Repetir este turno» (AJ3-08): la primera + 3
+ * meses, igual que `create_shift_series` (`SERIES_RANGE_TOO_LONG`). Con
+ * `addMonths` un 31 de enero da el 30 de abril, como `interval '3 months'`.
+ */
+export function maxSeriesDate(fromIsoDate: string): string {
+  return format(addMonths(parseIsoDate(fromIsoDate), 3), 'yyyy-MM-dd')
+}
+
+/** Día de la semana (`'0'` domingo a `'6'` sábado) de una fecha; el que se tilda por defecto al repetir. */
+export function defaultWeekdayForDate(isoDate: string): string[] {
+  return /^\d{4}-\d{2}-\d{2}$/.test(isoDate)
+    ? [String(parseIsoDate(isoDate).getDay())]
+    : []
+}
+
 /** Alta puntual o edición de franja (ADM-07). `clientId`/`siteId`/`date` solo hacen falta al crear: en edición son de solo lectura. */
 export const shiftFormSchema = z
   .object({
@@ -69,8 +96,64 @@ export const shiftFormSchema = z
     requiredStaff: requiredStaffSchema,
     notes: z.string().trim().optional(),
     showInPrint: z.boolean().optional(),
+    // AJ3-08: «Repetir este turno». Apagado = alta de un solo turno.
+    repeat: z.boolean().optional(),
+    weekdays: z.array(z.string()).optional(),
+    weeksMode: z.enum(['all', 'some']).optional(),
+    weeksOfMonth: z.array(z.string()).optional(),
+    repeatTo: z.string().trim().optional(),
+    worksOnHolidays: z.boolean().optional(),
   })
   .superRefine(checkEndTime)
+  .superRefine((values, ctx) => {
+    if (!values.repeat) {
+      return
+    }
+    if ((values.weekdays ?? []).length === 0) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Elegí al menos un día de la semana.',
+        path: ['weekdays'],
+      })
+    }
+    if (values.weeksMode === 'some') {
+      const parsed = weeksOfMonthSchema.safeParse(
+        (values.weeksOfMonth ?? []).map(Number),
+      )
+      if (!parsed.success) {
+        ctx.addIssue({
+          code: 'custom',
+          message:
+            parsed.error.issues[0]?.message ??
+            'Elegí al menos una semana del mes.',
+          path: ['weeksOfMonth'],
+        })
+      }
+    }
+    if (!values.repeatTo) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Elegí hasta qué fecha se repite.',
+        path: ['repeatTo'],
+      })
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(values.date)) {
+      if (values.repeatTo < values.date) {
+        ctx.addIssue({
+          code: 'custom',
+          message:
+            'La fecha «hasta» tiene que ser igual o posterior a «desde».',
+          path: ['repeatTo'],
+        })
+      } else if (values.repeatTo > maxSeriesDate(values.date)) {
+        ctx.addIssue({
+          code: 'custom',
+          message:
+            'La repetición puede abarcar como máximo 3 meses desde la primera fecha.',
+          path: ['repeatTo'],
+        })
+      }
+    }
+  })
 
 export type ShiftFormValues = z.infer<typeof shiftFormSchema>
 
@@ -86,6 +169,55 @@ export function shiftFormValuesToCreateInput(values: ShiftFormValues) {
     requiredStaff: Number(values.requiredStaff),
     notes: values.notes?.trim() ? values.notes.trim() : null,
     showInPrint: values.showInPrint ?? true,
+  }
+}
+
+/**
+ * AJ3-08: regla de repetición del formulario (días, semanas del mes, hasta y
+ * feriados), lista para `preview_shift_series` / `create_shift_series`.
+ * `null` si «Repetir este turno» está apagado o la regla aún no está completa
+ * y dentro del tope (así la vista previa no consulta con datos inválidos).
+ */
+export function shiftFormValuesToSeriesRule(
+  values: Pick<
+    ShiftFormValues,
+    | 'repeat'
+    | 'date'
+    | 'repeatTo'
+    | 'weekdays'
+    | 'weeksMode'
+    | 'weeksOfMonth'
+    | 'worksOnHolidays'
+  >,
+) {
+  if (!values.repeat || !values.repeatTo) {
+    return null
+  }
+  const iso = /^\d{4}-\d{2}-\d{2}$/
+  if (
+    !iso.test(values.date) ||
+    !iso.test(values.repeatTo) ||
+    values.repeatTo < values.date ||
+    values.repeatTo > maxSeriesDate(values.date)
+  ) {
+    return null
+  }
+  const weekdays = [...new Set((values.weekdays ?? []).map(Number))].sort(
+    (a, b) => a - b,
+  )
+  if (weekdays.length === 0) {
+    return null
+  }
+  const weeksOfMonth = weeksOfMonthFromFormValues(values)
+  if (weeksOfMonth && !weeksOfMonthSchema.safeParse(weeksOfMonth).success) {
+    return null
+  }
+  return {
+    from: values.date,
+    to: values.repeatTo,
+    weekdays,
+    weeksOfMonth,
+    worksOnHolidays: Boolean(values.worksOnHolidays),
   }
 }
 
