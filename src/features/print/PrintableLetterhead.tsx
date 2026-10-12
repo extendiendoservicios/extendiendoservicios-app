@@ -40,7 +40,12 @@ function PrintableLetterhead({ title, issuedAt }: PrintableLetterheadProps) {
     : FALLBACK_LOGO_URL
 
   return (
-    <div className="print-keep-together mb-4 flex items-start justify-between gap-4 border-b-2 border-black pb-3">
+    // AJ3-03: el membrete no se edita en la vista previa (la hoja sí).
+    <div
+      contentEditable={false}
+      suppressContentEditableWarning
+      className="print-keep-together mb-4 flex items-start justify-between gap-4 border-b-2 border-black pb-3"
+    >
       <div className="flex min-w-0 items-center gap-3">
         {logoUrl && (
           <img

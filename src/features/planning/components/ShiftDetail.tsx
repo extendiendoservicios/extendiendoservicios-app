@@ -42,13 +42,14 @@ import { AssignmentTimeDialog } from './AssignmentTimeDialog'
 import { ReloadTasksDialog } from './ReloadTasksDialog'
 import { RemoveAssignmentDialog } from './RemoveAssignmentDialog'
 import { ShiftDetailsDialog } from './ShiftDetailsDialog'
+import { ShiftObservationSection } from './ShiftObservationSection'
 
 /**
  * ADM-06 "Detalle del turno" (ASSIGN-011, `05` línea 40): cabecera, dotación
  * (con edición ASSIGN-013), asignaciones vigentes (con asignar/quitar/franja
  * propia), tareas, supervisiones (lista con botón "Asignar supervisión",
- * SUP-012, `05` línea 40: "assign_supervision (ADM-14)") y notas
- * administrativas. `ShiftDetailPage` decide si esto se ve en un drawer o en
+ * SUP-012, `05` línea 40: "assign_supervision (ADM-14)") y la observación
+ * administrativa (siempre visible y editable ahí mismo, AJ3-06). `ShiftDetailPage` decide si esto se ve en un drawer o en
  * una página completa (ASSIGN-014); acá el contenido es el mismo para las
  * dos variantes.
  */
@@ -189,6 +190,31 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
         </Alert>
       )}
 
+      {/* AJ3-06: arriba, a la vista apenas se abre el turno (antes quedaba debajo de las tareas). */}
+      {canManage && isEditable ? (
+        <ShiftObservationSection
+          shiftId={shift.id}
+          requiredStaff={shift.requiredStaff}
+          notes={shift.notes}
+          showInPrint={shift.showInPrint}
+        />
+      ) : (
+        shift.notes && (
+          // Turno terminado o cancelado: la RPC ya no deja editarla, se muestra de solo lectura.
+          <section className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-5">
+            <h3 className="text-[13px] font-semibold text-text">Observación</h3>
+            <p className="text-[12.5px] whitespace-pre-wrap text-text-2">
+              {shift.notes}
+            </p>
+            <p className="text-[12px] text-text-3">
+              {shift.showInPrint === false
+                ? 'No se muestra en la impresión.'
+                : 'Se muestra en la impresión.'}
+            </p>
+          </section>
+        )
+      )}
+
       <section className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="flex items-center gap-2 text-[13px] font-semibold text-text">
@@ -203,7 +229,7 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
                 icon={Pencil}
                 onClick={() => setDetailsOpen(true)}
               >
-                Editar dotación y notas
+                Editar dotación
               </Button>
             )}
             {isEditable && (
@@ -378,20 +404,6 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
           </ul>
         )}
       </section>
-
-      {shift.notes && (
-        <section className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-5">
-          <h3 className="text-[13px] font-semibold text-text">Observación</h3>
-          <p className="text-[12.5px] whitespace-pre-wrap text-text-2">
-            {shift.notes}
-          </p>
-          <p className="text-[12px] text-text-3">
-            {shift.showInPrint === false
-              ? 'No se muestra en la impresión.'
-              : 'Se muestra en la impresión.'}
-          </p>
-        </section>
-      )}
 
       {canManage && (
         <AssignEmployeeSheet

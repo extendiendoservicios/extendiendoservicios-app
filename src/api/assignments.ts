@@ -238,6 +238,10 @@ function mapAssignmentBoardRow(row: AssignmentBoardRawRow): AssignmentBoardRow {
 export interface AssignmentsBoardRangeFilters {
   clientId?: string
   siteId?: string
+  /** AJ3-04: solo las asignaciones de este empleado (ficha, «Próximos turnos»). */
+  employeeId?: string
+  /** AJ3-04: descarta las asignaciones quitadas (`removed_at` no nulo). */
+  onlyActive?: boolean
 }
 
 /**
@@ -262,6 +266,12 @@ export async function fetchAssignmentsBoardByRange(
     }
     if (filters.siteId) {
       query = query.eq('site_id', filters.siteId)
+    }
+    if (filters.employeeId) {
+      query = query.eq('employee_id', filters.employeeId)
+    }
+    if (filters.onlyActive) {
+      query = query.is('removed_at', null)
     }
 
     return query
