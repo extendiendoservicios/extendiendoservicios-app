@@ -3924,6 +3924,7 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           first_name: string
+          high_contrast: boolean
           id: string
           is_active: boolean
           last_name: string
@@ -4395,6 +4396,7 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           first_name: string
+          high_contrast: boolean
           id: string
           is_active: boolean
           last_name: string
