@@ -73,6 +73,16 @@ const conCapacidad = (hint: Esperado): Pasan => ({ admin: hint, owner: hint })
 
 const U = INEXISTENTE
 
+/** Ningún perfil con sesión la puede llamar: el `execute` es solo de `service_role`. */
+const SOLO_SERVICIO: Pasan = {
+  empleado: '42501',
+  supervisor: '42501',
+  dual: '42501',
+  adminSin: '42501',
+  admin: '42501',
+  owner: '42501',
+}
+
 export const CASOS_RPC: CasoRpc[] = [
   // --- Usuarios, roles y capacidades -----------------------------------------------------------
   caso(
@@ -513,4 +523,151 @@ export const CASOS_RPC: CasoRpc[] = [
     },
     { variante: 'a sí mismo (CB-13)', cubre: ['RB-S04', 'CB-13'] },
   ),
+  // =============================================================================================
+  // P21.6c: al día con las migraciones 0036 a 0048. Alcance según los comentarios de cada
+  // migración (el Plan 06 todavía no documenta estas RPC): la puerta es `app.require_admin()` o
+  // `app.require_role('owner', 'admin')`; las llama el dueño y todo administrador, con o sin
+  // capacidades. Los argumentos son ids inexistentes o valores inválidos que se rechazan DESPUÉS
+  // de la puerta y no escriben nada.
+  // =============================================================================================
+
+  // --- Avisos y anuncios (0042, AJ2-03) ---------------------------------------------------------
+  caso(
+    'create_announcement',
+    () => ({ p_title: '', p_body: 'x', p_audience: 'all' }),
+    admins('TITLE_REQUIRED'),
+    { cubre: ['RB-X02', 'AJ2-03'] },
+  ),
+  caso(
+    'update_announcement',
+    () => ({ p_id: U, p_title: 't', p_body: 'x', p_audience: 'all' }),
+    admins('ANNOUNCEMENT_NOT_FOUND'),
+    { cubre: ['RB-X02', 'AJ2-03'] },
+  ),
+  caso(
+    'archive_announcement',
+    () => ({ p_id: U }),
+    admins('ANNOUNCEMENT_NOT_FOUND'),
+    {
+      cubre: ['RB-X02', 'AJ2-03'],
+    },
+  ),
+  // «Entendido»: lo llama cualquier persona con sesión; un anuncio inexistente no está disponible.
+  caso(
+    'acknowledge_announcement',
+    () => ({ p_id: U }),
+    {
+      empleado: 'ANNOUNCEMENT_NOT_AVAILABLE',
+      supervisor: 'ANNOUNCEMENT_NOT_AVAILABLE',
+      dual: 'ANNOUNCEMENT_NOT_AVAILABLE',
+      ...admins('ANNOUNCEMENT_NOT_AVAILABLE'),
+    },
+    { cubre: ['RB-X02', 'AJ2-03'] },
+  ),
+
+  // --- Datos bancarios (0040, AJ2-04) -----------------------------------------------------------
+  caso(
+    'set_client_bank_details',
+    () => ({ p_client_id: U }),
+    admins('CLIENT_NOT_FOUND'),
+    {
+      cubre: ['RB-X02', 'AJ2-04'],
+    },
+  ),
+  caso(
+    'set_employee_bank_details',
+    () => ({ p_profile_id: U }),
+    admins('PROFILE_NOT_FOUND'),
+    { cubre: ['RB-X02', 'AJ2-04'] },
+  ),
+
+  // --- Alto contraste (0043, AJ2-02): preferencia propia, cualquier persona con sesión ----------
+  // Con `null` se rechaza DESPUÉS de la puerta y no escribe; el caso que sí escribe (y repone) está
+  // en `91-modulos-p19`.
+  caso(
+    'set_my_high_contrast',
+    () => ({ p_enabled: null }),
+    {
+      empleado: 'VALIDATION_ERROR',
+      supervisor: 'VALIDATION_ERROR',
+      dual: 'VALIDATION_ERROR',
+      ...admins('VALIDATION_ERROR'),
+    },
+    { cubre: ['RB-X02', 'AJ2-02'] },
+  ),
+
+  // --- Servicios (0041, 0044, 0045) y turno repetido (0046) -------------------------------------
+  caso(
+    'set_service_fixed_employees',
+    () => ({ p_service_id: U, p_employee_ids: [] }),
+    admins('SERVICE_NOT_FOUND'),
+    { cubre: ['RB-X02', 'AJ2-17'] },
+  ),
+  caso(
+    'service_delete_preview',
+    () => ({ p_service_id: U }),
+    admins('SERVICE_NOT_FOUND'),
+    {
+      cubre: ['RB-X02'],
+    },
+  ),
+  caso(
+    'delete_service',
+    () => ({ p_service_id: U }),
+    admins('SERVICE_NOT_FOUND'),
+    {
+      cubre: ['RB-X02'],
+    },
+  ),
+  caso(
+    'preview_shift_series',
+    (c) => ({
+      p_from: c.fechaTurno,
+      p_to: '2000-01-01',
+      p_weekdays: [1],
+    }),
+    admins('SERIES_RANGE_INVALID'),
+    { cubre: ['RB-X02'] },
+  ),
+  caso(
+    'create_shift_series',
+    (c) => ({
+      p_client_id: U,
+      p_site_id: U,
+      p_start: '08:00',
+      p_end: '09:00',
+      p_required_staff: 1,
+      p_from: c.fechaTurno,
+      p_to: '2000-01-01',
+      p_weekdays: [1],
+    }),
+    admins('SERIES_RANGE_INVALID'),
+    { cubre: ['RB-X02'] },
+  ),
+
+  // --- Uso exclusivo de `service_role` (nadie con sesión las puede llamar) ----------------------
+  // `admin_create_user_records` y `admin_find_orphan_account` las cierra `revoke all` (0035/0036);
+  // la 0049 agrega el `revoke execute` explícito que el inventario estático busca.
+  caso(
+    'admin_find_orphan_account',
+    () => ({ p_email: 'e2e-perm@example.invalid' }),
+    SOLO_SERVICIO,
+  ),
+  caso(
+    'admin_create_user_records',
+    () => ({
+      p_profile_id: U,
+      p_actor_id: U,
+      p_first_name: 'e2e',
+      p_last_name: 'perm',
+      p_roles: ['employee'],
+    }),
+    SOLO_SERVICIO,
+  ),
+  caso('evidence_cleanup_candidates', () => ({ p_limit: 1 }), SOLO_SERVICIO, {
+    cubre: ['RB-X02', 'H-08'],
+  }),
+  caso('evidence_cleanup_mark', () => ({ p_ids: [] }), SOLO_SERVICIO, {
+    cubre: ['RB-X02', 'H-08'],
+  }),
 ]
