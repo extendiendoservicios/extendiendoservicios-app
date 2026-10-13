@@ -491,3 +491,38 @@ Carpeta propia, config propio (`playwright.ajustes.config.ts`: proyectos `deskto
 ### 11.4 Nocturno
 
 Job nuevo `ajustes` en `.github/workflows/e2e-app-dev.yml`, **después de `dueno`** (necesita a todos): el test de AJ-01 cambia y repone el nombre del dueño del seed, que es una sola cuenta que leen las demás suites. Sin él en el medio, el reparto de las tres tandas queda igual. Estimado 5 minutos más preparación.
+
+## 12. P21.6: módulo H, evidencia fotográfica (pruebas e2e y de permisos)
+
+Verificación independiente (qa-pruebas) de P21.1 (migración 0047), P21.2 (captura y compresión), P21.3 (celular) y P21.4 (administración). Rama `test/P21.6-evidencia`. Las decisiones del módulo (`H-01` a `H-18`, en `Docs/Plan_Maestro/modulos/H_evidencia_fotografica.md`) no tienen fila en `09_Trazabilidad.md`: cada test lleva el identificador `H-xx` (y `P-014`, `CB-15`, `CB-17` donde corresponde) en su rastro (`cubre(...)`, ahora admite `H-xx`).
+
+### 12.1 Qué hay
+
+| Archivo                                               | Proyecto / comando                                                          | Tests | Cubre                                                                                                                                                                                         |
+| ----------------------------------------------------- | --------------------------------------------------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tests/permissions/suite/90-evidencia.permissions.ts` | `pnpm test:permissions` (corre con el resto de la matriz)                   | 69    | `shift_media`, `v_shift_media`, bucket `evidence` y las seis RPC, por API directa: empleado, supervisor, administrador (con y sin capacidades), dueño y anónimo; lo que no pueden y lo que sí |
+| `tests/e2e/empleado/evidencia.empleado.ts`            | empleado, `--project=mobile` (390 px) y `webkit` (iPhone 14)                | 8     | EMP-07 (galería, cámara, contador, miniatura, quitar, topes, sede sin fotos, video largo, archivo inválido), EMP-10 y EMP-11                                                                  |
+| `tests/e2e/supervisor/evidencia.supervisor.ts`        | supervisor, `--project=mobile` y `webkit`                                   | 3     | SUP-03 y SUP-04 (subir, contador, miniatura), sede sin fotos, supervisión cancelada o «no realizada»                                                                                          |
+| `tests/e2e/admin/evidencia.admin.ts`                  | administración, `--project=chromium` (1280 px) y `edge`                     | 9     | ADM-32 (lista, filtros, visor, conservar, descarga, ZIP, medidor amarillo y rojo), ADM-06, ADM-15, ADM-25, ADM-07, ADM-02, `SERVICE_HAS_MEDIA`                                                |
+| `tests/e2e/admin/evidencia-plazos.admin.ts`           | administración, `--project=dueno-config` (aparte: edita `company_settings`) | 2     | ADM-28: plazos de vencimiento (dueño y administrador): rango 7 a 365, extremos, restauración                                                                                                  |
+
+Todas corren hoy en el nocturno sin tocar el workflow: el config de cada rol toma los archivos por extensión (`*.empleado.ts`, `*.supervisor.ts`, `*.admin.ts`) y la matriz de permisos toma `suite/**/*.permissions.ts`. `playwright.admin.config.ts` suma `evidencia-plazos.admin.ts` al proyecto `dueno-config` (junto a `configuracion-dueno.admin.ts`) y lo saca de `chromium` y `edge`.
+
+Cuentas: `empleado5` (que ningún otro archivo de empleado ni de administración asigna) y `supervisor2` suben la evidencia; la matriz usa `empleado1`, `empleado2`, `supervisor1` y `supervisor2` con sus turnos propios `e2e-perm-evid-…`.
+
+### 12.2 Piezas nuevas
+
+- `tests/fixtures/media.ts`: JPEG de estructura mínima para subir por API; `jpegDecodificable(page)` (JPEG que el navegador decodifica, dibujado con un canvas, para elegirlo en la galería); `webmCorto(page)` (WebM real de un segundo grabado en la página) y `simularDuracionDeVideo(page, s)` (la duración que lee la app, para el rechazo de más de 30 s sin grabar 30 s); `subirEvidencia` (begin, objetos y confirm con la sesión de una cuenta) y `objetosDeEvidencia`.
+- `deleteClientDeep` (`tests/fixtures/scenario.ts`) borra ahora los objetos del bucket `evidence` y las filas de `shift_media` de los turnos del cliente **antes** de borrar los turnos (`deleteShiftMedia`), y también `shift_observations` (la tabla de observaciones del turno de AJ2-15, que impedía borrar turnos editados desde la pantalla). `Scenario` acepta `requiresPhotos` (servicio y turno), `photosNotAllowed` (sede) y `serviceId` (turno suelto).
+- `tests/fixtures/verificar-residuos-evidencia.ts`: comprueba con la clave de servicio que no quedó nada (`node --env-file=.env.local tests/fixtures/verificar-residuos-evidencia.ts`).
+
+### 12.3 Decisiones de diseño de las pruebas
+
+- Los turnos son de hoy con la franja de todo el día (`00:00` a `23:59`): el inicio ya pasó y el fin todavía no a cualquier hora, y la ventana de subida (hasta 2 horas después del fin) sigue abierta pasada la medianoche. Los turnos de «todavía no abrió» y «ya cerró» van a +20 y -20 días. Como la base no admite que una persona tenga dos asignaciones superpuestas y la ventana de subida es la del **turno** (no la de la asignación), los varios turnos de hoy de una misma persona llevan ventanas de asignación que no se superponen (`assign_employee` con `p_start` y `p_end`).
+- La duración de 40 s del video largo se **simula** (`simularDuracionDeVideo`): el archivo es un WebM real de un segundo, lo único falso es la duración que informa el navegador. No hay forma confiable de generar un MP4 de 40 s sin ffmpeg. El camino feliz del video de la galería (recompresión con WebCodecs) no se prueba acá: se prueba en teléfono real (P21.7) y con los tests unitarios de P21.2.
+- El medidor amarillo y rojo se prueba interceptando solo la respuesta de `storage_usage` (hacerlo de verdad pediría 700 MB en `App_dev`); el resto de la pantalla es el real.
+- El WebKit de Playwright no tiene `canvas.captureStream`: el test del video largo se saltea en `webkit` con el motivo a la vista.
+
+### 12.4 Pendiente de esta matriz
+
+`00-inventario.permissions.ts` ya fallaba antes de este paquete por tablas, vistas y RPC de F19 (anuncios, datos bancarios, series de turnos, `delete_service`) y ahora suma lo del módulo H (`shift_media`, `v_shift_media`, seis RPC, bucket `evidence`, Edge Function `evidence-cleanup`). Los casos del módulo H están en `90-evidencia.permissions.ts`, pero el inventario espera que cada objeto figure en `tablas.ts`, `vistas.ts`, `rpc.ts`, `50-storage` y `60-edge`. Hace falta un paquete que reponga el inventario completo.
