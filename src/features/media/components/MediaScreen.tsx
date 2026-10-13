@@ -36,9 +36,9 @@ import {
   type MediaFilterState,
   type MediaStateFilter,
 } from '@/features/media/filters'
+import { extensionOfPath } from '@/api/mediaShared'
 import {
   describeCounts,
-  extensionOfPath,
   groupRowsByShift,
   toMediaItem,
 } from '@/features/media/items'

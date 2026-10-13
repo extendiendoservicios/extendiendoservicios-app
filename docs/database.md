@@ -2061,6 +2061,12 @@ Con `--linked`, la CLI entra con el rol temporal `cli_login_postgres`, que es mi
 `set local role postgres`. Sin esa línea, las aserciones fallan con
 `function plan(integer) does not exist`.
 
+## Migración 0048 (P21.6b): `v_shifts_board.requires_photos`
+
+`v_shifts_board` suma `requires_photos boolean` al final (copia de `shifts.requires_photos`, módulo H, H-07), para que
+el tablero y la planificación sepan si el turno exige fotos sin consultar `shifts`. Se recrea con la definición de 0040,
+`security_invoker = true` y sin cambios de grants. pgTAP: `0048_p21_6b_board_requires_photos.test.sql`.
+
 ## Tipos para el frontend
 
 `src/lib/database.types.ts` se genera con `pnpm db:types` (`supabase gen types --linked`) contra

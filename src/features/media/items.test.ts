@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import {
   daysUntil,
   describeCounts,
-  extensionOfPath,
   groupRowsByPerson,
   groupRowsByShift,
   isMissingPhotos,
@@ -10,6 +9,7 @@ import {
   shiftGroupTitle,
   toMediaItem,
 } from './items'
+import { extensionOfPath } from '@/api/mediaShared'
 import { mediaRow } from './testRows'
 
 describe('toMediaItem', () => {

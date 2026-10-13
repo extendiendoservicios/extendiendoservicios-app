@@ -1,6 +1,15 @@
 import { supabase } from '@/lib/supabase'
-import type { Database } from '@/lib/database.types'
 import { ApiError, fromPostgrestError } from './errors'
+import {
+  EVIDENCE_BUCKET,
+  extensionOfPath,
+  signEvidencePaths,
+  type MediaKind,
+  type SignedUrlMap,
+} from './mediaShared'
+
+export { EVIDENCE_BUCKET, extensionOfPath }
+export type { MediaKind, SignedUrlMap }
 
 /**
  * `src/api/mediaAdmin.ts` (módulo H, P21.4): la parte de administración de
@@ -13,10 +22,6 @@ import { ApiError, fromPostgrestError } from './errors'
  * - URL firmadas en lote (`createSignedUrls`) para miniaturas y originales.
  *   El bucket `evidence` es privado: nunca se arma una URL pública.
  */
-
-export type MediaKind = Database['public']['Enums']['media_kind']
-
-export const EVIDENCE_BUCKET = 'evidence'
 
 /** Vida de las URL de las miniaturas: la grilla se queda abierta un rato. */
 export const THUMB_URL_TTL_SECONDS = 30 * 60
@@ -271,9 +276,6 @@ export async function fetchShiftMediaBySupervision(
 // 2. URL firmadas en lote
 // -------------------------------------------------------------------------
 
-/** Mapa ruta -> URL firmada. Las rutas que no se pudieron firmar no aparecen. */
-export type SignedUrlMap = Map<string, string>
-
 /**
  * Firma varias rutas del bucket `evidence` en una sola llamada. Quita los
  * duplicados y las rutas vacías. Si Storage rechaza una ruta (por ejemplo,
@@ -283,28 +285,14 @@ export async function createEvidenceSignedUrls(
   paths: readonly string[],
   expiresInSeconds: number,
 ): Promise<SignedUrlMap> {
-  const unique = Array.from(new Set(paths.filter((path) => path !== '')))
-  const result: SignedUrlMap = new Map()
-  if (unique.length === 0) {
-    return result
-  }
-
-  const { data, error } = await supabase.storage
-    .from(EVIDENCE_BUCKET)
-    .createSignedUrls(unique, expiresInSeconds)
-
-  if (error) {
+  const { urls, failed } = await signEvidencePaths(paths, expiresInSeconds)
+  if (failed) {
     throw new ApiError(
       'No pudimos cargar las imágenes. Probá de nuevo en un momento.',
       null,
     )
   }
-  for (const item of data ?? []) {
-    if (item.path && item.signedUrl && !item.error) {
-      result.set(item.path, item.signedUrl)
-    }
-  }
-  return result
+  return urls
 }
 
 /** Miniaturas de las filas con archivo (las vencidas no tienen qué firmar). */

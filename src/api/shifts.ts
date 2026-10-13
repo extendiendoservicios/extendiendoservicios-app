@@ -78,6 +78,8 @@ export interface ShiftListRow {
   notes: string | null
   /** AJ2-15: casilla «mostrar en la impresión»; null si el turno no tiene observación. */
   showInPrint?: boolean | null
+  /** Módulo H: el turno pide fotos (viene de `v_shifts_board.requires_photos`). */
+  requiresPhotos?: boolean
 }
 
 export interface ShiftBoardRow {
@@ -104,6 +106,7 @@ export interface ShiftBoardRow {
   generated: boolean
   notes: string | null
   show_in_print: boolean | null
+  requires_photos: boolean | null
 }
 
 /**
@@ -136,11 +139,12 @@ export function mapShiftBoardRow(row: ShiftBoardRow): ShiftListRow {
     generated: row.generated,
     notes: row.notes,
     showInPrint: row.show_in_print,
+    requiresPhotos: row.requires_photos ?? false,
   }
 }
 
 export const SHIFT_BOARD_SELECT =
-  'id, client_id, client_legal_name, client_trade_name, site_id, site_name, site_city, shift_date, start_time, end_time, required_staff, status, display_status, assigned_count, present_count, finished_count, absent_count, delayed_count, open_ended, no_checkout_count, generated, notes, show_in_print'
+  'id, client_id, client_legal_name, client_trade_name, site_id, site_name, site_city, shift_date, start_time, end_time, required_staff, status, display_status, assigned_count, present_count, finished_count, absent_count, delayed_count, open_ended, no_checkout_count, generated, notes, show_in_print, requires_photos'
 
 /**
  * ADM-05 mínima (SHIFT-010): turnos de una fecha, ordenados por hora
@@ -197,15 +201,6 @@ export async function fetchShiftForEdit(id: string): Promise<ShiftEditRow> {
     throw fromPostgrestError(error)
   }
   const row = data as ShiftBoardRow
-  // `v_shifts_board` no trae `requires_photos` (módulo H): se lee de `shifts`.
-  const { data: photosData, error: photosError } = await supabase
-    .from('shifts')
-    .select('requires_photos')
-    .eq('id', id)
-    .single()
-  if (photosError) {
-    throw fromPostgrestError(photosError)
-  }
   return {
     id: row.id,
     clientId: row.client_id,
@@ -220,7 +215,7 @@ export async function fetchShiftForEdit(id: string): Promise<ShiftEditRow> {
     status: row.status,
     notes: row.notes,
     showInPrint: row.show_in_print,
-    requiresPhotos: photosData.requires_photos,
+    requiresPhotos: row.requires_photos ?? false,
   }
 }
 
