@@ -630,8 +630,12 @@ Se monta como `element` de la ruta `admin` en `router.tsx` (dentro de
   una sección — p. ej. "Clientes y sedes" también se resalta en
   `/admin/sedes/...` y `/admin/servicios/...`). Usuario al pie (avatar +
   nombre + rol, de `useSession()`).
-- Entre 1024 y 1279 px (`useMediaQuery('(min-width: 1024px)')` sin llegar a
-  `1280px`) la sidebar **colapsa a íconos de 60 px** con `Tooltip` (nuevo
+- Desde 1024 px (`useMediaQuery('(min-width: 1024px)')`) la sidebar se ve
+  **completa por defecto** (AJ3-07; antes el corte era 1280). Un botón al pie
+  («Contraer menú» / «Expandir menú», `aria-expanded`) la fija abierta o
+  **contraída a íconos de 60 px**; la elección se recuerda por usuario en el
+  navegador (`src/app/shells/sidebarPreference.ts`, `localStorage`). Contraída
+  lleva `Tooltip` (nuevo
   `aria-label` en el link para que el nombre siga siendo accesible aunque
   no se vea el texto). Por debajo de 1024 px la sidebar no se monta: en su
   lugar, **tabbar inferior** de 66 px con Hoy, Planificar, Asistencia,

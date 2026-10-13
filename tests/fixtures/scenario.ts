@@ -165,7 +165,6 @@ export class Scenario {
         start_time: franja.start,
         end_time: franja.end,
         required_staff: staff,
-        notes: `${E2E_PREFIX}turno de prueba`,
       })
       .select('id')
       .single()

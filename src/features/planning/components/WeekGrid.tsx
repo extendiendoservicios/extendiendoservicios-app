@@ -71,6 +71,8 @@ function WeekGrid() {
     {
       clientId: clientId !== 'all' ? clientId : undefined,
       siteId: siteId !== 'all' ? siteId : undefined,
+      // La vista trae también las quitadas (quedan para historia).
+      onlyActive: true,
     },
   )
   const assignmentsByEmployee = useMemo(

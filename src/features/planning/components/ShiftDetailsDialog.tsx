@@ -1,11 +1,10 @@
 import { useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
-import { ShiftObservationField } from '@/features/shifts/components/ShiftObservationField'
 import {
   Dialog,
   DialogContent,
@@ -16,16 +15,16 @@ import {
 import { isApiError } from '@/api/errors'
 import { useUpdateShiftDetailsMutation } from '@/features/planning/queries'
 import {
-  shiftDetailsFormValuesToInput,
   shiftDetailsSchema,
   type ShiftDetailsFormValues,
 } from '@/features/planning/schemas'
 
 /**
- * Edita la dotación y la observación de un turno existente
- * (ASSIGN-013, `06` sección 7: `update_shift_details`). Cierra el pendiente
- * de `12_Registro_de_Progreso.md`: hasta P11.2 no existía ninguna RPC que
- * permitiera tocar `required_staff`/`notes` de un turno ya creado.
+ * Edita la dotación de un turno existente (ASSIGN-013, `06` sección 7:
+ * `update_shift_details`). AJ3-06: la observación se edita ahora en la
+ * sección «Observación» del detalle (`ShiftObservationSection`); acá se
+ * reenvía la actual tal cual porque la RPC siempre reemplaza `p_notes` y, si
+ * no se mandara, borraría la observación al cambiar solo la dotación.
  */
 interface ShiftDetailsDialogProps {
   shiftId: string
@@ -49,7 +48,6 @@ function ShiftDetailsDialog({
 
   const {
     register,
-    control,
     handleSubmit,
     reset,
     formState: { errors },
@@ -57,8 +55,6 @@ function ShiftDetailsDialog({
     resolver: zodResolver(shiftDetailsSchema),
     defaultValues: {
       requiredStaff: String(currentRequiredStaff),
-      notes: currentNotes ?? '',
-      showInPrint: currentShowInPrint ?? true,
     },
   })
 
@@ -68,17 +64,19 @@ function ShiftDetailsDialog({
     if (open) {
       reset({
         requiredStaff: String(currentRequiredStaff),
-        notes: currentNotes ?? '',
-        showInPrint: currentShowInPrint ?? true,
       })
     }
   }
 
   async function onSubmit(values: ShiftDetailsFormValues) {
-    const input = shiftDetailsFormValuesToInput(values)
     try {
-      await updateShiftDetails.mutateAsync({ shiftId, ...input })
-      toast.success('Actualizamos la dotación y la observación del turno.')
+      await updateShiftDetails.mutateAsync({
+        shiftId,
+        requiredStaff: Number(values.requiredStaff),
+        notes: currentNotes,
+        showInPrint: currentShowInPrint ?? undefined,
+      })
+      toast.success('Actualizamos la dotación del turno.')
       onOpenChange(false)
     } catch (error) {
       toast.error(
@@ -91,7 +89,7 @@ function ShiftDetailsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Dotación y observación del turno</DialogTitle>
+          <DialogTitle>Dotación del turno</DialogTitle>
         </DialogHeader>
         <form
           onSubmit={(event) => void handleSubmit(onSubmit)(event)}
@@ -112,19 +110,6 @@ function ShiftDetailsDialog({
               <FieldError>{errors.requiredStaff.message}</FieldError>
             )}
           </Field>
-
-          <Controller
-            control={control}
-            name="showInPrint"
-            render={({ field }) => (
-              <ShiftObservationField
-                id="shift-details"
-                textareaProps={register('notes')}
-                showInPrint={field.value ?? true}
-                onShowInPrintChange={field.onChange}
-              />
-            )}
-          />
 
           <DialogFooter>
             <Button

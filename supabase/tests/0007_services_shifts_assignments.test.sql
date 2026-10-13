@@ -40,9 +40,9 @@ select columns_are(
     'required_staff', 'valid_from', 'valid_to', 'works_on_holidays', 'min_hours_month',
     'max_hours_month', 'status', 'notes',
     'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
-    'open_ended'
+    'open_ended', 'weeks_of_month'
   ],
-  'services tiene exactamente las columnas de 04 sección 2.3 (más open_ended, 0037)'
+  'services tiene exactamente las columnas de 04 sección 2.3 (más open_ended, 0037, y weeks_of_month, 0044)'
 );
 
 select columns_are(
@@ -52,9 +52,9 @@ select columns_are(
     'required_staff', 'status', 'generated', 'checklist_template_id',
     'cancelled_at', 'cancelled_by', 'cancel_reason', 'notes',
     'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
-    'starts_at', 'ends_at', 'open_ended'
+    'starts_at', 'ends_at', 'open_ended', 'series_id'
   ],
-  'shifts tiene exactamente las columnas de 04 sección 2.3 (más starts_at/ends_at generadas y open_ended, 0037)'
+  'shifts tiene exactamente las columnas de 04 sección 2.3 (más starts_at/ends_at generadas, open_ended, 0037, y series_id, 0046)'
 );
 
 select columns_are(

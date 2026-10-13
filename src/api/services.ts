@@ -63,6 +63,12 @@ function mapWriteError(error: {
         'INVALID_WEEKDAYS',
       )
     }
+    if (error.message.includes('services_weeks_of_month_check')) {
+      return new ApiError(
+        'Elegí al menos una semana del mes, sin repetir.',
+        'VALIDATION_ERROR',
+      )
+    }
     if (error.message.includes('services_time_range_check')) {
       return new ApiError(
         'La hora de fin tiene que ser posterior a la de inicio.',
@@ -94,6 +100,8 @@ export interface ServiceSummary {
   siteName: string
   name: string
   weekdays: number[]
+  /** AJ3-05: semanas del mes en que se presta (1 a 4, 5 = la última); `null` = todas. */
+  weeksOfMonth: number[] | null
   startTime: string
   endTime: string
   /** AJ2-10: servicio «A terminar» (el fin guardado, 23:59, no se muestra). */
@@ -110,6 +118,7 @@ interface ServiceSummaryRow {
   site_id: string
   name: string
   weekdays: number[]
+  weeks_of_month: number[] | null
   start_time: string
   end_time: string
   open_ended: boolean
@@ -128,6 +137,7 @@ function mapServiceSummaryRow(row: ServiceSummaryRow): ServiceSummary {
     siteName: row.sites?.name ?? '',
     name: row.name,
     weekdays: row.weekdays,
+    weeksOfMonth: row.weeks_of_month,
     startTime: row.start_time,
     endTime: row.end_time,
     openEnded: row.open_ended,
@@ -139,7 +149,7 @@ function mapServiceSummaryRow(row: ServiceSummaryRow): ServiceSummary {
 }
 
 const SERVICE_SUMMARY_SELECT =
-  'id, client_id, site_id, name, weekdays, start_time, end_time, open_ended, required_staff, valid_from, valid_to, status, sites(name)'
+  'id, client_id, site_id, name, weekdays, weeks_of_month, start_time, end_time, open_ended, required_staff, valid_from, valid_to, status, sites(name)'
 
 /** Pestaña "Servicios" de ADM-21 (`06` sección 6: "Listar por cliente o sede"). */
 export async function fetchServicesByClient(
@@ -189,6 +199,8 @@ export interface ServiceDetail {
   siteName: string
   name: string
   weekdays: number[]
+  /** AJ3-05: semanas del mes en que se presta (1 a 4, 5 = la última); `null` = todas. */
+  weeksOfMonth: number[] | null
   startTime: string
   endTime: string
   openEnded: boolean
@@ -210,6 +222,7 @@ interface ServiceRowWithNames {
   site_id: string
   name: string
   weekdays: number[]
+  weeks_of_month: number[] | null
   start_time: string
   end_time: string
   open_ended: boolean
@@ -236,6 +249,7 @@ function mapServiceDetailRow(row: ServiceRowWithNames): ServiceDetail {
     siteName: row.sites?.name ?? '',
     name: row.name,
     weekdays: row.weekdays,
+    weeksOfMonth: row.weeks_of_month,
     startTime: row.start_time,
     endTime: row.end_time,
     openEnded: row.open_ended,
@@ -273,6 +287,8 @@ export interface ServiceFormInput {
   siteId: string
   name: string
   weekdays: number[]
+  /** AJ3-05: semanas del mes en que se presta (1 a 4, 5 = la última); `null` = todas. */
+  weeksOfMonth: number[] | null
   startTime: string
   /** Con `openEnded` se ignora: la base fija el fin en 23:59 (AJ2-10). */
   endTime: string | null
@@ -299,6 +315,7 @@ export async function createService(
       site_id: input.siteId,
       name: input.name,
       weekdays: input.weekdays,
+      weeks_of_month: input.weeksOfMonth,
       start_time: input.startTime,
       end_time: input.openEnded ? OPEN_ENDED_WIRE_END : (input.endTime ?? ''),
       open_ended: input.openEnded,
@@ -339,6 +356,7 @@ export async function updateService(
       site_id: input.siteId,
       name: input.name,
       weekdays: input.weekdays,
+      weeks_of_month: input.weeksOfMonth,
       start_time: input.startTime,
       end_time: input.openEnded ? OPEN_ENDED_WIRE_END : (input.endTime ?? ''),
       open_ended: input.openEnded,
@@ -458,4 +476,115 @@ export async function fetchServiceLabels(
     clientName: row.clients?.trade_name ?? row.clients?.legal_name ?? '',
     siteName: row.sites?.name ?? '',
   }))
+}
+
+// -------------------------------------------------------------------------
+// 6. Eliminar un servicio (AJ3-01)
+// -------------------------------------------------------------------------
+
+export type ServiceDeleteBlockReason =
+  'ATTENDANCE_RECORDS' | 'ATTENDANCE_NOTICES' | 'SUPERVISIONS'
+
+export interface ServiceDeletePreview {
+  serviceId: string
+  serviceName: string
+  shiftsToDelete: number
+  assignmentsToDelete: number
+  /** Turnos que impiden borrar, con sus motivos. Vacío = se puede borrar. */
+  blockingShifts: {
+    shiftId: string
+    shiftDate: string
+    reasons: ServiceDeleteBlockReason[]
+  }[]
+  canDelete: boolean
+}
+
+/** Mensajes en español de los errores de `service_delete_preview` y `delete_service`. */
+const DELETE_ERROR_MESSAGES: Record<string, string> = {
+  FORBIDDEN: 'Solo la dueña o un administrador puede eliminar servicios.',
+  SERVICE_NOT_FOUND:
+    'No encontramos el servicio. Puede que ya se haya eliminado.',
+  SERVICE_HAS_ATTENDANCE:
+    'No se puede eliminar: hay turnos con fichajes o avisos de asistencia. Dalo de baja en su lugar.',
+  SERVICE_HAS_SUPERVISIONS:
+    'No se puede eliminar: hay turnos con supervisiones. Dalo de baja en su lugar.',
+}
+
+/** Pasa el error de las RPC de eliminación a `ApiError`, con el mensaje en español de cada `hint`. */
+export function mapServiceDeleteError(error: {
+  code?: string | null
+  message: string
+  hint?: string | null
+}): ApiError {
+  const mapped = error.hint ? DELETE_ERROR_MESSAGES[error.hint] : undefined
+  if (mapped && error.hint) {
+    return new ApiError(mapped, error.hint)
+  }
+  return fromPostgrestError(error)
+}
+
+/** Qué pasaría al borrar (no modifica nada). Dueño y administrador. */
+export async function fetchServiceDeletePreview(
+  serviceId: string,
+): Promise<ServiceDeletePreview> {
+  const { data, error } = await supabase.rpc('service_delete_preview', {
+    p_service_id: serviceId,
+  })
+
+  if (error) {
+    throw mapServiceDeleteError(error)
+  }
+  const payload = data as {
+    service_id: string
+    service_name: string
+    shifts_to_delete: number
+    assignments_to_delete: number
+    blocking_shifts: {
+      shift_id: string
+      shift_date: string
+      reasons: ServiceDeleteBlockReason[]
+    }[]
+    can_delete: boolean
+  }
+  return {
+    serviceId: payload.service_id,
+    serviceName: payload.service_name,
+    shiftsToDelete: payload.shifts_to_delete,
+    assignmentsToDelete: payload.assignments_to_delete,
+    blockingShifts: (payload.blocking_shifts ?? []).map((shift) => ({
+      shiftId: shift.shift_id,
+      shiftDate: shift.shift_date,
+      reasons: shift.reasons,
+    })),
+    canDelete: payload.can_delete,
+  }
+}
+
+export interface ServiceDeleteResult {
+  serviceId: string
+  shiftsDeleted: number
+  assignmentsDeleted: number
+}
+
+/** Borra el servicio y sus turnos. Dueño y administrador. */
+export async function deleteService(
+  serviceId: string,
+): Promise<ServiceDeleteResult> {
+  const { data, error } = await supabase.rpc('delete_service', {
+    p_service_id: serviceId,
+  })
+
+  if (error) {
+    throw mapServiceDeleteError(error)
+  }
+  const payload = data as {
+    service_id: string
+    shifts_deleted: number
+    assignments_deleted: number
+  }
+  return {
+    serviceId: payload.service_id,
+    shiftsDeleted: payload.shifts_deleted,
+    assignmentsDeleted: payload.assignments_deleted,
+  }
 }

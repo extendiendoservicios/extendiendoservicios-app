@@ -7,7 +7,7 @@
 //  - sin scroll horizontal (`scrollWidth <= innerWidth`);
 //  - por debajo de 1024 px: tabbar (Hoy, Planificar, Asistencia, Supervisiones y Más), sin
 //    sidebar, y ninguna tabla visible (RESP-005: las listas son tarjetas);
-//  - desde 1024 px: sidebar (60 px hasta 1279, 236 px desde 1280) y sin tabbar;
+//  - desde 1024 px: sidebar completa de 236 px (AJ3-07: sin preferencia guardada) y sin tabbar;
 //  - en los listados con datos del escenario, tarjetas (RowCard) en móvil.
 // Guarda una captura de página completa por pantalla y ancho.
 
@@ -196,7 +196,7 @@ export function defineScreenSuite(
                   shot,
                 )
               } else {
-                const expectedWidth = width >= 1280 ? 236 : 60
+                const expectedWidth = 236
                 if (shell.sidebarWidth !== expectedWidth) {
                   note(
                     width,

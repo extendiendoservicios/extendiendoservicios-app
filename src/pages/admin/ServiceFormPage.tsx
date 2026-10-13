@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import { Checkbox } from '@/components/ui/checkbox'
 import { OpenEndedToggle } from '@/features/shifts/components/OpenEndedToggle'
 import { OPEN_ENDED_LABEL } from '@/features/shifts/openEnded'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
@@ -44,11 +43,12 @@ import {
 } from '@/features/services/queries'
 import {
   SERVICE_STATUS_OPTIONS,
-  WEEKDAY_OPTIONS,
   serviceFormSchema,
   serviceFormValuesToInput,
+  weeksOfMonthToFormValues,
   type ServiceFormValues,
 } from '@/features/services/schemas'
+import { RepeatFields } from '@/features/services/components/RepeatFields'
 
 /** `"YYYY-MM-DD"` (columna `date` de Postgres, o cadena vacía) → `Date` para `DatePicker`. */
 function isoDateToDate(isoDate: string | undefined): Date | undefined {
@@ -111,6 +111,8 @@ export default function ServiceFormPage() {
     siteId: '',
     name: '',
     weekdays: [],
+    weeksMode: 'all',
+    weeksOfMonth: [],
     startTime: '',
     endTime: '',
     openEnded: false,
@@ -143,6 +145,7 @@ export default function ServiceFormPage() {
             siteId: serviceQuery.data.siteId,
             name: serviceQuery.data.name,
             weekdays: serviceQuery.data.weekdays.map(String),
+            ...weeksOfMonthToFormValues(serviceQuery.data.weeksOfMonth),
             startTime: serviceQuery.data.startTime.slice(0, 5),
             endTime: serviceQuery.data.openEnded
               ? ''
@@ -196,18 +199,6 @@ export default function ServiceFormPage() {
   function handleClientChange(value: string) {
     setValue('clientId', value, { shouldValidate: true, shouldDirty: true })
     setValue('siteId', '', { shouldValidate: true, shouldDirty: true })
-  }
-
-  function toggleWeekday(
-    current: string[],
-    value: string,
-    onChange: (next: string[]) => void,
-  ) {
-    onChange(
-      current.includes(value)
-        ? current.filter((day) => day !== value)
-        : [...current, value],
-    )
   }
 
   async function onSubmit(values: ServiceFormValues) {
@@ -457,30 +448,32 @@ export default function ServiceFormPage() {
         <Controller
           control={control}
           name="weekdays"
-          render={({ field }) => (
-            <div className="flex flex-wrap gap-3">
-              {WEEKDAY_OPTIONS.map((option) => (
-                <label
-                  key={option.value}
-                  htmlFor={`service-weekday-${option.value}`}
-                  className="flex items-center gap-[6px] text-[13px] text-text"
-                >
-                  <Checkbox
-                    id={`service-weekday-${option.value}`}
-                    checked={field.value.includes(option.value)}
-                    onCheckedChange={() =>
-                      toggleWeekday(field.value, option.value, field.onChange)
-                    }
-                  />
-                  {option.label}
-                </label>
-              ))}
-            </div>
+          render={({ field: weekdaysField }) => (
+            <Controller
+              control={control}
+              name="weeksMode"
+              render={({ field: modeField }) => (
+                <Controller
+                  control={control}
+                  name="weeksOfMonth"
+                  render={({ field: weeksField }) => (
+                    <RepeatFields
+                      idPrefix="service"
+                      weekdays={weekdaysField.value}
+                      onWeekdaysChange={weekdaysField.onChange}
+                      weeksMode={modeField.value ?? 'all'}
+                      onWeeksModeChange={modeField.onChange}
+                      weeksOfMonth={weeksField.value ?? []}
+                      onWeeksOfMonthChange={weeksField.onChange}
+                      weekdaysError={errors.weekdays?.message}
+                      weeksOfMonthError={errors.weeksOfMonth?.message}
+                    />
+                  )}
+                />
+              )}
+            />
           )}
         />
-        {errors.weekdays && (
-          <p className="text-[11px] text-danger">{errors.weekdays.message}</p>
-        )}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field data-invalid={Boolean(errors.startTime) || undefined}>

@@ -59,9 +59,8 @@ vi.mock('@/app/PwaUpdateProvider', () => ({
 
 /**
  * Mismo criterio que `DataTable.test.tsx` (P05.3), pero resolviendo
- * `matches` según el `min-width` de cada consulta: `AdminShell` combina dos
- * quiebres a la vez (`1024px` sidebar/tabbar, `1280px` sidebar completa o
- * colapsada), así que un mock de un solo booleano no alcanza.
+ * `matches` según el `min-width` de cada consulta (`1024px` decide sidebar o
+ * tabbar), así que un mock de un solo booleano no alcanza.
  */
 function mockViewportWidth(widthPx: number) {
   window.matchMedia = vi.fn().mockImplementation((query: string) => {
@@ -139,6 +138,7 @@ function renderAdminShell(
 
 afterEach(() => {
   vi.restoreAllMocks()
+  window.localStorage.clear()
 })
 
 describe('AdminShell — 1280 px o más', () => {
@@ -172,29 +172,109 @@ describe('AdminShell — 1280 px o más', () => {
 })
 
 describe('AdminShell — entre 1024 y 1279 px', () => {
-  it('colapsa la sidebar a íconos (sin las etiquetas de sección) y sin tabbar', () => {
-    mockViewportWidth(1100)
+  it('muestra la sidebar completa por defecto (corte automático en 1024) y sin tabbar', () => {
+    mockViewportWidth(1090)
     renderAdminShell()
 
-    expect(screen.queryByText('Operación')).not.toBeInTheDocument()
-    // El ítem sigue siendo accesible por teclado y lector de pantalla
-    // (aria-label), aunque no muestre el texto.
+    expect(screen.getByText('Operación')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Resumen' })).toBeInTheDocument()
     expect(
       screen.queryByRole('navigation', { name: 'Navegación principal' }),
     ).not.toBeInTheDocument()
   })
 
-  it('colapsada, el isotipo lleva el nombre accesible de la marca (DS-018)', () => {
-    mockViewportWidth(1100)
+  it('exactamente en 1024 px ya hay sidebar completa', () => {
+    mockViewportWidth(1024)
     renderAdminShell()
 
-    // Sin el lockup de texto visible, la imagen es el único contenido del
-    // link: ahí sí necesita un `alt` no vacío.
-    expect(screen.queryByText(/Extendiendo Servicios/i)).not.toBeInTheDocument()
+    expect(screen.getByText('Operación')).toBeInTheDocument()
+  })
+})
+
+describe('AdminShell — botón para fijar el menú (AJ3-07)', () => {
+  afterEach(() => {
+    window.localStorage.clear()
+  })
+
+  it('contrae la sidebar a íconos con nombre accesible y la vuelve a expandir', () => {
+    mockViewportWidth(1440)
+    renderAdminShell()
+
+    const contract = screen.getByRole('button', { name: 'Contraer menú' })
+    expect(contract).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(contract)
+
+    expect(screen.queryByText('Operación')).not.toBeInTheDocument()
+    // El ítem sigue accesible por teclado y lector de pantalla (aria-label).
+    expect(screen.getByRole('link', { name: 'Resumen' })).toBeInTheDocument()
+    // Colapsada, el isotipo es el único contenido del link a /admin (DS-018).
     expect(
       screen.getByRole('link', { name: 'Extendiendo Servicios' }),
     ).toHaveAttribute('href', '/admin')
+    const expand = screen.getByRole('button', { name: 'Expandir menú' })
+    expect(expand).toHaveAttribute('aria-expanded', 'false')
+
+    fireEvent.click(expand)
+    expect(screen.getByText('Operación')).toBeInTheDocument()
+  })
+
+  it('recuerda la elección por usuario en el navegador', () => {
+    mockViewportWidth(1440)
+    const first = renderAdminShell()
+    fireEvent.click(screen.getByRole('button', { name: 'Contraer menú' }))
+    expect(window.localStorage.getItem('es.sidebar.user-1')).toBe('collapsed')
+    first.unmount()
+
+    renderAdminShell()
+    expect(screen.queryByText('Operación')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Expandir menú' }),
+    ).toBeInTheDocument()
+  })
+
+  it('una preferencia guardada manda sobre el automático (abierta a 1100 y cerrada a 1440)', () => {
+    window.localStorage.setItem('es.sidebar.user-1', 'collapsed')
+    mockViewportWidth(1100)
+    const first = renderAdminShell()
+    expect(screen.queryByText('Operación')).not.toBeInTheDocument()
+    first.unmount()
+
+    window.localStorage.setItem('es.sidebar.user-1', 'expanded')
+    renderAdminShell()
+    expect(screen.getByText('Operación')).toBeInTheDocument()
+  })
+
+  it('ignora la preferencia de otra persona y los valores inválidos', () => {
+    window.localStorage.setItem('es.sidebar.otro-usuario', 'collapsed')
+    window.localStorage.setItem('es.sidebar.user-1', 'cualquiera')
+    mockViewportWidth(1440)
+    renderAdminShell()
+
+    expect(screen.getByText('Operación')).toBeInTheDocument()
+  })
+
+  it('si el almacenamiento falla, no se rompe y la barra se puede contraer igual', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('sin storage')
+    })
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('sin storage')
+    })
+    mockViewportWidth(1440)
+    renderAdminShell()
+
+    expect(screen.getByText('Operación')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Contraer menú' }))
+    expect(screen.queryByText('Operación')).not.toBeInTheDocument()
+  })
+
+  it('por debajo de 1024 px no hay botón (hay tabbar)', () => {
+    mockViewportWidth(390)
+    renderAdminShell()
+
+    expect(
+      screen.queryByRole('button', { name: 'Contraer menú' }),
+    ).not.toBeInTheDocument()
   })
 })
 

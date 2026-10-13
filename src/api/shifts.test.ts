@@ -169,23 +169,55 @@ describe('fetchShiftForEdit', () => {
 })
 
 describe('fetchActiveServicesCountForMonth', () => {
-  it('cuenta con el rango del mes pedido', async () => {
+  function mockServices(rows: unknown[]) {
     fromMock.mockReturnValue({
       select: () => ({
         eq: () => ({
           is: () => ({
             lte: () => ({
-              or: () => Promise.resolve({ count: 3, error: null }),
+              or: () => Promise.resolve({ data: rows, error: null }),
             }),
           }),
         }),
       }),
     })
+  }
+
+  it('cuenta los servicios con alguna fecha en el mes pedido', async () => {
+    mockServices([
+      {
+        weekdays: [1],
+        weeks_of_month: null,
+        valid_from: '2026-01-01',
+        valid_to: null,
+      },
+      {
+        weekdays: [2],
+        weeks_of_month: [1, 2],
+        valid_from: '2026-01-01',
+        valid_to: null,
+      },
+    ])
 
     const count = await fetchActiveServicesCountForMonth(2026, 2)
 
     expect(fromMock).toHaveBeenCalledWith('services')
-    expect(count).toBe(3)
+    expect(count).toBe(2)
+  })
+
+  it('no cuenta un servicio de semanas que el mes no alcanza (AJ3-05)', async () => {
+    // Lunes de octubre 2026: 5, 12, 19 y 26. Vigente solo hasta el 20 y solo
+    // la última semana: ningún lunes cumple.
+    mockServices([
+      {
+        weekdays: [1],
+        weeks_of_month: [5],
+        valid_from: '2026-01-01',
+        valid_to: '2026-10-20',
+      },
+    ])
+
+    expect(await fetchActiveServicesCountForMonth(2026, 10)).toBe(0)
   })
 })
 
@@ -527,5 +559,138 @@ describe('reloadShiftTasks', () => {
     expect(rpcMock).toHaveBeenCalledWith('reload_shift_tasks', {
       p_shift_id: 'sh1',
     })
+  })
+})
+
+describe('previewShiftSeries y createShiftSeries (AJ3-08)', () => {
+  const rule = {
+    from: '2026-10-13',
+    to: '2026-11-17',
+    weekdays: [2],
+    weeksOfMonth: null,
+    worksOnHolidays: false,
+  }
+
+  it('previewShiftSeries llama preview_shift_series y traduce la respuesta', async () => {
+    rpcMock.mockResolvedValue({
+      data: {
+        dates: ['2026-10-13', '2026-10-20'],
+        holidays_skipped: ['2026-10-27'],
+        count: 2,
+      },
+      error: null,
+    })
+    const { previewShiftSeries } = await import('./shifts')
+
+    const result = await previewShiftSeries({ ...rule, weeksOfMonth: [1, 5] })
+
+    expect(rpcMock).toHaveBeenCalledWith('preview_shift_series', {
+      p_from: '2026-10-13',
+      p_to: '2026-11-17',
+      p_weekdays: [2],
+      p_weeks_of_month: [1, 5],
+      p_works_on_holidays: false,
+    })
+    expect(result).toEqual({
+      dates: ['2026-10-13', '2026-10-20'],
+      holidaysSkipped: ['2026-10-27'],
+      count: 2,
+    })
+  })
+
+  it('createShiftSeries llama create_shift_series y traduce lo creado y los rechazados', async () => {
+    rpcMock.mockResolvedValue({
+      data: {
+        series_id: 'ser1',
+        created: [
+          {
+            shift_id: 'sh1',
+            shift_date: '2026-10-13',
+            warnings: [],
+            assigned: [],
+            rejected: [
+              {
+                employee_id: 'e1',
+                employee_name: 'Ana Gómez',
+                code: 'SHIFT_FULL',
+                message: 'El turno ya está completo.',
+              },
+            ],
+          },
+        ],
+        holidays_skipped: ['2026-10-27'],
+      },
+      error: null,
+    })
+    const { createShiftSeries } = await import('./shifts')
+
+    const result = await createShiftSeries({
+      clientId: 'c1',
+      siteId: 'si1',
+      start: '08:00',
+      end: '12:00',
+      requiredStaff: 2,
+      employeeIds: ['e1'],
+      ...rule,
+    })
+
+    expect(rpcMock).toHaveBeenCalledWith('create_shift_series', {
+      p_client_id: 'c1',
+      p_site_id: 'si1',
+      p_start: '08:00',
+      p_end: '12:00',
+      p_open_ended: false,
+      p_required_staff: 2,
+      p_from: '2026-10-13',
+      p_to: '2026-11-17',
+      p_weekdays: [2],
+      p_weeks_of_month: undefined,
+      p_works_on_holidays: false,
+      p_notes: undefined,
+      p_show_in_print: true,
+      p_employee_ids: ['e1'],
+    })
+    expect(result.seriesId).toBe('ser1')
+    expect(result.holidaysSkipped).toEqual(['2026-10-27'])
+    expect(result.created[0]?.rejected[0]).toEqual({
+      employeeId: 'e1',
+      employeeName: 'Ana Gómez',
+      code: 'SHIFT_FULL',
+      message: 'El turno ya está completo.',
+    })
+  })
+
+  it.each([
+    'SERIES_RANGE_INVALID',
+    'SERIES_RANGE_TOO_LONG',
+    'SERIES_EMPTY',
+    'INVALID_WEEKDAYS',
+    'INVALID_WEEKS_OF_MONTH',
+    'INVALID_TIME_RANGE',
+  ])('createShiftSeries conserva el message y el hint %s', async (hint) => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: {
+        message: 'Texto del servidor (turno del 20/10/2026)',
+        code: 'P0001',
+        hint,
+      },
+    })
+    const { createShiftSeries } = await import('./shifts')
+
+    const failure = await createShiftSeries({
+      clientId: 'c1',
+      siteId: 'si1',
+      start: '08:00',
+      end: '12:00',
+      requiredStaff: 1,
+      ...rule,
+    }).catch((error: unknown) => error)
+
+    expect(isApiError(failure)).toBe(true)
+    expect((failure as { hint: string }).hint).toBe(hint)
+    expect((failure as Error).message).toBe(
+      'Texto del servidor (turno del 20/10/2026)',
+    )
   })
 })

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
+import { serviceHasDateInMonth } from '@/features/services/weeksOfMonth'
 import { fromPostgrestError } from './errors'
 
 /** Con «A terminar» la base ignora `p_end` (AJ2-10); el tipo generado lo pide igual. */
@@ -321,6 +322,159 @@ export async function createShift(
 }
 
 // -------------------------------------------------------------------------
+// 2.b. preview_shift_series y create_shift_series (ADM-07, repetir un turno — AJ3-08)
+// -------------------------------------------------------------------------
+
+/** Regla de repetición compartida por la vista previa y la creación. */
+export interface ShiftSeriesRule {
+  /** Primera fecha posible (`AAAA-MM-DD`). */
+  from: string
+  /** Última fecha posible, obligatoria y como máximo `from` + 3 meses. */
+  to: string
+  /** 0 (domingo) a 6 (sábado). */
+  weekdays: number[]
+  /** `null` = todas las semanas; 1 a 4 = 1.ª a 4.ª; 5 = última. */
+  weeksOfMonth: number[] | null
+  /** Si es `false`, las fechas feriadas se saltean. */
+  worksOnHolidays: boolean
+}
+
+export interface ShiftSeriesPreview {
+  /** Fechas que se crearían, ordenadas. */
+  dates: string[]
+  /** Feriados que se saltearían. */
+  holidaysSkipped: string[]
+  count: number
+}
+
+/**
+ * Vista previa de la repetición (`preview_shift_series`): no escribe nada.
+ * Con 0 fechas devuelve `count` 0 (no es error). Errores con `hint`:
+ * `SERIES_RANGE_INVALID`, `SERIES_RANGE_TOO_LONG`, `INVALID_WEEKDAYS`,
+ * `INVALID_WEEKS_OF_MONTH` (el `message` ya viene en español).
+ */
+export async function previewShiftSeries(
+  rule: ShiftSeriesRule,
+): Promise<ShiftSeriesPreview> {
+  const { data, error } = await supabase.rpc('preview_shift_series', {
+    p_from: rule.from,
+    p_to: rule.to,
+    p_weekdays: rule.weekdays,
+    p_weeks_of_month: rule.weeksOfMonth ?? undefined,
+    p_works_on_holidays: rule.worksOnHolidays,
+  })
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  const payload = data as {
+    dates?: string[]
+    holidays_skipped?: string[]
+    count?: number
+  }
+  const dates = payload.dates ?? []
+  return {
+    dates,
+    holidaysSkipped: payload.holidays_skipped ?? [],
+    count: payload.count ?? dates.length,
+  }
+}
+
+export type CreateShiftSeriesInput = Omit<
+  CreateShiftInput,
+  'date' | 'serviceId'
+> &
+  ShiftSeriesRule
+
+/** Un turno creado por la repetición, con sus asignados y rechazados. */
+export interface CreateShiftSeriesCreated {
+  shiftId: string
+  shiftDate: string
+  warnings: string[]
+  assigned: CreateShiftAssigned[]
+  rejected: CreateShiftRejected[]
+}
+
+export interface CreateShiftSeriesResult {
+  seriesId: string
+  created: CreateShiftSeriesCreated[]
+  holidaysSkipped: string[]
+}
+
+/**
+ * Repite un turno suelto (`create_shift_series`): todo o nada. Si el turno de
+ * una fecha falla, falla todo y el `message` del servidor termina con
+ * `(turno del DD/MM/AAAA)`. Errores propios con `hint`: `SERIES_RANGE_INVALID`,
+ * `SERIES_RANGE_TOO_LONG`, `SERIES_EMPTY`, `INVALID_WEEKDAYS`,
+ * `INVALID_WEEKS_OF_MONTH`, más los de `create_shift`.
+ */
+export async function createShiftSeries(
+  input: CreateShiftSeriesInput,
+): Promise<CreateShiftSeriesResult> {
+  const { data, error } = await supabase.rpc('create_shift_series', {
+    p_client_id: input.clientId,
+    p_site_id: input.siteId,
+    p_start: input.start,
+    p_end: input.openEnded ? OPEN_ENDED_WIRE_END : (input.end ?? ''),
+    p_open_ended: input.openEnded ?? false,
+    p_required_staff: input.requiredStaff,
+    p_from: input.from,
+    p_to: input.to,
+    p_weekdays: input.weekdays,
+    p_weeks_of_month: input.weeksOfMonth ?? undefined,
+    p_works_on_holidays: input.worksOnHolidays,
+    p_notes: input.notes ?? undefined,
+    p_show_in_print: input.showInPrint ?? true,
+    p_employee_ids:
+      input.employeeIds && input.employeeIds.length > 0
+        ? input.employeeIds
+        : undefined,
+  })
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  const payload = data as {
+    series_id: string
+    created?: Array<{
+      shift_id: string
+      shift_date: string
+      warnings?: string[]
+      assigned?: Array<{
+        employee_id: string
+        assignment_id: string
+        warnings?: string[]
+      }>
+      rejected?: Array<{
+        employee_id: string
+        employee_name: string
+        code: string
+        message: string
+      }>
+    }>
+    holidays_skipped?: string[]
+  }
+  return {
+    seriesId: payload.series_id,
+    created: (payload.created ?? []).map((item) => ({
+      shiftId: item.shift_id,
+      shiftDate: item.shift_date,
+      warnings: item.warnings ?? [],
+      assigned: (item.assigned ?? []).map((a) => ({
+        employeeId: a.employee_id,
+        assignmentId: a.assignment_id,
+        warnings: a.warnings ?? [],
+      })),
+      rejected: (item.rejected ?? []).map((r) => ({
+        employeeId: r.employee_id,
+        employeeName: r.employee_name,
+        code: r.code,
+        message: r.message,
+      })),
+    })),
+    holidaysSkipped: payload.holidays_skipped ?? [],
+  }
+}
+
+// -------------------------------------------------------------------------
 // 3. generate_shifts (ADM-09 — SHIFT-009)
 // -------------------------------------------------------------------------
 
@@ -365,9 +519,9 @@ export async function fetchActiveServicesCountForMonth(
   const lastDay = new Date(year, month, 0).getDate()
   const to = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
 
-  const { count, error } = await supabase
+  const { data, error } = await supabase
     .from('services')
-    .select('id', { count: 'exact', head: true })
+    .select('weekdays, weeks_of_month, valid_from, valid_to')
     .eq('status', 'active')
     .is('deleted_at', null)
     .lte('valid_from', to)
@@ -376,7 +530,20 @@ export async function fetchActiveServicesCountForMonth(
   if (error) {
     throw fromPostgrestError(error)
   }
-  return count ?? 0
+  // AJ3-05: un servicio que se repite solo algunas semanas del mes puede no
+  // tener ninguna fecha en este mes; se cuenta solo si tiene alguna.
+  return (data ?? []).filter((service) =>
+    serviceHasDateInMonth(
+      {
+        weekdays: service.weekdays,
+        weeksOfMonth: service.weeks_of_month,
+        validFrom: service.valid_from,
+        validTo: service.valid_to,
+      },
+      year,
+      month,
+    ),
+  ).length
 }
 
 /**

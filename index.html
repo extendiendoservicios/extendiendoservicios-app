@@ -22,6 +22,16 @@
     <!-- Mismo teal de marca que el `theme_color` del manifest: este `index.html` lo
          sirven todas las rutas, y las cabeceras de los shells son teal. -->
     <meta name="theme-color" content="#569EA4" />
+    <!-- Alto contraste (AJ2-02): aplica el último valor guardado antes de que
+         cargue React, para que no parpadee. La clave es la misma de
+         src/lib/contrast.ts; el perfil de la persona corrige después. -->
+    <script>
+      try {
+        if (localStorage.getItem('es.highContrast') === '1') {
+          document.documentElement.setAttribute('data-contrast', 'high')
+        }
+      } catch (e) {}
+    </script>
     <link rel="icon" href="/favicon.png" type="image/png" />
     <link
       rel="apple-touch-icon"

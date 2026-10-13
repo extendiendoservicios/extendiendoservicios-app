@@ -1,14 +1,7 @@
 import { formatTaxId } from '@/lib/taxId'
 import { useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
-import {
-  CalendarClock,
-  KeyRound,
-  LogOut,
-  Pencil,
-  User,
-  UserX,
-} from 'lucide-react'
+import { KeyRound, LogOut, Pencil, User, UserX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -31,6 +24,7 @@ import { EmployeeAvailabilityTab } from '@/features/employees/components/Employe
 import { EmployeeClientPermissionsTab } from '@/features/employees/components/EmployeeClientPermissionsTab'
 import { EmployeeLeavesTab } from '@/features/employees/components/EmployeeLeavesTab'
 import { EmployeeRatingsTab } from '@/features/employees/components/EmployeeRatingsTab'
+import { EmployeeUpcomingShiftsTab } from '@/features/employees/components/EmployeeUpcomingShiftsTab'
 import { EmployeeRolesDialog } from '@/features/employees/components/EmployeeRolesDialog'
 import {
   canEditEmployee,
@@ -61,9 +55,9 @@ function isEmployeeDetailTab(value: string | null): value is EmployeeDetailTab {
  * ADM-17 "Empleado · ficha" (`05` línea 66): cabecera (foto, nombre,
  * legajo, roles, estado efectivo) y las siete pestañas. Datos, Habilitaciones
  * (EMP-006), Disponibilidad (EMP-007) y Licencias (EMP-008) están completas;
- * Próximos turnos (EMP-009) queda con su estado vacío y un enlace preparado
- * -- los turnos llegan en una fase posterior de asignaciones (ver el reporte
- * del encargo). Asistencia (ADM-12, ATT-013, P14.3) y Calificaciones
+ * Próximos turnos (EMP-009, conectada en AJ3-04) lista los turnos con
+ * asignación vigente de los próximos 30 días (`EmployeeUpcomingShiftsTab`).
+ * Asistencia (ADM-12, ATT-013, P14.3) y Calificaciones
  * recibidas (SUP-012, `05` línea 66: "lista, solo admin") ya están
  * completas: `EmployeeAttendanceHistoryTab`/`EmployeeRatingsTab`
  * (`src/features/attendance/`, `src/features/employees/components/`).
@@ -236,16 +230,7 @@ export default function EmployeeDetailPage() {
         </TabsContent>
 
         <TabsContent value="proximos-turnos" className="pt-3">
-          <EmptyState
-            icon={CalendarClock}
-            title="Todavía no hay turnos próximos para mostrar"
-            description="Los turnos asignados a esta persona se van a ver acá."
-            action={
-              <Button asChild variant="ghost" size="sm">
-                <Link to="/admin/planificacion?vista=semana">Ver semana</Link>
-              </Button>
-            }
-          />
+          <EmployeeUpcomingShiftsTab profileId={employee.profileId} />
         </TabsContent>
 
         <TabsContent value="asistencia" className="pt-3">
