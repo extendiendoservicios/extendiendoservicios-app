@@ -107,6 +107,7 @@ import {
 import { MapPicker, MapView, type MapViewMarker } from '@/components/map'
 import { AvatarUpload } from '@/components/AvatarUpload'
 import { GlobalSearch } from '@/components/search/GlobalSearch'
+import { MediaDemo } from '@/pages/dev/MediaDemo'
 
 /**
  * `/dev/design` (DS-016): vidriera de todos los componentes de
@@ -1427,6 +1428,10 @@ function DesignPage() {
         <Row label='Disparador (clic, Ctrl K o "/" para abrir el diálogo real)'>
           <GlobalSearch />
         </Row>
+      </Section>
+
+      <Section title="Evidencia fotográfica: MediaCapture, MediaGrid y MediaViewer (P21.2)">
+        <MediaDemo />
       </Section>
     </div>
   )
