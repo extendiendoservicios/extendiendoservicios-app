@@ -254,6 +254,38 @@ Deno.test(
   },
 )
 
+Deno.test(
+  'los errores de la respuesta no filtran el detalle interno de Storage ni de Postgres',
+  async () => {
+    const secreto =
+      'permission denied for table evidence_media; ruta evidence/abc/def.jpg'
+    const casos = [
+      fakeClient([[candidate(1)]], { removeError: secreto }),
+      fakeClient([[candidate(1)]], { markError: secreto }),
+      fakeClient([], { candidatesError: secreto }),
+    ]
+    const original = console.error
+    const logs: string[] = []
+    console.error = (...a: unknown[]) => logs.push(a.map(String).join(' '))
+    try {
+      for (const { client } of casos) {
+        const summary = await runCleanup(client)
+        assertEquals(summary.errors.length, 1)
+        assertEquals(summary.errors[0].includes('permission denied'), false)
+        assertEquals(summary.errors[0].includes('evidence/abc'), false)
+      }
+    } finally {
+      console.error = original
+    }
+    // El detalle completo queda en el log de la función.
+    assertEquals(logs.length, 3)
+    assertEquals(
+      logs.every((l) => l.includes('permission denied')),
+      true,
+    )
+  },
+)
+
 Deno.test('si no puede marcar las filas lo informa', async () => {
   const { client } = fakeClient([[candidate(1)]], { markError: 'sin permiso' })
   const summary = await runCleanup(client)

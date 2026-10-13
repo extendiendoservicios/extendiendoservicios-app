@@ -56,6 +56,29 @@ export function isEvidencePath(path: unknown): path is string {
   return typeof path === 'string' && PATH_PATTERN.test(path)
 }
 
+const MAX_IDS_IN_ERROR = 10
+
+// Registra un error del barrido. La respuesta HTTP (que lee el workflow y queda en sus logs) solo lleva
+// la etapa, un mensaje genérico y los ids de las filas afectadas; el detalle interno (texto de Postgres o
+// de Storage, que puede traer rutas) va únicamente al log de la función.
+function fail(
+  summary: CleanupSummary,
+  stage: string,
+  message: string,
+  detail?: string,
+  mediaIds: string[] = [],
+): void {
+  console.error(`[evidence-cleanup] ${stage}: ${detail ?? message}`, {
+    media_ids: mediaIds,
+  })
+  const ids = mediaIds.slice(0, MAX_IDS_IN_ERROR)
+  const more = mediaIds.length - ids.length
+  const suffix = ids.length
+    ? ` Filas: ${ids.join(', ')}${more > 0 ? ` y ${more} más` : ''}.`
+    : ''
+  summary.errors.push(`${stage}: ${message}${suffix}`)
+}
+
 export async function runCleanup(
   client: CleanupClient,
   options: { batchSize?: number; maxBatches?: number } = {},
@@ -79,7 +102,12 @@ export async function runCleanup(
       p_limit: batchSize,
     })
     if (error) {
-      summary.errors.push(`No pude leer los candidatos: ${error.message}`)
+      fail(
+        summary,
+        'READ_CANDIDATES',
+        'No se pudieron leer los candidatos.',
+        error.message,
+      )
       return summary
     }
     const rows = (Array.isArray(data) ? data : []) as CleanupCandidate[]
@@ -95,8 +123,12 @@ export async function runCleanup(
     )
     summary.invalid_paths += rows.length - valid.length
     if (valid.length === 0) {
-      summary.errors.push(
+      fail(
+        summary,
+        'INVALID_PATHS',
         'Todos los candidatos del lote tienen rutas inválidas; no se borró nada.',
+        undefined,
+        rows.map((r) => r.media_id),
       )
       return summary
     }
@@ -104,8 +136,12 @@ export async function runCleanup(
     const paths = valid.flatMap((r) => [r.storage_path, r.thumb_path])
     const removal = await client.storage.from(EVIDENCE_BUCKET).remove(paths)
     if (removal.error) {
-      summary.errors.push(
-        `No pude borrar los archivos de Storage: ${removal.error.message}`,
+      fail(
+        summary,
+        'STORAGE_REMOVE',
+        'No se pudieron borrar los archivos de Storage.',
+        removal.error.message,
+        valid.map((r) => r.media_id),
       )
       return summary
     }
@@ -115,8 +151,12 @@ export async function runCleanup(
       p_ids: valid.map((r) => r.media_id),
     })
     if (marked.error) {
-      summary.errors.push(
-        `Borré los archivos pero no pude marcar las filas: ${marked.error.message}`,
+      fail(
+        summary,
+        'MARK_ROWS',
+        'Se borraron los archivos pero no se pudieron marcar las filas.',
+        marked.error.message,
+        valid.map((r) => r.media_id),
       )
       return summary
     }
@@ -126,8 +166,12 @@ export async function runCleanup(
     for (const r of valid) summary[r.reason]++
 
     if (count === 0) {
-      summary.errors.push(
-        'El lote no marcó ninguna fila; corto para no repetirlo.',
+      fail(
+        summary,
+        'MARK_NONE',
+        'El lote no marcó ninguna fila; se corta para no repetirlo.',
+        undefined,
+        valid.map((r) => r.media_id),
       )
       return summary
     }
