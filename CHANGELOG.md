@@ -7,6 +7,10 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+### Agregado
+
+- Barrido nocturno de evidencia (P21.5): workflow `evidence-cleanup.yml` (cron 03:30 Argentina, interruptor `EVIDENCE_CLEANUP_ENABLED`), despliegue de la Edge Function `evidence-cleanup` en `deploy-staging.yml` y `deploy-production.yml`, y `verify_jwt = false` en `supabase/config.toml`.
+
 ## [0.18.0] - 2026-10-12
 
 Alto contraste (último punto de la reunión del 9 de octubre) y observaciones de uso de los dueños del 12 de octubre (P19.7).

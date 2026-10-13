@@ -56,6 +56,11 @@ jobs:
           else
             echo "hay_function=false" >> "$GITHUB_OUTPUT"
           fi
+          if [ -f supabase/functions/evidence-cleanup/index.ts ]; then
+            echo "hay_evidence=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "hay_evidence=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: supabase db push a App_dev — INFRA-016
         if: steps.supabase-estado.outputs.hay_migraciones == 'true'
@@ -74,6 +79,14 @@ jobs:
         run: |
           pnpm exec supabase functions deploy admin-users \
             --project-ref "${{ secrets.SUPABASE_PROJECT_REF_DEV }}"
+
+      # P21.5 (módulo H): verify_jwt = false sale de [functions.evidence-cleanup] en config.toml.
+      - name: supabase functions deploy evidence-cleanup — P21.5
+        if: steps.supabase-estado.outputs.hay_evidence == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          pnpm exec supabase functions deploy evidence-cleanup             --project-ref "${{ secrets.SUPABASE_PROJECT_REF_DEV }}"
 
       - name: functions deploy condicionado — todavía no existe admin-users (F7)
         if: steps.supabase-estado.outputs.hay_function != 'true'
