@@ -1,6 +1,6 @@
 # `supabase/functions`
 
-Una única Edge Function del proyecto: `admin-users` (Deno), con las
+Dos Edge Functions del proyecto. La primera, `admin-users` (Deno), con las
 acciones administrativas que necesitan la `service_role` (crear usuario,
 resetear contraseña, cambiar email de login, cerrar sesiones, desactivar y
 reactivar — `06_API.md` sección 2.1, ADR-005). Se despliega con
@@ -10,6 +10,14 @@ el archivo exista, en `deploy-staging.yml` y `deploy-production.yml`).
 Detalle completo (autorización por acción, límite de acciones por minuto,
 `security_events`, decisiones menores) en `docs/database.md`, sección
 "Edge Function `admin-users`".
+
+La segunda es `evidence-cleanup` (módulo H, P21.1): el borrado nocturno de las fotos y videos
+vencidos del bucket `evidence`. La dispara un workflow programado con el secreto
+`EVIDENCE_CLEANUP_SECRET` en el encabezado `x-evidence-cleanup-secret` (no usa JWT de usuario, por
+eso se despliega con `verify_jwt = false`). El despliegue y el workflow son de P21.5. Archivos:
+`evidence-cleanup/cleanup.ts` (la lógica, con un cliente inyectable), `index.ts` (autenticación y
+`Deno.serve`) e `index.test.ts` (`deno test --allow-env --allow-net`, desde esa carpeta). Detalle en
+`docs/database.md`, sección "Evidencia fotográfica".
 
 ## Archivos
 
