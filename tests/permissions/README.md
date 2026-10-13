@@ -35,6 +35,7 @@ tests nunca nombran emails: piden el perfil por su clave (`suite/perfiles.ts`).
 | `60-edge`               | Edge Function `admin-users`: JWT, rol, jerarquía, CORS, errores internos                                     |
 | `70-escalamiento`       | Un rol no se escala a sí mismo (CB-17); `anon` solo lee `v_public_branding`                                  |
 | `80-desactivado`        | Un desactivado con el token vigente no puede hacer nada (CB-18)                                              |
+| `90-evidencia`          | Módulo H (evidencia fotográfica, 0047): `shift_media`, bucket `evidence` y sus RPC por rol (P21.6)           |
 
 Apoyos: `tablas.ts`, `vistas.ts`, `rpc.ts` y `edge-casos.ts` (los casos esperados), `escenario.ts`
 (el escenario `e2e-perm-` que se planta y se borra), `contexto.ts`, `perfiles.ts`, `ayudas.ts`,

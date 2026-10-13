@@ -60,6 +60,13 @@ export interface ServiceOptions {
   validTo?: string | null
   worksOnHolidays?: boolean
   status?: 'active' | 'paused' | 'ended'
+  /** Módulo H (H-07): el servicio pide fotos y sus turnos lo heredan. */
+  requiresPhotos?: boolean
+}
+
+export interface SiteOptions {
+  /** Módulo H (H-13): la sede no permite fotos ni videos. */
+  photosNotAllowed?: boolean
 }
 
 export class Scenario {
@@ -100,6 +107,7 @@ export class Scenario {
     clientId: string,
     slug: string,
     coords?: { lat: number; lng: number },
+    options: SiteOptions = {},
   ): Promise<MadeClient> {
     const name = uniqueName(slug)
     const { data, error } = await this.db
@@ -111,6 +119,7 @@ export class Scenario {
         status: 'active',
         latitude: coords?.lat ?? null,
         longitude: coords?.lng ?? null,
+        photos_not_allowed: options.photosNotAllowed ?? false,
       })
       .select('id')
       .single()
@@ -140,6 +149,7 @@ export class Scenario {
         valid_to: options.validTo ?? null,
         works_on_holidays: options.worksOnHolidays ?? true,
         status: options.status ?? 'active',
+        requires_photos: options.requiresPhotos ?? false,
       })
       .select('id')
       .single()
@@ -155,6 +165,7 @@ export class Scenario {
     date: string,
     franja: { start: string; end: string },
     staff = 1,
+    options: { requiresPhotos?: boolean; serviceId?: string } = {},
   ): Promise<string> {
     const { data, error } = await this.db
       .from('shifts')
@@ -165,6 +176,8 @@ export class Scenario {
         start_time: franja.start,
         end_time: franja.end,
         required_staff: staff,
+        requires_photos: options.requiresPhotos ?? false,
+        ...(options.serviceId ? { service_id: options.serviceId } : {}),
       })
       .select('id')
       .single()
@@ -343,7 +356,7 @@ type Failure = { message: string } | null
 
 /**
  * Borra un cliente y TODO lo que cuelga de él (supervisiones y calificaciones, asistencia,
- * asignaciones, tareas, turnos, servicios, plantillas, contactos, habilitaciones, sedes). Si la
+ * asignaciones, tareas, evidencia de los turnos, turnos, servicios, plantillas, contactos, habilitaciones, sedes). Si la
  * base no deja borrar el cliente o sus sedes, los deja con baja lógica.
  */
 export async function deleteClientDeep(
@@ -362,6 +375,10 @@ export async function deleteClientDeep(
   const shiftIds = (shifts ?? []).map((s) => s.id)
 
   if (shiftIds.length > 0) {
+    // Módulo H: la evidencia cuelga del turno (y de asignaciones y supervisiones). Primero los
+    // objetos del bucket `evidence` y después las filas de `shift_media`.
+    notes.push(...(await deleteShiftMedia(db, shiftIds)))
+
     const { data: sups } = await db
       .from('supervisions')
       .select('id')
@@ -416,6 +433,11 @@ export async function deleteClientDeep(
         (await db.from('assignments').delete().in('id', asgIds)).error,
       )
     }
+    note(
+      'shift_observations',
+      (await db.from('shift_observations').delete().in('shift_id', shiftIds))
+        .error,
+    )
     note(
       'shift_tasks',
       (await db.from('shift_tasks').delete().in('shift_id', shiftIds)).error,
@@ -500,6 +522,50 @@ export async function deleteClientDeep(
       ).error,
     )
   }
+  return notes
+}
+
+/**
+ * Módulo H: borra la evidencia de unos turnos. Saca del bucket `evidence` los archivos de cada fila
+ * (también los de las filas pendientes o quitadas) y todo lo que haya bajo la carpeta del turno
+ * (por si una subida quedó sin fila), y después borra las filas de `shift_media`. Es solo para
+ * limpiar datos propios de las pruebas: la app nunca borra filas (P-014).
+ */
+export async function deleteShiftMedia(
+  db: AdminDb,
+  shiftIds: string[],
+): Promise<string[]> {
+  const notes: string[] = []
+  if (shiftIds.length === 0) return notes
+
+  const paths = new Set<string>()
+  const { data: rows, error: rowsError } = await db
+    .from('shift_media')
+    .select('storage_path, thumb_path')
+    .in('shift_id', shiftIds)
+  if (rowsError) notes.push(`shift_media (lectura): ${rowsError.message}`)
+  for (const row of rows ?? []) {
+    paths.add(row.storage_path)
+    paths.add(row.thumb_path)
+  }
+  for (const shiftId of shiftIds) {
+    const { data: listed } = await db.storage
+      .from('evidence')
+      .list(shiftId, { limit: 1000 })
+    for (const obj of listed ?? []) paths.add(`${shiftId}/${obj.name}`)
+  }
+  const all = Array.from(paths)
+  for (let i = 0; i < all.length; i += 100) {
+    const { error } = await db.storage
+      .from('evidence')
+      .remove(all.slice(i, i + 100))
+    if (error) notes.push(`objetos de evidence: ${error.message}`)
+  }
+  const { error } = await db
+    .from('shift_media')
+    .delete()
+    .in('shift_id', shiftIds)
+  if (error) notes.push(`shift_media: ${error.message}`)
   return notes
 }
 

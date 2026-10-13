@@ -8,7 +8,8 @@
 // Deja el rastro de dos formas: etiquetas (`@RB-A04`, `@CB-10`) para correr por filtro
 // (`--grep @CB-10`) y anotaciones que aparecen en el informe HTML.
 
-type Trace = `RB-${string}` | `CB-${string}` | `P-${string}`
+// `H-xx`: decisiones del módulo H (`modulos/H_evidencia_fotografica.md`, evidencia fotográfica).
+type Trace = `RB-${string}` | `CB-${string}` | `P-${string}` | `H-${string}`
 
 export function cubre(...ids: Trace[]): {
   tag: string[]
