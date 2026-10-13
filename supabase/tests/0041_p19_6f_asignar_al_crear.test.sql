@@ -53,7 +53,7 @@ select plan(54);
 select has_table('public', 'service_fixed_employees', 'existe public.service_fixed_employees');
 select ok((select relrowsecurity from pg_class where oid = 'public.service_fixed_employees'::regclass), 'service_fixed_employees tiene RLS habilitada');
 select col_is_pk('public', 'service_fixed_employees', array['service_id', 'employee_id'], 'service_fixed_employees: PK (service_id, employee_id)');
-select has_function('public', 'create_shift', array['uuid', 'uuid', 'date', 'time', 'time', 'smallint', 'uuid', 'text', 'boolean', 'boolean', 'uuid[]'], 'create_shift tiene p_employee_ids al final');
+select has_function('public', 'create_shift', array['uuid', 'uuid', 'date', 'time', 'time', 'smallint', 'uuid', 'text', 'boolean', 'boolean', 'uuid[]', 'boolean'], 'create_shift tiene p_employee_ids al final');
 select hasnt_function('public', 'create_shift', array['uuid', 'uuid', 'date', 'time', 'time', 'smallint', 'uuid', 'text', 'boolean', 'boolean'], 'ya no existe create_shift de 10 parámetros');
 select has_function('public', 'set_service_fixed_employees', array['uuid', 'uuid[]'], 'existe set_service_fixed_employees(uuid, uuid[])');
 select has_function('public', 'assign_employee', array['uuid', 'uuid', 'time', 'time'], 'assign_employee conserva su firma');
