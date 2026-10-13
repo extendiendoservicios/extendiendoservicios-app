@@ -20,6 +20,7 @@ vi.mock('@/api/mediaAdmin', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api/mediaAdmin')>()),
   setShiftMediaKeep: keepMock,
   createOriginalSignedUrl: originalUrlMock,
+  fetchShiftTimes: vi.fn().mockResolvedValue([]),
   createThumbSignedUrls: vi
     .fn()
     .mockResolvedValue(new Map([['sh1/m1_thumb.jpg', 'https://s/t1']])),

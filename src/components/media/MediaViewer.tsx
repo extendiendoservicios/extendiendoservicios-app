@@ -12,7 +12,8 @@ import {
 } from 'lucide-react'
 import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
-import { formatCalendarDate, formatShortDate, formatTime } from '@/lib/format'
+import { formatShortDate, formatTime } from '@/lib/format'
+import { expiryText, fileLine, whenLine } from './details'
 import type { MediaItem } from './types'
 
 /**
@@ -315,15 +316,11 @@ function Message({ children }: { children: React.ReactNode }) {
 }
 
 function ViewerInfo({ item }: { item: MediaItem }) {
+  if (item.details) return <ViewerDetails item={item} />
+
   const taken = item.takenAt ? new Date(item.takenAt) : null
   const validTaken = taken && !Number.isNaN(taken.getTime()) ? taken : null
-
-  let expiry: string | null = null
-  if (item.unavailable === 'expired') expiry = 'Venció'
-  else if (item.unavailable === 'removed') expiry = 'Quitada'
-  else if (item.keep) expiry = 'Conservada: no vence'
-  else if (item.expiresOn)
-    expiry = `Vence el ${formatCalendarDate(item.expiresOn)}`
+  const expiry = expiryText(item)
 
   return (
     <div className="flex flex-col gap-0.5 text-[13px] leading-snug">
@@ -340,6 +337,24 @@ function ViewerInfo({ item }: { item: MediaItem }) {
           .filter(Boolean)
           .join(' · ')}
       </p>
+    </div>
+  )
+}
+
+/** Versión con contexto (administración): quién, dónde, qué turno, cuándo y qué archivo. */
+function ViewerDetails({ item }: { item: MediaItem }) {
+  const details = item.details
+  const who = [item.authorName, details?.authorRole].filter(Boolean).join(' · ')
+  const when = whenLine(item)
+  return (
+    <div className="flex flex-col gap-0.5 text-[13px] leading-snug">
+      {who && <p className="font-semibold text-text">{who}</p>}
+      {details?.place && <p className="text-text-2">{details.place}</p>}
+      {details?.shiftLabel && (
+        <p className="text-text-2 tabular-nums">{details.shiftLabel}</p>
+      )}
+      {when && <p className="text-text-2 tabular-nums">{when}</p>}
+      <p className="text-text-2 tabular-nums">{fileLine(item)}</p>
     </div>
   )
 }

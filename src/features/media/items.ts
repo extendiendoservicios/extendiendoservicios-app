@@ -3,6 +3,7 @@ import type { ShiftMediaRow } from '@/api/mediaAdmin'
 import type { SignedUrlMap } from '@/api/mediaShared'
 import { formatDateOnly } from '@/features/settings/dateOnly'
 import { formatTime } from '@/lib/format'
+import type { ShiftTimes } from '@/api/mediaAdmin'
 
 /**
  * Del dato de `v_shift_media` a lo que muestran `MediaGrid` y `MediaViewer`
@@ -146,4 +147,49 @@ export function daysUntil(expiresOn: string, today: string): number {
   const a = Date.parse(`${expiresOn}T00:00:00Z`)
   const b = Date.parse(`${today}T00:00:00Z`)
   return Math.round((a - b) / 86_400_000)
+}
+
+/** `HH:MM:SS` -> `HH:MM`. */
+function hourMinute(time: string): string {
+  return time.slice(0, 5)
+}
+
+/** «Turno del mar 13 oct, 13:45 a 17:45»; sin las horas, solo la fecha. */
+export function shiftSlotLabel(
+  shiftDate: string,
+  times: Pick<ShiftTimes, 'startTime' | 'endTime' | 'openEnded'> | undefined,
+): string {
+  if (!shiftDate) return ''
+  const date = `Turno del ${formatDateOnly(shiftDate)}`
+  if (!times || !times.startTime) return date
+  if (times.openEnded || !times.endTime) {
+    return `${date}, desde las ${hourMinute(times.startTime)}`
+  }
+  return `${date}, ${hourMinute(times.startTime)} a ${hourMinute(times.endTime)}`
+}
+
+/** Rol de quien subió, según `uploader_role`. */
+export function uploaderRoleLabel(role: string | null): string | undefined {
+  if (role === 'supervisor') return 'Supervisor/a'
+  if (role === 'employee') return 'Empleado/a'
+  return undefined
+}
+
+/** Igual que `toMediaItem`, con el contexto que muestra el visor de administración. */
+export function toDetailedMediaItem(
+  row: ShiftMediaRow,
+  thumbUrls: SignedUrlMap | undefined,
+  times: ShiftTimes | undefined,
+): MediaItem {
+  return {
+    ...toMediaItem(row, thumbUrls),
+    details: {
+      place: [row.clientName, row.siteName].filter(Boolean).join(' · '),
+      shiftLabel: shiftSlotLabel(row.shiftDate, times),
+      authorRole: uploaderRoleLabel(row.uploaderRole),
+      capturedAt: row.capturedAt,
+      uploadedAt: row.createdAt,
+      sizeBytes: row.sizeBytes,
+    },
+  }
 }

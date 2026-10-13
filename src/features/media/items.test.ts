@@ -7,6 +7,9 @@ import {
   isMissingPhotos,
   mediaLabel,
   shiftGroupTitle,
+  shiftSlotLabel,
+  toDetailedMediaItem,
+  uploaderRoleLabel,
   toMediaItem,
 } from './items'
 import { extensionOfPath } from '@/api/mediaShared'
@@ -133,5 +136,40 @@ describe('auxiliares', () => {
   it('días hasta el vencimiento', () => {
     expect(daysUntil('2026-10-20', '2026-10-13')).toBe(7)
     expect(daysUntil('2026-10-10', '2026-10-13')).toBe(-3)
+  })
+})
+
+describe('shiftSlotLabel y toDetailedMediaItem', () => {
+  const times = {
+    shiftId: 'sh1',
+    startTime: '13:45:00',
+    endTime: '17:45:00',
+    openEnded: false,
+  }
+
+  it('arma la franja del turno', () => {
+    expect(shiftSlotLabel('2026-10-13', times)).toBe(
+      'Turno del mar 13 oct, 13:45 a 17:45',
+    )
+    expect(shiftSlotLabel('2026-10-13', { ...times, openEnded: true })).toBe(
+      'Turno del mar 13 oct, desde las 13:45',
+    )
+    expect(shiftSlotLabel('2026-10-13', undefined)).toBe('Turno del mar 13 oct')
+  })
+
+  it('el rol sale de uploader_role', () => {
+    expect(uploaderRoleLabel('employee')).toBe('Empleado/a')
+    expect(uploaderRoleLabel('supervisor')).toBe('Supervisor/a')
+    expect(uploaderRoleLabel(null)).toBeUndefined()
+  })
+
+  it('suma el contexto al item', () => {
+    const item = toDetailedMediaItem(mediaRow(), undefined, times)
+    expect(item.details).toMatchObject({
+      place: 'Limpia Ya · Sede Centro',
+      shiftLabel: 'Turno del mar 13 oct, 13:45 a 17:45',
+      authorRole: 'Empleado/a',
+      sizeBytes: 170000,
+    })
   })
 })

@@ -227,3 +227,32 @@ describe('MediaViewer: cierre', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 })
+
+describe('MediaViewer: datos de administración', () => {
+  it('con details muestra rol, lugar, turno, cuándo y archivo', () => {
+    render(
+      <Harness
+        items={[
+          photo('a', {
+            details: {
+              place: 'Limpia Ya · Sede Centro',
+              shiftLabel: 'Turno del mar 13 oct, 13:45 a 17:45',
+              authorRole: 'Empleado/a',
+              uploadedAt: '2026-10-13T21:14:00Z',
+              sizeBytes: 170000,
+            },
+          }),
+        ]}
+      />,
+    )
+    expect(screen.getByText('Ana Pérez · Empleado/a')).toBeInTheDocument()
+    expect(screen.getByText('Limpia Ya · Sede Centro')).toBeInTheDocument()
+    expect(
+      screen.getByText('Turno del mar 13 oct, 13:45 a 17:45'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Subida mar 13 oct, 18:14')).toBeInTheDocument()
+    expect(
+      screen.getByText('Foto · 166 KB · Vence el 12 dic 2026'),
+    ).toBeInTheDocument()
+  })
+})

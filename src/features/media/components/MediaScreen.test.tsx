@@ -48,6 +48,7 @@ vi.mock('@/features/media/queries', () => ({
     listMock(filters),
   useStorageUsageQuery: (): unknown => usageMock(),
   useThumbUrls: () => new Map<string, string>(),
+  useShiftTimes: () => ({ data: undefined }),
   useSetMediaKeepMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
