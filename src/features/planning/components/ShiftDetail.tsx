@@ -43,6 +43,7 @@ import { AdminTaskList } from './AdminTaskList'
 import { AssignEmployeeSheet } from './AssignEmployeeSheet'
 import { AssignmentTimeDialog } from './AssignmentTimeDialog'
 import { ReloadTasksDialog } from './ReloadTasksDialog'
+import { RequiresPhotosMark } from '@/features/shifts/components/RequiresPhotosMark'
 import { RemoveAssignmentDialog } from './RemoveAssignmentDialog'
 import { ShiftDetailsDialog } from './ShiftDetailsDialog'
 import { ShiftObservationSection } from './ShiftObservationSection'
@@ -158,6 +159,7 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
             {shift.clientName} · {shift.siteName}
           </h2>
           <StatusBadge domain="shift" status={shift.status} />
+          {shift.requiresPhotos && <RequiresPhotosMark />}
         </div>
         <p className="text-[12.5px] text-text-3">
           <span className="capitalize">{formatDateOnly(shift.shiftDate)}</span>{' '}

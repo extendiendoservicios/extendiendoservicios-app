@@ -1,5 +1,6 @@
 import type { MediaGridGroup, MediaItem } from '@/components/media'
-import type { SignedUrlMap, ShiftMediaRow } from '@/api/mediaAdmin'
+import type { ShiftMediaRow } from '@/api/mediaAdmin'
+import type { SignedUrlMap } from '@/api/mediaShared'
 import { formatDateOnly } from '@/features/settings/dateOnly'
 import { formatTime } from '@/lib/format'
 
@@ -7,12 +8,6 @@ import { formatTime } from '@/lib/format'
  * Del dato de `v_shift_media` a lo que muestran `MediaGrid` y `MediaViewer`
  * (módulo H, ADM-32, ADM-06 y ADM-15). Todo puro, sin React ni Supabase.
  */
-
-/** Extensión del archivo según su ruta (`.../{id}.jpg`); `jpg` si no se sabe. */
-export function extensionOfPath(storagePath: string): string {
-  const match = /\.([a-z0-9]+)$/i.exec(storagePath)
-  return match?.[1]?.toLowerCase() ?? 'jpg'
-}
 
 /** Nombre accesible de un archivo: «Foto de Ana Pérez, 08:15». */
 export function mediaLabel(row: ShiftMediaRow): string {

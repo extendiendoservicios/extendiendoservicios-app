@@ -111,6 +111,7 @@ describe('fetchShiftsByDate', () => {
         noCheckoutCount: 0,
         generated: true,
         notes: null,
+        requiresPhotos: false,
       },
     ])
   })
@@ -144,19 +145,17 @@ describe('fetchShiftsByDate', () => {
 
 describe('fetchShiftForEdit', () => {
   it('arma ShiftEditRow a partir de v_shifts_board', async () => {
-    fromMock
-      .mockReturnValueOnce(
-        makeChainable({ data: SHIFT_BOARD_ROW, error: null }),
-      )
-      // `v_shifts_board` no trae `requires_photos`: se lee de `shifts`.
-      .mockReturnValueOnce(
-        makeChainable({ data: { requires_photos: true }, error: null }),
-      )
+    fromMock.mockReturnValueOnce(
+      makeChainable({
+        data: { ...SHIFT_BOARD_ROW, requires_photos: true },
+        error: null,
+      }),
+    )
 
     const row = await fetchShiftForEdit('sh1')
 
     expect(fromMock).toHaveBeenNthCalledWith(1, 'v_shifts_board')
-    expect(fromMock).toHaveBeenNthCalledWith(2, 'shifts')
+    expect(fromMock).toHaveBeenCalledTimes(1)
     expect(row).toEqual({
       id: 'sh1',
       clientId: 'c1',

@@ -1,6 +1,11 @@
 import { supabase } from '@/lib/supabase'
 import type { MediaUploadFn, ProcessedMedia } from '@/lib/media/types'
 import { ApiError, fromPostgrestError } from './errors'
+import {
+  EVIDENCE_BUCKET,
+  signEvidencePaths,
+  type MediaKind,
+} from './mediaShared'
 
 /**
  * `src/api/media.ts` (módulo H, P21.3): la parte de celular de la evidencia
@@ -26,7 +31,7 @@ import { ApiError, fromPostgrestError } from './errors'
  * va en `ApiError.hint`.
  */
 
-export const EVIDENCE_BUCKET = 'evidence'
+export { EVIDENCE_BUCKET }
 
 /** Vida de las URL firmadas (segundos): alcanza para una sesión de visor. */
 export const SIGNED_URL_TTL_SECONDS = 600
@@ -233,7 +238,7 @@ export function createShiftMediaUpload(shiftId: string): MediaUploadFn {
 // 3. Lo propio de un turno
 // -------------------------------------------------------------------------
 
-export type ShiftMediaKind = 'photo' | 'video'
+export type ShiftMediaKind = MediaKind
 
 /** Un archivo propio de un turno (fila confirmada y no quitada de `v_shift_media`). */
 export interface MyShiftMedia {
@@ -279,20 +284,10 @@ export async function fetchMyShiftMedia(
 
   const rows = data ?? []
   const withFile = rows.filter((row) => row.has_file)
-  const thumbUrls = new Map<string, string>()
-  if (withFile.length > 0) {
-    const { data: signed } = await supabase.storage
-      .from(EVIDENCE_BUCKET)
-      .createSignedUrls(
-        withFile.map((row) => row.thumb_path as string),
-        SIGNED_URL_TTL_SECONDS,
-      )
-    for (const entry of signed ?? []) {
-      if (entry.path && entry.signedUrl) {
-        thumbUrls.set(entry.path, entry.signedUrl)
-      }
-    }
-  }
+  const { urls: thumbUrls } = await signEvidencePaths(
+    withFile.map((row) => row.thumb_path as string),
+    SIGNED_URL_TTL_SECONDS,
+  )
 
   return rows.map((row) => ({
     id: row.id as string,

@@ -90,8 +90,8 @@ select is(
 );
 select is(
   (select attname::text from pg_attribute
-   where attrelid = 'public.v_shifts_board'::regclass and attnum > 0 and not attisdropped order by attnum desc limit 1),
-  'show_in_print', 'v_shifts_board: show_in_print al final'
+   where attrelid = 'public.v_shifts_board'::regclass and attnum > 0 and not attisdropped order by attnum desc limit 1 offset 1),
+  'show_in_print', 'v_shifts_board: show_in_print al final de lo de 0040 (0048 agrega requires_photos después)'
 );
 select is(
   (select attname::text from pg_attribute

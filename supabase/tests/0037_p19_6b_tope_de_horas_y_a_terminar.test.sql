@@ -138,8 +138,8 @@ select is(
   (select array_agg(attname::text order by attnum) from pg_attribute
    where attrelid = 'public.v_shifts_board'::regclass and attnum > 0 and not attisdropped
    and attnum >= (select attnum from pg_attribute where attrelid = 'public.v_shifts_board'::regclass and attname = 'deleted_at')),
-  array['deleted_at', 'open_ended', 'no_checkout_count', 'show_in_print'],
-  'v_shifts_board: open_ended y no_checkout_count van después de deleted_at (0040 agrega show_in_print al final)'
+  array['deleted_at', 'open_ended', 'no_checkout_count', 'show_in_print', 'requires_photos'],
+  'v_shifts_board: open_ended y no_checkout_count van después de deleted_at (0040 agrega show_in_print y 0048 requires_photos al final)'
 );
 select is(
   (select array_agg(attname::text order by attnum) from pg_attribute
