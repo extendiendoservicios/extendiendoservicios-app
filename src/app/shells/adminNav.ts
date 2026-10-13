@@ -1,5 +1,6 @@
 import {
   Calendar,
+  Camera,
   CheckSquare,
   Clock,
   Home,
@@ -54,6 +55,7 @@ export const ADMIN_NAV_OPERATION: AdminNavItem[] = [
     matchPrefixes: ['/admin/clientes', '/admin/sedes', '/admin/servicios'],
   },
   { label: 'Tareas', path: '/admin/tareas', icon: CheckSquare },
+  { label: 'Fotos y videos', path: '/admin/fotos', icon: Camera },
   { label: 'Avisos y anuncios', path: '/admin/anuncios', icon: Megaphone },
 ]
 
@@ -99,6 +101,7 @@ export const ADMIN_MORE_ITEMS: AdminNavItem[] = [
     icon: MapPin,
   },
   { label: 'Tareas', path: '/admin/tareas', icon: CheckSquare },
+  { label: 'Fotos y videos', path: '/admin/fotos', icon: Camera },
   { label: 'Avisos y anuncios', path: '/admin/anuncios', icon: Megaphone },
   {
     label: 'Configuración',
