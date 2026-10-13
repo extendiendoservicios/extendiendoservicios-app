@@ -15,6 +15,7 @@ import {
   hasDeclinedLocation,
   rememberLocationDeclined,
 } from '@/features/employee/locationChoice'
+import { LazyShiftMediaSection } from '@/features/employee/components/LazyShiftMediaSection'
 import { LocationConsentScreen } from '@/features/employee/components/LocationConsentScreen'
 import { RegisterStartScreen } from '@/features/employee/components/RegisterStartScreen'
 import {
@@ -46,6 +47,9 @@ const CLOSED_STATUSES = new Set(['completed', 'not_done', 'cancelled'])
  *   `startTime`/`endTime`, que una supervisión también tiene).
  * - Con inicio y sin fin: hora de inicio y el botón "Registrar fin".
  * - Cerrada o cancelada: no hay nada para registrar -- vuelve a SUP-03.
+ *
+ * Módulo H (P21.3): con el inicio registrado, el paso del fin también ofrece
+ * el bloque «Fotos y videos» (se saca la evidencia durante la visita).
  *
  * Al registrar el fin, todavía no existe SUP-06 (cerrar supervisión,
  * P15.5): se vuelve al detalle (SUP-03), que en ese paquete va a ofrecer el
@@ -230,6 +234,18 @@ function FinishStep({
           </span>
         </p>
       </div>
+
+      <LazyShiftMediaSection
+        shiftId={supervision.shiftId}
+        counts={{
+          photos: supervision.myPhotosCount,
+          videos: supervision.myVideosCount,
+        }}
+        requiresPhotos={supervision.requiresPhotos}
+        photosNotAllowed={supervision.photosNotAllowed}
+        startsAt={supervision.startsAt}
+        endsAt={supervision.endsAt}
+      />
 
       {error && (
         <Alert variant="crit">

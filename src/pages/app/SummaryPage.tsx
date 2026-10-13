@@ -6,6 +6,8 @@ import { TaskList } from '@/components/TaskList'
 import { formatMinutes, formatTime } from '@/lib/format'
 import { elapsedSeconds } from '@/features/employee/chronometer'
 import { useMyDayQuery, useShiftTasksQuery } from '@/features/employee/queries'
+import { LazyShiftMediaSection } from '@/features/employee/components/LazyShiftMediaSection'
+import { formatMediaCounts } from '@/features/employee/mediaCounts'
 
 /**
  * EMP-11 · Resumen del servicio (MOB-EMP-012, `05` fila EMP-11): el
@@ -14,6 +16,11 @@ import { useMyDayQuery, useShiftTasksQuery } from '@/features/employee/queries'
  * el detalle mientras la asignación siga en `v_my_day` (hoy o los próximos 7
  * días, P-093): no hay un historial propio en esta fase (F13; ver F14/F15
  * para asistencia administrativa e historial más largo).
+ *
+ * Módulo H (P21.3): muestra cuántas fotos y videos se subieron y, como la
+ * ventana de subida sigue abierta hasta 2 horas después del fin (H-12), el
+ * mismo bloque de EMP-07 para agregar o quitar. Va acá y no en EMP-07 porque
+ * EMP-07 redirige a esta pantalla en cuanto se registra el fin.
  */
 export default function SummaryPage() {
   const { assignmentId } = useParams<{ assignmentId: string }>()
@@ -71,6 +78,15 @@ export default function SummaryPage() {
           {durationLabel && (
             <SummaryRow label="Duración" value={durationLabel} />
           )}
+          {!assignment.photosNotAllowed && (
+            <SummaryRow
+              label="Fotos y videos"
+              value={formatMediaCounts(
+                assignment.myPhotosCount,
+                assignment.myVideosCount,
+              )}
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -98,6 +114,23 @@ export default function SummaryPage() {
           </CardContent>
         </Card>
       )}
+
+      <LazyShiftMediaSection
+        shiftId={assignment.shiftId}
+        counts={{
+          photos: assignment.myPhotosCount,
+          videos: assignment.myVideosCount,
+        }}
+        requiresPhotos={assignment.requiresPhotos}
+        photosNotAllowed={assignment.photosNotAllowed}
+        startsAt={assignment.startsAt}
+        endsAt={assignment.endsAt}
+        blockedReason={
+          assignment.shiftStatus === 'cancelled'
+            ? 'Este turno está cancelado: no se pueden subir archivos.'
+            : undefined
+        }
+      />
 
       <Card>
         <CardHeader>
