@@ -527,6 +527,14 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# P21.5 (módulo H): `evidence-cleanup` la dispara un workflow programado, no una persona, así que
+# no trae el JWT de un usuario y se autentica con el encabezado `x-evidence-cleanup-secret`
+# (secreto de función `EVIDENCE_CLEANUP_SECRET`). `supabase functions deploy` toma este valor del
+# config.toml; no hace falta `config push` (y no hay que correrlo por esto: ver la advertencia
+# de `[auth.email] enable_signup`). `admin-users` no se declara: queda con verify_jwt = true.
+[functions.evidence-cleanup]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

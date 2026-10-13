@@ -14,7 +14,7 @@ Detalle completo (autorización por acción, límite de acciones por minuto,
 La segunda es `evidence-cleanup` (módulo H, P21.1): el borrado nocturno de las fotos y videos
 vencidos del bucket `evidence`. La dispara un workflow programado con el secreto
 `EVIDENCE_CLEANUP_SECRET` en el encabezado `x-evidence-cleanup-secret` (no usa JWT de usuario, por
-eso se despliega con `verify_jwt = false`). El despliegue y el workflow son de P21.5. Archivos:
+eso se despliega con `verify_jwt = false`). El despliegue (`verify_jwt = false` en `config.toml`, y `supabase functions deploy evidence-cleanup` en `deploy-staging.yml`/`deploy-production.yml`) y el workflow `evidence-cleanup.yml` (cron diario 03:30 Argentina, o a mano desde Actions) son de P21.5; el paso a paso para correrlo y verlo en los logs está en `docs/environments.md`, sección 5.1. Archivos:
 `evidence-cleanup/cleanup.ts` (la lógica, con un cliente inyectable), `index.ts` (autenticación y
 `Deno.serve`) e `index.test.ts` (`deno test --allow-env --allow-net`, desde esa carpeta). Detalle en
 `docs/database.md`, sección "Evidencia fotográfica".
@@ -40,9 +40,10 @@ eso se despliega con `verify_jwt = false`). El despliegue y el workflow son de P
 
 ## Secretos de la función
 
-| Secreto                 | Dónde                                                       | Para qué                                                                               |
-| ----------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `ALLOWED_ORIGINS_EXTRA` | `App_dev` (`http://localhost:5173`); **no existe en `App`** | Orígenes locales permitidos (solo `http://localhost` o `http://127.0.0.1`, con puerto) |
+| Secreto                   | Dónde                                                       | Para qué                                                                               |
+| ------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `ALLOWED_ORIGINS_EXTRA`   | `App_dev` (`http://localhost:5173`); **no existe en `App`** | Orígenes locales permitidos (solo `http://localhost` o `http://127.0.0.1`, con puerto) |
+| `EVIDENCE_CLEANUP_SECRET` | `App_dev` y `App` (valores distintos)                       | Autentica a `evidence-cleanup` (encabezado `x-evidence-cleanup-secret`)                |
 
 Cargarlo: `supabase secrets set ALLOWED_ORIGINS_EXTRA=http://localhost:5173 --project-ref <ref de App_dev>`.
 Las pruebas e2e (`vite preview` en `localhost:5173`) dependen de este secreto en `App_dev`.

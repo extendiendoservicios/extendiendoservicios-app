@@ -1,0 +1,103 @@
+name: evidence-cleanup
+
+# P21.5 (módulo H · evidencia fotográfica): barrido nocturno que borra del bucket `evidence` las
+# fotos y videos vencidos y descarta las subidas que nunca se confirmaron (Edge Function
+# `evidence-cleanup`, P21.1; ver supabase/functions/README.md y docs/environments.md).
+#
+# Cómo funciona: un POST a la función con el encabezado `x-evidence-cleanup-secret`. La función
+# no usa JWT de usuario (verify_jwt = false), se autentica con ese secreto. Responde 2xx con un
+# resumen de CANTIDADES; si hubo errores a mitad de camino responde 500 con el mismo resumen y
+# el job falla (eso dispara el correo de alerta de GitHub Actions). El log nunca muestra rutas ni
+# datos personales: se imprime solo lo que devuelve la función, que son números.
+#
+# Secretos de repositorio: EVIDENCE_CLEANUP_SECRET_DEV (App_dev) y EVIDENCE_CLEANUP_SECRET_PROD
+# (App). Los carga el script P21.5_cargar_secreto_evidencia.ps1.
+#
+# INTERRUPTOR: el cron no hace nada si la variable de repositorio `EVIDENCE_CLEANUP_ENABLED` no
+# vale exactamente "true". A mano (workflow_dispatch) corre siempre.
+#
+# Importante: el `schedule` corre solo con el YAML de la rama por defecto (`main`); este archivo
+# empieza a programarse recién cuando llega a `main`.
+
+on:
+  schedule:
+    # Todos los días 06:30 UTC (03:30 Argentina, UTC-3 todo el año: no hay horario de verano,
+    # ADR-019). Media hora después del respaldo (backup.yml, 06:00 UTC). GitHub puede demorar los
+    # cron unos minutos en horas de mucha carga; no es crítico.
+    - cron: '30 6 * * *'
+  workflow_dispatch:
+    inputs:
+      entorno:
+        description: 'Entorno a barrer'
+        type: choice
+        options:
+          - ambos
+          - App_dev
+          - App
+        default: App_dev
+
+permissions:
+  contents: read
+
+jobs:
+  barrido-app-dev:
+    name: Barrido en App_dev
+    if: >-
+      (github.event_name == 'schedule' && vars.EVIDENCE_CLEANUP_ENABLED == 'true') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.entorno == 'App_dev' || inputs.entorno == 'ambos'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PROJECT_REF: anesttvrnpsaaaxaquce
+      EVIDENCE_CLEANUP_SECRET: ${{ secrets.EVIDENCE_CLEANUP_SECRET_DEV }}
+    steps:
+      - name: Llamar a evidence-cleanup en App_dev
+        run: |
+          set -euo pipefail
+          if [ -z "$EVIDENCE_CLEANUP_SECRET" ]; then
+            echo "Falta el secreto EVIDENCE_CLEANUP_SECRET_DEV. Ver docs/environments.md." >&2
+            exit 1
+          fi
+          codigo=$(curl --silent --show-error --max-time 120 --request POST \
+            --header "x-evidence-cleanup-secret: $EVIDENCE_CLEANUP_SECRET" \
+            --output respuesta.json --write-out '%{http_code}' \
+            "https://${PROJECT_REF}.supabase.co/functions/v1/evidence-cleanup")
+          echo "Código HTTP: $codigo"
+          echo "Resumen devuelto por la función (cantidades):"
+          cat respuesta.json
+          echo
+          case "$codigo" in
+            2??) ;;
+            *) echo "La función no respondió 2xx." >&2; exit 1 ;;
+          esac
+
+  barrido-app:
+    name: Barrido en App (producción)
+    if: >-
+      (github.event_name == 'schedule' && vars.EVIDENCE_CLEANUP_ENABLED == 'true') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.entorno == 'App' || inputs.entorno == 'ambos'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PROJECT_REF: fysuppdadwvabrjpnnoh
+      EVIDENCE_CLEANUP_SECRET: ${{ secrets.EVIDENCE_CLEANUP_SECRET_PROD }}
+    steps:
+      - name: Llamar a evidence-cleanup en App
+        run: |
+          set -euo pipefail
+          if [ -z "$EVIDENCE_CLEANUP_SECRET" ]; then
+            echo "Falta el secreto EVIDENCE_CLEANUP_SECRET_PROD. Ver docs/environments.md." >&2
+            exit 1
+          fi
+          codigo=$(curl --silent --show-error --max-time 120 --request POST \
+            --header "x-evidence-cleanup-secret: $EVIDENCE_CLEANUP_SECRET" \
+            --output respuesta.json --write-out '%{http_code}' \
+            "https://${PROJECT_REF}.supabase.co/functions/v1/evidence-cleanup")
+          echo "Código HTTP: $codigo"
+          echo "Resumen devuelto por la función (cantidades):"
+          cat respuesta.json
+          echo
+          case "$codigo" in
+            2??) ;;
+            *) echo "La función no respondió 2xx." >&2; exit 1 ;;
+          esac
