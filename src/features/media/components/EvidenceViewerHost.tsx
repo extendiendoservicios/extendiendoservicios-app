@@ -8,7 +8,8 @@ import {
   type SignedUrlMap,
 } from '@/api/mediaAdmin'
 import { mediaErrorMessage } from '@/lib/media/errors'
-import { extensionOfPath, toMediaItem } from '@/features/media/items'
+import { extensionOfPath } from '@/api/mediaShared'
+import { toMediaItem } from '@/features/media/items'
 import { useSetMediaKeepMutation } from '@/features/media/queries'
 
 /**
