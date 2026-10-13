@@ -20,7 +20,7 @@ export interface FuncionPublica {
   authenticated: boolean
   /** Tiene `grant execute ... to service_role` (y no a authenticated). */
   soloServicio: boolean
-  /** Algún `revoke execute` le saca el permiso a `anon` (y a `public`). */
+  /** Algún `revoke execute` o `revoke all` le saca el permiso a `anon` (y a `public`). */
   revocadaAAnon: boolean
 }
 
