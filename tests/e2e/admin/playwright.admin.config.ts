@@ -32,8 +32,12 @@ const APP_ROOT = fileURLToPath(new URL('../../..', import.meta.url))
 // ninguna otra prueba de administración.
 const ARCHIVO_A11Y = '**/accesibilidad.admin.ts'
 
-// Edita la configuración de la empresa: va fuera del camino paralelo.
-const ARCHIVO_DUENO_CONFIG = '**/configuracion-dueno.admin.ts'
+// Editan la configuración de la empresa: van fuera del camino paralelo. `evidencia-plazos` (P21.6,
+// módulo H) cambia y repone los plazos de vencimiento de fotos y videos de ADM-28.
+const ARCHIVO_DUENO_CONFIG = [
+  '**/configuracion-dueno.admin.ts',
+  '**/evidencia-plazos.admin.ts',
+]
 
 export default defineConfig({
   testDir: '.',
@@ -67,7 +71,11 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: ['**/*.movil.admin.ts', ARCHIVO_A11Y, ARCHIVO_DUENO_CONFIG],
+      testIgnore: [
+        '**/*.movil.admin.ts',
+        ARCHIVO_A11Y,
+        ...ARCHIVO_DUENO_CONFIG,
+      ],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 900 },
@@ -85,7 +93,11 @@ export default defineConfig({
     },
     {
       name: 'edge',
-      testIgnore: ['**/*.movil.admin.ts', ARCHIVO_A11Y, ARCHIVO_DUENO_CONFIG],
+      testIgnore: [
+        '**/*.movil.admin.ts',
+        ARCHIVO_A11Y,
+        ...ARCHIVO_DUENO_CONFIG,
+      ],
       dependencies: ['chromium', 'mobile'],
       use: {
         ...devices['Desktop Edge'],
