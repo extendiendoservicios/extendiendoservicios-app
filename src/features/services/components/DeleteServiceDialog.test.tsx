@@ -151,5 +151,10 @@ describe('describeBlockingReasons', () => {
     expect(
       describeBlockingReasons(['SUPERVISIONS', 'ATTENDANCE_RECORDS']),
     ).toBe('fichajes registrados y supervisiones')
+    // Módulo H: el motivo SHIFT_MEDIA del preview.
+    expect(describeBlockingReasons(['SHIFT_MEDIA'])).toBe('fotos o videos')
+    expect(describeBlockingReasons(['SHIFT_MEDIA', 'SUPERVISIONS'])).toBe(
+      'supervisiones y fotos o videos',
+    )
   })
 })

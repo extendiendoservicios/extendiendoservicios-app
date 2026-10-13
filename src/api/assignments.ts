@@ -422,12 +422,15 @@ export async function updateShiftDetails(
   requiredStaff: number,
   notes?: string | null,
   showInPrint?: boolean,
+  requiresPhotos?: boolean,
 ): Promise<ShiftDetailsRow> {
   const { data, error } = await supabase.rpc('update_shift_details', {
     p_shift_id: shiftId,
     p_required_staff: requiredStaff,
     p_notes: notes ?? undefined,
     p_show_in_print: showInPrint,
+    // Módulo H: sin valor no cambia nada.
+    p_requires_photos: requiresPhotos,
   })
 
   if (error) {
@@ -508,6 +511,8 @@ export interface ShiftDetail {
   /** AJ2-15: casilla «mostrar en la impresión»; null si no hay observación. */
   showInPrint: boolean | null
   generated: boolean
+  /** Módulo H (H-07): el turno pide fotos (hereda del servicio y se edita en ADM-07). */
+  requiresPhotos: boolean
   /** Solo las vigentes (`removed_at is null`): las quitadas quedan para historia (P-049), no se muestran acá. */
   assignments: ShiftDetailAssignment[]
   tasks: ShiftDetailTask[]
@@ -532,7 +537,7 @@ export interface ShiftDetail {
  * `src/api/settings.ts` (`security_events`).
  */
 const SHIFT_DETAIL_SELECT = `
-  id, client_id, site_id, shift_date, start_time, end_time, open_ended, required_staff, status, generated, service_id, starts_at,
+  id, client_id, site_id, shift_date, start_time, end_time, open_ended, required_staff, status, generated, service_id, starts_at, requires_photos,
   observation:shift_observations(observation, show_in_print),
   client:clients(id, legal_name, trade_name),
   site:sites(id, name, city),
@@ -561,6 +566,7 @@ interface ShiftDetailRawRow {
   observation: { observation: string | null; show_in_print: boolean } | null
   service_id: string | null
   starts_at: string | null
+  requires_photos: boolean
   client: { id: string; legal_name: string; trade_name: string | null } | null
   site: { id: string; name: string; city: string | null } | null
   assignments: {
@@ -630,6 +636,7 @@ export async function fetchShiftDetail(shiftId: string): Promise<ShiftDetail> {
     notes: row.observation?.observation ?? null,
     showInPrint: row.observation?.show_in_print ?? null,
     generated: row.generated,
+    requiresPhotos: row.requires_photos,
     assignments: row.assignments
       .filter((a) => a.removed_at == null)
       .map((a) => ({

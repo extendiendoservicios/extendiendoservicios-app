@@ -10,6 +10,7 @@ import { isApiError } from '@/api/errors'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { ConfigNav } from '@/features/settings/components/ConfigNav'
 import { LogoUploader } from '@/features/settings/components/LogoUploader'
+import { MediaRetentionSection } from '@/features/media/components/MediaRetentionSection'
 import {
   canEditCompanyDetails,
   canEditCompanyLogo,
@@ -173,6 +174,9 @@ export default function CompanySettingsPage() {
           )}
         </form>
       )}
+
+      {/* Módulo H: plazos de fotos y videos y medidor; dueño y administradores. */}
+      <MediaRetentionSection />
     </div>
   )
 }

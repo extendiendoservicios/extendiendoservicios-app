@@ -25,11 +25,24 @@ const baseValues = {
   validFrom: '2026-01-01',
   validTo: '',
   worksOnHolidays: true,
+  requiresPhotos: false,
   minHoursMonth: '',
   maxHoursMonth: '',
   status: 'active' as const,
   notes: '',
 }
+
+describe('serviceFormSchema: «Pide fotos» (módulo H)', () => {
+  it('pasa «Pide fotos» al input del servicio', () => {
+    const withPhotos = serviceFormSchema.parse({
+      ...baseValues,
+      requiresPhotos: true,
+    })
+    expect(serviceFormValuesToInput(withPhotos).requiresPhotos).toBe(true)
+    const without = serviceFormSchema.parse(baseValues)
+    expect(serviceFormValuesToInput(without).requiresPhotos).toBe(false)
+  })
+})
 
 describe('serviceFormSchema: «A terminar» (AJ2-10)', () => {
   it('no pide hora de fin con «A terminar» y manda fin null', () => {

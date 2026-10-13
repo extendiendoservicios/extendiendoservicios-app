@@ -96,6 +96,8 @@ export const shiftFormSchema = z
     requiredStaff: requiredStaffSchema,
     notes: z.string().trim().optional(),
     showInPrint: z.boolean().optional(),
+    // Módulo H: «Pide fotos».
+    requiresPhotos: z.boolean().optional(),
     // AJ3-08: «Repetir este turno». Apagado = alta de un solo turno.
     repeat: z.boolean().optional(),
     weekdays: z.array(z.string()).optional(),
@@ -169,6 +171,7 @@ export function shiftFormValuesToCreateInput(values: ShiftFormValues) {
     requiredStaff: Number(values.requiredStaff),
     notes: values.notes?.trim() ? values.notes.trim() : null,
     showInPrint: values.showInPrint ?? true,
+    requiresPhotos: Boolean(values.requiresPhotos),
   }
 }
 
@@ -247,6 +250,7 @@ export const shiftEditFormSchema = z
     requiredStaff: requiredStaffSchema,
     notes: z.string().trim().optional(),
     showInPrint: z.boolean().optional(),
+    requiresPhotos: z.boolean().optional(),
   })
   .superRefine(checkEndTime)
 
@@ -263,6 +267,7 @@ export function shiftEditFormValuesToInputs(values: ShiftEditFormValues) {
       requiredStaff: Number(values.requiredStaff),
       notes: values.notes?.trim() ? values.notes.trim() : null,
       showInPrint: values.showInPrint ?? true,
+      requiresPhotos: Boolean(values.requiresPhotos),
     },
   }
 }

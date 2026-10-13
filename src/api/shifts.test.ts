@@ -144,13 +144,19 @@ describe('fetchShiftsByDate', () => {
 
 describe('fetchShiftForEdit', () => {
   it('arma ShiftEditRow a partir de v_shifts_board', async () => {
-    fromMock.mockReturnValue(
-      makeChainable({ data: SHIFT_BOARD_ROW, error: null }),
-    )
+    fromMock
+      .mockReturnValueOnce(
+        makeChainable({ data: SHIFT_BOARD_ROW, error: null }),
+      )
+      // `v_shifts_board` no trae `requires_photos`: se lee de `shifts`.
+      .mockReturnValueOnce(
+        makeChainable({ data: { requires_photos: true }, error: null }),
+      )
 
     const row = await fetchShiftForEdit('sh1')
 
-    expect(fromMock).toHaveBeenCalledWith('v_shifts_board')
+    expect(fromMock).toHaveBeenNthCalledWith(1, 'v_shifts_board')
+    expect(fromMock).toHaveBeenNthCalledWith(2, 'shifts')
     expect(row).toEqual({
       id: 'sh1',
       clientId: 'c1',
@@ -164,6 +170,7 @@ describe('fetchShiftForEdit', () => {
       requiredStaff: 2,
       status: 'scheduled',
       notes: null,
+      requiresPhotos: true,
     })
   })
 })
@@ -256,6 +263,36 @@ describe('createShift', () => {
       assigned: [],
       rejected: [],
     })
+  })
+
+  it('módulo H: manda «Pide fotos»; sin valor hereda del servicio (null/undefined)', async () => {
+    rpcMock.mockResolvedValue({
+      data: { shift: { id: 'sh1' }, warnings: [] },
+      error: null,
+    })
+    const base = {
+      clientId: 'c1',
+      siteId: 'si1',
+      date: '2026-12-25',
+      start: '08:00',
+      end: '12:00',
+      requiredStaff: 2,
+    }
+
+    await createShift({ ...base, requiresPhotos: true })
+    expect(rpcMock.mock.calls[0]?.[1]).toMatchObject({
+      p_requires_photos: true,
+    })
+
+    await createShift({ ...base, requiresPhotos: false })
+    expect(rpcMock.mock.calls[1]?.[1]).toMatchObject({
+      p_requires_photos: false,
+    })
+
+    await createShift({ ...base, requiresPhotos: null })
+    expect(
+      (rpcMock.mock.calls[2]?.[1] as Record<string, unknown>).p_requires_photos,
+    ).toBeUndefined()
   })
 
   it('AJ2-17: manda p_employee_ids y traduce asignados y rechazados', async () => {

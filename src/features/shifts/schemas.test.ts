@@ -77,6 +77,7 @@ describe('shiftFormValuesToCreateInput', () => {
       requiredStaff: 2,
       notes: 'Llevar insumos propios',
       showInPrint: true,
+      requiresPhotos: false,
     })
   })
 
@@ -86,6 +87,16 @@ describe('shiftFormValuesToCreateInput', () => {
       shiftFormValuesToCreateInput({ ...VALID_VALUES, showInPrint: false })
         .showInPrint,
     ).toBe(false)
+  })
+
+  it('módulo H: «Pide fotos» apagada por defecto y respeta si se tilda', () => {
+    expect(shiftFormValuesToCreateInput(VALID_VALUES).requiresPhotos).toBe(
+      false,
+    )
+    expect(
+      shiftFormValuesToCreateInput({ ...VALID_VALUES, requiresPhotos: true })
+        .requiresPhotos,
+    ).toBe(true)
   })
 
   it('deja notas en null cuando viene vacío', () => {
@@ -223,6 +234,16 @@ describe('AJ2-10: turnos «A terminar»', () => {
 })
 
 describe('shiftEditFormValuesToInputs', () => {
+  it('módulo H: manda «Pide fotos» a los detalles del turno', () => {
+    const inputs = shiftEditFormValuesToInputs({
+      startTime: '08:00',
+      endTime: '12:00',
+      requiredStaff: '4',
+      requiresPhotos: true,
+    })
+    expect(inputs.details.requiresPhotos).toBe(true)
+  })
+
   it('separa la franja de la dotación y las notas, y recorta el texto', () => {
     const inputs = shiftEditFormValuesToInputs({
       startTime: '08:00',
@@ -232,7 +253,12 @@ describe('shiftEditFormValuesToInputs', () => {
     })
     expect(inputs).toEqual({
       time: { start: '08:00', end: '12:00', openEnded: false },
-      details: { requiredStaff: 4, notes: 'Llevar insumos', showInPrint: true },
+      details: {
+        requiredStaff: 4,
+        notes: 'Llevar insumos',
+        showInPrint: true,
+        requiresPhotos: false,
+      },
     })
   })
 

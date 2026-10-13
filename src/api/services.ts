@@ -208,6 +208,8 @@ export interface ServiceDetail {
   validFrom: string
   validTo: string | null
   worksOnHolidays: boolean
+  /** Módulo H (H-07): los turnos del servicio piden fotos y lo heredan al generarse. */
+  requiresPhotos: boolean
   minHoursMonth: number | null
   maxHoursMonth: number | null
   status: ServiceStatus
@@ -230,6 +232,7 @@ interface ServiceRowWithNames {
   valid_from: string
   valid_to: string | null
   works_on_holidays: boolean
+  requires_photos: boolean
   min_hours_month: number | null
   max_hours_month: number | null
   status: ServiceStatus
@@ -257,6 +260,7 @@ function mapServiceDetailRow(row: ServiceRowWithNames): ServiceDetail {
     validFrom: row.valid_from,
     validTo: row.valid_to,
     worksOnHolidays: row.works_on_holidays,
+    requiresPhotos: row.requires_photos,
     minHoursMonth: row.min_hours_month,
     maxHoursMonth: row.max_hours_month,
     status: row.status,
@@ -297,6 +301,8 @@ export interface ServiceFormInput {
   validFrom: string
   validTo: string | null
   worksOnHolidays: boolean
+  /** Módulo H (H-07): «Pide fotos». */
+  requiresPhotos: boolean
   minHoursMonth: number | null
   maxHoursMonth: number | null
   status: ServiceStatus
@@ -323,6 +329,7 @@ export async function createService(
       valid_from: input.validFrom,
       valid_to: input.validTo,
       works_on_holidays: input.worksOnHolidays,
+      requires_photos: input.requiresPhotos,
       min_hours_month: input.minHoursMonth,
       max_hours_month: input.maxHoursMonth,
       status: input.status,
@@ -364,6 +371,7 @@ export async function updateService(
       valid_from: input.validFrom,
       valid_to: input.validTo,
       works_on_holidays: input.worksOnHolidays,
+      requires_photos: input.requiresPhotos,
       min_hours_month: input.minHoursMonth,
       max_hours_month: input.maxHoursMonth,
       status: input.status,
@@ -483,7 +491,7 @@ export async function fetchServiceLabels(
 // -------------------------------------------------------------------------
 
 export type ServiceDeleteBlockReason =
-  'ATTENDANCE_RECORDS' | 'ATTENDANCE_NOTICES' | 'SUPERVISIONS'
+  'ATTENDANCE_RECORDS' | 'ATTENDANCE_NOTICES' | 'SUPERVISIONS' | 'SHIFT_MEDIA'
 
 export interface ServiceDeletePreview {
   serviceId: string
@@ -508,6 +516,8 @@ const DELETE_ERROR_MESSAGES: Record<string, string> = {
     'No se puede eliminar: hay turnos con fichajes o avisos de asistencia. Dalo de baja en su lugar.',
   SERVICE_HAS_SUPERVISIONS:
     'No se puede eliminar: hay turnos con supervisiones. Dalo de baja en su lugar.',
+  SERVICE_HAS_MEDIA:
+    'No se puede eliminar: hay turnos con fotos o videos. Dalo de baja en su lugar.',
 }
 
 /** Pasa el error de las RPC de eliminación a `ApiError`, con el mensaje en español de cada `hint`. */

@@ -182,6 +182,8 @@ export interface ShiftEditRow {
   notes: string | null
   /** AJ2-15: null si no hay observación (al editar se trata como tildada). */
   showInPrint: boolean | null
+  /** Módulo H (H-07): el turno pide fotos. */
+  requiresPhotos: boolean
 }
 
 export async function fetchShiftForEdit(id: string): Promise<ShiftEditRow> {
@@ -195,6 +197,15 @@ export async function fetchShiftForEdit(id: string): Promise<ShiftEditRow> {
     throw fromPostgrestError(error)
   }
   const row = data as ShiftBoardRow
+  // `v_shifts_board` no trae `requires_photos` (módulo H): se lee de `shifts`.
+  const { data: photosData, error: photosError } = await supabase
+    .from('shifts')
+    .select('requires_photos')
+    .eq('id', id)
+    .single()
+  if (photosError) {
+    throw fromPostgrestError(photosError)
+  }
   return {
     id: row.id,
     clientId: row.client_id,
@@ -209,6 +220,7 @@ export async function fetchShiftForEdit(id: string): Promise<ShiftEditRow> {
     status: row.status,
     notes: row.notes,
     showInPrint: row.show_in_print,
+    requiresPhotos: photosData.requires_photos,
   }
 }
 
@@ -231,6 +243,8 @@ export interface CreateShiftInput {
   notes?: string | null
   /** AJ2-15: «mostrar en la impresión»; por defecto tildada. */
   showInPrint?: boolean
+  /** Módulo H: «Pide fotos». `null` o ausente = hereda del servicio (sin servicio, no pide). */
+  requiresPhotos?: boolean | null
   /** AJ2-17: empleados que quedan asignados en la misma operación (opcional). */
   employeeIds?: string[]
 }
@@ -279,6 +293,7 @@ export async function createShift(
     p_service_id: input.serviceId,
     p_notes: input.notes ?? undefined,
     p_show_in_print: input.showInPrint ?? true,
+    p_requires_photos: input.requiresPhotos ?? undefined,
     p_employee_ids:
       input.employeeIds && input.employeeIds.length > 0
         ? input.employeeIds
@@ -424,6 +439,7 @@ export async function createShiftSeries(
     p_works_on_holidays: input.worksOnHolidays,
     p_notes: input.notes ?? undefined,
     p_show_in_print: input.showInPrint ?? true,
+    p_requires_photos: input.requiresPhotos ?? undefined,
     p_employee_ids:
       input.employeeIds && input.employeeIds.length > 0
         ? input.employeeIds
