@@ -25,8 +25,8 @@ select has_table('public', 'security_events', 'existe public.security_events');
 
 select columns_are(
   'public', 'company_settings',
-  array['id', 'name', 'logo_path', 'support_phone', 'location_consent_text', 'updated_by', 'updated_at'],
-  'company_settings tiene exactamente las columnas de 04 sección 2.6'
+  array['id', 'name', 'logo_path', 'support_phone', 'location_consent_text', 'updated_by', 'updated_at', 'photo_retention_days', 'video_retention_days'],
+  'company_settings tiene exactamente las columnas de 04 sección 2.6 (más los plazos de fotos y videos, 0047)'
 );
 
 select columns_are(
