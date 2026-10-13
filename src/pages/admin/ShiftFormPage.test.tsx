@@ -364,3 +364,45 @@ describe('ShiftFormPage — repetir el turno', () => {
     )
   })
 })
+
+describe('ShiftFormPage: casilla «Pide fotos» (módulo H)', () => {
+  it('viene apagada y create_shift recibe requiresPhotos false', async () => {
+    renderPage()
+    fillBasics()
+    expect(
+      screen.getByRole('checkbox', { name: 'Pide fotos' }),
+    ).not.toBeChecked()
+    fireEvent.click(screen.getByRole('button', { name: 'Crear turno' }))
+    await waitFor(() => expect(createShiftMock).toHaveBeenCalledTimes(1))
+    expect(createShiftMock.mock.calls[0]?.[0]).toMatchObject({
+      requiresPhotos: false,
+    })
+  })
+
+  it('tildada, create_shift recibe requiresPhotos true', async () => {
+    renderPage()
+    fillBasics()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Pide fotos' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Crear turno' }))
+    await waitFor(() => expect(createShiftMock).toHaveBeenCalledTimes(1))
+    expect(createShiftMock.mock.calls[0]?.[0]).toMatchObject({
+      requiresPhotos: true,
+    })
+  })
+
+  it('en una repetición, create_shift_series también la recibe', async () => {
+    renderPage()
+    fillBasics()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Pide fotos' }))
+    fireEvent.click(screen.getByRole('switch', { name: 'Repetir este turno' }))
+    fireEvent.change(screen.getByLabelText('Repetir hasta'), {
+      target: { value: '2026-11-17' },
+    })
+    await screen.findByText('Se van a crear 2 turnos.')
+    fireEvent.click(screen.getByRole('button', { name: 'Crear turnos' }))
+    await waitFor(() => expect(createShiftSeriesMock).toHaveBeenCalledTimes(1))
+    expect(createShiftSeriesMock.mock.calls[0]?.[0]).toMatchObject({
+      requiresPhotos: true,
+    })
+  })
+})

@@ -69,6 +69,7 @@ const SERVICE_ROW = {
   valid_from: '2026-01-01',
   valid_to: null,
   works_on_holidays: true,
+  requires_photos: false,
   min_hours_month: null,
   max_hours_month: null,
   status: 'active' as const,
@@ -109,6 +110,7 @@ const FORM_INPUT = {
   validFrom: '2026-01-01',
   validTo: null,
   worksOnHolidays: true,
+  requiresPhotos: false,
   minHoursMonth: null,
   maxHoursMonth: null,
   status: 'active' as const,
@@ -135,6 +137,7 @@ describe('fetchServiceDetail', () => {
       validFrom: '2026-01-01',
       validTo: null,
       worksOnHolidays: true,
+      requiresPhotos: false,
       minHoursMonth: null,
       maxHoursMonth: null,
       status: 'active',
@@ -468,6 +471,7 @@ describe('eliminar un servicio (AJ3-01)', () => {
     ['SERVICE_NOT_FOUND', 'No encontramos el servicio'],
     ['SERVICE_HAS_ATTENDANCE', 'fichajes o avisos de asistencia'],
     ['SERVICE_HAS_SUPERVISIONS', 'supervisiones'],
+    ['SERVICE_HAS_MEDIA', 'fotos o videos'],
   ])('mapea el hint %s a un mensaje en español', async (hint, fragment) => {
     rpcMock.mockResolvedValue({
       data: null,

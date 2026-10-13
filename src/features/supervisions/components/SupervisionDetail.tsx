@@ -16,6 +16,8 @@ import {
   canMarkSupervisionNotDone,
 } from '@/features/supervisions/permissions'
 import { useSupervisionDetailQuery } from '@/features/supervisions/queries'
+import { ShiftMediaSection } from '@/features/media/components/ShiftMediaSection'
+import { useShiftMediaBySupervisionQuery } from '@/features/media/queries'
 import { CancelSupervisionDialog } from './CancelSupervisionDialog'
 import { formatShiftRange } from '@/features/shifts/openEnded'
 import { MarkSupervisionNotDoneDialog } from './MarkSupervisionNotDoneDialog'
@@ -49,6 +51,8 @@ function SupervisionDetail({ supervisionId }: SupervisionDetailProps) {
   const canEditRatings = canEditRatingsAlways(actor)
 
   const detailQuery = useSupervisionDetailQuery(supervisionId)
+  // Módulo H: lo que subió el supervisor en esta supervisión.
+  const mediaQuery = useShiftMediaBySupervisionQuery(supervisionId)
   const [isCancelOpen, setCancelOpen] = useState(false)
   const [isNotDoneOpen, setNotDoneOpen] = useState(false)
   const [rateTarget, setRateTarget] =
@@ -247,6 +251,13 @@ function SupervisionDetail({ supervisionId }: SupervisionDetailProps) {
           </ul>
         )}
       </section>
+
+      <ShiftMediaSection
+        rows={mediaQuery.data}
+        isLoading={mediaQuery.isLoading}
+        isError={mediaQuery.isError}
+        emptyMessage="El supervisor no subió fotos ni videos."
+      />
 
       <CancelSupervisionDialog
         supervisionId={supervisionId}

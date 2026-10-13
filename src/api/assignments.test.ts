@@ -395,6 +395,23 @@ describe('updateShiftDetails', () => {
     })
   })
 
+  it('módulo H: manda p_requires_photos cuando se indica y nada cuando no', async () => {
+    rpcMock.mockResolvedValue({
+      data: { id: 'sh1', required_staff: 3, status: 'scheduled' },
+      error: null,
+    })
+
+    await updateShiftDetails('sh1', 3, null, undefined, true)
+    expect(rpcMock.mock.calls[0]?.[1]).toMatchObject({
+      p_requires_photos: true,
+    })
+
+    await updateShiftDetails('sh1', 3)
+    expect(
+      (rpcMock.mock.calls[1]?.[1] as Record<string, unknown>).p_requires_photos,
+    ).toBeUndefined()
+  })
+
   it('traduce REQUIRED_STAFF_BELOW_ASSIGNED a ApiError', async () => {
     rpcMock.mockResolvedValue({
       data: null,
@@ -426,6 +443,7 @@ describe('fetchShiftDetail', () => {
     generated: true,
     service_id: 'sv1',
     starts_at: '2026-10-05T11:00:00+00:00',
+    requires_photos: true,
     client: { id: 'c1', legal_name: 'Limpiadora SRL', trade_name: 'Limpia Ya' },
     site: { id: 'si1', name: 'Sede Centro', city: 'CABA' },
     assignments: [
@@ -505,6 +523,8 @@ describe('fetchShiftDetail', () => {
     // AJ2-15: la observación sale de `shift_observations`, no de `shifts.notes`.
     expect(detail.notes).toBe('Llevar insumos')
     expect(detail.showInPrint).toBe(false)
+    // Módulo H: el turno pide fotos.
+    expect(detail.requiresPhotos).toBe(true)
     expect(detail.assignments).toHaveLength(1)
     expect(detail.assignments[0]).toEqual(
       expect.objectContaining({

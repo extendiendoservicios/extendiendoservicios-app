@@ -12,6 +12,7 @@ import { RepeatFields } from '@/features/services/components/RepeatFields'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { ShiftObservationField } from '@/features/shifts/components/ShiftObservationField'
 import { OpenEndedToggle } from '@/features/shifts/components/OpenEndedToggle'
+import { RequiresPhotosToggle } from '@/features/shifts/components/RequiresPhotosToggle'
 import { OPEN_ENDED_LABEL } from '@/features/shifts/openEnded'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -134,6 +135,7 @@ function CreateShiftForm({
     requiredStaff: '1',
     notes: '',
     showInPrint: true,
+    requiresPhotos: false,
     // AJ3-08: «Repetir este turno» apagado = alta de un solo turno, como siempre.
     repeat: false,
     weekdays: [],
@@ -668,6 +670,19 @@ function CreateShiftForm({
 
         <Controller
           control={control}
+          name="requiresPhotos"
+          render={({ field }) => (
+            <RequiresPhotosToggle
+              id="shift-requires-photos"
+              className="sm:col-span-2"
+              checked={field.value ?? false}
+              onCheckedChange={field.onChange}
+            />
+          )}
+        />
+
+        <Controller
+          control={control}
           name="showInPrint"
           render={({ field }) => (
             <ShiftObservationField
@@ -735,6 +750,7 @@ function EditShiftTimeForm({
           requiredStaff: String(shiftQuery.data.requiredStaff),
           notes: shiftQuery.data.notes ?? '',
           showInPrint: shiftQuery.data.showInPrint ?? true,
+          requiresPhotos: shiftQuery.data.requiresPhotos,
         }
       : undefined,
   })
@@ -766,6 +782,7 @@ function EditShiftTimeForm({
                 requiredStaff: inputs.details.requiredStaff,
                 notes: inputs.details.notes,
                 showInPrint: inputs.details.showInPrint,
+                requiresPhotos: inputs.details.requiresPhotos,
               }),
             ]),
       ])
@@ -934,6 +951,18 @@ function EditShiftTimeForm({
                     <FieldError>{errors.requiredStaff.message}</FieldError>
                   )}
                 </Field>
+                <Controller
+                  control={control}
+                  name="requiresPhotos"
+                  render={({ field }) => (
+                    <RequiresPhotosToggle
+                      id="shift-requires-photos"
+                      className="col-span-2"
+                      checked={field.value ?? false}
+                      onCheckedChange={field.onChange}
+                    />
+                  )}
+                />
                 <Controller
                   control={control}
                   name="showInPrint"

@@ -17,6 +17,7 @@ import {
   canManageAssignmentsAfterStart,
 } from '@/features/planning/permissions'
 import { useShiftsByDateQuery } from '@/features/shifts/queries'
+import { StorageAlert } from '@/features/media/components/StorageAlert'
 import { useSupervisionsAdminQuery } from '@/features/supervisions/queries'
 import { formatDateOnly } from '@/features/settings/dateOnly'
 import { computeAttention, type AttentionItem } from '../attention'
@@ -156,6 +157,8 @@ function DashboardScreen() {
           {loadError.message}
         </p>
       )}
+
+      <StorageAlert />
 
       <DashboardKpis kpis={kpis} />
 

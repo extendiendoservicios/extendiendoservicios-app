@@ -35,6 +35,9 @@ import {
 import { useShiftDetailQuery } from '@/features/planning/queries'
 import { canManageSupervisions } from '@/features/supervisions/permissions'
 import { CancelShiftAction } from '@/features/shifts/components/CancelShiftAction'
+import { ShiftMediaSection } from '@/features/media/components/ShiftMediaSection'
+import { isMissingPhotos } from '@/features/media/items'
+import { useShiftMediaByShiftQuery } from '@/features/media/queries'
 import { formatShiftRange } from '@/features/shifts/openEnded'
 import { AdminTaskList } from './AdminTaskList'
 import { AssignEmployeeSheet } from './AssignEmployeeSheet'
@@ -49,7 +52,8 @@ import { ShiftObservationSection } from './ShiftObservationSection'
  * (con edición ASSIGN-013), asignaciones vigentes (con asignar/quitar/franja
  * propia), tareas, supervisiones (lista con botón "Asignar supervisión",
  * SUP-012, `05` línea 40: "assign_supervision (ADM-14)") y la observación
- * administrativa (siempre visible y editable ahí mismo, AJ3-06). `ShiftDetailPage` decide si esto se ve en un drawer o en
+ * administrativa (siempre visible y editable ahí mismo, AJ3-06) y las fotos y
+ * videos del turno por persona, con la marca «Sin fotos» (módulo H, P21.4). `ShiftDetailPage` decide si esto se ve en un drawer o en
  * una página completa (ASSIGN-014); acá el contenido es el mismo para las
  * dos variantes.
  */
@@ -68,6 +72,8 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
   const canAssignSupervision = canManageSupervisions(actor)
 
   const shiftQuery = useShiftDetailQuery(shiftId)
+  // Módulo H: fotos y videos del turno (ADM-06), de todas las personas.
+  const mediaQuery = useShiftMediaByShiftQuery(shiftId)
   // Inicio y fin reales, quién y cómo se registraron, y los avisos
   // (ATT-014, ABS-006): se piden en cuanto se conocen los ids de las
   // asignaciones vigentes, sin esperar a los primeros `return` de abajo
@@ -360,6 +366,23 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
           <AdminTaskList tasks={shift.tasks} canManage={canEditTasks} />
         )}
       </section>
+
+      <ShiftMediaSection
+        rows={mediaQuery.data}
+        isLoading={mediaQuery.isLoading}
+        isError={mediaQuery.isError}
+        requiresPhotos={shift.requiresPhotos}
+        missingPhotos={
+          !mediaQuery.isLoading &&
+          !mediaQuery.isError &&
+          isMissingPhotos(shift, mediaQuery.data ?? [])
+        }
+        emptyMessage={
+          shift.requiresPhotos
+            ? 'Todavía no subieron fotos ni videos de este turno.'
+            : 'Este turno no tiene fotos ni videos.'
+        }
+      />
 
       <section className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
