@@ -683,6 +683,7 @@ style-src 'self' 'unsafe-inline';
 font-src 'self';
 img-src 'self' data: blob: https://anesttvrnpsaaaxaquce.supabase.co https://fysuppdadwvabrjpnnoh.supabase.co https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://static-map-tiles-api.arcgis.com https://ibasemaps-api.arcgis.com;
 connect-src 'self' https://anesttvrnpsaaaxaquce.supabase.co https://fysuppdadwvabrjpnnoh.supabase.co https://*.ingest.de.sentry.io https://nominatim.openstreetmap.org;
+media-src 'self' blob: https://anesttvrnpsaaaxaquce.supabase.co https://fysuppdadwvabrjpnnoh.supabase.co;
 base-uri 'self';
 form-action 'self';
 frame-ancestors 'none';
@@ -690,6 +691,8 @@ object-src 'none'
 ```
 
 (en el archivo real va todo en una sola línea, formato que exige `_headers`).
+
+- **`media-src`** (módulo H, P21.6e): los videos de evidencia se reproducen con URL firmadas de Storage de los dos proyectos, y `blob:` para la vista previa y la recompresión en el celular. Sin esta directiva caía en `default-src 'self'` y el `<video>` no cargaba.
 
 - **`connect-src`**: los dos proyectos de Supabase por su host único
   (`<ref>.supabase.co` sirve REST, Auth y Storage bajo el mismo origen —
