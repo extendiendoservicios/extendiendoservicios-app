@@ -24,24 +24,11 @@ export function claveCaso(...partes: string[]): string {
   return partes.join(' · ')
 }
 
-/** Defectos conocidos por identificador (DEF-P14 se agregó en P21.6c). */
-export const DEFECTOS_CONOCIDOS: Record<string, Defecto> = {
-  'DEF-P14': {
-    id: 'DEF-P14',
-    resumen:
-      '`set_my_high_contrast` (0043) no consulta `profiles.is_active`: una persona desactivada con el token todavía vigente pasa la puerta (CB-18; las demás RPC responden FORBIDDEN, 0020 y 0022).',
-  },
-}
+/** Defectos conocidos por identificador (DEF-P14 se agregó y se corrigió en P21.6c, 0050). */
+export const DEFECTOS_CONOCIDOS: Record<string, Defecto> = {}
 
 /** Clave de caso -> defecto que lo hace fallar hoy. */
-export const DEFECTOS: Record<string, Defecto> = {
-  [claveCaso('desactivado', 'rpc', 'set_my_high_contrast', 'empleado')]:
-    DEFECTOS_CONOCIDOS['DEF-P14'],
-  [claveCaso('desactivado', 'rpc', 'set_my_high_contrast', 'supervisor')]:
-    DEFECTOS_CONOCIDOS['DEF-P14'],
-  [claveCaso('desactivado', 'rpc', 'set_my_high_contrast', 'admin')]:
-    DEFECTOS_CONOCIDOS['DEF-P14'],
-}
+export const DEFECTOS: Record<string, Defecto> = {}
 
 export function defectoDe(clave: string): Defecto | undefined {
   return DEFECTOS[clave]
