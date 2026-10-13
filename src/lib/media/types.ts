@@ -60,7 +60,7 @@ export interface UploadedMedia {
  * Función de subida que inyecta quien usa `MediaCapture` (P21.3/P21.4 con
  * `src/api/media.ts`). Tiene que hacer el flujo completo:
  *
- * 1. `begin_shift_media(shift_id, kind, size_bytes = media.totalBytes, …)`:
+ * 1. `begin_shift_media(shift_id, kind, p_size_bytes = media.bytes, p_thumb_size_bytes = media.thumbnailBytes, …)` (la base suma los dos):
  *    valida rol, ventana, tope, sede y tamaño; crea la fila pendiente y
  *    devuelve las rutas `{shift_id}/{media_id}.{ext}` y `…_thumb.jpg`.
  * 2. Subir `media.file` y `media.thumbnail` a Storage (bucket `evidence`).

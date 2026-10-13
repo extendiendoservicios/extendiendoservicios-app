@@ -192,9 +192,12 @@ export default function SupervisionDetailPage() {
       </Card>
 
       {/* Módulo H (P21.3): fotos y videos propios del turno supervisado. La
-          supervisión puede estar asignada, en curso o cerrada; cancelada no
-          (el servidor rechaza con NOT_SHIFT_PARTICIPANT). */}
-      {supervision.status !== 'cancelled' && (
+          supervisión puede estar asignada, en curso o completada; cancelada o
+          no realizada no (`begin_shift_media` de 0047 rechaza con
+          NOT_SHIFT_PARTICIPANT). */}
+      {(supervision.status === 'assigned' ||
+        supervision.status === 'in_progress' ||
+        supervision.status === 'completed') && (
         <LazyShiftMediaSection
           shiftId={supervision.shiftId}
           counts={{
