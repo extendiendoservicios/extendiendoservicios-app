@@ -44,6 +44,11 @@ export interface MyDayAssignment {
   phoneRestricted: boolean
   photosNotAllowed: boolean
   restrictionsNotes: string | null
+  /** El servicio pide fotos (módulo H, H-07): EMP-07 lo avisa y EMP-10 advierte si no hay ninguna. */
+  requiresPhotos: boolean
+  /** Fotos y videos propios ya confirmados en el turno (módulo H): alimentan los contadores de EMP-07. */
+  myPhotosCount: number
+  myVideosCount: number
   /** Franja efectiva: la propia de la asignación si tiene, si no la del turno (`effective_*`). */
   startTime: string
   endTime: string
@@ -117,6 +122,9 @@ interface MyDayRawRow {
   phone_restricted: boolean
   photos_not_allowed: boolean
   restrictions_notes: string | null
+  requires_photos: boolean | null
+  my_photos_count: number | null
+  my_videos_count: number | null
   effective_start_time: string
   effective_end_time: string
   effective_starts_at: string | null
@@ -167,6 +175,9 @@ function mapMyDayRow(row: MyDayRawRow): MyDayAssignment {
     phoneRestricted: row.phone_restricted,
     photosNotAllowed: row.photos_not_allowed,
     restrictionsNotes: row.restrictions_notes,
+    requiresPhotos: row.requires_photos ?? false,
+    myPhotosCount: row.my_photos_count ?? 0,
+    myVideosCount: row.my_videos_count ?? 0,
     startTime: row.effective_start_time,
     endTime: row.effective_end_time,
     startsAt: row.effective_starts_at,
