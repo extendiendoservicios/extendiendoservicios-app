@@ -21,11 +21,12 @@ Las imágenes son de ejemplo, con datos inventados. Esta guía cubre solo la **P
 8. [Asignar personal](#asignar-personal)
 9. [Empleados y supervisores](#empleados-y-supervisores)
 10. [Seguir el día: Resumen y Asistencia](#seguir-el-día-resumen-y-asistencia)
-11. [Supervisiones y calificaciones](#supervisiones-y-calificaciones)
-12. [Configuración](#configuración)
-13. [Usar la administración desde el celular](#usar-la-administración-desde-el-celular)
-14. [Lo que no incluye la Plataforma Base](#lo-que-no-incluye-la-plataforma-base)
-15. [Cuando algo no anda](#cuando-algo-no-anda)
+11. [Fotos y videos](#fotos-y-videos)
+12. [Supervisiones y calificaciones](#supervisiones-y-calificaciones)
+13. [Configuración](#configuración)
+14. [Usar la administración desde el celular](#usar-la-administración-desde-el-celular)
+15. [Lo que no incluye la Plataforma Base](#lo-que-no-incluye-la-plataforma-base)
+16. [Cuando algo no anda](#cuando-algo-no-anda)
 
 ---
 
@@ -237,6 +238,7 @@ Un **servicio** es un trabajo recurrente en una sede (por ejemplo "Limpieza mañ
    - **Nombre** (por ejemplo "Limpieza mañana"), **Estado** (**Activo**, **Pausado** o **Finalizado**: solo un servicio activo genera turnos) y **Dotación** (cuántas personas hacen falta, de 1 a 10).
    - **Días y franja horaria:** tildá los **días de la semana** y elegí **Desde** y **Hasta**. El horario no puede cruzar la medianoche.
    - **Trabaja los feriados:** si está apagado, ese servicio no genera turnos en los feriados.
+   - **Pide fotos:** si está tildada, los turnos que se generen piden fotos. Quien limpia recibe un aviso si termina sin sacar ninguna (lo puede ignorar) y en el detalle del turno vas a ver la marca **Sin fotos**. Cambiarlo no modifica los turnos ya generados.
    - **Vigencia:** desde qué fecha rige y, opcionalmente, hasta cuándo.
    - **Horas mensuales (informativas)** y **Notas**: son datos de referencia.
 3. Tocá **Crear servicio**.
@@ -263,8 +265,10 @@ Es seguro repetirlo: **solo crea los turnos que todavía no existen**; nunca bor
 Para un trabajo que no es recurrente (una limpieza especial, un reemplazo):
 
 1. En **Planificación**, tocá **Nuevo turno**.
-2. Elegí **Cliente**, **Sede**, **Fecha**, **Desde**, **Hasta** y **Dotación**. Podés agregar **Notas**.
+2. Elegí **Cliente**, **Sede**, **Fecha**, **Desde**, **Hasta** y **Dotación**. Podés agregar **Notas** y tildar **Pide fotos**.
 3. Tocá **Crear turno**. Si la fecha es feriado, la pantalla te avisa.
+
+Para cambiar **Pide fotos** en un turno que ya existe, usá **Editar franja** del detalle del turno.
 
 ![Nuevo turno](guias/img/adm-turno-nuevo.png)
 
@@ -297,6 +301,7 @@ Ves el cliente y la sede, la fecha y la franja, el estado, y de dónde viene (se
 - **Tareas:** las tareas del turno y su estado.
 - **Supervisiones:** quién supervisa ese turno.
 - **Notas administrativas.**
+- **Fotos y videos:** las miniaturas que subieron las personas del turno, agrupadas por persona. Si el turno **Pide fotos**, está en curso o finalizado y no hay ninguna foto, aparece la marca **Sin fotos**. Tocá una miniatura para abrir el visor (ver [Fotos y videos](#fotos-y-videos)).
 
 Acciones: **Editar franja** (cambiar el horario del turno), **Editar dotación y notas**, **Cancelar turno** (pide un **Motivo de la cancelación**; **Permiso "Cancelar turnos"**), **Asignar empleado**, **Recargar tareas**, **Asignar supervisión**.
 
@@ -409,6 +414,8 @@ Y **Servicios de hoy**: una fila por persona con el cliente, la sede, el horario
 
 **Un aviso que manda un empleado desde su celular aparece acá en menos de un minuto, sin recargar.**
 
+Arriba de los números puede aparecer un aviso amarillo o rojo: **el espacio de fotos y videos se está llenando** (desde el 70 %) o **está casi lleno** (desde el 90 %). Tocá **Ver fotos y videos** para ver qué ocupa lugar. Si no aparece, el espacio está bien.
+
 ### Asistencia de hoy
 
 ![Asistencia de hoy](guias/img/adm-asistencia.png)
@@ -432,6 +439,32 @@ Podés filtrar por estado, cliente y sede, buscar por nombre y cambiar de fecha 
 4. Confirmá.
 
 Queda anotado que lo cargó Administración y quién fue. El **cierre manual** sirve para cerrar un servicio que quedó sin fin registrado.
+
+---
+
+## Fotos y videos
+
+Los empleados y supervisores pueden subir **fotos y videos generales del turno** desde el celular (con la cámara o desde la galería). En el menú lateral, dentro de **Operación**, **Fotos y videos** (en el celular, dentro de **Más**) los ves todos. Es solo para el dueño y los administradores: cada empleado ve únicamente lo que subió.
+
+### Cómo se usa la pantalla
+
+- **Espacio usado** (arriba): cuánto ocupa todo lo guardado, sobre el tope de 1 GB del plan gratuito, con el detalle por tipo (fotos y videos de los turnos, fotos de perfil, logo, fotos de clientes). Está **amarillo desde el 70 %** y **rojo desde el 90 %**, y lo dice con palabras. La app no bloquea las subidas cuando se llena: avisa para que decidas a tiempo bajar los plazos o pasar a un plan pago.
+- **Filtros:** rango de fechas (por defecto, los últimos 30 días), cliente, sede (primero elegí el cliente), persona, tipo (fotos y videos, solo fotos, solo videos) y **Todas / Conservadas / Por vencer en 7 días**. Al elegir **Conservadas** o **Por vencer** se vacía el rango de fechas, porque lo que está por vencer es más viejo que 30 días; podés volver a ponerlo.
+- **Grilla:** las miniaturas agrupadas por turno, con el título **fecha · cliente · sede**. Tocá el título para abrir el detalle del turno. Se cargan de a 48: **Ver más** trae las siguientes.
+- **Visor:** tocá una miniatura. Ves la foto o el video grande, quién lo subió, a qué hora y cuándo vence. Deslizá o usá las flechas para pasar al siguiente. Acciones: **Conservar** (o **Dejar de conservar**) y **Descargar**.
+- **Descargar varias:** tildá las miniaturas (o **Seleccionar todo** en un turno) y tocá **Descargar ZIP**. Se arma en tu navegador, con nombres como `2026-10-13_ClienteX_SedeY_Nombre_01.jpg`, y muestra el avance; podés **Cancelar**. Hasta 50 archivos por ZIP.
+
+### Cuándo vencen
+
+Las fotos y los videos se **borran solos de noche** cuando pasa el plazo (60 días las fotos y 30 los videos, salvo que lo cambies en **Configuración → Empresa**). Del turno queda la **constancia**: la miniatura aparece como un cuadro gris que dice **Vencida**. Lo que marcás como **Conservar** no vence.
+
+### Dónde más aparecen
+
+- **Detalle del turno:** sección **Fotos y videos** con las miniaturas por persona, y la marca **Sin fotos** si el turno pide fotos, ya empezó y no hay ninguna.
+- **Detalle de la supervisión:** las miniaturas que subió el supervisor.
+- **Resumen:** el aviso de espacio, cuando pasa del 70 %.
+- **Servicio y turno:** la casilla **Pide fotos**.
+- **Eliminar un servicio:** no se puede si algún turno tiene fotos o videos (la pantalla lo explica como «fotos o videos»); dalo de baja.
 
 ---
 
@@ -499,6 +532,7 @@ En la fila de cada persona, el botón de los tres puntos abre las acciones:
 
 - **Logo:** **Subir logo** (PNG, JPEG o WebP, hasta 1 MB). Se ve en la pantalla de ingreso y en el menú. **Lo pueden cambiar el dueño y los administradores.**
 - **Solo dueño:** **Nombre de la empresa**, **Teléfono de soporte** (aparece en la pantalla de ingreso, para quien no pueda entrar) y **Texto de consentimiento de ubicación** (lo lee cada empleado antes de dar su permiso). Se guardan con **Guardar cambios**.
+- **Fotos y videos** (dueño y administradores): cuántos días se guardan las **fotos** (60 por defecto) y los **videos** (30 por defecto), de 7 a 365 días. Se guardan con **Guardar plazos**. Un plazo nuevo vale también para lo que ya está guardado. Lo que marcaste como **Conservar** no vence nunca. Abajo ves cuánto espacio se usa.
 
 ### Feriados (solo dueño)
 
