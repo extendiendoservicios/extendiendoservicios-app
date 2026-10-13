@@ -26,6 +26,7 @@ import {
 } from '@/features/shifts/queries'
 import { peopleOfShift, summarizeNames } from '@/features/shifts/shiftPeople'
 import { groupShiftsByFranja, shiftFranjaKey } from '@/features/shifts/grouping'
+import { RequiresPhotosMark } from '@/features/shifts/components/RequiresPhotosMark'
 import { NO_CHECKOUT_LABEL } from '@/features/shifts/openEnded'
 import { UpdatedAgo } from './UpdatedAgo'
 import { CancelShiftDialog } from './CancelShiftDialog'
@@ -93,6 +94,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
       cell: ({ row }) => (
         <span>
           {row.original.clientName} · {row.original.siteName}
+          {row.original.requiresPhotos && <RequiresPhotosMark />}
         </span>
       ),
     },
