@@ -157,6 +157,47 @@ function mapShiftMediaRow(row: ShiftMediaRawRow): ShiftMediaRow {
   }
 }
 
+/** Franja horaria de un turno (de `v_shifts_board`). */
+export interface ShiftTimes {
+  shiftId: string
+  /** `HH:MM:SS`. */
+  startTime: string
+  /** `HH:MM:SS`. */
+  endTime: string
+  openEnded: boolean
+}
+
+const SHIFT_TIMES_CHUNK = 50
+
+/**
+ * Franjas horarias de varios turnos en lote (una consulta cada 50 turnos), para
+ * el visor: `v_shift_media` trae la fecha pero no las horas.
+ */
+export async function fetchShiftTimes(
+  shiftIds: readonly string[],
+): Promise<ShiftTimes[]> {
+  const chunks: string[][] = []
+  for (let i = 0; i < shiftIds.length; i += SHIFT_TIMES_CHUNK) {
+    chunks.push(shiftIds.slice(i, i + SHIFT_TIMES_CHUNK))
+  }
+  const results = await Promise.all(
+    chunks.map(async (ids) => {
+      const { data, error } = await supabase
+        .from('v_shifts_board')
+        .select('id, start_time, end_time, open_ended')
+        .in('id', ids)
+      if (error) throw mapMediaAdminError(error)
+      return data ?? []
+    }),
+  )
+  return results.flat().map((row) => ({
+    shiftId: row.id ?? '',
+    startTime: row.start_time ?? '',
+    endTime: row.end_time ?? '',
+    openEnded: row.open_ended ?? false,
+  }))
+}
+
 export interface ShiftMediaFilters {
   /** Desde esta fecha de turno (incluida), `YYYY-MM-DD`. */
   dateFrom?: string

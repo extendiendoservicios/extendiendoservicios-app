@@ -5,4 +5,4 @@ export {
   VideoRecorderDialog,
   type VideoRecorderDialogProps,
 } from './VideoRecorderDialog'
-export type { MediaItem, MediaGridGroup } from './types'
+export type { MediaItem, MediaItemDetails, MediaGridGroup } from './types'

@@ -31,6 +31,7 @@ export const mediaKeys = {
     [...mediaKeys.all, 'supervision', supervisionId] as const,
   thumbs: (signature: string) =>
     [...mediaKeys.all, 'thumbs', signature] as const,
+  shiftTimes: (ids: string) => [...mediaKeys.all, 'shiftTimes', ids] as const,
   usage: () => [...mediaKeys.all, 'usage'] as const,
   retention: () => [...mediaKeys.all, 'retention'] as const,
 }
@@ -100,6 +101,21 @@ export function useThumbUrls(rows: readonly ShiftMediaRow[]) {
     for (const [path, url] of result.data ?? []) merged.set(path, url)
   }
   return merged
+}
+
+/**
+ * Franjas horarias de los turnos de las filas, en una sola consulta en lote.
+ * Las horas de un turno casi no cambian: se cachean 5 minutos.
+ */
+export function useShiftTimes(rows: readonly ShiftMediaRow[]) {
+  const ids = Array.from(new Set(rows.map((row) => row.shiftId))).sort()
+  return useQuery({
+    queryKey: mediaKeys.shiftTimes(ids.join(',')),
+    queryFn: () => mediaApi.fetchShiftTimes(ids),
+    enabled: ids.length > 0,
+    staleTime: 5 * 60_000,
+    select: (data) => new Map(data.map((times) => [times.shiftId, times])),
+  })
 }
 
 /** Medidor de espacio. `poll`: ADM-32 lo actualiza cada 60 s; el aviso del Resumen, también. */

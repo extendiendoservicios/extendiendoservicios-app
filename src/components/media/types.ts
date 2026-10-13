@@ -36,6 +36,27 @@ export interface MediaItem {
   unavailable?: 'expired' | 'removed' | null
   /** Para el visor: oculta «Quitar» en este archivo aunque haya `onRemove`. */
   canRemove?: boolean
+  /** Información extra del visor (administración). Sin esto, el visor muestra lo básico. */
+  details?: MediaItemDetails
+}
+
+/**
+ * Datos de contexto que el visor muestra debajo del archivo. Todos son
+ * opcionales: el visor del celular (empleado/supervisor) no los pasa porque
+ * el contexto ya está en la pantalla.
+ */
+export interface MediaItemDetails {
+  /** «Cliente · Sede». */
+  place?: string
+  /** Texto ya armado, p. ej. «Turno del mar 13 oct, 13:45 a 17:45». */
+  shiftLabel?: string
+  /** «Empleado/a» o «Supervisor/a». */
+  authorRole?: string
+  /** `captured_at`: cuándo se sacó (puede faltar). */
+  capturedAt?: Date | string | null
+  /** `created_at`: cuándo se subió. */
+  uploadedAt?: Date | string | null
+  sizeBytes?: number | null
 }
 
 export interface MediaGridGroup {

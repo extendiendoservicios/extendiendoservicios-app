@@ -9,8 +9,11 @@ import {
 } from '@/api/mediaAdmin'
 import { mediaErrorMessage } from '@/lib/media/errors'
 import { extensionOfPath } from '@/api/mediaShared'
-import { toMediaItem } from '@/features/media/items'
-import { useSetMediaKeepMutation } from '@/features/media/queries'
+import { toDetailedMediaItem } from '@/features/media/items'
+import {
+  useSetMediaKeepMutation,
+  useShiftTimes,
+} from '@/features/media/queries'
 
 /**
  * Visor de evidencia para administración (ADM-32, ADM-06, ADM-15): arma los
@@ -35,14 +38,17 @@ function EvidenceViewerHost({
   onOpenIdChange,
 }: EvidenceViewerHostProps) {
   const setKeep = useSetMediaKeepMutation()
+  const shiftTimes = useShiftTimes(rows).data
 
   const { items, byId } = useMemo(() => {
     const available = rows.filter((row) => row.hasFile)
     return {
-      items: available.map((row) => toMediaItem(row, thumbUrls)),
+      items: available.map((row) =>
+        toDetailedMediaItem(row, thumbUrls, shiftTimes?.get(row.shiftId)),
+      ),
       byId: new Map(available.map((row) => [row.id, row])),
     }
-  }, [rows, thumbUrls])
+  }, [rows, thumbUrls, shiftTimes])
 
   const index = openId ? items.findIndex((item) => item.id === openId) : -1
 
