@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Navigate, useNavigate, useParams } from 'react-router'
+import { Link, Navigate, useNavigate, useParams } from 'react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -29,6 +29,11 @@ const CLOCK_TICK_MS = 15_000
  * tareas, observación cargada o no), avisos de tareas obligatorias
  * pendientes y de salida anticipada -- los dos informativos, ninguno
  * bloquea el botón. Misma regla de ubicación que EMP-05.
+ *
+ * Módulo H (P21.3, H-07): si el servicio pide fotos y no hay ninguna propia,
+ * se advierte con «Sacar foto» (lleva al bloque de EMP-07) y el botón
+ * principal pasa a decir «Finalizar igual». No bloquea. Sin advertencia en
+ * sedes que no permiten fotos (no habría cómo cumplirla).
  */
 export default function FinishPage() {
   const { assignmentId } = useParams<{ assignmentId: string }>()
@@ -77,6 +82,10 @@ export default function FinishPage() {
   const hasConsent = auth.profile?.locationConsentAt != null
   const pendingRequired = tasks ? countPendingRequiredTasks(tasks) : 0
   const earlyLeave = isEarlyLeave(now, assignment)
+  const missingPhotos =
+    assignment.requiresPhotos &&
+    assignment.myPhotosCount === 0 &&
+    !assignment.photosNotAllowed
   const disabled = !online || recordCheckOut.isPending
 
   async function handleConfirm() {
@@ -136,6 +145,24 @@ export default function FinishPage() {
           </AlertDescription>
         </Alert>
       )}
+      {missingPhotos && (
+        <Alert variant="warn">
+          <AlertDescription className="flex flex-col gap-2">
+            <span>
+              Este servicio pide fotos y todavía no subiste ninguna. Podés
+              finalizar igual.
+            </span>
+            <Button asChild variant="ghost" size="mobile">
+              <Link
+                to={`/app/en-curso/${assignment.assignmentId}#fotos`}
+                data-testid="finish-take-photo"
+              >
+                Sacar foto
+              </Link>
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
       {error && (
         <Alert variant="crit">
           <AlertDescription>{error}</AlertDescription>
@@ -156,7 +183,7 @@ export default function FinishPage() {
         disabled={disabled}
         className="mt-auto"
       >
-        Registrar fin
+        {missingPhotos ? 'Finalizar igual' : 'Registrar fin'}
       </Button>
     </div>
   )

@@ -8,6 +8,29 @@ import * as authModule from '@/features/auth/AuthProvider'
 import type { AuthContextValue } from '@/features/auth/AuthProvider'
 
 /**
+ * El bloque «Fotos y videos» (módulo H, P21.3) tiene sus propios tests en
+ * `ShiftMediaSection.test.tsx`: acá se reemplaza por un marcador con las
+ * propiedades que recibe.
+ */
+vi.mock('@/features/employee/components/LazyShiftMediaSection', () => ({
+  LazyShiftMediaSection: (props: {
+    shiftId: string
+    counts: { photos: number; videos: number }
+    requiresPhotos: boolean
+    photosNotAllowed: boolean
+  }) => (
+    <div
+      data-testid="media-section"
+      data-shift={props.shiftId}
+      data-photos={props.counts.photos}
+      data-videos={props.counts.videos}
+      data-requires={String(props.requiresPhotos)}
+      data-not-allowed={String(props.photosNotAllowed)}
+    />
+  ),
+}))
+
+/**
  * SUP-03 (MOB-SUP-004, MOB-SUP-006, MOB-SUP-007): sede, franja, empleados
  * con su estado de asistencia e inicio real, tareas en solo lectura y la
  * guía de criterios. El botón "Registrar inicio de supervisión" aparece con
@@ -40,6 +63,9 @@ function supervision(overrides: Partial<MySupervision>): MySupervision {
     buildingHours: null,
     phoneRestricted: false,
     photosNotAllowed: false,
+    requiresPhotos: false,
+    myPhotosCount: 0,
+    myVideosCount: 0,
     restrictionsNotes: null,
     startTime: '08:00:00',
     endTime: '12:00:00',
@@ -347,5 +373,46 @@ describe('SupervisionDetailPage (SUP-03)', () => {
     expect(
       screen.getByText('El plazo para calificar a este turno ya cerró.'),
     ).toBeInTheDocument()
+  })
+})
+
+describe('SupervisionDetailPage · fotos y videos (módulo H, P21.3)', () => {
+  it.each(['assigned', 'in_progress', 'completed'] as const)(
+    'con la supervisión %s ofrece el bloque con los datos de la vista',
+    (status) => {
+      mockCommon()
+      vi.spyOn(mySupervisionsModule, 'useMySupervisionQuery').mockReturnValue({
+        data: supervision({
+          status,
+          requiresPhotos: true,
+          photosNotAllowed: true,
+          myPhotosCount: 2,
+          myVideosCount: 0,
+        }),
+        isLoading: false,
+        isError: false,
+      } as never)
+
+      renderDetail()
+
+      const section = screen.getByTestId('media-section')
+      expect(section).toHaveAttribute('data-shift', 'sh1')
+      expect(section).toHaveAttribute('data-photos', '2')
+      expect(section).toHaveAttribute('data-requires', 'true')
+      expect(section).toHaveAttribute('data-not-allowed', 'true')
+    },
+  )
+
+  it('con la supervisión cancelada no ofrece el bloque', () => {
+    mockCommon()
+    vi.spyOn(mySupervisionsModule, 'useMySupervisionQuery').mockReturnValue({
+      data: supervision({ status: 'cancelled' }),
+      isLoading: false,
+      isError: false,
+    } as never)
+
+    renderDetail()
+
+    expect(screen.queryByTestId('media-section')).not.toBeInTheDocument()
   })
 })

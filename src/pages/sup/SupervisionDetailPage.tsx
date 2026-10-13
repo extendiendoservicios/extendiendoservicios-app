@@ -26,6 +26,7 @@ import {
 } from '@/features/sites/components/SiteInfo'
 import { RatingCriteriaGuide } from '@/features/supervisions/components/RatingCriteriaGuide'
 import { formatSupervisionRange } from '@/features/employee/shiftRange'
+import { LazyShiftMediaSection } from '@/features/employee/components/LazyShiftMediaSection'
 
 /**
  * SUP-03 · Detalle de la supervisión (MOB-SUP-004, `05` fila SUP-03, `06`
@@ -189,6 +190,23 @@ export default function SupervisionDetailPage() {
             )}
         </CardContent>
       </Card>
+
+      {/* Módulo H (P21.3): fotos y videos propios del turno supervisado. La
+          supervisión puede estar asignada, en curso o cerrada; cancelada no
+          (el servidor rechaza con NOT_SHIFT_PARTICIPANT). */}
+      {supervision.status !== 'cancelled' && (
+        <LazyShiftMediaSection
+          shiftId={supervision.shiftId}
+          counts={{
+            photos: supervision.myPhotosCount,
+            videos: supervision.myVideosCount,
+          }}
+          requiresPhotos={supervision.requiresPhotos}
+          photosNotAllowed={supervision.photosNotAllowed}
+          startsAt={supervision.startsAt}
+          endsAt={supervision.endsAt}
+        />
+      )}
 
       {tasks && tasks.length > 0 && (
         <Card variant="flush">

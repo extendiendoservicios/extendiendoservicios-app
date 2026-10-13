@@ -132,6 +132,7 @@ Ahí ves:
 
 - El **cronómetro**, con la hora a la que iniciaste y la hora de fin prevista.
 - Cuántas **tareas** hiciste (por ejemplo "3 de 6").
+- El bloque **Fotos y videos** (ver más abajo).
 - Tres accesos: **Tareas**, **Observaciones** y **Finalizar servicio**.
 
 Si salís de esta pantalla, volvés tocando el botón del medio (**Fichar**), que te lleva directo al servicio en curso.
@@ -159,6 +160,18 @@ Sirve para contar algo que Administración tenga que saber: un problema, algo qu
 
 Administración y el supervisor del turno la ven. Podés volver a entrar y corregirla mientras el servicio no esté terminado.
 
+### Sacar fotos y grabar videos
+
+En **Servicio en curso** hay un bloque **Fotos y videos** para dejar constancia del trabajo. Pueden verlo la administración y vos; tus compañeros no.
+
+- **Sacar foto** abre la cámara. **Elegir de la galería** sirve para una foto o un video que ya tenés. **Grabar video** graba dentro de la app (solo para casos excepcionales: hasta 30 segundos).
+- Podés subir hasta **10 fotos y 2 videos** por turno. Arriba de los botones ves cuántos llevás ("3 de 10 fotos").
+- La app achica la foto sola y le quita datos como la ubicación. Cada archivo muestra su avance; si se corta la señal, tocá **Reintentar**.
+- Debajo aparece **Lo que subiste**. Tocá una miniatura para verla en pantalla completa. Si te equivocaste de foto, tocá **Quitar** y confirmá.
+- Si el servicio dice **"Este servicio pide fotos."**, subí al menos una antes de finalizar. Si no lo hacés, al finalizar la app te avisa y podés **Finalizar igual**.
+- Si la sede dice **"En esta sede no se permiten fotos."**, no hay botones: respetá la restricción.
+- Podés subir desde que empieza el turno hasta **2 horas después del fin**. Fuera de ese plazo los botones se apagan y la pantalla te dice por qué. Si te quedás sin señal, también se apagan hasta que vuelvas a tener.
+
 ## Registrar el fin
 
 1. En **Servicio en curso**, tocá **Finalizar servicio** (o tocá el botón del medio y después el acceso).
@@ -168,9 +181,10 @@ Administración y el supervisor del turno la ven. Podés volver a entrar y corre
 
    - Si quedan tareas obligatorias sin hacer, aparece un aviso ("Tenés 1 tarea obligatoria pendiente. Podés registrar el fin igual."). **No te impide terminar.**
    - Si todavía no llegó la hora de fin prevista, aparece "Vas a registrar la salida antes del horario previsto." Es solo informativo.
+   - Si el servicio pide fotos y todavía no subiste ninguna, aparece "Este servicio pide fotos y todavía no subiste ninguna. Podés finalizar igual." con el botón **Sacar foto**. El botón principal pasa a decir **Finalizar igual**: tampoco te impide terminar.
 
 3. Tocá **Registrar fin**.
-4. Vas a ver el **Resumen del servicio**, que es tu comprobante: inicio, fin, duración, tareas y tu observación. Tocá **Volver a Hoy**.
+4. Vas a ver el **Resumen del servicio**, que es tu comprobante: inicio, fin, duración, cuántas fotos y videos subiste, tareas y tu observación. Ahí mismo podés seguir agregando fotos o quitar alguna hasta 2 horas después del fin del turno. Tocá **Volver a Hoy**.
 
 ![Resumen del servicio](guias/img/emp-resumen.png)
 

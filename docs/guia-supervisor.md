@@ -90,9 +90,19 @@ Tocá una tarjeta para ver todo sobre el servicio que vas a supervisar.
 - **Sede:** la dirección (tocá **Abrir en el mapa** para que te lleve el teléfono), el horario del edificio, las instrucciones de acceso, las restricciones (por ejemplo "No se permiten fotos") y el contacto de la sede.
 - **Empleados a supervisar:** quiénes trabajan en ese turno y su estado: **Esperado**, **Presente** (con la hora a la que empezó), **Finalizado** o **Ausencia avisada**.
 - **Tareas del turno:** qué tiene que hacer el equipo y cómo van. Solo se miran, no se modifican desde acá.
+- **Fotos y videos:** para dejar constancia de lo que ves en la sede (ver más abajo).
 - **Criterios de calificación:** la guía que definió la empresa para calificar. Son una ayuda para que todos califiquen con el mismo criterio. No se les pone puntaje uno por uno: el puntaje es uno solo por empleado.
 
 Solo ves las supervisiones que te asignaron a vos.
+
+### Fotos y videos de la supervisión
+
+En el detalle, y también en el paso de **Registrar fin de supervisión**, hay un bloque **Fotos y videos**:
+
+- **Sacar foto**, **Elegir de la galería** y **Grabar video** (hasta 30 segundos, solo para casos excepcionales). Hasta **10 fotos y 2 videos** por turno, y ves cuántos llevás.
+- Debajo aparece **Lo que subiste**: tocá una miniatura para verla, o **Quitar** si te equivocaste. Lo que sube el empleado no aparece acá: cada uno ve solo lo suyo, y la administración ve todo.
+- Podés subir desde que empieza el turno hasta **2 horas después de su fin**, con la supervisión asignada, en curso o completada. Fuera de ese plazo, o sin señal, los botones se apagan y la pantalla te dice por qué.
+- Si la sede dice **"En esta sede no se permiten fotos."**, no hay botones.
 
 ## Registrar tu inicio en la sede
 
