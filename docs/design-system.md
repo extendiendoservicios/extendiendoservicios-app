@@ -2079,3 +2079,86 @@ Por debajo de 768 px todos los controles tienen 44 px de área de toque; desde 7
 - `TabsList` y `ConfigNav` se deslizan de costado con degradé solo del lado con contenido oculto, y centran la pestaña elegida al montar y al cambiar (`ScrollFades.tsx`, `useScrollFades` y `ScrollFadeEdges`). `TabsList` acepta `fadeClassName` (por omisión `from-bg`; usá `from-surface` sobre tarjetas).
 - Los `Sheet` de acción miden 452 px en tablet y ocupan toda la pantalla solo en celular (decisión de Mike, 2 oct 2026).
 - `RowCard` lleva `data-slot="row-card"`.
+
+## Evidencia fotográfica: captura, compresión y visor (módulo H, P21.2)
+
+Especificación: `Docs/Plan_Maestro/modulos/H_evidencia_fotografica.md` §3 (decisiones H-04, H-05, H-06, H-11, H-15 y H-16). Este paquete trae las piezas compartidas; las pantallas de celular (P21.3) y de administración (P21.4) las componen, y `src/api/media.ts` con las RPC de P21.1 lo escriben ellos. Se ven en `/dev/design`, sección «Evidencia fotográfica».
+
+### `src/lib/media/`
+
+| Archivo                          | Qué hace                                                                                                                                                                                  |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `constants.ts`                   | Los límites (1280 px, 0,72, 300 KB, 320 px, 30 s, 20 MB, 480p, 700/64 kbps, topes 10 y 2).                                                                                                |
+| `errors.ts`                      | `MediaError` con `code` y mensaje en español (`video_too_long`, `video_too_large`, `camera_denied`, `canceled`…) y `mediaErrorMessage`.                                                   |
+| `exif.ts`                        | Lector mínimo de JPEG: orientación, `DateTimeOriginal` y tamaño crudo. Sin librería de EXIF.                                                                                              |
+| `compressImage.ts`               | Foto: orientación aplicada, 1280 px, JPEG 0,72 (baja a 0,64, 0,56, 0,48 y 0,40 mientras pase de 300 KB), miniatura de 320 px y `capturedAt`.                                              |
+| `recordVideo.ts`, `mimeTypes.ts` | Grabación propia: `getUserMedia` trasera 854×480, `MediaRecorder` a 700 kbps de video y 64 de audio, corte a los 30 s, miniatura de un cuadro. Elige MP4 en iPhone y WebM en el resto.    |
+| `compressVideo.ts` y dos caminos | Video de galería: rechazo por duración, `compressVideoWebCodecs.ts` (principal) y `compressVideoRealtime.ts` (fallback), tope de 20 MB, progreso y `AbortSignal`.                         |
+| `download.ts`                    | `downloadFile` (URL firmada), `downloadZip` (`fflate`), `buildMediaFileName` y `assignFileNames` (`AAAA-MM-DD_Cliente_Sede_Persona_NN.ext`, sin tildes ni símbolos, día de Buenos Aires). |
+| `types.ts`                       | `ProcessedMedia` y la interfaz `MediaUploadFn` que implementan P21.3 y P21.4.                                                                                                             |
+
+Las dependencias pesadas van en diferido: `compressVideoWebCodecs.ts` hace `import('mediabunny')` y `downloadZip` hace `import('fflate')`; `MediaCapture` importa `compressImage` y `compressVideo` con `import()`. Quien use la librería desde una pantalla tiene que importar los archivos concretos (`@/lib/media/errors`, `@/lib/media/download`…) o hacer `await import('@/lib/media')` en el momento de usarla, no `import ... from '@/lib/media'` arriba de todo, para no sumar el código a la entrada.
+
+### Peso y carga diferida
+
+Medido con un build de prueba que importa los componentes y la descarga desde un punto de entrada aparte (en producción nada los importa hasta que P21.3 y P21.4 los usen, así que hoy el chunk de entrada no cambia):
+
+| Chunk                                     | Sin comprimir | Comprimido (gzip) | Cuándo se baja                                                                                                                                                                                                          |
+| ----------------------------------------- | ------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `media-*` (componentes y grabación)       | 19,5 kB       | 7,1 kB            | Al entrar a una pantalla que use `MediaCapture`, `MediaGrid` o `MediaViewer`.                                                                                                                                           |
+| `compressImage-*`, `canvas-*`, `errors-*` | 6,6 kB        | 3,3 kB            | Al elegir la primera foto.                                                                                                                                                                                              |
+| `compressVideo-*`                         | 4,6 kB        | 2,1 kB            | Al elegir el primer video de la galería.                                                                                                                                                                                |
+| `vendor-media-*` (Mediabunny)             | 688,9 kB      | 173,1 kB          | Al elegir un video de la galería en un navegador con WebCodecs. **Fuera del precache** del service worker (`globIgnores` en `vite.config.ts`), para que no viaje a todos los teléfonos al instalar o actualizar la app. |
+| `fflate` (ZIP)                            | 24,5 kB       | 8,7 kB            | Al tocar «Descargar ZIP».                                                                                                                                                                                               |
+
+Mediabunny no se puede achicar con tree-shaking (la conversión arrastra casi toda la librería; probar con menos formatos de entrada no cambió el tamaño). Como solo se usa para videos de la galería, que son excepcionales (H-06), se dejó diferido y fuera del precache.
+
+### Interfaz de subida (`MediaUploadFn`)
+
+`MediaCapture` no conoce Supabase. Recibe `upload(media, { signal, onProgress })` y espera que haga el flujo completo: `begin_shift_media` (con `size_bytes = media.totalBytes`), subir `media.file` y `media.thumbnail` a las rutas que devuelve, y `confirm_shift_media`. Si falla, tiene que lanzar un `Error` con el mensaje ya en español; si `signal` se aborta, cortar. Devuelve `{ id }`.
+
+### Componentes (`src/components/media/`)
+
+- **`MediaCapture`**: «Sacar foto» (`<input capture="environment">`), «Elegir de la galería» (varios archivos, imagen y video) y «Grabar video» (`VideoRecorderDialog`, pantalla completa con cuenta regresiva de 30 s). Contador «3 de 10 fotos» / «1 de 2 videos». Cola de a un archivo por vez (con fotos de 12 MP en paralelo, un teléfono económico se queda sin memoria), con progreso, «Cancelar» y «Reintentar» (no vuelve a comprimir si ya estaba comprimido). Estados `disabled` (más `disabledReason`) y `photosNotAllowed` («En esta sede no se permiten fotos.», sin botones). Los topes cuentan lo confirmado (`counts`) más lo que está en cola.
+- **`MediaGrid`**: miniaturas de 3 a 6 columnas según el ancho, sueltas (`items`) o agrupadas (`groups`), selección múltiple con casilla de 44 px y «Seleccionar todo» por grupo. Lo vencido o quitado se ve como constancia gris.
+- **`MediaViewer`**: pantalla completa, deslizamiento o flechas, video con controles, autor, hora de Buenos Aires y vencimiento. «Quitar», «Conservar» y «Descargar» solo aparecen si se pasa el handler. Pide la URL firmada con `resolveUrl` recién al llegar a cada archivo.
+
+Todos usan tokens, `Button`, `ProgressBar` y `Alert`, y objetivos táctiles de 44 px. Los colores salen de los tokens, así que funcionan en el tema de alto contraste. El grabador y el área de la imagen del visor van sobre negro (como cualquier cámara); los datos y las acciones del visor van en `--surface`.
+
+### Soporte por navegador (P-090)
+
+Mínimo: Android 8 o superior con Chrome e iPhone con iOS 16.4 o superior (Safari).
+
+| Función                    | Android (Chrome)                                                                                                                          | iPhone (Safari 16.4 o superior)                                                                                                         |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| «Sacar foto»               | `capture="environment"` abre la cámara trasera. JPEG con EXIF.                                                                            | Abre la cámara (en iOS el sistema decide entre cámara y fototeca). La foto llega como JPEG.                                             |
+| «Elegir de la galería»     | Selector del sistema. Permite varias.                                                                                                     | Fototeca. Safari convierte HEIC a JPEG al elegir `image/*`.                                                                             |
+| Orientación EXIF           | El `<img>` ya la aplica; si no lo hiciera, se aplica a mano (se detecta por el tamaño decodificado).                                      | Ídem.                                                                                                                                   |
+| «Grabar video»             | `MediaRecorder` en **WebM** (VP8 y Opus), ~700 kbps.                                                                                      | `MediaRecorder` en **MP4** (H.264 y AAC), ~700 kbps.                                                                                    |
+| Video de galería, camino 1 | WebCodecs con Mediabunny: H.264 480p en MP4. Audio AAC u Opus si el teléfono sabe codificarlo; si no, sale sin audio (`hasAudio: false`). | WebCodecs de video si el Safari lo trae. Si no, pasa al camino 2.                                                                       |
+| Video de galería, camino 2 | Canvas y `MediaRecorder` en tiempo real, solo si falla el camino 1. Sale en WebM.                                                         | Canvas y `MediaRecorder` en tiempo real. Sale en MP4. Tarda lo que dura el video y hay que dejar la pantalla abierta (la app lo avisa). |
+
+Audio del camino 2: se toma con Web Audio (`createMediaElementSource`) sin conectarlo a los parlantes, así que no suena mientras se procesa. Si el navegador no deja reproducir con sonido sin un toque, se reintenta mudo y el video sale sin audio.
+
+### Qué hay que probar en teléfono real (P21.7)
+
+jsdom no tiene cámara, canvas, WebCodecs ni `MediaRecorder`: todo eso se simula en los tests. Esto solo se confirma en teléfonos reales (los de `matriz-dispositivos.md`):
+
+1. «Sacar foto» en los tres teléfonos: la foto de una cartulina con texto sale derecha (teléfono vertical y horizontal), pesa unos 100 a 300 KB y no trae GPS (bajar el archivo de Storage y abrirlo con un visor de EXIF).
+2. «Elegir de la galería» con una foto de 12 MP y con varias a la vez.
+3. «Grabar video» con corte a los 30 s: formato (MP4 en el iPhone, WebM en Android), peso (unos 3 MB), audio y miniatura. Permiso de cámara denegado y vuelto a dar.
+4. Video de galería de 20 s grabado con la cámara del teléfono (1080p): qué camino tomó (`mode`), cuánto tardó, que se vea y se escuche, y que pese menos de 20 MB. Repetir con uno de 40 s (tiene que decir «El video dura más de 30 segundos») y con uno vertical.
+5. En el iPhone: video de galería en iOS 16.4 y en una versión más nueva; es donde más varían WebCodecs y `MediaRecorder`.
+6. Cancelar a mitad de la compresión y de la subida; cortar la conexión a mitad de la subida y usar «Reintentar».
+7. Descarga de una foto con nombre legible y de un ZIP de varias (en iOS el ZIP se guarda en «Archivos»).
+
+### Decisiones de esta entrega
+
+- **Muxer: Mediabunny 1.60.0, no `mp4-muxer`.** `mp4-muxer` (5.2.2, julio de 2025) figura en npm como obsoleto («This library is superseded by Mediabunny»). Mediabunny es del mismo autor y está mantenido; además del muxer trae el lector y la conversión sobre WebCodecs (decodifica, escala a 480p, codifica video y audio y escribe el MP4), así que no hay que escribir ese puente a mano. Licencia MPL-2.0 (copyleft de archivo: no se modifica la librería, así que no obliga a nada sobre el código propio). Versión exacta `1.60.0`, publicada el 25 sep 2026 (más de dos semanas al momento de agregarla). Se importa solo en diferido.
+- **`fflate` 0.8.3** para el ZIP: chico, sin dependencias, publicada el 20 jul 2026. Se usa `Zip` con `ZipPassThrough` (sin recomprimir fotos y videos que ya vienen comprimidos).
+- **Tolerancia de 0,5 s sobre los 30 s**: un video «de 30 segundos» suele medir 30,03 s; se rechaza recién por encima de 30,5 s.
+- **`captured_at` del EXIF** no trae zona horaria: se asume Buenos Aires (UTC-3), salvo que el archivo traiga `OffsetTimeOriginal`. Sin EXIF se usa la fecha de modificación del archivo; sin ninguna, `null`.
+- **Orientación**: se confía en el navegador (Chrome 111 o superior y Safari 16.4 o superior ya la aplican al decodificar) y solo se aplica a mano si el tamaño decodificado muestra que no lo hizo.
+- **Miniatura del video grabado**: se saca del propio stream (a ~1 s) y no del archivo grabado, porque un WebM de `MediaRecorder` no trae duración y no se puede buscar bien. Si falla se usa una miniatura gris para no frenar la subida.
+- **Dispositivos sin grabación** (`MediaRecorder` o `getUserMedia` ausentes): no se muestra «Grabar video»; queda la galería.
+- **Después de subir**: la fila se muestra 3 s como «Foto subida» y se quita de la cola. Quien usa el componente actualiza `counts` dentro de `onUploaded`.
