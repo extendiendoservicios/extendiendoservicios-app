@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router'
-import { Lock, PlayCircle, Star, StopCircle } from 'lucide-react'
+import { CheckCircle2, Lock, PlayCircle, Star, StopCircle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -269,13 +269,9 @@ export default function SupervisionDetailPage() {
           diferencia de "completar" (`complete_supervision`,
           `CHECK_OUT_REQUIRED`); SUP-06 resuelve cuál de las dos ofrecer. */}
       {isOpen && (
-        <Button
-          asChild
-          size="mobile"
-          variant={nextStep ? 'ghost' : 'primary'}
-          className={nextStep ? undefined : 'mt-2'}
-        >
+        <Button asChild size="mobile" className={nextStep ? undefined : 'mt-2'}>
           <Link to={`/sup/supervisiones/${supervision.id}/cerrar`}>
+            <CheckCircle2 aria-hidden="true" />
             Cerrar supervisión
           </Link>
         </Button>

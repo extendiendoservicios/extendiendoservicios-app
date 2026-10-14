@@ -224,6 +224,8 @@ describe('SupervisionDetailPage (SUP-03)', () => {
     expect(screen.getByText(/Finalizada a las/)).toBeInTheDocument()
     const closeLink = screen.getByText('Cerrar supervisión').closest('a')
     expect(closeLink).toHaveAttribute('href', '/sup/supervisiones/sv1/cerrar')
+    expect(closeLink).toHaveAttribute('data-variant', 'primary')
+    expect(closeLink).toHaveAttribute('data-size', 'mobile')
   })
 
   it('no ofrece ningún registro ni cierre cuando la supervisión ya está completada', () => {

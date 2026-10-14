@@ -230,6 +230,50 @@ export async function fetchMyDay(): Promise<MyDayAssignment[]> {
   return (data as unknown as MyDayRawRow[]).map(mapMyDayRow)
 }
 
+/** Tamaño de página del historial del empleado (AJ4-06: de a 20). */
+export const MY_HISTORY_PAGE_SIZE = 20
+
+/**
+ * AJ4-06 · Una página de «Mis servicios anteriores» (`v_my_history`, sin
+ * límite de antigüedad). Las columnas son idénticas a las de `v_my_day`, así
+ * que el mapeo de filas es el mismo. Orden: fecha y franja más recientes
+ * primero; `assignment_id` desempata para que la paginación no repita ni
+ * saltee filas.
+ */
+export async function fetchMyHistoryPage(
+  page: number,
+): Promise<MyDayAssignment[]> {
+  const from = page * MY_HISTORY_PAGE_SIZE
+  const { data, error } = await supabase
+    .from('v_my_history')
+    .select('*')
+    .order('shift_date', { ascending: false })
+    .order('effective_start_time', { ascending: false })
+    .order('assignment_id')
+    .range(from, from + MY_HISTORY_PAGE_SIZE - 1)
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data as unknown as MyDayRawRow[]).map(mapMyDayRow)
+}
+
+/** AJ4-06: una asignación del historial por id (comprobante de un servicio anterior). `null` si no existe o no es propia. */
+export async function fetchMyHistoryAssignment(
+  assignmentId: string,
+): Promise<MyDayAssignment | null> {
+  const { data, error } = await supabase
+    .from('v_my_history')
+    .select('*')
+    .eq('assignment_id', assignmentId)
+    .maybeSingle()
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return data ? mapMyDayRow(data as unknown as MyDayRawRow) : null
+}
+
 /**
  * Regla real para pintar el bloque "Cambios desde tu última visita" de
  * EMP-03 (P-092, ver el comentario grande de `changedSinceLastSeen`

@@ -17,6 +17,8 @@ function makeChainable<T>(result: PostgrestResult<T>) {
     is: () => chain,
     in: () => chain,
     order: () => chain,
+    range: () => chain,
+    maybeSingle: () => chain,
     then: (
       resolve: (value: PostgrestResult<T>) => void,
       reject?: (reason: unknown) => void,
@@ -34,8 +36,14 @@ vi.mock('@/lib/supabase', () => ({
   supabase: { from: fromMock, rpc: rpcMock },
 }))
 
-const { fetchMyDay, isRelevantChange, markChangesSeen, fetchShiftPeers } =
-  await import('./myDay')
+const {
+  fetchMyDay,
+  fetchMyHistoryPage,
+  fetchMyHistoryAssignment,
+  isRelevantChange,
+  markChangesSeen,
+  fetchShiftPeers,
+} = await import('./myDay')
 
 beforeEach(() => {
   fromMock.mockReset()
@@ -301,5 +309,47 @@ describe('fetchShiftPeers', () => {
     fromMock.mockReturnValueOnce(makeChainable({ data: [], error: null }))
 
     expect(await fetchShiftPeers('sh1', 'yo')).toEqual([])
+  })
+})
+
+describe('historial del empleado (AJ4-06)', () => {
+  it('fetchMyHistoryPage lee v_my_history con el mismo mapeo, pagina de a 20 y ordena de más reciente a más antigua', async () => {
+    const order = vi.fn()
+    const range = vi.fn()
+    const chain = makeChainable({ data: [MY_DAY_ROW], error: null })
+    chain.order = order.mockReturnValue(chain)
+    chain.range = range.mockReturnValue(chain)
+    fromMock.mockReturnValue(chain)
+
+    const rows = await fetchMyHistoryPage(2)
+
+    expect(fromMock).toHaveBeenCalledWith('v_my_history')
+    expect(order).toHaveBeenNthCalledWith(1, 'shift_date', { ascending: false })
+    expect(order).toHaveBeenNthCalledWith(2, 'effective_start_time', {
+      ascending: false,
+    })
+    expect(order).toHaveBeenNthCalledWith(3, 'assignment_id')
+    expect(range).toHaveBeenCalledWith(40, 59)
+    expect(rows).toEqual([
+      expect.objectContaining({ assignmentId: 'a1', clientName: 'Limpia Ya' }),
+    ])
+  })
+
+  it('fetchMyHistoryPage propaga el error', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({ data: null, error: { message: 'boom' } }),
+    )
+    await expect(fetchMyHistoryPage(0)).rejects.toBeDefined()
+  })
+
+  it('fetchMyHistoryAssignment devuelve la asignación o null', async () => {
+    fromMock.mockReturnValue(makeChainable({ data: MY_DAY_ROW, error: null }))
+    expect(await fetchMyHistoryAssignment('a1')).toEqual(
+      expect.objectContaining({ assignmentId: 'a1' }),
+    )
+    expect(fromMock).toHaveBeenCalledWith('v_my_history')
+
+    fromMock.mockReturnValue(makeChainable({ data: null, error: null }))
+    expect(await fetchMyHistoryAssignment('zz')).toBeNull()
   })
 })

@@ -7,6 +7,25 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.20.0] - 2026-10-14
+
+Ajustes de uso del 14 de octubre (P19.8).
+
+### Agregado
+
+- «Mis servicios anteriores» en el celular del empleado (Más): todos sus turnos de días pasados, de a 20, con el estado, el inicio y el fin reales y las fotos subidas. Cada uno abre su comprobante con las tareas y las fotos. Un día pasado sin registro figura «Sin registro». Migración 0051.
+- Detalle del turno en administración: la casilla «Pide fotos» se tilda o destilda ahí mismo, sin entrar a editar.
+
+### Cambiado
+
+- Celular: «Finalizar servicio» y «Cerrar supervisión» son botones grandes, con el mismo peso que «Sacar foto» y «Registrar fin».
+- Celular: con el plazo para subir fotos vencido, el bloque «Fotos y videos» muestra el aviso y lo subido, sin los botones apagados.
+
+### Corregido
+
+- Al volver a un turno ya cerrado desde Hoy, el empleado no veía las fotos que había subido. El detalle del servicio ahora muestra «Fotos y videos» y el acceso «Ver resumen».
+- Planificación · Día: las columnas no quedaban alineadas entre una franja horaria y otra en escritorio.
+
 ## [0.19.0] - 2026-10-13
 
 Módulo H: evidencia fotográfica (fotos y videos de los turnos), acordado con los clientes el 13 de octubre.

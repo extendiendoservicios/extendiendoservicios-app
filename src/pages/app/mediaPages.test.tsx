@@ -3,6 +3,7 @@ import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import FinishPage from './FinishPage'
 import InProgressPage from './InProgressPage'
+import ServiceDetailPage from './ServiceDetailPage'
 import SummaryPage from './SummaryPage'
 import * as queriesModule from '@/features/employee/queries'
 import * as onlineModule from '@/features/employee/useOnlineStatus'
@@ -97,6 +98,16 @@ function mockDay(item: MyDayAssignment) {
     data: [item],
     isLoading: false,
     isError: false,
+  } as never)
+  vi.spyOn(queriesModule, 'useMyHistoryAssignmentQuery').mockReturnValue({
+    data: null,
+    isLoading: false,
+  } as never)
+  vi.spyOn(queriesModule, 'useShiftPeersQuery').mockReturnValue({
+    data: [],
+  } as never)
+  vi.spyOn(queriesModule, 'useShiftTasksReadOnlyQuery').mockReturnValue({
+    data: [],
   } as never)
   vi.spyOn(queriesModule, 'useShiftTasksQuery').mockReturnValue({
     data: [],
@@ -282,5 +293,108 @@ describe('SummaryPage (EMP-11) · fotos y videos', () => {
     renderPage()
 
     expect(screen.queryByText('Ninguno')).not.toBeInTheDocument()
+  })
+})
+
+describe('SummaryPage (EMP-11) · servicio anterior (AJ4-06)', () => {
+  it('si no está en Hoy lo busca en el historial y vuelve al historial', () => {
+    mockDay(assignment({}))
+    vi.spyOn(queriesModule, 'useMyDayQuery').mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+    } as never)
+    vi.spyOn(queriesModule, 'useMyHistoryAssignmentQuery').mockReturnValue({
+      data: assignment({
+        assignmentId: 'old',
+        shiftDate: '2026-09-01',
+        checkOutAt: '2026-09-01T15:00:00Z',
+        myPhotosCount: 2,
+      }),
+      isLoading: false,
+    } as never)
+    renderAt(
+      '/app/resumen/old?desde=historial',
+      '/app/resumen/:assignmentId',
+      <SummaryPage />,
+    )
+
+    expect(screen.getByText('2 fotos')).toBeInTheDocument()
+    expect(screen.getByTestId('media-section')).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'Volver al historial' }),
+    ).toHaveAttribute('href', '/app/historial')
+    expect(
+      screen.queryByRole('link', { name: 'Volver a Hoy' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('sin el parámetro vuelve a Hoy', () => {
+    mockDay(assignment({ checkOutAt: '2026-10-13T15:00:00Z' }))
+    renderAt('/app/resumen/a1', '/app/resumen/:assignmentId', <SummaryPage />)
+    expect(screen.getByRole('link', { name: 'Volver a Hoy' })).toHaveAttribute(
+      'href',
+      '/app',
+    )
+  })
+})
+
+describe('ServiceDetailPage (EMP-04) · fotos y accesos (AJ4-01)', () => {
+  const renderPage = () =>
+    renderAt(
+      '/app/servicio/a1',
+      '/app/servicio/:assignmentId',
+      <ServiceDetailPage />,
+    )
+
+  it('con el servicio cerrado muestra las fotos y «Ver resumen»', () => {
+    mockDay(assignment({ checkOutAt: '2026-10-13T15:00:00Z' }))
+    renderPage()
+
+    expect(screen.getByTestId('media-section')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Ver resumen' })).toHaveAttribute(
+      'href',
+      '/app/resumen/a1',
+    )
+    expect(
+      screen.queryByRole('link', { name: 'Ir al servicio en curso' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('en curso muestra las fotos y «Ir al servicio en curso»', () => {
+    mockDay(assignment({}))
+    renderPage()
+
+    expect(screen.getByTestId('media-section')).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'Ir al servicio en curso' }),
+    ).toHaveAttribute('href', '/app/en-curso/a1')
+  })
+
+  it('sin inicio registrado no muestra el bloque', () => {
+    mockDay(assignment({ checkInAt: null, status: 'expected' }))
+    renderPage()
+    expect(screen.queryByTestId('media-section')).not.toBeInTheDocument()
+  })
+
+  it('un turno cancelado no muestra el bloque', () => {
+    mockDay(assignment({ shiftStatus: 'cancelled' }))
+    renderPage()
+    expect(screen.queryByTestId('media-section')).not.toBeInTheDocument()
+  })
+})
+
+describe('InProgressPage (EMP-07) · «Finalizar servicio» (AJ4-04)', () => {
+  it('es un botón principal que lleva a EMP-10, aparte de las filas', () => {
+    mockDay(assignment({}))
+    renderAt(
+      '/app/en-curso/a1',
+      '/app/en-curso/:assignmentId',
+      <InProgressPage />,
+    )
+    const link = screen.getByRole('link', { name: 'Finalizar servicio' })
+    expect(link).toHaveAttribute('href', '/app/en-curso/a1/finalizar')
+    expect(link).toHaveAttribute('data-size', 'mobile')
+    expect(link).toHaveAttribute('data-variant', 'primary')
   })
 })

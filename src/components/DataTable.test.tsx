@@ -125,6 +125,31 @@ describe('DataTable — 1024 px o más (tabla)', () => {
     ).toBeInTheDocument()
   })
 
+  it('fixedLayout: aplica table-fixed y un colgroup con los anchos de meta.width', () => {
+    mockDesktopViewport(true)
+    const columns: DataTableColumnDef<DemoRow>[] = [
+      { accessorKey: 'name', header: 'Nombre', meta: { width: '70%' } },
+      { accessorKey: 'hour', header: 'Horario', meta: { width: '30%' } },
+    ]
+    const { container } = render(
+      <DataTable columns={columns} data={DATA} caption="Demo" fixedLayout />,
+    )
+    expect(screen.getByRole('table')).toHaveClass('table-fixed')
+    const cols = container.querySelectorAll('colgroup > col')
+    expect(cols).toHaveLength(2)
+    expect((cols[0] as HTMLElement).style.width).toBe('70%')
+    expect((cols[1] as HTMLElement).style.width).toBe('30%')
+  })
+
+  it('sin fixedLayout: no hay colgroup ni table-fixed', () => {
+    mockDesktopViewport(true)
+    const { container } = render(
+      <DataTable columns={COLUMNS} data={DATA} caption="Demo" />,
+    )
+    expect(screen.getByRole('table')).not.toHaveClass('table-fixed')
+    expect(container.querySelector('colgroup')).toBeNull()
+  })
+
   it('estado vacío: muestra EmptyState, no la tabla', () => {
     mockDesktopViewport(true)
     render(<DataTable columns={COLUMNS} data={[]} caption="Demo" />)

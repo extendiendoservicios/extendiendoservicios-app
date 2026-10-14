@@ -64,6 +64,9 @@ describe('MorePage (EMP-13)', () => {
     expect(screen.getByText('Cerrar sesión')).toBeInTheDocument()
     const noticeLink = screen.getByText('Avisar demora o ausencia').closest('a')
     expect(noticeLink).toHaveAttribute('href', '/app/avisar')
+    expect(
+      screen.getByText('Mis servicios anteriores').closest('a'),
+    ).toHaveAttribute('href', '/app/historial')
     expect(screen.queryByText('Supervisión')).not.toBeInTheDocument()
     expect(screen.queryByText('Instalar la app')).not.toBeInTheDocument()
   })
