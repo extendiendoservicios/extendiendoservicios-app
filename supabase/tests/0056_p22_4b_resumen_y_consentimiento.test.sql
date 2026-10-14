@@ -189,9 +189,9 @@ select results_eq(
 );
 select ok(
   (select emp -> 'check_out_geo_status' = 'null'::jsonb and emp -> 'check_out_distance_m' = 'null'::jsonb
-          and emp -> 'check_out_geo_overridden' = 'null'::jsonb
+          and emp -> 'check_out_geo_overridden' = 'false'::jsonb
    from emps where emp ->> 'last_name' = 'Fuera'),
-  'resumen: sin fin, los campos check_out_* de la validación son null'
+  'resumen: sin fin, estado y distancia de check_out_* son null y overridden es false'
 );
 select results_eq(
   $$select emp ->> 'check_in_geo_status', emp ->> 'check_in_geo_overridden'
@@ -201,9 +201,9 @@ select results_eq(
 );
 select ok(
   (select emp -> 'check_in_geo_status' = 'null'::jsonb and emp -> 'check_in_distance_m' = 'null'::jsonb
-          and emp -> 'check_in_geo_overridden' = 'null'::jsonb and emp -> 'check_in_geo_reason' = 'null'::jsonb
+          and emp -> 'check_in_geo_overridden' = 'false'::jsonb and emp -> 'check_in_geo_reason' = 'null'::jsonb
    from emps where emp ->> 'last_name' = 'SinInicio'),
-  'resumen: sin inicio, todos los campos de validación son null'
+  'resumen: sin inicio, estado, motivo y distancia son null y overridden es false'
 );
 select ok(
   (select bool_and(emp ? 'check_in_geo_reason' and emp ? 'check_out_geo_reason') from emps),
