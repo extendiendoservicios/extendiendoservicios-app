@@ -61,8 +61,10 @@ export interface ShiftMediaSectionProps {
  *
  * Estados:
  * - sede sin fotos: solo el texto, sin botones ni grilla;
- * - fuera de la ventana de H-12, sin conexión o con motivo fijo: botones
+ * - antes de la ventana de H-12, sin conexión o con motivo fijo: botones
  *   apagados y el motivo debajo; lo ya subido se sigue viendo;
+ * - con la ventana ya cerrada (AJ4-06, turnos pasados): sin botones, solo el
+ *   aviso del plazo y lo ya subido;
  * - «Quitar» solo mientras la ventana esté abierta y haya conexión (H-15).
  *
  * El código de compresión no se baja con la pantalla: `MediaCapture` lo
@@ -170,13 +172,17 @@ export function ShiftMediaSection({
               </Alert>
             )}
 
-            <MediaCapture
-              upload={upload}
-              counts={counts}
-              onUploaded={refresh}
-              disabled={disabledReason !== undefined}
-              disabledReason={disabledReason}
-            />
+            {windowState === 'after' && !blockedReason ? (
+              <p className="text-[12px] text-text-3">{disabledReason}</p>
+            ) : (
+              <MediaCapture
+                upload={upload}
+                counts={counts}
+                onUploaded={refresh}
+                disabled={disabledReason !== undefined}
+                disabledReason={disabledReason}
+              />
+            )}
 
             {items.length > 0 && (
               <div className="flex flex-col gap-2">

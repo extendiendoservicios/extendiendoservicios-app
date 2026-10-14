@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, ClipboardCheck, Timer } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -8,6 +8,7 @@ import { TaskList } from '@/components/TaskList'
 import { AssignmentStatusBadge } from '@/features/employee/components/AssignmentStatusBadge'
 import { formatMinutes } from '@/lib/format'
 import { avatarUrl } from '@/lib/avatarUrl'
+import { LazyShiftMediaSection } from '@/features/employee/components/LazyShiftMediaSection'
 import { OnTheWayAction } from '@/features/employee/components/OnTheWayAction'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { getNoticeMessage } from '@/features/employee/notice'
@@ -144,8 +145,43 @@ export default function ServiceDetailPage() {
               </Link>
             </Button>
           )}
+          {/* AJ4-01: un camino a lo ya registrado, para volver a un turno cerrado. */}
+          {!cancelled && assignment.checkOutAt != null && (
+            <Button asChild size="md" variant="ghost">
+              <Link to={`/app/resumen/${assignment.assignmentId}`}>
+                <ClipboardCheck aria-hidden="true" />
+                Ver resumen
+              </Link>
+            </Button>
+          )}
+          {!cancelled &&
+            assignment.checkInAt != null &&
+            assignment.checkOutAt == null &&
+            !assignment.noCheckout && (
+              <Button asChild size="md" variant="ghost">
+                <Link to={`/app/en-curso/${assignment.assignmentId}`}>
+                  <Timer aria-hidden="true" />
+                  Ir al servicio en curso
+                </Link>
+              </Button>
+            )}
         </CardContent>
       </Card>
+
+      {/* AJ4-01: con el inicio registrado, las fotos y videos se ven (y, dentro de la ventana de H-12, se suben o quitan) también desde acá. */}
+      {!cancelled && assignment.checkInAt != null && (
+        <LazyShiftMediaSection
+          shiftId={assignment.shiftId}
+          counts={{
+            photos: assignment.myPhotosCount,
+            videos: assignment.myVideosCount,
+          }}
+          requiresPhotos={assignment.requiresPhotos}
+          photosNotAllowed={assignment.photosNotAllowed}
+          startsAt={assignment.startsAt}
+          endsAt={assignment.endsAt}
+        />
+      )}
 
       <Card>
         <CardHeader>

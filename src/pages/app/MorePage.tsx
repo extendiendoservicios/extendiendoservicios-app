@@ -5,6 +5,7 @@ import {
   Megaphone,
   ChevronRight,
   Download,
+  History,
   LogOut,
   Shield,
   User,
@@ -37,6 +38,11 @@ export default function MorePage() {
           to="/app/avisar"
           icon={AlertTriangle}
           label="Avisar demora o ausencia"
+        />
+        <MoreRow
+          to="/app/historial"
+          icon={History}
+          label="Mis servicios anteriores"
         />
         <MoreRow to="/app/anuncios" icon={Megaphone} label="Anuncios" />
         {isSupervisor && (

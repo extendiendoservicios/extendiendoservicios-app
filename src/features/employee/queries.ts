@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import * as myDayApi from '@/api/myDay'
 import * as attendanceApi from '@/api/attendance'
 import * as noticesApi from '@/api/notices'
@@ -26,6 +31,9 @@ const MY_DAY_POLLING_MS = 30_000
 export const employeeKeys = {
   all: ['employee'] as const,
   myDay: () => [...employeeKeys.all, 'myDay'] as const,
+  history: () => [...employeeKeys.all, 'history'] as const,
+  historyItem: (assignmentId: string) =>
+    [...employeeKeys.all, 'historyItem', assignmentId] as const,
   shiftPeers: (shiftId: string) =>
     [...employeeKeys.all, 'shiftPeers', shiftId] as const,
   shiftTasks: (shiftId: string) =>
@@ -38,6 +46,31 @@ export function useMyDayQuery() {
     queryKey: employeeKeys.myDay(),
     queryFn: myDayApi.fetchMyDay,
     refetchInterval: MY_DAY_POLLING_MS,
+  })
+}
+
+/** AJ4-06: «Mis servicios anteriores», de a 20 con «Ver más». */
+export function useMyHistoryQuery() {
+  return useInfiniteQuery({
+    queryKey: employeeKeys.history(),
+    queryFn: ({ pageParam }) => myDayApi.fetchMyHistoryPage(pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length === myDayApi.MY_HISTORY_PAGE_SIZE
+        ? allPages.length
+        : undefined,
+  })
+}
+
+/** AJ4-06: una asignación del historial por id (comprobante EMP-11 de un servicio anterior). */
+export function useMyHistoryAssignmentQuery(
+  assignmentId: string,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: employeeKeys.historyItem(assignmentId),
+    queryFn: () => myDayApi.fetchMyHistoryAssignment(assignmentId),
+    enabled: enabled && Boolean(assignmentId),
   })
 }
 

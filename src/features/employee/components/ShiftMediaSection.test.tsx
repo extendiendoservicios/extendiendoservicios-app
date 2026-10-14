@@ -137,10 +137,12 @@ describe('ShiftMediaSection', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('pasadas las 2 horas del fin apaga los botones y dice por qué', () => {
+  it('pasadas las 2 horas del fin saca los botones y dice por qué (AJ4-06)', () => {
     renderSection({ startsAt: iso(-8 * HOUR), endsAt: iso(-3 * HOUR) })
 
-    expect(screen.getByRole('button', { name: 'Sacar foto' })).toBeDisabled()
+    expect(
+      screen.queryByRole('button', { name: 'Sacar foto' }),
+    ).not.toBeInTheDocument()
     expect(
       screen.getByText(/Ya pasó el plazo para subir fotos y videos/),
     ).toBeInTheDocument()

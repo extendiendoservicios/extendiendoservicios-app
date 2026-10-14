@@ -95,6 +95,15 @@ export const employeeRoutes: RouteObject[] = [
     },
   },
   {
+    path: 'historial',
+    ...lazyPage(() => import('@/pages/app/HistoryPage')),
+    handle: {
+      screenId: 'EMP-HIS',
+      title: 'Mis servicios anteriores',
+      subtitle: 'Tus servicios y comprobantes',
+    },
+  },
+  {
     path: 'avisar',
     ...lazyPage(() => import('@/pages/app/NotifyPage')),
     handle: {
