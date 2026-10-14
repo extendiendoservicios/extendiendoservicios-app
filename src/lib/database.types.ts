@@ -4485,6 +4485,7 @@ export type Database = {
       }
     }
     Functions: {
+      accept_location_consent: { Args: never; Returns: string }
       acknowledge_announcement: {
         Args: { p_id: string }
         Returns: {
@@ -5254,6 +5255,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      revoke_location_consent: { Args: never; Returns: undefined }
       service_delete_preview: { Args: { p_service_id: string }; Returns: Json }
       set_admin_capability: {
         Args: {
