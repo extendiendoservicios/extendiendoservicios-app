@@ -21,6 +21,7 @@ import { MapPicker } from '@/components/map'
 import { isApiError } from '@/api/errors'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { useClientDetailQuery } from '@/features/clients/queries'
+import { useCompanyGeofenceQuery } from '@/features/geo/queries'
 import {
   useCreateSiteMutation,
   useSiteDetailQuery,
@@ -51,6 +52,7 @@ export default function SiteFormPage() {
   const auth = useAuth()
 
   const siteQuery = useSiteDetailQuery(id)
+  const generalRadiusM = useCompanyGeofenceQuery().data?.radiusM
   const clientId = isEditMode ? siteQuery.data?.clientId : clientIdFromQuery
   const clientQuery = useClientDetailQuery(
     isEditMode ? undefined : (clientIdFromQuery ?? undefined),
@@ -82,6 +84,7 @@ export default function SiteFormPage() {
       phoneRestricted: false,
       photosNotAllowed: false,
       restrictionsNotes: '',
+      geofenceRadius: '',
       status: 'active',
     },
     values: siteQuery.data
@@ -100,6 +103,10 @@ export default function SiteFormPage() {
           phoneRestricted: siteQuery.data.phoneRestricted,
           photosNotAllowed: siteQuery.data.photosNotAllowed,
           restrictionsNotes: siteQuery.data.restrictionsNotes ?? '',
+          geofenceRadius:
+            siteQuery.data.geofenceRadiusM != null
+              ? String(siteQuery.data.geofenceRadiusM)
+              : '',
           status: siteQuery.data.status,
         }
       : undefined,
@@ -250,6 +257,31 @@ export default function SiteFormPage() {
           />
           {errors.buildingHours && (
             <FieldError>{errors.buildingHours.message}</FieldError>
+          )}
+        </Field>
+
+        <Field data-invalid={Boolean(errors.geofenceRadius) || undefined}>
+          <FieldLabel htmlFor="site-geofence-radius">
+            Radio de validación propio (opcional)
+          </FieldLabel>
+          <Input
+            id="site-geofence-radius"
+            type="number"
+            inputMode="numeric"
+            min={50}
+            max={1000}
+            step={1}
+            placeholder={generalRadiusM != null ? String(generalRadiusM) : ''}
+            aria-invalid={Boolean(errors.geofenceRadius)}
+            aria-describedby="site-geofence-radius-help"
+            {...register('geofenceRadius')}
+          />
+          <p id="site-geofence-radius-help" className="text-[11px] text-text-3">
+            En metros, de 50 a 1000. Si lo dejás vacío se usa el radio general
+            {generalRadiusM != null ? ` (${generalRadiusM} m)` : ''}.
+          </p>
+          {errors.geofenceRadius && (
+            <FieldError>{errors.geofenceRadius.message}</FieldError>
           )}
         </Field>
 

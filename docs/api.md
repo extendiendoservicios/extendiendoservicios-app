@@ -453,6 +453,32 @@ Todos los `hint` de error se traducen a un mensaje en español en `mapMediaAdmin
 
 Cambios en dominios que ya existían (P21.4): `services` suma `requiresPhotos` (update directo) y el motivo `SHIFT_MEDIA` / error `SERVICE_HAS_MEDIA` en la eliminación; `shifts.createShift` y `createShiftSeries` aceptan `requiresPhotos` (`null` hereda del servicio) y `fetchShiftForEdit` lo lee de `shifts`; `assignments.updateShiftDetails` acepta `requiresPhotos` (sin valor no cambia nada) y `ShiftDetail` trae `requiresPhotos`.
 
+### `geo` (`src/api/geo.ts`, P22.4 — módulo B1: geolocalización y corrección de fichajes)
+
+Solo dueño y administradores. Las posiciones se leen únicamente por
+`v_presence_today` y `get_attendance_location` (B-40, migración `0054`): las
+columnas `latitude`, `longitude`, `accuracy_m`, `geo_override_by` y
+`geo_override_reason` de `attendance_records` y `supervision_attendance` están
+cerradas para `authenticated` (`select *` da `42501`).
+
+| Función                                               | Canal                            | Quién                      | Notas                                                                                                                                                             |
+| ----------------------------------------------------- | -------------------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fetchPresenceToday()`                                | `from('v_presence_today')`       | O, A                       | Fichajes de inicio de hoy (con y sin fin), supervisiones en curso y sedes con turno hoy. `kind`: `employee`, `supervisor` o `site`. Polling de 45 s en el Resumen |
+| `fetchAttendanceLocation(recordType, recordId)`       | RPC `get_attendance_location`    | O, A                       | `recordType`: `attendance` o `supervision`. Posición, validación congelada y sede con el radio vigente. `FORBIDDEN`, `INVALID_RECORD_TYPE`, `RECORD_NOT_FOUND`    |
+| `correctAttendanceTime(recordId, newTime, reason)`    | RPC `correct_attendance_time`    | O; A + `manage_attendance` | Motivo obligatorio. `FORBIDDEN`, `RECORD_NOT_FOUND`, `SHIFT_CANCELLED`, `REASON_REQUIRED`, `TIME_REQUIRED`, `AT_OUT_OF_RANGE`, `SAME_TIME`, `INVALID_TIME_RANGE`  |
+| `overrideGeoValidation(recordType, recordId, reason)` | RPC `override_geo_validation`    | O; A + `manage_attendance` | Solo rojo o gris sin corrección previa. `FORBIDDEN`, `INVALID_RECORD_TYPE`, `REASON_REQUIRED`, `RECORD_NOT_FOUND`, `GEO_ALREADY_VALID`, `GEO_ALREADY_OVERRIDDEN`  |
+| `fetchAttendanceCorrections(recordIds)`               | `from('attendance_corrections')` | O, A                       | Historial de correcciones, del más reciente al más antiguo, con el nombre de quien corrigió (`v_people_basic`)                                                    |
+| `setGeofenceRadius(radiusM)`                          | RPC `set_geofence_radius`        | O, A                       | Radio general, 50 a 1000 m. `FORBIDDEN`, `RADIUS_OUT_OF_RANGE`. No recalcula fichajes anteriores                                                                  |
+| `fetchCompanyGeofence()`                              | `from('company_settings')`       | todos                      | `radiusM`, `maxAccuracyM` y `locationConsentUpdatedAt`                                                                                                            |
+
+Cambios en dominios que ya existían (P22.4): `attendance` suma `AttendanceGeo` y
+`checkInGeo`, `checkOutGeo` y `hasOutsideGeo` a `AttendanceBoardRow` (sin
+coordenadas; la precisión sí); `supervisions` suma `checkInGeo` y `checkOutGeo`
+a `SupervisionListRow`; `sites` suma `geofenceRadiusM` a `SiteDetail`,
+`SiteFormInput` y `SiteMapRow` (el radio propio se guarda con el `update` de
+`sites`, `null` usa el general); `settings` suma `locationConsentUpdatedAt`.
+Los mensajes de error de las RPC nuevas están en `src/features/geo/errors.ts`.
+
 ## Próximos dominios
 
 Cada paquete de F10 en adelante agrega su sección acá (`myDay`) siguiendo

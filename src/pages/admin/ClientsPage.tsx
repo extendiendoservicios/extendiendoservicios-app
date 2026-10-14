@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router'
 import { Building2, Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -32,6 +33,11 @@ import {
   monthName,
 } from '@/features/clients/serviceSummary'
 import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
+import { useAuth } from '@/features/auth/AuthProvider'
+import { GeofenceRadiusField } from '@/features/geo/components/GeofenceRadiusField'
+import { canEditGeofenceRadius } from '@/features/geo/permissions'
+import { useCompanyGeofenceQuery } from '@/features/geo/queries'
+import { describeSiteRadius, effectiveSiteRadiusM } from '@/features/geo/radius'
 import {
   useClientFilterOptionsQuery,
   useSitesMapQuery,
@@ -280,7 +286,12 @@ function ClientsListTab() {
  * reporte del encargo).
  */
 function ClientsMapTab() {
+  const auth = useAuth()
   const [clientId, setClientId] = useState<string>('all')
+  // B-16: «Mostrar radios» dibuja el círculo de cada sede con su radio vigente.
+  const [showRadii, setShowRadii] = useState(false)
+  const generalRadiusQuery = useCompanyGeofenceQuery()
+  const generalRadiusM = generalRadiusQuery.data?.radiusM
   const clientOptionsQuery = useClientFilterOptionsQuery()
   const sitesQuery = useSitesMapQuery({
     clientId: clientId === 'all' ? undefined : clientId,
@@ -302,6 +313,10 @@ function ClientsMapTab() {
           lng: site.longitude as number,
         },
         variant: getStatusMeta({ domain: 'site', status: site.status }).variant,
+        // B-17: solo las sedes llevan círculo; las coordenadas propias del cliente, no.
+        radiusM: showRadii
+          ? effectiveSiteRadiusM(site.geofenceRadiusM, generalRadiusM)
+          : undefined,
         label: `${site.clientName} — ${site.name}`,
         popup: (
           <div className="flex flex-col gap-1 text-[12px]">
@@ -310,6 +325,10 @@ function ClientsMapTab() {
             <p className="text-text-3">
               {site.address}
               {site.city ? `, ${site.city}` : ''}
+            </p>
+            <p className="text-text-3">
+              Radio de validación:{' '}
+              {describeSiteRadius(site.geofenceRadiusM, generalRadiusM)}
             </p>
             <Link
               to={`/admin/sedes/${site.id}`}
@@ -320,7 +339,7 @@ function ClientsMapTab() {
           </div>
         ),
       })),
-    [sitesWithCoordinates],
+    [sitesWithCoordinates, showRadii, generalRadiusM],
   )
 
   return (
@@ -349,6 +368,21 @@ function ClientsMapTab() {
               : `Hay ${sitesWithoutCoordinatesCount} sedes sin ubicación cargada, no se ven en el mapa.`}
           </p>
         )}
+      </div>
+
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+        <label
+          htmlFor="clients-map-show-radii"
+          className="flex items-center gap-3 text-[13px] font-medium text-text"
+        >
+          Mostrar radios
+          <Switch
+            id="clients-map-show-radii"
+            checked={showRadii}
+            onCheckedChange={setShowRadii}
+          />
+        </label>
+        <GeofenceRadiusField canEdit={canEditGeofenceRadius(auth)} />
       </div>
 
       <MapView
