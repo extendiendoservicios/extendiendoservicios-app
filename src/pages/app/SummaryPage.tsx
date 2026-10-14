@@ -12,6 +12,7 @@ import {
 } from '@/features/employee/queries'
 import { LazyShiftMediaSection } from '@/features/employee/components/LazyShiftMediaSection'
 import { formatMediaCounts } from '@/features/employee/mediaCounts'
+import { AttendanceMarkRow } from '@/features/employee/components/AttendanceMarkRow'
 
 /**
  * EMP-11 · Resumen del servicio (MOB-EMP-012, `05` fila EMP-11): el
@@ -82,11 +83,25 @@ export default function SummaryPage() {
               assignment.checkInAt ? formatTime(assignment.checkInAt) : '—'
             }
           />
+          <AttendanceMarkRow
+            label="Ubicación del inicio"
+            at={assignment.checkInAt}
+            geo={assignment.checkInGeo}
+            timeCorrected={assignment.checkInTimeCorrected}
+            hideTime
+          />
           <SummaryRow
             label="Fin"
             value={
               assignment.checkOutAt ? formatTime(assignment.checkOutAt) : '—'
             }
+          />
+          <AttendanceMarkRow
+            label="Ubicación del fin"
+            at={assignment.checkOutAt}
+            geo={assignment.checkOutGeo}
+            timeCorrected={assignment.checkOutTimeCorrected}
+            hideTime
           />
           {durationLabel && (
             <SummaryRow label="Duración" value={durationLabel} />
