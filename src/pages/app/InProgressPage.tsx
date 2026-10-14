@@ -2,6 +2,7 @@ import type { ComponentType } from 'react'
 import { Link, Navigate, useParams } from 'react-router'
 import { ClipboardList, MessageSquare, Square, WifiOff } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ProgressBar } from '@/components/ProgressBar'
 import { formatTime } from '@/lib/format'
@@ -152,12 +153,15 @@ export default function InProgressPage() {
           icon={MessageSquare}
           label="Observaciones"
         />
-        <AccessRow
-          to={`/app/en-curso/${assignment.assignmentId}/finalizar`}
-          icon={Square}
-          label="Finalizar servicio"
-        />
       </div>
+
+      {/* AJ4-04: terminar el servicio pesa como «Sacar foto» y «Registrar fin». */}
+      <Button asChild size="mobile" className="mt-4">
+        <Link to={`/app/en-curso/${assignment.assignmentId}/finalizar`}>
+          <Square aria-hidden="true" />
+          Finalizar servicio
+        </Link>
+      </Button>
     </div>
   )
 }

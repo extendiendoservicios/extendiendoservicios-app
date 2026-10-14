@@ -1,21 +1,25 @@
-import { Link, useParams } from 'react-router'
+import { Link, useParams, useSearchParams } from 'react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { TaskList } from '@/components/TaskList'
 import { formatMinutes, formatTime } from '@/lib/format'
 import { elapsedSeconds } from '@/features/employee/chronometer'
-import { useMyDayQuery, useShiftTasksQuery } from '@/features/employee/queries'
+import {
+  useMyDayQuery,
+  useMyHistoryAssignmentQuery,
+  useShiftTasksQuery,
+} from '@/features/employee/queries'
 import { LazyShiftMediaSection } from '@/features/employee/components/LazyShiftMediaSection'
 import { formatMediaCounts } from '@/features/employee/mediaCounts'
 
 /**
  * EMP-11 · Resumen del servicio (MOB-EMP-012, `05` fila EMP-11): el
  * comprobante del turno -- inicio, fin, duración, tareas (completadas, no
- * realizadas y pendientes) y la observación cargada. Accesible desde Hoy o
- * el detalle mientras la asignación siga en `v_my_day` (hoy o los próximos 7
- * días, P-093): no hay un historial propio en esta fase (F13; ver F14/F15
- * para asistencia administrativa e historial más largo).
+ * realizadas y pendientes) y la observación cargada. La asignación sale de
+ * `v_my_day` (hoy o los próximos 7 días, P-093); si no está ahí (AJ4-06,
+ * «Mis servicios anteriores») se busca en `v_my_history` por id. Con
+ * `?desde=historial` el botón final vuelve al historial y no a Hoy.
  *
  * Módulo H (P21.3): muestra cuántas fotos y videos se subieron y, como la
  * ventana de subida sigue abierta hasta 2 horas después del fin (H-12), el
@@ -24,8 +28,17 @@ import { formatMediaCounts } from '@/features/employee/mediaCounts'
  */
 export default function SummaryPage() {
   const { assignmentId } = useParams<{ assignmentId: string }>()
-  const { data: myDay, isLoading } = useMyDayQuery()
-  const assignment = myDay?.find((a) => a.assignmentId === assignmentId)
+  const [searchParams] = useSearchParams()
+  const fromHistory = searchParams.get('desde') === 'historial'
+  const { data: myDay, isLoading: loadingDay } = useMyDayQuery()
+  const inMyDay = myDay?.find((a) => a.assignmentId === assignmentId)
+  const { data: historical, isLoading: loadingHistory } =
+    useMyHistoryAssignmentQuery(
+      assignmentId ?? '',
+      !loadingDay && inMyDay == null,
+    )
+  const assignment = inMyDay ?? historical ?? undefined
+  const isLoading = loadingDay || (inMyDay == null && loadingHistory)
   const { data: tasks } = useShiftTasksQuery(assignment?.shiftId ?? '')
 
   if (isLoading) {
@@ -144,7 +157,11 @@ export default function SummaryPage() {
       </Card>
 
       <Button size="mobile" asChild className="mt-auto">
-        <Link to="/app">Volver a Hoy</Link>
+        {fromHistory ? (
+          <Link to="/app/historial">Volver al historial</Link>
+        ) : (
+          <Link to="/app">Volver a Hoy</Link>
+        )}
       </Button>
     </div>
   )
