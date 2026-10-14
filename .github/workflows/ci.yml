@@ -15,6 +15,14 @@ name: CI
 # supabase/functions/README.md), buscando cualquier *.test.ts bajo supabase/functions/ -- así
 # alcanza también a funciones futuras sin tocar este workflow. Hoy solo existe
 # supabase/functions/admin-users/index.test.ts.
+#
+# Tres jobs (P22, 14 oct 2026): `calidad` (lint, tipos, formato, Vitest, Deno, build, db:types y
+# e2e), `pgtap` en paralelo y `ci` (nombre "CI", la verificación obligatoria de la protección de
+# ramas), que solo junta los resultados. pgTAP corre contra App_dev, tarda ~17 min y crece con
+# cada migración, así que se ejecuta solo si el PR toca la base (supabase/migrations,
+# supabase/tests, scripts/db-test.sh o este workflow) o si va a `main` (pase a producción). Los
+# PR de pantallas quedan en ~8 min. Además, la concurrencia `pgtap-app-dev` hace que dos PR no
+# corran pgTAP a la vez contra la misma base: el segundo espera a que termine el primero.
 
 on:
   pull_request:
@@ -24,8 +32,38 @@ permissions:
   contents: read
 
 jobs:
-  ci:
-    name: CI
+  cambios:
+    name: ¿Toca la base?
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      toca_base: ${{ steps.detectar.outputs.toca_base }}
+    steps:
+      - name: Descargar el código (el commit de merge del PR y su base)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - name: Detectar si el PR toca la base
+        id: detectar
+        run: |
+          if [ "${{ github.base_ref }}" = "main" ]; then
+            echo "PR a main (pase a producción): pgTAP corre siempre."
+            echo "toca_base=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # HEAD es el merge del PR sobre su base; HEAD^1 es la base.
+          cambios=$(git diff --name-only HEAD^1 HEAD)
+          echo "$cambios"
+          if echo "$cambios" | grep -qE '^(supabase/(migrations|tests)/|scripts/db-test\.sh$|\.github/workflows/ci\.yml$)'; then
+            echo "toca_base=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "El PR no toca la base: pgTAP no corre."
+            echo "toca_base=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  calidad:
+    name: Calidad
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -128,18 +166,6 @@ jobs:
           echo "supabase/migrations todavía no tiene archivos .sql (llegan en F4, DB-001 en adelante)."
           echo "Este paso queda preparado en ci.yml y se activa solo apenas exista el primero."
 
-      - name: pgTAP contra App_dev (esquema de prueba recreado) — DB-022
-        if: steps.supabase-estado.outputs.hay_tests_db == 'true'
-        env:
-          SUPABASE_DB_URL_DEV: ${{ secrets.SUPABASE_DB_URL_DEV }}
-        run: pnpm db:test
-
-      - name: pgTAP condicionado — todavía no hay tests de base (F4)
-        if: steps.supabase-estado.outputs.hay_tests_db != 'true'
-        run: |
-          echo "supabase/tests todavía no tiene archivos .sql (llegan en F4, DB-022)."
-          echo "Este paso queda preparado en ci.yml y se activa solo apenas exista el primero."
-
       - name: Instalar navegadores de Playwright (solo chromium)
         run: pnpm exec playwright install --with-deps chromium
 
@@ -153,3 +179,52 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  pgtap:
+    name: pgTAP contra App_dev
+    needs: cambios
+    if: needs.cambios.outputs.toca_base == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    concurrency:
+      group: pgtap-app-dev
+      cancel-in-progress: false
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v7
+
+      - name: Habilitar corepack
+        run: corepack enable
+
+      - name: Node (.node-version) y caché de pnpm
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.node-version'
+          cache: 'pnpm'
+
+      - name: Instalar dependencias (lockfile congelado)
+        run: pnpm install --frozen-lockfile
+
+      - name: pgTAP contra App_dev (esquema de prueba recreado) — DB-022
+        env:
+          SUPABASE_DB_URL_DEV: ${{ secrets.SUPABASE_DB_URL_DEV }}
+        run: pnpm db:test
+
+  ci:
+    name: CI
+    needs: [cambios, calidad, pgtap]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Juntar resultados
+        run: |
+          echo "cambios: ${{ needs.cambios.result }}"
+          echo "calidad: ${{ needs.calidad.result }}"
+          echo "pgtap:   ${{ needs.pgtap.result }} (toca la base: ${{ needs.cambios.outputs.toca_base }})"
+          if [ "${{ needs.cambios.result }}" != "success" ] || [ "${{ needs.calidad.result }}" != "success" ]; then
+            exit 1
+          fi
+          if [ "${{ needs.cambios.outputs.toca_base }}" = "true" ] && [ "${{ needs.pgtap.result }}" != "success" ]; then
+            exit 1
+          fi
