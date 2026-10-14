@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { formatCalendarDate, formatTime } from '@/lib/format'
 import type { MyDayAssignment } from '@/api/myDay'
 import { useMyHistoryQuery } from '@/features/employee/queries'
+import { StatusBadge } from '@/components/status'
 import { AssignmentStatusBadge } from '@/features/employee/components/AssignmentStatusBadge'
 import { formatAssignmentRange } from '@/features/employee/shiftRange'
 import { formatMediaCounts } from '@/features/employee/mediaCounts'
@@ -117,7 +118,13 @@ function HistoryCard({ assignment }: { assignment: MyDayAssignment }) {
                 {assignment.siteName}
               </p>
             </div>
-            <AssignmentStatusBadge assignment={assignment} />
+            {assignment.status === 'expected' &&
+            assignment.shiftStatus !== 'cancelled' ? (
+              // Un día pasado que sigue «Esperado» no se registró nunca.
+              <StatusBadge domain="assignment" status="no_record" />
+            ) : (
+              <AssignmentStatusBadge assignment={assignment} />
+            )}
           </div>
           <p className="text-[12.5px] text-text-2">
             {formatAssignmentRange(assignment)}
