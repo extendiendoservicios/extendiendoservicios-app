@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { EARTH_RADIUS_M } from './constants'
 import { geoEvaluate, haversineDistanceM } from './geoEvaluate'
 import { formatGeoStatusText } from './geoStatusText'
 
@@ -11,7 +12,7 @@ const SITE = { lat: -34.6037, lng: -58.3816 }
 
 /** Un punto `meters` metros al norte de la sede (1° de latitud = R·π/180 m). */
 function northOfSite(meters: number) {
-  const degPerMeter = 180 / (Math.PI * 6_371_008.8)
+  const degPerMeter = 180 / (Math.PI * EARTH_RADIUS_M)
   return { lat: SITE.lat + meters * degPerMeter, lng: SITE.lng }
 }
 
@@ -177,4 +178,49 @@ describe('formatGeoStatusText', () => {
       ),
     ).toBe('Sin validar (precisión insuficiente)')
   })
+})
+
+/**
+ * Tabla de casos verificados contra `geo_evaluate` de la base en `App_dev`
+ * (P22.1, migración 0052). Si alguno cambia, la base y el celular dejan de
+ * coincidir: los dos tienen que dar lo mismo.
+ */
+describe('geoEvaluate coincide con geo_evaluate de la base', () => {
+  const cases: Array<
+    [
+      lat: number,
+      lng: number,
+      acc: number,
+      radius: number,
+      status: string,
+      reason: string | undefined,
+      dist: number,
+    ]
+  > = [
+    [-34.6037, -58.3816, 10, 150, 'valid', undefined, 0],
+    [-34.6027, -58.3816, 11.2, 100, 'valid', undefined, 111],
+    [-34.6027, -58.3816, 11.1, 100, 'outside', undefined, 111],
+    [-34.6037, -58.3816, 150, 150, 'valid', undefined, 0],
+    [-34.6037, -58.3816, 151, 150, 'unvalidated', 'low_accuracy', 0],
+    [-34.5937, -58.3816, 151, 150, 'outside', undefined, 1112],
+    [-34.5937, -58.3816, 150, 150, 'outside', undefined, 1112],
+    [-34.6017, -58.3816, 150, 100, 'valid', undefined, 222],
+    [-34.6017, -58.3816, 151, 100, 'unvalidated', 'low_accuracy', 222],
+    [-34.6037, -58.3806, 5, 50, 'outside', undefined, 92],
+    [-34.6037, -58.3806, 45, 50, 'valid', undefined, 92],
+    [-34.5956, -58.3816, 20, 1000, 'valid', undefined, 901],
+  ]
+  it.each(cases)(
+    '(%f, %f) precisión %f radio %f → %s',
+    (lat, lng, acc, radius, status, reason, dist) => {
+      const r = geoEvaluate({
+        position: { lat, lng, accuracyM: acc },
+        site: SITE,
+        radiusM: radius,
+      })
+      expect(r.status).toBe(status)
+      expect(r.reason).toBe(reason)
+      expect(r.distanceM).toBe(dist)
+    },
+  )
 })

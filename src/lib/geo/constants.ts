@@ -19,4 +19,4 @@ export const GEOFENCE_RADIUS_MIN_M = 50
 export const GEOFENCE_RADIUS_MAX_M = 1000
 
 /** Radio medio de la Tierra, en metros. Debe coincidir con `geo_distance_m` en la base (P22.1). */
-export const EARTH_RADIUS_M = 6_371_008.8
+export const EARTH_RADIUS_M = 6_371_000
