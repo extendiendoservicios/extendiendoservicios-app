@@ -273,20 +273,26 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
           }}
         />
       ) : (
-        franjaGroups.map((group) => (
-          <div key={group.franja} className="flex flex-col gap-2">
-            <h3 className="text-[12.5px] font-semibold text-text-3">
-              Franja {group.franja}
-            </h3>
-            <DataTable
-              caption={`Turnos de la franja ${group.franja} del ${formatDateOnly(date)}`}
-              columns={columns}
-              data={group.shifts}
-              getRowId={(row) => row.id}
-              fixedLayout
-            />
+        // AJ4-02: con poco ancho (1024 px con el menú abierto) las franjas se
+        // desplazan de costado todas juntas, así las columnas siguen alineadas.
+        <div className="overflow-x-auto">
+          <div className="flex flex-col gap-4 lg:min-w-[60rem]">
+            {franjaGroups.map((group) => (
+              <div key={group.franja} className="flex flex-col gap-2">
+                <h3 className="text-[12.5px] font-semibold text-text-3">
+                  Franja {group.franja}
+                </h3>
+                <DataTable
+                  caption={`Turnos de la franja ${group.franja} del ${formatDateOnly(date)}`}
+                  columns={columns}
+                  data={group.shifts}
+                  getRowId={(row) => row.id}
+                  fixedLayout
+                />
+              </div>
+            ))}
           </div>
-        ))
+        </div>
       )}
 
       {cancelTarget && (
