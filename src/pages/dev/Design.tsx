@@ -108,6 +108,7 @@ import { MapPicker, MapView, type MapViewMarker } from '@/components/map'
 import { AvatarUpload } from '@/components/AvatarUpload'
 import { GlobalSearch } from '@/components/search/GlobalSearch'
 import { MediaDemo } from '@/pages/dev/MediaDemo'
+import { GeoDemo } from '@/pages/dev/GeoDemo'
 
 /**
  * `/dev/design` (DS-016): vidriera de todos los componentes de
@@ -1394,6 +1395,10 @@ function DesignPage() {
             />
           </div>
         </Row>
+      </Section>
+
+      <Section title="Geolocalización: GeofenceMiniMap, GeoStatusBadge, useLivePosition y MapView ampliado (P22.2, módulo B1)">
+        <GeoDemo />
       </Section>
 
       <Section title="AvatarUpload (EMP-011, P09.2)">

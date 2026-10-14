@@ -1,5 +1,10 @@
 export { MapView } from './MapView'
-export type { MapViewProps, MapViewMarker } from './MapView'
+export type { MapViewProps, MapViewMarker, MarkerShape } from './MapView'
+export { GeofenceMiniMap } from './GeofenceMiniMap'
+export type {
+  GeofenceMiniMapProps,
+  GeofenceMiniMapSite,
+} from './GeofenceMiniMap'
 export { MapPicker } from './MapPicker'
 export type { MapPickerProps } from './MapPicker'
 export type { Coordinates } from './coordinates'

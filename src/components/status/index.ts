@@ -1,5 +1,7 @@
 export { StatusBadge } from './StatusBadge'
 export type { StatusBadgeProps } from './StatusBadge'
+export { GeoStatusBadge, getGeoStatusMeta } from './GeoStatusBadge'
+export type { GeoStatusBadgeProps } from './GeoStatusBadge'
 export {
   getStatusMeta,
   getTableRowVariant,
