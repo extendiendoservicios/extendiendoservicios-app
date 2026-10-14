@@ -7,6 +7,12 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+### Agregado
+
+- Celular · módulo B1 (P22.3): al fichar el inicio y el fin, el empleado y el supervisor ven un mini mapa con la sede (círculo verde, rojo o gris en vivo), su punto con el círculo de precisión y «Precisión: 35 m». Si la señal es imprecisa pueden «Esperar mejor señal» (hasta 30 s) o «Fichar igual». Si están fuera de la zona, un campo opcional pregunta por qué. Después de fichar se muestra la hora y la validación que guardó la base.
+- Celular: el historial del empleado, el resumen del turno y el detalle de la supervisión muestran si cada fichaje quedó «Validado», «Fuera de zona» o «Sin validar», y «Corregido» si la administración cambió la hora (sin el motivo).
+- Celular: si la empresa cambia el texto del consentimiento de ubicación, se vuelve a mostrar antes de fichar.
+
 ## [0.20.0] - 2026-10-14
 
 Ajustes de uso del 14 de octubre (P19.8).

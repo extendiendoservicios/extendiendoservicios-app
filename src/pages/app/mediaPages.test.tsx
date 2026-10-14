@@ -8,6 +8,7 @@ import SummaryPage from './SummaryPage'
 import * as queriesModule from '@/features/employee/queries'
 import * as onlineModule from '@/features/employee/useOnlineStatus'
 import * as authModule from '@/features/auth/AuthProvider'
+import * as consentHookModule from '@/features/employee/useLocationConsent'
 import type { MyDayAssignment } from '@/api/myDay'
 
 /**
@@ -72,6 +73,12 @@ function assignment(overrides: Partial<MyDayAssignment>): MyDayAssignment {
     changedSinceLastSeen: false,
     checkInAt: '2026-10-13T11:02:00Z',
     checkOutAt: null,
+    siteGeofenceRadiusM: 150,
+    geofenceMaxAccuracyM: 150,
+    checkInGeo: null,
+    checkOutGeo: null,
+    checkInTimeCorrected: false,
+    checkOutTimeCorrected: false,
     siteCity: null,
     siteLatitude: null,
     siteLongitude: null,
@@ -94,6 +101,13 @@ function assignment(overrides: Partial<MyDayAssignment>): MyDayAssignment {
 
 function mockDay(item: MyDayAssignment) {
   vi.spyOn(onlineModule, 'useOnlineStatus').mockReturnValue(true)
+  // Sin ubicación: estas pruebas son de las fotos (módulo H), no del módulo B1.
+  vi.spyOn(consentHookModule, 'useLocationConsent').mockReturnValue({
+    status: 'declined',
+    loading: false,
+    reconsent: false,
+    consentUpdatedAt: null,
+  })
   vi.spyOn(queriesModule, 'useMyDayQuery').mockReturnValue({
     data: [item],
     isLoading: false,
@@ -214,6 +228,7 @@ describe('FinishPage (EMP-10) · servicio que pide fotos', () => {
       expect(mutateAsync).toHaveBeenCalledWith({
         assignmentId: 'a1',
         coords: null,
+        outsideReason: null,
       }),
     )
   })

@@ -96,9 +96,71 @@ describe('recordCheckIn', () => {
       assignmentId: 'a1',
       kind: 'check_in',
       recordedAt: '2026-09-26T11:03:00Z',
+      geo: null,
     })
     expect(result).not.toHaveProperty('lat')
     expect(result).not.toHaveProperty('latitude')
+  })
+
+  it('manda el motivo de «fuera de zona» recortado y devuelve la validación que guardó la base (B1)', async () => {
+    rpcMock.mockResolvedValue({
+      data: {
+        ...ATTENDANCE_ROW,
+        geo_status: 'outside',
+        geo_unvalidated_reason: null,
+        site_distance_m: 350,
+        geofence_radius_m: 150,
+        geo_override_at: null,
+      },
+      error: null,
+    })
+
+    const result = await recordCheckIn(
+      'a1',
+      { lat: -34.6, lng: -58.4, accuracyM: 15 },
+      '  El GPS no anda en el subsuelo  ',
+    )
+
+    expect(rpcMock).toHaveBeenCalledWith('record_check_in', {
+      p_assignment_id: 'a1',
+      p_lat: -34.6,
+      p_lng: -58.4,
+      p_accuracy: 15,
+      p_outside_reason: 'El GPS no anda en el subsuelo',
+    })
+    expect(result.geo).toEqual({
+      status: 'outside',
+      reason: null,
+      distanceM: 350,
+      radiusM: 150,
+      overridden: false,
+    })
+    // Las coordenadas del fichaje siguen sin mapearse (B-40).
+    expect(JSON.stringify(result)).not.toMatch(/-34\.6|-58\.4|accuracy/)
+  })
+
+  it('un motivo en blanco no se manda', async () => {
+    rpcMock.mockResolvedValue({ data: ATTENDANCE_ROW, error: null })
+
+    await recordCheckIn('a1', null, '   ')
+
+    expect(rpcMock.mock.calls[0]?.[1]).toMatchObject({
+      p_outside_reason: undefined,
+    })
+  })
+
+  it('propaga OUTSIDE_REASON_TOO_LONG con su mensaje', async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: {
+        message: 'El motivo no puede pasar de 300 caracteres.',
+        hint: 'OUTSIDE_REASON_TOO_LONG',
+      },
+    })
+
+    await expect(
+      recordCheckIn('a1', null, 'x'.repeat(301)),
+    ).rejects.toMatchObject({ hint: 'OUTSIDE_REASON_TOO_LONG' })
   })
 
   it('manda las tres coordenadas vacías cuando no hay ubicación (nunca bloquea, ADR-009)', async () => {
@@ -146,6 +208,31 @@ describe('recordCheckOut', () => {
       p_accuracy: undefined,
     })
     expect(result.kind).toBe('check_out')
+  })
+
+  it('manda el motivo y devuelve «Sin validar» con su motivo si la base no tuvo ubicación (B1)', async () => {
+    rpcMock.mockResolvedValue({
+      data: {
+        ...ATTENDANCE_ROW,
+        kind: 'check_out',
+        geo_status: 'unvalidated',
+        geo_unvalidated_reason: 'no_location',
+        site_distance_m: null,
+        geofence_radius_m: 150,
+      },
+      error: null,
+    })
+
+    const result = await recordCheckOut('a1', null, 'Sin señal')
+
+    expect(rpcMock.mock.calls[0]?.[1]).toMatchObject({
+      p_outside_reason: 'Sin señal',
+    })
+    expect(result.geo).toMatchObject({
+      status: 'unvalidated',
+      reason: 'no_location',
+      distanceM: null,
+    })
   })
 })
 

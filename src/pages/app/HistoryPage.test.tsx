@@ -110,6 +110,65 @@ describe('HistoryPage (empleado)', () => {
     expect(screen.queryByText(/Fotos y videos/)).not.toBeInTheDocument()
   })
 
+  it('muestra cómo quedó validado cada fichaje y la marca «Corregido», sin motivo (B-19, B-28)', () => {
+    mockHistory({
+      data: {
+        pages: [
+          [
+            item({
+              checkInGeo: {
+                status: 'outside',
+                reason: null,
+                distanceM: 350,
+                radiusM: 150,
+                overridden: false,
+              },
+              checkInTimeCorrected: true,
+              checkOutGeo: {
+                status: 'unvalidated',
+                reason: 'no_location',
+                distanceM: null,
+                radiusM: 150,
+                overridden: false,
+              },
+            }),
+          ],
+        ],
+      },
+    })
+    renderPage()
+
+    const [start, end] = screen.getAllByTestId('attendance-mark')
+    expect(start).toHaveTextContent('Inicio 08:02')
+    expect(start).toHaveTextContent('Corregido')
+    expect(start).toHaveTextContent('Fuera de zona')
+    expect(end).toHaveTextContent('Fin 12:00')
+    expect(end).toHaveTextContent('Sin validar (sin ubicación)')
+    expect(end).not.toHaveTextContent('Corregido')
+  })
+
+  it('«Validado (corregido)» cuando la administración marcó el fichaje como válido', () => {
+    mockHistory({
+      data: {
+        pages: [
+          [
+            item({
+              checkInGeo: {
+                status: 'outside',
+                reason: null,
+                distanceM: 350,
+                radiusM: 150,
+                overridden: true,
+              },
+            }),
+          ],
+        ],
+      },
+    })
+    renderPage()
+    expect(screen.getByText('Validado (corregido)')).toBeInTheDocument()
+  })
+
   it('«Ver más» pide la página siguiente', () => {
     const fetchNextPage = vi.fn()
     mockHistory({

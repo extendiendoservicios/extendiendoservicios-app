@@ -120,6 +120,14 @@ Podés registrar el inicio a cualquier hora del día del servicio. No hace falta
 
    ![Registrar inicio](guias/img/emp-fichar-inicio.png)
 
+Si diste tu consentimiento, antes del botón vas a ver un **mapa** con la sede y un punto con tu posición. El círculo de la sede se pinta de **verde** si estás en la zona y de **rojo** si estás fuera, y debajo figura la **precisión** de tu ubicación ("Precisión: 35 m"):
+
+- Si la señal es imprecisa, podés tocar **Esperar mejor señal** (hasta 30 segundos) o **Fichar igual**. Registrar nunca se bloquea.
+- Si estás fuera de la zona, la app te pregunta **por qué** (es opcional, hasta 300 caracteres), por ejemplo "el GPS no anda en el subsuelo".
+- Si la empresa cambia el texto del consentimiento, la app te lo vuelve a mostrar la próxima vez que fichás.
+
+Cuando registrás, la app te muestra la **hora** y cómo quedó tu ubicación: **Validado**, **Fuera de zona** o **Sin validar** (por ejemplo, si no diste la ubicación). Lo mismo vale para el fin del servicio y para el historial de **Mis servicios anteriores**, donde también figura **Corregido** si la administración cambió una hora.
+
 Si aparece "Este turno no es de hoy." o "Ya registraste el inicio.", mirá [los problemas frecuentes](troubleshooting.md#5-registro-de-jornada-avisos-y-tareas-empleados).
 
 ## Durante el servicio

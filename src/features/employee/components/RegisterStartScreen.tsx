@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -23,6 +24,10 @@ export interface RegisterStartScreenProps {
   busy?: boolean
   error?: string | null
   offline?: boolean
+  /** Módulo B1: el panel de ubicación en vivo (mini mapa, precisión), entre la hora y el botón. */
+  children?: ReactNode
+  /** Texto del botón; «Registrar inicio» por omisión (con señal todavía imprecisa, «Fichar igual»). */
+  confirmLabel?: string
 }
 
 export function RegisterStartScreen({
@@ -32,6 +37,8 @@ export function RegisterStartScreen({
   busy = false,
   error = null,
   offline = false,
+  children,
+  confirmLabel = 'Registrar inicio',
 }: RegisterStartScreenProps) {
   const disabled = busy || offline
 
@@ -49,7 +56,9 @@ export function RegisterStartScreen({
         </CardContent>
       </Card>
 
-      <div className="flex flex-col items-center gap-1 py-4">
+      <div
+        className={`flex flex-col items-center gap-1 ${children ? 'py-1' : 'py-4'}`}
+      >
         <p className="text-[22px] font-bold tabular-nums text-text">
           {nowLabel}
         </p>
@@ -58,6 +67,8 @@ export function RegisterStartScreen({
           es la del servidor.
         </p>
       </div>
+
+      {children}
 
       {error && (
         <Alert variant="crit">
@@ -79,7 +90,7 @@ export function RegisterStartScreen({
         disabled={disabled}
         className="mt-auto"
       >
-        Registrar inicio
+        {confirmLabel}
       </Button>
     </div>
   )
