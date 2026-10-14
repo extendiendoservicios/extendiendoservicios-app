@@ -2112,6 +2112,18 @@ el GPS en vivo al fichar (B-38, B-40) y las RPC de fichaje devuelven la fila pro
 - `0055` corrige un olvido de `0054`: `service_role` (Edge Function y scripts) consulta las vistas y no tenía
   `execute` sobre la función (lo detectó el pgTAP `0050`).
 
+### Resumen de servicios y consentimiento (migración `0056`, P22.4b)
+
+- `client_service_summary(p_client_id, p_from, p_to)` mantiene firma, retorno (`jsonb`) y permisos (`authenticated`;
+  la RPC exige dueño o administrador). Cada elemento de `employees` suma `check_in_geo_status`,
+  `check_in_geo_reason`, `check_in_distance_m`, `check_in_geo_overridden` y los cuatro `check_out_*`; son `null`
+  si no hay fichaje. Nunca trae coordenadas ni precisión (B-20, B-40). El efectivo «Validado (corregido)» lo arma
+  el front con `check_*_geo_overridden`.
+- `accept_location_consent()` devuelve `timestamptz` y deja `profiles.location_consent_at = now()` para
+  `auth.uid()`; `revoke_location_consent()` lo deja en `null`. `security definer`, `set search_path`,
+  `execute` para `authenticated` y `service_role`, no para `anon`. Sin sesión: `FORBIDDEN`; sin perfil:
+  `PROFILE_NOT_FOUND`.
+
 ### Pendientes conocidos
 
 - `site_distance_m` (distancia a la sede) queda visible para el supervisor y el empleado: es parte de la
@@ -2195,7 +2207,7 @@ En F19 (P19.6 paquete E, AJ2-03): `0042_p19_6e_avisos_y_anuncios.sql` -- ver "Av
 En F19 (P19.7 paquete B, AJ3-05 y AJ3-01): `0044_p19_7_servicios.sql` -- ver "Servicios: repetición mensual y eliminación".
 En F19 (P19.7 paquete R, AJ3-08): `0046_p19_7_turno_repetido.sql` -- ver "Turno suelto repetido".
 En F21 (P21.1, módulo H): `0047_p21_1_evidencia.sql` -- ver "Evidencia fotográfica: fotos y videos del turno".
-En F22 (P22.1, módulo B1): `0052_p22_1_geolocalizacion.sql`, `0053_p22_1_correcciones_eventos.sql`, `0054_p22_1b_privacidad_coordenadas.sql` y `0055_p22_1b_execute_service_role.sql` -- ver "Módulo B1: geolocalización y corrección de fichajes" y "Privacidad de las coordenadas".
+En F22 (P22.1, módulo B1): `0052_p22_1_geolocalizacion.sql`, `0053_p22_1_correcciones_eventos.sql`, `0054_p22_1b_privacidad_coordenadas.sql`, `0055_p22_1b_execute_service_role.sql` y `0056_p22_4b_resumen_y_consentimiento.sql` -- ver "Módulo B1: geolocalización y corrección de fichajes" y "Privacidad de las coordenadas".
 
 ## Cómo escribir una migración
 

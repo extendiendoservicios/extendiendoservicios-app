@@ -471,6 +471,16 @@ cerradas para `authenticated` (`select *` da `42501`).
 | `setGeofenceRadius(radiusM)`                          | RPC `set_geofence_radius`        | O, A                       | Radio general, 50 a 1000 m. `FORBIDDEN`, `RADIUS_OUT_OF_RANGE`. No recalcula fichajes anteriores                                                                  |
 | `fetchCompanyGeofence()`                              | `from('company_settings')`       | todos                      | `radiusM`, `maxAccuracyM` y `locationConsentUpdatedAt`                                                                                                            |
 
+Consentimiento de ubicación (P22.4b, migración `0056`): `locationConsent.saveLocationConsent()` llama a la
+RPC `accept_location_consent()` (guarda `profiles.location_consent_at = now()` del servidor para quien llama y
+devuelve el instante) y `locationConsent.revokeLocationConsent()` a `revoke_location_consent()` (lo deja en
+`null`). Sin parámetros; cualquier persona con sesión; `FORBIDDEN` sin sesión, `PROFILE_NOT_FOUND`. Reemplazan al
+`update` directo de `profiles` con la hora del dispositivo.
+
+Resumen de servicios por cliente (P22.4b): `ClientSummaryEmployee` suma `checkInGeo` y `checkOutGeo`
+(`ClientSummaryGeo`: `status`, `reason`, `distanceM`, `overridden`; `null` si no hay fichaje), sin coordenadas ni
+precisión. El imprimible los muestra en la columna «Validación» con `geoPrintText`.
+
 Cambios en dominios que ya existían (P22.4): `attendance` suma `BoardAttendanceGeo` y
 `checkInGeo`, `checkOutGeo` y `hasOutsideGeo` a `AttendanceBoardRow` (sin
 coordenadas; la precisión sí); `supervisions` suma `checkInGeo` y `checkOutGeo`

@@ -65,5 +65,5 @@ Los mensajes de error de estas RPC están fijados en `src/features/geo/errors.ts
 
 ## Pendiente
 
-- El resumen de servicios por cliente imprimible (`client_service_summary`) no trae la validación: es una RPC que no devuelve esos datos, y agregarlos exige una migración.
+- El resumen de servicios por cliente imprimible trae desde `0056` (P22.4b) una columna «Validación» (`geoPrintText`): «Validado», «Fuera de zona (350 m)», «Validado (corregido)» o «Sin validar», para el inicio y el fin, sin coordenadas. Las filas de inasistencia llevan «—».
 - El radio terrestre de `haversineDistanceM` (6 371 008,8 m) difiere del de la base (6 371 000 m): lo señaló P22.2 y se corrige en `src/lib/geo`, no acá.

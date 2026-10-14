@@ -14,7 +14,7 @@ export interface LocationConsentState {
   loading: boolean
   /** La persona ya había consentido y el texto cambió después (B-22): hay que mostrárselo de nuevo. */
   reconsent: boolean
-  /** Cuándo cambió el texto por última vez; sirve para guardar un consentimiento nuevo (`consentTimestamp`). */
+  /** Cuándo cambió el texto por última vez. */
   consentUpdatedAt: string | null
 }
 

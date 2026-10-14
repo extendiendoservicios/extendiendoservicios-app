@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  consentTimestamp,
-  isConsentStale,
-  resolveLocationConsent,
-} from './locationConsent'
+import { isConsentStale, resolveLocationConsent } from './locationConsent'
 
 /** Re-consentimiento (B-22): se vuelve a mostrar el texto si cambió después de que la persona lo aceptara. */
 describe('isConsentStale', () => {
@@ -81,26 +77,5 @@ describe('resolveLocationConsent', () => {
         declined: true,
       }),
     ).toBe('declined')
-  })
-})
-
-describe('consentTimestamp', () => {
-  it('sin cambio de texto usa la hora actual', () => {
-    const now = new Date('2026-10-14T15:00:00Z')
-    expect(consentTimestamp(null, now)).toBe('2026-10-14T15:00:00.000Z')
-  })
-
-  it('si el reloj del celular va atrasado, no guarda un consentimiento anterior al texto', () => {
-    const now = new Date('2026-10-14T11:00:00Z')
-    const at = consentTimestamp('2026-10-14T12:00:00Z', now)
-    expect(isConsentStale(at, '2026-10-14T12:00:00Z')).toBe(false)
-    expect(at).toBe('2026-10-14T12:00:01.000Z')
-  })
-
-  it('con el reloj al día usa la hora actual', () => {
-    const now = new Date('2026-10-15T09:00:00Z')
-    expect(consentTimestamp('2026-10-14T12:00:00Z', now)).toBe(
-      '2026-10-15T09:00:00.000Z',
-    )
   })
 })

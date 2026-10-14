@@ -10,8 +10,6 @@ import { useAuth } from '@/features/auth/AuthProvider'
 import { useCompanySettingsQuery } from '@/features/settings/queries'
 import { useOnlineStatus } from '@/features/employee/useOnlineStatus'
 import { rememberLocationDeclined } from '@/features/employee/locationChoice'
-import { consentTimestamp } from '@/features/employee/locationConsent'
-import { useLocationConsent } from '@/features/employee/useLocationConsent'
 import { LocationConsentScreen } from '@/features/employee/components/LocationConsentScreen'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
@@ -43,7 +41,6 @@ export default function LocationConsentPage() {
   const online = useOnlineStatus()
   const queryClient = useQueryClient()
   const { data: settings } = useCompanySettingsQuery()
-  const consent = useLocationConsent()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -68,10 +65,7 @@ export default function LocationConsentPage() {
     setBusy(true)
     setError(null)
     try {
-      await saveLocationConsent(
-        auth.userId,
-        consentTimestamp(consent.consentUpdatedAt),
-      )
+      await saveLocationConsent()
     } catch {
       setBusy(false)
       setError('No pudimos guardar tu consentimiento. Probá de nuevo.')
@@ -97,7 +91,7 @@ export default function LocationConsentPage() {
     if (auth.profile?.locationConsentAt != null) {
       setBusy(true)
       try {
-        await revokeLocationConsent(auth.userId)
+        await revokeLocationConsent()
         await auth.refreshProfile()
       } catch {
         setBusy(false)
