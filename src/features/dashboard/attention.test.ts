@@ -289,3 +289,94 @@ describe('filtro por franja', () => {
     expect(filterByFranja(rows, ALL_DAY_FILTER)).toHaveLength(3)
   })
 })
+
+describe('computeAttention · «Fuera de zona» (B-21)', () => {
+  it('un fichaje fuera de zona de hoy suma un aviso `outsideGeo`', () => {
+    const items = computeAttention(
+      [makeShift({ id: 's1' })],
+      [
+        makeAssignment({
+          id: 'a-fuera',
+          status: 'present',
+          displayStatus: 'present',
+          checkInAt: at('08:05'),
+          hasOutsideGeo: true,
+        }),
+        makeAssignment({ id: 'a-ok', hasOutsideGeo: false }),
+      ],
+      NOW,
+    )
+    expect(items.map((item) => [item.kind, item.assignment?.id])).toEqual([
+      ['outsideGeo', 'a-fuera'],
+    ])
+  })
+
+  it('sigue avisando aunque el turno ya haya terminado, pero no si fue cancelado', () => {
+    const finished = computeAttention(
+      [],
+      [
+        makeAssignment({
+          id: 'a1',
+          shiftStatus: 'completed',
+          hasOutsideGeo: true,
+        }),
+      ],
+      NOW,
+    )
+    expect(finished.map((item) => item.kind)).toEqual(['outsideGeo'])
+
+    const cancelled = computeAttention(
+      [],
+      [
+        makeAssignment({
+          id: 'a2',
+          shiftStatus: 'cancelled',
+          hasOutsideGeo: true,
+        }),
+      ],
+      NOW,
+    )
+    expect(cancelled).toEqual([])
+  })
+
+  it('es independiente de las demás: una asignación puede tener los dos avisos', () => {
+    const items = computeAttention(
+      [],
+      [
+        makeAssignment({
+          id: 'a1',
+          status: 'present',
+          displayStatus: 'present',
+          checkInAt: at('08:05'),
+          endsAt: at('10:00'),
+          hasOutsideGeo: true,
+        }),
+      ],
+      NOW,
+    )
+    expect(items.map((item) => item.kind)).toEqual(['overdue', 'outsideGeo'])
+  })
+
+  it('va después de «Turno sin cubrir» y antes de «Llegada tarde»', () => {
+    const items = computeAttention(
+      [
+        makeShift({
+          id: 's2',
+          displayStatus: 'uncovered',
+          status: 'scheduled',
+          assignedCount: 0,
+        }),
+      ],
+      [
+        makeAssignment({ id: 'a-late', displayStatus: 'late' }),
+        makeAssignment({ id: 'a-fuera', hasOutsideGeo: true }),
+      ],
+      NOW,
+    )
+    expect(items.map((item) => item.kind)).toEqual([
+      'uncovered',
+      'outsideGeo',
+      'late',
+    ])
+  })
+})

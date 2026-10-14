@@ -4,6 +4,8 @@ import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { formatMinutes } from '@/lib/format'
+import { formatDistanceM } from '@/lib/geo'
+import type { AttendanceBoardRow } from '@/api/attendance'
 import { formatShiftRange } from '@/features/shifts/openEnded'
 import { shiftFranjaLabel } from '../labels'
 import type { AttentionItem, AttentionKind } from '../attention'
@@ -22,6 +24,10 @@ const KIND_META: Record<
   overdue: { title: 'sigue en curso pasada su hora de fin', severity: 'warn' },
   absence: { title: 'avisó que no va', severity: 'warn' },
   uncovered: { title: 'Turno sin cubrir', severity: 'crit' },
+  outsideGeo: {
+    title: 'fichó fuera de la zona de la sede',
+    severity: 'warn',
+  },
   late: {
     title: 'llegó tarde: todavía no registró el inicio',
     severity: 'warn',
@@ -35,6 +41,16 @@ const KIND_META: Record<
  */
 const MOBILE_VISIBLE_ITEMS = 5
 
+/** « · a 350 m de la sede»: la distancia del fichaje que quedó fuera de zona (inicio o fin). */
+function outsideDistanceLabel(row: AttendanceBoardRow): string {
+  const geo = [row.checkInGeo, row.checkOutGeo].find(
+    (candidate) => candidate?.status === 'outside' && !candidate.overridden,
+  )
+  return geo?.distanceM != null
+    ? ` · a ${formatDistanceM(geo.distanceM)} de la sede`
+    : ''
+}
+
 function describeItem(item: AttentionItem): { title: string; detail: string } {
   const meta = KIND_META[item.kind]
   const row = item.assignment
@@ -44,9 +60,10 @@ function describeItem(item: AttentionItem): { title: string; detail: string } {
       : ''
   if (row) {
     const name = `${row.employeeFirstName} ${row.employeeLastName}`
+    const outside = item.kind === 'outsideGeo' ? outsideDistanceLabel(row) : ''
     return {
       title: `${name} ${meta.title}`,
-      detail: `${row.clientName} · ${row.siteName} · ${formatShiftRange(row.startTime, row.endTime, row.openEnded)}${since}`,
+      detail: `${row.clientName} · ${row.siteName} · ${formatShiftRange(row.startTime, row.endTime, row.openEnded)}${since}${outside}`,
     }
   }
   const shift = item.shift

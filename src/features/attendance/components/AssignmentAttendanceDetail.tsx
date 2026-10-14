@@ -10,6 +10,9 @@ import {
   NOTICE_KIND_LABELS,
 } from '@/features/attendance/reasonLabels'
 import { getAvailableAttendanceActions } from '@/features/attendance/derive'
+import { CorrectionsHistory } from '@/features/geo/components/CorrectionsHistory'
+import { RecordGeoDetail } from '@/features/geo/components/RecordGeoDetail'
+import { useAttendanceCorrectionsQuery } from '@/features/geo/queries'
 import { RecordAttendanceSheet } from './RecordAttendanceSheet'
 
 /**
@@ -105,6 +108,17 @@ function AssignmentAttendanceDetail({
 }: AssignmentAttendanceDetailProps) {
   const [isRecordOpen, setRecordOpen] = useState(false)
 
+  // B1: validación por ubicación del inicio y del fin, y su historial de correcciones.
+  const checkInGeo = attendance?.checkInAt ? attendance.checkInGeo : null
+  const checkOutGeo = attendance?.checkOutAt ? attendance.checkOutGeo : null
+  const recordIds = [checkInGeo?.recordId, checkOutGeo?.recordId].filter(
+    (id): id is string => Boolean(id),
+  )
+  const correctionsQuery = useAttendanceCorrectionsQuery(recordIds)
+  const recordKinds = new Map<string, 'check_in' | 'check_out'>()
+  if (checkInGeo) recordKinds.set(checkInGeo.recordId, 'check_in')
+  if (checkOutGeo) recordKinds.set(checkOutGeo.recordId, 'check_out')
+
   const availableActions = attendance
     ? getAvailableAttendanceActions({
         shiftStatus: attendance.shiftStatus,
@@ -143,6 +157,31 @@ function AssignmentAttendanceDetail({
           </dd>
         </div>
       </dl>
+
+      {attendance && checkInGeo && attendance.checkInAt && (
+        <RecordGeoDetail
+          recordType="attendance"
+          kind="check_in"
+          recordedAt={attendance.checkInAt}
+          shiftDate={shiftDate}
+          geo={checkInGeo}
+          canManage={canManage}
+        />
+      )}
+      {attendance && checkOutGeo && attendance.checkOutAt && (
+        <RecordGeoDetail
+          recordType="attendance"
+          kind="check_out"
+          recordedAt={attendance.checkOutAt}
+          shiftDate={shiftDate}
+          geo={checkOutGeo}
+          canManage={canManage}
+        />
+      )}
+      <CorrectionsHistory
+        corrections={correctionsQuery.data ?? []}
+        recordKinds={recordKinds}
+      />
 
       {events.length > 0 && (
         <Timeline

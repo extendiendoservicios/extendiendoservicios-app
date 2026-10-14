@@ -20,6 +20,8 @@ import {
   getAttendanceRowBadge,
 } from '@/features/attendance/derive'
 import { WorkedHoursCell } from '@/features/attendance/components/WorkedHoursCell'
+import { GeoValidationCell } from '@/features/geo/components/GeoValidationCell'
+import { timeCorrectedSuffix } from '@/features/geo/outsideZone'
 import {
   ALL_DAY_FILTER,
   filterByFranja,
@@ -100,7 +102,20 @@ function ServicesTodayTable({
       header: 'Inicio real',
       meta: { card: 'meta', cardLabel: 'Inicio real' },
       cell: ({ row }) =>
-        row.original.checkInAt ? formatTime(row.original.checkInAt) : '—',
+        row.original.checkInAt
+          ? `${formatTime(row.original.checkInAt)}${timeCorrectedSuffix(row.original.checkInGeo)}`
+          : '—',
+    },
+    {
+      id: 'geo',
+      header: 'Validación',
+      meta: { card: 'meta', cardLabel: 'Validación' },
+      cell: ({ row }) => (
+        <GeoValidationCell
+          checkIn={row.original.checkInGeo}
+          checkOut={row.original.checkOutGeo}
+        />
+      ),
     },
     {
       id: 'status',
