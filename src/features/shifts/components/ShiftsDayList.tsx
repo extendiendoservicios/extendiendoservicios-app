@@ -77,7 +77,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
     {
       id: 'time',
       header: 'Horario',
-      meta: { card: 'title' },
+      meta: { card: 'title', width: '7.5rem' },
       cell: ({ row }) => (
         <Link
           to={`/admin/turnos/${row.original.id}`}
@@ -90,33 +90,51 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
     {
       id: 'client',
       header: 'Cliente · sede',
-      meta: { card: 'subtitle' },
-      cell: ({ row }) => (
-        <span>
-          {row.original.clientName} · {row.original.siteName}
-          {row.original.requiresPhotos && <RequiresPhotosMark />}
-        </span>
-      ),
+      meta: { card: 'subtitle', width: '28%' },
+      cell: ({ row }) => {
+        const label = `${row.original.clientName} · ${row.original.siteName}`
+        return (
+          <span className="flex items-center gap-1">
+            <span className="min-w-0 truncate" title={label}>
+              {label}
+            </span>
+            {row.original.requiresPhotos && <RequiresPhotosMark />}
+          </span>
+        )
+      },
     },
     {
       id: 'staffing',
       header: 'Dotación',
-      meta: { card: 'meta', cardLabel: 'Dotación', align: 'end' },
-      cell: ({ row }) => (
-        <span>
-          {row.original.assignedCount}/{row.original.requiredStaff}
-          {row.original.noCheckoutCount > 0 && (
-            <span className="ml-1 text-warning-800">
-              · {row.original.noCheckoutCount} {NO_CHECKOUT_LABEL.toLowerCase()}
-            </span>
-          )}
-        </span>
-      ),
+      meta: {
+        card: 'meta',
+        cardLabel: 'Dotación',
+        align: 'end',
+        width: '6rem',
+      },
+      cell: ({ row }) => {
+        const noCheckout = `${row.original.noCheckoutCount} ${NO_CHECKOUT_LABEL.toLowerCase()}`
+        return (
+          <span
+            className="block truncate"
+            title={
+              row.original.noCheckoutCount > 0
+                ? `${row.original.assignedCount}/${row.original.requiredStaff} · ${noCheckout}`
+                : undefined
+            }
+          >
+            {row.original.assignedCount}/{row.original.requiredStaff}
+            {row.original.noCheckoutCount > 0 && (
+              <span className="ml-1 text-warning-800">· {noCheckout}</span>
+            )}
+          </span>
+        )
+      },
     },
     {
       id: 'employees',
       header: 'Asignados',
-      meta: { card: 'meta', cardLabel: 'Asignados' },
+      meta: { card: 'meta', cardLabel: 'Asignados', width: '24%' },
       cell: ({ row }) => {
         const { employees } = peopleOfShift(people, row.original.id)
         if (employees.length === 0) {
@@ -124,7 +142,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
         }
         const summary = summarizeNames(employees)
         return (
-          <span className="block max-w-[14rem] truncate" title={summary.full}>
+          <span className="block truncate" title={summary.full}>
             {summary.text}
           </span>
         )
@@ -133,7 +151,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
     {
       id: 'supervisor',
       header: 'Supervisor',
-      meta: { card: 'meta', cardLabel: 'Supervisor' },
+      meta: { card: 'meta', cardLabel: 'Supervisor', width: '16%' },
       cell: ({ row }) => {
         const { supervisors } = peopleOfShift(people, row.original.id)
         if (supervisors.length === 0) {
@@ -141,7 +159,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
         }
         const summary = summarizeNames(supervisors, 1)
         return (
-          <span className="block max-w-[10rem] truncate" title={summary.full}>
+          <span className="block truncate" title={summary.full}>
             {summary.text}
           </span>
         )
@@ -150,7 +168,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
     {
       id: 'status',
       header: 'Estado',
-      meta: { card: 'meta', cardLabel: 'Estado' },
+      meta: { card: 'meta', cardLabel: 'Estado', width: '7.5rem' },
       cell: ({ row }) => (
         <StatusBadge
           domain="shift"
@@ -161,7 +179,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
     {
       id: 'actions',
       header: 'Acciones',
-      meta: { card: 'trailing' },
+      meta: { card: 'trailing', width: '13.5rem' },
       cell: ({ row }) => {
         const shift = row.original
         const isEditable =
@@ -244,6 +262,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
           columns={columns}
           data={[]}
           getRowId={(row) => row.id}
+          fixedLayout
           isLoading={shiftsQuery.isLoading}
           emptyState={{
             icon: CalendarClock,
@@ -264,6 +283,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
               columns={columns}
               data={group.shifts}
               getRowId={(row) => row.id}
+              fixedLayout
             />
           </div>
         ))
