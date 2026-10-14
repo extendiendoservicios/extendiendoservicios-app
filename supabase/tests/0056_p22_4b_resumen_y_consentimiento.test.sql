@@ -252,7 +252,10 @@ select is(
 
 -- Consentimiento ----------------------------------------------------------------------------------
 
+-- Preparación sin sesión: con los claims del último as_user, el guardia de profiles (0030) frena
+-- el cambio de location_consent_at de otra persona.
 set local role postgres;
+select set_config('request.jwt.claims', '', true);
 update public.profiles set location_consent_at = '2020-01-01T00:00:00Z'
 where id = 'e5600000-0000-0000-0000-000000000092';
 update public.profiles set location_consent_at = null
@@ -275,11 +278,11 @@ select is(
   '2020-01-01T00:00:00Z'::timestamptz,
   'no toca el perfil de otra persona'
 );
-select is(
-  (select updated_by from public.profiles where id = 'e5600000-0000-0000-0000-000000000091'),
-  'e5600000-0000-0000-0000-000000000091'::uuid,
-  'deja updated_by en quien consintió'
-);
+-- 0057: la RPC no toca updated_by (el guardia de perfil propio lo bloquea para quien no es admin).
+select tests.as_user('test-db056-super@example.com');
+select lives_ok($$select public.accept_location_consent()$$, 'accept_location_consent corre para el supervisor (0057)');
+set local role postgres;
+select set_config('request.jwt.claims', '', true);
 
 select tests.as_user('test-db056-emp-a@example.com');
 select lives_ok($$select public.revoke_location_consent()$$, 'revoke_location_consent corre para el empleado');
