@@ -1929,6 +1929,195 @@ Anuncios de administración para empleados y supervisores. No tiene relación co
 - **Vistas** (`security_invoker`): `v_my_announcements` (celular: `id, title, body, audience, visible_until, created_at, content_updated_at, read_at, was_edited`; portada = `where read_at is null`; vacía para quien no es destinatario); `v_announcements_admin` (`+ updated_at, archived_at, created_by, created_by_name, status` = `active` | `expired` | `archived`, `recipient_count`, `read_count`); `v_announcement_recipients` (`announcement_id, profile_id, first_name, last_name, roles text[], read_at`). Las dos de administración salen vacías para quien no es dueño/administrador.
 - **RPC** (`security definer`): `create_announcement(p_title, p_body, p_audience, p_visible_until default null, p_recipient_ids default null)`, `update_announcement(p_id, p_title, p_body, p_audience, p_visible_until default null, p_recipient_ids default null)`, `archive_announcement(p_id)` (idempotente): dueño o administrador, `FORBIDDEN` si no; devuelven la fila de `announcements`. `acknowledge_announcement(p_id)`: cualquier persona activa; idempotente; devuelve la fila de `announcement_reads`. Errores: `TITLE_REQUIRED`, `TITLE_TOO_LONG`, `BODY_REQUIRED`, `BODY_TOO_LONG`, `AUDIENCE_REQUIRED`, `VISIBLE_UNTIL_IN_PAST` (al editar solo si la fecha cambia), `RECIPIENTS_REQUIRED`, `RECIPIENT_INVALID`, `ANNOUNCEMENT_NOT_FOUND`, `ANNOUNCEMENT_ARCHIVED` (al editar), `ANNOUNCEMENT_NOT_AVAILABLE` (al dar «Entendido» a uno inexistente, archivado, vencido o ajeno). Fuera de `custom` se ignoran y limpian los destinatarios.
 
+## Módulo B1: geolocalización y corrección de fichajes (migraciones `0052` y `0053`, P22.1)
+
+Especificación: `Docs/Plan_Maestro/modulos/B_asistencia_avanzada.md` (decisiones B-02 a B-10, B-16,
+B-20 a B-23, B-28 y B-36 a B-41). `0053` corrige dos defectos de `0052` (ya aplicada en `App_dev`, no se
+edita): `geo_distance_m` con argumentos nulos y el `target_id` de `security_events`. Por eso el módulo B2
+pasa a la migración `0054`.
+
+### Regla de validación (B-06 + B-23)
+
+`public.geo_evaluate(lat, lng, accuracy, site_lat, site_lng, radius, max_accuracy default 150)` es inmutable
+y devuelve `(status geo_status, reason geo_unvalidated_reason, distance_m integer)`. Orden de las reglas:
+
+1. sin coordenadas del fichaje (o sin precisión): `unvalidated` / `no_location`;
+2. sede sin coordenadas: `unvalidated` / `site_without_coords`;
+3. `d > radio + precisión`: `outside`;
+4. `d <= radio + precisión` y `precisión <= tope`: `valid`;
+5. `d <= radio + precisión` y `precisión > tope`: `unvalidated` / `low_accuracy`.
+
+Los registros de origen `admin` no pasan por la función: quedan `unvalidated` / `admin_record` con distancia y
+radio nulos. `public.geo_distance_m(lat1, lng1, lat2, lng2)` es la haversine con radio terrestre de 6 371 000 m
+en doble precisión (`2 · R · asin(min(1, √(sin²(Δφ/2) + cos φ1 · cos φ2 · sin²(Δλ/2))))`). `site_distance_m` es
+el entero más cercano (`floor(d + 0.5)`) y la comparación usa la distancia sin redondear. La suma
+`radio + precisión` se hace en decimal exacto. `app.geo_for_site(site_id, lat, lng, accuracy)` (interna, sin
+`execute` para `authenticated`) aplica `geo_evaluate` con el radio vigente (el de la sede o, si es nulo, el
+general) y el tope de `company_settings`.
+
+Casos numéricos (sede en `-34.6037, -58.3816`, tope 150), que repite `geoEvaluate` en TypeScript:
+
+| Fichaje (lat, lng)   | Precisión | Radio | Distancia   | Resultado                                   |
+| -------------------- | --------- | ----- | ----------- | ------------------------------------------- |
+| `-34.6037, -58.3816` | 10        | 150   | 0 m         | `valid`, 0                                  |
+| `-34.6027, -58.3816` | 11,2      | 100   | 111,1949 m  | `valid`, 111 (borde: 111,2 >= 111,19)       |
+| `-34.6027, -58.3816` | 11,1      | 100   | 111,1949 m  | `outside`, 111                              |
+| `-34.6037, -58.3816` | 150       | 150   | 0 m         | `valid`, 0                                  |
+| `-34.6037, -58.3816` | 151       | 150   | 0 m         | `unvalidated` / `low_accuracy`, 0           |
+| `-34.5937, -58.3816` | 151       | 150   | 1111,9493 m | `outside`, 1112                             |
+| `-34.6017, -58.3816` | 150       | 100   | 222,3899 m  | `valid`, 222                                |
+| `-34.6017, -58.3816` | 151       | 100   | 222,3899 m  | `unvalidated` / `low_accuracy`, 222         |
+| `-34.6037, -58.3806` | 5         | 50    | 91,5245 m   | `outside`, 92                               |
+| `-34.6037, -58.3806` | 45        | 50    | 91,5245 m   | `valid`, 92                                 |
+| `-34.5956, -58.3816` | 20        | 1000  | 900,6789 m  | `valid`, 901                                |
+| sin coordenadas      | -         | 150   | -           | `unvalidated` / `no_location`, nulo         |
+| sede sin coordenadas | 10        | 150   | -           | `unvalidated` / `site_without_coords`, nulo |
+
+### Columnas nuevas
+
+- `company_settings`: `geofence_radius_m smallint not null default 150` (50 a 1000), `geofence_max_accuracy_m
+smallint not null default 150` (tope de B-23, sin pantalla) y `location_consent_updated_at timestamptz`.
+- `sites.geofence_radius_m smallint null` (50 a 1000; nulo = usa el general).
+- `attendance_records` y `supervision_attendance`: `geo_status` (default `unvalidated`), `geo_unvalidated_reason`
+  (default `no_location`; `check`: hay motivo si y solo si el estado es `unvalidated`), `site_distance_m`,
+  `geofence_radius_m` (radio vigente congelado, B-08), `outside_reason` (300 caracteres como máximo, B-04) y
+  `geo_override_by` / `geo_override_at` / `geo_override_reason` (B-09; los tres juntos o ninguno). Solo
+  `attendance_records` suma `time_corrected_at` (marca de corrección de hora, B-28).
+- Enumeraciones `geo_status` (`valid`, `outside`, `unvalidated`), `geo_unvalidated_reason` (`no_location`,
+  `site_without_coords`, `admin_record`, `low_accuracy`) y `attendance_correction_kind` (`time`, `geo`);
+  `security_event_type` suma `attendance_time_corrected`, `geo_validation_overridden` y `geofence_radius_changed`.
+
+La validación queda congelada: cambiar el radio o las coordenadas de la sede no recalcula los fichajes ya
+guardados. La corrección de un administrador no pisa el resultado original (`geo_status` se conserva; el
+frontend muestra «Validado (corregido)» cuando `geo_override_at` no es nulo).
+
+### Fichajes (RPC modificadas)
+
+`record_check_in`, `record_check_out`, `supervision_check_in` y `supervision_check_out` ganan el parámetro
+`p_outside_reason text default null` (se descarta si el resultado no es `outside`; más de 300 caracteres:
+`OUTSIDE_REASON_TOO_LONG`). Se eliminaron las firmas de 4 parámetros para no dejar sobrecargas ambiguas en
+PostgREST; los llamados con 4 argumentos nombrados siguen funcionando. Devuelven la fila completa (con la
+validación). La supervisión se valida contra la sede del turno supervisado. `admin_record_attendance`
+(firma sin cambios) guarda `unvalidated` / `admin_record`.
+
+### Correcciones (B-09, B-28, B-41)
+
+`attendance_corrections (id, attendance_record_id, kind, old_recorded_at, new_recorded_at, reason, corrected_by,
+created_at)`: RLS con una única política de lectura para dueño y administradores; `authenticated` solo tiene
+`select`; sin `insert`, `update` ni `delete` (nada se borra). La escriben únicamente las RPC:
+
+| RPC                                                             | Quién                        | Errores                                                                                                                                      |
+| --------------------------------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `correct_attendance_time(p_record_id, p_new_time, p_reason)`    | O, A con `manage_attendance` | `FORBIDDEN`, `RECORD_NOT_FOUND`, `SHIFT_CANCELLED`, `REASON_REQUIRED`, `TIME_REQUIRED`, `AT_OUT_OF_RANGE`, `SAME_TIME`, `INVALID_TIME_RANGE` |
+| `override_geo_validation(p_record_type, p_record_id, p_reason)` | O, A con `manage_attendance` | `FORBIDDEN`, `INVALID_RECORD_TYPE`, `REASON_REQUIRED`, `RECORD_NOT_FOUND`, `GEO_ALREADY_VALID`, `GEO_ALREADY_OVERRIDDEN`                     |
+| `set_geofence_radius(p_radius)`                                 | O, A (`app.require_admin`)   | `FORBIDDEN`, `RADIUS_OUT_OF_RANGE`                                                                                                           |
+
+La hora nueva sigue la regla de `admin_record_attendance`: entre las 0:00 del día del turno (Argentina) y
+`now()`; además el inicio tiene que seguir siendo anterior al fin. `p_record_type` vale `attendance` o
+`supervision`. `override_geo_validation` devuelve el registro como `jsonb`.
+
+Rastro en `security_events` (`target_id` es la persona afectada, porque es clave foránea a `profiles`; el
+registro va en `details.record_id`): `attendance_time_corrected`, `geo_validation_overridden` y
+`geofence_radius_changed` (por disparador `AFTER UPDATE` en `company_settings` y en `sites`, venga de
+`set_geofence_radius` o de un `update` directo; el de la sede lleva `details.site_id`).
+
+El radio propio de la sede se edita con el `update` directo de `sites` que ya usa el formulario (no hay RPC de
+guardado de sede). El consentimiento: `app.enforce_company_settings_columns` actualiza
+`location_consent_updated_at = now()` cuando cambia `location_consent_text` (solo el dueño puede cambiarlo).
+
+### Vistas
+
+Las columnas nuevas van siempre al final (`create or replace view`).
+
+- `v_assignments_board`: `check_in_record_id`, `check_in_geo_status`, `check_in_geo_reason`, `check_in_distance_m`,
+  `check_in_geofence_radius_m`, `check_in_accuracy_m`, `check_in_outside_reason`, `check_in_geo_overridden`,
+  `check_in_time_corrected`, las mismas con `check_out_` y `has_outside_geo` (algún fichaje fuera de zona sin
+  corregir). Sin coordenadas del fichaje.
+- `v_my_day` y `v_my_history` (mismas columnas): `site_geofence_radius_m` (radio vigente de la sede),
+  `geofence_max_accuracy_m` y, para `check_in_` y `check_out_`: `geo_status`, `geo_reason`, `distance_m`,
+  `geofence_radius_m`, `geo_overridden`, `time_corrected`. Las coordenadas de la sede ya estaban
+  (`site_latitude`, `site_longitude`).
+- `v_my_supervisions`: `site_geofence_radius_m`, `geofence_max_accuracy_m` y, para `check_in_` y `check_out_`:
+  `geo_status`, `geo_reason`, `distance_m`, `geofence_radius_m`, `geo_overridden`.
+- `v_supervisions_admin`: para `check_in_` y `check_out_`: `record_id`, `geo_status`, `geo_reason`, `distance_m`,
+  `geofence_radius_m`, `accuracy_m`, `outside_reason`, `geo_overridden`.
+- `v_presence_today` (nueva, `security_invoker`, `app.is_admin()` en la definición; las coordenadas salen de `app.attendance_position`, ver 0054): una fila por empleado con
+  inicio hoy (`kind = 'employee'`, `in_progress` = sin fin), por supervisión en curso o con inicio hoy
+  (`'supervisor'`) y por sede con turno hoy (`'site'`). Trae persona, cliente, sede, horario, `check_in_at`,
+  `check_out_at`, `latitude`, `longitude`, `accuracy_m` (del fichaje de inicio), `geo_status`, `geo_reason`,
+  `distance_m`, `geofence_radius_m`, `geo_overridden`, `site_latitude`, `site_longitude` y `site_radius_m`
+  (vigente). El empleado y el supervisor no ven ninguna fila (B-40).
+
+### Historial (B-10)
+
+Un `update` único dentro de `0052` evaluó todos los fichajes existentes con el radio vigente (150 m), tanto de
+asistencia como de supervisión. Sin coordenadas: `unvalidated` / `no_location`; de origen `admin`:
+`unvalidated` / `admin_record`.
+
+### Privacidad de las coordenadas (migraciones `0054` y `0055`, P22.1b, B-40 y B-28)
+
+Problema: las políticas de `select` de `0012` dan la fila entera de `attendance_records` y
+`supervision_attendance` al supervisor (los fichajes de los empleados de los turnos que supervisa) y al
+empleado (los propios). Con eso el supervisor leía `latitude`, `longitude` y `accuracy_m`, y el empleado
+`geo_override_reason` y `geo_override_by`.
+
+Técnica: privilegios de columna, más una función de definidor para administración.
+
+- La RLS filtra filas, no columnas. Y `authenticated` es un solo rol de Postgres para los cuatro roles de la
+  app, así que un `revoke` de columna se lo quita a todos, administradores incluidos. Por eso la lectura de
+  administración no pasa por la tabla.
+- Descartado: partir las tablas (obligaba a reescribir las RPC de fichaje, el historial, el seed y las
+  pruebas) y una vista de definidor para `v_presence_today` (saltea la RLS de todo lo que lee y el linter de
+  Supabase la marca). Las vistas siguen siendo `security_invoker`.
+
+**Columnas sin `select` para `authenticated`** (en ambas tablas): `latitude`, `longitude`, `accuracy_m`,
+`geo_override_by`, `geo_override_reason`. No las lee nadie por la API directa a la tabla: ni dueño, ni
+administradores, ni supervisor, ni empleado. El resto de las columnas (incluidas `geo_override_at` y
+`time_corrected_at`, para el «Corregido» sin motivo, y `site_distance_m`, `outside_reason`) conserva el `select`
+y la RLS sigue igual. `select *` sobre estas dos tablas falla con `42501` para todos (también en PostgREST con
+`select=*`): hay que pedir columnas por nombre. En `src/` el único uso era `fetchAttendanceTimeline`, que ya
+pedía columnas explícitas.
+
+**Caminos de lectura para dueño y administradores:**
+
+- `app.attendance_position(p_record_type, p_record_id)`: función `security definer` interna (`app`, no se
+  expone en la API) que devuelve latitud, longitud y precisión solo si `app.is_admin()` (se lee del JWT); para
+  cualquier otro rol no devuelve filas. `execute` para `authenticated` y `service_role` (esta última sin
+  efecto: no tiene rol de app, ver `0055`).
+- Las vistas `v_presence_today` (`latitude`, `longitude`, `accuracy_m`), `v_assignments_board`
+  (`check_in_accuracy_m`, `check_out_accuracy_m`) y `v_supervisions_admin` (ídem) leen esas columnas con la
+  función. Mismas columnas y tipos que antes, siguen `security_invoker`; a los demás roles les devuelven `null`
+  (`v_presence_today` además no les devuelve filas, como antes).
+- `get_attendance_location(p_record_type text, p_record_id uuid) returns jsonb` (nueva): para el mini mapa de
+  solo lectura del detalle del turno de administración (P22.4). `p_record_type`: `attendance` o `supervision`.
+  Solo dueño y administradores (`app.require_admin`, no pide capacidad: es lectura). Devuelve un objeto con
+  `record_type`, `record_id`, `kind`, `recorded_at`, `latitude`, `longitude`, `accuracy_m` (nulos si el fichaje
+  no tiene posición), `geo_status`, `geo_reason`, `distance_m`, `geofence_radius_m` (el congelado al fichar),
+  `geo_overridden`, `site_id`, `site_name`, `site_latitude`, `site_longitude` y `site_radius_m` (el vigente).
+  Errores: `FORBIDDEN`, `INVALID_RECORD_TYPE`, `RECORD_NOT_FOUND`. No deja rastro en `security_events` (es una
+  lectura).
+- El motivo y el autor de una corrección de validación los lee administración en `attendance_corrections`
+  (la columna `geo_override_reason` de la tabla ya no se lee). El empleado y el supervisor reciben cero filas
+  de `attendance_corrections` (RLS, sin cambios) y ninguna columna del motivo.
+
+**Qué pierde el empleado y el supervisor:** leer su propia posición de la tabla. No hace falta: el celular usa
+el GPS en vivo al fichar (B-38, B-40) y las RPC de fichaje devuelven la fila propia (corren como definidor).
+
+**Reglas para migraciones futuras:**
+
+- Un `grant select on all tables in schema public to authenticated` (como el de `0017`) reabre las columnas. El
+  pgTAP `0054` lo detecta (compara las columnas sin `select` con la lista exacta de las cinco).
+- Una columna nueva en estas dos tablas nace sin `select` para `authenticated` (falla cerrada): hay que
+  otorgarlo con `grant select (columna) on ...` para que las vistas y la app la lean.
+- `0055` corrige un olvido de `0054`: `service_role` (Edge Function y scripts) consulta las vistas y no tenía
+  `execute` sobre la función (lo detectó el pgTAP `0050`).
+
+### Pendientes conocidos
+
+- `site_distance_m` (distancia a la sede) queda visible para el supervisor y el empleado: es parte de la
+  validación que B-20 muestra y, con el radio de la sede, no permite ubicar a la persona con precisión. Si el
+  dueño lo considera posición, se protege igual que las demás columnas.
+
 ## Enumeraciones (04 sección 3)
 
 Las 15 enumeraciones del modelo, en el esquema `public`, migración `0002_enums.sql`. Agregar un
@@ -2006,6 +2195,7 @@ En F19 (P19.6 paquete E, AJ2-03): `0042_p19_6e_avisos_y_anuncios.sql` -- ver "Av
 En F19 (P19.7 paquete B, AJ3-05 y AJ3-01): `0044_p19_7_servicios.sql` -- ver "Servicios: repetición mensual y eliminación".
 En F19 (P19.7 paquete R, AJ3-08): `0046_p19_7_turno_repetido.sql` -- ver "Turno suelto repetido".
 En F21 (P21.1, módulo H): `0047_p21_1_evidencia.sql` -- ver "Evidencia fotográfica: fotos y videos del turno".
+En F22 (P22.1, módulo B1): `0052_p22_1_geolocalizacion.sql`, `0053_p22_1_correcciones_eventos.sql`, `0054_p22_1b_privacidad_coordenadas.sql` y `0055_p22_1b_execute_service_role.sql` -- ver "Módulo B1: geolocalización y corrección de fichajes" y "Privacidad de las coordenadas".
 
 ## Cómo escribir una migración
 
