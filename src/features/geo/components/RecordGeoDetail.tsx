@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { GeoStatusBadge } from '@/components/status'
 import { formatDistanceM } from '@/lib/geo'
 import { formatTime } from '@/lib/format'
-import type { AttendanceGeo } from '@/api/attendance'
+import type { BoardAttendanceGeo } from '@/api/attendance'
 import type { GeoRecordType } from '@/api/geo'
 import { canMarkGeoAsValid } from '../permissions'
 import { CorrectTimeDialog } from './CorrectTimeDialog'
@@ -18,7 +18,7 @@ interface RecordGeoDetailProps {
   recordedAt: string
   /** Fecha del turno, para acotar «Corregir hora». */
   shiftDate: string
-  geo: AttendanceGeo
+  geo: BoardAttendanceGeo
   /** Dueño o administrador con `manage_attendance`: ve «Corregir hora» y «Marcar como válido». */
   canManage: boolean
 }

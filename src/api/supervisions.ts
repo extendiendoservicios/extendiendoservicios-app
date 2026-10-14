@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
 import type { GeoStatus, GeoUnvalidatedReason } from '@/lib/geo'
 import { fromPostgrestError } from './errors'
-import { mapAttendanceGeo, type AttendanceGeo } from './attendance'
+import { mapBoardAttendanceGeo, type BoardAttendanceGeo } from './attendance'
 
 /**
  * `src/api/supervisions.ts` (SUP-008, mismo patrón que `src/api/assignments.ts`
@@ -79,8 +79,8 @@ export interface SupervisionListRow {
   /** Minutos trabajados, de inicio a fin real; `null` sin fin registrado (AJ-06). */
   workedMinutes: number | null
   /** B1 (B-07): validación por ubicación del fichaje de inicio y de fin; `null` si no hay fichaje. `recordId` es el de `supervision_attendance`. */
-  checkInGeo?: AttendanceGeo | null
-  checkOutGeo?: AttendanceGeo | null
+  checkInGeo?: BoardAttendanceGeo | null
+  checkOutGeo?: BoardAttendanceGeo | null
 }
 
 interface SupervisionListRawRow {
@@ -159,7 +159,7 @@ function mapSupervisionListRow(row: SupervisionListRawRow): SupervisionListRow {
     assignedEmployeesCount: row.assigned_employees_count,
     plannedMinutes: row.planned_minutes,
     workedMinutes: row.worked_minutes,
-    checkInGeo: mapAttendanceGeo(
+    checkInGeo: mapBoardAttendanceGeo(
       row.check_in_record_id,
       row.check_in_geo_status,
       {
@@ -172,7 +172,7 @@ function mapSupervisionListRow(row: SupervisionListRawRow): SupervisionListRow {
         timeCorrected: false,
       },
     ),
-    checkOutGeo: mapAttendanceGeo(
+    checkOutGeo: mapBoardAttendanceGeo(
       row.check_out_record_id,
       row.check_out_geo_status,
       {

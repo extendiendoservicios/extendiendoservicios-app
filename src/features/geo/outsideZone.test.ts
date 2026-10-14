@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { AttendanceGeo } from '@/api/attendance'
+import type { BoardAttendanceGeo } from '@/api/attendance'
 import {
   filterOutsideZone,
   hasOutsideZone,
@@ -7,7 +7,7 @@ import {
   timeCorrectedSuffix,
 } from './outsideZone'
 
-function geo(overrides: Partial<AttendanceGeo> = {}): AttendanceGeo {
+function geo(overrides: Partial<BoardAttendanceGeo> = {}): BoardAttendanceGeo {
   return {
     recordId: 'r1',
     status: 'valid',

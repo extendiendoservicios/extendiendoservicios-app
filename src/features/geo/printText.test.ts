@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import type { AttendanceGeo } from '@/api/attendance'
+import type { BoardAttendanceGeo } from '@/api/attendance'
 import { geoPrintText } from './printText'
 import { describeSiteRadius, effectiveSiteRadiusM } from './radius'
 import { canEditGeofenceRadius, canMarkGeoAsValid } from './permissions'
 
-function geo(overrides: Partial<AttendanceGeo> = {}): AttendanceGeo {
+function geo(overrides: Partial<BoardAttendanceGeo> = {}): BoardAttendanceGeo {
   return {
     recordId: 'r1',
     status: 'valid',

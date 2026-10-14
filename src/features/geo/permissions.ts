@@ -1,6 +1,6 @@
 import type { AdminCapability, Role } from '@/api/users'
 import { canManageAttendance } from '@/features/attendance/permissions'
-import type { AttendanceGeo } from '@/api/attendance'
+import type { BoardAttendanceGeo } from '@/api/attendance'
 
 /**
  * Permisos del módulo B1 en administración. El servidor vuelve a verificar
@@ -26,7 +26,7 @@ export function canEditGeofenceRadius(actor: Pick<GeoActor, 'roles'>): boolean {
  * se marcó ya.
  */
 export function canMarkGeoAsValid(
-  geo: Pick<AttendanceGeo, 'status' | 'overridden'> | null | undefined,
+  geo: Pick<BoardAttendanceGeo, 'status' | 'overridden'> | null | undefined,
 ): boolean {
   return geo != null && geo.status !== 'valid' && !geo.overridden
 }

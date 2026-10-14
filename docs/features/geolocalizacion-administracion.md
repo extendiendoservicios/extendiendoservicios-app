@@ -52,7 +52,7 @@ Los mensajes de error de estas RPC están fijados en `src/features/geo/errors.ts
 ## Estructura
 
 - `src/api/geo.ts`: `fetchPresenceToday`, `fetchAttendanceLocation`, `correctAttendanceTime`, `overrideGeoValidation`, `fetchAttendanceCorrections`, `setGeofenceRadius`, `fetchCompanyGeofence`.
-- `src/api/attendance.ts`: `AttendanceGeo` y `checkInGeo` / `checkOutGeo` / `hasOutsideGeo` en `AttendanceBoardRow`. `src/api/supervisions.ts`: las mismas validaciones en `SupervisionListRow`. `src/api/sites.ts`: `geofenceRadiusM` en el detalle, el formulario y el mapa. `src/api/settings.ts`: `locationConsentUpdatedAt`.
+- `src/api/attendance.ts`: `BoardAttendanceGeo` y `checkInGeo` / `checkOutGeo` / `hasOutsideGeo` en `AttendanceBoardRow`. `src/api/supervisions.ts`: las mismas validaciones en `SupervisionListRow`. `src/api/sites.ts`: `geofenceRadiusM` en el detalle, el formulario y el mapa. `src/api/settings.ts`: `locationConsentUpdatedAt`.
 - `src/features/geo/`: `schemas.ts` (radio 50 a 1000, motivo obligatorio), `queries.ts` (claves `['geo', …]`), `errors.ts`, `permissions.ts`, `presence.ts`, `outsideZone.ts`, `radius.ts`, `printText.ts` y los componentes `PresenceMap`, `RecordGeoDetail`, `CorrectTimeDialog`, `OverrideGeoDialog`, `CorrectionsHistory`, `LocationMiniMap`, `GeoValidationCell` y `GeofenceRadiusField`.
 
 ## Decisiones menores

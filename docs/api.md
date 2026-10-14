@@ -471,7 +471,7 @@ cerradas para `authenticated` (`select *` da `42501`).
 | `setGeofenceRadius(radiusM)`                          | RPC `set_geofence_radius`        | O, A                       | Radio general, 50 a 1000 m. `FORBIDDEN`, `RADIUS_OUT_OF_RANGE`. No recalcula fichajes anteriores                                                                  |
 | `fetchCompanyGeofence()`                              | `from('company_settings')`       | todos                      | `radiusM`, `maxAccuracyM` y `locationConsentUpdatedAt`                                                                                                            |
 
-Cambios en dominios que ya existían (P22.4): `attendance` suma `AttendanceGeo` y
+Cambios en dominios que ya existían (P22.4): `attendance` suma `BoardAttendanceGeo` y
 `checkInGeo`, `checkOutGeo` y `hasOutsideGeo` a `AttendanceBoardRow` (sin
 coordenadas; la precisión sí); `supervisions` suma `checkInGeo` y `checkOutGeo`
 a `SupervisionListRow`; `sites` suma `geofenceRadiusM` a `SiteDetail`,

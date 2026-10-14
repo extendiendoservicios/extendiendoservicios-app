@@ -1,9 +1,9 @@
 import { GeoStatusBadge } from '@/components/status'
-import type { AttendanceGeo } from '@/api/attendance'
+import type { BoardAttendanceGeo } from '@/api/attendance'
 
 interface GeoValidationCellProps {
-  checkIn: AttendanceGeo | null | undefined
-  checkOut: AttendanceGeo | null | undefined
+  checkIn: BoardAttendanceGeo | null | undefined
+  checkOut: BoardAttendanceGeo | null | undefined
 }
 
 /**

@@ -1,7 +1,7 @@
 import { formatGeoStatusText } from '@/lib/geo'
-import type { AttendanceGeo } from '@/api/attendance'
+import type { BoardAttendanceGeo } from '@/api/attendance'
 
-function textOf(geo: AttendanceGeo): string {
+function textOf(geo: BoardAttendanceGeo): string {
   return formatGeoStatusText({
     status: geo.status,
     reason: geo.reason,
@@ -17,8 +17,8 @@ function textOf(geo: AttendanceGeo): string {
  * guion largo.
  */
 export function geoPrintText(
-  checkIn: AttendanceGeo | null | undefined,
-  checkOut: AttendanceGeo | null | undefined,
+  checkIn: BoardAttendanceGeo | null | undefined,
+  checkOut: BoardAttendanceGeo | null | undefined,
 ): string {
   if (!checkIn && !checkOut) {
     return '—'
@@ -29,7 +29,7 @@ export function geoPrintText(
   if (!checkIn && checkOut) {
     return `Fin: ${textOf(checkOut)}`
   }
-  const start = textOf(checkIn as AttendanceGeo)
-  const end = textOf(checkOut as AttendanceGeo)
+  const start = textOf(checkIn as BoardAttendanceGeo)
+  const end = textOf(checkOut as BoardAttendanceGeo)
   return start === end ? start : `Inicio: ${start} · Fin: ${end}`
 }

@@ -7,7 +7,7 @@ import {
 } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { AttendanceGeo } from '@/api/attendance'
+import type { BoardAttendanceGeo } from '@/api/attendance'
 import { ApiError } from '@/api/errors'
 
 const { correctMock, overrideMock, toastError, toastSuccess } = vi.hoisted(
@@ -36,7 +36,7 @@ vi.mock('@/components/map', () => ({
 
 const { RecordGeoDetail } = await import('./RecordGeoDetail')
 
-function geo(overrides: Partial<AttendanceGeo> = {}): AttendanceGeo {
+function geo(overrides: Partial<BoardAttendanceGeo> = {}): BoardAttendanceGeo {
   return {
     recordId: 'r1',
     status: 'outside',

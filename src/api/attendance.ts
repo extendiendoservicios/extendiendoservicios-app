@@ -29,7 +29,7 @@ import type { GeoStatus, GeoUnvalidatedReason } from '@/lib/geo'
  * una pantalla. Desde el módulo B1 las columnas de posición están cerradas
  * para `authenticated` y administración las lee solo por `v_presence_today` y
  * `get_attendance_location` (`src/api/geo.ts`). Lo que sí trae este archivo
- * del módulo B1 es la validación congelada de cada fichaje (`AttendanceGeo`).
+ * del módulo B1 es la validación congelada de cada fichaje (`BoardAttendanceGeo`).
  */
 
 export type AttendanceKind = Database['public']['Enums']['attendance_kind']
@@ -205,7 +205,7 @@ export async function closeAssignment(
  * lee aparte, con `get_attendance_location` (`src/api/geo.ts`). `accuracyM`
  * sí viene, y es lo que indica que el fichaje tiene posición guardada.
  */
-export interface AttendanceGeo {
+export interface BoardAttendanceGeo {
   /** Id de `attendance_records` (para corregir la hora o marcar como válido). */
   recordId: string
   status: GeoStatus
@@ -275,9 +275,9 @@ export interface AttendanceBoardRow {
   /** AJ2-15: observación del turno, solo si tiene tildado «mostrar en la impresión» (null para quien no es administración). Va a la planilla impresa. */
   shiftObservation?: string | null
   /** B1: validación del fichaje de inicio; `null` si no hay inicio. Opcional para no romper los datos de prueba anteriores. */
-  checkInGeo?: AttendanceGeo | null
+  checkInGeo?: BoardAttendanceGeo | null
   /** B1: validación del fichaje de fin; `null` si no hay fin. */
-  checkOutGeo?: AttendanceGeo | null
+  checkOutGeo?: BoardAttendanceGeo | null
   /** B1, B-21: algún fichaje de la asignación quedó «Fuera de zona» sin corregir. */
   hasOutsideGeo?: boolean
 }
@@ -362,8 +362,8 @@ interface AttendanceBoardRawRow {
   has_outside_geo: boolean | null
 }
 
-/** Convierte las columnas `check_in_*` / `check_out_*` de la vista en un `AttendanceGeo`; `null` si no hay fichaje. */
-export function mapAttendanceGeo(
+/** Convierte las columnas `check_in_*` / `check_out_*` de la vista en un `BoardAttendanceGeo`; `null` si no hay fichaje. */
+export function mapBoardAttendanceGeo(
   recordId: string | null,
   status: GeoStatus | null,
   fields: {
@@ -375,7 +375,7 @@ export function mapAttendanceGeo(
     overridden: boolean | null
     timeCorrected: boolean | null
   },
-): AttendanceGeo | null {
+): BoardAttendanceGeo | null {
   if (!recordId || !status) {
     return null
   }
@@ -435,7 +435,7 @@ function mapAttendanceBoardRow(row: AttendanceBoardRawRow): AttendanceBoardRow {
     workedMinutes: row.worked_minutes,
     removedAt: row.removed_at,
     shiftObservation: row.shift_observation,
-    checkInGeo: mapAttendanceGeo(
+    checkInGeo: mapBoardAttendanceGeo(
       row.check_in_record_id,
       row.check_in_geo_status,
       {
@@ -448,7 +448,7 @@ function mapAttendanceBoardRow(row: AttendanceBoardRawRow): AttendanceBoardRow {
         timeCorrected: row.check_in_time_corrected,
       },
     ),
-    checkOutGeo: mapAttendanceGeo(
+    checkOutGeo: mapBoardAttendanceGeo(
       row.check_out_record_id,
       row.check_out_geo_status,
       {
