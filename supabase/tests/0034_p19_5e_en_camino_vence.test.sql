@@ -130,8 +130,8 @@ select plan(32);
 select col_type_is('public', 'v_my_day', 'on_the_way_expires_at', 'timestamp with time zone', 'v_my_day.on_the_way_expires_at existe (timestamptz)');
 select is(
   (select a.attname::text from pg_attribute a where a.attrelid = 'public.v_my_day'::regclass and a.attnum > 0 and not a.attisdropped order by a.attnum desc limit 1),
-  'no_checkout',
-  'v_my_day: on_the_way_expires_at conserva su lugar (0037 agrega effective_open_ended y no_checkout después)'
+  'my_videos_count',
+  'v_my_day: on_the_way_expires_at conserva su lugar (0037 agrega effective_open_ended y no_checkout y 0047 requires_photos y los contadores de medios después)'
 );
 select is(
   (select a.attname::text from pg_attribute a where a.attrelid = 'public.v_assignments_board'::regclass and a.attnum > 0 and not a.attisdropped order by a.attnum desc limit 1),

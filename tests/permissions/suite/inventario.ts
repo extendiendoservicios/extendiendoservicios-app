@@ -20,7 +20,7 @@ export interface FuncionPublica {
   authenticated: boolean
   /** Tiene `grant execute ... to service_role` (y no a authenticated). */
   soloServicio: boolean
-  /** Algún `revoke execute` le saca el permiso a `anon` (y a `public`). */
+  /** Algún `revoke execute` o `revoke all` le saca el permiso a `anon` (y a `public`). */
   revocadaAAnon: boolean
 }
 
@@ -104,7 +104,7 @@ export function leerInventario(): InventarioMigraciones {
       if (/\bservice_role\b/.test(a)) f.soloServicio = true
     }
     for (const m of sql.matchAll(
-      /^revoke\s+execute\s+on\s+function\s+public\.(\w+)\([^;]*?\)\s+from\s+([^;]+);/gim,
+      /^revoke\s+(?:execute|all(?:\s+privileges)?)\s+on\s+function\s+public\.(\w+)\([^;]*?\)\s+from\s+([^;]+);/gim,
     )) {
       const f = funcion(m[1])
       if (/\banon\b/.test(m[2]) && /\bpublic\b/.test(m[2]))

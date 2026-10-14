@@ -105,6 +105,15 @@ export const adminRoutes: RouteObject[] = [
     },
   },
   {
+    path: 'fotos',
+    ...lazyPage(() => import('@/pages/admin/MediaPage')),
+    handle: {
+      screenId: 'ADM-32',
+      title: 'Fotos y videos',
+      subtitle: 'Ver, conservar y descargar la evidencia de los turnos',
+    },
+  },
+  {
     path: 'empleados',
     ...lazyPage(() => import('@/pages/admin/EmployeesPage')),
     handle: {

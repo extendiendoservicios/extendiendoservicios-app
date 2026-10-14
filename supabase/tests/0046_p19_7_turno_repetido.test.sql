@@ -53,14 +53,14 @@ select has_column('public', 'shifts', 'series_id', 'shifts.series_id existe');
 select col_type_is('public', 'shifts', 'series_id', 'uuid', 'series_id es uuid');
 select col_is_null('public', 'shifts', 'series_id', 'series_id admite null');
 select has_index('public', 'shifts', 'shifts_series_id_idx', 'índice parcial por series_id');
-select has_function('public', 'create_shift_series', array['uuid', 'uuid', 'time without time zone', 'time without time zone', 'smallint', 'date', 'date', 'smallint[]', 'smallint[]', 'boolean', 'text', 'boolean', 'boolean', 'uuid[]'], 'existe create_shift_series');
+select has_function('public', 'create_shift_series', array['uuid', 'uuid', 'time without time zone', 'time without time zone', 'smallint', 'date', 'date', 'smallint[]', 'smallint[]', 'boolean', 'text', 'boolean', 'boolean', 'uuid[]', 'boolean'], 'existe create_shift_series');
 select has_function('public', 'preview_shift_series', array['date', 'date', 'smallint[]', 'smallint[]', 'boolean'], 'existe preview_shift_series');
 select ok(
-  has_function_privilege('authenticated', 'public.create_shift_series(uuid, uuid, time, time, smallint, date, date, smallint[], smallint[], boolean, text, boolean, boolean, uuid[])', 'execute')
+  has_function_privilege('authenticated', 'public.create_shift_series(uuid, uuid, time, time, smallint, date, date, smallint[], smallint[], boolean, text, boolean, boolean, uuid[], boolean)', 'execute')
     and has_function_privilege('authenticated', 'public.preview_shift_series(date, date, smallint[], smallint[], boolean)', 'execute')
-    and not has_function_privilege('anon', 'public.create_shift_series(uuid, uuid, time, time, smallint, date, date, smallint[], smallint[], boolean, text, boolean, boolean, uuid[])', 'execute')
+    and not has_function_privilege('anon', 'public.create_shift_series(uuid, uuid, time, time, smallint, date, date, smallint[], smallint[], boolean, text, boolean, boolean, uuid[], boolean)', 'execute')
     and not has_function_privilege('anon', 'public.preview_shift_series(date, date, smallint[], smallint[], boolean)', 'execute')
-    and not has_function_privilege('authenticated', 'app.create_shift_core(uuid, uuid, date, time, time, smallint, uuid, text, boolean, boolean, uuid[], uuid)', 'execute')
+    and not has_function_privilege('authenticated', 'app.create_shift_core(uuid, uuid, date, time, time, smallint, uuid, text, boolean, boolean, uuid[], uuid, boolean)', 'execute')
     and not has_function_privilege('authenticated', 'app.shift_series_dates(date, date, smallint[], smallint[])', 'execute'),
   'grants: las RPC para authenticated y no para anon; los helpers internos no se llaman desde afuera'
 );

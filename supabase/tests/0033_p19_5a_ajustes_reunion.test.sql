@@ -176,8 +176,8 @@ select is(
   (select array_agg(attname::text order by attnum) from pg_attribute
    where attrelid = 'public.v_my_day'::regclass and attnum > 0 and not attisdropped
    and attnum >= (select attnum from pg_attribute where attrelid = 'public.v_my_day'::regclass and attname = 'last_notice_estimated_arrival_at')),
-  array['last_notice_estimated_arrival_at', 'on_the_way_expires_at', 'effective_open_ended', 'no_checkout'],
-  'v_my_day: last_notice_estimated_arrival_at conserva su lugar (0034 agrega on_the_way_expires_at y 0037 effective_open_ended y no_checkout después)'
+  array['last_notice_estimated_arrival_at', 'on_the_way_expires_at', 'effective_open_ended', 'no_checkout', 'requires_photos', 'my_photos_count', 'my_videos_count'],
+  'v_my_day: last_notice_estimated_arrival_at conserva su lugar (0034 agrega on_the_way_expires_at y 0037 effective_open_ended y no_checkout, 0047 requires_photos y los contadores de medios después)'
 );
 select is(
   (select array_agg(attname::text order by attnum) from (

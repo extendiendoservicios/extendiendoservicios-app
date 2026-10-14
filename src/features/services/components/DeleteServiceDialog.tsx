@@ -24,6 +24,7 @@ const REASON_TEXT: Record<ServiceDeleteBlockReason, string> = {
   ATTENDANCE_RECORDS: 'fichajes registrados',
   ATTENDANCE_NOTICES: 'avisos de asistencia (demora, ausencia o en camino)',
   SUPERVISIONS: 'supervisiones',
+  SHIFT_MEDIA: 'fotos o videos',
 }
 
 /** «fichajes y supervisiones», «fichajes, avisos y supervisiones». Orden fijo. */

@@ -1010,27 +1010,33 @@ export type Database = {
           location_consent_text: string | null
           logo_path: string | null
           name: string | null
+          photo_retention_days: number
           support_phone: string | null
           updated_at: string
           updated_by: string | null
+          video_retention_days: number
         }
         Insert: {
           id: number
           location_consent_text?: string | null
           logo_path?: string | null
           name?: string | null
+          photo_retention_days?: number
           support_phone?: string | null
           updated_at?: string
           updated_by?: string | null
+          video_retention_days?: number
         }
         Update: {
           id?: number
           location_consent_text?: string | null
           logo_path?: string | null
           name?: string | null
+          photo_retention_days?: number
           support_phone?: string | null
           updated_at?: string
           updated_by?: string | null
+          video_retention_days?: number
         }
         Relationships: [
           {
@@ -1941,6 +1947,7 @@ export type Database = {
           notes: string | null
           open_ended: boolean
           required_staff: number
+          requires_photos: boolean
           site_id: string
           start_time: string
           status: Database["public"]["Enums"]["service_status"]
@@ -1965,6 +1972,7 @@ export type Database = {
           notes?: string | null
           open_ended?: boolean
           required_staff?: number
+          requires_photos?: boolean
           site_id: string
           start_time: string
           status?: Database["public"]["Enums"]["service_status"]
@@ -1989,6 +1997,7 @@ export type Database = {
           notes?: string | null
           open_ended?: boolean
           required_staff?: number
+          requires_photos?: boolean
           site_id?: string
           start_time?: string
           status?: Database["public"]["Enums"]["service_status"]
@@ -2046,6 +2055,214 @@ export type Database = {
           {
             foreignKeyName: "services_updated_by_fkey"
             columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      shift_media: {
+        Row: {
+          assignment_id: string | null
+          captured_at: string | null
+          confirmed_at: string | null
+          created_at: string
+          created_by: string | null
+          duration_s: number | null
+          expired_at: string | null
+          height: number | null
+          id: string
+          keep: boolean
+          kept_at: string | null
+          kept_by: string | null
+          kind: Database["public"]["Enums"]["media_kind"]
+          removed_at: string | null
+          removed_by: string | null
+          shift_id: string
+          size_bytes: number
+          storage_path: string
+          supervision_id: string | null
+          thumb_path: string
+          updated_at: string | null
+          updated_by: string | null
+          uploaded_by: string
+          width: number | null
+        }
+        Insert: {
+          assignment_id?: string | null
+          captured_at?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          duration_s?: number | null
+          expired_at?: string | null
+          height?: number | null
+          id?: string
+          keep?: boolean
+          kept_at?: string | null
+          kept_by?: string | null
+          kind: Database["public"]["Enums"]["media_kind"]
+          removed_at?: string | null
+          removed_by?: string | null
+          shift_id: string
+          size_bytes: number
+          storage_path: string
+          supervision_id?: string | null
+          thumb_path: string
+          updated_at?: string | null
+          updated_by?: string | null
+          uploaded_by: string
+          width?: number | null
+        }
+        Update: {
+          assignment_id?: string | null
+          captured_at?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          duration_s?: number | null
+          expired_at?: string | null
+          height?: number | null
+          id?: string
+          keep?: boolean
+          kept_at?: string | null
+          kept_by?: string | null
+          kind?: Database["public"]["Enums"]["media_kind"]
+          removed_at?: string | null
+          removed_by?: string | null
+          shift_id?: string
+          size_bytes?: number
+          storage_path?: string
+          supervision_id?: string | null
+          thumb_path?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          uploaded_by?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_media_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_media_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "v_assignments_board"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_media_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "v_my_day"
+            referencedColumns: ["assignment_id"]
+          },
+          {
+            foreignKeyName: "shift_media_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_media_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "shift_media_kept_by_fkey"
+            columns: ["kept_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_media_kept_by_fkey"
+            columns: ["kept_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "shift_media_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_media_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "shift_media_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_media_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "v_shifts_board"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_media_supervision_id_fkey"
+            columns: ["supervision_id"]
+            isOneToOne: false
+            referencedRelation: "supervisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_media_supervision_id_fkey"
+            columns: ["supervision_id"]
+            isOneToOne: false
+            referencedRelation: "v_my_supervisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_media_supervision_id_fkey"
+            columns: ["supervision_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisions_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_media_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_media_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "shift_media_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_media_uploaded_by_fkey"
+            columns: ["uploaded_by"]
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
@@ -2250,6 +2467,7 @@ export type Database = {
           notes: string | null
           open_ended: boolean
           required_staff: number
+          requires_photos: boolean
           series_id: string | null
           service_id: string | null
           shift_date: string
@@ -2276,6 +2494,7 @@ export type Database = {
           notes?: string | null
           open_ended?: boolean
           required_staff: number
+          requires_photos?: boolean
           series_id?: string | null
           service_id?: string | null
           shift_date: string
@@ -2302,6 +2521,7 @@ export type Database = {
           notes?: string | null
           open_ended?: boolean
           required_staff?: number
+          requires_photos?: boolean
           series_id?: string | null
           service_id?: string | null
           shift_date?: string
@@ -3192,11 +3412,14 @@ export type Database = {
           last_notice_source:
             | Database["public"]["Enums"]["attendance_source"]
             | null
+          my_photos_count: number | null
+          my_videos_count: number | null
           no_checkout: boolean | null
           notes: string | null
           on_the_way_expires_at: string | null
           phone_restricted: boolean | null
           photos_not_allowed: boolean | null
+          requires_photos: boolean | null
           restrictions_notes: string | null
           shift_date: string | null
           shift_id: string | null
@@ -3307,7 +3530,10 @@ export type Database = {
           ends_at: string | null
           general_notes: string | null
           id: string | null
+          my_photos_count: number | null
+          my_videos_count: number | null
           not_done_reason: string | null
+          requires_photos: boolean | null
           shift_date: string | null
           shift_id: string | null
           shift_open_ended: boolean | null
@@ -3403,6 +3629,146 @@ export type Database = {
         }
         Relationships: []
       }
+      v_shift_media: {
+        Row: {
+          assignment_id: string | null
+          captured_at: string | null
+          client_id: string | null
+          client_name: string | null
+          created_at: string | null
+          duration_s: number | null
+          expired_at: string | null
+          expires_on: string | null
+          has_file: boolean | null
+          height: number | null
+          id: string | null
+          keep: boolean | null
+          kept_at: string | null
+          kept_by: string | null
+          kind: Database["public"]["Enums"]["media_kind"] | null
+          retention_days: number | null
+          shift_date: string | null
+          shift_id: string | null
+          site_id: string | null
+          site_name: string | null
+          size_bytes: number | null
+          storage_path: string | null
+          supervision_id: string | null
+          thumb_path: string | null
+          uploaded_by: string | null
+          uploader_first_name: string | null
+          uploader_last_name: string | null
+          uploader_role: string | null
+          width: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_media_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_media_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "v_assignments_board"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_media_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "v_my_day"
+            referencedColumns: ["assignment_id"]
+          },
+          {
+            foreignKeyName: "shift_media_kept_by_fkey"
+            columns: ["kept_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_media_kept_by_fkey"
+            columns: ["kept_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "shift_media_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_media_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "v_shifts_board"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_media_supervision_id_fkey"
+            columns: ["supervision_id"]
+            isOneToOne: false
+            referencedRelation: "supervisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_media_supervision_id_fkey"
+            columns: ["supervision_id"]
+            isOneToOne: false
+            referencedRelation: "v_my_supervisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_media_supervision_id_fkey"
+            columns: ["supervision_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisions_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_media_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_media_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "shifts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id", "client_id"]
+          },
+        ]
+      }
       v_shift_peers: {
         Row: {
           avatar_path: string | null
@@ -3439,6 +3805,7 @@ export type Database = {
           open_ended: boolean | null
           present_count: number | null
           required_staff: number | null
+          requires_photos: boolean | null
           service_id: string | null
           shift_date: string | null
           show_in_print: boolean | null
@@ -3734,6 +4101,20 @@ export type Database = {
         Args: { p_shift_id: string; p_supervisor_id: string }
         Returns: Json
       }
+      begin_shift_media: {
+        Args: {
+          p_captured_at?: string
+          p_duration_s?: number
+          p_height?: number
+          p_kind: Database["public"]["Enums"]["media_kind"]
+          p_mime_type: string
+          p_shift_id: string
+          p_size_bytes: number
+          p_thumb_size_bytes: number
+          p_width?: number
+        }
+        Returns: Json
+      }
       cancel_shift: {
         Args: { p_reason: string; p_shift_id: string }
         Returns: {
@@ -3752,6 +4133,7 @@ export type Database = {
           notes: string | null
           open_ended: boolean
           required_staff: number
+          requires_photos: boolean
           series_id: string | null
           service_id: string | null
           shift_date: string
@@ -3873,6 +4255,41 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      confirm_shift_media: {
+        Args: { p_media_id: string }
+        Returns: {
+          assignment_id: string | null
+          captured_at: string | null
+          confirmed_at: string | null
+          created_at: string
+          created_by: string | null
+          duration_s: number | null
+          expired_at: string | null
+          height: number | null
+          id: string
+          keep: boolean
+          kept_at: string | null
+          kept_by: string | null
+          kind: Database["public"]["Enums"]["media_kind"]
+          removed_at: string | null
+          removed_by: string | null
+          shift_id: string
+          size_bytes: number
+          storage_path: string
+          supervision_id: string | null
+          thumb_path: string
+          updated_at: string | null
+          updated_by: string | null
+          uploaded_by: string
+          width: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "shift_media"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_announcement: {
         Args: {
           p_audience: Database["public"]["Enums"]["announcement_audience"]
@@ -3911,6 +4328,7 @@ export type Database = {
           p_notes?: string
           p_open_ended?: boolean
           p_required_staff: number
+          p_requires_photos?: boolean
           p_service_id?: string
           p_show_in_print?: boolean
           p_site_id: string
@@ -3927,6 +4345,7 @@ export type Database = {
           p_notes?: string
           p_open_ended?: boolean
           p_required_staff: number
+          p_requires_photos?: boolean
           p_show_in_print?: boolean
           p_site_id: string
           p_start: string
@@ -3938,6 +4357,16 @@ export type Database = {
         Returns: Json
       }
       delete_service: { Args: { p_service_id: string }; Returns: Json }
+      evidence_cleanup_candidates: {
+        Args: { p_limit?: number }
+        Returns: {
+          media_id: string
+          reason: string
+          storage_path: string
+          thumb_path: string
+        }[]
+      }
+      evidence_cleanup_mark: { Args: { p_ids: string[] }; Returns: number }
       generate_shifts: {
         Args: { p_month: number; p_year: number }
         Returns: Json
@@ -4205,6 +4634,41 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      remove_shift_media: {
+        Args: { p_media_id: string }
+        Returns: {
+          assignment_id: string | null
+          captured_at: string | null
+          confirmed_at: string | null
+          created_at: string
+          created_by: string | null
+          duration_s: number | null
+          expired_at: string | null
+          height: number | null
+          id: string
+          keep: boolean
+          kept_at: string | null
+          kept_by: string | null
+          kind: Database["public"]["Enums"]["media_kind"]
+          removed_at: string | null
+          removed_by: string | null
+          shift_id: string
+          size_bytes: number
+          storage_path: string
+          supervision_id: string | null
+          thumb_path: string
+          updated_at: string | null
+          updated_by: string | null
+          uploaded_by: string
+          width: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "shift_media"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       service_delete_preview: { Args: { p_service_id: string }; Returns: Json }
       set_admin_capability: {
         Args: {
@@ -4301,10 +4765,65 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      set_media_retention: {
+        Args: { p_photo_days?: number; p_video_days?: number }
+        Returns: {
+          id: number
+          location_consent_text: string | null
+          logo_path: string | null
+          name: string | null
+          photo_retention_days: number
+          support_phone: string | null
+          updated_at: string
+          updated_by: string | null
+          video_retention_days: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "company_settings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       set_my_high_contrast: { Args: { p_enabled: boolean }; Returns: undefined }
       set_service_fixed_employees: {
         Args: { p_employee_ids: string[]; p_service_id: string }
         Returns: Json
+      }
+      set_shift_media_keep: {
+        Args: { p_keep: boolean; p_media_id: string }
+        Returns: {
+          assignment_id: string | null
+          captured_at: string | null
+          confirmed_at: string | null
+          created_at: string
+          created_by: string | null
+          duration_s: number | null
+          expired_at: string | null
+          height: number | null
+          id: string
+          keep: boolean
+          kept_at: string | null
+          kept_by: string | null
+          kind: Database["public"]["Enums"]["media_kind"]
+          removed_at: string | null
+          removed_by: string | null
+          shift_id: string
+          size_bytes: number
+          storage_path: string
+          supervision_id: string | null
+          thumb_path: string
+          updated_at: string | null
+          updated_by: string | null
+          uploaded_by: string
+          width: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "shift_media"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       set_user_roles: {
         Args: {
@@ -4313,6 +4832,7 @@ export type Database = {
         }
         Returns: Database["public"]["Enums"]["app_role"][]
       }
+      storage_usage: { Args: never; Returns: Json }
       supervision_check_in: {
         Args: {
           p_accuracy?: number
@@ -4452,6 +4972,7 @@ export type Database = {
         Args: {
           p_notes?: string
           p_required_staff: number
+          p_requires_photos?: boolean
           p_shift_id: string
           p_show_in_print?: boolean
         }
@@ -4471,6 +4992,7 @@ export type Database = {
           notes: string | null
           open_ended: boolean
           required_staff: number
+          requires_photos: boolean
           series_id: string | null
           service_id: string | null
           shift_date: string
@@ -4511,6 +5033,7 @@ export type Database = {
           notes: string | null
           open_ended: boolean
           required_staff: number
+          requires_photos: boolean
           series_id: string | null
           service_id: string | null
           shift_date: string
@@ -4585,6 +5108,7 @@ export type Database = {
       attendance_source: "employee_app" | "admin"
       client_status: "active" | "suspended" | "closed"
       employee_status: "active" | "terminated"
+      media_kind: "photo" | "video"
       notice_kind: "delay" | "absence" | "on_the_way"
       security_event_type:
         | "sign_in"
@@ -4774,6 +5298,7 @@ export const Constants = {
       attendance_source: ["employee_app", "admin"],
       client_status: ["active", "suspended", "closed"],
       employee_status: ["active", "terminated"],
+      media_kind: ["photo", "video"],
       notice_kind: ["delay", "absence", "on_the_way"],
       security_event_type: [
         "sign_in",

@@ -8,7 +8,14 @@
 
 import { describe, expect, it } from 'vitest'
 import { requireE2eEnv } from '../../fixtures/env.ts'
-import { BUCKETS_CUBIERTOS, EDGE_CUBIERTAS } from './cobertura.ts'
+import { readFileSync, existsSync } from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import {
+  BUCKETS_CUBIERTOS,
+  COBERTURA_EXTERNA,
+  EDGE_CUBIERTAS,
+} from './cobertura.ts'
 import { CASOS } from './edge-casos.ts'
 import { leerInventario } from './inventario.ts'
 import { CASOS_RPC, RPC_DE_PLATAFORMA } from './rpc.ts'
@@ -16,6 +23,7 @@ import { PERFILES } from './perfiles.ts'
 import { TABLAS } from './tablas.ts'
 import { VISTAS } from './vistas.ts'
 
+const DIR_SUITE = fileURLToPath(new URL('.', import.meta.url))
 const inventario = leerInventario()
 
 function diferencias(hay: string[], cubre: string[]) {
@@ -28,16 +36,16 @@ describe('inventario de migraciones contra la matriz', () => {
   it('se leen las migraciones (0001 en adelante) (RB-X02)', () => {
     expect(inventario.archivos).toBeGreaterThanOrEqual(29)
     // Piso de lo conocido hoy: si el parser dejara de ver objetos, no se pasaría en silencio.
-    expect(inventario.tablas.length).toBeGreaterThanOrEqual(25)
-    expect(inventario.vistas.length).toBeGreaterThanOrEqual(10)
-    expect(inventario.funciones.length).toBeGreaterThanOrEqual(29)
+    expect(inventario.tablas.length).toBeGreaterThanOrEqual(33)
+    expect(inventario.vistas.length).toBeGreaterThanOrEqual(15)
+    expect(inventario.funciones.length).toBeGreaterThanOrEqual(55)
   })
 
   it('cada tabla de `public` tiene sus casos en la matriz (7 perfiles x select, insert, update, delete) (RB-X02)', () => {
-    const { sinCasos, sobrantes } = diferencias(
-      inventario.tablas,
-      TABLAS.map((t) => t.tabla),
-    )
+    const { sinCasos, sobrantes } = diferencias(inventario.tablas, [
+      ...TABLAS.map((t) => t.tabla),
+      ...Object.keys(COBERTURA_EXTERNA.tablas),
+    ])
     expect(
       sinCasos,
       `Tablas nuevas SIN casos en tests/permissions/suite/tablas.ts: ${sinCasos.join(', ')}`,
@@ -60,10 +68,10 @@ describe('inventario de migraciones contra la matriz', () => {
   })
 
   it('cada vista `v_*` tiene sus casos en la matriz (RB-X02)', () => {
-    const { sinCasos, sobrantes } = diferencias(
-      inventario.vistas,
-      VISTAS.map((v) => v.vista),
-    )
+    const { sinCasos, sobrantes } = diferencias(inventario.vistas, [
+      ...VISTAS.map((v) => v.vista),
+      ...Object.keys(COBERTURA_EXTERNA.vistas),
+    ])
     expect(
       sinCasos,
       `Vistas nuevas SIN casos en tests/permissions/suite/vistas.ts: ${sinCasos.join(', ')}`,
@@ -78,9 +86,12 @@ describe('inventario de migraciones contra la matriz', () => {
     const expuestas = inventario.funciones
       .filter((f) => f.authenticated || f.soloServicio)
       .map((f) => f.nombre)
-    const cubiertas = [...new Set(CASOS_RPC.map((c) => c.rpc))].filter(
-      (r) => !(RPC_DE_PLATAFORMA as readonly string[]).includes(r),
-    )
+    const cubiertas = [
+      ...new Set([
+        ...CASOS_RPC.map((c) => c.rpc),
+        ...Object.keys(COBERTURA_EXTERNA.rpc),
+      ]),
+    ].filter((r) => !(RPC_DE_PLATAFORMA as readonly string[]).includes(r))
     const { sinCasos, sobrantes } = diferencias(expuestas, cubiertas)
     expect(
       sinCasos,
@@ -127,6 +138,7 @@ describe('inventario de migraciones contra la matriz', () => {
   it('cada bucket de Storage tiene sus casos (RB-X02)', () => {
     const { sinCasos, sobrantes } = diferencias(inventario.buckets, [
       ...BUCKETS_CUBIERTOS,
+      ...Object.keys(COBERTURA_EXTERNA.buckets),
     ])
     expect(
       sinCasos,
@@ -174,6 +186,52 @@ describe('inventario de migraciones contra la matriz', () => {
   })
 })
 
+describe('lo que se cubre en una suite propia está de verdad en esa suite (P21.6c)', () => {
+  const todos = Object.entries(COBERTURA_EXTERNA).flatMap(([tipo, mapa]) =>
+    Object.entries(mapa).map(([objeto, suite]) => ({ tipo, objeto, suite })),
+  )
+
+  it('cada objeto declarado en COBERTURA_EXTERNA existe en las migraciones', () => {
+    const hay: Record<string, string[]> = {
+      tablas: inventario.tablas,
+      vistas: inventario.vistas,
+      rpc: inventario.funciones.map((f) => f.nombre),
+      buckets: inventario.buckets,
+    }
+    const huerfanos = todos
+      .filter((t) => !hay[t.tipo].includes(t.objeto))
+      .map((t) => `${t.tipo}:${t.objeto}`)
+    expect(
+      huerfanos,
+      `La cobertura externa nombra objetos que ya no existen: ${huerfanos.join(', ')}`,
+    ).toEqual([])
+  })
+
+  it('el archivo de la suite existe y nombra al objeto (no alcanza con declararlo)', () => {
+    const faltan: string[] = []
+    for (const t of todos) {
+      const archivo = path.join(DIR_SUITE, t.suite)
+      if (!existsSync(archivo)) {
+        faltan.push(`${t.objeto}: no existe ${t.suite}`)
+        continue
+      }
+      const texto = readFileSync(archivo, 'utf8')
+      if (!new RegExp(String.raw`\b${t.objeto}\b`).test(texto))
+        faltan.push(`${t.objeto}: ${t.suite} no lo nombra`)
+    }
+    expect(faltan, faltan.join(' | ')).toEqual([])
+  })
+
+  it('la Edge Function evidence-cleanup tiene su suite y la nombra', () => {
+    const archivo = path.join(
+      DIR_SUITE,
+      '61-edge-evidence-cleanup.permissions.ts',
+    )
+    expect(existsSync(archivo)).toBe(true)
+    expect(readFileSync(archivo, 'utf8')).toContain('evidence-cleanup')
+  })
+})
+
 describe('inventario de App_dev contra la matriz (lo que PostgREST expone de verdad)', () => {
   it('lo que App_dev expone en /rest/v1 coincide con las migraciones y con la matriz (RB-X02)', async () => {
     const env = requireE2eEnv()
@@ -198,7 +256,12 @@ describe('inventario de App_dev contra la matriz (lo que PostgREST expone de ver
       .map((r) => r.slice(1))
       .sort()
 
-    const cubiertasRpc = [...new Set(CASOS_RPC.map((c) => c.rpc))].sort()
+    const cubiertasRpc = [
+      ...new Set([
+        ...CASOS_RPC.map((c) => c.rpc),
+        ...Object.keys(COBERTURA_EXTERNA.rpc),
+      ]),
+    ].sort()
     const { sinCasos: rpcSinCasos, sobrantes: rpcSobrantes } = diferencias(
       rpcExpuestas,
       cubiertasRpc,
@@ -215,6 +278,8 @@ describe('inventario de App_dev contra la matriz (lo que PostgREST expone de ver
     const cubiertos = [
       ...TABLAS.map((t) => t.tabla),
       ...VISTAS.map((v) => v.vista),
+      ...Object.keys(COBERTURA_EXTERNA.tablas),
+      ...Object.keys(COBERTURA_EXTERNA.vistas),
     ].sort()
     const { sinCasos, sobrantes } = diferencias(objetos, cubiertos)
     expect(

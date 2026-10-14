@@ -24,10 +24,10 @@ export function claveCaso(...partes: string[]): string {
   return partes.join(' · ')
 }
 
-/** Defectos conocidos por identificador. Vacío desde P18.6. */
+/** Defectos conocidos por identificador (DEF-P14 se agregó y se corrigió en P21.6c, 0050). */
 export const DEFECTOS_CONOCIDOS: Record<string, Defecto> = {}
 
-/** Clave de caso -> defecto que lo hace fallar hoy. Vacío desde P18.6. */
+/** Clave de caso -> defecto que lo hace fallar hoy. */
 export const DEFECTOS: Record<string, Defecto> = {}
 
 export function defectoDe(clave: string): Defecto | undefined {

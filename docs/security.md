@@ -72,6 +72,13 @@ Detalle completo, incluidos los hallazgos de la verificación en vivo (por qué
 `auth.admin.signOut()` de supabase-js no sirve para revocar por `profile_id`, el recorte de
 `x-forwarded-for`), en `docs/database.md`, sección "Edge Function `admin-users`".
 
+### Evidencia fotográfica (P21.1, módulo H)
+
+- Bucket `evidence` privado: solo URL firmadas de vida corta. Se escribe únicamente en las rutas de una fila `shift_media` pendiente y propia (la crea `begin_shift_media`, que valida rol, relación con el turno, ventana, topes y sede). Lo lee el autor y dueño y administradores; nadie más, ni siquiera el supervisor del mismo turno.
+- `shift_media` sin políticas de insert, update ni delete; `authenticated` solo tiene `select`. Las RPC de borrado de archivos (`evidence_cleanup_*`) son solo de `service_role`.
+- La Edge Function `evidence-cleanup` no usa JWT de usuario: exige el secreto `EVIDENCE_CLEANUP_SECRET` en `x-evidence-cleanup-secret` (comparación en tiempo constante, falla cerrada si no está configurado) y solo borra rutas con la forma de las de evidencia. La `service_role` se lee de `Deno.env` únicamente dentro de la función.
+- Detalle en `docs/database.md`, sección "Evidencia fotográfica".
+
 ### Qué lee cada rol de lo ajeno (P18.6)
 
 RLS filtra filas, no columnas. Empleado y supervisor **no leen las tablas base** para las filas

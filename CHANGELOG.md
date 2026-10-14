@@ -7,6 +7,23 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.19.0] - 2026-10-13
+
+Módulo H: evidencia fotográfica (fotos y videos de los turnos), acordado con los clientes el 13 de octubre.
+
+### Agregado
+
+- Fotos y videos del turno: el empleado asignado y el supervisor los suben desde el celular, con la cámara o desde la galería. Las fotos se achican a 1280 px (unos 150 KB) y se les quitan los datos ocultos, la ubicación incluida. Los videos son para casos excepcionales: 480p, hasta 30 segundos y 20 MB. Tope de 10 fotos y 2 videos por persona y turno; se puede subir desde el inicio del turno hasta 2 horas después del fin. En las sedes que no permiten fotos no aparecen los botones. Migración 0047.
+- «Pide fotos» en el servicio, heredado por sus turnos y editable en cada turno. Al finalizar sin fotos propias, la app advierte y deja seguir; administración ve la marca «Sin fotos» y la cámara de «Pide fotos» en la lista de turnos. Migraciones 0047 y 0048.
+- Sección «Fotos y videos» en administración (dueños y administradores): filtros por fechas, cliente, sede, persona y tipo, visor con los datos del turno, «Conservar», descarga de a una o varias juntas en un ZIP, y medidor del espacio usado sobre 1 GB (aviso en el Resumen desde el 70 %). También en el detalle del turno y de la supervisión.
+- Borrado automático cada noche: fotos a los 60 días y videos a los 30, plazos que cambia un administrador en «Configuración» → «Empresa». Lo marcado «Conservar» no vence. Del turno queda la constancia.
+
+### Corregido
+
+- «Actualizado hace …» mostraba un número enorme de segundos mientras se recargaban algunas pantallas de administración.
+- Una persona desactivada con la sesión todavía abierta podía cambiar su preferencia de alto contraste. Migración 0050.
+- Permisos internos de la base revisados y documentados. Migraciones 0049 y 0050.
+
 ## [0.18.0] - 2026-10-12
 
 Alto contraste (último punto de la reunión del 9 de octubre) y observaciones de uso de los dueños del 12 de octubre (P19.7).

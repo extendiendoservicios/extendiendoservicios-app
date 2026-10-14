@@ -12,6 +12,29 @@ import * as locationChoiceModule from '@/features/employee/locationChoice'
 import * as geolocationModule from '@/lib/geolocation'
 
 /**
+ * El bloque «Fotos y videos» (módulo H, P21.3) tiene sus propios tests en
+ * `ShiftMediaSection.test.tsx`: acá se reemplaza por un marcador con las
+ * propiedades que recibe.
+ */
+vi.mock('@/features/employee/components/LazyShiftMediaSection', () => ({
+  LazyShiftMediaSection: (props: {
+    shiftId: string
+    counts: { photos: number; videos: number }
+    requiresPhotos: boolean
+    photosNotAllowed: boolean
+  }) => (
+    <div
+      data-testid="media-section"
+      data-shift={props.shiftId}
+      data-photos={props.counts.photos}
+      data-videos={props.counts.videos}
+      data-requires={String(props.requiresPhotos)}
+      data-not-allowed={String(props.photosNotAllowed)}
+    />
+  ),
+}))
+
+/**
  * SUP-04 (MOB-SUP-005): pide el consentimiento de ubicación (reutilizado de
  * EMP-06) cuando todavía no está resuelto, muestra "Registrar inicio" sin
  * inicio propio y "Registrar fin" con el inicio ya registrado. La hora que
@@ -39,6 +62,9 @@ function supervision(overrides: Partial<MySupervision>): MySupervision {
     buildingHours: null,
     phoneRestricted: false,
     photosNotAllowed: false,
+    requiresPhotos: false,
+    myPhotosCount: 0,
+    myVideosCount: 0,
     restrictionsNotes: null,
     startTime: '08:00:00',
     endTime: '12:00:00',
@@ -234,5 +260,57 @@ describe('SupervisionAttendancePage (SUP-04)', () => {
         coords: { lat: -34.47, lng: -58.5, accuracyM: 10 },
       })
     })
+  })
+})
+
+describe('SupervisionAttendancePage · fotos y videos (módulo H, P21.3)', () => {
+  const profile = {
+    id: 'user-1',
+    firstName: 'Marta',
+    lastName: 'Ríos',
+    displayName: 'Marta Ríos',
+    contactEmail: null,
+    phone: null,
+    avatarPath: null,
+    locationConsentAt: '2026-09-01T00:00:00Z',
+    highContrast: false,
+  }
+
+  it('con el inicio registrado ofrece el bloque con los contadores de la supervisión', () => {
+    mockCommon()
+    vi.spyOn(mySupervisionsModule, 'useMySupervisionQuery').mockReturnValue({
+      data: supervision({
+        status: 'in_progress',
+        checkInAt: '2026-09-27T11:05:00Z',
+        requiresPhotos: true,
+        myPhotosCount: 4,
+        myVideosCount: 1,
+      }),
+      isLoading: false,
+      isError: false,
+    } as never)
+    vi.spyOn(authModule, 'useAuth').mockReturnValue(authValue({ profile }))
+
+    renderPage()
+
+    const section = screen.getByTestId('media-section')
+    expect(section).toHaveAttribute('data-shift', 'sh1')
+    expect(section).toHaveAttribute('data-photos', '4')
+    expect(section).toHaveAttribute('data-videos', '1')
+    expect(section).toHaveAttribute('data-requires', 'true')
+  })
+
+  it('antes del inicio no muestra el bloque: esa pantalla es solo registrar', () => {
+    mockCommon()
+    vi.spyOn(mySupervisionsModule, 'useMySupervisionQuery').mockReturnValue({
+      data: supervision({}),
+      isLoading: false,
+      isError: false,
+    } as never)
+    vi.spyOn(authModule, 'useAuth').mockReturnValue(authValue({ profile }))
+
+    renderPage()
+
+    expect(screen.queryByTestId('media-section')).not.toBeInTheDocument()
   })
 })

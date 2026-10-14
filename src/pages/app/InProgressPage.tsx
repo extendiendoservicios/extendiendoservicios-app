@@ -9,6 +9,7 @@ import { elapsedSeconds, formatElapsed } from '@/features/employee/chronometer'
 import { useNow } from '@/features/employee/useNow'
 import { useOnlineStatus } from '@/features/employee/useOnlineStatus'
 import { useMyDayQuery } from '@/features/employee/queries'
+import { LazyShiftMediaSection } from '@/features/employee/components/LazyShiftMediaSection'
 
 /** Un segundo: el cronómetro se ve andar en tiempo real (`07`: "Móvil: cronómetro"). */
 const CHRONOMETER_TICK_MS = 1_000
@@ -126,6 +127,19 @@ export default function InProgressPage() {
           label="Progreso de tareas"
         />
       </div>
+
+      <LazyShiftMediaSection
+        anchorId="fotos"
+        shiftId={assignment.shiftId}
+        counts={{
+          photos: assignment.myPhotosCount,
+          videos: assignment.myVideosCount,
+        }}
+        requiresPhotos={assignment.requiresPhotos}
+        photosNotAllowed={assignment.photosNotAllowed}
+        startsAt={assignment.startsAt}
+        endsAt={assignment.endsAt}
+      />
 
       <div className="mt-2 flex flex-col gap-3">
         <AccessRow

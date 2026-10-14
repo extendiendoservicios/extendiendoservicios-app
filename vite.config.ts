@@ -88,6 +88,11 @@ const pwaPlugin = VitePWA({
     // o los tiles de OpenStreetMap pasa por el service worker -- los datos nunca se cachean
     // (P-089).
     globPatterns: ['**/*.{js,css,html,woff2,png,svg,ico}'],
+    // P21.2: Mediabunny (recompresión de videos de la galería, módulo H) pesa ~690 kB (173 kB
+    // comprimido) y solo lo usa quien elige un video de la galería, siempre con conexión (la
+    // subida la necesita). Se queda fuera del precache para que no viaje a todos los
+    // teléfonos al instalar o actualizar la app; se baja la primera vez que hace falta.
+    globIgnores: ['**/vendor-media-*.js'],
     // SPA: cualquier navegación que no matchee un archivo precacheado (todas las rutas de
     // React Router) sirve `index.html` desde el cache, para que la app abra sin conexión.
     navigateFallback: '/index.html',
@@ -169,6 +174,12 @@ export default defineConfig({
               name: 'vendor-supabase',
               test: /node_modules\/@supabase\//,
               priority: 20,
+            },
+            // P21.2: chunk propio y estable para poder dejarlo fuera del precache (ver `globIgnores`).
+            {
+              name: 'vendor-media',
+              test: /node_modules\/mediabunny\//,
+              priority: 25,
             },
           ],
         },

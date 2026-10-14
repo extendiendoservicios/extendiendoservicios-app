@@ -78,6 +78,8 @@ export interface ShiftListRow {
   notes: string | null
   /** AJ2-15: casilla «mostrar en la impresión»; null si el turno no tiene observación. */
   showInPrint?: boolean | null
+  /** Módulo H: el turno pide fotos (viene de `v_shifts_board.requires_photos`). */
+  requiresPhotos?: boolean
 }
 
 export interface ShiftBoardRow {
@@ -104,6 +106,7 @@ export interface ShiftBoardRow {
   generated: boolean
   notes: string | null
   show_in_print: boolean | null
+  requires_photos: boolean | null
 }
 
 /**
@@ -136,11 +139,12 @@ export function mapShiftBoardRow(row: ShiftBoardRow): ShiftListRow {
     generated: row.generated,
     notes: row.notes,
     showInPrint: row.show_in_print,
+    requiresPhotos: row.requires_photos ?? false,
   }
 }
 
 export const SHIFT_BOARD_SELECT =
-  'id, client_id, client_legal_name, client_trade_name, site_id, site_name, site_city, shift_date, start_time, end_time, required_staff, status, display_status, assigned_count, present_count, finished_count, absent_count, delayed_count, open_ended, no_checkout_count, generated, notes, show_in_print'
+  'id, client_id, client_legal_name, client_trade_name, site_id, site_name, site_city, shift_date, start_time, end_time, required_staff, status, display_status, assigned_count, present_count, finished_count, absent_count, delayed_count, open_ended, no_checkout_count, generated, notes, show_in_print, requires_photos'
 
 /**
  * ADM-05 mínima (SHIFT-010): turnos de una fecha, ordenados por hora
@@ -182,6 +186,8 @@ export interface ShiftEditRow {
   notes: string | null
   /** AJ2-15: null si no hay observación (al editar se trata como tildada). */
   showInPrint: boolean | null
+  /** Módulo H (H-07): el turno pide fotos. */
+  requiresPhotos: boolean
 }
 
 export async function fetchShiftForEdit(id: string): Promise<ShiftEditRow> {
@@ -209,6 +215,7 @@ export async function fetchShiftForEdit(id: string): Promise<ShiftEditRow> {
     status: row.status,
     notes: row.notes,
     showInPrint: row.show_in_print,
+    requiresPhotos: row.requires_photos ?? false,
   }
 }
 
@@ -231,6 +238,8 @@ export interface CreateShiftInput {
   notes?: string | null
   /** AJ2-15: «mostrar en la impresión»; por defecto tildada. */
   showInPrint?: boolean
+  /** Módulo H: «Pide fotos». `null` o ausente = hereda del servicio (sin servicio, no pide). */
+  requiresPhotos?: boolean | null
   /** AJ2-17: empleados que quedan asignados en la misma operación (opcional). */
   employeeIds?: string[]
 }
@@ -279,6 +288,7 @@ export async function createShift(
     p_service_id: input.serviceId,
     p_notes: input.notes ?? undefined,
     p_show_in_print: input.showInPrint ?? true,
+    p_requires_photos: input.requiresPhotos ?? undefined,
     p_employee_ids:
       input.employeeIds && input.employeeIds.length > 0
         ? input.employeeIds
@@ -424,6 +434,7 @@ export async function createShiftSeries(
     p_works_on_holidays: input.worksOnHolidays,
     p_notes: input.notes ?? undefined,
     p_show_in_print: input.showInPrint ?? true,
+    p_requires_photos: input.requiresPhotos ?? undefined,
     p_employee_ids:
       input.employeeIds && input.employeeIds.length > 0
         ? input.employeeIds

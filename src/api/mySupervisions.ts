@@ -87,6 +87,11 @@ export interface MySupervision {
   phoneRestricted: boolean
   photosNotAllowed: boolean
   restrictionsNotes: string | null
+  /** El servicio del turno pide fotos (módulo H, H-07). */
+  requiresPhotos: boolean
+  /** Fotos y videos propios ya confirmados en el turno supervisado (módulo H). */
+  myPhotosCount: number
+  myVideosCount: number
   startTime: string
   endTime: string
   startsAt: string | null
@@ -165,6 +170,9 @@ function mapMySupervisionRow(row: MySupervisionRawRow): MySupervision {
     phoneRestricted: Boolean(row.site_phone_restricted),
     photosNotAllowed: Boolean(row.site_photos_not_allowed),
     restrictionsNotes: row.site_restrictions_notes,
+    requiresPhotos: row.requires_photos ?? false,
+    myPhotosCount: row.my_photos_count ?? 0,
+    myVideosCount: row.my_videos_count ?? 0,
     startTime: row.start_time as string,
     endTime: row.end_time as string,
     startsAt: row.starts_at,

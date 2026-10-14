@@ -1852,6 +1852,70 @@ firmas de `create_shift`/`update_shift_time` (0023, 0028) y dos valores de horas
 - **`create_shift_series(p_client_id, p_site_id, p_start, p_end, p_required_staff, p_from, p_to, p_weekdays, p_weeks_of_month default null, p_works_on_holidays default false, p_notes, p_open_ended, p_show_in_print, p_employee_ids)`**: dueño y administrador (los mismos que `create_shift`). Una transacción: si el turno de una fecha falla por una validación falla todo y el mensaje termina con `(turno del DD/MM/AAAA)`; las asignaciones rechazadas no frenan y se informan por fecha. Devuelve `{series_id, created: [{shift_id, shift_date, warnings, assigned, rejected}], holidays_skipped}`.
 - Errores propios (`hint`): `SERIES_RANGE_INVALID` (hasta < desde o falta alguna), `SERIES_RANGE_TOO_LONG` (hasta > desde + 3 meses), `SERIES_EMPTY` (no queda ninguna fecha), `INVALID_WEEKDAYS`, `INVALID_WEEKS_OF_MONTH`.
 
+## Evidencia fotográfica: fotos y videos del turno (migración `0047`, P21.1, módulo H)
+
+Especificación: `Docs/Plan_Maestro/modulos/H_evidencia_fotografica.md` (decisiones H-01 a H-18). Fotos y videos **generales del turno**, subidos por el empleado asignado o por el supervisor de una supervisión de ese turno. Nada se borra físicamente (P-014): lo que se borra es el archivo de Storage; la fila queda como constancia.
+
+### Bucket `evidence` y rutas
+
+Privado, `file_size_limit` de 20 MB y tipos `image/jpeg`, `video/mp4` y `video/webm`. Rutas: `{shift_id}/{media_id}.{jpg|mp4|webm}` y `{shift_id}/{media_id}_thumb.jpg`. Solo se lee con URL firmadas (se firman con la sesión de quien pide, por eso rigen las políticas de lectura).
+
+Políticas sobre `storage.objects` (bucket `evidence`):
+
+- `evidence_select_admin`: dueño y administradores leen todo.
+- `evidence_select_author`: el autor lee los objetos de sus filas de `shift_media`.
+- `evidence_insert_pending_own`: solo se escribe en las dos rutas de una fila **pendiente** (`confirmed_at` null, no quitada) cuyo autor es la sesión. No hay política de update: no se puede pisar un archivo.
+- `evidence_delete_removed_own`: el autor puede borrar los objetos de una fila que ya quitó con `remove_shift_media` (para que el archivo desaparezca en el momento). El barrido nocturno lo borra igual si el celular no llega.
+
+### Tabla `shift_media` y vista `v_shift_media`
+
+Columnas: `id`, `shift_id`, `assignment_id` o `supervision_id` (una sola, check), `uploaded_by`, `kind` (`media_kind`: `photo` | `video`), `storage_path`, `thumb_path` (únicos), `size_bytes` (archivo + miniatura; `confirm_shift_media` lo reemplaza por el tamaño real guardado), `width`, `height`, `duration_s numeric(6,1)`, `captured_at`, `confirmed_at` (null = subida pendiente; no está en la especificación, hace falta para las pendientes), `keep` / `kept_by` / `kept_at`, `removed_at` / `removed_by`, `expired_at` y la traza. `expired_at` es el momento en que el archivo dejó de existir en Storage (por vencimiento, por haber sido quitado o por ser una subida pendiente abandonada).
+
+RLS: dueño y administradores ven todo (`shift_media_select_admin`); el autor ve lo suyo (`shift_media_select_author`, con `app.current_uid()`). **Sin políticas de insert, update ni delete** y `authenticated` solo tiene `select`: se escribe únicamente por las RPC.
+
+`v_shift_media` (`security_invoker`): filas confirmadas y no quitadas, con `shift_date`, `client_id`, `client_name`, `site_id`, `site_name`, `uploader_first_name`, `uploader_last_name`, `uploader_role` (`employee` | `supervisor`), `keep`, `expired_at`, `has_file` (false si el archivo ya venció), `retention_days` (plazo vigente de su tipo) y `expires_on` (fecha de Argentina de creación + plazo; null si está en «Conservar» o ya no tiene archivo).
+
+### `requires_photos` y plazos
+
+- `services.requires_photos` y `shifts.requires_photos` (boolean, por defecto false). `generate_shifts` copia el valor del servicio a cada turno que crea; `create_shift` hereda del servicio si `p_requires_photos` es null (un turno suelto, false); `create_shift_series` recibe `p_requires_photos` (por defecto false); `update_shift_details` recibe `p_requires_photos` (null = no cambia). Editar el servicio no toca los turnos ya generados. El servicio se edita con update directo (RLS `services_write_admin`), como el resto de sus columnas.
+- `company_settings.photo_retention_days` (60) y `video_retention_days` (30), `check between 7 and 365`. Los cambian dueño y administradores: con update directo (el trigger de `0030` solo reserva nombre, teléfono y consentimiento al dueño) o con la RPC `set_media_retention(p_photo_days, p_video_days)`, que devuelve el error con código. El vencimiento se calcula siempre con el plazo vigente, así un plazo nuevo se aplica también a lo anterior.
+
+### RPC
+
+Todas `security definer`, `search_path = public, app, pg_temp`, `revoke` a `public` y `anon`, `grant` a `authenticated`. Errores: `errcode P0001`, mensaje en español y código estable en `hint`.
+
+| RPC                                                                                                                                    | Quién                  | Devuelve                                                | Errores (`hint`)                                                                                                                                                                                                                                                                   |
+| -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `begin_shift_media(p_shift_id, p_kind, p_mime_type, p_size_bytes, p_thumb_size_bytes, p_width, p_height, p_duration_s, p_captured_at)` | employee, supervisor   | `{media, bucket, storage_path, thumb_path}`             | `FORBIDDEN`, `SHIFT_NOT_FOUND`, `NOT_SHIFT_PARTICIPANT`, `SHIFT_CANCELLED`, `PHOTOS_NOT_ALLOWED`, `MEDIA_WINDOW_NOT_OPEN`, `MEDIA_WINDOW_CLOSED`, `MEDIA_INVALID_TYPE`, `MEDIA_INVALID_SIZE`, `MEDIA_TOO_LARGE`, `MEDIA_INVALID_DURATION`, `MEDIA_TOO_LONG`, `MEDIA_LIMIT_REACHED` |
+| `confirm_shift_media(p_media_id)`                                                                                                      | el autor               | fila de `shift_media`                                   | `FORBIDDEN`, `MEDIA_NOT_FOUND`, `NOT_YOUR_MEDIA`, `MEDIA_REMOVED`, `MEDIA_UPLOAD_INCOMPLETE`                                                                                                                                                                                       |
+| `remove_shift_media(p_media_id)`                                                                                                       | el autor               | fila de `shift_media`                                   | `FORBIDDEN`, `MEDIA_NOT_FOUND`, `NOT_YOUR_MEDIA`, `MEDIA_WINDOW_CLOSED`                                                                                                                                                                                                            |
+| `set_shift_media_keep(p_media_id, p_keep)`                                                                                             | dueño, administradores | fila de `shift_media`                                   | `FORBIDDEN`, `KEEP_REQUIRED`, `MEDIA_NOT_FOUND`, `MEDIA_EXPIRED`                                                                                                                                                                                                                   |
+| `storage_usage()`                                                                                                                      | dueño, administradores | `{total_bytes, limit_bytes, percent, level, buckets[]}` | `FORBIDDEN`                                                                                                                                                                                                                                                                        |
+| `set_media_retention(p_photo_days, p_video_days)`                                                                                      | dueño, administradores | fila de `company_settings`                              | `FORBIDDEN`, `RETENTION_OUT_OF_RANGE`                                                                                                                                                                                                                                              |
+
+Reglas de `begin_shift_media`: participa quien tiene una asignación vigente en el turno o una supervisión `assigned`, `in_progress` o `completed` (H-02); sede con `photos_not_allowed` rechaza fotos y videos (H-13); ventana desde `shifts.starts_at` hasta `shifts.ends_at + 2 horas` (H-12; en un turno «A terminar» el fin es 23:59); tope de 10 fotos y 2 videos por persona y turno (H-11; cuentan las confirmadas y las pendientes de la última hora, no las quitadas); video de hasta 30 s (con 0,5 s de tolerancia) y 20 MB por archivo (H-06). Foto: `image/jpeg`; video: `video/mp4` o `video/webm`. Un empleado/supervisor que no participa del turno recibe `NOT_SHIFT_PARTICIPANT`; dueño y administradores no suben (`FORBIDDEN`).
+
+Flujo de subida: `begin_shift_media` → el celular sube el archivo y la miniatura a `storage_path` y `thumb_path` con su sesión → `confirm_shift_media` (verifica que los dos objetos existan). Una fila que nunca se confirma la descarta el barrido nocturno a las 24 h.
+
+`storage_usage()` suma `storage.objects.metadata->>'size'` de **todos** los buckets (H-14). `level`: `ok`, `warning` desde el 70 % y `critical` desde el 90 %. No bloquea nada (H-18).
+
+### Vistas del celular
+
+`v_my_day` y `v_my_supervisions` agregan al final `requires_photos`, `my_photos_count` y `my_videos_count` (medios propios confirmados y no quitados de esa asignación o supervisión). La sede sin fotos ya venía en `photos_not_allowed` (`v_my_day`) y `site_photos_not_allowed` (`v_my_supervisions`).
+
+### `delete_service`
+
+Un servicio con fotos o videos en alguno de sus turnos tampoco se elimina: `service_delete_blockers` suma el motivo `SHIFT_MEDIA` y `delete_service` responde `SERVICE_HAS_MEDIA` (la fila de `shift_media` apunta al turno y no se borra).
+
+### Barrido nocturno: Edge Function `evidence-cleanup`
+
+SQL no puede borrar objetos de Storage, por eso lo hace una Edge Function (`supabase/functions/evidence-cleanup/`), que **no está desplegada**: el despliegue y el workflow programado son de P21.5. Se autentica con el secreto `EVIDENCE_CLEANUP_SECRET` en el encabezado `x-evidence-cleanup-secret` (comparación en tiempo constante; sin secreto configurado no corre) y no con un JWT de usuario, así que hay que desplegarla con `verify_jwt = false`. Usa dos RPC internas, solo ejecutables por `service_role`:
+
+- `evidence_cleanup_candidates(p_limit default 200)`: filas cuyo archivo hay que borrar, con `reason`: `removed` (la quitó su autor), `pending_stale` (pendiente de más de 24 h) o `expired` (confirmada, sin `keep`, más vieja que el plazo vigente de su tipo).
+- `evidence_cleanup_mark(p_ids)`: marca `expired_at`; las pendientes abandonadas quedan también con `removed_at` (con `removed_by` null = el sistema).
+
+La función borra en lotes (archivo y miniatura) con la API de Storage y recién después marca las filas; si Storage falla no marca nada y la próxima corrida reintenta. Solo borra rutas con la forma `{uuid}/{uuid}[_thumb].{jpg|mp4|webm}`. Tests: `deno test --allow-env --allow-net` en `supabase/functions/evidence-cleanup/`; la regla de qué vence se prueba en pgTAP.
+
 ## Avisos y anuncios (migración `0042`, P19.6 paquete E, AJ2-03)
 
 Anuncios de administración para empleados y supervisores. No tiene relación con `notices` / `attendance_notices` (avisos de demora y ausencia del empleado): todo lo nuevo se llama `announcements`.
@@ -1941,6 +2005,7 @@ En F19 (P19.6 paquete F, AJ2-17): `0041_p19_6f_asignar_al_crear.sql` -- ver "Asi
 En F19 (P19.6 paquete E, AJ2-03): `0042_p19_6e_avisos_y_anuncios.sql` -- ver "Avisos y anuncios".
 En F19 (P19.7 paquete B, AJ3-05 y AJ3-01): `0044_p19_7_servicios.sql` -- ver "Servicios: repetición mensual y eliminación".
 En F19 (P19.7 paquete R, AJ3-08): `0046_p19_7_turno_repetido.sql` -- ver "Turno suelto repetido".
+En F21 (P21.1, módulo H): `0047_p21_1_evidencia.sql` -- ver "Evidencia fotográfica: fotos y videos del turno".
 
 ## Cómo escribir una migración
 
@@ -1995,6 +2060,12 @@ Con `--linked`, la CLI entra con el rol temporal `cli_login_postgres`, que es mi
 `postgres` pero **no hereda** sus permisos: por eso cada archivo empieza con
 `set local role postgres`. Sin esa línea, las aserciones fallan con
 `function plan(integer) does not exist`.
+
+## Migración 0048 (P21.6b): `v_shifts_board.requires_photos`
+
+`v_shifts_board` suma `requires_photos boolean` al final (copia de `shifts.requires_photos`, módulo H, H-07), para que
+el tablero y la planificación sepan si el turno exige fotos sin consultar `shifts`. Se recrea con la definición de 0040,
+`security_invoker = true` y sin cambios de grants. pgTAP: `0048_p21_6b_board_requires_photos.test.sql`.
 
 ## Tipos para el frontend
 

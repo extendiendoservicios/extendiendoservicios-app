@@ -8,6 +8,7 @@ particular:
   system, desde F5.
 - `map/` — `MapPicker` y `MapView` (Leaflet), desde F8.
 - `search/` — `GlobalSearch`, desde F9.
+- `media/` — `MediaCapture`, `MediaGrid`, `MediaViewer` y `VideoRecorderDialog` (módulo H, P21.2; ver `docs/design-system.md`, «Evidencia fotográfica»).
 - El resto (Button, Card, DataTable, etc.) va directo en esta carpeta.
 
 Carpeta vacía hasta F5 (design system).

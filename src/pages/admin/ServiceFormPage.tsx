@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { OpenEndedToggle } from '@/features/shifts/components/OpenEndedToggle'
+import { RequiresPhotosToggle } from '@/features/shifts/components/RequiresPhotosToggle'
 import { OPEN_ENDED_LABEL } from '@/features/shifts/openEnded'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import {
@@ -122,6 +123,7 @@ export default function ServiceFormPage() {
     // Decisión de Mike (P10.0, 25 sep 2026): "Trabaja los feriados" viene
     // marcado por defecto; se puede desmarcar por servicio.
     worksOnHolidays: true,
+    requiresPhotos: false,
     minHoursMonth: '',
     maxHoursMonth: '',
     status: 'active',
@@ -155,6 +157,7 @@ export default function ServiceFormPage() {
             validFrom: serviceQuery.data.validFrom,
             validTo: serviceQuery.data.validTo ?? '',
             worksOnHolidays: serviceQuery.data.worksOnHolidays,
+            requiresPhotos: serviceQuery.data.requiresPhotos,
             minHoursMonth: serviceQuery.data.minHoursMonth?.toString() ?? '',
             maxHoursMonth: serviceQuery.data.maxHoursMonth?.toString() ?? '',
             status: serviceQuery.data.status,
@@ -541,6 +544,19 @@ export default function ServiceFormPage() {
             )}
           />
         </label>
+
+        <Controller
+          control={control}
+          name="requiresPhotos"
+          render={({ field }) => (
+            <RequiresPhotosToggle
+              id="service-requires-photos"
+              checked={field.value}
+              onCheckedChange={field.onChange}
+              hint="Los turnos que se generen piden fotos. Si quien limpia termina sin sacar ninguna, la app se lo advierte y lo deja seguir. Cambiarlo no modifica los turnos ya generados."
+            />
+          )}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 rounded-lg border border-border bg-surface p-5 sm:grid-cols-2">
