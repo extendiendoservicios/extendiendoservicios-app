@@ -2041,7 +2041,7 @@ Las columnas nuevas van siempre al final (`create or replace view`).
   `geo_status`, `geo_reason`, `distance_m`, `geofence_radius_m`, `geo_overridden`.
 - `v_supervisions_admin`: para `check_in_` y `check_out_`: `record_id`, `geo_status`, `geo_reason`, `distance_m`,
   `geofence_radius_m`, `accuracy_m`, `outside_reason`, `geo_overridden`.
-- `v_presence_today` (nueva, `security_invoker`, `app.is_admin()` en la definición): una fila por empleado con
+- `v_presence_today` (nueva, `security_invoker`, `app.is_admin()` en la definición; las coordenadas salen de `app.attendance_position`, ver 0054): una fila por empleado con
   inicio hoy (`kind = 'employee'`, `in_progress` = sin fin), por supervisión en curso o con inicio hoy
   (`'supervisor'`) y por sede con turno hoy (`'site'`). Trae persona, cliente, sede, horario, `check_in_at`,
   `check_out_at`, `latitude`, `longitude`, `accuracy_m` (del fichaje de inicio), `geo_status`, `geo_reason`,
@@ -2054,14 +2054,69 @@ Un `update` único dentro de `0052` evaluó todos los fichajes existentes con el
 asistencia como de supervisión. Sin coordenadas: `unvalidated` / `no_location`; de origen `admin`:
 `unvalidated` / `admin_record`.
 
+### Privacidad de las coordenadas (migraciones `0054` y `0055`, P22.1b, B-40 y B-28)
+
+Problema: las políticas de `select` de `0012` dan la fila entera de `attendance_records` y
+`supervision_attendance` al supervisor (los fichajes de los empleados de los turnos que supervisa) y al
+empleado (los propios). Con eso el supervisor leía `latitude`, `longitude` y `accuracy_m`, y el empleado
+`geo_override_reason` y `geo_override_by`.
+
+Técnica: privilegios de columna, más una función de definidor para administración.
+
+- La RLS filtra filas, no columnas. Y `authenticated` es un solo rol de Postgres para los cuatro roles de la
+  app, así que un `revoke` de columna se lo quita a todos, administradores incluidos. Por eso la lectura de
+  administración no pasa por la tabla.
+- Descartado: partir las tablas (obligaba a reescribir las RPC de fichaje, el historial, el seed y las
+  pruebas) y una vista de definidor para `v_presence_today` (saltea la RLS de todo lo que lee y el linter de
+  Supabase la marca). Las vistas siguen siendo `security_invoker`.
+
+**Columnas sin `select` para `authenticated`** (en ambas tablas): `latitude`, `longitude`, `accuracy_m`,
+`geo_override_by`, `geo_override_reason`. No las lee nadie por la API directa a la tabla: ni dueño, ni
+administradores, ni supervisor, ni empleado. El resto de las columnas (incluidas `geo_override_at` y
+`time_corrected_at`, para el «Corregido» sin motivo, y `site_distance_m`, `outside_reason`) conserva el `select`
+y la RLS sigue igual. `select *` sobre estas dos tablas falla con `42501` para todos (también en PostgREST con
+`select=*`): hay que pedir columnas por nombre. En `src/` el único uso era `fetchAttendanceTimeline`, que ya
+pedía columnas explícitas.
+
+**Caminos de lectura para dueño y administradores:**
+
+- `app.attendance_position(p_record_type, p_record_id)`: función `security definer` interna (`app`, no se
+  expone en la API) que devuelve latitud, longitud y precisión solo si `app.is_admin()` (se lee del JWT); para
+  cualquier otro rol no devuelve filas. `execute` para `authenticated` y `service_role` (esta última sin
+  efecto: no tiene rol de app, ver `0055`).
+- Las vistas `v_presence_today` (`latitude`, `longitude`, `accuracy_m`), `v_assignments_board`
+  (`check_in_accuracy_m`, `check_out_accuracy_m`) y `v_supervisions_admin` (ídem) leen esas columnas con la
+  función. Mismas columnas y tipos que antes, siguen `security_invoker`; a los demás roles les devuelven `null`
+  (`v_presence_today` además no les devuelve filas, como antes).
+- `get_attendance_location(p_record_type text, p_record_id uuid) returns jsonb` (nueva): para el mini mapa de
+  solo lectura del detalle del turno de administración (P22.4). `p_record_type`: `attendance` o `supervision`.
+  Solo dueño y administradores (`app.require_admin`, no pide capacidad: es lectura). Devuelve un objeto con
+  `record_type`, `record_id`, `kind`, `recorded_at`, `latitude`, `longitude`, `accuracy_m` (nulos si el fichaje
+  no tiene posición), `geo_status`, `geo_reason`, `distance_m`, `geofence_radius_m` (el congelado al fichar),
+  `geo_overridden`, `site_id`, `site_name`, `site_latitude`, `site_longitude` y `site_radius_m` (el vigente).
+  Errores: `FORBIDDEN`, `INVALID_RECORD_TYPE`, `RECORD_NOT_FOUND`. No deja rastro en `security_events` (es una
+  lectura).
+- El motivo y el autor de una corrección de validación los lee administración en `attendance_corrections`
+  (la columna `geo_override_reason` de la tabla ya no se lee). El empleado y el supervisor reciben cero filas
+  de `attendance_corrections` (RLS, sin cambios) y ninguna columna del motivo.
+
+**Qué pierde el empleado y el supervisor:** leer su propia posición de la tabla. No hace falta: el celular usa
+el GPS en vivo al fichar (B-38, B-40) y las RPC de fichaje devuelven la fila propia (corren como definidor).
+
+**Reglas para migraciones futuras:**
+
+- Un `grant select on all tables in schema public to authenticated` (como el de `0017`) reabre las columnas. El
+  pgTAP `0054` lo detecta (compara las columnas sin `select` con la lista exacta de las cinco).
+- Una columna nueva en estas dos tablas nace sin `select` para `authenticated` (falla cerrada): hay que
+  otorgarlo con `grant select (columna) on ...` para que las vistas y la app la lean.
+- `0055` corrige un olvido de `0054`: `service_role` (Edge Function y scripts) consulta las vistas y no tenía
+  `execute` sobre la función (lo detectó el pgTAP `0050`).
+
 ### Pendientes conocidos
 
-- `attendance_records` y `supervision_attendance` siguen con `select` para `authenticated` sobre toda la fila
-  (política de 0012): el empleado lee sus coordenadas y `geo_override_reason`, y el supervisor las de los
-  empleados de sus sedes. B-40 pide que la posición sea solo del dueño y los administradores; cerrarlo exige
-  cambiar los grants (columnas) o mover la lectura a vistas. Queda como decisión para el orquestador.
-- `src/features/settings/securityEventLabels.ts` necesita las etiquetas de los tres eventos nuevos (el
-  `Record<SecurityEventType, string>` deja de compilar).
+- `site_distance_m` (distancia a la sede) queda visible para el supervisor y el empleado: es parte de la
+  validación que B-20 muestra y, con el radio de la sede, no permite ubicar a la persona con precisión. Si el
+  dueño lo considera posición, se protege igual que las demás columnas.
 
 ## Enumeraciones (04 sección 3)
 
@@ -2140,7 +2195,7 @@ En F19 (P19.6 paquete E, AJ2-03): `0042_p19_6e_avisos_y_anuncios.sql` -- ver "Av
 En F19 (P19.7 paquete B, AJ3-05 y AJ3-01): `0044_p19_7_servicios.sql` -- ver "Servicios: repetición mensual y eliminación".
 En F19 (P19.7 paquete R, AJ3-08): `0046_p19_7_turno_repetido.sql` -- ver "Turno suelto repetido".
 En F21 (P21.1, módulo H): `0047_p21_1_evidencia.sql` -- ver "Evidencia fotográfica: fotos y videos del turno".
-En F22 (P22.1, módulo B1): `0052_p22_1_geolocalizacion.sql` y `0053_p22_1_correcciones_eventos.sql` -- ver "Módulo B1: geolocalización y corrección de fichajes".
+En F22 (P22.1, módulo B1): `0052_p22_1_geolocalizacion.sql`, `0053_p22_1_correcciones_eventos.sql`, `0054_p22_1b_privacidad_coordenadas.sql` y `0055_p22_1b_execute_service_role.sql` -- ver "Módulo B1: geolocalización y corrección de fichajes" y "Privacidad de las coordenadas".
 
 ## Cómo escribir una migración
 
