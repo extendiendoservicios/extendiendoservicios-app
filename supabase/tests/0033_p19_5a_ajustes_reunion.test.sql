@@ -169,21 +169,21 @@ select is(
   (select array_agg(attname::text order by attnum) from pg_attribute
    where attrelid = 'public.v_assignments_board'::regclass and attnum > 0 and not attisdropped
    and attnum > (select attnum from pg_attribute where attrelid = 'public.v_assignments_board'::regclass and attname = 'last_notice_at')),
-  array['last_notice_estimated_arrival_at', 'planned_minutes', 'worked_minutes', 'effective_open_ended', 'shift_observation'],
-  'v_assignments_board: last_notice_estimated_arrival_at, planned_minutes y worked_minutes van al final (0037 agrega effective_open_ended después)'
+  array['last_notice_estimated_arrival_at', 'planned_minutes', 'worked_minutes', 'effective_open_ended', 'shift_observation', 'check_in_record_id', 'check_in_geo_status', 'check_in_geo_reason', 'check_in_distance_m', 'check_in_geofence_radius_m', 'check_in_accuracy_m', 'check_in_outside_reason', 'check_in_geo_overridden', 'check_in_time_corrected', 'check_out_record_id', 'check_out_geo_status', 'check_out_geo_reason', 'check_out_distance_m', 'check_out_geofence_radius_m', 'check_out_accuracy_m', 'check_out_outside_reason', 'check_out_geo_overridden', 'check_out_time_corrected', 'has_outside_geo'],
+  'v_assignments_board: last_notice_estimated_arrival_at, planned_minutes y worked_minutes van al final (0037 agrega effective_open_ended después, 0052 la validación por ubicación)'
 );
 select is(
   (select array_agg(attname::text order by attnum) from pg_attribute
    where attrelid = 'public.v_my_day'::regclass and attnum > 0 and not attisdropped
    and attnum >= (select attnum from pg_attribute where attrelid = 'public.v_my_day'::regclass and attname = 'last_notice_estimated_arrival_at')),
-  array['last_notice_estimated_arrival_at', 'on_the_way_expires_at', 'effective_open_ended', 'no_checkout', 'requires_photos', 'my_photos_count', 'my_videos_count'],
-  'v_my_day: last_notice_estimated_arrival_at conserva su lugar (0034 agrega on_the_way_expires_at y 0037 effective_open_ended y no_checkout, 0047 requires_photos y los contadores de medios después)'
+  array['last_notice_estimated_arrival_at', 'on_the_way_expires_at', 'effective_open_ended', 'no_checkout', 'requires_photos', 'my_photos_count', 'my_videos_count', 'site_geofence_radius_m', 'geofence_max_accuracy_m', 'check_in_geo_status', 'check_in_geo_reason', 'check_in_distance_m', 'check_in_geofence_radius_m', 'check_in_geo_overridden', 'check_in_time_corrected', 'check_out_geo_status', 'check_out_geo_reason', 'check_out_distance_m', 'check_out_geofence_radius_m', 'check_out_geo_overridden', 'check_out_time_corrected'],
+  'v_my_day: last_notice_estimated_arrival_at conserva su lugar (0034 agrega on_the_way_expires_at y 0037 effective_open_ended y no_checkout, 0047 requires_photos y los contadores de medios, 0052 la validación después)'
 );
 select is(
-  (select array_agg(attname::text order by attnum) from (
-     select attname, attnum from pg_attribute
-     where attrelid = 'public.v_supervisions_admin'::regclass and attnum > 0 and not attisdropped
-     order by attnum desc limit 3) x),
+  (select array_agg(attname::text order by attnum) from pg_attribute
+   where attrelid = 'public.v_supervisions_admin'::regclass and attnum > 0 and not attisdropped
+   and attnum >= (select attnum from pg_attribute where attrelid = 'public.v_supervisions_admin'::regclass and attname = 'planned_minutes')
+   and attnum <= (select attnum from pg_attribute where attrelid = 'public.v_supervisions_admin'::regclass and attname = 'shift_open_ended')),
   array['planned_minutes', 'worked_minutes', 'shift_open_ended'],
   'v_supervisions_admin: planned_minutes y worked_minutes conservan su lugar (0037 agrega shift_open_ended después)'
 );
