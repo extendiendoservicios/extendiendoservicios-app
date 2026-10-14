@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
+import type { GeoStatus, GeoUnvalidatedReason } from '@/lib/geo'
 import { fromPostgrestError } from './errors'
+import { mapAttendanceGeo, type AttendanceGeo } from './attendance'
 
 /**
  * `src/api/supervisions.ts` (SUP-008, mismo patrón que `src/api/assignments.ts`
@@ -76,6 +78,9 @@ export interface SupervisionListRow {
   plannedMinutes: number | null
   /** Minutos trabajados, de inicio a fin real; `null` sin fin registrado (AJ-06). */
   workedMinutes: number | null
+  /** B1 (B-07): validación por ubicación del fichaje de inicio y de fin; `null` si no hay fichaje. `recordId` es el de `supervision_attendance`. */
+  checkInGeo?: AttendanceGeo | null
+  checkOutGeo?: AttendanceGeo | null
 }
 
 interface SupervisionListRawRow {
@@ -105,10 +110,26 @@ interface SupervisionListRawRow {
   assigned_employees_count: number
   planned_minutes: number | null
   worked_minutes: number | null
+  check_in_record_id: string | null
+  check_in_geo_status: GeoStatus | null
+  check_in_geo_reason: GeoUnvalidatedReason | null
+  check_in_distance_m: number | null
+  check_in_geofence_radius_m: number | null
+  check_in_accuracy_m: number | string | null
+  check_in_outside_reason: string | null
+  check_in_geo_overridden: boolean | null
+  check_out_record_id: string | null
+  check_out_geo_status: GeoStatus | null
+  check_out_geo_reason: GeoUnvalidatedReason | null
+  check_out_distance_m: number | null
+  check_out_geofence_radius_m: number | null
+  check_out_accuracy_m: number | string | null
+  check_out_outside_reason: string | null
+  check_out_geo_overridden: boolean | null
 }
 
 const SUPERVISION_LIST_SELECT =
-  'id, shift_id, shift_date, client_id, client_legal_name, site_id, site_name, start_time, end_time, supervisor_id, supervisor_first_name, supervisor_last_name, status, assigned_at, check_in_at, check_out_at, general_notes, cancel_reason, not_done_reason, criteria_snapshot, ratings_count, ratings_avg, assigned_employees_count, planned_minutes, worked_minutes, shift_open_ended'
+  'id, shift_id, shift_date, client_id, client_legal_name, site_id, site_name, start_time, end_time, supervisor_id, supervisor_first_name, supervisor_last_name, status, assigned_at, check_in_at, check_out_at, general_notes, cancel_reason, not_done_reason, criteria_snapshot, ratings_count, ratings_avg, assigned_employees_count, planned_minutes, worked_minutes, shift_open_ended, check_in_record_id, check_in_geo_status, check_in_geo_reason, check_in_distance_m, check_in_geofence_radius_m, check_in_accuracy_m, check_in_outside_reason, check_in_geo_overridden, check_out_record_id, check_out_geo_status, check_out_geo_reason, check_out_distance_m, check_out_geofence_radius_m, check_out_accuracy_m, check_out_outside_reason, check_out_geo_overridden'
 
 function mapSupervisionListRow(row: SupervisionListRawRow): SupervisionListRow {
   return {
@@ -138,6 +159,32 @@ function mapSupervisionListRow(row: SupervisionListRawRow): SupervisionListRow {
     assignedEmployeesCount: row.assigned_employees_count,
     plannedMinutes: row.planned_minutes,
     workedMinutes: row.worked_minutes,
+    checkInGeo: mapAttendanceGeo(
+      row.check_in_record_id,
+      row.check_in_geo_status,
+      {
+        reason: row.check_in_geo_reason,
+        distanceM: row.check_in_distance_m,
+        radiusM: row.check_in_geofence_radius_m,
+        accuracyM: row.check_in_accuracy_m,
+        outsideReason: row.check_in_outside_reason,
+        overridden: row.check_in_geo_overridden,
+        timeCorrected: false,
+      },
+    ),
+    checkOutGeo: mapAttendanceGeo(
+      row.check_out_record_id,
+      row.check_out_geo_status,
+      {
+        reason: row.check_out_geo_reason,
+        distanceM: row.check_out_distance_m,
+        radiusM: row.check_out_geofence_radius_m,
+        accuracyM: row.check_out_accuracy_m,
+        outsideReason: row.check_out_outside_reason,
+        overridden: row.check_out_geo_overridden,
+        timeCorrected: false,
+      },
+    ),
   }
 }
 
