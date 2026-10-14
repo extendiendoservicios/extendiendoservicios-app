@@ -46,6 +46,7 @@ import { ReloadTasksDialog } from './ReloadTasksDialog'
 import { RequiresPhotosMark } from '@/features/shifts/components/RequiresPhotosMark'
 import { RemoveAssignmentDialog } from './RemoveAssignmentDialog'
 import { ShiftDetailsDialog } from './ShiftDetailsDialog'
+import { ShiftRequiresPhotosControl } from './ShiftRequiresPhotosControl'
 import { ShiftObservationSection } from './ShiftObservationSection'
 
 /**
@@ -159,7 +160,9 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
             {shift.clientName} · {shift.siteName}
           </h2>
           <StatusBadge domain="shift" status={shift.status} />
-          {shift.requiresPhotos && <RequiresPhotosMark />}
+          {shift.requiresPhotos && !(canManage && isEditable) && (
+            <RequiresPhotosMark />
+          )}
         </div>
         <p className="text-[12.5px] text-text-3">
           <span className="capitalize">{formatDateOnly(shift.shiftDate)}</span>{' '}
@@ -169,6 +172,16 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
         <p className="text-[11.5px] text-text-3">
           Origen: {shift.fromService ? 'Servicio recurrente' : 'Turno puntual'}
         </p>
+        {isEditable && canManage && (
+          // AJ4-03: pedir o no fotos sin entrar a la edición.
+          <ShiftRequiresPhotosControl
+            shiftId={shift.id}
+            requiredStaff={shift.requiredStaff}
+            notes={shift.notes}
+            showInPrint={shift.showInPrint}
+            requiresPhotos={shift.requiresPhotos}
+          />
+        )}
         {isEditable && canManage && (
           <div className="flex flex-wrap gap-2 pt-1">
             <Button asChild variant="ghost" size="sm" icon={Pencil}>

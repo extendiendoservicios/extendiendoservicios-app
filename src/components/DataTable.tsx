@@ -73,6 +73,11 @@ interface DataTableColumnMeta {
   card?: 'title' | 'subtitle' | 'trailing' | 'meta' | 'actions' | 'hidden'
   /** Etiqueta que se muestra antes del valor cuando `card` es `'meta'`. */
   cardLabel?: string
+  /**
+   * Ancho de la columna (valor CSS: `'14%'`, `'9rem'`) en la tabla de
+   * escritorio. Solo se usa con `fixedLayout`; sin él se ignora.
+   */
+  width?: string
 }
 
 type DataTableColumnDef<TData> = ColumnDef<TData> & {
@@ -113,6 +118,13 @@ interface DataTableProps<TData> {
   pageCount?: number
   /** Total de filas, si se conoce ("Mostrando 1–10 de 42"). */
   rowCount?: number
+  /**
+   * Tabla de escritorio con `table-layout: fixed` y un `<colgroup>` con los
+   * `meta.width` de cada columna: varias tablas con las mismas columnas
+   * quedan alineadas entre sí. Sin el prop, los anchos se calculan por
+   * contenido (comportamiento de siempre).
+   */
+  fixedLayout?: boolean
   className?: string
 }
 
@@ -148,6 +160,7 @@ function DataTable<TData>({
   onPaginationChange,
   pageCount,
   rowCount,
+  fixedLayout = false,
   className,
 }: DataTableProps<TData>) {
   const isDesktop = useMediaQuery(DESKTOP_QUERY)
@@ -216,8 +229,18 @@ function DataTable<TData>({
 
   return (
     <div className={className}>
-      <Table>
+      <Table className={fixedLayout ? 'table-fixed' : undefined}>
         <TableCaption>{caption}</TableCaption>
+        {fixedLayout && (
+          <colgroup>
+            {table.getVisibleLeafColumns().map((column) => (
+              <col
+                key={column.id}
+                style={{ width: getColumnMeta(column.columnDef)?.width }}
+              />
+            ))}
+          </colgroup>
+        )}
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
