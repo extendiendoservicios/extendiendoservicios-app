@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
 import { fromPostgrestError } from './errors'
 import type { AbsenceReason } from '@/lib/absenceReasons'
+import { mapAttendanceGeo, type AttendanceGeo } from './attendanceGeo'
 
 /**
  * `src/api/myDay.ts` (ATT-005, `06_API.md` sección 10): la pantalla Hoy del
@@ -76,6 +77,16 @@ export interface MyDayAssignment {
   changedSinceLastSeen: boolean
   checkInAt: string | null
   checkOutAt: string | null
+  /** Radio vigente de la sede (propio o general, B-02) para el mini mapa de fichar (B-18). */
+  siteGeofenceRadiusM: number | null
+  /** Tope de precisión de la validación (B-23). */
+  geofenceMaxAccuracyM: number | null
+  /** Validación guardada de cada fichaje (B-19); `null` si todavía no hay fichaje. Sin coordenadas ni precisión (B-40). */
+  checkInGeo: AttendanceGeo | null
+  checkOutGeo: AttendanceGeo | null
+  /** La administración corrigió la hora del fichaje (B-28). El motivo no llega al celular. */
+  checkInTimeCorrected: boolean
+  checkOutTimeCorrected: boolean
   /** Ciudad y coordenadas de la sede (0027, pendiente de P13.2): para "Abrir en el mapa" con coordenadas exactas en vez de solo la dirección de texto. */
   siteCity: string | null
   siteLatitude: number | null
@@ -139,6 +150,20 @@ interface MyDayRawRow {
   changed_since_last_seen: boolean
   check_in_at: string | null
   check_out_at: string | null
+  site_geofence_radius_m: number | null
+  geofence_max_accuracy_m: number | null
+  check_in_geo_status: AttendanceGeo['status'] | null
+  check_in_geo_reason: AttendanceGeo['reason']
+  check_in_distance_m: number | null
+  check_in_geofence_radius_m: number | null
+  check_in_geo_overridden: boolean | null
+  check_in_time_corrected: boolean | null
+  check_out_geo_status: AttendanceGeo['status'] | null
+  check_out_geo_reason: AttendanceGeo['reason']
+  check_out_distance_m: number | null
+  check_out_geofence_radius_m: number | null
+  check_out_geo_overridden: boolean | null
+  check_out_time_corrected: boolean | null
   site_city: string | null
   site_latitude: number | null
   site_longitude: number | null
@@ -192,6 +217,24 @@ function mapMyDayRow(row: MyDayRawRow): MyDayAssignment {
     changedSinceLastSeen: row.changed_since_last_seen,
     checkInAt: row.check_in_at,
     checkOutAt: row.check_out_at,
+    siteGeofenceRadiusM: row.site_geofence_radius_m ?? null,
+    geofenceMaxAccuracyM: row.geofence_max_accuracy_m ?? null,
+    checkInGeo: mapAttendanceGeo({
+      status: row.check_in_geo_status,
+      reason: row.check_in_geo_reason,
+      distanceM: row.check_in_distance_m,
+      radiusM: row.check_in_geofence_radius_m,
+      overridden: row.check_in_geo_overridden,
+    }),
+    checkOutGeo: mapAttendanceGeo({
+      status: row.check_out_geo_status,
+      reason: row.check_out_geo_reason,
+      distanceM: row.check_out_distance_m,
+      radiusM: row.check_out_geofence_radius_m,
+      overridden: row.check_out_geo_overridden,
+    }),
+    checkInTimeCorrected: row.check_in_time_corrected ?? false,
+    checkOutTimeCorrected: row.check_out_time_corrected ?? false,
     siteCity: row.site_city,
     siteLatitude: row.site_latitude,
     siteLongitude: row.site_longitude,

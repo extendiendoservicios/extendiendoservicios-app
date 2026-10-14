@@ -155,10 +155,12 @@ export function useRecordCheckInMutation() {
     mutationFn: ({
       assignmentId,
       coords,
+      outsideReason,
     }: {
       assignmentId: string
       coords: GeolocationCoords | null
-    }) => attendanceApi.recordCheckIn(assignmentId, coords),
+      outsideReason?: string | null
+    }) => attendanceApi.recordCheckIn(assignmentId, coords, outsideReason),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: employeeKeys.myDay() })
     },
@@ -172,10 +174,12 @@ export function useRecordCheckOutMutation() {
     mutationFn: ({
       assignmentId,
       coords,
+      outsideReason,
     }: {
       assignmentId: string
       coords: GeolocationCoords | null
-    }) => attendanceApi.recordCheckOut(assignmentId, coords),
+      outsideReason?: string | null
+    }) => attendanceApi.recordCheckOut(assignmentId, coords, outsideReason),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: employeeKeys.myDay() })
     },

@@ -247,6 +247,45 @@ describe('supervisionCheckIn', () => {
       supervisionId: 'sv1',
       kind: 'check_in',
       recordedAt: '2026-09-27T11:00:00Z',
+      geo: null,
+    })
+  })
+
+  it('manda el motivo y devuelve la validación contra la sede supervisada (B-07)', async () => {
+    rpcMock.mockResolvedValue({
+      data: {
+        id: 'sa1',
+        supervision_id: 'sv1',
+        kind: 'check_in',
+        recorded_at: '2026-09-27T11:00:00Z',
+        geo_status: 'valid',
+        geo_unvalidated_reason: null,
+        site_distance_m: 40,
+        geofence_radius_m: 200,
+        geo_override_at: null,
+      },
+      error: null,
+    })
+
+    const result = await supervisionCheckIn(
+      'sv1',
+      { lat: -34.47, lng: -58.5, accuracyM: 12 },
+      ' Estoy en la puerta ',
+    )
+
+    expect(rpcMock).toHaveBeenCalledWith('supervision_check_in', {
+      p_supervision_id: 'sv1',
+      p_lat: -34.47,
+      p_lng: -58.5,
+      p_accuracy: 12,
+      p_outside_reason: 'Estoy en la puerta',
+    })
+    expect(result.geo).toEqual({
+      status: 'valid',
+      reason: null,
+      distanceM: 40,
+      radiusM: 200,
+      overridden: false,
     })
   })
 
