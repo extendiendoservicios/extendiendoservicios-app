@@ -2162,3 +2162,15 @@ jsdom no tiene cámara, canvas, WebCodecs ni `MediaRecorder`: todo eso se simula
 - **Miniatura del video grabado**: se saca del propio stream (a ~1 s) y no del archivo grabado, porque un WebM de `MediaRecorder` no trae duración y no se puede buscar bien. Si falla se usa una miniatura gris para no frenar la subida.
 - **Dispositivos sin grabación** (`MediaRecorder` o `getUserMedia` ausentes): no se muestra «Grabar video»; queda la galería.
 - **Después de subir**: la fila se muestra 3 s como «Foto subida» y se quita de la cola. Quien usa el componente actualiza `counts` dentro de `onUploaded`.
+
+## Geolocalización: validación, mini mapa y mapas ampliados (módulo B1, P22.2)
+
+Especificación: `Docs/Plan_Maestro/modulos/B_asistencia_avanzada.md` (B-03, B-06, B-12, B-15, B-18, B-23, B-37 a B-40). La base calcula y guarda la validación; estos componentes la reproducen solo para pintar en vivo.
+
+- **`src/lib/geo/`**: `geoEvaluate({ position, site, radiusM, maxAccuracyM? })` devuelve `{ status, reason?, distanceM }` con la misma regla que `geo_evaluate` (haversine con radio terrestre 6371008.8 m; `d > r + a` fuera; `a <= 150` válido; si no, `low_accuracy`). Las constantes por defecto (radio 150 m, tope 150 m, espera 30 s) están en `constants.ts`. `formatGeoStatusText` arma el texto plano de los imprimibles.
+- **`useLivePosition({ enabled, targetAccuracyM, waitMs })`**: `watchPosition` de alta precisión. Estados `idle | waiting | improving | ready | denied | unavailable`; devuelve la mejor lectura, la última, el tiempo transcurrido y la espera de «Esperar mejor señal» (`wait`, `waitRemainingMs`, `startWait`). Nunca lanza y hace `clearWatch` al desmontar. No reemplaza a `getCurrentPositionSafe` hasta que lo adopten las pantallas (P22.3).
+- **`GeoStatusBadge`** (`components/status`): «Validado», «Fuera de zona», «Sin validar (motivo)», «Validado (corregido)»; `showDistance` agrega la distancia.
+- **`GeofenceMiniMap`** (`components/map`, carga diferida): sede con círculo verde, rojo o gris, punto propio con círculo de precisión, encuadre automático (se frena si la persona mueve el mapa) y botón a satelital. `readOnly` para el detalle del turno.
+- **`MapView`**: por marcador, `radiusM`/`circleVariant` (círculo), `variant` (`success`, `danger`, `neutral` para verde, rojo y gris), `shape: 'supervisor'` (rombo) y `data` para `renderPopup(marker)` (popup con contenido React).
+- Los círculos se pintan con clases de Tailwind sobre el `<path>` (`stroke-success`, `fill-danger`, etc.), sin colores sueltos.
+- Todo se ve en `/dev/design`, sección «Geolocalización».
