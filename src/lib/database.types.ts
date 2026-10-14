@@ -497,6 +497,13 @@ export type Database = {
             referencedColumns: ["assignment_id"]
           },
           {
+            foreignKeyName: "attendance_notices_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "v_my_history"
+            referencedColumns: ["assignment_id"]
+          },
+          {
             foreignKeyName: "attendance_notices_reported_by_fkey"
             columns: ["reported_by"]
             isOneToOne: false
@@ -572,6 +579,13 @@ export type Database = {
             columns: ["assignment_id"]
             isOneToOne: false
             referencedRelation: "v_my_day"
+            referencedColumns: ["assignment_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "v_my_history"
             referencedColumns: ["assignment_id"]
           },
           {
@@ -1760,6 +1774,13 @@ export type Database = {
             referencedColumns: ["assignment_id"]
           },
           {
+            foreignKeyName: "ratings_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "v_my_history"
+            referencedColumns: ["assignment_id"]
+          },
+          {
             foreignKeyName: "ratings_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
@@ -2160,6 +2181,13 @@ export type Database = {
             columns: ["assignment_id"]
             isOneToOne: false
             referencedRelation: "v_my_day"
+            referencedColumns: ["assignment_id"]
+          },
+          {
+            foreignKeyName: "shift_media_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "v_my_history"
             referencedColumns: ["assignment_id"]
           },
           {
@@ -3156,13 +3184,6 @@ export type Database = {
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_in_recorded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_out_recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -3171,13 +3192,20 @@ export type Database = {
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_in_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_out_recorded_by"]
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_out_recorded_by"]
+            columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
@@ -3376,6 +3404,147 @@ export type Database = {
         Relationships: []
       }
       v_my_day: {
+        Row: {
+          access_instructions: string | null
+          assignment_id: string | null
+          building_hours: string | null
+          changed_since_last_seen: boolean | null
+          check_in_at: string | null
+          check_in_recorded_by: string | null
+          check_in_source:
+            | Database["public"]["Enums"]["attendance_source"]
+            | null
+          check_out_at: string | null
+          check_out_recorded_by: string | null
+          check_out_source:
+            | Database["public"]["Enums"]["attendance_source"]
+            | null
+          client_id: string | null
+          client_legal_name: string | null
+          client_trade_name: string | null
+          effective_end_time: string | null
+          effective_ends_at: string | null
+          effective_open_ended: boolean | null
+          effective_start_time: string | null
+          effective_starts_at: string | null
+          is_today: boolean | null
+          last_notice_at: string | null
+          last_notice_estimated_arrival_at: string | null
+          last_notice_kind: Database["public"]["Enums"]["notice_kind"] | null
+          last_notice_minutes_late: number | null
+          last_notice_reason_code:
+            | Database["public"]["Enums"]["absence_reason"]
+            | null
+          last_notice_reason_text: string | null
+          last_notice_reported_by: string | null
+          last_notice_source:
+            | Database["public"]["Enums"]["attendance_source"]
+            | null
+          my_photos_count: number | null
+          my_videos_count: number | null
+          no_checkout: boolean | null
+          notes: string | null
+          on_the_way_expires_at: string | null
+          phone_restricted: boolean | null
+          photos_not_allowed: boolean | null
+          requires_photos: boolean | null
+          restrictions_notes: string | null
+          shift_date: string | null
+          shift_id: string | null
+          shift_status: Database["public"]["Enums"]["shift_status"] | null
+          site_address: string | null
+          site_city: string | null
+          site_contact_name: string | null
+          site_contact_phone: string | null
+          site_id: string | null
+          site_latitude: number | null
+          site_longitude: number | null
+          site_name: string | null
+          status: Database["public"]["Enums"]["assignment_status"] | null
+          tasks_done: number | null
+          tasks_total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "v_shifts_board"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_notices_reported_by_fkey"
+            columns: ["last_notice_reported_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_notices_reported_by_fkey"
+            columns: ["last_notice_reported_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_in_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_out_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_in_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_out_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "shifts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id", "client_id"]
+          },
+        ]
+      }
+      v_my_history: {
         Row: {
           access_instructions: string | null
           assignment_id: string | null
@@ -3681,6 +3850,13 @@ export type Database = {
             columns: ["assignment_id"]
             isOneToOne: false
             referencedRelation: "v_my_day"
+            referencedColumns: ["assignment_id"]
+          },
+          {
+            foreignKeyName: "shift_media_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "v_my_history"
             referencedColumns: ["assignment_id"]
           },
           {
