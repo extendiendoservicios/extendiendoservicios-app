@@ -1,7 +1,13 @@
 import { formatGeoStatusText } from '@/lib/geo'
 import type { BoardAttendanceGeo } from '@/api/attendance'
 
-function textOf(geo: BoardAttendanceGeo): string {
+/** Lo mínimo de una validación para el texto: también sirve la del resumen por cliente (`ClientSummaryGeo`). */
+export type PrintableGeo = Pick<
+  BoardAttendanceGeo,
+  'status' | 'reason' | 'distanceM' | 'overridden'
+>
+
+function textOf(geo: PrintableGeo): string {
   return formatGeoStatusText({
     status: geo.status,
     reason: geo.reason,
@@ -17,8 +23,8 @@ function textOf(geo: BoardAttendanceGeo): string {
  * guion largo.
  */
 export function geoPrintText(
-  checkIn: BoardAttendanceGeo | null | undefined,
-  checkOut: BoardAttendanceGeo | null | undefined,
+  checkIn: PrintableGeo | null | undefined,
+  checkOut: PrintableGeo | null | undefined,
 ): string {
   if (!checkIn && !checkOut) {
     return '—'
@@ -29,7 +35,7 @@ export function geoPrintText(
   if (!checkIn && checkOut) {
     return `Fin: ${textOf(checkOut)}`
   }
-  const start = textOf(checkIn as BoardAttendanceGeo)
-  const end = textOf(checkOut as BoardAttendanceGeo)
+  const start = textOf(checkIn as PrintableGeo)
+  const end = textOf(checkOut as PrintableGeo)
   return start === end ? start : `Inicio: ${start} · Fin: ${end}`
 }
