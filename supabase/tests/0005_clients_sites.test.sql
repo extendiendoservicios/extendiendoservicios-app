@@ -49,9 +49,9 @@ select columns_are(
     'id', 'client_id', 'name', 'address', 'city', 'latitude', 'longitude', 'contact_name',
     'contact_phone', 'access_instructions', 'building_hours', 'phone_restricted',
     'photos_not_allowed', 'restrictions_notes', 'status',
-    'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at'
+    'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at', 'geofence_radius_m'
   ],
-  'sites tiene exactamente las columnas de 04 sección 2.2'
+  'sites tiene exactamente las columnas de 04 sección 2.2 (más el radio propio, 0052)'
 );
 
 select has_pk('public', 'clients', 'clients tiene primary key');

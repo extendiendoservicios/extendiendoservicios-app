@@ -437,6 +437,75 @@ export type Database = {
           },
         ]
       }
+      attendance_corrections: {
+        Row: {
+          attendance_record_id: string
+          corrected_by: string
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["attendance_correction_kind"]
+          new_recorded_at: string | null
+          old_recorded_at: string | null
+          reason: string
+        }
+        Insert: {
+          attendance_record_id: string
+          corrected_by: string
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["attendance_correction_kind"]
+          new_recorded_at?: string | null
+          old_recorded_at?: string | null
+          reason: string
+        }
+        Update: {
+          attendance_record_id?: string
+          corrected_by?: string
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["attendance_correction_kind"]
+          new_recorded_at?: string | null
+          old_recorded_at?: string | null
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_corrections_attendance_record_id_fkey"
+            columns: ["attendance_record_id"]
+            isOneToOne: false
+            referencedRelation: "attendance_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_corrections_attendance_record_id_fkey"
+            columns: ["attendance_record_id"]
+            isOneToOne: false
+            referencedRelation: "v_assignments_board"
+            referencedColumns: ["check_in_record_id"]
+          },
+          {
+            foreignKeyName: "attendance_corrections_attendance_record_id_fkey"
+            columns: ["attendance_record_id"]
+            isOneToOne: false
+            referencedRelation: "v_assignments_board"
+            referencedColumns: ["check_out_record_id"]
+          },
+          {
+            foreignKeyName: "attendance_corrections_corrected_by_fkey"
+            columns: ["corrected_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_corrections_corrected_by_fkey"
+            columns: ["corrected_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
       attendance_notices: {
         Row: {
           assignment_id: string
@@ -524,40 +593,73 @@ export type Database = {
           accuracy_m: number | null
           assignment_id: string
           created_at: string
+          geo_override_at: string | null
+          geo_override_by: string | null
+          geo_override_reason: string | null
+          geo_status: Database["public"]["Enums"]["geo_status"]
+          geo_unvalidated_reason:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          geofence_radius_m: number | null
           id: string
           kind: Database["public"]["Enums"]["attendance_kind"]
           latitude: number | null
           longitude: number | null
+          outside_reason: string | null
           reason: string | null
           recorded_at: string
           recorded_by: string | null
+          site_distance_m: number | null
           source: Database["public"]["Enums"]["attendance_source"]
+          time_corrected_at: string | null
         }
         Insert: {
           accuracy_m?: number | null
           assignment_id: string
           created_at?: string
+          geo_override_at?: string | null
+          geo_override_by?: string | null
+          geo_override_reason?: string | null
+          geo_status?: Database["public"]["Enums"]["geo_status"]
+          geo_unvalidated_reason?:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          geofence_radius_m?: number | null
           id?: string
           kind: Database["public"]["Enums"]["attendance_kind"]
           latitude?: number | null
           longitude?: number | null
+          outside_reason?: string | null
           reason?: string | null
           recorded_at: string
           recorded_by?: string | null
+          site_distance_m?: number | null
           source: Database["public"]["Enums"]["attendance_source"]
+          time_corrected_at?: string | null
         }
         Update: {
           accuracy_m?: number | null
           assignment_id?: string
           created_at?: string
+          geo_override_at?: string | null
+          geo_override_by?: string | null
+          geo_override_reason?: string | null
+          geo_status?: Database["public"]["Enums"]["geo_status"]
+          geo_unvalidated_reason?:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          geofence_radius_m?: number | null
           id?: string
           kind?: Database["public"]["Enums"]["attendance_kind"]
           latitude?: number | null
           longitude?: number | null
+          outside_reason?: string | null
           reason?: string | null
           recorded_at?: string
           recorded_by?: string | null
+          site_distance_m?: number | null
           source?: Database["public"]["Enums"]["attendance_source"]
+          time_corrected_at?: string | null
         }
         Relationships: [
           {
@@ -587,6 +689,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_my_history"
             referencedColumns: ["assignment_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_geo_override_by_fkey"
+            columns: ["geo_override_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_geo_override_by_fkey"
+            columns: ["geo_override_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
@@ -1020,8 +1136,11 @@ export type Database = {
       }
       company_settings: {
         Row: {
+          geofence_max_accuracy_m: number
+          geofence_radius_m: number
           id: number
           location_consent_text: string | null
+          location_consent_updated_at: string | null
           logo_path: string | null
           name: string | null
           photo_retention_days: number
@@ -1031,8 +1150,11 @@ export type Database = {
           video_retention_days: number
         }
         Insert: {
+          geofence_max_accuracy_m?: number
+          geofence_radius_m?: number
           id: number
           location_consent_text?: string | null
+          location_consent_updated_at?: string | null
           logo_path?: string | null
           name?: string | null
           photo_retention_days?: number
@@ -1042,8 +1164,11 @@ export type Database = {
           video_retention_days?: number
         }
         Update: {
+          geofence_max_accuracy_m?: number
+          geofence_radius_m?: number
           id?: number
           location_consent_text?: string | null
+          location_consent_updated_at?: string | null
           logo_path?: string | null
           name?: string | null
           photo_retention_days?: number
@@ -2652,6 +2777,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           deleted_at: string | null
+          geofence_radius_m: number | null
           id: string
           latitude: number | null
           longitude: number | null
@@ -2674,6 +2800,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
+          geofence_radius_m?: number | null
           id?: string
           latitude?: number | null
           longitude?: number | null
@@ -2696,6 +2823,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
+          geofence_radius_m?: number | null
           id?: string
           latitude?: number | null
           longitude?: number | null
@@ -2756,34 +2884,78 @@ export type Database = {
         Row: {
           accuracy_m: number | null
           created_at: string
+          geo_override_at: string | null
+          geo_override_by: string | null
+          geo_override_reason: string | null
+          geo_status: Database["public"]["Enums"]["geo_status"]
+          geo_unvalidated_reason:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          geofence_radius_m: number | null
           id: string
           kind: Database["public"]["Enums"]["attendance_kind"]
           latitude: number | null
           longitude: number | null
+          outside_reason: string | null
           recorded_at: string
+          site_distance_m: number | null
           supervision_id: string
         }
         Insert: {
           accuracy_m?: number | null
           created_at?: string
+          geo_override_at?: string | null
+          geo_override_by?: string | null
+          geo_override_reason?: string | null
+          geo_status?: Database["public"]["Enums"]["geo_status"]
+          geo_unvalidated_reason?:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          geofence_radius_m?: number | null
           id?: string
           kind: Database["public"]["Enums"]["attendance_kind"]
           latitude?: number | null
           longitude?: number | null
+          outside_reason?: string | null
           recorded_at: string
+          site_distance_m?: number | null
           supervision_id: string
         }
         Update: {
           accuracy_m?: number | null
           created_at?: string
+          geo_override_at?: string | null
+          geo_override_by?: string | null
+          geo_override_reason?: string | null
+          geo_status?: Database["public"]["Enums"]["geo_status"]
+          geo_unvalidated_reason?:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          geofence_radius_m?: number | null
           id?: string
           kind?: Database["public"]["Enums"]["attendance_kind"]
           latitude?: number | null
           longitude?: number | null
+          outside_reason?: string | null
           recorded_at?: string
+          site_distance_m?: number | null
           supervision_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "supervision_attendance_geo_override_by_fkey"
+            columns: ["geo_override_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervision_attendance_geo_override_by_fkey"
+            columns: ["geo_override_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
           {
             foreignKeyName: "supervision_attendance_supervision_id_fkey"
             columns: ["supervision_id"]
@@ -3035,16 +3207,38 @@ export type Database = {
       }
       v_assignments_board: {
         Row: {
+          check_in_accuracy_m: number | null
           check_in_at: string | null
+          check_in_distance_m: number | null
+          check_in_geo_overridden: boolean | null
+          check_in_geo_reason:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          check_in_geo_status: Database["public"]["Enums"]["geo_status"] | null
+          check_in_geofence_radius_m: number | null
+          check_in_outside_reason: string | null
+          check_in_record_id: string | null
           check_in_recorded_by: string | null
           check_in_source:
             | Database["public"]["Enums"]["attendance_source"]
             | null
+          check_in_time_corrected: boolean | null
+          check_out_accuracy_m: number | null
           check_out_at: string | null
+          check_out_distance_m: number | null
+          check_out_geo_overridden: boolean | null
+          check_out_geo_reason:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          check_out_geo_status: Database["public"]["Enums"]["geo_status"] | null
+          check_out_geofence_radius_m: number | null
+          check_out_outside_reason: string | null
+          check_out_record_id: string | null
           check_out_recorded_by: string | null
           check_out_source:
             | Database["public"]["Enums"]["attendance_source"]
             | null
+          check_out_time_corrected: boolean | null
           client_id: string | null
           client_legal_name: string | null
           created_at: string | null
@@ -3059,6 +3253,7 @@ export type Database = {
           employee_first_name: string | null
           employee_id: string | null
           employee_last_name: string | null
+          has_outside_geo: boolean | null
           id: string | null
           last_notice_at: string | null
           last_notice_estimated_arrival_at: string | null
@@ -3410,15 +3605,31 @@ export type Database = {
           building_hours: string | null
           changed_since_last_seen: boolean | null
           check_in_at: string | null
+          check_in_distance_m: number | null
+          check_in_geo_overridden: boolean | null
+          check_in_geo_reason:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          check_in_geo_status: Database["public"]["Enums"]["geo_status"] | null
+          check_in_geofence_radius_m: number | null
           check_in_recorded_by: string | null
           check_in_source:
             | Database["public"]["Enums"]["attendance_source"]
             | null
+          check_in_time_corrected: boolean | null
           check_out_at: string | null
+          check_out_distance_m: number | null
+          check_out_geo_overridden: boolean | null
+          check_out_geo_reason:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          check_out_geo_status: Database["public"]["Enums"]["geo_status"] | null
+          check_out_geofence_radius_m: number | null
           check_out_recorded_by: string | null
           check_out_source:
             | Database["public"]["Enums"]["attendance_source"]
             | null
+          check_out_time_corrected: boolean | null
           client_id: string | null
           client_legal_name: string | null
           client_trade_name: string | null
@@ -3427,6 +3638,7 @@ export type Database = {
           effective_open_ended: boolean | null
           effective_start_time: string | null
           effective_starts_at: string | null
+          geofence_max_accuracy_m: number | null
           is_today: boolean | null
           last_notice_at: string | null
           last_notice_estimated_arrival_at: string | null
@@ -3456,6 +3668,7 @@ export type Database = {
           site_city: string | null
           site_contact_name: string | null
           site_contact_phone: string | null
+          site_geofence_radius_m: number | null
           site_id: string | null
           site_latitude: number | null
           site_longitude: number | null
@@ -3551,15 +3764,31 @@ export type Database = {
           building_hours: string | null
           changed_since_last_seen: boolean | null
           check_in_at: string | null
+          check_in_distance_m: number | null
+          check_in_geo_overridden: boolean | null
+          check_in_geo_reason:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          check_in_geo_status: Database["public"]["Enums"]["geo_status"] | null
+          check_in_geofence_radius_m: number | null
           check_in_recorded_by: string | null
           check_in_source:
             | Database["public"]["Enums"]["attendance_source"]
             | null
+          check_in_time_corrected: boolean | null
           check_out_at: string | null
+          check_out_distance_m: number | null
+          check_out_geo_overridden: boolean | null
+          check_out_geo_reason:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          check_out_geo_status: Database["public"]["Enums"]["geo_status"] | null
+          check_out_geofence_radius_m: number | null
           check_out_recorded_by: string | null
           check_out_source:
             | Database["public"]["Enums"]["attendance_source"]
             | null
+          check_out_time_corrected: boolean | null
           client_id: string | null
           client_legal_name: string | null
           client_trade_name: string | null
@@ -3568,6 +3797,7 @@ export type Database = {
           effective_open_ended: boolean | null
           effective_start_time: string | null
           effective_starts_at: string | null
+          geofence_max_accuracy_m: number | null
           is_today: boolean | null
           last_notice_at: string | null
           last_notice_estimated_arrival_at: string | null
@@ -3597,6 +3827,7 @@ export type Database = {
           site_city: string | null
           site_contact_name: string | null
           site_contact_phone: string | null
+          site_geofence_radius_m: number | null
           site_id: string | null
           site_latitude: number | null
           site_longitude: number | null
@@ -3636,13 +3867,6 @@ export type Database = {
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_out_recorded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -3651,13 +3875,20 @@ export type Database = {
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_out_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_in_recorded_by"]
+            columns: ["check_out_recorded_by"]
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
@@ -3691,13 +3922,28 @@ export type Database = {
           assigned_employees: Json | null
           cancel_reason: string | null
           check_in_at: string | null
+          check_in_distance_m: number | null
+          check_in_geo_overridden: boolean | null
+          check_in_geo_reason:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          check_in_geo_status: Database["public"]["Enums"]["geo_status"] | null
+          check_in_geofence_radius_m: number | null
           check_out_at: string | null
+          check_out_distance_m: number | null
+          check_out_geo_overridden: boolean | null
+          check_out_geo_reason:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          check_out_geo_status: Database["public"]["Enums"]["geo_status"] | null
+          check_out_geofence_radius_m: number | null
           client_id: string | null
           client_legal_name: string | null
           criteria_snapshot: Json | null
           end_time: string | null
           ends_at: string | null
           general_notes: string | null
+          geofence_max_accuracy_m: number | null
           id: string | null
           my_photos_count: number | null
           my_videos_count: number | null
@@ -3712,6 +3958,7 @@ export type Database = {
           site_city: string | null
           site_contact_name: string | null
           site_contact_phone: string | null
+          site_geofence_radius_m: number | null
           site_id: string | null
           site_latitude: number | null
           site_longitude: number | null
@@ -3767,6 +4014,41 @@ export type Database = {
           first_name: string | null
           last_name: string | null
           profile_id: string | null
+        }
+        Relationships: []
+      }
+      v_presence_today: {
+        Row: {
+          accuracy_m: number | null
+          check_in_at: string | null
+          check_out_at: string | null
+          client_id: string | null
+          client_legal_name: string | null
+          client_trade_name: string | null
+          distance_m: number | null
+          effective_end_time: string | null
+          effective_start_time: string | null
+          geo_overridden: boolean | null
+          geo_reason:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          geo_status: Database["public"]["Enums"]["geo_status"] | null
+          geofence_radius_m: number | null
+          in_progress: boolean | null
+          kind: string | null
+          latitude: number | null
+          longitude: number | null
+          person_first_name: string | null
+          person_id: string | null
+          person_last_name: string | null
+          record_id: string | null
+          shift_date: string | null
+          shift_id: string | null
+          site_id: string | null
+          site_latitude: number | null
+          site_longitude: number | null
+          site_name: string | null
+          site_radius_m: number | null
         }
         Relationships: []
       }
@@ -4080,8 +4362,28 @@ export type Database = {
           assigned_by: string | null
           assigned_employees_count: number | null
           cancel_reason: string | null
+          check_in_accuracy_m: number | null
           check_in_at: string | null
+          check_in_distance_m: number | null
+          check_in_geo_overridden: boolean | null
+          check_in_geo_reason:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          check_in_geo_status: Database["public"]["Enums"]["geo_status"] | null
+          check_in_geofence_radius_m: number | null
+          check_in_outside_reason: string | null
+          check_in_record_id: string | null
+          check_out_accuracy_m: number | null
           check_out_at: string | null
+          check_out_distance_m: number | null
+          check_out_geo_overridden: boolean | null
+          check_out_geo_reason:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          check_out_geo_status: Database["public"]["Enums"]["geo_status"] | null
+          check_out_geofence_radius_m: number | null
+          check_out_outside_reason: string | null
+          check_out_record_id: string | null
           client_id: string | null
           client_legal_name: string | null
           created_at: string | null
@@ -4221,14 +4523,25 @@ export type Database = {
           accuracy_m: number | null
           assignment_id: string
           created_at: string
+          geo_override_at: string | null
+          geo_override_by: string | null
+          geo_override_reason: string | null
+          geo_status: Database["public"]["Enums"]["geo_status"]
+          geo_unvalidated_reason:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          geofence_radius_m: number | null
           id: string
           kind: Database["public"]["Enums"]["attendance_kind"]
           latitude: number | null
           longitude: number | null
+          outside_reason: string | null
           reason: string | null
           recorded_at: string
           recorded_by: string | null
+          site_distance_m: number | null
           source: Database["public"]["Enums"]["attendance_source"]
+          time_corrected_at: string | null
         }
         SetofOptions: {
           from: "*"
@@ -4390,14 +4703,25 @@ export type Database = {
           accuracy_m: number | null
           assignment_id: string
           created_at: string
+          geo_override_at: string | null
+          geo_override_by: string | null
+          geo_override_reason: string | null
+          geo_status: Database["public"]["Enums"]["geo_status"]
+          geo_unvalidated_reason:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          geofence_radius_m: number | null
           id: string
           kind: Database["public"]["Enums"]["attendance_kind"]
           latitude: number | null
           longitude: number | null
+          outside_reason: string | null
           reason: string | null
           recorded_at: string
           recorded_by: string | null
+          site_distance_m: number | null
           source: Database["public"]["Enums"]["attendance_source"]
+          time_corrected_at: string | null
         }
         SetofOptions: {
           from: "*"
@@ -4462,6 +4786,39 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "shift_media"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      correct_attendance_time: {
+        Args: { p_new_time: string; p_reason: string; p_record_id: string }
+        Returns: {
+          accuracy_m: number | null
+          assignment_id: string
+          created_at: string
+          geo_override_at: string | null
+          geo_override_by: string | null
+          geo_override_reason: string | null
+          geo_status: Database["public"]["Enums"]["geo_status"]
+          geo_unvalidated_reason:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          geofence_radius_m: number | null
+          id: string
+          kind: Database["public"]["Enums"]["attendance_kind"]
+          latitude: number | null
+          longitude: number | null
+          outside_reason: string | null
+          reason: string | null
+          recorded_at: string
+          recorded_by: string | null
+          site_distance_m: number | null
+          source: Database["public"]["Enums"]["attendance_source"]
+          time_corrected_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "attendance_records"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -4545,6 +4902,30 @@ export type Database = {
       evidence_cleanup_mark: { Args: { p_ids: string[] }; Returns: number }
       generate_shifts: {
         Args: { p_month: number; p_year: number }
+        Returns: Json
+      }
+      geo_distance_m: {
+        Args: { p_lat1: number; p_lat2: number; p_lng1: number; p_lng2: number }
+        Returns: number
+      }
+      geo_evaluate: {
+        Args: {
+          p_accuracy: number
+          p_lat: number
+          p_lng: number
+          p_max_accuracy?: number
+          p_radius: number
+          p_site_lat: number
+          p_site_lng: number
+        }
+        Returns: {
+          distance_m: number
+          reason: Database["public"]["Enums"]["geo_unvalidated_reason"]
+          status: Database["public"]["Enums"]["geo_status"]
+        }[]
+      }
+      get_attendance_location: {
+        Args: { p_record_id: string; p_record_type: string }
         Returns: Json
       }
       mark_changes_seen: {
@@ -4669,6 +5050,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      override_geo_validation: {
+        Args: { p_reason: string; p_record_id: string; p_record_type: string }
+        Returns: Json
+      }
       preview_shift_series: {
         Args: {
           p_from: string
@@ -4710,19 +5095,31 @@ export type Database = {
           p_assignment_id: string
           p_lat?: number
           p_lng?: number
+          p_outside_reason?: string
         }
         Returns: {
           accuracy_m: number | null
           assignment_id: string
           created_at: string
+          geo_override_at: string | null
+          geo_override_by: string | null
+          geo_override_reason: string | null
+          geo_status: Database["public"]["Enums"]["geo_status"]
+          geo_unvalidated_reason:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          geofence_radius_m: number | null
           id: string
           kind: Database["public"]["Enums"]["attendance_kind"]
           latitude: number | null
           longitude: number | null
+          outside_reason: string | null
           reason: string | null
           recorded_at: string
           recorded_by: string | null
+          site_distance_m: number | null
           source: Database["public"]["Enums"]["attendance_source"]
+          time_corrected_at: string | null
         }
         SetofOptions: {
           from: "*"
@@ -4737,19 +5134,31 @@ export type Database = {
           p_assignment_id: string
           p_lat?: number
           p_lng?: number
+          p_outside_reason?: string
         }
         Returns: {
           accuracy_m: number | null
           assignment_id: string
           created_at: string
+          geo_override_at: string | null
+          geo_override_by: string | null
+          geo_override_reason: string | null
+          geo_status: Database["public"]["Enums"]["geo_status"]
+          geo_unvalidated_reason:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          geofence_radius_m: number | null
           id: string
           kind: Database["public"]["Enums"]["attendance_kind"]
           latitude: number | null
           longitude: number | null
+          outside_reason: string | null
           reason: string | null
           recorded_at: string
           recorded_by: string | null
+          site_distance_m: number | null
           source: Database["public"]["Enums"]["attendance_source"]
+          time_corrected_at: string | null
         }
         SetofOptions: {
           from: "*"
@@ -4941,11 +5350,37 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      set_geofence_radius: {
+        Args: { p_radius: number }
+        Returns: {
+          geofence_max_accuracy_m: number
+          geofence_radius_m: number
+          id: number
+          location_consent_text: string | null
+          location_consent_updated_at: string | null
+          logo_path: string | null
+          name: string | null
+          photo_retention_days: number
+          support_phone: string | null
+          updated_at: string
+          updated_by: string | null
+          video_retention_days: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "company_settings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       set_media_retention: {
         Args: { p_photo_days?: number; p_video_days?: number }
         Returns: {
+          geofence_max_accuracy_m: number
+          geofence_radius_m: number
           id: number
           location_consent_text: string | null
+          location_consent_updated_at: string | null
           logo_path: string | null
           name: string | null
           photo_retention_days: number
@@ -5014,16 +5449,27 @@ export type Database = {
           p_accuracy?: number
           p_lat?: number
           p_lng?: number
+          p_outside_reason?: string
           p_supervision_id: string
         }
         Returns: {
           accuracy_m: number | null
           created_at: string
+          geo_override_at: string | null
+          geo_override_by: string | null
+          geo_override_reason: string | null
+          geo_status: Database["public"]["Enums"]["geo_status"]
+          geo_unvalidated_reason:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          geofence_radius_m: number | null
           id: string
           kind: Database["public"]["Enums"]["attendance_kind"]
           latitude: number | null
           longitude: number | null
+          outside_reason: string | null
           recorded_at: string
+          site_distance_m: number | null
           supervision_id: string
         }
         SetofOptions: {
@@ -5038,16 +5484,27 @@ export type Database = {
           p_accuracy?: number
           p_lat?: number
           p_lng?: number
+          p_outside_reason?: string
           p_supervision_id: string
         }
         Returns: {
           accuracy_m: number | null
           created_at: string
+          geo_override_at: string | null
+          geo_override_by: string | null
+          geo_override_reason: string | null
+          geo_status: Database["public"]["Enums"]["geo_status"]
+          geo_unvalidated_reason:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          geofence_radius_m: number | null
           id: string
           kind: Database["public"]["Enums"]["attendance_kind"]
           latitude: number | null
           longitude: number | null
+          outside_reason: string | null
           recorded_at: string
+          site_distance_m: number | null
           supervision_id: string
         }
         SetofOptions: {
@@ -5280,10 +5737,17 @@ export type Database = {
         | "absence_notified"
         | "present"
         | "finished"
+      attendance_correction_kind: "time" | "geo"
       attendance_kind: "check_in" | "check_out"
       attendance_source: "employee_app" | "admin"
       client_status: "active" | "suspended" | "closed"
       employee_status: "active" | "terminated"
+      geo_status: "valid" | "outside" | "unvalidated"
+      geo_unvalidated_reason:
+        | "no_location"
+        | "site_without_coords"
+        | "admin_record"
+        | "low_accuracy"
       media_kind: "photo" | "video"
       notice_kind: "delay" | "absence" | "on_the_way"
       security_event_type:
@@ -5300,6 +5764,9 @@ export type Database = {
         | "admin_action_rejected"
         | "name_changed"
         | "service_deleted"
+        | "attendance_time_corrected"
+        | "geo_validation_overridden"
+        | "geofence_radius_changed"
       service_status: "active" | "paused" | "ended"
       shift_status:
         | "scheduled"
@@ -5470,10 +5937,18 @@ export const Constants = {
         "present",
         "finished",
       ],
+      attendance_correction_kind: ["time", "geo"],
       attendance_kind: ["check_in", "check_out"],
       attendance_source: ["employee_app", "admin"],
       client_status: ["active", "suspended", "closed"],
       employee_status: ["active", "terminated"],
+      geo_status: ["valid", "outside", "unvalidated"],
+      geo_unvalidated_reason: [
+        "no_location",
+        "site_without_coords",
+        "admin_record",
+        "low_accuracy",
+      ],
       media_kind: ["photo", "video"],
       notice_kind: ["delay", "absence", "on_the_way"],
       security_event_type: [
@@ -5490,6 +5965,9 @@ export const Constants = {
         "admin_action_rejected",
         "name_changed",
         "service_deleted",
+        "attendance_time_corrected",
+        "geo_validation_overridden",
+        "geofence_radius_changed",
       ],
       service_status: ["active", "paused", "ended"],
       shift_status: [
