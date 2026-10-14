@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { isApiError } from '@/api/errors'
@@ -36,6 +36,10 @@ export function AnnouncementsBanner() {
   const online = useOnlineStatus()
   const [expanded, setExpanded] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  // El timer del foco se cancela al desmontar: si corre después (por ejemplo,
+  // al terminar un test con jsdom ya desarmado) toca un `document` que no está.
+  const focusTimer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(focusTimer.current), [])
 
   const pending = pendingOf(data)
   if (isError || (pending.length === 0 && !message)) return null
@@ -51,7 +55,8 @@ export function AnnouncementsBanner() {
     acknowledge.mutate(id, {
       onError: (error) => setMessage(ackErrorMessage(error)),
     })
-    window.setTimeout(() => {
+    window.clearTimeout(focusTimer.current)
+    focusTimer.current = window.setTimeout(() => {
       const target =
         (next &&
           document.querySelector<HTMLElement>(

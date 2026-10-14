@@ -28,6 +28,7 @@ function announcement(n: number, over: Partial<MyAnnouncement> = {}) {
 }
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.restoreAllMocks()
 })
 
@@ -138,6 +139,21 @@ describe('AnnouncementsBanner', () => {
     )
     expect(screen.queryByText('Título 1')).toBeNull()
     expect(screen.getByText('Título 2')).toBeInTheDocument()
+  })
+  it('al desmontarse cancela los timers del "Entendido"', async () => {
+    // Si el timer del foco sobrevive al desmontaje, en CI puede correr
+    // después de que jsdom se desarmó ("document is not defined").
+    vi.spyOn(api, 'fetchMyAnnouncements').mockResolvedValue([announcement(1)])
+    vi.spyOn(api, 'acknowledgeAnnouncement').mockResolvedValue()
+    const { unmount } = renderWith(<AnnouncementsBanner />)
+    const button = await screen.findByRole('button', { name: 'Entendido' })
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    fireEvent.click(button)
+    vi.advanceTimersByTime(150)
+    unmount()
+    const query = vi.spyOn(document, 'querySelector')
+    vi.advanceTimersByTime(1000)
+    expect(query).not.toHaveBeenCalled()
   })
 })
 

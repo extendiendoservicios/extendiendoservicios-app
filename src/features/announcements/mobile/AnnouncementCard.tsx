@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Megaphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatShortDate } from '@/lib/format'
@@ -20,6 +20,8 @@ export function AnnouncementCard({
   disabled?: boolean
 }) {
   const [leaving, setLeaving] = useState(false)
+  const leaveTimer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(leaveTimer.current), [])
 
   return (
     <section
@@ -59,7 +61,11 @@ export function AnnouncementCard({
           // Desvanece 150 ms y recién después saca la tarjeta (si falla la
           // red, el padre la monta de nuevo y arranca visible).
           setLeaving(true)
-          window.setTimeout(() => onAcknowledge(announcement.id), 150)
+          window.clearTimeout(leaveTimer.current)
+          leaveTimer.current = window.setTimeout(
+            () => onAcknowledge(announcement.id),
+            150,
+          )
         }}
       >
         Entendido
