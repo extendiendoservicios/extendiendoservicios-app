@@ -4,13 +4,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/EmptyState'
-import { formatCalendarDate, formatTime } from '@/lib/format'
+import { formatCalendarDate } from '@/lib/format'
 import type { MyDayAssignment } from '@/api/myDay'
 import { useMyHistoryQuery } from '@/features/employee/queries'
 import { StatusBadge } from '@/components/status'
 import { AssignmentStatusBadge } from '@/features/employee/components/AssignmentStatusBadge'
 import { formatAssignmentRange } from '@/features/employee/shiftRange'
 import { formatMediaCounts } from '@/features/employee/mediaCounts'
+import { AttendanceMarkRow } from '@/features/employee/components/AttendanceMarkRow'
 
 /**
  * EMP-HIS · Mis servicios anteriores (AJ4-06): los servicios propios ya
@@ -18,6 +19,10 @@ import { formatMediaCounts } from '@/features/employee/mediaCounts'
  * más reciente arriba y una tarjeta por asignación. Tocar una tarjeta abre el
  * comprobante (EMP-11) con `?desde=historial`, para que el botón final vuelva
  * acá. Los turnos cancelados y las ausencias se listan igual, con su estado.
+ *
+ * Módulo B1 (B-19, B-28): cada fichaje muestra si quedó «Validado», «Fuera de
+ * zona» o «Sin validar» y la marca «Corregido» si la administración cambió la
+ * hora (sin el motivo).
  */
 export default function HistoryPage() {
   const {
@@ -129,17 +134,18 @@ function HistoryCard({ assignment }: { assignment: MyDayAssignment }) {
           <p className="text-[12.5px] text-text-2">
             {formatAssignmentRange(assignment)}
           </p>
-          {(assignment.checkInAt || assignment.checkOutAt) && (
-            <p className="text-[12px] text-text-3">
-              {assignment.checkInAt
-                ? `Inicio ${formatTime(assignment.checkInAt)}`
-                : null}
-              {assignment.checkInAt && assignment.checkOutAt ? ' · ' : null}
-              {assignment.checkOutAt
-                ? `Fin ${formatTime(assignment.checkOutAt)}`
-                : null}
-            </p>
-          )}
+          <AttendanceMarkRow
+            label="Inicio"
+            at={assignment.checkInAt}
+            geo={assignment.checkInGeo}
+            timeCorrected={assignment.checkInTimeCorrected}
+          />
+          <AttendanceMarkRow
+            label="Fin"
+            at={assignment.checkOutAt}
+            geo={assignment.checkOutGeo}
+            timeCorrected={assignment.checkOutTimeCorrected}
+          />
           {!cancelled && !assignment.photosNotAllowed && (
             <p className="text-[12px] text-text-3">
               Fotos y videos:{' '}

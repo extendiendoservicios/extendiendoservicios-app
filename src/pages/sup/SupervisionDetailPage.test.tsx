@@ -84,6 +84,10 @@ function supervision(overrides: Partial<MySupervision>): MySupervision {
     criteriaSnapshot: null,
     checkInAt: null,
     checkOutAt: null,
+    siteGeofenceRadiusM: 150,
+    geofenceMaxAccuracyM: 150,
+    checkInGeo: null,
+    checkOutGeo: null,
     assignedEmployees: [
       {
         employeeId: 'e1',

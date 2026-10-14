@@ -9,17 +9,20 @@ import { OptionCard } from '@/components/OptionCard'
 import { EmptyState } from '@/components/EmptyState'
 import { formatTime } from '@/lib/format'
 import { isApiError } from '@/api/errors'
-import { getCurrentPositionSafe } from '@/lib/geolocation'
-import { useAuth } from '@/features/auth/AuthProvider'
 import { useOnlineStatus } from '@/features/employee/useOnlineStatus'
 import { useNow } from '@/features/employee/useNow'
-import { hasDeclinedLocation } from '@/features/employee/locationChoice'
+import { useLocationConsent } from '@/features/employee/useLocationConsent'
+import { useGeoFichaje } from '@/features/employee/useGeoFichaje'
 import {
   useMyDayQuery,
   useRecordCheckInMutation,
 } from '@/features/employee/queries'
 import { RegisterStartScreen } from '@/features/employee/components/RegisterStartScreen'
+import { GeoFichajePanel } from '@/features/employee/components/GeoFichajePanel'
+import { AttendanceResultScreen } from '@/features/employee/components/AttendanceResultScreen'
 import type { MyDayAssignment } from '@/api/myDay'
+import type { AttendanceRecord } from '@/api/attendance'
+import type { AttendanceGeo } from '@/api/attendanceGeo'
 import { formatAssignmentRange } from '@/features/employee/shiftRange'
 
 /** La hora de referencia de EMP-05 no necesita actualizarse segundo a segundo. */
@@ -42,16 +45,27 @@ const CLOCK_TICK_MS = 15_000
  *   acá con el mismo parámetro).
  * - Ya elegido un servicio pendiente: si el empleado no dio su
  *   consentimiento de ubicación (`profiles.location_consent_at`) ni lo
- *   rechazó antes (`hasDeclinedLocation`), primero pasa por EMP-06; resuelto
- *   eso (de una forma o de la otra), sigue a `RegisterStart` (EMP-05, más
- *   abajo), que ya tiene el botón real de "Registrar inicio".
+ *   rechazó antes (`hasDeclinedLocation`), o si la empresa cambió el texto
+ *   del consentimiento después de que lo diera (B-22), primero pasa por
+ *   EMP-06; resuelto eso (de una forma o de la otra), sigue a
+ *   `RegisterStart` (EMP-05, más abajo), que ya tiene el botón real de
+ *   "Registrar inicio".
+ * - Módulo B1 (P22.3): después de registrar el inicio se muestra el
+ *   resultado que devolvió la base (hora y validación) antes de pasar a
+ *   EMP-07; por eso el resultado se guarda acá, antes del redireccionamiento
+ *   a "servicio en curso".
  */
 export default function ClockTabPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const auth = useAuth()
   const online = useOnlineStatus()
+  const consent = useLocationConsent()
   const { data, isLoading, isError } = useMyDayQuery()
+  const [startResult, setStartResult] = useState<{
+    recordedAt: string
+    geo: AttendanceGeo
+    assignment: MyDayAssignment
+  } | null>(null)
 
   const today =
     data?.filter((a) => a.isToday && a.shiftStatus !== 'cancelled') ?? []
@@ -60,7 +74,28 @@ export default function ClockTabPage() {
     (a) => a.checkInAt != null && a.checkOutAt == null && !a.noCheckout,
   )
 
-  if (isLoading) {
+  if (startResult) {
+    const { assignment } = startResult
+    return (
+      <AttendanceResultScreen
+        title="Inicio registrado"
+        recordedAt={startResult.recordedAt}
+        geo={startResult.geo}
+        heading={{
+          primary: assignment.clientName,
+          secondary: assignment.siteName,
+        }}
+        onContinue={() =>
+          void navigate(`/app/en-curso/${assignment.assignmentId}`, {
+            replace: true,
+          })
+        }
+        continueLabel="Ir a mi servicio"
+      />
+    )
+  }
+
+  if (isLoading || consent.loading) {
     return (
       <p className="p-4 text-center text-[12.5px] text-text-3">Cargando…</p>
     )
@@ -116,15 +151,14 @@ export default function ClockTabPage() {
     )
   }
 
-  // Con el consentimiento dado o la negativa recordada, se sigue al registro
-  // (sin ubicación en el segundo caso, P-091).
-  const locationDecided =
-    auth.profile?.locationConsentAt != null || hasDeclinedLocation(auth.userId)
-
-  if (!locationDecided) {
+  // Con el consentimiento vigente o la negativa recordada, se sigue al
+  // registro (sin ubicación en el segundo caso, P-091). Si el texto cambió
+  // después del consentimiento, se vuelve a mostrar (B-22).
+  if (consent.status === 'needs-consent') {
     return (
       <ConsentNeeded
         assignment={selected}
+        reconsent={consent.reconsent}
         onContinue={() =>
           void navigate(
             `/app/fichar/consentimiento?asignacion=${selected.assignmentId}`,
@@ -134,7 +168,26 @@ export default function ClockTabPage() {
     )
   }
 
-  return <RegisterStart assignment={selected} offline={!online} />
+  return (
+    <RegisterStart
+      assignment={selected}
+      offline={!online}
+      locationEnabled={consent.status === 'granted'}
+      onRegistered={(record) => {
+        if (record.geo) {
+          setStartResult({
+            recordedAt: record.recordedAt,
+            geo: record.geo,
+            assignment: selected,
+          })
+        } else {
+          void navigate(`/app/en-curso/${selected.assignmentId}`, {
+            replace: true,
+          })
+        }
+      }}
+    />
+  )
 }
 
 function ChooseService({
@@ -165,9 +218,12 @@ function ChooseService({
 
 function ConsentNeeded({
   assignment,
+  reconsent,
   onContinue,
 }: {
   assignment: MyDayAssignment
+  /** La empresa cambió el texto después de que la persona lo aceptara (B-22). */
+  reconsent: boolean
   onContinue: () => void
 }) {
   return (
@@ -183,7 +239,9 @@ function ConsentNeeded({
         </CardContent>
       </Card>
       <p className="text-[12.5px] text-text-3">
-        Antes de registrar el inicio, te pedimos tu consentimiento de ubicación.
+        {reconsent
+          ? 'Actualizamos el texto del consentimiento de ubicación. Antes de registrar el inicio, te pedimos que lo leas de nuevo.'
+          : 'Antes de registrar el inicio, te pedimos tu consentimiento de ubicación.'}
       </p>
       <Button size="mobile" onClick={onContinue} className="mt-auto">
         Continuar
@@ -195,39 +253,46 @@ function ConsentNeeded({
 /**
  * EMP-05 · Registrar inicio (MOB-EMP-007, `05` fila EMP-05, `record_check_in`):
  * esta pantalla ya resolvió cuál asignación corresponde y que el
- * consentimiento de ubicación quedó resuelto (dado o rechazado, ver
- * `ClockTabPage` arriba). Pide la posición solo si el empleado dio su
- * consentimiento (`profiles.location_consent_at`); si lo rechazó, ni
- * siquiera intenta -- se registra directamente sin coordenadas (P-091). En
- * los dos casos, `getCurrentPositionSafe` tiene su propio timeout (`src/lib/
- * geolocation.ts`): el registro nunca espera más que eso.
+ * consentimiento de ubicación quedó resuelto (ver `ClockTabPage` arriba).
+ *
+ * Módulo B1 (P22.3, B-06, B-18, B-38): con consentimiento vigente sigue la
+ * posición en vivo (`useGeoFichaje`) y muestra el mini mapa con la sede, la
+ * precisión y, si hace falta, «Esperar mejor señal». «Fichar igual» siempre
+ * está disponible: la ubicación nunca bloquea (B-05). Se manda la MEJOR
+ * posición y, si el resultado en vivo es «Fuera de zona», el motivo opcional.
+ * Sin consentimiento no se pide la ubicación y el registro queda sin validar.
  */
 function RegisterStart({
   assignment,
   offline,
+  locationEnabled,
+  onRegistered,
 }: {
   assignment: MyDayAssignment
   offline: boolean
+  locationEnabled: boolean
+  onRegistered: (record: AttendanceRecord) => void
 }) {
-  const navigate = useNavigate()
-  const auth = useAuth()
   const now = useNow(CLOCK_TICK_MS)
   const recordCheckIn = useRecordCheckInMutation()
   const [error, setError] = useState<string | null>(null)
-
-  const hasConsent = auth.profile?.locationConsentAt != null
+  const fichaje = useGeoFichaje({
+    enabled: locationEnabled,
+    siteLatitude: assignment.siteLatitude,
+    siteLongitude: assignment.siteLongitude,
+    radiusM: assignment.siteGeofenceRadiusM,
+    maxAccuracyM: assignment.geofenceMaxAccuracyM,
+  })
 
   async function handleConfirm() {
     setError(null)
-    const coords = hasConsent ? await getCurrentPositionSafe() : null
     try {
-      await recordCheckIn.mutateAsync({
+      const record = await recordCheckIn.mutateAsync({
         assignmentId: assignment.assignmentId,
-        coords,
+        coords: fichaje.payload.coords,
+        outsideReason: fichaje.payload.outsideReason,
       })
-      void navigate(`/app/en-curso/${assignment.assignmentId}`, {
-        replace: true,
-      })
+      onRegistered(record)
     } catch (mutationError) {
       setError(
         isApiError(mutationError)
@@ -237,6 +302,15 @@ function RegisterStart({
     }
   }
 
+  const site =
+    assignment.siteLatitude != null && assignment.siteLongitude != null
+      ? {
+          lat: assignment.siteLatitude,
+          lng: assignment.siteLongitude,
+          name: assignment.siteName,
+        }
+      : null
+
   return (
     <RegisterStartScreen
       assignment={assignment}
@@ -245,6 +319,13 @@ function RegisterStart({
       busy={recordCheckIn.isPending}
       error={error}
       offline={offline}
-    />
+      confirmLabel={fichaje.view.poorSignal ? 'Fichar igual' : undefined}
+    >
+      <GeoFichajePanel
+        fichaje={fichaje}
+        site={site}
+        busy={recordCheckIn.isPending}
+      />
+    </RegisterStartScreen>
   )
 }

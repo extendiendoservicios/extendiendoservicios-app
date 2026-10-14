@@ -4,6 +4,7 @@ import { fromPostgrestError } from './errors'
 import type { GeolocationCoords } from '@/lib/geolocation'
 import type { AssignmentStatus } from './assignments'
 import type { GeoStatus, GeoUnvalidatedReason } from '@/lib/geo'
+import { mapAttendanceGeo, type AttendanceGeo } from './attendanceGeo'
 
 /**
  * `src/api/attendance.ts` (ATT-005, `06_API.md` sección 10, migración
@@ -29,7 +30,14 @@ import type { GeoStatus, GeoUnvalidatedReason } from '@/lib/geo'
  * una pantalla. Desde el módulo B1 las columnas de posición están cerradas
  * para `authenticated` y administración las lee solo por `v_presence_today` y
  * `get_attendance_location` (`src/api/geo.ts`). Lo que sí trae este archivo
- * del módulo B1 es la validación congelada de cada fichaje (`BoardAttendanceGeo`).
+ * del módulo B1 es la validación congelada de cada fichaje: `geo`
+ * (`AttendanceGeo`) en lo que devuelven las RPC de fichaje y
+ * `BoardAttendanceGeo` en las filas de `v_assignments_board`.
+ *
+ * P22.3 (módulo B1): `recordCheckIn`/`recordCheckOut` aceptan el motivo
+ * opcional de estar fuera de la zona (`p_outside_reason`, B-04, hasta 300
+ * caracteres; si no, `OUTSIDE_REASON_TOO_LONG`) y devuelven la validación
+ * guardada en `geo`.
  */
 
 export type AttendanceKind = Database['public']['Enums']['attendance_kind']
@@ -41,6 +49,11 @@ export interface AttendanceRecord {
   kind: AttendanceKind
   /** Hora del servidor (`now()` dentro de la RPC, nunca la del dispositivo — ADR-009). */
   recordedAt: string
+  /**
+   * Validación por ubicación que calculó y guardó la base (B1, B-37): es la
+   * que se muestra después de fichar, no la que calculó el celular.
+   */
+  geo: AttendanceGeo | null
 }
 
 function mapAttendanceRecord(row: {
@@ -48,12 +61,24 @@ function mapAttendanceRecord(row: {
   assignment_id: string
   kind: AttendanceKind
   recorded_at: string
+  geo_status?: AttendanceGeo['status'] | null
+  geo_unvalidated_reason?: AttendanceGeo['reason']
+  site_distance_m?: number | null
+  geofence_radius_m?: number | null
+  geo_override_at?: string | null
 }): AttendanceRecord {
   return {
     id: row.id,
     assignmentId: row.assignment_id,
     kind: row.kind,
     recordedAt: row.recorded_at,
+    geo: mapAttendanceGeo({
+      status: row.geo_status,
+      reason: row.geo_unvalidated_reason,
+      distanceM: row.site_distance_m,
+      radiusM: row.geofence_radius_m,
+      overridden: row.geo_override_at != null,
+    }),
   }
 }
 
@@ -69,12 +94,14 @@ function mapAttendanceRecord(row: {
 export async function recordCheckIn(
   assignmentId: string,
   coords: GeolocationCoords | null,
+  outsideReason?: string | null,
 ): Promise<AttendanceRecord> {
   const { data, error } = await supabase.rpc('record_check_in', {
     p_assignment_id: assignmentId,
     p_lat: coords?.lat,
     p_lng: coords?.lng,
     p_accuracy: coords?.accuracyM,
+    p_outside_reason: outsideReason?.trim() || undefined,
   })
 
   if (error) {
@@ -87,12 +114,14 @@ export async function recordCheckIn(
 export async function recordCheckOut(
   assignmentId: string,
   coords: GeolocationCoords | null,
+  outsideReason?: string | null,
 ): Promise<AttendanceRecord> {
   const { data, error } = await supabase.rpc('record_check_out', {
     p_assignment_id: assignmentId,
     p_lat: coords?.lat,
     p_lng: coords?.lng,
     p_accuracy: coords?.accuracyM,
+    p_outside_reason: outsideReason?.trim() || undefined,
   })
 
   if (error) {
