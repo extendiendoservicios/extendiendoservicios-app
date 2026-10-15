@@ -43,6 +43,8 @@ const MEDIA_ERROR_MESSAGES: Record<string, string> = {
   MEDIA_EXPIRED:
     'El archivo ya venció y se borró: de él queda solo la constancia.',
   RETENTION_OUT_OF_RANGE: 'Los plazos tienen que ser de 7 a 365 días.',
+  MEDIA_IDS_REQUIRED: 'Elegí al menos un archivo.',
+  MEDIA_TOO_MANY: 'Elegiste demasiados archivos de una vez. Probá con menos.',
 }
 
 /** Pasa el error de las RPC de evidencia a `ApiError` con el mensaje en español de cada `hint`. */
@@ -92,6 +94,12 @@ export interface ShiftMediaRow {
   /** Día en que vence (`YYYY-MM-DD`); `null` si se conserva o ya venció. */
   expiresOn: string | null
   retentionDays: number | null
+  /** Cuándo la eliminó a mano la dueña o un administrador; `null` si no. */
+  deletedAt: string | null
+  /** Quién la eliminó (`profiles.id`). */
+  deletedBy: string | null
+  deletedByFirstName: string | null
+  deletedByLastName: string | null
 }
 
 interface ShiftMediaRawRow {
@@ -121,10 +129,14 @@ interface ShiftMediaRawRow {
   has_file: boolean | null
   expires_on: string | null
   retention_days: number | null
+  deleted_at: string | null
+  deleted_by: string | null
+  deleted_by_first_name: string | null
+  deleted_by_last_name: string | null
 }
 
 const SHIFT_MEDIA_SELECT =
-  'id, shift_id, shift_date, client_id, client_name, site_id, site_name, assignment_id, supervision_id, uploaded_by, uploader_first_name, uploader_last_name, uploader_role, kind, storage_path, thumb_path, size_bytes, width, height, duration_s, captured_at, created_at, keep, has_file, expires_on, retention_days'
+  'id, shift_id, shift_date, client_id, client_name, site_id, site_name, assignment_id, supervision_id, uploaded_by, uploader_first_name, uploader_last_name, uploader_role, kind, storage_path, thumb_path, size_bytes, width, height, duration_s, captured_at, created_at, keep, has_file, expires_on, retention_days, deleted_at, deleted_by, deleted_by_first_name, deleted_by_last_name'
 
 function mapShiftMediaRow(row: ShiftMediaRawRow): ShiftMediaRow {
   return {
@@ -154,6 +166,10 @@ function mapShiftMediaRow(row: ShiftMediaRawRow): ShiftMediaRow {
     hasFile: row.has_file ?? false,
     expiresOn: row.expires_on,
     retentionDays: row.retention_days,
+    deletedAt: row.deleted_at,
+    deletedBy: row.deleted_by,
+    deletedByFirstName: row.deleted_by_first_name,
+    deletedByLastName: row.deleted_by_last_name,
   }
 }
 
@@ -386,6 +402,112 @@ export async function setShiftMediaKeep(
     throw mapMediaAdminError(error)
   }
   return { id: data.id, keep: data.keep }
+}
+
+// -------------------------------------------------------------------------
+// 3b. Conservar y eliminar de a varias (P21.8b)
+// -------------------------------------------------------------------------
+
+/** Tope de ids por llamada que acepta el servidor (`MEDIA_TOO_MANY`). */
+export const MEDIA_BATCH_SIZE = 200
+/** Rutas por llamada a `storage.remove`. */
+export const STORAGE_REMOVE_CHUNK = 100
+
+/** Parte una lista en lotes de a `size`. */
+export function chunkItems<T>(items: readonly T[], size: number): T[][] {
+  const chunks: T[][] = []
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size))
+  }
+  return chunks
+}
+
+/**
+ * Marca o desmarca «Conservar» en varias a la vez, en lotes de 200. Devuelve
+ * cuántas cambiaron de verdad (las que ya estaban así o no tienen archivo no
+ * cuentan).
+ */
+export async function setShiftMediaKeepMany(
+  ids: readonly string[],
+  keep: boolean,
+): Promise<number> {
+  let changed = 0
+  for (const batch of chunkItems(Array.from(new Set(ids)), MEDIA_BATCH_SIZE)) {
+    const { data, error } = await supabase.rpc('set_shift_media_keep_many', {
+      p_ids: batch,
+      p_keep: keep,
+    })
+    if (error) throw mapMediaAdminError(error)
+    changed += data ?? 0
+  }
+  return changed
+}
+
+export interface DeleteMediaResult {
+  requestedCount: number
+  deletedCount: number
+  ignoredCount: number
+  /** Espacio liberado, estimado por el servidor (bytes). */
+  bytesFreedEstimate: number
+  deletedIds: string[]
+  /** Rutas que se pidió borrar de Storage. */
+  paths: string[]
+  /** Rutas que Storage no pudo borrar (las termina el barrido nocturno). */
+  storageFailedCount: number
+}
+
+interface DeleteMediaPayload {
+  requested_count?: number
+  deleted_count?: number
+  ignored_count?: number
+  bytes_freed_estimate?: number
+  deleted_ids?: string[]
+  paths?: string[]
+}
+
+/**
+ * Elimina varias (también las marcadas «Conservar»), en lotes de 200: primero
+ * `delete_shift_media` deja la constancia y después se borran los objetos de
+ * Storage. Si Storage falla, no es un error para quien eliminó: el barrido
+ * nocturno termina el trabajo (`storageFailedCount` lo informa).
+ */
+export async function deleteShiftMedia(
+  ids: readonly string[],
+): Promise<DeleteMediaResult> {
+  const total: DeleteMediaResult = {
+    requestedCount: 0,
+    deletedCount: 0,
+    ignoredCount: 0,
+    bytesFreedEstimate: 0,
+    deletedIds: [],
+    paths: [],
+    storageFailedCount: 0,
+  }
+  for (const batch of chunkItems(Array.from(new Set(ids)), MEDIA_BATCH_SIZE)) {
+    const { data, error } = await supabase.rpc('delete_shift_media', {
+      p_ids: batch,
+    })
+    if (error) throw mapMediaAdminError(error)
+    const payload = (data ?? {}) as DeleteMediaPayload
+    total.requestedCount += payload.requested_count ?? 0
+    total.deletedCount += payload.deleted_count ?? 0
+    total.ignoredCount += payload.ignored_count ?? 0
+    total.bytesFreedEstimate += payload.bytes_freed_estimate ?? 0
+    total.deletedIds.push(...(payload.deleted_ids ?? []))
+    const paths = payload.paths ?? []
+    total.paths.push(...paths)
+    for (const group of chunkItems(paths, STORAGE_REMOVE_CHUNK)) {
+      try {
+        const { error: removeError } = await supabase.storage
+          .from(EVIDENCE_BUCKET)
+          .remove(group)
+        if (removeError) total.storageFailedCount += group.length
+      } catch {
+        total.storageFailedCount += group.length
+      }
+    }
+  }
+  return total
 }
 
 // -------------------------------------------------------------------------

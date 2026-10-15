@@ -160,3 +160,33 @@ export function useSetMediaKeepMutation() {
       }),
   })
 }
+
+/**
+ * Después de eliminar o cambiar «Conservar» de a varias: se refrescan la
+ * galería, el detalle del turno y el medidor (`usage`, que cuelga de
+ * `mediaKeys.all`). Las URL firmadas siguen valiendo y no se piden de nuevo.
+ */
+function invalidateMedia(queryClient: ReturnType<typeof useQueryClient>) {
+  return queryClient.invalidateQueries({
+    queryKey: mediaKeys.all,
+    predicate: (query) => query.queryKey[1] !== 'thumbs',
+  })
+}
+
+export function useSetMediaKeepManyMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ ids, keep }: { ids: readonly string[]; keep: boolean }) =>
+      mediaApi.setShiftMediaKeepMany(ids, keep),
+    onSuccess: () => void invalidateMedia(queryClient),
+  })
+}
+
+export function useDeleteShiftMediaMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (ids: readonly string[]) => mediaApi.deleteShiftMedia(ids),
+    // También si falló a la mitad de varios lotes: lo ya eliminado no vuelve.
+    onSettled: () => void invalidateMedia(queryClient),
+  })
+}

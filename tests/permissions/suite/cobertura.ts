@@ -61,6 +61,8 @@ export const COBERTURA_EXTERNA: {
     confirm_shift_media: '90-evidencia.permissions.ts',
     remove_shift_media: '90-evidencia.permissions.ts',
     set_shift_media_keep: '90-evidencia.permissions.ts',
+    set_shift_media_keep_many: '90-evidencia.permissions.ts',
+    delete_shift_media: '90-evidencia.permissions.ts',
     storage_usage: '90-evidencia.permissions.ts',
     set_media_retention: '90-evidencia.permissions.ts',
   },

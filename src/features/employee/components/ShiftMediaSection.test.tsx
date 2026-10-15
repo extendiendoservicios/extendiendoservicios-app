@@ -68,6 +68,9 @@ function row(overrides: Partial<MyShiftMedia> = {}): MyShiftMedia {
     keep: false,
     expiresOn: '2026-12-12',
     hasFile: true,
+    deletedAt: null,
+    deletedByFirstName: null,
+    deletedByLastName: null,
     thumbUrl: 'https://s.test/m1_thumb.jpg',
     ...overrides,
   }
@@ -264,6 +267,24 @@ describe('ShiftMediaSection', () => {
       renderSection()
 
       expect(screen.getByText(/venció|vencid/i)).toBeInTheDocument()
+    })
+
+    it('un archivo eliminado muestra la constancia y no carga la imagen', () => {
+      mediaState.rows = [
+        row({
+          hasFile: false,
+          thumbUrl: null,
+          deletedAt: '2026-08-13T15:00:00Z',
+          deletedByFirstName: 'Ana',
+          deletedByLastName: 'Pérez',
+        }),
+      ]
+      const { container } = renderSection()
+
+      expect(
+        screen.getByText('Eliminada por Ana Pérez el día jue 13 ago'),
+      ).toBeInTheDocument()
+      expect(container.querySelector('img')).toBeNull()
     })
   })
 })

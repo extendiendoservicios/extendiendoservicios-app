@@ -163,7 +163,7 @@ Deno.test(
   'con el secreto correcto corre el barrido y responde el resumen',
   async () => {
     const { client, calls } = fakeClient([
-      [candidate(1), candidate(2, 'removed')],
+      [candidate(1), candidate(2, 'removed'), candidate(3, 'deleted')],
     ])
     const res = await handleRequest(
       request('POST', { [SECRET_HEADER]: 'secreto-de-prueba' }),
@@ -174,7 +174,8 @@ Deno.test(
     assertEquals(body.ok, true)
     assertEquals(body.expired, 1)
     assertEquals(body.removed, 1)
-    assertEquals(body.rows_marked, 2)
+    assertEquals(body.deleted, 1)
+    assertEquals(body.rows_marked, 3)
     assertEquals(calls.removed.length, 1)
   },
 )
@@ -199,6 +200,22 @@ Deno.test('secretsMatch compara por valor', async () => {
 })
 
 // runCleanup: el barrido ---------------------------------------------------------------------------
+
+Deno.test(
+  'borra también las eliminadas a mano (reason deleted) y las cuenta aparte',
+  async () => {
+    const { client, calls } = fakeClient([
+      [candidate(1, 'deleted'), candidate(2, 'deleted')],
+    ])
+    const summary = await runCleanup(client)
+    assertEquals(calls.removed.length, 1)
+    assertEquals(calls.removed[0].length, 4)
+    assertEquals(summary.deleted, 2)
+    assertEquals(summary.expired, 0)
+    assertEquals(summary.rows_marked, 2)
+    assertEquals(summary.errors, [])
+  },
+)
 
 Deno.test(
   'borra archivo y miniatura de cada candidato y recién después marca las filas',

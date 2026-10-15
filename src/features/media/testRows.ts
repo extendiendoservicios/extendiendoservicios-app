@@ -30,6 +30,10 @@ export function mediaRow(
     hasFile: true,
     expiresOn: '2026-12-12',
     retentionDays: 60,
+    deletedAt: null,
+    deletedBy: null,
+    deletedByFirstName: null,
+    deletedByLastName: null,
     ...overrides,
   }
 }

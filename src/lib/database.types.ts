@@ -2214,6 +2214,8 @@ export type Database = {
           confirmed_at: string | null
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           duration_s: number | null
           expired_at: string | null
           height: number | null
@@ -2240,6 +2242,8 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           duration_s?: number | null
           expired_at?: string | null
           height?: number | null
@@ -2266,6 +2270,8 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           duration_s?: number | null
           expired_at?: string | null
           height?: number | null
@@ -2325,6 +2331,20 @@ export type Database = {
           {
             foreignKeyName: "shift_media_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "shift_media_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_media_deleted_by_fkey"
+            columns: ["deleted_by"]
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
@@ -3867,13 +3887,6 @@ export type Database = {
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_in_recorded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_out_recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -3882,13 +3895,20 @@ export type Database = {
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_in_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_out_recorded_by"]
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_out_recorded_by"]
+            columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
@@ -4087,6 +4107,10 @@ export type Database = {
           client_id: string | null
           client_name: string | null
           created_at: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          deleted_by_first_name: string | null
+          deleted_by_last_name: string | null
           duration_s: number | null
           expired_at: string | null
           expires_on: string | null
@@ -4140,6 +4164,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_my_history"
             referencedColumns: ["assignment_id"]
+          },
+          {
+            foreignKeyName: "shift_media_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_media_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "shift_media_kept_by_fkey"
@@ -4764,6 +4802,8 @@ export type Database = {
           confirmed_at: string | null
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           duration_s: number | null
           expired_at: string | null
           height: number | null
@@ -4891,6 +4931,7 @@ export type Database = {
         Returns: Json
       }
       delete_service: { Args: { p_service_id: string }; Returns: Json }
+      delete_shift_media: { Args: { p_ids: string[] }; Returns: Json }
       evidence_cleanup_candidates: {
         Args: { p_limit?: number }
         Returns: {
@@ -5228,6 +5269,8 @@ export type Database = {
           confirmed_at: string | null
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           duration_s: number | null
           expired_at: string | null
           height: number | null
@@ -5411,6 +5454,8 @@ export type Database = {
           confirmed_at: string | null
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           duration_s: number | null
           expired_at: string | null
           height: number | null
@@ -5437,6 +5482,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      set_shift_media_keep_many: {
+        Args: { p_ids: string[]; p_keep: boolean }
+        Returns: number
       }
       set_user_roles: {
         Args: {
@@ -5769,6 +5818,7 @@ export type Database = {
         | "attendance_time_corrected"
         | "geo_validation_overridden"
         | "geofence_radius_changed"
+        | "media_deleted"
       service_status: "active" | "paused" | "ended"
       shift_status:
         | "scheduled"
@@ -5970,6 +6020,7 @@ export const Constants = {
         "attendance_time_corrected",
         "geo_validation_overridden",
         "geofence_radius_changed",
+        "media_deleted",
       ],
       service_status: ["active", "paused", "ended"],
       shift_status: [
