@@ -166,7 +166,8 @@ test.describe('el dueño o un administrador mira el Resumen', () => {
               { message: 'un círculo por sede' },
             )
             .toBe(0)
-          await sede.click()
+          // Con otras sedes y personas en el mapa los pines pueden superponerse: se dispara el clic del propio pin.
+          await sede.dispatchEvent('click')
           await expect(
             page
               .locator('.leaflet-popup-content')
@@ -176,8 +177,12 @@ test.describe('el dueño o un administrador mira el Resumen', () => {
         })
 
         await test.step('al tocar un punto: persona, cliente y sede, horario, inicio, distancia, precisión, estado y «Ver turno» (B-15)', async () => {
-          await punto(page, `Empleado ${nombre('empleado2')}`).click()
-          const popup = page.locator('.leaflet-popup-content')
+          await punto(page, `Empleado ${nombre('empleado2')}`).dispatchEvent(
+            'click',
+          )
+          const popup = page
+            .locator('.leaflet-popup-content')
+            .filter({ hasText: `${nombre('empleado2')} · Empleado` })
           await expect(popup).toContainText(`${nombre('empleado2')} · Empleado`)
           await expect(popup).toContainText(
             `${t.cliente.name} · ${t.sede.name}`,
