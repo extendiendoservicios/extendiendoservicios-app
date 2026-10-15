@@ -419,6 +419,23 @@ export async function deleteClientDeep(
             .in('assignment_id', asgIds)
         ).error,
       )
+      // Módulo B1: las correcciones de hora y de validación cuelgan del fichaje (B-41).
+      const { data: fichajes } = await db
+        .from('attendance_records')
+        .select('id')
+        .in('assignment_id', asgIds)
+      const fichajeIds = (fichajes ?? []).map((f) => f.id)
+      if (fichajeIds.length > 0) {
+        note(
+          'attendance_corrections',
+          (
+            await db
+              .from('attendance_corrections')
+              .delete()
+              .in('attendance_record_id', fichajeIds)
+          ).error,
+        )
+      }
       note(
         'attendance_records',
         (

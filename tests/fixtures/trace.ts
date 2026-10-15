@@ -9,7 +9,13 @@
 // (`--grep @CB-10`) y anotaciones que aparecen en el informe HTML.
 
 // `H-xx`: decisiones del módulo H (`modulos/H_evidencia_fotografica.md`, evidencia fotográfica).
-type Trace = `RB-${string}` | `CB-${string}` | `P-${string}` | `H-${string}`
+// `B-xx`: decisiones del módulo B (`modulos/B_asistencia_avanzada.md`, asistencia avanzada).
+type Trace =
+  | `RB-${string}`
+  | `CB-${string}`
+  | `P-${string}`
+  | `H-${string}`
+  | `B-${string}`
 
 export function cubre(...ids: Trace[]): {
   tag: string[]

@@ -645,6 +645,122 @@ export const CASOS_RPC: CasoRpc[] = [
     { cubre: ['RB-X02'] },
   ),
 
+  // --- Módulo B1 (0052, 0054, 0056): validación por ubicación y corrección de fichajes ----------
+  // Las correcciones de hora y de validación piden `manage_attendance` (B-09, B-28); el radio
+  // general y la lectura de la posición, solo ser dueño o administrador; el consentimiento es de
+  // quien llama; `geo_distance_m` y `geo_evaluate` son funciones puras que puede llamar cualquiera
+  // con sesión. Con ids inexistentes o valores inválidos que se rechazan DESPUÉS de la puerta.
+  caso(
+    'correct_attendance_time',
+    () => ({
+      p_record_id: U,
+      p_new_time: new Date().toISOString(),
+      p_reason: 'e2e-perm',
+    }),
+    conCapacidad('RECORD_NOT_FOUND'),
+    { cubre: ['RB-A08', 'RB-X02', 'B-28'] },
+  ),
+  caso(
+    'override_geo_validation',
+    () => ({
+      p_record_type: 'attendance',
+      p_record_id: U,
+      p_reason: 'e2e-perm',
+    }),
+    conCapacidad('RECORD_NOT_FOUND'),
+    { variante: 'fichaje de empleado', cubre: ['RB-A08', 'RB-X02', 'B-09'] },
+  ),
+  caso(
+    'override_geo_validation',
+    () => ({
+      p_record_type: 'supervision',
+      p_record_id: U,
+      p_reason: 'e2e-perm',
+    }),
+    conCapacidad('RECORD_NOT_FOUND'),
+    { variante: 'fichaje de supervisión', cubre: ['RB-A08', 'RB-X02', 'B-09'] },
+  ),
+  caso(
+    'set_geofence_radius',
+    () => ({ p_radius: 5000 }),
+    admins('RADIUS_OUT_OF_RANGE'),
+    { cubre: ['RB-X02', 'B-02'] },
+  ),
+  caso(
+    'get_attendance_location',
+    () => ({ p_record_type: 'attendance', p_record_id: U }),
+    admins('RECORD_NOT_FOUND'),
+    { variante: 'fichaje de empleado', cubre: ['RB-X02', 'B-40'] },
+  ),
+  caso(
+    'get_attendance_location',
+    () => ({ p_record_type: 'supervision', p_record_id: U }),
+    admins('RECORD_NOT_FOUND'),
+    { variante: 'fichaje de supervisión', cubre: ['RB-X02', 'B-40'] },
+  ),
+  // Preferencia propia: cualquier persona con sesión. Aceptan y retiran SU consentimiento; el caso
+  // que verifica que solo toca la fila propia está en `92-geo-b1`.
+  caso(
+    'accept_location_consent',
+    () => ({}),
+    {
+      empleado: 'OK',
+      supervisor: 'OK',
+      dual: 'OK',
+      adminSin: 'OK',
+      admin: 'OK',
+      owner: 'OK',
+    },
+    { cubre: ['RB-X02', 'B-22'] },
+  ),
+  caso(
+    'revoke_location_consent',
+    () => ({}),
+    {
+      empleado: 'OK',
+      supervisor: 'OK',
+      dual: 'OK',
+      adminSin: 'OK',
+      admin: 'OK',
+      owner: 'OK',
+    },
+    { cubre: ['RB-X02', 'B-22'] },
+  ),
+  caso(
+    'geo_distance_m',
+    () => ({ p_lat1: 0, p_lng1: 0, p_lat2: 0, p_lng2: 0 }),
+    {
+      empleado: 'OK',
+      supervisor: 'OK',
+      dual: 'OK',
+      adminSin: 'OK',
+      admin: 'OK',
+      owner: 'OK',
+    },
+    { cubre: ['RB-X02', 'B-36'] },
+  ),
+  caso(
+    'geo_evaluate',
+    () => ({
+      p_lat: 0,
+      p_lng: 0,
+      p_accuracy: 10,
+      p_site_lat: 0,
+      p_site_lng: 0,
+      p_radius: 100,
+      p_max_accuracy: 150,
+    }),
+    {
+      empleado: 'OK',
+      supervisor: 'OK',
+      dual: 'OK',
+      adminSin: 'OK',
+      admin: 'OK',
+      owner: 'OK',
+    },
+    { cubre: ['RB-X02', 'B-36'] },
+  ),
+
   // --- Uso exclusivo de `service_role` (nadie con sesión las puede llamar) ----------------------
   // `admin_create_user_records` y `admin_find_orphan_account` las cierra `revoke all` (0035/0036);
   // la 0049 agrega el `revoke execute` explícito que el inventario estático busca.

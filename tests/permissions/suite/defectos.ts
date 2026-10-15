@@ -25,10 +25,42 @@ export function claveCaso(...partes: string[]): string {
 }
 
 /** Defectos conocidos por identificador (DEF-P14 se agregó y se corrigió en P21.6c, 0050). */
-export const DEFECTOS_CONOCIDOS: Record<string, Defecto> = {}
+export const DEFECTOS_CONOCIDOS: Record<string, Defecto> = {
+  // P22.5 (módulo B1, 0056/0057 y 0052). Misma familia que DEF-P14: la puerta de la RPC mira
+  // `auth.uid()` pero no `is_active`, así que una cuenta desactivada con el token vigente entra.
+  'DEF-B1-02': {
+    id: 'DEF-B1-02',
+    resumen:
+      '`accept_location_consent` y `revoke_location_consent` (0056/0057) no miran `is_active`: una cuenta desactivada con el token vigente cambia su consentimiento (CB-18). Gravedad menor.',
+  },
+  'DEF-B1-03': {
+    id: 'DEF-B1-03',
+    resumen:
+      '`geo_distance_m` y `geo_evaluate` (0052) las puede llamar una cuenta desactivada con el token vigente (CB-18). Son funciones puras, no leen ni escriben datos: gravedad informativa; confirmar si es por diseño.',
+  },
+}
+
+const PERFILES_DESACTIVADOS = ['empleado', 'supervisor', 'admin'] as const
 
 /** Clave de caso -> defecto que lo hace fallar hoy. */
-export const DEFECTOS: Record<string, Defecto> = {}
+export const DEFECTOS: Record<string, Defecto> = Object.fromEntries(
+  PERFILES_DESACTIVADOS.flatMap((perfil) => [
+    ...['accept_location_consent', 'revoke_location_consent'].map(
+      (rpc) =>
+        [
+          claveCaso('desactivado', 'rpc', rpc, perfil),
+          DEFECTOS_CONOCIDOS['DEF-B1-02'],
+        ] as const,
+    ),
+    ...['geo_distance_m', 'geo_evaluate'].map(
+      (rpc) =>
+        [
+          claveCaso('desactivado', 'rpc', rpc, perfil),
+          DEFECTOS_CONOCIDOS['DEF-B1-03'],
+        ] as const,
+    ),
+  ]),
+)
 
 export function defectoDe(clave: string): Defecto | undefined {
   return DEFECTOS[clave]

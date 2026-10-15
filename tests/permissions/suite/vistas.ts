@@ -129,6 +129,28 @@ export const VISTAS: VistaSpec[] = [
     ve: ven({ empleado: ['asigE1'], dual: ['asigDual'] }),
   },
   {
+    // Nueva en 0051 (AJ4-06): el historial propio del empleado (solo días anteriores a hoy). El
+    // escenario planta turnos a futuro, así que nadie ve filas: la lectura con datos reales (y
+    // lo que ve de la validación) está en `92-geo-b1`.
+    vista: 'v_my_history',
+    propia: true,
+    clave: 'assignment_id',
+    filas: (c) => ({ asigE1: c.e.asigE1, asigE4: c.e.asigE4 }),
+    ve: ven({}),
+  },
+  {
+    // Nueva en 0052 (B-11, B-40): presencia de hoy para el mapa del Resumen; solo dueño y
+    // administradores. El escenario planta turnos a futuro, así que no hay filas de hoy que
+    // plantar: `filas` vacío (la consulta de administración filtra por ningún id y vuelve sin
+    // error; no depende de lo que haya hoy en `App_dev`) y la lectura con datos de hoy está en
+    // `92-geo-b1`. Los demás perfiles tienen que obtener cero filas pase lo que pase hoy.
+    vista: 'v_presence_today',
+    propia: true,
+    clave: 'record_id',
+    filas: () => ({}),
+    ve: ven({ ...admins }),
+  },
+  {
     vista: 'v_supervisions_admin',
     clave: 'id',
     filas: (c) => ({ supA: c.e.supA, supB: c.e.supB, supD: c.e.supD }),
