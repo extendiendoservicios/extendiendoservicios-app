@@ -16,6 +16,8 @@ import {
   canMarkSupervisionNotDone,
 } from '@/features/supervisions/permissions'
 import { useSupervisionDetailQuery } from '@/features/supervisions/queries'
+import { RecordGeoDetail } from '@/features/geo/components/RecordGeoDetail'
+import { canCorrectAttendance } from '@/features/geo/permissions'
 import { ShiftMediaSection } from '@/features/media/components/ShiftMediaSection'
 import { useShiftMediaBySupervisionQuery } from '@/features/media/queries'
 import { CancelSupervisionDialog } from './CancelSupervisionDialog'
@@ -119,6 +121,27 @@ function SupervisionDetail({ supervisionId }: SupervisionDetailProps) {
             <dd>{detail.checkOutAt ? formatTime(detail.checkOutAt) : '—'}</dd>
           </div>
         </dl>
+        {/* B1 (B-07): validación por ubicación del inicio y fin de la supervisión contra la sede. */}
+        {detail.checkInAt && detail.checkInGeo && (
+          <RecordGeoDetail
+            recordType="supervision"
+            kind="check_in"
+            recordedAt={detail.checkInAt}
+            shiftDate={detail.shiftDate}
+            geo={detail.checkInGeo}
+            canManage={canCorrectAttendance(actor)}
+          />
+        )}
+        {detail.checkOutAt && detail.checkOutGeo && (
+          <RecordGeoDetail
+            recordType="supervision"
+            kind="check_out"
+            recordedAt={detail.checkOutAt}
+            shiftDate={detail.shiftDate}
+            geo={detail.checkOutGeo}
+            canManage={canCorrectAttendance(actor)}
+          />
+        )}
         {detail.status === 'cancelled' && detail.cancelReason && (
           <p className="text-[12px] text-danger-800">
             Motivo de la cancelación: {detail.cancelReason}

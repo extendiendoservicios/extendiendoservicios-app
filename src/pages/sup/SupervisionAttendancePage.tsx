@@ -17,7 +17,6 @@ import { useCompanySettingsQuery } from '@/features/settings/queries'
 import { useOnlineStatus } from '@/features/employee/useOnlineStatus'
 import { useNow } from '@/features/employee/useNow'
 import { rememberLocationDeclined } from '@/features/employee/locationChoice'
-import { consentTimestamp } from '@/features/employee/locationConsent'
 import { useLocationConsent } from '@/features/employee/useLocationConsent'
 import {
   useGeoFichaje,
@@ -154,10 +153,7 @@ export default function SupervisionAttendancePage() {
     setConsentBusy(true)
     setError(null)
     try {
-      await saveLocationConsent(
-        auth.userId,
-        consentTimestamp(consent.consentUpdatedAt),
-      )
+      await saveLocationConsent()
     } catch {
       setConsentBusy(false)
       setError('No pudimos guardar tu consentimiento. Probá de nuevo.')
@@ -183,7 +179,7 @@ export default function SupervisionAttendancePage() {
     if (auth.profile?.locationConsentAt != null) {
       setConsentBusy(true)
       try {
-        await revokeLocationConsent(auth.userId)
+        await revokeLocationConsent()
         await auth.refreshProfile()
       } catch {
         setConsentBusy(false)

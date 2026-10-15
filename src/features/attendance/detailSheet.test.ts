@@ -126,6 +126,7 @@ describe('buildAttendanceSheet (AJ-06)', () => {
       'Franja',
       'Inicio',
       'Fin',
+      'Validación',
       'Observaciones',
       'Horas',
     ])
@@ -260,6 +261,58 @@ describe('printableEntries / personSignerLabel', () => {
     })
     expect(sheet.rows[0]?.novelty).toBe('Ausencia avisada: Enfermedad')
     expect(sheet.footer.value).toBe('0 min')
+  })
+
+  it('la hoja imprimible lleva la validación por ubicación sin coordenadas (B-20)', () => {
+    const geo = (overrides: Record<string, unknown>) => ({
+      recordId: 'r',
+      status: 'valid' as const,
+      reason: null,
+      distanceM: 10,
+      radiusM: 150,
+      accuracyM: 12,
+      outsideReason: null,
+      overridden: false,
+      timeCorrected: false,
+      ...overrides,
+    })
+    const entries = buildAttendanceEntries(
+      [
+        makeAssignment({
+          id: 'a1',
+          shiftDate: '2026-09-28',
+          checkInAt: at('08:01'),
+          checkOutAt: at('12:00'),
+          workedMinutes: 239,
+          checkInGeo: geo({}),
+          checkOutGeo: geo({ status: 'outside', distanceM: 350 }),
+        }),
+        makeAssignment({
+          id: 'a2',
+          shiftDate: '2026-09-29',
+          checkInAt: at('08:00'),
+          workedMinutes: null,
+          checkInGeo: geo({ status: 'unvalidated', reason: 'no_location' }),
+        }),
+      ],
+      [],
+    )
+    const sheet = buildAttendanceSheet({
+      person: {
+        name: 'Carlos Medina',
+        employeeNumber: 19,
+        roleLabels: ['Empleado'],
+        signerLabel: 'Empleado',
+      },
+      from: '2026-09-01',
+      to: '2026-09-30',
+      entries,
+      now: NOW,
+    })
+    expect(sheet.rows.map((row) => row.geo)).toEqual([
+      'Inicio: Validado · Fin: Fuera de zona (350 m)',
+      'Sin validar',
+    ])
   })
 
   it('arma la etiqueta de la firma de la persona según sus roles', () => {

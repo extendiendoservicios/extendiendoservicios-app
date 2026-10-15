@@ -1,6 +1,7 @@
 import { cleanTaxId } from '@/lib/taxId'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
+import type { GeoStatus, GeoUnvalidatedReason } from '@/lib/geo'
 import { ApiError, fromPostgrestError } from './errors'
 
 /**
@@ -500,6 +501,19 @@ export async function fetchClientSites(
 // Resumen de servicios y horas del mes (AJ-09, AJ-10)
 // -------------------------------------------------------------------------
 
+/**
+ * Validación por ubicación de un fichaje en `client_service_summary` (0056,
+ * B-20): estado, motivo, distancia a la sede y marca de corrección. Nunca trae
+ * coordenadas ni precisión (B-40).
+ */
+export interface ClientSummaryGeo {
+  status: GeoStatus
+  reason: GeoUnvalidatedReason | null
+  distanceM: number | null
+  /** Un dueño o administrador lo marcó como válido (B-09). */
+  overridden: boolean
+}
+
 /** Una persona asignada a un turno realizado, en `client_service_summary`. */
 export interface ClientSummaryEmployee {
   assignmentId: string
@@ -516,6 +530,10 @@ export interface ClientSummaryEmployee {
   openEnded: boolean
   /** AJ2-10: «Sin salida»: pasó el día y nadie cargó la salida; suma 0 horas. */
   noCheckout: boolean
+  /** B1 (0056): validación del inicio; `null` si no hay inicio. Opcional para no romper los datos de prueba anteriores. */
+  checkInGeo?: ClientSummaryGeo | null
+  /** B1 (0056): validación del fin; `null` si no hay fin. */
+  checkOutGeo?: ClientSummaryGeo | null
 }
 
 /** Un turno realizado dentro del período. */
@@ -586,8 +604,31 @@ interface ClientServiceSummaryRaw {
       worked_minutes: number | null
       open_ended?: boolean
       no_checkout?: boolean
+      check_in_geo_status?: GeoStatus | null
+      check_in_geo_reason?: GeoUnvalidatedReason | null
+      check_in_distance_m?: number | null
+      check_in_geo_overridden?: boolean | null
+      check_out_geo_status?: GeoStatus | null
+      check_out_geo_reason?: GeoUnvalidatedReason | null
+      check_out_distance_m?: number | null
+      check_out_geo_overridden?: boolean | null
     }[]
   }[]
+}
+
+function mapSummaryGeo(
+  status: GeoStatus | null | undefined,
+  reason: GeoUnvalidatedReason | null | undefined,
+  distanceM: number | null | undefined,
+  overridden: boolean | null | undefined,
+): ClientSummaryGeo | null {
+  if (!status) return null
+  return {
+    status,
+    reason: reason ?? null,
+    distanceM: distanceM ?? null,
+    overridden: overridden ?? false,
+  }
 }
 
 /** Arma el resumen tipado a partir del `jsonb` que devuelve la RPC. */
@@ -629,6 +670,18 @@ export function mapClientServiceSummary(
         workedMinutes: employee.worked_minutes,
         openEnded: employee.open_ended ?? false,
         noCheckout: employee.no_checkout ?? false,
+        checkInGeo: mapSummaryGeo(
+          employee.check_in_geo_status,
+          employee.check_in_geo_reason,
+          employee.check_in_distance_m,
+          employee.check_in_geo_overridden,
+        ),
+        checkOutGeo: mapSummaryGeo(
+          employee.check_out_geo_status,
+          employee.check_out_geo_reason,
+          employee.check_out_distance_m,
+          employee.check_out_geo_overridden,
+        ),
       })),
     })),
   }

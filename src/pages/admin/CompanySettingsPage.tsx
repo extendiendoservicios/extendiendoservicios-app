@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Skeleton } from '@/components/ui/skeleton'
 import { isApiError } from '@/api/errors'
+import { formatShortDate, formatTime } from '@/lib/format'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { ConfigNav } from '@/features/settings/components/ConfigNav'
 import { LogoUploader } from '@/features/settings/components/LogoUploader'
@@ -158,8 +159,18 @@ export default function CompanySettingsPage() {
                 )}
                 <p className="text-[11px] text-text-3">
                   Se le muestra a cada empleado antes de pedirle permiso de
-                  ubicación al fichar.
+                  ubicación al fichar. Cuando lo cambiás, la app lo vuelve a
+                  mostrar la próxima vez que cada persona ficha.
                 </p>
+                {companyQuery.data?.locationConsentUpdatedAt && (
+                  <p className="text-[11px] text-text-3">
+                    Última modificación:{' '}
+                    {formatShortDate(
+                      companyQuery.data.locationConsentUpdatedAt,
+                    )}{' '}
+                    {formatTime(companyQuery.data.locationConsentUpdatedAt)}
+                  </p>
+                )}
               </Field>
 
               <Button

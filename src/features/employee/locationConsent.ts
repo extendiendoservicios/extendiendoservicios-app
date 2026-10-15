@@ -50,21 +50,3 @@ export function resolveLocationConsent({
   }
   return declined ? 'declined' : 'needs-consent'
 }
-
-/**
- * Instante con el que se guarda un consentimiento nuevo. La hora oficial es
- * la del servidor, pero hoy el consentimiento se guarda con un `update`
- * directo (sin RPC). Si el reloj del celular va atrasado respecto de
- * `location_consent_updated_at`, el consentimiento recién dado quedaría
- * "anterior" al texto y la app lo volvería a pedir sin fin: por eso nunca se
- * guarda uno anterior al último cambio del texto (+1 s).
- */
-export function consentTimestamp(
-  consentUpdatedAt: string | null | undefined,
-  now: Date = new Date(),
-): string {
-  const changed = consentUpdatedAt ? Date.parse(consentUpdatedAt) : Number.NaN
-  const base = now.getTime()
-  const at = Number.isNaN(changed) ? base : Math.max(base, changed + 1000)
-  return new Date(at).toISOString()
-}

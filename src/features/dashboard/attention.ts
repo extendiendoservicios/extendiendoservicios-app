@@ -16,12 +16,23 @@ import { shiftStartInstant } from './kpis'
  *   sin fichaje de salida; suma 0 horas hasta que administración cargue la
  *   hora. No se trata como un fin pasado común (`overdue`).
  * - `overdue`: en curso pasada la hora de fin sin fin registrado.
+ * - `outsideGeo` (B-21): algún fichaje de hoy quedó «Fuera de zona» y la
+ *   administración no lo marcó como válido (`has_outside_geo` de
+ *   `v_assignments_board`). Es independiente de las demás: una asignación
+ *   puede tener este aviso y además otro (por ejemplo, sigue en curso pasada
+ *   su hora de fin).
  * - `late` (AJ-07): llegada tarde (pasó el inicio hace hasta 15 min, sin
  *   registro). Es una alerta amarilla y va última. `on_the_way` (AJ-02) no
  *   entra: es informativo y no negativo.
  */
 export type AttentionKind =
-  'absence' | 'uncovered' | 'noRecord' | 'noCheckout' | 'overdue' | 'late'
+  | 'absence'
+  | 'uncovered'
+  | 'noRecord'
+  | 'noCheckout'
+  | 'overdue'
+  | 'outsideGeo'
+  | 'late'
 
 export const ATTENTION_ORDER: AttentionKind[] = [
   'noRecord',
@@ -29,6 +40,7 @@ export const ATTENTION_ORDER: AttentionKind[] = [
   'overdue',
   'absence',
   'uncovered',
+  'outsideGeo',
   'late',
 ]
 
@@ -116,6 +128,21 @@ export function computeAttention(
         assignment: row,
         shift: shiftById.get(row.shiftId),
         minutesSince: minutesBetween(new Date(row.endsAt), now),
+      })
+    }
+  }
+
+  // B-21: «Fuera de zona» de hoy. Cuenta también turnos ya terminados, pero no
+  // los cancelados.
+  for (const row of assignments) {
+    if (row.hasOutsideGeo && row.shiftStatus !== 'cancelled') {
+      items.push({
+        kind: 'outsideGeo',
+        key: `outsideGeo-${row.id}`,
+        shiftId: row.shiftId,
+        assignment: row,
+        shift: shiftById.get(row.shiftId),
+        minutesSince: null,
       })
     }
   }

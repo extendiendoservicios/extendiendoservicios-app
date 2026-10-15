@@ -57,6 +57,14 @@ const {
 }))
 
 vi.mock('@/api/users', () => ({ updatePersonName: updatePersonNameMock }))
+const { acceptConsentMock, revokeConsentMock } = vi.hoisted(() => ({
+  acceptConsentMock: vi.fn<() => Promise<string>>(),
+  revokeConsentMock: vi.fn<() => Promise<void>>(),
+}))
+vi.mock('@/api/locationConsent', () => ({
+  saveLocationConsent: acceptConsentMock,
+  revokeLocationConsent: revokeConsentMock,
+}))
 const { setMyHighContrastMock } = vi.hoisted(() => ({
   setMyHighContrastMock: vi.fn<(enabled: boolean) => Promise<void>>(),
 }))
@@ -119,6 +127,8 @@ beforeEach(() => {
   updateUserMock.mockReset()
   updatePersonNameMock.mockReset().mockResolvedValue(undefined)
   profilesUpdateMock.mockReset().mockResolvedValue({ data: null, error: null })
+  acceptConsentMock.mockReset().mockResolvedValue('2026-10-14T12:00:00Z')
+  revokeConsentMock.mockReset().mockResolvedValue(undefined)
   companySettings.result = {
     data: { location_consent_text: 'Texto legal de prueba de consentimiento.' },
     error: null,
@@ -274,7 +284,7 @@ describe('ProfilePage (COM-04)', () => {
     })
   })
 
-  it('sin consentimiento de ubicación, ofrece darlo y guarda la fecha actual', async () => {
+  it('sin consentimiento de ubicación, ofrece darlo y lo guarda con la RPC (hora del servidor)', async () => {
     const refreshProfile = vi.fn().mockResolvedValue(undefined)
     vi.spyOn(authModule, 'useAuth').mockReturnValue(
       authValue({ refreshProfile }),
@@ -295,9 +305,8 @@ describe('ProfilePage (COM-04)', () => {
     // `refreshProfile()` (el contexto real, no este mock estático) es lo que
     // actualiza `auth.profile.locationConsentAt` en la app de verdad — acá
     // alcanza con comprobar que se guardó la fecha y que se pidió refrescar.
-    await vi.waitFor(() => expect(profilesUpdateMock).toHaveBeenCalledTimes(1))
-    const [payload] = profilesUpdateMock.mock.calls[0]!
-    expect(payload.location_consent_at).not.toBeNull()
+    await vi.waitFor(() => expect(acceptConsentMock).toHaveBeenCalledTimes(1))
+    expect(profilesUpdateMock).not.toHaveBeenCalled()
     await vi.waitFor(() => expect(refreshProfile).toHaveBeenCalledTimes(1))
   })
 
@@ -324,6 +333,35 @@ describe('ProfilePage (COM-04)', () => {
     expect(
       screen.getByRole('button', { name: 'Quitar consentimiento' }),
     ).toBeInTheDocument()
+  })
+
+  it('"Quitar consentimiento" usa la RPC de retiro', async () => {
+    const refreshProfile = vi.fn().mockResolvedValue(undefined)
+    vi.spyOn(authModule, 'useAuth').mockReturnValue(
+      authValue({
+        refreshProfile,
+        profile: {
+          id: 'user-1',
+          firstName: 'Carlos',
+          lastName: 'Medina',
+          displayName: 'Carlos Medina',
+          contactEmail: null,
+          phone: null,
+          avatarPath: null,
+          highContrast: false,
+          locationConsentAt: '2026-08-13T11:00:00.000Z',
+        },
+      }),
+    )
+
+    render(<ProfilePage />)
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Quitar consentimiento' }),
+    )
+
+    await vi.waitFor(() => expect(revokeConsentMock).toHaveBeenCalledTimes(1))
+    expect(profilesUpdateMock).not.toHaveBeenCalled()
+    await vi.waitFor(() => expect(refreshProfile).toHaveBeenCalledTimes(1))
   })
 
   it('el botón "Cerrar sesión" llama a auth.signOut()', () => {

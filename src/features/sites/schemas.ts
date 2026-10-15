@@ -1,6 +1,10 @@
 import { z } from 'zod'
 import type { Coordinates } from '@/components/map'
 import { SITE_STATUS_LABELS, type SiteStatus } from '@/api/sites'
+import {
+  radiusTextToValue,
+  siteRadiusFieldSchema,
+} from '@/features/geo/schemas'
 
 /**
  * Esquemas zod de ADM-23 (SITE-001): repiten las restricciones que ya exige
@@ -39,6 +43,8 @@ export const siteFormSchema = z.object({
   phoneRestricted: z.boolean(),
   photosNotAllowed: z.boolean(),
   restrictionsNotes: z.string().trim().optional(),
+  // B-02: radio de validación propio (opcional, 50 a 1000 m). Vacío = usa el general.
+  geofenceRadius: siteRadiusFieldSchema,
   status: z.enum(['active', 'inactive']),
 })
 
@@ -59,6 +65,7 @@ export function siteFormValuesToInput(values: SiteFormValues) {
     phoneRestricted: values.phoneRestricted,
     photosNotAllowed: values.photosNotAllowed,
     restrictionsNotes: emptyToNull(values.restrictionsNotes),
+    geofenceRadiusM: radiusTextToValue(values.geofenceRadius),
     status: values.status,
   }
 }

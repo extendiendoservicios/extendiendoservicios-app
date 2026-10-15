@@ -46,6 +46,18 @@ const summary: ClientServiceSummary = {
           workedMinutes: 239,
           openEnded: false,
           noCheckout: false,
+          checkInGeo: {
+            status: 'valid',
+            reason: null,
+            distanceM: 11,
+            overridden: false,
+          },
+          checkOutGeo: {
+            status: 'outside',
+            reason: null,
+            distanceM: 350,
+            overridden: false,
+          },
         },
         {
           assignmentId: 'a2',
@@ -190,6 +202,7 @@ describe('buildClientSummarySheet (AJ-09)', () => {
       'Nombre y Apellido',
       'DNI',
       'Observaciones',
+      'Validación',
       'Horas',
     ])
     // Una fila por persona y turno; DNI «—» si no se pasó.
@@ -202,6 +215,7 @@ describe('buildClientSummarySheet (AJ-09)', () => {
         name: 'Carlos Medina',
         dni: '—',
         novelty: '',
+        geo: 'Inicio: Validado · Fin: Fuera de zona (350 m)',
         hours: '3 h 59 min',
       },
       {
@@ -212,6 +226,7 @@ describe('buildClientSummarySheet (AJ-09)', () => {
         name: 'Valeria Paz',
         dni: '—',
         novelty: '',
+        geo: '—',
         hours: '3 h 59 min',
       },
     ])

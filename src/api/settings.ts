@@ -69,6 +69,8 @@ export interface CompanySettings {
   logoPath: string | null
   supportPhone: string | null
   locationConsentText: string | null
+  /** B-22: última vez que cambió el texto de consentimiento (lo actualiza la base solo cuando el texto cambia). */
+  locationConsentUpdatedAt: string | null
   updatedBy: string | null
   updatedAt: string
 }
@@ -84,7 +86,7 @@ export async function fetchCompanySettings(): Promise<CompanySettings> {
   const { data, error } = await supabase
     .from('company_settings')
     .select(
-      'name, logo_path, support_phone, location_consent_text, updated_by, updated_at',
+      'name, logo_path, support_phone, location_consent_text, location_consent_updated_at, updated_by, updated_at',
     )
     .eq('id', 1)
     .single()
@@ -98,6 +100,7 @@ export async function fetchCompanySettings(): Promise<CompanySettings> {
     logoPath: data.logo_path,
     supportPhone: data.support_phone,
     locationConsentText: data.location_consent_text,
+    locationConsentUpdatedAt: data.location_consent_updated_at,
     updatedBy: data.updated_by,
     updatedAt: data.updated_at,
   }
