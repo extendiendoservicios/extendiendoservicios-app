@@ -102,6 +102,10 @@ encargo, `deno.lock` ya estaba desactualizado respecto de `package.json`
 regenerar `deno.lock`) — no se corrigió acá por no ser parte del alcance de
 TEST-004; ver el reporte de la tarea para la pregunta a Mike.
 
+**Jobs y pgTAP condicionado (P22, 14 oct 2026):** `ci.yml` tiene tres jobs. `calidad` hace todo lo de esta sección salvo pgTAP. `pgtap` corre en paralelo, solo si el PR toca `supabase/migrations/`, `supabase/tests/`, `scripts/db-test.sh` o el propio `ci.yml`, o si va a `main`; lo decide el job `cambios` con `git diff` contra la base del PR. Tiene `timeout-minutes: 40` y la concurrencia `pgtap-app-dev`, para que dos PR no lo corran a la vez contra `App_dev`. `ci` (nombre «CI», la verificación obligatoria) solo junta los resultados: falla si falla `calidad`, o si `pgtap` debía correr y no terminó bien. Un PR de pantallas pasa de ~20 a ~8 min.
+
+Limitación conocida: `db:types` sigue en `calidad` y compara contra `App_dev`. Si se aplica en `App_dev` una migración que la rama todavía no trae, el PR falla en ese paso hasta sumarla.
+
 **Condicionados, no eliminados:** `db:types --check` (genera
 `src/lib/database.types.ts` desde `App_dev` y falla si difiere de lo
 commiteado, DB-021) y `pnpm db:test` (pgTAP, DB-022) están escritos en el
