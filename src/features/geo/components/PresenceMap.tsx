@@ -180,7 +180,13 @@ function PresenceMap() {
           Supervisor
         </li>
         <li className="flex items-center gap-1.5">
-          <span aria-hidden className="size-2.5 rounded-full bg-primary" />
+          <img
+            src="/icons/isotipo_blanco_34px@2x.png"
+            srcSet="/icons/isotipo_blanco_34px@2x.png 2x, /icons/isotipo_blanco_34px@3x.png 3x"
+            alt=""
+            aria-hidden="true"
+            className="box-content h-2.5 w-auto rounded-full bg-primary p-1"
+          />
           Sede con su radio
         </li>
       </ul>

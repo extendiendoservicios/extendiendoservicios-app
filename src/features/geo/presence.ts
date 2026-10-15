@@ -11,8 +11,9 @@ import type { PresenceRow } from '@/api/geo'
  *   (B-03): verde válido o marcado como válido por la administración, rojo
  *   fuera de zona, gris sin validar. Los supervisores llevan forma de rombo.
  * - Con «Mostrar finalizados de hoy», se suman los que ya fichó el fin.
- * - Sedes con turno hoy (`kind = site`): su punto y su círculo con el radio
- *   vigente, sin color de alarma (B-14).
+ * - Sedes (`kind = site`): su pin y su círculo con el radio vigente, sin color
+ *   de alarma (B-14). Solo se dibujan si hay alguien de esa sede en curso (o
+ *   finalizado con «Mostrar finalizados»), con o sin ubicación.
  * - Quienes trabajan sin posición no tienen punto: van a la lista de «Trabajando
  *   sin ubicación» (B-13). Solo cuenta a los que están en curso.
  */
@@ -69,13 +70,27 @@ export function buildPresenceMarkers(
   const personMarkers: MapViewMarker[] = []
   const withoutLocation: PresenceRow[] = []
 
+  // Sedes con al menos una persona que se dibuja o se lista ahora (P22.6b).
+  const activeSiteIds = new Set<string>()
+  for (const row of rows) {
+    if (row.kind === 'site' || !row.siteId) continue
+    if (row.inProgress || options.showFinished) {
+      activeSiteIds.add(row.siteId)
+    }
+  }
+
   for (const row of rows) {
     if (row.kind === 'site') {
-      if (row.siteLatitude != null && row.siteLongitude != null) {
+      if (
+        row.siteLatitude != null &&
+        row.siteLongitude != null &&
+        activeSiteIds.has(row.recordId)
+      ) {
         siteMarkers.push({
           id: `site-${row.recordId}`,
           position: { lat: row.siteLatitude, lng: row.siteLongitude },
           variant: 'primary',
+          shape: 'site',
           radiusM: row.siteRadiusM,
           circleVariant: 'primary',
           label: `Sede ${row.siteName ?? ''}`.trim(),

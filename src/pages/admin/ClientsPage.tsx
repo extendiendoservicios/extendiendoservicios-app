@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DataTable, type DataTableColumnDef } from '@/components/DataTable'
 import { Avatar } from '@/components/Avatar'
 import { clientPhotoUrl } from '@/api/photos'
-import { StatusBadge, getStatusMeta } from '@/components/status'
+import { StatusBadge } from '@/components/status'
 import { MapView, type MapViewMarker } from '@/components/map'
 import type { ClientListRow, ClientStatus } from '@/api/clients'
 import { CLIENT_STATUS_OPTIONS } from '@/features/clients/schemas'
@@ -312,7 +312,9 @@ function ClientsMapTab() {
           lat: site.latitude as number,
           lng: site.longitude as number,
         },
-        variant: getStatusMeta({ domain: 'site', status: site.status }).variant,
+        // Pin de sede: color de marca si está activa, gris si no.
+        shape: 'site',
+        variant: site.status === 'active' ? 'primary' : 'neutral',
         // B-17: solo las sedes llevan círculo; las coordenadas propias del cliente, no.
         radiusM: showRadii
           ? effectiveSiteRadiusM(site.geofenceRadiusM, generalRadiusM)

@@ -189,6 +189,57 @@ describe('buildPresenceMarkers', () => {
     expect(site?.variant).toBe('primary')
   })
 
+  it('el pin de sede usa la forma `site`', () => {
+    const model = buildPresenceMarkers([siteRow(), row()], {
+      showFinished: false,
+    })
+    expect(model.markers[0]?.shape).toBe('site')
+  })
+
+  it('una sede sin nadie no se dibuja', () => {
+    const model = buildPresenceMarkers([siteRow()], { showFinished: false })
+    expect(model.markers).toEqual([])
+    expect(model.sitesOnMap).toBe(0)
+  })
+
+  it('una sede de otra gente no aparece si su propia gente no está', () => {
+    const model = buildPresenceMarkers(
+      [siteRow({ recordId: 'site2' }), row({ siteId: 'site1' })],
+      { showFinished: false },
+    )
+    expect(model.markers.map((marker) => marker.id)).toEqual(['employee-a1'])
+  })
+
+  it('una sede con solo finalizados aparece únicamente con «Mostrar finalizados»', () => {
+    const rows = [
+      siteRow(),
+      row({ inProgress: false, checkOutAt: '2026-10-14T15:00:00Z' }),
+    ]
+    expect(buildPresenceMarkers(rows, { showFinished: false }).sitesOnMap).toBe(
+      0,
+    )
+    expect(buildPresenceMarkers(rows, { showFinished: true }).sitesOnMap).toBe(
+      1,
+    )
+  })
+
+  it('quien trabaja sin ubicación también hace que se muestre su sede', () => {
+    const model = buildPresenceMarkers(
+      [siteRow(), row({ latitude: null, longitude: null })],
+      { showFinished: false },
+    )
+    expect(model.sitesOnMap).toBe(1)
+    expect(model.peopleOnMap).toBe(0)
+  })
+
+  it('un supervisor en curso también muestra su sede', () => {
+    const model = buildPresenceMarkers(
+      [siteRow(), row({ kind: 'supervisor', recordId: 'sv1' })],
+      { showFinished: false },
+    )
+    expect(model.sitesOnMap).toBe(1)
+  })
+
   it('las sedes van primero y los puntos de personas encima', () => {
     const model = buildPresenceMarkers([row(), siteRow()], {
       showFinished: false,
