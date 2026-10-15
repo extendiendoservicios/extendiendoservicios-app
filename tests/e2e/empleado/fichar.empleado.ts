@@ -12,6 +12,7 @@ import {
   POSICION_SIMULADA,
   tareasDelTurno,
   TEXTO,
+  continuarTrasFichar,
 } from '../../fixtures/movil.ts'
 import { Scenario } from '../../fixtures/scenario.ts'
 import { readId, storageStatePath } from '../../fixtures/sessions.ts'
@@ -94,6 +95,7 @@ test.describe('con la geoposición concedida', () => {
         await test.step('EMP-05: hora de referencia y registro del inicio', async () => {
           await expect(page.getByText(TEXTO.horaReferencia)).toBeVisible()
           await page.getByRole('button', { name: 'Registrar inicio' }).click()
+          await continuarTrasFichar(page)
           await expect(page).toHaveURL(
             new RegExp(`/app/en-curso/${asignacion}$`),
           )
@@ -170,6 +172,7 @@ test.describe('con la geoposición concedida', () => {
             'los avisos no bloquean (P-076)',
           ).toBeEnabled()
           await registrarFin.click()
+          await continuarTrasFichar(page)
           await expect(page).toHaveURL(
             new RegExp(`/app/resumen/${asignacion}$`),
           )
@@ -280,6 +283,7 @@ test.describe('con la geoposición concedida', () => {
             .click()
           await expect(page.getByText(TEXTO.horaReferencia)).toBeVisible()
           await page.getByRole('button', { name: 'Registrar inicio' }).click()
+          await continuarTrasFichar(page)
           await expect(page).toHaveURL(
             new RegExp(`/app/en-curso/${asignacionB}$`),
           )
@@ -293,6 +297,7 @@ test.describe('con la geoposición concedida', () => {
           )
           await page.goto(`/app/en-curso/${asignacionB}/finalizar`)
           await page.getByRole('button', { name: 'Registrar fin' }).click()
+          await continuarTrasFichar(page)
           await expect(page).toHaveURL(
             new RegExp(`/app/resumen/${asignacionB}$`),
           )
@@ -306,11 +311,13 @@ test.describe('con la geoposición concedida', () => {
             page.getByText('Tenés más de un servicio hoy'),
           ).toHaveCount(0)
           await page.getByRole('button', { name: 'Registrar inicio' }).click()
+          await continuarTrasFichar(page)
           await expect(page).toHaveURL(
             new RegExp(`/app/en-curso/${asignacionA}$`),
           )
           await page.goto(`/app/en-curso/${asignacionA}/finalizar`)
           await page.getByRole('button', { name: 'Registrar fin' }).click()
+          await continuarTrasFichar(page)
           await expect(page).toHaveURL(
             new RegExp(`/app/resumen/${asignacionA}$`),
           )
@@ -365,10 +372,12 @@ test.describe('con la geoposición negada', () => {
         await page.getByRole('button', { name: 'Aceptar y continuar' }).click()
         await expect(page).toHaveURL(/\/app\/fichar\?asignacion=/)
         await page.getByRole('button', { name: 'Registrar inicio' }).click()
+        await continuarTrasFichar(page)
         await expect(page).toHaveURL(new RegExp(`/app/en-curso/${asignacion}$`))
 
         await page.goto(`/app/en-curso/${asignacion}/finalizar`)
         await page.getByRole('button', { name: 'Registrar fin' }).click()
+        await continuarTrasFichar(page)
         await expect(page).toHaveURL(new RegExp(`/app/resumen/${asignacion}$`))
 
         const { data: registros } = await sc.db
@@ -425,11 +434,13 @@ test.describe('con la geoposición negada', () => {
             .click()
           await expect(page).toHaveURL(/\/app\/fichar\?asignacion=/)
           await page.getByRole('button', { name: 'Registrar inicio' }).click()
+          await continuarTrasFichar(page)
           await expect(page).toHaveURL(
             new RegExp(`/app/en-curso/${asignacionA}$`),
           )
           await page.goto(`/app/en-curso/${asignacionA}/finalizar`)
           await page.getByRole('button', { name: 'Registrar fin' }).click()
+          await continuarTrasFichar(page)
           await expect(page).toHaveURL(/\/app\/resumen\//)
         })
 
@@ -441,6 +452,7 @@ test.describe('con la geoposición negada', () => {
             page.getByText(TEXTO.ubicacionConsentimiento),
           ).toHaveCount(0)
           await page.getByRole('button', { name: 'Registrar inicio' }).click()
+          await continuarTrasFichar(page)
           await expect(page).toHaveURL(
             new RegExp(`/app/en-curso/${asignacionB}$`),
           )

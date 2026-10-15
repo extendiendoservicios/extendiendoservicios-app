@@ -49,6 +49,12 @@ export interface TablaSpec {
    * tabla lo usa desde P18.6 (DEF-P02 corregido en 0030: `shift_tasks` responde sin filtro).
    */
   pesada?: boolean
+  /**
+   * Columnas que se piden en las lecturas. Por omisión `*`. Desde 0054 (B-40) `authenticated` no
+   * tiene `select` de tabla sobre `attendance_records` ni `supervision_attendance`: pedir `*` da
+   * 42501 (lo prueba `92-geo-b1`), así que la matriz pide solo las columnas abiertas.
+   */
+  columnas?: string
   insert: {
     permitido: readonly Perfil[]
     /** Fila a insertar; `quien` permite apuntar a cosas distintas según el perfil. */
@@ -648,6 +654,8 @@ export const TABLAS: TablaSpec[] = [
     tabla: 'attendance_records',
     pk: ['id'],
     clave: 'id',
+    columnas:
+      'id, assignment_id, kind, recorded_at, source, recorded_by, geo_status, geo_unvalidated_reason, site_distance_m, geofence_radius_m, outside_reason, geo_override_at, time_corrected_at',
     filas: (c) => ({
       asistenciaE1: c.e.asistenciaE1,
       asistenciaE2: c.e.asistenciaE2,
@@ -673,6 +681,32 @@ export const TABLAS: TablaSpec[] = [
         nombre: 'registro de asistencia',
         permitido: [],
         parche: { reason: `${PREFIJO}editado` },
+      },
+    ],
+  },
+  {
+    // Módulo B1 (0052, B-41): constancia de las correcciones de hora y de validación. Solo la
+    // leen el dueño y los administradores; nadie la escribe por API (solo las RPC de definidor).
+    tabla: 'attendance_corrections',
+    pk: ['id'],
+    clave: 'id',
+    filas: (c) => ({ correccionE1: c.e.correccionE1 }),
+    objetivo: (c) => ({ id: c.e.correccionE1 }),
+    insert: {
+      permitido: [],
+      fila: (c) => ({
+        attendance_record_id: c.e.asistenciaE1,
+        kind: 'geo',
+        reason: `${PREFIJO}insert-directo`,
+        corrected_by: c.ids.admin,
+      }),
+    },
+    ve: ven({ ...admins }),
+    update: [
+      {
+        nombre: 'corrección',
+        permitido: [],
+        parche: { reason: `${PREFIJO}editada` },
       },
     ],
   },
@@ -818,6 +852,8 @@ export const TABLAS: TablaSpec[] = [
     tabla: 'supervision_attendance',
     pk: ['id'],
     clave: 'id',
+    columnas:
+      'id, supervision_id, kind, recorded_at, geo_status, geo_unvalidated_reason, site_distance_m, geofence_radius_m, outside_reason, geo_override_at',
     filas: (c) => ({ asistSupA: c.e.asistSupA, asistSupB: c.e.asistSupB }),
     objetivo: (c) => ({ id: c.e.asistSupB }),
     insert: {

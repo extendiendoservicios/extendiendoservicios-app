@@ -39,6 +39,7 @@
     "tests/e2e-tablero/**/*.ts",
     "tests/e2e-responsive/**/*.ts",
     "tests/e2e-ajustes-reunion/**/*.ts",
+    "tests/e2e-geo/**/*.ts",
     "tests/lighthouse/**/*.ts",
     "tests/permissions/**/*.ts",
     "scripts/**/*.ts",

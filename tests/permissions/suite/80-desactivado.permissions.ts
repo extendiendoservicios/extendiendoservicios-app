@@ -102,7 +102,7 @@ for (const perfil of PERFILES_A_DESACTIVAR) {
         claveCaso('desactivado', spec.tabla, 'select', perfil),
         `${spec.tabla}.select -> cero filas (CB-18, RB-X02)`,
         async () => {
-          const consulta = tabla(db, spec.tabla).select('*')
+          const consulta = tabla(db, spec.tabla).select(spec.columnas ?? '*')
           const res = await (spec.pesada
             ? consulta.in(spec.clave, Object.values(spec.filas(contexto())))
             : consulta.limit(5))
