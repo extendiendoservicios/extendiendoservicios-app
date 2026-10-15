@@ -107,6 +107,11 @@ test.describe('con la geoposición concedida', () => {
             .click()
           await expect(page.getByText(TEXTO.horaReferencia)).toBeVisible()
           await page.getByRole('button', { name: 'Registrar inicio' }).click()
+          // B1 (P22.5): cada fichaje muestra primero su resultado.
+          await page
+            .getByTestId('attendance-result')
+            .getByRole('button', { name: 'Seguir con la supervisión' })
+            .click()
           await expect(
             page.getByText(/Supervisión iniciada a las/),
           ).toBeVisible()
@@ -114,6 +119,10 @@ test.describe('con la geoposición concedida', () => {
 
         await test.step('SUP-04: "Registrar fin" vuelve al detalle con las dos horas', async () => {
           await page.getByRole('button', { name: 'Registrar fin' }).click()
+          await page
+            .getByTestId('attendance-result')
+            .getByRole('button', { name: 'Continuar' })
+            .click()
           await expect(page).toHaveURL(
             new RegExp(`/sup/supervisiones/${supA}$`),
           )
@@ -295,8 +304,16 @@ test.describe('con la geoposición negada', () => {
         await page.goto(`/sup/supervisiones/${sup}/registro`)
         await page.getByRole('button', { name: 'Aceptar y continuar' }).click()
         await page.getByRole('button', { name: 'Registrar inicio' }).click()
+        await page
+          .getByTestId('attendance-result')
+          .getByRole('button', { name: 'Seguir con la supervisión' })
+          .click()
         await expect(page.getByText(/Supervisión iniciada a las/)).toBeVisible()
         await page.getByRole('button', { name: 'Registrar fin' }).click()
+        await page
+          .getByTestId('attendance-result')
+          .getByRole('button', { name: 'Continuar' })
+          .click()
         await expect(page).toHaveURL(new RegExp(`/sup/supervisiones/${sup}$`))
 
         const { data } = await sc.db
@@ -338,6 +355,10 @@ test.describe('con la geoposición negada', () => {
           .click()
         await expect(page.getByText(TEXTO.horaReferencia)).toBeVisible()
         await page.getByRole('button', { name: 'Registrar inicio' }).click()
+        await page
+          .getByTestId('attendance-result')
+          .getByRole('button', { name: 'Seguir con la supervisión' })
+          .click()
         await expect(page.getByText(/Supervisión iniciada a las/)).toBeVisible()
 
         const { data } = await sc.db

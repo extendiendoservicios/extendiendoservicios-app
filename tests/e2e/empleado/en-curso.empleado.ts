@@ -13,6 +13,7 @@ import {
   marcarCambiosVistos,
   tareasDelTurno,
   TEXTO,
+  continuarTrasFichar,
 } from '../../fixtures/movil.ts'
 import { Scenario, sessionClient } from '../../fixtures/scenario.ts'
 import { storageStatePath } from '../../fixtures/sessions.ts'
@@ -177,6 +178,7 @@ test(
         await page.goto(`/app/en-curso/${asignacion}/finalizar`)
         await expect(page.getByText('Cargada')).toBeVisible()
         await page.getByRole('button', { name: 'Registrar fin' }).click()
+        await continuarTrasFichar(page)
         await expect(page).toHaveURL(new RegExp(`/app/resumen/${asignacion}$`))
         await expect(page.getByText(nota)).toBeVisible()
         await expect(
@@ -229,6 +231,7 @@ test(
         await page.goto('/app/fichar')
         await expect(page.getByText(TEXTO.horaReferencia)).toBeVisible()
         await page.getByRole('button', { name: 'Registrar inicio' }).click()
+        await continuarTrasFichar(page)
         await expect(page).toHaveURL(new RegExp(`/app/en-curso/${asignacion}$`))
       })
 
@@ -239,6 +242,7 @@ test(
         ).toBeEnabled()
         await expect(page.getByText(TEXTO.salidaAnticipada)).toHaveCount(0)
         await page.getByRole('button', { name: 'Registrar fin' }).click()
+        await continuarTrasFichar(page)
         await expect(page).toHaveURL(new RegExp(`/app/resumen/${asignacion}$`))
       })
 
@@ -304,6 +308,7 @@ test(
             page.getByRole('button', { name: 'Registrar inicio' }),
           ).toBeEnabled()
           await page.getByRole('button', { name: 'Registrar inicio' }).click()
+          await continuarTrasFichar(page)
           await expect(page).toHaveURL(
             new RegExp(`/app/en-curso/${asignacion}$`),
           )
@@ -377,6 +382,7 @@ test(
             page.getByRole('button', { name: 'Registrar fin' }),
           ).toBeEnabled()
           await page.getByRole('button', { name: 'Registrar fin' }).click()
+          await continuarTrasFichar(page)
           await expect(page).toHaveURL(
             new RegExp(`/app/resumen/${asignacion}$`),
           )

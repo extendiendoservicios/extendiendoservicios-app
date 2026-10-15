@@ -16,6 +16,7 @@ import {
   FRANJAS_MOVIL,
   fijarConsentimiento,
   marcarCambiosVistos,
+  continuarTrasFichar,
 } from '../../fixtures/movil.ts'
 import { Scenario, sessionClient } from '../../fixtures/scenario.ts'
 import { storageStatePath } from '../../fixtures/sessions.ts'
@@ -295,6 +296,7 @@ test(
       await test.step('«Finalizar igual» registra el fin: la advertencia no bloquea', async () => {
         await page.goto(`/app/en-curso/${asignacion}/finalizar`)
         await page.getByRole('button', { name: 'Finalizar igual' }).click()
+        await continuarTrasFichar(page)
         await expect(page).toHaveURL(new RegExp(`/app/resumen/${asignacion}$`))
         const { data } = await sc.db
           .from('attendance_records')
@@ -390,6 +392,7 @@ test(
         ).toBeEnabled()
         await expect(page.getByText(/Este servicio pide fotos/)).toHaveCount(0)
         await page.getByRole('button', { name: 'Registrar fin' }).click()
+        await continuarTrasFichar(page)
         await expect(page).toHaveURL(new RegExp(`/app/resumen/${asignacion}$`))
       })
 

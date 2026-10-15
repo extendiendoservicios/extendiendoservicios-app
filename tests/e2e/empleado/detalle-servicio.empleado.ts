@@ -12,6 +12,7 @@ import {
   marcarCambiosVistos,
   jpegMinimo,
   tareasDelTurno,
+  continuarTrasFichar,
 } from '../../fixtures/movil.ts'
 import { Scenario } from '../../fixtures/scenario.ts'
 import { readId, storageStatePath } from '../../fixtures/sessions.ts'
@@ -203,6 +204,7 @@ test(
         const registrar = page.getByRole('button', { name: 'Registrar inicio' })
         await expect(registrar).toBeEnabled()
         await registrar.click()
+        await continuarTrasFichar(page)
         await expect(page).toHaveURL(new RegExp(`/app/en-curso/${asignacion}$`))
       })
 

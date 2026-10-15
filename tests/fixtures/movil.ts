@@ -169,6 +169,15 @@ export async function tareasDelTurno(
     throw new Error(`No se pudieron crear las tareas: ${error.message}`)
 }
 
+/**
+ * Módulo B1 (P22.3): después de fichar el inicio o el fin siempre aparece la pantalla de resultado
+ * (`attendance-result`) con un único botón («Ir a mi servicio», «Ver el resumen», «Continuar»…).
+ * Los flujos que seguían directo a la pantalla siguiente pasan por acá.
+ */
+export async function continuarTrasFichar(page: Page): Promise<void> {
+  await page.getByTestId('attendance-result').getByRole('button').click()
+}
+
 /** Espera a que la pantalla de Hoy del empleado haya cargado (la tarjeta del servicio o el vacío). */
 export async function esperarHoy(page: Page): Promise<void> {
   await expect(page.getByText('Cargando…')).toHaveCount(0)

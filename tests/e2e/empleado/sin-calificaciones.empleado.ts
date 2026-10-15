@@ -73,7 +73,11 @@ test(
           'supervision_attendance',
           'supervisions',
         ] as const) {
-          const { data, error } = await api.from(tabla).select('*')
+          // B1 (0054, B-40): `select *` de `supervision_attendance` da 42501 para todos (la
+          // posición está cerrada), así que se piden las columnas abiertas.
+          const { data, error } = await api
+            .from(tabla)
+            .select(tabla === 'supervision_attendance' ? 'id, kind' : '*')
           expect(error, `${tabla}: ${error?.message}`).toBeNull()
           expect(data, `${tabla} tiene que venir vacía`).toEqual([])
         }
