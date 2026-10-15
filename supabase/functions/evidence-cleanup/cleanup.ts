@@ -3,13 +3,14 @@
 //
 // Qué hace, en lotes:
 //   1. Pide a la base los archivos a borrar (RPC `evidence_cleanup_candidates`, solo service_role):
-//      vencidos por plazo y tipo (salvo «Conservar»), quitados por su autor y subidas pendientes de
-//      más de 24 h. La regla de vencimiento vive en SQL, con el plazo vigente de `company_settings`.
+//      vencidos por plazo y tipo (salvo «Conservar»), quitados por su autor, eliminados a mano por
+//      administración (P21.8a: red de seguridad por si el celular no llegó a borrarlos) y subidas
+//      pendientes de más de 24 h. La regla de vencimiento vive en SQL, con el plazo vigente de `company_settings`.
 //   2. Borra los archivos y las miniaturas con la API de Storage (SQL no puede borrar objetos).
 //   3. Solo si el borrado salió bien, marca las filas (RPC `evidence_cleanup_mark`: `expired_at`).
 // Si algo falla corta el lote sin marcar nada: la próxima corrida reintenta lo mismo.
 
-export type CleanupReason = 'expired' | 'removed' | 'pending_stale'
+export type CleanupReason = 'expired' | 'removed' | 'deleted' | 'pending_stale'
 
 export interface CleanupCandidate {
   media_id: string
@@ -36,6 +37,7 @@ export interface CleanupSummary {
   batches: number
   expired: number
   removed: number
+  deleted: number
   pending_stale: number
   files_requested: number
   rows_marked: number
@@ -89,6 +91,7 @@ export async function runCleanup(
     batches: 0,
     expired: 0,
     removed: 0,
+    deleted: 0,
     pending_stale: 0,
     files_requested: 0,
     rows_marked: 0,
