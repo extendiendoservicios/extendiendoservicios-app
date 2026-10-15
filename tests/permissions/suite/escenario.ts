@@ -322,6 +322,24 @@ export async function plantar(
   const asistenciaE2 = await asistencia(asigE2)
   const asistenciaE3 = await asistencia(asigE3)
 
+  // Módulo B1 (B-41): una corrección de validación sobre el fichaje del empleado 1; solo la leen
+  // el dueño y los administradores. Se borra con el cliente (`deleteClientDeep`).
+  const correccionE1 = (
+    await ok(
+      'corrección de fichaje',
+      db
+        .from('attendance_corrections')
+        .insert({
+          attendance_record_id: asistenciaE1,
+          kind: 'geo',
+          reason: `${PREFIJO}corrección`,
+          corrected_by: ids.admin,
+        })
+        .select('id')
+        .single(),
+    )
+  ).id
+
   const aviso = async (asignacionId: string) =>
     (
       await ok(
@@ -450,6 +468,7 @@ export async function plantar(
     calificacionB,
     asistSupA,
     asistSupB,
+    correccionE1,
     criterio,
     feriado,
     evento,

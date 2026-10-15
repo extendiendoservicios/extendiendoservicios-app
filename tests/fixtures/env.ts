@@ -20,7 +20,8 @@ const PRODUCTION_URL_FRAGMENT = 'fysuppdadwvabrjpnnoh'
  * lista blanca de CORS de la Edge Function `admin-users` (`supabase/functions/_shared/cors.ts`)
  * solo admite `http://localhost:5173` como origen local.
  */
-export const E2E_BASE_URL = 'http://localhost:5173'
+export const E2E_BASE_URL =
+  process.env.E2E_BASE_URL?.trim() || 'http://localhost:5173'
 
 let cached: E2eEnv | null | undefined
 
