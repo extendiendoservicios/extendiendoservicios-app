@@ -53,7 +53,7 @@ async function abrirFicharConLectura(page: Page, precision: number) {
 }
 
 /**
- * Color (computado) con el que está pintado el círculo de la sede, que es el primer trazo del mapa.
+ * Color (computado: `stroke` del `<path>`) con el que está pintado el círculo de la sede, que es el primer trazo del mapa.
  * Se lee del estilo real y no de una clase: lo que importa es lo que ve la persona (B-18).
  */
 async function colorDelCirculoDeLaSede(page: Page): Promise<string> {
@@ -349,13 +349,6 @@ test.describe('con la ubicación concedida y el consentimiento dado', () => {
     'EMP-05: el círculo de la sede se pinta de verde dentro de la zona y de rojo fuera (B-18)',
     cubre('RB-E04', 'B-03', 'B-18'),
     async ({ page, context }) => {
-      // DEF-B1-01: `circlePathOptions` pasa `className` con `pathOptions`, y react-leaflet lo aplica
-      // con `setStyle` después de crear el trazo; Leaflet solo lee `className` al crearlo. El trazo
-      // queda con el azul por omisión (#3388ff) y sin clase: nunca verde ni rojo.
-      test.fail(
-        true,
-        'DEF-B1-01: el círculo de la sede queda azul por omisión en lugar de verde o rojo (circleStyles.ts / react-leaflet).',
-      )
       test.setTimeout(120_000)
       const sc = new Scenario()
       try {
