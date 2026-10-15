@@ -140,6 +140,83 @@ describe('fetchMyDay', () => {
     )
   })
 
+  it('mapea el radio de la sede, la validación de cada fichaje y la marca «Corregido» (B1)', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: [
+          {
+            ...MY_DAY_ROW,
+            check_in_at: '2026-09-26T11:02:00Z',
+            check_out_at: '2026-09-26T15:00:00Z',
+            site_geofence_radius_m: 200,
+            geofence_max_accuracy_m: 150,
+            check_in_geo_status: 'outside',
+            check_in_geo_reason: null,
+            check_in_distance_m: 350,
+            check_in_geofence_radius_m: 150,
+            check_in_geo_overridden: false,
+            check_in_time_corrected: true,
+            check_out_geo_status: 'unvalidated',
+            check_out_geo_reason: 'no_location',
+            check_out_distance_m: null,
+            check_out_geofence_radius_m: 150,
+            check_out_geo_overridden: false,
+            check_out_time_corrected: false,
+          },
+        ],
+        error: null,
+      }),
+    )
+    const [row] = await fetchMyDay()
+    expect(row).toEqual(
+      expect.objectContaining({
+        siteGeofenceRadiusM: 200,
+        geofenceMaxAccuracyM: 150,
+        checkInGeo: {
+          status: 'outside',
+          reason: null,
+          distanceM: 350,
+          radiusM: 150,
+          overridden: false,
+        },
+        checkOutGeo: {
+          status: 'unvalidated',
+          reason: 'no_location',
+          distanceM: null,
+          radiusM: 150,
+          overridden: false,
+        },
+        checkInTimeCorrected: true,
+        checkOutTimeCorrected: false,
+      }),
+    )
+  })
+
+  it('sin fichaje no hay validación (B1)', async () => {
+    fromMock.mockReturnValue(makeChainable({ data: [MY_DAY_ROW], error: null }))
+    const [row] = await fetchMyDay()
+    expect(row?.checkInGeo).toBeNull()
+    expect(row?.checkOutGeo).toBeNull()
+    expect(row?.checkInTimeCorrected).toBe(false)
+  })
+
+  it('no mapea coordenadas ni precisión del fichaje ni motivos de la administración (B-40)', async () => {
+    fromMock.mockReturnValue(makeChainable({ data: [MY_DAY_ROW], error: null }))
+    const [row] = await fetchMyDay()
+    for (const prohibida of [
+      'accuracyM',
+      'latitude',
+      'longitude',
+      'checkInLatitude',
+      'checkInLongitude',
+      'outsideReason',
+      'geoOverrideReason',
+      'correctionReason',
+    ]) {
+      expect(row).not.toHaveProperty(prohibida)
+    }
+  })
+
   it('tolera null en los campos nuevos', async () => {
     fromMock.mockReturnValue(
       makeChainable({
@@ -231,6 +308,12 @@ function baseAssignment() {
     changedSinceLastSeen: false,
     checkInAt: null,
     checkOutAt: null,
+    siteGeofenceRadiusM: 150,
+    geofenceMaxAccuracyM: 150,
+    checkInGeo: null,
+    checkOutGeo: null,
+    checkInTimeCorrected: false,
+    checkOutTimeCorrected: false,
     siteCity: null,
     siteLatitude: null,
     siteLongitude: null,

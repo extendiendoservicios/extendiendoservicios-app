@@ -59,8 +59,8 @@ select plan(49);
 
 -- Existencia y firma --------------------------------------------------------------------------
 
-select has_function('public', 'record_check_in', array['uuid', 'numeric', 'numeric', 'numeric'], 'existe public.record_check_in(uuid, numeric, numeric, numeric)');
-select has_function('public', 'record_check_out', array['uuid', 'numeric', 'numeric', 'numeric'], 'existe public.record_check_out(uuid, numeric, numeric, numeric)');
+select has_function('public', 'record_check_in', array['uuid', 'numeric', 'numeric', 'numeric', 'text'], 'existe public.record_check_in(uuid, numeric, numeric, numeric, text)');
+select has_function('public', 'record_check_out', array['uuid', 'numeric', 'numeric', 'numeric', 'text'], 'existe public.record_check_out(uuid, numeric, numeric, numeric, text)');
 select has_function('public', 'set_assignment_notes', array['uuid', 'text'], 'existe public.set_assignment_notes(uuid, text)');
 
 -- ---------------------------------------------------------------------------------------------

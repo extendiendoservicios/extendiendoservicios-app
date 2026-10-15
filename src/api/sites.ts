@@ -76,6 +76,8 @@ export interface SiteDetail {
   phoneRestricted: boolean
   photosNotAllowed: boolean
   restrictionsNotes: string | null
+  /** B-02: radio de validación propio de la sede (50 a 1000 m); `null` usa el general. */
+  geofenceRadiusM: number | null
   status: SiteStatus
   createdAt: string
   updatedAt: string | null
@@ -96,6 +98,7 @@ interface SiteRowWithClient {
   phone_restricted: boolean
   photos_not_allowed: boolean
   restrictions_notes: string | null
+  geofence_radius_m: number | null
   status: SiteStatus
   created_at: string
   updated_at: string | null
@@ -124,6 +127,7 @@ function mapSiteDetailRow(row: SiteRowWithClient): SiteDetail {
     phoneRestricted: row.phone_restricted,
     photosNotAllowed: row.photos_not_allowed,
     restrictionsNotes: row.restrictions_notes,
+    geofenceRadiusM: row.geofence_radius_m,
     status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -163,6 +167,8 @@ export interface SiteFormInput {
   phoneRestricted: boolean
   photosNotAllowed: boolean
   restrictionsNotes: string | null
+  /** B-02: radio propio opcional (50 a 1000 m); `null` deja el general. Si se omite, no se toca. */
+  geofenceRadiusM?: number | null
   status: SiteStatus
 }
 
@@ -188,6 +194,9 @@ export async function createSite(
       phone_restricted: input.phoneRestricted,
       photos_not_allowed: input.photosNotAllowed,
       restrictions_notes: input.restrictionsNotes,
+      ...(input.geofenceRadiusM !== undefined && {
+        geofence_radius_m: input.geofenceRadiusM,
+      }),
       status: input.status,
       created_by: createdBy,
     })
@@ -221,6 +230,9 @@ export async function updateSite(
       phone_restricted: input.phoneRestricted,
       photos_not_allowed: input.photosNotAllowed,
       restrictions_notes: input.restrictionsNotes,
+      ...(input.geofenceRadiusM !== undefined && {
+        geofence_radius_m: input.geofenceRadiusM,
+      }),
       status: input.status,
       updated_by: updatedBy,
     })
@@ -271,6 +283,8 @@ export interface SiteMapRow {
   status: SiteStatus
   clientId: string
   clientName: string
+  /** B-02: radio propio de la sede; `null` usa el general (`company_settings.geofence_radius_m`). */
+  geofenceRadiusM: number | null
 }
 
 export interface SiteMapFilters {
@@ -291,7 +305,7 @@ export async function fetchSitesForMap(
   let query = supabase
     .from('sites')
     .select(
-      'id, name, address, city, latitude, longitude, status, client_id, clients(legal_name, trade_name)',
+      'id, name, address, city, latitude, longitude, status, geofence_radius_m, client_id, clients(legal_name, trade_name)',
     )
     .is('deleted_at', null)
     .order('name', { ascending: true })
@@ -315,6 +329,7 @@ export async function fetchSitesForMap(
       latitude: row.latitude,
       longitude: row.longitude,
       status: row.status,
+      geofenceRadiusM: row.geofence_radius_m,
       clientId: row.client_id,
       clientName: client?.trade_name ?? client?.legal_name ?? '',
     }

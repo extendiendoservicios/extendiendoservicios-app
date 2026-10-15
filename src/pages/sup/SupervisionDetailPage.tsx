@@ -27,6 +27,7 @@ import {
 import { RatingCriteriaGuide } from '@/features/supervisions/components/RatingCriteriaGuide'
 import { formatSupervisionRange } from '@/features/employee/shiftRange'
 import { LazyShiftMediaSection } from '@/features/employee/components/LazyShiftMediaSection'
+import { AttendanceMarkRow } from '@/features/employee/components/AttendanceMarkRow'
 
 /**
  * SUP-03 · Detalle de la supervisión (MOB-SUP-004, `05` fila SUP-03, `06`
@@ -135,6 +136,19 @@ export default function SupervisionDetailPage() {
                 ` · Finalizada a las ${formatTime(new Date(supervision.checkOutAt))}`}
             </p>
           )}
+          {/* Módulo B1 (B-07, B-19): cómo quedó validado cada fichaje contra la sede. */}
+          <AttendanceMarkRow
+            label="Ubicación del inicio"
+            at={supervision.checkInAt}
+            geo={supervision.checkInGeo}
+            hideTime
+          />
+          <AttendanceMarkRow
+            label="Ubicación del fin"
+            at={supervision.checkOutAt}
+            geo={supervision.checkOutGeo}
+            hideTime
+          />
         </CardContent>
       </Card>
 

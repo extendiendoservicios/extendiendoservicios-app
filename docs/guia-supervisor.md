@@ -109,7 +109,7 @@ En el detalle, y también en el paso de **Registrar fin de supervisión**, hay u
 Cuando llegás a la sede:
 
 1. Abrí la supervisión y tocá **Registrar inicio de supervisión**.
-2. La primera vez, la app te explica el uso de la ubicación. Podés elegir **Aceptar y continuar** (el teléfono te pide permiso) o **Continuar sin ubicación**. **Registrar el inicio funciona igual sin ubicación.**
+2. La primera vez, la app te explica el uso de la ubicación. Podés elegir **Aceptar y continuar** (el teléfono te pide permiso) o **Continuar sin ubicación**. **Registrar el inicio funciona igual sin ubicación.** Con ubicación, la app muestra el mapa de la sede supervisada, la precisión y, al registrar, cómo quedó validado (**Validado**, **Fuera de zona** o **Sin validar**); igual que el empleado, podés **Esperar mejor señal** o **Fichar igual**.
 3. Tocá **Registrar inicio**. La hora que vale es la del servidor, no la del celular.
 
 ![Registrar inicio de la supervisión](guias/img/sup-registro.png)

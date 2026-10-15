@@ -1,3 +1,4 @@
+import { unavailableOf } from '@/features/media/items'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation } from 'react-router'
 import { Camera } from 'lucide-react'
@@ -117,7 +118,7 @@ export function ShiftMediaSection({
         expiresOn: row.keep ? null : row.expiresOn,
         keep: row.keep,
         durationSeconds: row.durationSeconds,
-        unavailable: row.hasFile ? null : 'expired',
+        ...unavailableOf(row),
         canRemove: canRemove && row.hasFile,
       })),
     [rows, canRemove],

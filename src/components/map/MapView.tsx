@@ -34,3 +34,4 @@ function MapView(props: MapViewProps) {
 
 export { MapView }
 export type { MapViewMarker } from './LeafletMapView'
+export type { MarkerShape } from './markerIcon'

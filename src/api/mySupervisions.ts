@@ -4,6 +4,7 @@ import type { Database } from '@/lib/database.types'
 import { fromPostgrestError } from './errors'
 import type { AssignmentStatus } from './assignments'
 import { fetchShiftTasksReadOnly } from './tasks'
+import { mapAttendanceGeo, type AttendanceGeo } from './attendanceGeo'
 import type { GeolocationCoords } from '@/lib/geolocation'
 import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
 
@@ -107,6 +108,13 @@ export interface MySupervision {
   criteriaSnapshot: RatingCriterion[] | null
   checkInAt: string | null
   checkOutAt: string | null
+  /** Radio vigente de la sede supervisada (propio o general, B-02) para el mini mapa de SUP-04 (B-07, B-18). */
+  siteGeofenceRadiusM: number | null
+  /** Tope de precisión de la validación (B-23). */
+  geofenceMaxAccuracyM: number | null
+  /** Validación guardada de los dos fichajes (B-19); `null` si todavía no hay fichaje. Sin coordenadas (B-40). */
+  checkInGeo: AttendanceGeo | null
+  checkOutGeo: AttendanceGeo | null
   assignedEmployees: SupervisedEmployee[]
 }
 
@@ -186,6 +194,22 @@ function mapMySupervisionRow(row: MySupervisionRawRow): MySupervision {
     criteriaSnapshot: mapCriteriaSnapshot(row.criteria_snapshot),
     checkInAt: row.check_in_at,
     checkOutAt: row.check_out_at,
+    siteGeofenceRadiusM: row.site_geofence_radius_m,
+    geofenceMaxAccuracyM: row.geofence_max_accuracy_m,
+    checkInGeo: mapAttendanceGeo({
+      status: row.check_in_geo_status,
+      reason: row.check_in_geo_reason,
+      distanceM: row.check_in_distance_m,
+      radiusM: row.check_in_geofence_radius_m,
+      overridden: row.check_in_geo_overridden,
+    }),
+    checkOutGeo: mapAttendanceGeo({
+      status: row.check_out_geo_status,
+      reason: row.check_out_geo_reason,
+      distanceM: row.check_out_distance_m,
+      radiusM: row.check_out_geofence_radius_m,
+      overridden: row.check_out_geo_overridden,
+    }),
     assignedEmployees: mapAssignedEmployees(row.assigned_employees),
   }
 }
@@ -332,6 +356,8 @@ export interface SupervisionAttendanceRecord {
   kind: SupervisionAttendanceKind
   /** Hora del servidor (`now()` dentro de la RPC, nunca la del dispositivo). */
   recordedAt: string
+  /** Validación por ubicación que calculó y guardó la base contra la sede supervisada (B-07, B-37). */
+  geo: AttendanceGeo | null
 }
 
 function mapSupervisionAttendanceRecord(row: {
@@ -339,12 +365,24 @@ function mapSupervisionAttendanceRecord(row: {
   supervision_id: string
   kind: SupervisionAttendanceKind
   recorded_at: string
+  geo_status?: AttendanceGeo['status'] | null
+  geo_unvalidated_reason?: AttendanceGeo['reason']
+  site_distance_m?: number | null
+  geofence_radius_m?: number | null
+  geo_override_at?: string | null
 }): SupervisionAttendanceRecord {
   return {
     id: row.id,
     supervisionId: row.supervision_id,
     kind: row.kind,
     recordedAt: row.recorded_at,
+    geo: mapAttendanceGeo({
+      status: row.geo_status,
+      reason: row.geo_unvalidated_reason,
+      distanceM: row.site_distance_m,
+      radiusM: row.geofence_radius_m,
+      overridden: row.geo_override_at != null,
+    }),
   }
 }
 
@@ -357,12 +395,14 @@ function mapSupervisionAttendanceRecord(row: {
 export async function supervisionCheckIn(
   supervisionId: string,
   coords: GeolocationCoords | null,
+  outsideReason?: string | null,
 ): Promise<SupervisionAttendanceRecord> {
   const { data, error } = await supabase.rpc('supervision_check_in', {
     p_supervision_id: supervisionId,
     p_lat: coords?.lat,
     p_lng: coords?.lng,
     p_accuracy: coords?.accuracyM,
+    p_outside_reason: outsideReason?.trim() || undefined,
   })
 
   if (error) {
@@ -375,12 +415,14 @@ export async function supervisionCheckIn(
 export async function supervisionCheckOut(
   supervisionId: string,
   coords: GeolocationCoords | null,
+  outsideReason?: string | null,
 ): Promise<SupervisionAttendanceRecord> {
   const { data, error } = await supabase.rpc('supervision_check_out', {
     p_supervision_id: supervisionId,
     p_lat: coords?.lat,
     p_lng: coords?.lng,
     p_accuracy: coords?.accuracyM,
+    p_outside_reason: outsideReason?.trim() || undefined,
   })
 
   if (error) {
@@ -785,10 +827,12 @@ export function useSupervisionCheckInMutation() {
     mutationFn: ({
       supervisionId,
       coords,
+      outsideReason,
     }: {
       supervisionId: string
       coords: GeolocationCoords | null
-    }) => supervisionCheckIn(supervisionId, coords),
+      outsideReason?: string | null
+    }) => supervisionCheckIn(supervisionId, coords, outsideReason),
     onSuccess: (_, { supervisionId }) =>
       invalidateSupervisionCaches(queryClient, supervisionId),
   })
@@ -801,10 +845,12 @@ export function useSupervisionCheckOutMutation() {
     mutationFn: ({
       supervisionId,
       coords,
+      outsideReason,
     }: {
       supervisionId: string
       coords: GeolocationCoords | null
-    }) => supervisionCheckOut(supervisionId, coords),
+      outsideReason?: string | null
+    }) => supervisionCheckOut(supervisionId, coords, outsideReason),
     onSuccess: (_, { supervisionId }) =>
       invalidateSupervisionCaches(queryClient, supervisionId),
   })

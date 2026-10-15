@@ -25,6 +25,8 @@ const {
   fetchNextPageMock,
   toastSuccess,
   toastError,
+  keepManyMock,
+  deleteManyMock,
 } = vi.hoisted(() => ({
   listMock: vi.fn(),
   usageMock: vi.fn(),
@@ -33,10 +35,12 @@ const {
   fetchNextPageMock: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
+  keepManyMock: vi.fn(),
+  deleteManyMock: vi.fn(),
 }))
 
 vi.mock('sonner', () => ({
-  toast: { success: toastSuccess, error: toastError },
+  toast: { success: toastSuccess, error: toastError, info: vi.fn() },
 }))
 
 vi.mock('@/features/employees/employeeLeaveStatus', () => ({
@@ -50,6 +54,14 @@ vi.mock('@/features/media/queries', () => ({
   useThumbUrls: () => new Map<string, string>(),
   useShiftTimes: () => ({ data: undefined }),
   useSetMediaKeepMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSetMediaKeepManyMutation: () => ({
+    mutateAsync: keepManyMock,
+    isPending: false,
+  }),
+  useDeleteShiftMediaMutation: () => ({
+    mutateAsync: deleteManyMock,
+    isPending: false,
+  }),
 }))
 
 vi.mock('@/features/clients/queries', () => ({
@@ -363,5 +375,157 @@ describe('ADM-32: selección y ZIP', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Seleccionar todo' }))
     expect(screen.getByRole('button', { name: 'Descargar ZIP' })).toBeDisabled()
     expect(screen.getByText(/hasta 50 archivos/)).toBeInTheDocument()
+  })
+})
+
+describe('ADM-32: conservar y eliminar de a varias (P21.8b)', () => {
+  function selectShiftOne() {
+    renderScreen()
+    fireEvent.click(
+      screen.getAllByRole('button', {
+        name: 'Seleccionar todo',
+      })[0] as HTMLElement,
+    )
+    return screen.getByRole('region', { name: 'Selección' })
+  }
+
+  it('ofrece «Conservar» y «Eliminar» si nada está conservado', () => {
+    const bar = selectShiftOne()
+    expect(within(bar).getByRole('button', { name: 'Conservar' })).toBeEnabled()
+    expect(
+      within(bar).queryByRole('button', { name: 'Quitar Conservar' }),
+    ).toBeNull()
+    expect(within(bar).getByRole('button', { name: 'Eliminar' })).toBeEnabled()
+  })
+
+  it('«Conservar» manda solo las que no lo están y avisa el resultado', async () => {
+    listMock.mockReturnValue(
+      listResult([mediaRow({ id: 'a', keep: true }), mediaRow({ id: 'b' })]),
+    )
+    keepManyMock.mockResolvedValue(1)
+    const bar = selectShiftOne()
+    expect(
+      within(bar).getByRole('button', { name: 'Quitar Conservar' }),
+    ).toBeInTheDocument()
+    fireEvent.click(within(bar).getByRole('button', { name: 'Conservar' }))
+    await waitFor(() =>
+      expect(keepManyMock).toHaveBeenCalledWith({ ids: ['b'], keep: true }),
+    )
+    expect(toastSuccess).toHaveBeenCalledWith(
+      'Marcamos 1 archivo para conservar: ya no vencen.',
+    )
+    expect(screen.queryByRole('region', { name: 'Selección' })).toBeNull()
+  })
+
+  it('«Quitar Conservar» manda solo las conservadas', async () => {
+    listMock.mockReturnValue(
+      listResult([
+        mediaRow({ id: 'a', keep: true }),
+        mediaRow({ id: 'b', keep: true }),
+      ]),
+    )
+    keepManyMock.mockResolvedValue(2)
+    const bar = selectShiftOne()
+    expect(within(bar).queryByRole('button', { name: 'Conservar' })).toBeNull()
+    fireEvent.click(
+      within(bar).getByRole('button', { name: 'Quitar Conservar' }),
+    )
+    await waitFor(() =>
+      expect(keepManyMock).toHaveBeenCalledWith({
+        ids: ['a', 'b'],
+        keep: false,
+      }),
+    )
+  })
+
+  it('«Eliminar» pide confirmación, avisa lo conservado y no elimina hasta confirmar', async () => {
+    listMock.mockReturnValue(
+      listResult([
+        mediaRow({ id: 'a', keep: true }),
+        mediaRow({ id: 'b' }),
+        mediaRow({ id: 'x', hasFile: false, expiresOn: null }),
+      ]),
+    )
+    deleteManyMock.mockResolvedValue({
+      requestedCount: 2,
+      deletedCount: 2,
+      ignoredCount: 0,
+      bytesFreedEstimate: 340000,
+      deletedIds: ['a', 'b'],
+      paths: [],
+      storageFailedCount: 0,
+    })
+    const bar = selectShiftOne()
+    fireEvent.click(within(bar).getByRole('button', { name: 'Eliminar' }))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(
+      within(dialog).getByText('¿Eliminar 2 archivos?'),
+    ).toBeInTheDocument()
+    expect(dialog).toHaveTextContent('no se puede deshacer')
+    expect(dialog).toHaveTextContent('constancia')
+    expect(
+      within(dialog).getByText(
+        '1 de los seleccionados está marcado «Conservar» y también se va a eliminar.',
+      ),
+    ).toBeInTheDocument()
+    expect(deleteManyMock).not.toHaveBeenCalled()
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Eliminar' }))
+    await waitFor(() => expect(deleteManyMock).toHaveBeenCalledWith(['a', 'b']))
+    expect(toastSuccess).toHaveBeenCalledWith(
+      'Se eliminaron 2 archivos. Liberamos unos 332 KB.',
+    )
+    expect(screen.queryByRole('region', { name: 'Selección' })).toBeNull()
+  })
+
+  it('sin conservadas, el diálogo no muestra el aviso y «Cancelar» no elimina', async () => {
+    const bar = selectShiftOne()
+    fireEvent.click(within(bar).getByRole('button', { name: 'Eliminar' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).queryByRole('alert')).toBeNull()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(deleteManyMock).not.toHaveBeenCalled()
+  })
+
+  it('si falla, muestra el mensaje del servidor', async () => {
+    const { ApiError } = await import('@/api/errors')
+    deleteManyMock.mockRejectedValue(
+      new ApiError(
+        'Solo la dueña o un administrador puede hacer esto.',
+        'FORBIDDEN',
+      ),
+    )
+    const bar = selectShiftOne()
+    fireEvent.click(within(bar).getByRole('button', { name: 'Eliminar' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Eliminar' }))
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith(
+        'Solo la dueña o un administrador puede hacer esto.',
+      ),
+    )
+  })
+
+  it('lo eliminado es una constancia con nombre y día, y no se puede seleccionar', () => {
+    listMock.mockReturnValue(
+      listResult([
+        mediaRow({ id: 'a' }),
+        mediaRow({
+          id: 'd',
+          hasFile: false,
+          expiresOn: null,
+          deletedAt: '2026-10-12T15:00:00Z',
+          deletedByFirstName: 'Lía',
+          deletedByLastName: 'Gómez',
+        }),
+      ]),
+    )
+    renderScreen()
+    expect(
+      screen.getAllByText('Eliminada por Lía Gómez el día lun 12 oct').length,
+    ).toBeGreaterThan(0)
+    expect(screen.getAllByRole('checkbox')).toHaveLength(1)
   })
 })

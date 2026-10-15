@@ -145,27 +145,27 @@ select is(
   (select array_agg(attname::text order by attnum) from pg_attribute
    where attrelid = 'public.v_assignments_board'::regclass and attnum > 0 and not attisdropped
    and attnum >= (select attnum from pg_attribute where attrelid = 'public.v_assignments_board'::regclass and attname = 'planned_minutes')),
-  array['planned_minutes', 'worked_minutes', 'effective_open_ended', 'shift_observation'],
+  array['planned_minutes', 'worked_minutes', 'effective_open_ended', 'shift_observation', 'check_in_record_id', 'check_in_geo_status', 'check_in_geo_reason', 'check_in_distance_m', 'check_in_geofence_radius_m', 'check_in_accuracy_m', 'check_in_outside_reason', 'check_in_geo_overridden', 'check_in_time_corrected', 'check_out_record_id', 'check_out_geo_status', 'check_out_geo_reason', 'check_out_distance_m', 'check_out_geofence_radius_m', 'check_out_accuracy_m', 'check_out_outside_reason', 'check_out_geo_overridden', 'check_out_time_corrected', 'has_outside_geo'],
   'v_assignments_board: effective_open_ended va después de worked_minutes (0040 agrega shift_observation al final)'
 );
 select is(
   (select array_agg(attname::text order by attnum) from pg_attribute
    where attrelid = 'public.v_my_day'::regclass and attnum > 0 and not attisdropped
    and attnum >= (select attnum from pg_attribute where attrelid = 'public.v_my_day'::regclass and attname = 'on_the_way_expires_at')),
-  array['on_the_way_expires_at', 'effective_open_ended', 'no_checkout', 'requires_photos', 'my_photos_count', 'my_videos_count'],
+  array['on_the_way_expires_at', 'effective_open_ended', 'no_checkout', 'requires_photos', 'my_photos_count', 'my_videos_count', 'site_geofence_radius_m', 'geofence_max_accuracy_m', 'check_in_geo_status', 'check_in_geo_reason', 'check_in_distance_m', 'check_in_geofence_radius_m', 'check_in_geo_overridden', 'check_in_time_corrected', 'check_out_geo_status', 'check_out_geo_reason', 'check_out_distance_m', 'check_out_geofence_radius_m', 'check_out_geo_overridden', 'check_out_time_corrected'],
   'v_my_day: effective_open_ended y no_checkout van después de on_the_way_expires_at'
 );
 select is(
   (select array_agg(attname::text order by attnum) from pg_attribute
    where attrelid = 'public.v_my_supervisions'::regclass and attnum > 0 and not attisdropped
    and attnum >= (select attnum from pg_attribute where attrelid = 'public.v_my_supervisions'::regclass and attname = 'site_restrictions_notes')),
-  array['site_restrictions_notes', 'shift_open_ended', 'requires_photos', 'my_photos_count', 'my_videos_count'],
+  array['site_restrictions_notes', 'shift_open_ended', 'requires_photos', 'my_photos_count', 'my_videos_count', 'site_geofence_radius_m', 'geofence_max_accuracy_m', 'check_in_geo_status', 'check_in_geo_reason', 'check_in_distance_m', 'check_in_geofence_radius_m', 'check_in_geo_overridden', 'check_out_geo_status', 'check_out_geo_reason', 'check_out_distance_m', 'check_out_geofence_radius_m', 'check_out_geo_overridden'],
   'v_my_supervisions: shift_open_ended va al final'
 );
 select is(
   (select attname::text from pg_attribute where attrelid = 'public.v_supervisions_admin'::regclass and attnum > 0 and not attisdropped order by attnum desc limit 1),
-  'shift_open_ended',
-  'v_supervisions_admin: shift_open_ended va al final'
+  'check_out_geo_overridden',
+  'v_supervisions_admin: shift_open_ended va antes de la validación de 0052, que va al final'
 );
 
 -- ---------------------------------------------------------------------------------------------

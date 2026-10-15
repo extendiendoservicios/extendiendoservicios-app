@@ -116,9 +116,11 @@ select enum_has_labels(
     'sign_in', 'sign_in_failed', 'user_created', 'user_deactivated',
     'user_reactivated', 'password_reset_by_admin', 'sessions_revoked',
     'roles_changed', 'capabilities_changed', 'email_changed',
-    'admin_action_rejected', 'name_changed', 'service_deleted'
+    'admin_action_rejected', 'name_changed', 'service_deleted',
+    'attendance_time_corrected', 'geo_validation_overridden', 'geofence_radius_changed',
+    'media_deleted'
   ],
-  'security_event_type tiene los valores exactos y en orden (04 sección 2.6; admin_action_rejected agregado en 0030, SEG-03; name_changed en 0032, P19.5a; service_deleted en 0044, AJ3-01)'
+  'security_event_type tiene los valores exactos y en orden (04 sección 2.6; admin_action_rejected agregado en 0030, SEG-03; name_changed en 0032, P19.5a; service_deleted en 0044, AJ3-01; los tres de corrección de fichajes y radio en 0052, P22.1; media_deleted en 0058, P21.8a)'
 );
 
 select * from finish();

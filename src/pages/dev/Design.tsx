@@ -108,6 +108,7 @@ import { MapPicker, MapView, type MapViewMarker } from '@/components/map'
 import { AvatarUpload } from '@/components/AvatarUpload'
 import { GlobalSearch } from '@/components/search/GlobalSearch'
 import { MediaDemo } from '@/pages/dev/MediaDemo'
+import { GeoDemo } from '@/pages/dev/GeoDemo'
 
 /**
  * `/dev/design` (DS-016): vidriera de todos los componentes de
@@ -468,14 +469,16 @@ const SITE_MARKERS: MapViewMarker[] = [
   {
     id: 'san-isidro',
     position: { lat: -34.4708, lng: -58.5273 },
-    variant: 'success',
+    variant: 'primary',
+    shape: 'site',
     label: 'Grupo Norte — San Isidro',
     popup: 'Grupo Norte — San Isidro (activa)',
   },
   {
     id: 'martinez',
     position: { lat: -34.4894, lng: -58.5069 },
-    variant: 'success',
+    variant: 'primary',
+    shape: 'site',
     label: 'Clínica del Parque — Martínez',
     popup: 'Clínica del Parque — Martínez (activa)',
   },
@@ -483,6 +486,7 @@ const SITE_MARKERS: MapViewMarker[] = [
     id: 'munro',
     position: { lat: -34.5308, lng: -58.5225 },
     variant: 'neutral',
+    shape: 'site',
     label: 'Logística Central — Munro',
     popup: 'Logística Central — Munro (inactiva)',
   },
@@ -1394,6 +1398,10 @@ function DesignPage() {
             />
           </div>
         </Row>
+      </Section>
+
+      <Section title="Geolocalización: GeofenceMiniMap, GeoStatusBadge, useLivePosition y MapView ampliado (P22.2, módulo B1)">
+        <GeoDemo />
       </Section>
 
       <Section title="AvatarUpload (EMP-011, P09.2)">

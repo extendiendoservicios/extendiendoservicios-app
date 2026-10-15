@@ -5,11 +5,14 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { formatTime } from '@/lib/format'
 import { isApiError } from '@/api/errors'
-import { getCurrentPositionSafe } from '@/lib/geolocation'
-import { useAuth } from '@/features/auth/AuthProvider'
+import type { AttendanceGeo } from '@/api/attendanceGeo'
 import { useOnlineStatus } from '@/features/employee/useOnlineStatus'
 import { OPEN_SHIFT_DAY_ENDED_MESSAGE } from '@/features/employee/shiftRange'
 import { useNow } from '@/features/employee/useNow'
+import { useLocationConsent } from '@/features/employee/useLocationConsent'
+import { useGeoFichaje } from '@/features/employee/useGeoFichaje'
+import { GeoFichajePanel } from '@/features/employee/components/GeoFichajePanel'
+import { AttendanceResultScreen } from '@/features/employee/components/AttendanceResultScreen'
 import {
   countPendingRequiredTasks,
   isEarlyLeave,
@@ -34,20 +37,60 @@ const CLOCK_TICK_MS = 15_000
  * se advierte con «Sacar foto» (lleva al bloque de EMP-07) y el botón
  * principal pasa a decir «Finalizar igual». No bloquea. Sin advertencia en
  * sedes que no permiten fotos (no habría cómo cumplirla).
+ *
+ * Módulo B1 (P22.3, B-06, B-18, B-38): igual que EMP-05, con consentimiento
+ * vigente sigue la posición en vivo y muestra el mini mapa, la precisión y
+ * «Esperar mejor señal»; el registro nunca se bloquea. Si el texto del
+ * consentimiento cambió después de que la persona lo diera (B-22), antes se
+ * lo vuelve a mostrar (EMP-06) y se regresa acá. Después de registrar el fin
+ * se muestra el resultado que devolvió la base antes de pasar al resumen.
  */
 export default function FinishPage() {
   const { assignmentId } = useParams<{ assignmentId: string }>()
   const navigate = useNavigate()
-  const auth = useAuth()
   const online = useOnlineStatus()
+  const consent = useLocationConsent()
   const now = useNow(CLOCK_TICK_MS)
   const { data: myDay, isLoading } = useMyDayQuery()
   const assignment = myDay?.find((a) => a.assignmentId === assignmentId)
   const { data: tasks } = useShiftTasksQuery(assignment?.shiftId ?? '')
   const recordCheckOut = useRecordCheckOutMutation()
   const [error, setError] = useState<string | null>(null)
+  const [result, setResult] = useState<{
+    recordedAt: string
+    geo: AttendanceGeo
+  } | null>(null)
+  const fichaje = useGeoFichaje({
+    enabled: consent.status === 'granted' && assignment != null,
+    siteLatitude: assignment?.siteLatitude ?? null,
+    siteLongitude: assignment?.siteLongitude ?? null,
+    radiusM: assignment?.siteGeofenceRadiusM ?? null,
+    maxAccuracyM: assignment?.geofenceMaxAccuracyM ?? null,
+  })
 
-  if (isLoading) {
+  if (result) {
+    return (
+      <AttendanceResultScreen
+        title="Fin registrado"
+        recordedAt={result.recordedAt}
+        geo={result.geo}
+        heading={
+          assignment
+            ? {
+                primary: assignment.clientName,
+                secondary: assignment.siteName,
+              }
+            : undefined
+        }
+        onContinue={() =>
+          void navigate(`/app/resumen/${assignmentId}`, { replace: true })
+        }
+        continueLabel="Ver el resumen"
+      />
+    )
+  }
+
+  if (isLoading || consent.loading) {
     return (
       <p className="p-4 text-center text-[12.5px] text-text-3">Cargando…</p>
     )
@@ -79,7 +122,17 @@ export default function FinishPage() {
     return <Navigate to={`/app/servicio/${assignment.assignmentId}`} replace />
   }
 
-  const hasConsent = auth.profile?.locationConsentAt != null
+  // B-22: el texto del consentimiento cambió después de que lo diera.
+  if (consent.reconsent && consent.status === 'needs-consent') {
+    const back = `/app/en-curso/${assignment.assignmentId}/finalizar`
+    return (
+      <Navigate
+        to={`/app/fichar/consentimiento?volver=${encodeURIComponent(back)}`}
+        replace
+      />
+    )
+  }
+
   const pendingRequired = tasks ? countPendingRequiredTasks(tasks) : 0
   const earlyLeave = isEarlyLeave(now, assignment)
   const missingPhotos =
@@ -90,15 +143,19 @@ export default function FinishPage() {
 
   async function handleConfirm() {
     setError(null)
-    const coords = hasConsent ? await getCurrentPositionSafe() : null
     try {
-      await recordCheckOut.mutateAsync({
+      const record = await recordCheckOut.mutateAsync({
         assignmentId: assignment!.assignmentId,
-        coords,
+        coords: fichaje.payload.coords,
+        outsideReason: fichaje.payload.outsideReason,
       })
-      void navigate(`/app/resumen/${assignment!.assignmentId}`, {
-        replace: true,
-      })
+      if (record.geo) {
+        setResult({ recordedAt: record.recordedAt, geo: record.geo })
+      } else {
+        void navigate(`/app/resumen/${assignment!.assignmentId}`, {
+          replace: true,
+        })
+      }
     } catch (mutationError) {
       setError(
         isApiError(mutationError)
@@ -126,6 +183,20 @@ export default function FinishPage() {
           />
         </CardContent>
       </Card>
+
+      <GeoFichajePanel
+        fichaje={fichaje}
+        site={
+          assignment.siteLatitude != null && assignment.siteLongitude != null
+            ? {
+                lat: assignment.siteLatitude,
+                lng: assignment.siteLongitude,
+                name: assignment.siteName,
+              }
+            : null
+        }
+        busy={recordCheckOut.isPending}
+      />
 
       {pendingRequired > 0 && (
         <Alert variant="warn">
@@ -183,7 +254,9 @@ export default function FinishPage() {
         disabled={disabled}
         className="mt-auto"
       >
-        {missingPhotos ? 'Finalizar igual' : 'Registrar fin'}
+        {missingPhotos || fichaje.view.poorSignal
+          ? 'Finalizar igual'
+          : 'Registrar fin'}
       </Button>
     </div>
   )

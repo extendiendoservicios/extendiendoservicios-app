@@ -75,6 +75,8 @@ export interface IdsEscenario {
   calificacionB: string
   asistSupA: string
   asistSupB: string
+  /** Corrección de validación (B1, B-41) del fichaje `asistenciaE1`. */
+  correccionE1: string
   criterio: string
   feriado: string
   evento: string

@@ -89,6 +89,7 @@ export const CONJUNTOS = [
   'perm',
   'a11y',
   'ajustes',
+  'geo',
 ] as const
 export type Conjunto = (typeof CONJUNTOS)[number]
 
@@ -148,6 +149,21 @@ const DEF_CONJUNTOS: Record<Conjunto, DefConjunto> = {
       'empleado4',
       'supervisor1',
       'dual',
+    ],
+  },
+  // Módulo B1 (P22.5, `tests/e2e-geo/`): geolocalización y corrección de fichajes. Conjunto propio
+  // para no pisarse con ninguna otra suite que corra a la vez contra `App_dev`.
+  geo: {
+    tag: 'ge',
+    keys: [
+      'admin',
+      'adminSinCapacidades',
+      'empleado1',
+      'empleado2',
+      'empleado3',
+      'empleado4',
+      'supervisor1',
+      'supervisor2',
     ],
   },
 }

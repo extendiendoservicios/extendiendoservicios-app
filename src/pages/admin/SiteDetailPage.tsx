@@ -2,10 +2,13 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { Building2, Pencil, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { StatusBadge } from '@/components/status'
 import { MapView } from '@/components/map'
+import { useCompanyGeofenceQuery } from '@/features/geo/queries'
+import { describeSiteRadius, effectiveSiteRadiusM } from '@/features/geo/radius'
 import { useSiteDetailQuery } from '@/features/sites/queries'
 import { ChangeSiteStatusDialog } from '@/features/sites/components/ChangeSiteStatusDialog'
 import { SiteInfo } from '@/features/sites/components/SiteInfo'
@@ -31,6 +34,9 @@ import {
 export default function SiteDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [isChangeStatusOpen, setChangeStatusOpen] = useState(false)
+  // B-16: «Mostrar radios» dibuja el círculo de la sede con su radio vigente.
+  const [showRadii, setShowRadii] = useState(false)
+  const generalRadiusQuery = useCompanyGeofenceQuery()
 
   const siteQuery = useSiteDetailQuery(id)
 
@@ -94,7 +100,31 @@ export default function SiteDetailPage() {
       </div>
 
       <div className="rounded-lg border border-border bg-surface p-5">
-        <h3 className="mb-3 text-[13px] font-semibold text-text">Ubicación</h3>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-[13px] font-semibold text-text">Ubicación</h3>
+          {site.latitude != null && site.longitude != null && (
+            <label
+              htmlFor="site-map-show-radii"
+              className="flex items-center gap-3 text-[13px] font-medium text-text"
+            >
+              Mostrar radios
+              <Switch
+                id="site-map-show-radii"
+                checked={showRadii}
+                onCheckedChange={setShowRadii}
+              />
+            </label>
+          )}
+        </div>
+        {site.latitude != null && site.longitude != null && (
+          <p className="mb-3 text-[11.5px] text-text-3">
+            Radio de validación:{' '}
+            {describeSiteRadius(
+              site.geofenceRadiusM,
+              generalRadiusQuery.data?.radiusM,
+            )}
+          </p>
+        )}
         <MapView
           markers={
             site.latitude != null && site.longitude != null
@@ -102,7 +132,14 @@ export default function SiteDetailPage() {
                   {
                     id: site.id,
                     position: { lat: site.latitude, lng: site.longitude },
-                    variant: site.status === 'active' ? 'success' : 'neutral',
+                    shape: 'site',
+                    variant: site.status === 'active' ? 'primary' : 'neutral',
+                    radiusM: showRadii
+                      ? effectiveSiteRadiusM(
+                          site.geofenceRadiusM,
+                          generalRadiusQuery.data?.radiusM,
+                        )
+                      : undefined,
                     label: site.name,
                   },
                 ]

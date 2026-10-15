@@ -26,6 +26,7 @@ import { AttentionBlock } from './AttentionBlock'
 import { DashboardKpis } from './DashboardKpis'
 import { ServicesTodayTable } from './ServicesTodayTable'
 import { SupervisionsTodayBlock } from './SupervisionsTodayBlock'
+import { PresenceMap } from '@/features/geo/components/PresenceMap'
 
 /** Reloj del tablero: avanza cada 30 s, igual que el polling, para que "hoy" y los cálculos por hora no queden viejos. */
 const CLOCK_TICK_MS = 30_000
@@ -41,7 +42,9 @@ function useClock(): Date {
 
 /**
  * ADM-02 "Resumen" (DASH-001 a DASH-007, `05` línea 36): KPIs, "Requiere
- * atención", "Servicios de hoy" y supervisiones del día. Tres consultas del
+ * atención", "Servicios de hoy", mapa de presencia (B1, P22.4) y
+ * supervisiones del día. El mapa va después de "Servicios de hoy" para no
+ * enterrar la tabla en celular. Tres consultas del
  * día, todas filtradas por fecha y con polling de 30 s (las de turnos y
  * asignaciones se comparten con ADM-05 y ADM-10 por clave de caché), más la
  * de supervisiones (60 s, solo lectura). Sin consultas por fila.
@@ -183,6 +186,8 @@ function DashboardScreen() {
         onRecord={setRecordTarget}
         onAssign={(row) => handleAssign(row.shiftId)}
       />
+
+      <PresenceMap />
 
       <SupervisionsTodayBlock
         rows={supervisionsQuery.data ?? []}

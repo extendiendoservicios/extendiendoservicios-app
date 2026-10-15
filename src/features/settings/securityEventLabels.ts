@@ -21,6 +21,10 @@ export const SECURITY_EVENT_TYPE_LABELS: Record<SecurityEventType, string> = {
   admin_action_rejected: 'Intento de acción administrativa rechazado',
   name_changed: 'Nombre modificado',
   service_deleted: 'Servicio eliminado',
+  attendance_time_corrected: 'Hora de fichaje corregida',
+  geo_validation_overridden: 'Validación por ubicación corregida',
+  geofence_radius_changed: 'Radio de validación modificado',
+  media_deleted: 'Fotos o videos eliminados',
 }
 
 export const SECURITY_EVENT_TYPES: SecurityEventType[] = [
@@ -37,4 +41,8 @@ export const SECURITY_EVENT_TYPES: SecurityEventType[] = [
   'admin_action_rejected',
   'name_changed',
   'service_deleted',
+  'attendance_time_corrected',
+  'geo_validation_overridden',
+  'geofence_radius_changed',
+  'media_deleted',
 ]

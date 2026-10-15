@@ -39,6 +39,8 @@ import {
   localDateToIsoDate,
 } from '@/features/settings/dateOnly'
 import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
+import { GeoValidationCell } from '@/features/geo/components/GeoValidationCell'
+import { timeCorrectedSuffix } from '@/features/geo/outsideZone'
 import { AttendanceDetailSheet } from './AttendanceDetailSheet'
 import { WorkedHoursCell } from './WorkedHoursCell'
 
@@ -209,7 +211,9 @@ function EmployeeAttendanceHistoryTab({
       meta: { card: 'meta', cardLabel: 'Inicio' },
       cell: ({ row }) => {
         const value = entryCheckIn(row.original)
-        return value ? formatTime(value) : '—'
+        return value
+          ? `${formatTime(value)}${timeCorrectedSuffix(row.original.row.checkInGeo)}`
+          : '—'
       },
     },
     {
@@ -218,8 +222,21 @@ function EmployeeAttendanceHistoryTab({
       meta: { card: 'meta', cardLabel: 'Fin' },
       cell: ({ row }) => {
         const value = entryCheckOut(row.original)
-        return value ? formatTime(value) : '—'
+        return value
+          ? `${formatTime(value)}${timeCorrectedSuffix(row.original.row.checkOutGeo)}`
+          : '—'
       },
+    },
+    {
+      id: 'geo',
+      header: 'Validación',
+      meta: { card: 'meta', cardLabel: 'Validación' },
+      cell: ({ row }) => (
+        <GeoValidationCell
+          checkIn={row.original.row.checkInGeo}
+          checkOut={row.original.row.checkOutGeo}
+        />
+      ),
     },
     {
       id: 'workedHours',

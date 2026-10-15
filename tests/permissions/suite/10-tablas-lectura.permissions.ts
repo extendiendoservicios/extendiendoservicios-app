@@ -45,7 +45,9 @@ describe.concurrent('lectura de tablas por perfil', () => {
             const valores = Object.values(plantadas)
 
             if (ve === 'denegado') {
-              const res = await tabla(db, spec.tabla).select('*').limit(5)
+              const res = await tabla(db, spec.tabla)
+                .select(spec.columnas ?? '*')
+                .limit(5)
               expect(denegado(res), describir(res)).toBe(true)
               expect(filas(res)).toEqual([])
               return
@@ -55,7 +57,9 @@ describe.concurrent('lectura de tablas por perfil', () => {
                 conFilas.get(spec.tabla) ?? 0,
                 `${spec.tabla} no tiene filas: un "cero filas" no probaría nada`,
               ).toBeGreaterThan(0)
-              const consulta = tabla(db, spec.tabla).select('*')
+              const consulta = tabla(db, spec.tabla).select(
+                spec.columnas ?? '*',
+              )
               const res = await (spec.pesada
                 ? consulta.in(spec.clave, valores)
                 : consulta.limit(5))
@@ -64,7 +68,7 @@ describe.concurrent('lectura de tablas por perfil', () => {
               return
             }
             const res = await tabla(db, spec.tabla)
-              .select('*')
+              .select(spec.columnas ?? '*')
               .in(spec.clave, valores)
             expect(res.error, describir(res)).toBeNull()
             const esperadas = new Set(
