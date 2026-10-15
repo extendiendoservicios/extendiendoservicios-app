@@ -7,11 +7,30 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.21.0] - 2026-10-15
+
+Módulo B1: geolocalización y corrección de fichajes (P22.1 a P22.6b). Incluye además eliminar evidencia del módulo H (P21.8). Migraciones 0052 a 0058.
+
 ### Agregado
 
-- Celular · módulo B1 (P22.3): al fichar el inicio y el fin, el empleado y el supervisor ven un mini mapa con la sede (círculo verde, rojo o gris en vivo), su punto con el círculo de precisión y «Precisión: 35 m». Si la señal es imprecisa pueden «Esperar mejor señal» (hasta 30 s) o «Fichar igual». Si están fuera de la zona, un campo opcional pregunta por qué. Después de fichar se muestra la hora y la validación que guardó la base.
-- Celular: el historial del empleado, el resumen del turno y el detalle de la supervisión muestran si cada fichaje quedó «Validado», «Fuera de zona» o «Sin validar», y «Corregido» si la administración cambió la hora (sin el motivo).
-- Celular: si la empresa cambia el texto del consentimiento de ubicación, se vuelve a mostrar antes de fichar.
+- Celular · fichaje con ubicación: al registrar el inicio y el fin, el empleado y el supervisor ven un mini mapa con la sede y su círculo (verde dentro, rojo fuera, en vivo), su punto con el círculo de precisión y «Precisión: N m». Con señal imprecisa pueden «Esperar mejor señal» (hasta 30 s) o «Fichar igual» / «Finalizar igual»; nunca se bloquea. Fuera de la zona, un campo opcional pregunta por qué.
+- Regla de validación: el fichaje es válido si el círculo de precisión toca el de la sede y la precisión es de 150 m o menos. El resultado («Validado», «Fuera de zona» o «Sin validar») se calcula en la base y queda congelado, aunque después cambie la sede o su radio.
+- Celular: pantalla de resultado después de cada fichaje, con la hora y la validación guardada.
+- Celular: el historial, el resumen del turno y el detalle de la supervisión muestran la validación de cada fichaje («Fuera de zona (N m)» con la distancia) y «Corregido» si la administración cambió la hora, sin el motivo ni coordenadas.
+- Consentimiento de ubicación: se acepta o se retira desde el celular; quien no lo da ficha igual, «Sin validar». Si la empresa cambia el texto, se vuelve a mostrar.
+- Resumen: mapa «Dónde está el equipo» con quienes están trabajando, su estado y la sede (solo las sedes con alguien trabajando), refresco cada 45 s, «Mostrar finalizados de hoy», «Trabajando sin ubicación» y «Fuera de zona» en «Requiere atención».
+- Clientes y sedes: «Mostrar radios» y «Radio general» (150 m por omisión) en el mapa; «Radio de validación propio» en la sede.
+- Asistencia: columna «Validación» y filtro «Solo fuera de zona». En el detalle del turno y de la supervisión: distancia, precisión, motivo, mini mapa e historial de correcciones, con «Corregir hora» y «Marcar como válido» (motivo obligatorio).
+- Imprimibles de asistencia y resumen por cliente: la validación de cada inicio y fin, en texto y sin coordenadas.
+- Fotos y videos (módulo H): «Eliminar» y «Conservar» / «Quitar Conservar» de a varias en la galería, con confirmación. Lo eliminado deja la constancia «Eliminada por X el día Y» en la galería, el detalle del turno, la supervisión y el celular del empleado. Migración 0058.
+
+### Cambiado
+
+- Mapas: las sedes se marcan con un pin con el isotipo de la empresa, para distinguirlas de las personas.
+
+### Seguridad
+
+- Las coordenadas de los fichajes no se leen desde las tablas: la administración las ve solo por las vistas y funciones de B1, y el celular nunca lee coordenadas guardadas.
 
 ## [0.20.0] - 2026-10-14
 
