@@ -262,7 +262,9 @@ function ViewerMedia({
       <Message>
         {item.unavailable === 'expired'
           ? 'Este archivo ya venció y se borró. Queda la constancia del turno.'
-          : 'Quien lo subió quitó este archivo.'}
+          : item.unavailable === 'deleted'
+            ? `${item.unavailableNote ?? 'Eliminada'}. Queda la constancia del turno.`
+            : 'Quien lo subió quitó este archivo.'}
       </Message>
     )
   }

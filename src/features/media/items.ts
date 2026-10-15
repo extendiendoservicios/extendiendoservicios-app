@@ -2,6 +2,7 @@ import type { MediaGridGroup, MediaItem } from '@/components/media'
 import type { ShiftMediaRow } from '@/api/mediaAdmin'
 import type { SignedUrlMap } from '@/api/mediaShared'
 import { formatDateOnly } from '@/features/settings/dateOnly'
+import { deletedNote } from '@/lib/media/deletedNote'
 import { formatTime } from '@/lib/format'
 import type { ShiftTimes } from '@/api/mediaAdmin'
 
@@ -18,6 +19,27 @@ export function mediaLabel(row: ShiftMediaRow): string {
   return when ? `${what} de ${who}, ${formatTime(when)}` : `${what} de ${who}`
 }
 
+/** Un archivo sin archivo es vencido o, si tiene `deletedAt`, eliminado a mano. */
+export function unavailableOf(
+  row: Pick<
+    ShiftMediaRow,
+    'hasFile' | 'deletedAt' | 'deletedByFirstName' | 'deletedByLastName'
+  >,
+): Pick<MediaItem, 'unavailable' | 'unavailableNote'> {
+  if (row.hasFile) return { unavailable: null }
+  if (row.deletedAt) {
+    return {
+      unavailable: 'deleted',
+      unavailableNote: deletedNote({
+        deletedAt: row.deletedAt,
+        firstName: row.deletedByFirstName,
+        lastName: row.deletedByLastName,
+      }),
+    }
+  }
+  return { unavailable: 'expired' }
+}
+
 export function toMediaItem(
   row: ShiftMediaRow,
   thumbUrls: SignedUrlMap | undefined,
@@ -32,7 +54,7 @@ export function toMediaItem(
     expiresOn: row.expiresOn,
     keep: row.keep,
     durationSeconds: row.durationSeconds,
-    unavailable: row.hasFile ? null : 'expired',
+    ...unavailableOf(row),
     canRemove: false,
   }
 }

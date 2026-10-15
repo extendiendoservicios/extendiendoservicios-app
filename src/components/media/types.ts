@@ -32,8 +32,12 @@ export interface MediaItem {
   /**
    * `expired`: el archivo ya se borró por vencimiento (queda la constancia).
    * `removed`: lo quitó quien lo subió (H-15).
+   * `deleted`: lo eliminó la dueña o un administrador (P21.8b); la constancia
+   * va en `unavailableNote`.
    */
-  unavailable?: 'expired' | 'removed' | null
+  unavailable?: 'expired' | 'removed' | 'deleted' | null
+  /** Constancia ya armada («Eliminada por Ana Pérez el día jue 13 ago»). */
+  unavailableNote?: string
   /** Para el visor: oculta «Quitar» en este archivo aunque haya `onRemove`. */
   canRemove?: boolean
   /** Información extra del visor (administración). Sin esto, el visor muestra lo básico. */

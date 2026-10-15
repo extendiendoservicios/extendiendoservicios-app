@@ -1,7 +1,15 @@
 import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
-import { Camera, Download, SlidersHorizontal, X } from 'lucide-react'
+import {
+  Camera,
+  Download,
+  Pin,
+  PinOff,
+  SlidersHorizontal,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { MediaGrid } from '@/components/media'
 import { DatePicker } from '@/components/DatePicker'
 import { EmptyState } from '@/components/EmptyState'
@@ -37,18 +45,22 @@ import {
   type MediaStateFilter,
 } from '@/features/media/filters'
 import { extensionOfPath } from '@/api/mediaShared'
+import { deleteToast, keepSplit, keepToast } from '@/features/media/bulk'
 import {
   describeCounts,
   groupRowsByShift,
   toMediaItem,
 } from '@/features/media/items'
 import {
+  useDeleteShiftMediaMutation,
+  useSetMediaKeepManyMutation,
   useShiftMediaListQuery,
   useStorageUsageQuery,
   useThumbUrls,
 } from '@/features/media/queries'
 import { localDateToIsoDate } from '@/features/settings/dateOnly'
 import { mediaErrorMessage } from '@/lib/media/errors'
+import { DeleteMediaDialog } from './DeleteMediaDialog'
 import { EvidenceViewerHost } from './EvidenceViewerHost'
 import { StorageMeter } from './StorageMeter'
 
@@ -95,6 +107,7 @@ function MediaScreen() {
   const [zip, setZip] = useState<ZipProgress | null>(null)
   // En el celular los filtros se pliegan; desde 640 px están siempre a la vista.
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const zipAbort = useRef<AbortController | null>(null)
 
   function changeFilters(next: MediaFilterState) {
@@ -120,6 +133,44 @@ function MediaScreen() {
   const selected = useMemo(() => new Set(selectedIds), [selectedIds])
   const selectedRows = rows.filter((row) => selected.has(row.id) && row.hasFile)
   const tooManyForZip = selectedRows.length > MAX_ZIP_FILES
+  const keepMany = useSetMediaKeepManyMutation()
+  const deleteMany = useDeleteShiftMediaMutation()
+  const { toKeep, toRelease } = keepSplit(selectedRows)
+  const busy = keepMany.isPending || deleteMany.isPending
+
+  async function handleKeep(keep: boolean) {
+    const ids = keep ? toKeep : toRelease
+    try {
+      const changed = await keepMany.mutateAsync({ ids, keep })
+      toast.success(keepToast(changed, keep))
+      setSelectedIds([])
+    } catch (error) {
+      toast.error(
+        isApiError(error) ? error.message : 'No pudimos cambiar la marca.',
+      )
+    }
+  }
+
+  async function handleDelete() {
+    try {
+      const result = await deleteMany.mutateAsync(
+        selectedRows.map((row) => row.id),
+      )
+      toast.success(deleteToast(result))
+      if (result.storageFailedCount > 0) {
+        toast.info(
+          'Algunos archivos tardan en liberar el espacio: se terminan de borrar esta noche.',
+        )
+      }
+      setConfirmDelete(false)
+      setSelectedIds([])
+    } catch (error) {
+      toast.error(
+        isApiError(error) ? error.message : 'No pudimos eliminar los archivos.',
+      )
+      setConfirmDelete(false)
+    }
+  }
 
   async function handleZip() {
     if (selectedRows.length === 0 || tooManyForZip) return
@@ -401,13 +452,44 @@ function MediaScreen() {
                   >
                     Quitar selección
                   </Button>
+                  {toKeep.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon={Pin}
+                      disabled={busy}
+                      onClick={() => void handleKeep(true)}
+                    >
+                      Conservar
+                    </Button>
+                  )}
+                  {toRelease.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon={PinOff}
+                      disabled={busy}
+                      onClick={() => void handleKeep(false)}
+                    >
+                      Quitar Conservar
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     icon={Download}
-                    disabled={tooManyForZip}
+                    disabled={tooManyForZip || busy}
                     onClick={() => void handleZip()}
                   >
                     Descargar ZIP
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    icon={Trash2}
+                    disabled={busy}
+                    onClick={() => setConfirmDelete(true)}
+                  >
+                    Eliminar
                   </Button>
                 </>
               )}
@@ -513,6 +595,15 @@ function MediaScreen() {
           )}
         </div>
       )}
+
+      <DeleteMediaDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        count={selectedRows.length}
+        keepCount={selectedRows.filter((row) => row.keep).length}
+        isLoading={deleteMany.isPending}
+        onConfirm={() => void handleDelete()}
+      />
 
       <EvidenceViewerHost
         rows={rows}
