@@ -5,6 +5,7 @@ import type { PrintColumn, PrintRowData } from '@/features/print/PrintTable'
 import { formatShiftRange } from '@/features/shifts/openEnded'
 import { absenceDetail, isAbsence } from '@/features/attendance/absences'
 import { joinObservations } from '@/features/shifts/observation'
+import { geoPrintText } from '@/features/geo/printText'
 
 /**
  * Detalle de asistencia de una persona (AJ-06): lógica sin React que arma las
@@ -206,6 +207,8 @@ export function buildAttendanceSheet(input: {
     { key: 'franja', header: 'Franja' },
     { key: 'start', header: 'Inicio' },
     { key: 'end', header: 'Fin' },
+    // B1 (B-20): validación por ubicación, solo el resultado, sin coordenadas.
+    { key: 'geo', header: 'Validación' },
     { key: 'novelty', header: 'Observaciones' },
     { key: 'hours', header: 'Horas', align: 'right' },
   ]
@@ -224,6 +227,7 @@ export function buildAttendanceSheet(input: {
       franja: entryFranja(entry),
       start: checkIn ? formatTime(checkIn) : '—',
       end: checkOut ? formatTime(checkOut) : '—',
+      geo: geoPrintText(entry.row.checkInGeo, entry.row.checkOutGeo),
       // AJ2-15: la observación del turno (si tiene tildado «mostrar en la impresión») va junto a la novedad.
       novelty:
         entry.kind === 'service'

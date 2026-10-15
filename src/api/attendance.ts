@@ -3,6 +3,7 @@ import type { Database } from '@/lib/database.types'
 import { fromPostgrestError } from './errors'
 import type { GeolocationCoords } from '@/lib/geolocation'
 import type { AssignmentStatus } from './assignments'
+import type { GeoStatus, GeoUnvalidatedReason } from '@/lib/geo'
 import { mapAttendanceGeo, type AttendanceGeo } from './attendanceGeo'
 
 /**
@@ -23,12 +24,15 @@ import { mapAttendanceGeo, type AttendanceGeo } from './attendanceGeo'
  * y, si necesita lógica especial (por ejemplo deshabilitar el botón),
  * mirar `error.hint`.
  *
- * IMPORTANTE (ADR-009, P-067, B-40): las coordenadas que devuelve el
- * servidor (latitud, longitud, precisión) NO se mapean a ningún tipo de este
+ * IMPORTANTE (ADR-009, P-067; módulo B1, B-40): las coordenadas que devuelve
+ * el servidor (latitud, longitud) NO se mapean a ningún tipo de este
  * archivo — a propósito, para que sea imposible mostrarlas por accidente en
- * una pantalla ("no se muestran en ninguna pantalla de la Base"). Lo único
- * que se expone de la ubicación es la validación que calculó la base
- * (`geo`: estado, motivo y distancia, módulo B1).
+ * una pantalla. Desde el módulo B1 las columnas de posición están cerradas
+ * para `authenticated` y administración las lee solo por `v_presence_today` y
+ * `get_attendance_location` (`src/api/geo.ts`). Lo que sí trae este archivo
+ * del módulo B1 es la validación congelada de cada fichaje: `geo`
+ * (`AttendanceGeo`) en lo que devuelven las RPC de fichaje y
+ * `BoardAttendanceGeo` en las filas de `v_assignments_board`.
  *
  * P22.3 (módulo B1): `recordCheckIn`/`recordCheckOut` aceptan el motivo
  * opcional de estar fuera de la zona (`p_outside_reason`, B-04, hasta 300
@@ -224,6 +228,28 @@ export async function closeAssignment(
 // Lecturas de `v_assignments_board` para ADM-06, ADM-10 y ADM-12
 // ---------------------------------------------------------------------------
 
+/**
+ * Validación por ubicación de un fichaje (módulo B1, B-03/B-08/B-09), tal como
+ * la congeló el servidor al fichar. NO trae coordenadas (B-40): la posición se
+ * lee aparte, con `get_attendance_location` (`src/api/geo.ts`). `accuracyM`
+ * sí viene, y es lo que indica que el fichaje tiene posición guardada.
+ */
+export interface BoardAttendanceGeo {
+  /** Id de `attendance_records` (para corregir la hora o marcar como válido). */
+  recordId: string
+  status: GeoStatus
+  reason: GeoUnvalidatedReason | null
+  distanceM: number | null
+  radiusM: number | null
+  accuracyM: number | null
+  /** Motivo opcional que escribió la persona al fichar fuera de zona (B-04). */
+  outsideReason: string | null
+  /** Un dueño o administrador lo marcó como válido (B-09): «Validado (corregido)». */
+  overridden: boolean
+  /** La hora fue corregida por la administración (B-28): marca «Corregido». */
+  timeCorrected: boolean
+}
+
 /** Una fila de `v_assignments_board` con las columnas de asistencia (ATT-011 a ATT-014). */
 export interface AttendanceBoardRow {
   id: string
@@ -277,6 +303,12 @@ export interface AttendanceBoardRow {
   removedAt?: string | null
   /** AJ2-15: observación del turno, solo si tiene tildado «mostrar en la impresión» (null para quien no es administración). Va a la planilla impresa. */
   shiftObservation?: string | null
+  /** B1: validación del fichaje de inicio; `null` si no hay inicio. Opcional para no romper los datos de prueba anteriores. */
+  checkInGeo?: BoardAttendanceGeo | null
+  /** B1: validación del fichaje de fin; `null` si no hay fin. */
+  checkOutGeo?: BoardAttendanceGeo | null
+  /** B1, B-21: algún fichaje de la asignación quedó «Fuera de zona» sin corregir. */
+  hasOutsideGeo?: boolean
 }
 
 /** Todas las columnas de `v_assignments_board` que usa esta pantalla (`06` sección 10, P14.1). */
@@ -289,7 +321,12 @@ const ATTENDANCE_BOARD_SELECT = `
   minutes_late, minutes_early_leave,
   last_notice_kind, last_notice_minutes_late, last_notice_reason_code, last_notice_reason_text,
   last_notice_reported_by, last_notice_source, last_notice_at,
-  last_notice_estimated_arrival_at, planned_minutes, worked_minutes, removed_at, shift_observation
+  last_notice_estimated_arrival_at, planned_minutes, worked_minutes, removed_at, shift_observation,
+  check_in_record_id, check_in_geo_status, check_in_geo_reason, check_in_distance_m, check_in_geofence_radius_m,
+  check_in_accuracy_m, check_in_outside_reason, check_in_geo_overridden, check_in_time_corrected,
+  check_out_record_id, check_out_geo_status, check_out_geo_reason, check_out_distance_m, check_out_geofence_radius_m,
+  check_out_accuracy_m, check_out_outside_reason, check_out_geo_overridden, check_out_time_corrected,
+  has_outside_geo
 `
 
 interface AttendanceBoardRawRow {
@@ -333,6 +370,56 @@ interface AttendanceBoardRawRow {
   worked_minutes: number | null
   removed_at: string | null
   shift_observation: string | null
+  check_in_record_id: string | null
+  check_in_geo_status: GeoStatus | null
+  check_in_geo_reason: GeoUnvalidatedReason | null
+  check_in_distance_m: number | null
+  check_in_geofence_radius_m: number | null
+  check_in_accuracy_m: number | string | null
+  check_in_outside_reason: string | null
+  check_in_geo_overridden: boolean | null
+  check_in_time_corrected: boolean | null
+  check_out_record_id: string | null
+  check_out_geo_status: GeoStatus | null
+  check_out_geo_reason: GeoUnvalidatedReason | null
+  check_out_distance_m: number | null
+  check_out_geofence_radius_m: number | null
+  check_out_accuracy_m: number | string | null
+  check_out_outside_reason: string | null
+  check_out_geo_overridden: boolean | null
+  check_out_time_corrected: boolean | null
+  has_outside_geo: boolean | null
+}
+
+/** Convierte las columnas `check_in_*` / `check_out_*` de la vista en un `BoardAttendanceGeo`; `null` si no hay fichaje. */
+export function mapBoardAttendanceGeo(
+  recordId: string | null,
+  status: GeoStatus | null,
+  fields: {
+    reason: GeoUnvalidatedReason | null
+    distanceM: number | null
+    radiusM: number | null
+    accuracyM: number | string | null
+    outsideReason: string | null
+    overridden: boolean | null
+    timeCorrected: boolean | null
+  },
+): BoardAttendanceGeo | null {
+  if (!recordId || !status) {
+    return null
+  }
+  const accuracy = fields.accuracyM == null ? null : Number(fields.accuracyM)
+  return {
+    recordId,
+    status,
+    reason: fields.reason,
+    distanceM: fields.distanceM,
+    radiusM: fields.radiusM,
+    accuracyM: accuracy != null && Number.isFinite(accuracy) ? accuracy : null,
+    outsideReason: fields.outsideReason,
+    overridden: fields.overridden ?? false,
+    timeCorrected: fields.timeCorrected ?? false,
+  }
 }
 
 function mapAttendanceBoardRow(row: AttendanceBoardRawRow): AttendanceBoardRow {
@@ -377,6 +464,33 @@ function mapAttendanceBoardRow(row: AttendanceBoardRawRow): AttendanceBoardRow {
     workedMinutes: row.worked_minutes,
     removedAt: row.removed_at,
     shiftObservation: row.shift_observation,
+    checkInGeo: mapBoardAttendanceGeo(
+      row.check_in_record_id,
+      row.check_in_geo_status,
+      {
+        reason: row.check_in_geo_reason,
+        distanceM: row.check_in_distance_m,
+        radiusM: row.check_in_geofence_radius_m,
+        accuracyM: row.check_in_accuracy_m,
+        outsideReason: row.check_in_outside_reason,
+        overridden: row.check_in_geo_overridden,
+        timeCorrected: row.check_in_time_corrected,
+      },
+    ),
+    checkOutGeo: mapBoardAttendanceGeo(
+      row.check_out_record_id,
+      row.check_out_geo_status,
+      {
+        reason: row.check_out_geo_reason,
+        distanceM: row.check_out_distance_m,
+        radiusM: row.check_out_geofence_radius_m,
+        accuracyM: row.check_out_accuracy_m,
+        outsideReason: row.check_out_outside_reason,
+        overridden: row.check_out_geo_overridden,
+        timeCorrected: row.check_out_time_corrected,
+      },
+    ),
+    hasOutsideGeo: row.has_outside_geo ?? false,
   }
 }
 

@@ -44,6 +44,7 @@ vi.mock('@/lib/supabase', () => ({
 
 const {
   fetchClientServiceSummary,
+  mapClientServiceSummary,
   fetchClientsWorkedMinutes,
   createClient,
   updateClient,
@@ -350,6 +351,14 @@ describe('fetchClientServiceSummary (AJ-09)', () => {
                 worked_minutes: 239,
                 open_ended: true,
                 no_checkout: false,
+                check_in_geo_status: 'valid',
+                check_in_geo_reason: null,
+                check_in_distance_m: 11,
+                check_in_geo_overridden: false,
+                check_out_geo_status: 'outside',
+                check_out_geo_reason: null,
+                check_out_distance_m: 350,
+                check_out_geo_overridden: true,
               },
             ],
           },
@@ -382,7 +391,63 @@ describe('fetchClientServiceSummary (AJ-09)', () => {
       workedMinutes: 239,
       openEnded: true,
       noCheckout: false,
+      checkInGeo: {
+        status: 'valid',
+        reason: null,
+        distanceM: 11,
+        overridden: false,
+      },
+      checkOutGeo: {
+        status: 'outside',
+        reason: null,
+        distanceM: 350,
+        overridden: true,
+      },
     })
+  })
+
+  it('sin fichaje, la validación del resumen queda en null (0056)', () => {
+    const summary = mapClientServiceSummary({
+      client_id: 'c1',
+      from: '2026-10-01',
+      to: '2026-10-07',
+      totals: {
+        shifts_done: 1,
+        employees_count: 0,
+        worked_minutes: 0,
+        planned_minutes: 0,
+      },
+      shifts: [
+        {
+          shift_id: 's1',
+          shift_date: '2026-10-05',
+          site_id: 'si1',
+          site_name: 'Munro',
+          start_time: '08:00:00',
+          end_time: '12:00:00',
+          status: 'completed',
+          worked_minutes: 0,
+          planned_minutes: 0,
+          employees: [
+            {
+              assignment_id: 'a1',
+              employee_id: 'e1',
+              first_name: 'Ana',
+              last_name: 'Gómez',
+              status: 'absence_notified',
+              check_in_at: null,
+              check_out_at: null,
+              planned_minutes: 240,
+              worked_minutes: null,
+              check_in_geo_status: null,
+              check_out_geo_status: null,
+            },
+          ],
+        },
+      ],
+    })
+    expect(summary.shifts[0]?.employees[0]?.checkInGeo).toBeNull()
+    expect(summary.shifts[0]?.employees[0]?.checkOutGeo).toBeNull()
   })
 
   it.each([

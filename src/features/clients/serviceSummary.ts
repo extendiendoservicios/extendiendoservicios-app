@@ -6,6 +6,7 @@ import type { AttendanceBoardRow } from '@/api/attendance'
 import { absenceDetail, isAbsence } from '@/features/attendance/absences'
 import { joinObservations } from '@/features/shifts/observation'
 import type { PrintColumn, PrintRowData } from '@/features/print/PrintTable'
+import { geoPrintText } from '@/features/geo/printText'
 import { formatCalendarDate, formatMinutes } from '@/lib/format'
 import {
   formatShiftRange,
@@ -89,6 +90,7 @@ interface SheetLine {
   employeeId: string
   franja: string
   novelty: string
+  geo: string
   hours: string
 }
 
@@ -122,6 +124,7 @@ export function buildClientSummarySheet(input: {
     { key: 'name', header: 'Nombre y Apellido' },
     { key: 'dni', header: 'DNI' },
     { key: 'novelty', header: 'Observaciones' },
+    { key: 'geo', header: 'Validación' },
     { key: 'hours', header: 'Horas', align: 'right' },
   ]
 
@@ -151,6 +154,7 @@ export function buildClientSummarySheet(input: {
           employee.noCheckout ? NO_CHECKOUT_LABEL : '',
           shift.observation,
         ),
+        geo: geoPrintText(employee.checkInGeo, employee.checkOutGeo),
         hours: employee.noCheckout
           ? '0 h'
           : employee.workedMinutes != null
@@ -171,6 +175,7 @@ export function buildClientSummarySheet(input: {
       employeeId: row.employeeId,
       franja: formatShiftRange(row.startTime, row.endTime, row.openEnded),
       novelty: joinObservations(absenceDetail(row), row.shiftObservation),
+      geo: '—',
       hours: '—',
     })
   }
@@ -192,6 +197,7 @@ export function buildClientSummarySheet(input: {
     name: `${line.firstName} ${line.lastName}`,
     dni: dnis.get(line.employeeId) ?? '—',
     novelty: line.novelty,
+    geo: line.geo,
     hours: line.hours,
   }))
 

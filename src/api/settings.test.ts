@@ -49,6 +49,7 @@ describe('fetchCompanySettings', () => {
       logo_path: string | null
       support_phone: string | null
       location_consent_text: string | null
+      location_consent_updated_at: string | null
       updated_by: string | null
       updated_at: string
     }> = {
@@ -57,6 +58,7 @@ describe('fetchCompanySettings', () => {
         logo_path: 'logo.png',
         support_phone: '11-5555-5555',
         location_consent_text: 'Texto legal.',
+        location_consent_updated_at: '2026-10-14T12:00:00Z',
         updated_by: 'owner-1',
         updated_at: '2026-09-01T00:00:00Z',
       },
@@ -73,6 +75,7 @@ describe('fetchCompanySettings', () => {
       logoPath: 'logo.png',
       supportPhone: '11-5555-5555',
       locationConsentText: 'Texto legal.',
+      locationConsentUpdatedAt: '2026-10-14T12:00:00Z',
       updatedBy: 'owner-1',
       updatedAt: '2026-09-01T00:00:00Z',
     })

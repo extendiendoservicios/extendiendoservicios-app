@@ -23,6 +23,10 @@ import { supabase } from '@/lib/supabase'
 import { isApiError } from '@/api/errors'
 import { updatePersonName } from '@/api/users'
 import { setMyHighContrast } from '@/api/profile'
+import {
+  revokeLocationConsent,
+  saveLocationConsent,
+} from '@/api/locationConsent'
 import { setHighContrast } from '@/lib/contrast'
 import {
   updatePersonNameSchema,
@@ -193,15 +197,18 @@ export default function ProfilePage() {
   async function setLocationConsent(consent: boolean) {
     if (!auth.userId) return
     setConsentBusy(true)
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        location_consent_at: consent ? new Date().toISOString() : null,
-      })
-      .eq('id', auth.userId)
-    setConsentBusy(false)
-    if (!error) {
+    try {
+      // Hora del servidor (RPC), la misma función que usa el celular al fichar.
+      if (consent) {
+        await saveLocationConsent()
+      } else {
+        await revokeLocationConsent()
+      }
       await auth.refreshProfile()
+    } catch {
+      // Sin cambios: la pantalla sigue mostrando el estado anterior.
+    } finally {
+      setConsentBusy(false)
     }
   }
 

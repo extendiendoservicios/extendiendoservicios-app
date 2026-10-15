@@ -65,6 +65,7 @@ describe('siteFormValuesToInput', () => {
       phoneRestricted: false,
       photosNotAllowed: true,
       restrictionsNotes: undefined,
+      geofenceRadius: undefined,
       status: 'active',
     })
     expect(input).toEqual({
@@ -80,6 +81,7 @@ describe('siteFormValuesToInput', () => {
       phoneRestricted: false,
       photosNotAllowed: true,
       restrictionsNotes: null,
+      geofenceRadiusM: null,
       status: 'active',
     })
   })

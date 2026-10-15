@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { ChevronLeft, ChevronRight, Phone, Search, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -38,6 +39,11 @@ import {
   useAttendanceBoardByDateQuery,
   useEmployeePhonesQuery,
 } from '@/features/attendance/queries'
+import { GeoValidationCell } from '@/features/geo/components/GeoValidationCell'
+import {
+  filterOutsideZone,
+  timeCorrectedSuffix,
+} from '@/features/geo/outsideZone'
 import { UpdatedAgo } from './UpdatedAgo'
 import { WorkedHoursCell } from './WorkedHoursCell'
 import { RecordAttendanceSheet } from './RecordAttendanceSheet'
@@ -85,6 +91,8 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
   const [statusFilter, setStatusFilter] = useState('all')
   const [clientFilter, setClientFilter] = useState('all')
   const [siteFilter, setSiteFilter] = useState('all')
+  // B-20: «Solo fuera de zona».
+  const [onlyOutside, setOnlyOutside] = useState(false)
   const [recordTarget, setRecordTarget] = useState<AttendanceBoardRow | null>(
     null,
   )
@@ -128,10 +136,11 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
     // DEF-AJ-01: un turno cancelado no es una alerta, así que no entra cuando
     // se filtra por un estado (el servidor filtra por `display_status`, que
     // no sabe de cancelaciones).
-    const visible =
+    const byStatus =
       statusFilter === 'all'
         ? rows
         : rows.filter((row) => row.shiftStatus !== 'cancelled')
+    const visible = filterOutsideZone(byStatus, onlyOutside)
     if (!text) {
       return visible
     }
@@ -140,7 +149,7 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
         .toLowerCase()
         .includes(text),
     )
-  }, [rows, debouncedText, statusFilter])
+  }, [rows, debouncedText, statusFilter, onlyOutside])
 
   const recordTargetActions = recordTarget
     ? getAvailableAttendanceActions({
@@ -195,14 +204,29 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
       header: 'Inicio real',
       meta: { card: 'meta', cardLabel: 'Inicio real' },
       cell: ({ row }) =>
-        row.original.checkInAt ? formatTime(row.original.checkInAt) : '—',
+        row.original.checkInAt
+          ? `${formatTime(row.original.checkInAt)}${timeCorrectedSuffix(row.original.checkInGeo)}`
+          : '—',
     },
     {
       id: 'checkOut',
       header: 'Fin real',
       meta: { card: 'meta', cardLabel: 'Fin real' },
       cell: ({ row }) =>
-        row.original.checkOutAt ? formatTime(row.original.checkOutAt) : '—',
+        row.original.checkOutAt
+          ? `${formatTime(row.original.checkOutAt)}${timeCorrectedSuffix(row.original.checkOutGeo)}`
+          : '—',
+    },
+    {
+      id: 'geo',
+      header: 'Validación',
+      meta: { card: 'meta', cardLabel: 'Validación' },
+      cell: ({ row }) => (
+        <GeoValidationCell
+          checkIn={row.original.checkInGeo}
+          checkOut={row.original.checkOutGeo}
+        />
+      ),
     },
     {
       id: 'status',
@@ -362,6 +386,17 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
             ))}
           </SelectContent>
         </Select>
+        <label
+          htmlFor="attendance-only-outside"
+          className="flex items-center gap-3 text-[13px] font-medium text-text"
+        >
+          Solo fuera de zona
+          <Switch
+            id="attendance-only-outside"
+            checked={onlyOutside}
+            onCheckedChange={setOnlyOutside}
+          />
+        </label>
       </div>
 
       <DataTable
@@ -373,7 +408,9 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
         rowVariant={getAttendanceRowVariant}
         emptyState={{
           icon: Users,
-          title: 'No hay asignaciones para este día',
+          title: onlyOutside
+            ? 'Nadie fichó fuera de zona en este día'
+            : 'No hay asignaciones para este día',
         }}
       />
 
