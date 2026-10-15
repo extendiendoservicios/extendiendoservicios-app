@@ -117,7 +117,7 @@ function AutoFit({
   return null
 }
 
-const SITE_ICON = createMarkerIcon('primary')
+const SITE_ICON = createMarkerIcon('primary', 'site')
 const OWN_ICON = createMarkerIcon('info')
 
 /**

@@ -132,7 +132,8 @@ export default function SiteDetailPage() {
                   {
                     id: site.id,
                     position: { lat: site.latitude, lng: site.longitude },
-                    variant: site.status === 'active' ? 'success' : 'neutral',
+                    shape: 'site',
+                    variant: site.status === 'active' ? 'primary' : 'neutral',
                     radiusM: showRadii
                       ? effectiveSiteRadiusM(
                           site.geofenceRadiusM,

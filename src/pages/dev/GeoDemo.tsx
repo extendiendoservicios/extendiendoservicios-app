@@ -136,6 +136,7 @@ const PRESENCE_MARKERS: MapViewMarker[] = [
     id: 'site1',
     position: { lat: -34.51, lng: -58.5 },
     variant: 'primary',
+    shape: 'site',
     radiusM: 150,
     label: 'Sede con radio de 150 m',
     popup: 'Sede con radio de 150 m',
