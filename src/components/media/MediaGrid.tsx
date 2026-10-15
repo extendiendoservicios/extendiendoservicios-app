@@ -174,11 +174,23 @@ function GridCell({
       )}
     >
       {unavailable ? (
-        <div className="grid size-full place-content-center gap-1 px-1 text-center text-text-2">
+        <div
+          className="grid size-full place-content-center gap-1 px-1 text-center text-text-2"
+          title={item.unavailableNote}
+        >
           <ImageOff aria-hidden="true" className="mx-auto size-5" />
           <span className="text-[11.5px] leading-tight font-semibold">
-            {unavailable === 'expired' ? 'Vencida' : 'Quitada'}
+            {unavailable === 'expired'
+              ? 'Vencida'
+              : unavailable === 'deleted'
+                ? 'Eliminada'
+                : 'Quitada'}
           </span>
+          {item.unavailableNote && (
+            <span className="text-[10.5px] leading-tight">
+              {item.unavailableNote}
+            </span>
+          )}
         </div>
       ) : (
         <button

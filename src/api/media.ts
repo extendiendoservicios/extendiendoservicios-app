@@ -256,12 +256,16 @@ export interface MyShiftMedia {
   expiresOn: string | null
   /** `false` cuando el archivo ya se borró por vencimiento: queda la constancia. */
   hasFile: boolean
+  /** Cuándo la eliminó a mano la dueña o un administrador; `null` si no. */
+  deletedAt: string | null
+  deletedByFirstName: string | null
+  deletedByLastName: string | null
   /** URL firmada de la miniatura; `null` si el archivo ya no existe o no se pudo firmar. */
   thumbUrl: string | null
 }
 
 const MY_MEDIA_COLUMNS =
-  'id, shift_id, kind, storage_path, thumb_path, duration_s, captured_at, created_at, keep, expires_on, has_file'
+  'id, shift_id, kind, storage_path, thumb_path, duration_s, captured_at, created_at, keep, expires_on, has_file, deleted_at, deleted_by_first_name, deleted_by_last_name'
 
 /**
  * Lo que subió `userId` en el turno, de más viejo a más nuevo, con la URL
@@ -301,6 +305,9 @@ export async function fetchMyShiftMedia(
     keep: Boolean(row.keep),
     expiresOn: row.expires_on,
     hasFile: Boolean(row.has_file),
+    deletedAt: row.deleted_at,
+    deletedByFirstName: row.deleted_by_first_name,
+    deletedByLastName: row.deleted_by_last_name,
     thumbUrl: thumbUrls.get(row.thumb_path as string) ?? null,
   }))
 }

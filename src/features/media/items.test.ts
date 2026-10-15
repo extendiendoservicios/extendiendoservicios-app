@@ -11,6 +11,7 @@ import {
   toDetailedMediaItem,
   uploaderRoleLabel,
   toMediaItem,
+  unavailableOf,
 } from './items'
 import { extensionOfPath } from '@/api/mediaShared'
 import { mediaRow } from './testRows'
@@ -171,5 +172,42 @@ describe('shiftSlotLabel y toDetailedMediaItem', () => {
       authorRole: 'Empleado/a',
       sizeBytes: 170000,
     })
+  })
+})
+
+describe('unavailableOf (P21.8b)', () => {
+  const base = {
+    hasFile: false,
+    deletedAt: null,
+    deletedByFirstName: null,
+    deletedByLastName: null,
+  }
+
+  it('con archivo no hay nada que avisar', () => {
+    expect(unavailableOf({ ...base, hasFile: true })).toEqual({
+      unavailable: null,
+    })
+  })
+
+  it('sin archivo y sin deleted_at es una vencida', () => {
+    expect(unavailableOf(base)).toEqual({ unavailable: 'expired' })
+  })
+
+  it('sin archivo y con deleted_at es una eliminada, con la constancia', () => {
+    expect(
+      unavailableOf({
+        ...base,
+        deletedAt: '2026-10-12T15:00:00Z',
+        deletedByFirstName: 'Lía',
+        deletedByLastName: 'Gómez',
+      }),
+    ).toEqual({
+      unavailable: 'deleted',
+      unavailableNote: 'Eliminada por Lía Gómez el día lun 12 oct',
+    })
+    expect(
+      unavailableOf({ ...base, deletedAt: '2026-10-12T15:00:00Z' })
+        .unavailableNote,
+    ).toBe('Eliminada el día lun 12 oct')
   })
 })

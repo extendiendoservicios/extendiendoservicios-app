@@ -37,14 +37,14 @@ function makeChainable<T>(result: PostgrestResult<T>) {
   return chain
 }
 
-const { fromMock, rpcMock, storageFromMock, createSignedUrlsMock } = vi.hoisted(
-  () => ({
+const { fromMock, rpcMock, storageFromMock, createSignedUrlsMock, removeMock } =
+  vi.hoisted(() => ({
+    removeMock: vi.fn(),
     fromMock: vi.fn(),
     rpcMock: vi.fn(),
     storageFromMock: vi.fn(),
     createSignedUrlsMock: vi.fn(),
-  }),
-)
+  }))
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
@@ -62,6 +62,9 @@ const {
   createThumbSignedUrls,
   createOriginalSignedUrl,
   setShiftMediaKeep,
+  setShiftMediaKeepMany,
+  deleteShiftMedia,
+  chunkItems,
   fetchStorageUsage,
   parseStorageUsage,
   fetchMediaRetention,
@@ -77,7 +80,11 @@ beforeEach(() => {
   rpcMock.mockReset()
   storageFromMock.mockReset()
   createSignedUrlsMock.mockReset()
-  storageFromMock.mockReturnValue({ createSignedUrls: createSignedUrlsMock })
+  removeMock.mockReset()
+  storageFromMock.mockReturnValue({
+    createSignedUrls: createSignedUrlsMock,
+    remove: removeMock,
+  })
 })
 
 function rawRow(overrides: Record<string, unknown> = {}) {
@@ -445,5 +452,108 @@ describe('mapMediaAdminError', () => {
       code: '42501',
     })
     expect(error.message).not.toMatch(/permission/i)
+  })
+})
+
+describe('conservar y eliminar de a varias (P21.8b)', () => {
+  const ids = (n: number) => Array.from({ length: n }, (_, i) => `id-${i}`)
+
+  it('chunkItems parte en lotes', () => {
+    expect(chunkItems([1, 2, 3, 4, 5], 2)).toEqual([[1, 2], [3, 4], [5]])
+    expect(chunkItems([], 2)).toEqual([])
+  })
+
+  it('setShiftMediaKeepMany parte en lotes de 200 y suma los cambios', async () => {
+    rpcMock
+      .mockResolvedValueOnce({ data: 200, error: null })
+      .mockResolvedValueOnce({ data: 50, error: null })
+    const changed = await setShiftMediaKeepMany(ids(250), true)
+    expect(changed).toBe(250)
+    expect(rpcMock).toHaveBeenCalledTimes(2)
+    expect(
+      (rpcMock.mock.calls[0]?.[1] as { p_ids: string[] }).p_ids,
+    ).toHaveLength(200)
+    expect(rpcMock.mock.calls[1]?.[1]).toMatchObject({ p_keep: true })
+    expect(
+      (rpcMock.mock.calls[1]?.[1] as { p_ids: string[] }).p_ids,
+    ).toHaveLength(50)
+  })
+
+  it('traduce el hint de las RPC a un mensaje en español', async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'x', hint: 'FORBIDDEN' },
+    })
+    await expect(setShiftMediaKeepMany(['a'], false)).rejects.toSatisfy(
+      (error) =>
+        isApiError(error) &&
+        error.hint === 'FORBIDDEN' &&
+        error.message.startsWith('Solo la dueña'),
+    )
+    expect(
+      mapMediaAdminError({ message: 'x', hint: 'MEDIA_TOO_MANY' }).message,
+    ).toMatch(/demasiados/)
+    expect(
+      mapMediaAdminError({ message: 'x', hint: 'MEDIA_IDS_REQUIRED' }).message,
+    ).toBe('Elegí al menos un archivo.')
+  })
+
+  it('deleteShiftMedia elimina en lotes y borra los objetos de Storage después', async () => {
+    rpcMock
+      .mockResolvedValueOnce({
+        data: {
+          requested_count: 200,
+          deleted_count: 199,
+          ignored_count: 1,
+          bytes_freed_estimate: 1000,
+          deleted_ids: ['a'],
+          paths: ['p1', 'p2'],
+        },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          requested_count: 5,
+          deleted_count: 5,
+          ignored_count: 0,
+          bytes_freed_estimate: 500,
+          deleted_ids: ['b'],
+          paths: ['p3'],
+        },
+        error: null,
+      })
+    removeMock.mockResolvedValue({ data: [], error: null })
+    const result = await deleteShiftMedia(ids(205))
+    expect(result).toMatchObject({
+      requestedCount: 205,
+      deletedCount: 204,
+      ignoredCount: 1,
+      bytesFreedEstimate: 1500,
+      storageFailedCount: 0,
+    })
+    expect(result.paths).toEqual(['p1', 'p2', 'p3'])
+    expect(storageFromMock).toHaveBeenCalledWith('evidence')
+    expect(removeMock).toHaveBeenCalledTimes(2)
+    expect(removeMock).toHaveBeenNthCalledWith(1, ['p1', 'p2'])
+  })
+
+  it('si Storage falla, no lanza: lo cuenta para el barrido nocturno', async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: { deleted_count: 1, paths: ['p1', 'p2'] },
+      error: null,
+    })
+    removeMock.mockResolvedValue({ data: null, error: { message: 'caído' } })
+    const result = await deleteShiftMedia(['a'])
+    expect(result.deletedCount).toBe(1)
+    expect(result.storageFailedCount).toBe(2)
+  })
+
+  it('si la RPC falla, no toca Storage', async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'x', hint: 'FORBIDDEN' },
+    })
+    await expect(deleteShiftMedia(['a'])).rejects.toBeDefined()
+    expect(removeMock).not.toHaveBeenCalled()
   })
 })

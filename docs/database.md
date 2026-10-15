@@ -1916,6 +1916,22 @@ SQL no puede borrar objetos de Storage, por eso lo hace una Edge Function (`supa
 
 La función borra en lotes (archivo y miniatura) con la API de Storage y recién después marca las filas; si Storage falla no marca nada y la próxima corrida reintenta. Solo borra rutas con la forma `{uuid}/{uuid}[_thumb].{jpg|mp4|webm}`. Tests: `deno test --allow-env --allow-net` en `supabase/functions/evidence-cleanup/`; la regla de qué vence se prueba en pgTAP.
 
+## Eliminar evidencia para liberar espacio (migración `0058`, P21.8a, módulo H)
+
+Pedido de Mike (H-08, H-14, H-15): en «Fotos y videos» de administración se eligen varios archivos y se eliminan para liberar espacio. Se borran de Storage el archivo y la miniatura; **la fila de `shift_media` queda como constancia** (P-014) y el turno muestra «Eliminada por X el día Y».
+
+- Columnas nuevas de `shift_media`: `deleted_at timestamptz` y `deleted_by uuid` (`profiles`). Son un tercer hecho, distinto de `removed_at` (lo quita el autor dentro de la ventana y la fila deja de verse) y de `expired_at` (el archivo ya se borró de Storage: vencimiento o barrido). Índices parciales `shift_media_deleted_by_idx` y `shift_media_deleted_pending_idx`.
+- `security_event_type.media_deleted` (valor 23 del enum).
+- **`delete_shift_media(p_ids uuid[]) returns jsonb`** (O, A; `FORBIDDEN` si no). Deduplica los ids, rechaza la lista vacía o nula (`MEDIA_IDS_REQUIRED`) y más de 200 ids distintos (`MEDIA_TOO_MANY`). Marca `deleted_at`/`deleted_by` en las filas **confirmadas, no quitadas, sin vencer y no eliminadas antes**; incluye las marcadas «Conservar». Ignora sin error todas las demás (inexistentes, pendientes, quitadas, vencidas, ya eliminadas): es idempotente. Registra un evento `media_deleted` en `security_events` solo si cambió algo (`details`: `count`, `media_ids`, `bytes_freed_estimate` = suma de `size_bytes`, `requested`). Devuelve `{requested_count, deleted_count, ignored_count, bytes_freed_estimate, deleted_ids, paths}`; `paths` son las rutas (archivo y miniatura) que el cliente borra con `storage.from('evidence').remove(paths)`.
+- Política de Storage **`evidence_delete_deleted_admin`** (`delete`, `authenticated`): dueño y administradores borran objetos del bucket `evidence` cuya fila de `shift_media` tiene `deleted_at`. Mismo criterio que `evidence_delete_removed_own` para el autor: no se puede borrar evidencia que no pasó por la RPC (que valida y registra). Con esta política el bucket `evidence` tiene cinco políticas.
+- Barrido nocturno: `evidence_cleanup_candidates` suma `reason = 'deleted'` (prioridad: `removed`, `deleted`, `pending_stale`, `expired`; el «Conservar» no salva a una fila eliminada). La Edge Function `evidence-cleanup` cuenta `deleted` aparte en su resumen. Es la red de seguridad si el cliente falló a mitad. `evidence_cleanup_mark` no cambia (fija `expired_at`).
+- **`set_shift_media_keep_many(p_ids uuid[], p_keep boolean) returns integer`** (O, A). Misma regla y mismos campos que `set_shift_media_keep` (`keep`, `kept_by`, `kept_at`, `updated_by`); aplica a filas confirmadas, no quitadas y con archivo (sin vencer ni eliminar) e ignora las demás. Errores: `KEEP_REQUIRED`, `MEDIA_IDS_REQUIRED`, `MEDIA_TOO_MANY` (tope 200). Devuelve **cuántas filas cambiaron de estado**: las que ya estaban como se pide no cuentan y conservan su `kept_by`/`kept_at`.
+- `set_shift_media_keep` (individual) mantiene su contrato; la única diferencia es que una fila eliminada a mano responde `MEDIA_EXPIRED` (ya no tiene archivo), igual que una vencida.
+- `v_shift_media`: las eliminadas **siguen apareciendo**, con `has_file = false` y `expires_on = null`. Columnas nuevas al final (después de `expires_on`): `deleted_at`, `deleted_by`, `deleted_by_first_name`, `deleted_by_last_name`. Con `security_invoker`, el nombre de quien eliminó lo ven quienes pueden leer `profiles` (administración); la autora ve la constancia sin el nombre.
+- No cambian: `storage_usage` (suma objetos reales de Storage, así que baja sola), `delete_service` (sigue rechazando servicios con fotos subidas) ni `v_my_day` / `v_my_supervisions` / `v_my_history`: `my_photos_count` y `my_videos_count` cuentan lo subido, también lo eliminado después.
+
+pgTAP: `0058_p21_8_eliminar_evidencia.test.sql` (rol por rol, marcas, filas sin archivo, «Conservar», tope, evento de seguridad, vista, política de Storage, barrido y `set_shift_media_keep_many`).
+
 ## Avisos y anuncios (migración `0042`, P19.6 paquete E, AJ2-03)
 
 Anuncios de administración para empleados y supervisores. No tiene relación con `notices` / `attendance_notices` (avisos de demora y ausencia del empleado): todo lo nuevo se llama `announcements`.
@@ -2207,6 +2223,7 @@ En F19 (P19.6 paquete E, AJ2-03): `0042_p19_6e_avisos_y_anuncios.sql` -- ver "Av
 En F19 (P19.7 paquete B, AJ3-05 y AJ3-01): `0044_p19_7_servicios.sql` -- ver "Servicios: repetición mensual y eliminación".
 En F19 (P19.7 paquete R, AJ3-08): `0046_p19_7_turno_repetido.sql` -- ver "Turno suelto repetido".
 En F21 (P21.1, módulo H): `0047_p21_1_evidencia.sql` -- ver "Evidencia fotográfica: fotos y videos del turno".
+En F21 (P21.8a, módulo H): `0058_p21_8_eliminar_evidencia.sql` -- ver "Eliminar evidencia para liberar espacio".
 En F22 (P22.1, módulo B1): `0052_p22_1_geolocalizacion.sql`, `0053_p22_1_correcciones_eventos.sql`, `0054_p22_1b_privacidad_coordenadas.sql`, `0055_p22_1b_execute_service_role.sql` y `0056_p22_4b_resumen_y_consentimiento.sql` -- ver "Módulo B1: geolocalización y corrección de fichajes" y "Privacidad de las coordenadas".
 
 ## Cómo escribir una migración

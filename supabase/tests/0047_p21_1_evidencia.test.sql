@@ -110,8 +110,8 @@ select is(
 );
 select is(
   (select count(*) from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname like 'evidence\_%'),
-  4::bigint,
-  'Storage: cuatro políticas del bucket evidence (2 select, insert, delete)'
+  5::bigint,
+  'Storage: cinco políticas del bucket evidence (2 select, insert y 2 delete: autor y administración, 0058)'
 );
 select ok(
   has_function_privilege('authenticated', 'public.begin_shift_media(uuid, public.media_kind, text, bigint, bigint, integer, integer, numeric, timestamptz)', 'execute')
