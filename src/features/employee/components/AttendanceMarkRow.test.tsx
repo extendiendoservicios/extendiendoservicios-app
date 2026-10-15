@@ -23,6 +23,17 @@ describe('AttendanceMarkRow', () => {
       />,
     )
     expect(screen.getByText('Inicio 08:03')).toBeInTheDocument()
+    expect(screen.getByText('Fuera de zona (20 m)')).toBeInTheDocument()
+  })
+
+  it('«Fuera de zona» sin metros cuando falta la distancia', () => {
+    render(
+      <AttendanceMarkRow
+        label="Inicio"
+        at="2026-10-14T11:03:00Z"
+        geo={geo({ status: 'outside', distanceM: null })}
+      />,
+    )
     expect(screen.getByText('Fuera de zona')).toBeInTheDocument()
   })
 

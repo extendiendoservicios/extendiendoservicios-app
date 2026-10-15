@@ -24,6 +24,8 @@ export interface GeoStatusBadgeProps {
   corrected?: boolean
   /** Agrega la distancia: «Fuera de zona · 350 m». */
   showDistance?: boolean
+  /** Formato de la distancia: `dot` «· 350 m» (por omisión) o `parens` «(350 m)». */
+  distanceFormat?: 'dot' | 'parens'
   /** Muestra el motivo de «Sin validar» en el texto. Por omisión, sí. */
   showReason?: boolean
   className?: string
@@ -64,13 +66,16 @@ function GeoStatusBadge({
   distanceM,
   corrected,
   showDistance = false,
+  distanceFormat = 'dot',
   showReason = true,
   className,
 }: GeoStatusBadgeProps) {
   const meta = getGeoStatusMeta({ status, reason, corrected, showReason })
   const withDistance =
     showDistance && typeof distanceM === 'number'
-      ? ` · ${formatDistanceM(distanceM)}`
+      ? distanceFormat === 'parens'
+        ? ` (${formatDistanceM(distanceM)})`
+        : ` · ${formatDistanceM(distanceM)}`
       : ''
 
   return (
