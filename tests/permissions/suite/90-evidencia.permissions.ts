@@ -1023,6 +1023,375 @@ describe('Evidencia fotográfica (módulo H): permisos por rol', () => {
   }
 
   // ---------------------------------------------------------------------------------------------
+  // ELIMINAR EVIDENCIA Y «CONSERVAR» MÚLTIPLE (migración 0058, P21.8a)
+  // ---------------------------------------------------------------------------------------------
+  //
+  // Las filas de estas pruebas son de empleado2 en el turno `ajeno` (tope de 10 fotos por persona
+  // y por turno: hay 1 de base, 1 compartida de abajo y 2 por perfil de administración = 8; las dos pruebas de cada perfil comparten su par, así que la de eliminar va después de la de «Conservar») para no
+  // tocar el tope de empleado1 y supervisor1 que usan los demás casos del archivo.
+
+  describe('eliminar evidencia (0058): delete_shift_media y set_shift_media_keep_many', () => {
+    /** Fila que el dueño elimina una vez, para los casos de quienes no pueden borrar objetos. */
+    let eliminada: { id: string; storagePath: string; thumbPath: string }
+
+    const unoMas = () => subirEvidencia(empleado2, t.ajeno)
+
+    beforeAll(async () => {
+      eliminada = await unoMas()
+      const r = await clienteDe('owner').rpc('delete_shift_media', {
+        p_ids: [eliminada.id],
+      })
+      if (r.error)
+        throw new Error(
+          `delete_shift_media: ${r.error.hint} ${r.error.message}`,
+        )
+    }, 60_000)
+
+    afterAll(async () => {
+      // Lo que quedó en Storage de la fila compartida (la fila la borra deleteClientDeep).
+      if (eliminada)
+        await servicio()
+          .storage.from('evidence')
+          .remove([eliminada.storagePath, eliminada.thumbPath])
+    }, 60_000)
+
+    it('empleado: delete_shift_media y set_shift_media_keep_many dan FORBIDDEN y no tocan nada (CB-17)', async () => {
+      const del = await empleado().rpc('delete_shift_media', {
+        p_ids: [deEmpleado.id],
+      })
+      expect(del.error?.hint).toBe('FORBIDDEN')
+      const keep = await empleado().rpc('set_shift_media_keep_many', {
+        p_ids: [deEmpleado.id],
+        p_keep: true,
+      })
+      expect(keep.error?.hint).toBe('FORBIDDEN')
+      const { data } = await servicio()
+        .from('shift_media')
+        .select('keep, deleted_at')
+        .eq('id', deEmpleado.id)
+        .single()
+      expect(data?.keep).toBe(false)
+      expect(data?.deleted_at).toBeNull()
+    })
+
+    it('supervisor: delete_shift_media y set_shift_media_keep_many dan FORBIDDEN y no tocan nada (CB-17)', async () => {
+      const del = await supervisor().rpc('delete_shift_media', {
+        p_ids: [deSupervisor.id],
+      })
+      expect(del.error?.hint).toBe('FORBIDDEN')
+      const keep = await supervisor().rpc('set_shift_media_keep_many', {
+        p_ids: [deSupervisor.id],
+        p_keep: true,
+      })
+      expect(keep.error?.hint).toBe('FORBIDDEN')
+      const { data } = await servicio()
+        .from('shift_media')
+        .select('keep, deleted_at')
+        .eq('id', deSupervisor.id)
+        .single()
+      expect(data?.keep).toBe(false)
+      expect(data?.deleted_at).toBeNull()
+    })
+
+    it('anónimo: sin permiso de ejecución en las dos RPC', async () => {
+      const del = await clienteDe('anon').rpc('delete_shift_media', {
+        p_ids: [deEmpleado.id],
+      })
+      expect(del.error).not.toBeNull()
+      const keep = await clienteDe('anon').rpc('set_shift_media_keep_many', {
+        p_ids: [deEmpleado.id],
+        p_keep: true,
+      })
+      expect(keep.error).not.toBeNull()
+      const { data } = await servicio()
+        .from('shift_media')
+        .select('keep, deleted_at')
+        .eq('id', deEmpleado.id)
+        .single()
+      expect(data?.keep).toBe(false)
+      expect(data?.deleted_at).toBeNull()
+    })
+
+    it('ni el autor, ni otro empleado, ni un supervisor borran los objetos de una fila eliminada', async () => {
+      for (const [quien, db] of [
+        ['autor (empleado2)', empleado2],
+        ['empleado', empleado()],
+        ['supervisor', supervisor()],
+      ] as const) {
+        await db.storage
+          .from('evidence')
+          .remove([eliminada.storagePath, eliminada.thumbPath])
+        const quedan = await objetosDeEvidencia(servicio())
+        expect(quedan, quien).toContain(eliminada.storagePath)
+        expect(quedan, quien).toContain(eliminada.thumbPath)
+      }
+    })
+
+    it('el anónimo tampoco borra objetos de una fila eliminada', async () => {
+      await clienteDe('anon')
+        .storage.from('evidence')
+        .remove([eliminada.storagePath, eliminada.thumbPath])
+      const quedan = await objetosDeEvidencia(servicio())
+      expect(quedan).toContain(eliminada.storagePath)
+      expect(quedan).toContain(eliminada.thumbPath)
+    })
+
+    it('una fila eliminada no se puede volver a conservar con set_shift_media_keep: MEDIA_EXPIRED', async () => {
+      const r = await clienteDe('owner').rpc('set_shift_media_keep', {
+        p_media_id: eliminada.id,
+        p_keep: true,
+      })
+      expect(r.error?.hint).toBe('MEDIA_EXPIRED')
+    })
+
+    it('la vista muestra la fila eliminada como constancia: sin archivo, con quién y cuándo', async () => {
+      const v = await clienteDe('admin')
+        .from('v_shift_media')
+        .select(
+          'id, has_file, expires_on, deleted_at, deleted_by, deleted_by_first_name, deleted_by_last_name',
+        )
+        .eq('id', eliminada.id)
+        .single()
+      expect(v.error?.message).toBeUndefined()
+      expect(v.data?.has_file).toBe(false)
+      expect(v.data?.expires_on).toBeNull()
+      expect(v.data?.deleted_at).not.toBeNull()
+      expect(v.data?.deleted_by).toBe(contexto().ids.owner)
+      expect(v.data?.deleted_by_first_name).toBeTruthy()
+      expect(v.data?.deleted_by_last_name).toBeTruthy()
+    })
+
+    for (const perfil of ['adminSin', 'admin', 'owner'] as const) {
+      const etiqueta =
+        perfil === 'owner'
+          ? 'dueño'
+          : perfil === 'admin'
+            ? 'administrador con todas'
+            : 'administrador sin capacidades'
+      const idDe = () => contexto().ids[perfil]
+      // Las dos pruebas de este perfil comparten el mismo par de filas (tope de 10 por persona y turno):
+      // primero se marca y desmarca, después se elimina. Se crea la primera vez que se pide.
+      let par: Promise<
+        [
+          { id: string; storagePath: string; thumbPath: string },
+          { id: string; storagePath: string; thumbPath: string },
+        ]
+      > | null = null
+      const elPar = () => (par ??= Promise.all([unoMas(), unoMas()]))
+
+      it(`[${etiqueta}] set_shift_media_keep_many marca, desmarca y cuenta solo los cambios`, async () => {
+        const db = clienteDe(perfil)
+        const [a, b] = await elPar()
+        const ids = [a.id, b.id]
+        // Una eliminada, una inexistente y un nulo se ignoran sin error.
+        const mezcla = [...ids, eliminada.id, randomUUID()]
+
+        const marca = await db.rpc('set_shift_media_keep_many', {
+          p_ids: mezcla,
+          p_keep: true,
+        })
+        expect(marca.error?.message).toBeUndefined()
+        expect(marca.data).toBe(2)
+        const filasMarcadas = await servicio()
+          .from('shift_media')
+          .select('id, keep, kept_by, kept_at')
+          .in('id', [...ids, eliminada.id])
+        for (const f of filasMarcadas.data ?? []) {
+          if (f.id === eliminada.id) {
+            expect(f.keep, 'la eliminada no cambia').toBe(false)
+          } else {
+            expect(f.keep).toBe(true)
+            expect(f.kept_by).toBe(idDe())
+            expect(f.kept_at).not.toBeNull()
+          }
+        }
+
+        // Repetir no cambia nada: cuenta 0.
+        const otraVez = await db.rpc('set_shift_media_keep_many', {
+          p_ids: ids,
+          p_keep: true,
+        })
+        expect(otraVez.data).toBe(0)
+
+        const suelta = await db.rpc('set_shift_media_keep_many', {
+          p_ids: ids,
+          p_keep: false,
+        })
+        expect(suelta.data).toBe(2)
+        const despues = await servicio()
+          .from('shift_media')
+          .select('keep, kept_by')
+          .in('id', ids)
+        for (const f of despues.data ?? []) {
+          expect(f.keep).toBe(false)
+          expect(f.kept_by).toBeNull()
+        }
+      })
+
+      it(`[${etiqueta}] delete_shift_media marca las filas, devuelve las rutas y deja la constancia; Storage solo deja borrar después`, async () => {
+        const db = clienteDe(perfil)
+        const [a, b] = await elPar()
+        // Una «Conservar» también se puede eliminar.
+        const conserva = await db.rpc('set_shift_media_keep_many', {
+          p_ids: [b.id],
+          p_keep: true,
+        })
+        expect(conserva.data).toBe(1)
+
+        // Antes de la RPC, el borrado directo de Storage no pasa (la fila no está eliminada).
+        await db.storage.from('evidence').remove([a.storagePath, a.thumbPath])
+        const antes = await objetosDeEvidencia(servicio())
+        expect(antes).toContain(a.storagePath)
+        expect(antes).toContain(a.thumbPath)
+
+        const fantasma = randomUUID()
+        const r = await db.rpc('delete_shift_media', {
+          p_ids: [a.id, b.id, a.id, fantasma],
+        })
+        expect(r.error?.message).toBeUndefined()
+        const res = r.data as unknown as {
+          requested_count: number
+          deleted_count: number
+          ignored_count: number
+          bytes_freed_estimate: number
+          deleted_ids: string[]
+          paths: string[]
+        }
+        expect(res.requested_count).toBe(3) // sin repetidos
+        expect(res.deleted_count).toBe(2)
+        expect(res.ignored_count).toBe(1)
+        expect(res.bytes_freed_estimate).toBeGreaterThan(0)
+        expect([...res.deleted_ids].sort()).toEqual([a.id, b.id].sort())
+        expect([...res.paths].sort()).toEqual(
+          [a.storagePath, a.thumbPath, b.storagePath, b.thumbPath].sort(),
+        )
+
+        const filas2 = await servicio()
+          .from('shift_media')
+          .select('id, deleted_at, deleted_by, removed_at, expired_at')
+          .in('id', [a.id, b.id])
+        expect(filas2.data ?? []).toHaveLength(2)
+        for (const f of filas2.data ?? []) {
+          expect(f.deleted_at).not.toBeNull()
+          expect(f.deleted_by).toBe(idDe())
+          expect(f.removed_at).toBeNull()
+        }
+
+        // La vista la sigue mostrando, sin archivo y con quién la eliminó.
+        const vista = await db
+          .from('v_shift_media')
+          .select('id, has_file, deleted_by, deleted_by_first_name')
+          .in('id', [a.id, b.id])
+        expect(vista.data ?? []).toHaveLength(2)
+        for (const f of vista.data ?? []) {
+          expect(f.has_file).toBe(false)
+          expect(f.deleted_by).toBe(idDe())
+          expect(f.deleted_by_first_name).toBeTruthy()
+        }
+
+        // Idempotente: volver a eliminarlas no cambia nada.
+        const otraVez = await db.rpc('delete_shift_media', {
+          p_ids: [a.id, b.id],
+        })
+        expect((otraVez.data as unknown as typeof res).deleted_count).toBe(0)
+        expect((otraVez.data as unknown as typeof res).ignored_count).toBe(2)
+        expect((otraVez.data as unknown as typeof res).paths).toEqual([])
+
+        // Después de la RPC, el mismo perfil sí borra los objetos de esas filas.
+        const borra = await db.storage.from('evidence').remove(res.paths)
+        expect(borra.error?.message).toBeUndefined()
+        expect(borra.data?.length).toBe(4)
+        const despues = await objetosDeEvidencia(servicio())
+        for (const ruta of res.paths) expect(despues).not.toContain(ruta)
+
+        // Y no puede borrar objetos de otras filas que no se eliminaron.
+        await db.storage
+          .from('evidence')
+          .remove([deAjeno.storagePath, deAjeno.thumbPath])
+        const quedan = await objetosDeEvidencia(servicio())
+        expect(quedan).toContain(deAjeno.storagePath)
+        expect(quedan).toContain(deAjeno.thumbPath)
+        const fila = await servicio()
+          .from('shift_media')
+          .select('deleted_at')
+          .eq('id', deAjeno.id)
+          .single()
+        expect(fila.data?.deleted_at).toBeNull()
+      })
+
+      it(`[${etiqueta}] no elimina por la tabla ni cambia deleted_at a mano`, async () => {
+        const upd = await tabla(clienteDe(perfil), 'shift_media')
+          .update({ deleted_at: new Date().toISOString(), deleted_by: idDe() })
+          .eq('id', deAjeno.id)
+          .select('id')
+        expect(denegado(upd), describir(upd)).toBe(true)
+        const { data } = await servicio()
+          .from('shift_media')
+          .select('deleted_at')
+          .eq('id', deAjeno.id)
+          .single()
+        expect(data?.deleted_at).toBeNull()
+      })
+
+      it(`[${etiqueta}] hints: MEDIA_IDS_REQUIRED, MEDIA_TOO_MANY y KEEP_REQUIRED`, async () => {
+        const db = clienteDe(perfil)
+        const muchos = Array.from({ length: 201 }, () => randomUUID())
+        const dosCientos = Array.from({ length: 200 }, () => randomUUID())
+
+        expect(
+          (await db.rpc('delete_shift_media', { p_ids: [] })).error?.hint,
+        ).toBe('MEDIA_IDS_REQUIRED')
+        expect(
+          (await db.rpc('delete_shift_media', { p_ids: null as never })).error
+            ?.hint,
+        ).toBe('MEDIA_IDS_REQUIRED')
+        expect(
+          (await db.rpc('delete_shift_media', { p_ids: muchos })).error?.hint,
+        ).toBe('MEDIA_TOO_MANY')
+        // El tope es sobre ids distintos: 200 inexistentes pasan y se ignoran todos.
+        const tope = await db.rpc('delete_shift_media', { p_ids: dosCientos })
+        expect(tope.error?.message).toBeUndefined()
+        expect(
+          (tope.data as unknown as { ignored_count: number }).ignored_count,
+        ).toBe(200)
+
+        expect(
+          (
+            await db.rpc('set_shift_media_keep_many', {
+              p_ids: [],
+              p_keep: true,
+            })
+          ).error?.hint,
+        ).toBe('MEDIA_IDS_REQUIRED')
+        expect(
+          (
+            await db.rpc('set_shift_media_keep_many', {
+              p_ids: null as never,
+              p_keep: true,
+            })
+          ).error?.hint,
+        ).toBe('MEDIA_IDS_REQUIRED')
+        expect(
+          (
+            await db.rpc('set_shift_media_keep_many', {
+              p_ids: muchos,
+              p_keep: true,
+            })
+          ).error?.hint,
+        ).toBe('MEDIA_TOO_MANY')
+        expect(
+          (
+            await db.rpc('set_shift_media_keep_many', {
+              p_ids: [deAjeno.id],
+              p_keep: null as never,
+            })
+          ).error?.hint,
+        ).toBe('KEEP_REQUIRED')
+      })
+    }
+  })
+
+  // ---------------------------------------------------------------------------------------------
   // ANÓNIMO
   // ---------------------------------------------------------------------------------------------
 
