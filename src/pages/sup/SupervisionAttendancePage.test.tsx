@@ -455,6 +455,21 @@ describe('SupervisionAttendancePage · geolocalización (módulo B1, P22.3)', ()
     expect(screen.getByRole('button', { name: 'Fichar igual' })).toBeEnabled()
   })
 
+  it('al registrar el fin con la señal imprecisa el botón dice «Finalizar igual»', () => {
+    mockCommon()
+    mockWatchPosition({ latitude: -34.47, longitude: -58.5, accuracy: 400 })
+    mockSupervision({
+      siteGeofenceRadiusM: 100,
+      checkInAt: '2026-09-27T11:05:00Z',
+    })
+
+    renderPage()
+
+    expect(
+      screen.getByRole('button', { name: 'Finalizar igual' }),
+    ).toBeEnabled()
+  })
+
   it('sin consentimiento vigente no pide la ubicación y deja registrar sin validar', () => {
     mockCommon(consentState({ status: 'declined' }))
     mockSupervision()

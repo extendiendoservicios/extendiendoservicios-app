@@ -390,7 +390,7 @@ function FinishStep({
         disabled={busy || offline}
         className="mt-auto"
       >
-        {fichaje.view.poorSignal ? 'Fichar igual' : 'Registrar fin'}
+        {fichaje.view.poorSignal ? 'Finalizar igual' : 'Registrar fin'}
       </Button>
     </div>
   )

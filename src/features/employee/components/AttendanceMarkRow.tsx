@@ -47,6 +47,9 @@ export function AttendanceMarkRow({
           status={geo.status}
           reason={geo.reason}
           corrected={geo.overridden}
+          distanceM={geo.distanceM}
+          showDistance={geo.status === 'outside' && !geo.overridden}
+          distanceFormat="parens"
         />
       )}
     </div>
