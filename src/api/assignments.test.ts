@@ -577,6 +577,40 @@ describe('fetchAssignCandidates', () => {
     excludeEmployeeIds: [] as string[],
   }
 
+  it('marca a quien no tiene el rol de empleado y lo baja del primer grupo (P19.9)', async () => {
+    fromMock
+      .mockReturnValueOnce(
+        makeChainable({
+          data: [
+            {
+              profile_id: 'sup1',
+              first_name: 'Ana',
+              last_name: 'Gómez',
+              roles: ['supervisor'],
+            },
+            {
+              profile_id: 'emp2',
+              first_name: 'Luis',
+              last_name: 'Pérez',
+              roles: ['employee', 'supervisor'],
+            },
+          ],
+          error: null,
+        }),
+      )
+      .mockReturnValueOnce(makeChainable({ data: [], error: null }))
+      .mockReturnValueOnce(makeChainable({ data: [], error: null }))
+      .mockReturnValueOnce(makeChainable({ data: [], error: null }))
+      .mockReturnValueOnce(makeChainable({ data: [], error: null }))
+
+    const candidates = await fetchAssignCandidates(BASE_PARAMS)
+
+    expect(candidates.map((c) => [c.employeeId, c.hasEmployeeRole])).toEqual([
+      ['emp2', true],
+      ['sup1', false],
+    ])
+  })
+
   it('ordena habilitados y disponibles primero, y marca las advertencias', async () => {
     fromMock
       .mockReturnValueOnce(
