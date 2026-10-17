@@ -10,6 +10,9 @@ import type { MySupervision } from '@/api/mySupervisions'
 import { InstallBanner } from '@/components/InstallBanner'
 import { AnnouncementsBanner } from '@/features/announcements/mobile/AnnouncementsBanner'
 import { formatSupervisionRange } from '@/features/employee/shiftRange'
+import { useAuth } from '@/features/auth/AuthProvider'
+import { useMyDayQuery } from '@/features/employee/queries'
+import { ServiceCard } from '@/features/employee/components/ServiceCard'
 
 /**
  * SUP-02 · Hoy (MOB-SUP-002, `06` sección 12, `05` fila SUP-02): las
@@ -24,8 +27,14 @@ import { formatSupervisionRange } from '@/features/employee/shiftRange'
  * supervisor) ni una tarjeta "destacada" (SUP-02 no la pide, a diferencia de
  * EMP-03): todas las supervisiones de hoy se listan igual, en el orden que
  * ya trae la consulta (fecha y hora).
+ *
+ * P19.9: quien además es empleado ve arriba «Tus servicios de hoy» (sus
+ * propios turnos, que abren EMP-04), sin tener que ir a «Más» → «Mis
+ * servicios».
  */
 export default function SupervisorTodayPage() {
+  const auth = useAuth()
+  const isEmployee = auth.roles.includes('employee')
   const { data, isLoading, isError } = useMySupervisionsUpcomingQuery()
 
   if (isLoading) {
@@ -51,6 +60,8 @@ export default function SupervisorTodayPage() {
       <AnnouncementsBanner />
       <InstallBanner />
 
+      {isEmployee && <MyServicesToday />}
+
       {today.length === 0 ? (
         <EmptyState
           icon={CalendarX}
@@ -74,6 +85,37 @@ export default function SupervisorTodayPage() {
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * Servicios propios de hoy de quien es supervisor y empleado a la vez. Si no
+ * tiene ninguno, no se muestra nada (el estado vacío es el de supervisiones).
+ */
+function MyServicesToday() {
+  const { data, isError } = useMyDayQuery()
+  if (isError) {
+    return (
+      <Alert variant="crit">
+        <AlertDescription>
+          No pudimos cargar tus servicios. Probá de nuevo en un momento.
+        </AlertDescription>
+      </Alert>
+    )
+  }
+  const today = (data ?? []).filter((assignment) => assignment.isToday)
+  if (today.length === 0) {
+    return null
+  }
+  return (
+    <section aria-label="Tus servicios de hoy" className="flex flex-col gap-2">
+      <p className="text-[11px] font-semibold tracking-[0.4px] text-text-3 uppercase">
+        Tus servicios de hoy
+      </p>
+      {today.map((assignment) => (
+        <ServiceCard key={assignment.assignmentId} assignment={assignment} />
+      ))}
+    </section>
   )
 }
 

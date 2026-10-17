@@ -1,14 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { Link } from 'react-router'
-import { AlertTriangle, Bell, CalendarX, MapPin } from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/card'
+import { AlertTriangle, Bell, CalendarX } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { EmptyState } from '@/components/EmptyState'
 import { AssignmentStatusBadge } from '@/features/employee/components/AssignmentStatusBadge'
+import { ServiceCard } from '@/features/employee/components/ServiceCard'
 import { formatCalendarDate } from '@/lib/format'
 import { isRelevantChange, type MyDayAssignment } from '@/api/myDay'
-import { getNoticeMessage } from '@/features/employee/notice'
-import { useNow } from '@/features/employee/useNow'
 import { isNotifiable } from '@/features/employee/notifyCandidates'
 import {
   useMarkChangesSeenMutation,
@@ -168,52 +166,6 @@ function ChangesBlock({ changes }: { changes: MyDayAssignment[] }) {
         </AlertDescription>
       </div>
     </Alert>
-  )
-}
-
-function ServiceCard({
-  assignment,
-  featured = false,
-}: {
-  assignment: MyDayAssignment
-  featured?: boolean
-}) {
-  const cancelled = assignment.shiftStatus === 'cancelled'
-  // Reloj solo para la UI: la tarjeta se actualiza sola al vencer el aviso.
-  const now = useNow(30_000)
-  const notice = cancelled ? null : getNoticeMessage(assignment, now)
-  return (
-    <Link to={`/app/servicio/${assignment.assignmentId}`} className="block">
-      <Card variant={featured ? 'hero' : 'default'}>
-        <CardContent className="flex flex-col gap-[6px]">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="truncate text-[14px] font-semibold text-text">
-                {assignment.clientName}
-              </p>
-              <p className="truncate text-[12px] text-text-3">
-                {assignment.siteName}
-              </p>
-            </div>
-            <AssignmentBadge assignment={assignment} />
-          </div>
-          {assignment.siteAddress && (
-            <p className="flex items-center gap-[6px] text-[11.5px] text-text-3">
-              <MapPin aria-hidden="true" className="size-[13px] shrink-0" />
-              <span className="truncate">{assignment.siteAddress}</span>
-            </p>
-          )}
-          <p className="text-[13px] font-semibold text-text-2">
-            {formatAssignmentRange(assignment)}
-          </p>
-          {notice && (
-            <p className="text-[11.5px] font-semibold text-warning-800">
-              {notice.text}
-            </p>
-          )}
-        </CardContent>
-      </Card>
-    </Link>
   )
 }
 

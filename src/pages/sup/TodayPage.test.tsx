@@ -1,9 +1,13 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import SupervisorTodayPage, { employeeNames } from './TodayPage'
 import * as mySupervisionsModule from '@/api/mySupervisions'
 import type { MySupervision } from '@/api/mySupervisions'
+import type { MyDayAssignment } from '@/api/myDay'
+import * as authModule from '@/features/auth/AuthProvider'
+import type { AuthContextValue } from '@/features/auth/AuthProvider'
+import * as employeeQueriesModule from '@/features/employee/queries'
 
 // Los anuncios tienen sus propios tests; acá no se prueban.
 vi.mock('@/features/announcements/mobile/AnnouncementsBanner', () => ({
@@ -69,6 +73,50 @@ function supervision(overrides: Partial<MySupervision>): MySupervision {
     ...overrides,
   }
 }
+
+function mockRoles(roles: AuthContextValue['roles']) {
+  vi.spyOn(authModule, 'useAuth').mockReturnValue({
+    status: 'authenticated',
+    userId: 'user-1',
+    email: 'marta.rios@extendiendoservicios.com',
+    roles,
+    capabilities: [],
+    profile: null,
+    displayName: 'Marta Ríos',
+    isPasswordRecovery: false,
+    signOut: vi.fn(),
+    refreshProfile: vi.fn().mockResolvedValue(undefined),
+  })
+}
+
+function mockMyDay(assignments: Partial<MyDayAssignment>[]) {
+  vi.spyOn(employeeQueriesModule, 'useMyDayQuery').mockReturnValue({
+    data: assignments.map((overrides) => ({
+      assignmentId: 'a1',
+      shiftId: 'sh9',
+      shiftDate: '2026-09-27',
+      isToday: true,
+      clientName: 'Oficinas Norte',
+      siteName: 'Sede Norte',
+      siteAddress: null,
+      startTime: '14:00:00',
+      endTime: '18:00:00',
+      openEnded: false,
+      noCheckout: false,
+      status: 'expected',
+      shiftStatus: 'assigned',
+      checkInAt: null,
+      checkOutAt: null,
+      lastNoticeKind: null,
+      ...overrides,
+    })),
+    isError: false,
+  } as never)
+}
+
+beforeEach(() => {
+  mockRoles(['supervisor'])
+})
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -154,5 +202,36 @@ describe('SupervisorTodayPage (SUP-02)', () => {
 
     expect(screen.getByText('No tenés supervisiones hoy')).toBeInTheDocument()
     expect(screen.getByText('Próximos días')).toBeInTheDocument()
+  })
+
+  it('a quien también es empleado le muestra sus propios servicios de hoy (P19.9)', () => {
+    mockRoles(['supervisor', 'employee'])
+    mockMyDay([{}, { assignmentId: 'a2', isToday: false }])
+    vi.spyOn(
+      mySupervisionsModule,
+      'useMySupervisionsUpcomingQuery',
+    ).mockReturnValue({ data: [], isLoading: false, isError: false } as never)
+
+    renderToday()
+
+    expect(screen.getByText('Tus servicios de hoy')).toBeInTheDocument()
+    expect(screen.getByText('Oficinas Norte')).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: /Oficinas Norte/ }),
+    ).toHaveAttribute('href', '/app/servicio/a1')
+    expect(screen.getByText('No tenés supervisiones hoy')).toBeInTheDocument()
+  })
+
+  it('a quien es solo supervisor no le muestra el bloque de servicios', () => {
+    const myDaySpy = vi.spyOn(employeeQueriesModule, 'useMyDayQuery')
+    vi.spyOn(
+      mySupervisionsModule,
+      'useMySupervisionsUpcomingQuery',
+    ).mockReturnValue({ data: [], isLoading: false, isError: false } as never)
+
+    renderToday()
+
+    expect(screen.queryByText('Tus servicios de hoy')).not.toBeInTheDocument()
+    expect(myDaySpy).not.toHaveBeenCalled()
   })
 })

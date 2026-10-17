@@ -202,6 +202,23 @@ describe('buildPresenceMarkers', () => {
     expect(model.sitesOnMap).toBe(0)
   })
 
+  it('una sede en su franja horaria se dibuja aunque nadie haya fichado', () => {
+    const model = buildPresenceMarkers([siteRow()], {
+      showFinished: false,
+      siteIdsInWindow: new Set(['site1']),
+    })
+    expect(model.sitesOnMap).toBe(1)
+    expect(model.peopleOnMap).toBe(0)
+  })
+
+  it('una sede fuera de su franja y sin nadie en curso no se dibuja', () => {
+    const model = buildPresenceMarkers([siteRow()], {
+      showFinished: false,
+      siteIdsInWindow: new Set(['otra']),
+    })
+    expect(model.sitesOnMap).toBe(0)
+  })
+
   it('una sede de otra gente no aparece si su propia gente no está', () => {
     const model = buildPresenceMarkers(
       [siteRow({ recordId: 'site2' }), row({ siteId: 'site1' })],

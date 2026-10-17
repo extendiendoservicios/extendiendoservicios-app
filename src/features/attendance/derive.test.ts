@@ -215,6 +215,45 @@ describe('estados nuevos en camino y llegada tarde (AJ-02, AJ-07)', () => {
     ).toBe('crit')
   })
 
+  it('verde pastel para presente o finalizado sin observaciones; en blanco lo que no pasó (P19.9)', () => {
+    expect(
+      getAttendanceRowVariant({
+        ...base,
+        status: 'present',
+        displayStatus: 'present',
+      }),
+    ).toBe('ok')
+    expect(
+      getAttendanceRowVariant({
+        ...base,
+        status: 'finished',
+        displayStatus: 'finished',
+      }),
+    ).toBe('ok')
+    expect(
+      getAttendanceRowVariant({ ...base, displayStatus: 'expected' }),
+    ).toBeUndefined()
+  })
+
+  it('presente con salida anticipada o fuera de zona sin corregir va en amarillo, no en verde', () => {
+    expect(
+      getAttendanceRowVariant({
+        ...base,
+        status: 'finished',
+        displayStatus: 'finished',
+        minutesEarlyLeave: 20,
+      }),
+    ).toBe('warn')
+    expect(
+      getAttendanceRowVariant({
+        ...base,
+        status: 'present',
+        displayStatus: 'present',
+        hasOutsideGeo: true,
+      }),
+    ).toBe('warn')
+  })
+
   it('muestra "llega ~HH:MM" en hora de Argentina solo si está en camino y informó la hora', () => {
     const arrival = '2026-09-30T11:30:00Z' // 08:30 en Argentina
     expect(

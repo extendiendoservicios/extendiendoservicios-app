@@ -45,6 +45,7 @@ import {
   clientFormValuesToInput,
   type ClientFormValues,
 } from '@/features/clients/schemas'
+import { useLeaveForm } from '@/app/shells/backNavigation'
 
 /**
  * ADM-20 "Cliente · formulario" (CLIENT-003, `05` línea 74): alta
@@ -60,6 +61,7 @@ export default function ClientFormPage() {
   const { id } = useParams<{ id: string }>()
   const isEditMode = id != null
   const navigate = useNavigate()
+  const leaveForm = useLeaveForm()
   const auth = useAuth()
 
   const clientQuery = useClientDetailQuery(id)
@@ -168,7 +170,7 @@ export default function ClientFormPage() {
           return
         }
         toast.success('Guardamos los cambios del cliente.')
-        void navigate(`/admin/clientes/${client.id}`)
+        leaveForm(`/admin/clientes/${client.id}`, 'edit')
       } else {
         const client = await createClient.mutateAsync({
           input,
@@ -182,7 +184,7 @@ export default function ClientFormPage() {
           toast.warning(
             `Se creó ${clientName}, pero no se guardaron los datos bancarios: ${bankError} Cargalos de nuevo desde Editar.`,
           )
-          void navigate(`/admin/clientes/${client.id}`)
+          leaveForm(`/admin/clientes/${client.id}`, 'create')
           return
         }
         if (pendingPhoto) {
@@ -199,7 +201,7 @@ export default function ClientFormPage() {
         } else {
           toast.success('Creamos el cliente.')
         }
-        void navigate(`/admin/clientes/${client.id}`)
+        leaveForm(`/admin/clientes/${client.id}`, 'create')
       }
     } catch (error) {
       toast.error(
