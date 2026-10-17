@@ -3,6 +3,7 @@ import type { AttendanceBoardRow } from '@/api/attendance'
 import type {
   AssignmentStatus as BadgeAssignmentStatus,
   StatusBadgeInput,
+  TableRowVariant,
 } from '@/components/status'
 import { formatMinutes, formatTime } from '@/lib/format'
 
@@ -158,15 +159,21 @@ function effectiveDisplayStatus(
 
 /**
  * Color de la fila de las tablas de asistencia (`07` sección 3): `crit` con
- * `no_record`/ausencia avisada, `warn` con demora avisada, salida anticipada
- * o `late`, `info` con `on_the_way`.
+ * `no_record`/ausencia avisada, `warn` con demora avisada, salida anticipada,
+ * `late` o un fichaje «Fuera de zona» sin corregir, `info` con `on_the_way`,
+ * y `ok` (P19.9, verde pastel) con presente o finalizado sin nada de lo
+ * anterior. En blanco queda lo que todavía no sucedió.
  */
 export function getAttendanceRowVariant(
   row: Pick<
     AttendanceBoardRow,
-    'displayStatus' | 'shiftStatus' | 'status' | 'minutesEarlyLeave'
+    | 'displayStatus'
+    | 'shiftStatus'
+    | 'status'
+    | 'minutesEarlyLeave'
+    | 'hasOutsideGeo'
   >,
-): 'crit' | 'warn' | 'info' | undefined {
+): TableRowVariant | undefined {
   if (row.shiftStatus === 'cancelled') {
     return undefined
   }
@@ -178,12 +185,16 @@ export function getAttendanceRowVariant(
     display === 'late' ||
     display === 'no_checkout' ||
     row.status === 'delay_notified' ||
-    (row.minutesEarlyLeave != null && row.minutesEarlyLeave > 0)
+    (row.minutesEarlyLeave != null && row.minutesEarlyLeave > 0) ||
+    row.hasOutsideGeo === true
   ) {
     return 'warn'
   }
   if (display === 'on_the_way') {
     return 'info'
+  }
+  if (display === 'present' || display === 'finished') {
+    return 'ok'
   }
   return undefined
 }

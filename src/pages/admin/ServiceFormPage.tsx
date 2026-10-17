@@ -50,6 +50,7 @@ import {
   type ServiceFormValues,
 } from '@/features/services/schemas'
 import { RepeatFields } from '@/features/services/components/RepeatFields'
+import { useLeaveForm } from '@/app/shells/backNavigation'
 
 /** `"YYYY-MM-DD"` (columna `date` de Postgres, o cadena vacía) → `Date` para `DatePicker`. */
 function isoDateToDate(isoDate: string | undefined): Date | undefined {
@@ -81,6 +82,7 @@ export default function ServiceFormPage() {
   const siteIdFromQuery = !isEditMode ? searchParams.get('sede') : null
   const clientIdFromQuery = !isEditMode ? searchParams.get('cliente') : null
   const navigate = useNavigate()
+  const leaveForm = useLeaveForm()
   const auth = useAuth()
 
   const serviceQuery = useServiceDetailQuery(id)
@@ -244,7 +246,10 @@ export default function ServiceFormPage() {
           })
         }
         toast.success('Guardamos los cambios del servicio.')
-        void navigate(`/admin/clientes/${service.clientId}?pestana=servicios`)
+        leaveForm(
+          `/admin/clientes/${service.clientId}?pestana=servicios`,
+          'edit',
+        )
       } else {
         const service = await createService.mutateAsync({
           input,
@@ -267,12 +272,15 @@ export default function ServiceFormPage() {
               }`,
               { duration: 15_000 },
             )
-            void navigate(`/admin/servicios/${service.id}/editar`)
+            leaveForm(`/admin/servicios/${service.id}/editar`, 'create')
             return
           }
         }
         toast.success('Creamos el servicio.')
-        void navigate(`/admin/clientes/${service.clientId}?pestana=servicios`)
+        leaveForm(
+          `/admin/clientes/${service.clientId}?pestana=servicios`,
+          'create',
+        )
       }
     } catch (error) {
       const message = isApiError(error)

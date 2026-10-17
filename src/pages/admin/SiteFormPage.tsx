@@ -33,6 +33,7 @@ import {
   siteFormValuesToInput,
   type SiteFormValues,
 } from '@/features/sites/schemas'
+import { useLeaveForm } from '@/app/shells/backNavigation'
 
 /**
  * ADM-23 "Sede · formulario" (SITE-003, `05` línea 77): alta
@@ -49,6 +50,7 @@ export default function SiteFormPage() {
   const [searchParams] = useSearchParams()
   const clientIdFromQuery = searchParams.get('cliente')
   const navigate = useNavigate()
+  const leaveForm = useLeaveForm()
   const auth = useAuth()
 
   const siteQuery = useSiteDetailQuery(id)
@@ -126,14 +128,14 @@ export default function SiteFormPage() {
           updatedBy: auth.userId as string,
         })
         toast.success('Guardamos los cambios de la sede.')
-        void navigate(`/admin/sedes/${site.id}`)
+        leaveForm(`/admin/sedes/${site.id}`, 'edit')
       } else {
         const site = await createSite.mutateAsync({
           input,
           createdBy: auth.userId as string,
         })
         toast.success('Creamos la sede.')
-        void navigate(`/admin/sedes/${site.id}`)
+        leaveForm(`/admin/sedes/${site.id}`, 'create')
       }
     } catch (error) {
       toast.error(

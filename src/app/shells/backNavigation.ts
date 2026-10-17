@@ -106,3 +106,34 @@ export function useGoBack(rootPath: string): () => void {
     void navigate(getParentPath(pathname, rootPath), { replace: true })
   }, [key, navigate, pathname, rootPath])
 }
+
+/**
+ * Salida de un formulario después de guardar (P19.9). Antes cada guardado
+ * apilaba la ficha otra vez (ficha → editar → ficha → editar → ficha) y la
+ * flecha "atrás" recorría ese mismo camino al revés en vez de subir a la
+ * jerarquía superior.
+ *
+ * - `edit`: vuelve a la pantalla desde la que se abrió el formulario
+ *   (`navigate(-1)`), así el formulario sale del historial. Si se entró
+ *   directo por URL, reemplaza el formulario por `target`.
+ * - `create`: reemplaza el formulario por `target` (la ficha nueva o la
+ *   lista), así "atrás" desde ahí no vuelve al formulario vacío.
+ */
+export function useLeaveForm(): (
+  target: string,
+  mode: 'edit' | 'create',
+) => void {
+  const navigate = useNavigate()
+  const { key } = useLocation()
+
+  return useCallback(
+    (target: string, mode: 'edit' | 'create') => {
+      if (mode === 'edit' && key !== 'default') {
+        void navigate(-1)
+        return
+      }
+      void navigate(target, { replace: true })
+    },
+    [key, navigate],
+  )
+}
