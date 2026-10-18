@@ -223,7 +223,8 @@ function AssignEmployeeSheet({
                 const isRecommended =
                   candidate.enabledForClient &&
                   candidate.availableThatDay &&
-                  !candidate.onLeave
+                  !candidate.onLeave &&
+                  candidate.hasEmployeeRole
                 return (
                   <li
                     key={candidate.employeeId}
@@ -251,6 +252,15 @@ function AssignEmployeeSheet({
                         name={`${candidate.firstName} ${candidate.lastName}`}
                       />
                       <div className="mt-2 flex flex-wrap gap-1">
+                        {!candidate.hasEmployeeRole && (
+                          <Badge
+                            variant="danger"
+                            className="shrink text-[10.5px] whitespace-normal"
+                          >
+                            Sin rol de empleado: no va a ver el turno.
+                            Agregáselo en Usuarios y roles
+                          </Badge>
+                        )}
                         {isRecommended ? (
                           <Badge variant="success" className="text-[10.5px]">
                             Habilitado y disponible
