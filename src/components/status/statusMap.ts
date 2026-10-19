@@ -163,7 +163,12 @@ const WARNING_ASSIGNMENT_STATUSES: ReadonlySet<AssignmentStatus> = new Set([
   'no_checkout',
 ])
 
-export type TableRowVariant = 'crit' | 'warn' | 'info'
+/**
+ * `ok` (P19.9): fila que ya sucedió y está bien (presente o finalizado, sin
+ * observaciones), en verde pastel. Lo que queda en blanco es lo que todavía
+ * no pasó.
+ */
+export type TableRowVariant = 'crit' | 'warn' | 'info' | 'ok'
 
 /**
  * Helper de filas de tabla (`07` sección 3: "crit cuando hay no_record,
@@ -202,4 +207,5 @@ export const TABLE_ROW_CLASS_NAME: Record<TableRowVariant, string> = {
   crit: 'bg-danger-bg',
   warn: 'bg-warning-bg',
   info: 'bg-info-bg',
+  ok: 'bg-success-bg',
 }

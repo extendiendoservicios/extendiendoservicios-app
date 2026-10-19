@@ -41,6 +41,7 @@ import {
   useSuggestedEmployeeNumberQuery,
   useUpdateEmployeeMutation,
 } from '@/features/employees/queries'
+import { useLeaveForm } from '@/app/shells/backNavigation'
 
 /**
  * ADM-18 "Empleado · formulario" (EMP-003, EMP-004, `05` línea 67): alta
@@ -80,6 +81,7 @@ const DUPLICATE_FIELD_BY_CODE: Record<
 
 function EmployeeCreateForm() {
   const navigate = useNavigate()
+  const leaveForm = useLeaveForm()
   const createEmployee = useCreateEmployeeMutation()
   const suggestedNumberQuery = useSuggestedEmployeeNumberQuery(true)
   const setBankDetails = useSetEmployeeBankDetailsMutation()
@@ -180,7 +182,7 @@ function EmployeeCreateForm() {
           `Creamos a ${fullName} con el legajo ${result.employeeNumber}.`,
         )
       }
-      void navigate(`/admin/empleados/${result.profileId}`)
+      leaveForm(`/admin/empleados/${result.profileId}`, 'create')
     } catch (error) {
       const message = isApiError(error)
         ? error.message
@@ -493,6 +495,7 @@ function EmployeeCreateForm() {
 
 function EmployeeEditForm({ profileId }: { profileId: string }) {
   const navigate = useNavigate()
+  const leaveForm = useLeaveForm()
   const auth = useAuth()
   const employeeQuery = useEmployeeDetailQuery(profileId)
   const updateEmployee = useUpdateEmployeeMutation()
@@ -584,7 +587,7 @@ function EmployeeEditForm({ profileId }: { profileId: string }) {
         }
       }
       toast.success('Guardamos los cambios.')
-      void navigate(`/admin/empleados/${profileId}`)
+      leaveForm(`/admin/empleados/${profileId}`, 'edit')
     } catch (error) {
       toast.error(
         isApiError(error) ? error.message : 'No pudimos guardar los cambios.',

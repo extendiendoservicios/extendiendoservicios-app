@@ -66,6 +66,7 @@ import {
   type ShiftFormValues,
 } from '@/features/shifts/schemas'
 import { useUpdateShiftDetailsMutation } from '@/features/planning/queries'
+import { useLeaveForm } from '@/app/shells/backNavigation'
 
 /** `"YYYY-MM-DD"` → `Date` para `DatePicker` (mismo criterio que `ServiceFormPage`). */
 function isoDateToDate(isoDate: string | undefined): Date | undefined {
@@ -119,6 +120,7 @@ function CreateShiftForm({
   navigate: ReturnType<typeof useNavigate>
   canManage: boolean
 }) {
+  const leaveForm = useLeaveForm()
   const createShift = useCreateShiftMutation()
   const createShiftSeries = useCreateShiftSeriesMutation()
   const employeeOptionsQuery = useActiveEmployeeOptionsQuery()
@@ -297,8 +299,9 @@ function CreateShiftForm({
         )
       }
       // Se vuelve a Planificación, en la lista del día del primer turno creado.
-      void navigate(
+      leaveForm(
         `/admin/planificacion?vista=dia&fecha=${result.created[0]?.shiftDate ?? rule.from}`,
+        'create',
       )
     } catch (error) {
       toast.error(
@@ -361,7 +364,7 @@ function CreateShiftForm({
             : 'Creamos el turno.',
         )
       }
-      void navigate(`/admin/planificacion?vista=dia&fecha=${input.date}`)
+      leaveForm(`/admin/planificacion?vista=dia&fecha=${input.date}`, 'create')
     } catch (error) {
       toast.error(
         isApiError(error) ? error.message : 'No pudimos crear el turno.',
@@ -726,6 +729,7 @@ function EditShiftTimeForm({
   navigate: ReturnType<typeof useNavigate>
   canManage: boolean
 }) {
+  const leaveForm = useLeaveForm()
   const shiftQuery = useShiftForEditQuery(id)
   const updateShiftTime = useUpdateShiftTimeMutation(
     shiftQuery.data?.shiftDate ?? '',
@@ -787,8 +791,9 @@ function EditShiftTimeForm({
             ]),
       ])
       toast.success('Actualizamos el turno.')
-      void navigate(
+      leaveForm(
         `/admin/planificacion?vista=dia&fecha=${shiftQuery.data?.shiftDate ?? ''}`,
+        'edit',
       )
     } catch (error) {
       toast.error(

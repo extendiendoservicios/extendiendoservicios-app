@@ -12,8 +12,11 @@ import type { PresenceRow } from '@/api/geo'
  *   fuera de zona, gris sin validar. Los supervisores llevan forma de rombo.
  * - Con «Mostrar finalizados de hoy», se suman los que ya fichó el fin.
  * - Sedes (`kind = site`): su pin y su círculo con el radio vigente, sin color
- *   de alarma (B-14). Solo se dibujan si hay alguien de esa sede en curso (o
- *   finalizado con «Mostrar finalizados»), con o sin ubicación.
+ *   de alarma (B-14). Se dibujan las que tienen un turno en la franja de la
+ *   hora actual (`siteIdsInWindow`), hayan fichado o no: sin ningún punto al
+ *   lado, todavía nadie registró el inicio. Además, las de alguien que sigue
+ *   en curso pasada su franja (o finalizado, con «Mostrar finalizados»), para
+ *   que ningún punto quede sin su sede.
  * - Quienes trabajan sin posición no tienen punto: van a la lista de «Trabajando
  *   sin ubicación» (B-13). Solo cuenta a los que están en curso.
  */
@@ -32,6 +35,8 @@ export interface PresenceMapModel {
 export interface PresenceOptions {
   /** Interruptor «Mostrar finalizados de hoy». */
   showFinished: boolean
+  /** Sedes con un turno cuya franja incluye la hora actual. */
+  siteIdsInWindow?: ReadonlySet<string>
 }
 
 /** Color del punto (B-03, B-09): con corrección de la administración va en verde. */
@@ -70,8 +75,9 @@ export function buildPresenceMarkers(
   const personMarkers: MapViewMarker[] = []
   const withoutLocation: PresenceRow[] = []
 
-  // Sedes con al menos una persona que se dibuja o se lista ahora (P22.6b).
-  const activeSiteIds = new Set<string>()
+  // Sedes en su franja horaria, más las de alguien que se dibuja o se lista
+  // ahora (P22.6b), aunque ya haya pasado su franja.
+  const activeSiteIds = new Set<string>(options.siteIdsInWindow)
   for (const row of rows) {
     if (row.kind === 'site' || !row.siteId) continue
     if (row.inProgress || options.showFinished) {

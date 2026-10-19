@@ -71,6 +71,29 @@ export function isShiftUpcoming(shift: ShiftListRow, now: Date): boolean {
   return start > now.getTime() && start - now.getTime() <= UPCOMING_WINDOW_MS
 }
 
+/**
+ * Sedes con algún turno de hoy cuya franja incluye `now` (inicio ≤ ahora <
+ * fin, hora de Argentina): son las que se marcan en el mapa del Resumen,
+ * hayan fichado o no. Un turno «A terminar» tiene el fin guardado en 23:59,
+ * así que sigue abierto hasta el final del día. Los cancelados no cuentan.
+ */
+export function siteIdsInCurrentWindow(
+  shifts: ShiftListRow[],
+  now: Date,
+): Set<string> {
+  const nowMs = now.getTime()
+  const siteIds = new Set<string>()
+  for (const shift of shifts) {
+    if (!isLiveShift(shift.status)) continue
+    const start = shiftStartInstant(shift.shiftDate, shift.startTime).getTime()
+    const end = shiftStartInstant(shift.shiftDate, shift.endTime).getTime()
+    if (start <= nowMs && nowMs < end) {
+      siteIds.add(shift.siteId)
+    }
+  }
+  return siteIds
+}
+
 export function computeKpis(
   shifts: ShiftListRow[],
   assignments: AttendanceBoardRow[],

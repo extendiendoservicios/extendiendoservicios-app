@@ -92,17 +92,26 @@ function PresencePopup({ row }: { row: PresenceRow }) {
 /**
  * Mapa de presencia de ADM-02 (B-11 a B-15): empleados y supervisores que
  * están trabajando, en la posición de su fichaje de inicio, coloreados por la
- * validación (B-03); las sedes con turno hoy con su círculo; el interruptor
+ * validación (B-03); las sedes con un turno en la franja actual con su círculo; el interruptor
  * «Mostrar finalizados de hoy»; y debajo, «Trabajando sin ubicación». Se
  * actualiza solo cada 45 s y al volver a la pestaña (B-39), sin Realtime.
  */
-function PresenceMap() {
+function PresenceMap({
+  siteIdsInWindow,
+}: {
+  /** Sedes con un turno en la franja de la hora actual: se marcan aunque nadie haya fichado. */
+  siteIdsInWindow: ReadonlySet<string>
+}) {
   const query = usePresenceTodayQuery()
   const [showFinished, setShowFinished] = useState(false)
 
   const model = useMemo(
-    () => buildPresenceMarkers(query.data ?? [], { showFinished }),
-    [query.data, showFinished],
+    () =>
+      buildPresenceMarkers(query.data ?? [], {
+        showFinished,
+        siteIdsInWindow,
+      }),
+    [query.data, showFinished, siteIdsInWindow],
   )
 
   function renderPopup(marker: MapViewMarker) {

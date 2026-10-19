@@ -700,6 +700,12 @@ export interface AssignCandidate {
   availableThatDay: boolean
   /** Licencia vigente el día del turno (P-033; `06` sección 8 la evalúa contra `shift_date`, no contra hoy). */
   onLeave: boolean
+  /**
+   * P19.9: tiene el rol de empleado. Sin ese rol (por ejemplo, solo
+   * supervisor) se lo puede asignar, pero no ve el turno ni puede fichar:
+   * la lista lo avisa para que le agreguen el rol en Usuarios y roles.
+   */
+  hasEmployeeRole: boolean
   conflicts: AssignCandidateConflict[]
 }
 
@@ -745,7 +751,7 @@ export async function fetchAssignCandidates(
 ): Promise<AssignCandidate[]> {
   const { data: employeesData, error: employeesError } = await supabase
     .from('v_employees')
-    .select('profile_id, first_name, last_name')
+    .select('profile_id, first_name, last_name, roles')
     // El estado guardado, no `effective_status`: ese se calcula con la
     // licencia vigente HOY, y dejaba afuera para cualquier turno futuro a
     // quien está de licencia hoy. La licencia en la fecha del turno se
@@ -870,6 +876,8 @@ export async function fetchAssignCandidates(
       enabledForClient,
       availableThatDay,
       onLeave: onLeaveEmployeeIds.has(employeeId),
+      // Sin el dato de roles no se avisa (no hay de qué alarmar).
+      hasEmployeeRole: row.roles?.includes('employee') ?? true,
       conflicts: conflictsByEmployee.get(employeeId) ?? [],
     }
   })
@@ -882,7 +890,8 @@ export async function fetchAssignCandidates(
       ? 2
       : candidate.enabledForClient &&
           candidate.availableThatDay &&
-          !candidate.onLeave
+          !candidate.onLeave &&
+          candidate.hasEmployeeRole
         ? 0
         : 1
   return candidates.sort((a, b) => rank(a) - rank(b))

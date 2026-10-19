@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { isApiError } from '@/api/errors'
@@ -11,19 +12,31 @@ interface CancelSupervisionDialogProps {
   supervisionId: string
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** P19.10: desde el detalle del turno se llama «Quitar supervisión». */
+  title?: string
+  confirmLabel?: string
+  successMessage?: string
 }
 
 function CancelSupervisionDialog({
   supervisionId,
   open,
   onOpenChange,
+  title = 'Cancelar supervisión',
+  confirmLabel = 'Cancelar supervisión',
+  successMessage = 'Cancelamos la supervisión.',
 }: CancelSupervisionDialogProps) {
   const cancelSupervision = useCancelSupervisionMutation()
+  const queryClient = useQueryClient()
 
   async function handleConfirm(reason: string) {
     try {
       await cancelSupervision.mutateAsync({ supervisionId, reason })
-      toast.success('Cancelamos la supervisión.')
+      toast.success(successMessage)
+      // El detalle del turno y la columna «Supervisor» de Planificación
+      // cuelgan de otras claves de caché.
+      void queryClient.invalidateQueries({ queryKey: ['planning'] })
+      void queryClient.invalidateQueries({ queryKey: ['shifts'] })
       onOpenChange(false)
     } catch (error) {
       toast.error(
@@ -38,10 +51,10 @@ function CancelSupervisionDialog({
     <ConfirmDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Cancelar supervisión"
+      title={title}
       description="Las calificaciones ya cargadas quedan registradas; solo cambia el estado de la supervisión."
       reasonLabel="Motivo de la cancelación"
-      confirmLabel="Cancelar supervisión"
+      confirmLabel={confirmLabel}
       cancelLabel="Volver"
       variant="destructive"
       isLoading={cancelSupervision.isPending}

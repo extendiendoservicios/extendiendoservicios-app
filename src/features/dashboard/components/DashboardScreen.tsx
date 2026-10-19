@@ -21,7 +21,7 @@ import { StorageAlert } from '@/features/media/components/StorageAlert'
 import { useSupervisionsAdminQuery } from '@/features/supervisions/queries'
 import { formatDateOnly } from '@/features/settings/dateOnly'
 import { computeAttention, type AttentionItem } from '../attention'
-import { computeKpis, shiftStartInstant } from '../kpis'
+import { computeKpis, shiftStartInstant, siteIdsInCurrentWindow } from '../kpis'
 import { AttentionBlock } from './AttentionBlock'
 import { DashboardKpis } from './DashboardKpis'
 import { ServicesTodayTable } from './ServicesTodayTable'
@@ -93,6 +93,10 @@ function DashboardScreen() {
   const attention = useMemo(
     () => computeAttention(shifts, assignments, now),
     [shifts, assignments, now],
+  )
+  const siteIdsInWindow = useMemo(
+    () => siteIdsInCurrentWindow(shifts, now),
+    [shifts, now],
   )
   const shiftById = useMemo(
     () => new Map(shifts.map((shift) => [shift.id, shift])),
@@ -187,7 +191,7 @@ function DashboardScreen() {
         onAssign={(row) => handleAssign(row.shiftId)}
       />
 
-      <PresenceMap />
+      <PresenceMap siteIdsInWindow={siteIdsInWindow} />
 
       <SupervisionsTodayBlock
         rows={supervisionsQuery.data ?? []}

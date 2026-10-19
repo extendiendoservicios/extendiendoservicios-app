@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { computeKpis, isShiftUpcoming, shiftStartInstant } from './kpis'
+import {
+  computeKpis,
+  isShiftUpcoming,
+  shiftStartInstant,
+  siteIdsInCurrentWindow,
+} from './kpis'
 import { NOW, at, makeAssignment, makeShift } from './fixtures'
 
 describe('shiftStartInstant', () => {
@@ -314,5 +319,60 @@ describe('computeKpis (casos de borde)', () => {
       makeShift({ id: 's4', status: 'cancelled', startTime: '12:00:00' }),
     ]
     expect(computeKpis(shifts, [], NOW).upcoming).toBe(2)
+  })
+})
+
+describe('siteIdsInCurrentWindow', () => {
+  it('marca solo las sedes con un turno cuya franja incluye la hora actual', () => {
+    const shifts = [
+      makeShift({
+        id: 's1',
+        siteId: 'adentro',
+        startTime: '08:00:00',
+        endTime: '12:00:00',
+      }),
+      makeShift({
+        id: 's2',
+        siteId: 'despues',
+        startTime: '14:00:00',
+        endTime: '18:00:00',
+      }),
+      makeShift({
+        id: 's3',
+        siteId: 'antes',
+        startTime: '06:00:00',
+        endTime: '10:00:00',
+      }),
+    ]
+    expect([...siteIdsInCurrentWindow(shifts, NOW)]).toEqual(['adentro'])
+  })
+
+  it('el inicio cuenta y el fin no', () => {
+    expect(
+      siteIdsInCurrentWindow(
+        [makeShift({ startTime: '11:00:00', endTime: '15:00:00' })],
+        NOW,
+      ).size,
+    ).toBe(1)
+    expect(
+      siteIdsInCurrentWindow(
+        [makeShift({ startTime: '07:00:00', endTime: '11:00:00' })],
+        NOW,
+      ).size,
+    ).toBe(0)
+  })
+
+  it('un turno «A terminar» sigue abierto hasta el final del día', () => {
+    const shift = makeShift({
+      startTime: '09:00:00',
+      endTime: '23:59:00',
+      openEnded: true,
+    })
+    expect(siteIdsInCurrentWindow([shift], NOW).size).toBe(1)
+  })
+
+  it('no cuenta turnos cancelados', () => {
+    const shift = makeShift({ status: 'cancelled' })
+    expect(siteIdsInCurrentWindow([shift], NOW).size).toBe(0)
   })
 })

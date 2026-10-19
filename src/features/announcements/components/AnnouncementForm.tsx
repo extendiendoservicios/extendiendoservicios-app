@@ -34,6 +34,7 @@ import {
   type AnnouncementFormValues,
 } from '@/features/announcements/schemas'
 import { RecipientPicker, type RecipientCandidate } from './RecipientPicker'
+import { useLeaveForm } from '@/app/shells/backNavigation'
 
 function isoDateToDate(isoDate: string): Date | undefined {
   return isoDate ? new Date(`${isoDate}T00:00:00`) : undefined
@@ -50,6 +51,7 @@ export function AnnouncementForm({
 }) {
   const isEditMode = announcementId != null
   const navigate = useNavigate()
+  const leaveForm = useLeaveForm()
 
   const announcementQuery = useAnnouncementQuery(announcementId)
   const announcement = announcementQuery.data
@@ -141,11 +143,11 @@ export function AnnouncementForm({
       if (isEditMode) {
         await updateMutation.mutateAsync(input)
         toast.success('Guardamos los cambios del anuncio.')
-        void navigate(`/admin/anuncios/${announcementId}`)
+        leaveForm(`/admin/anuncios/${announcementId}`, 'edit')
       } else {
         const id = await createMutation.mutateAsync(input)
         toast.success('Publicamos el anuncio.')
-        void navigate(`/admin/anuncios/${id}`)
+        leaveForm(`/admin/anuncios/${id}`, 'create')
       }
     } catch (error) {
       toast.error(
