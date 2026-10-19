@@ -254,6 +254,49 @@ describe('estados nuevos en camino y llegada tarde (AJ-02, AJ-07)', () => {
     ).toBe('warn')
   })
 
+  it('presente con el fichaje «Sin validar» va en amarillo; marcado como válido, en verde (P19.10)', () => {
+    const unvalidated = {
+      recordId: 'r1',
+      status: 'unvalidated' as const,
+      reason: 'admin_record' as const,
+      distanceM: null,
+      radiusM: null,
+      accuracyM: null,
+      outsideReason: null,
+      overridden: false,
+      timeCorrected: false,
+    }
+    const present = {
+      ...base,
+      status: 'present' as const,
+      displayStatus: 'present',
+    }
+    expect(
+      getAttendanceRowVariant({ ...present, checkInGeo: unvalidated }),
+    ).toBe('warn')
+    expect(
+      getAttendanceRowVariant({
+        ...present,
+        checkInGeo: { ...unvalidated, overridden: true },
+      }),
+    ).toBe('ok')
+    expect(
+      getAttendanceRowVariant({
+        ...present,
+        checkInGeo: { ...unvalidated, status: 'valid', reason: null },
+      }),
+    ).toBe('ok')
+    expect(
+      getAttendanceRowVariant({
+        ...base,
+        status: 'finished',
+        displayStatus: 'finished',
+        checkInGeo: { ...unvalidated, status: 'valid', reason: null },
+        checkOutGeo: unvalidated,
+      }),
+    ).toBe('warn')
+  })
+
   it('muestra "llega ~HH:MM" en hora de Argentina solo si está en camino y informó la hora', () => {
     const arrival = '2026-09-30T11:30:00Z' // 08:30 en Argentina
     expect(

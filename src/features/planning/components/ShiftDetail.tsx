@@ -34,6 +34,7 @@ import {
 } from '@/features/planning/permissions'
 import { useShiftDetailQuery } from '@/features/planning/queries'
 import { canManageSupervisions } from '@/features/supervisions/permissions'
+import { CancelSupervisionDialog } from '@/features/supervisions/components/CancelSupervisionDialog'
 import { CancelShiftAction } from '@/features/shifts/components/CancelShiftAction'
 import { ShiftMediaSection } from '@/features/media/components/ShiftMediaSection'
 import { isMissingPhotos } from '@/features/media/items'
@@ -108,6 +109,9 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
   const [timeTarget, setTimeTarget] = useState<ShiftDetailAssignment | null>(
     null,
   )
+  const [removeSupervisionId, setRemoveSupervisionId] = useState<string | null>(
+    null,
+  )
 
   if (shiftQuery.isLoading) {
     return (
@@ -129,6 +133,11 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
       />
     )
   }
+  // P19.10: una supervisión quitada (cancelada) deja de listarse en el turno,
+  // igual que una asignación quitada; sigue en Supervisiones con su motivo.
+  const activeSupervisions = shift.supervisions.filter(
+    (supervision) => supervision.status !== 'cancelled',
+  )
 
   const shiftStarted =
     shift.startsAt != null && new Date() >= new Date(shift.startsAt)
@@ -416,13 +425,13 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
             </Button>
           )}
         </div>
-        {shift.supervisions.length === 0 ? (
+        {activeSupervisions.length === 0 ? (
           <p className="text-[12px] text-text-3">
             Este turno no tiene supervisión asignada.
           </p>
         ) : (
           <ul className="flex flex-col gap-2">
-            {shift.supervisions.map((supervision) => (
+            {activeSupervisions.map((supervision) => (
               <li
                 key={supervision.id}
                 className="flex items-center justify-between gap-2 rounded-md border border-border p-3"
@@ -436,12 +445,41 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
                     name={`${supervision.supervisorFirstName} ${supervision.supervisorLastName}`}
                   />
                 </Link>
-                <StatusBadge domain="supervision" status={supervision.status} />
+                <div className="flex shrink-0 items-center gap-2">
+                  <StatusBadge
+                    domain="supervision"
+                    status={supervision.status}
+                  />
+                  {canAssignSupervision &&
+                    (supervision.status === 'assigned' ||
+                      supervision.status === 'in_progress') && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setRemoveSupervisionId(supervision.id)}
+                      >
+                        Quitar
+                      </Button>
+                    )}
+                </div>
               </li>
             ))}
           </ul>
         )}
       </section>
+
+      {removeSupervisionId && (
+        <CancelSupervisionDialog
+          supervisionId={removeSupervisionId}
+          open
+          onOpenChange={(open) => {
+            if (!open) setRemoveSupervisionId(null)
+          }}
+          title="Quitar supervisión"
+          confirmLabel="Quitar supervisión"
+          successMessage="Quitamos la supervisión del turno."
+        />
+      )}
 
       {canManage && (
         <AssignEmployeeSheet
