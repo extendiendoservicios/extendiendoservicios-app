@@ -7,6 +7,22 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.21.1] - 2026-10-19
+
+Observaciones de uso posteriores al módulo B1 (P19.9, P19.9b y P19.10). Sin migraciones: son solo cambios de la aplicación.
+
+### Agregado
+
+- Planificación: en la lista de personas para asignar, quien no tiene el rol de empleado aparece con el aviso «Sin rol de empleado».
+- Detalle del turno: botón «Quitar» supervisión, con motivo obligatorio.
+- Celular: quien es supervisor y también empleado ve «Tus servicios de hoy» en su pantalla Hoy.
+
+### Cambiado
+
+- Resumen: el mapa «Dónde está el equipo» marca las sedes que tienen un turno en la franja de la hora actual, aunque todavía nadie haya fichado.
+- Asistencia de hoy y Resumen: las filas «Presente» y «Finalizado» con el fichaje validado van en verde pastel; un fichaje «Sin validar» que nadie corrigió pinta la fila en amarillo.
+- Después de guardar un formulario, la flecha «atrás» lleva al nivel superior en lugar de volver al formulario ya guardado.
+
 ## [0.21.0] - 2026-10-15
 
 Módulo B1: geolocalización y corrección de fichajes (P22.1 a P22.6b). Incluye además eliminar evidencia del módulo H (P21.8). Migraciones 0052 a 0058.
