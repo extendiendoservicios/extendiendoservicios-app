@@ -157,10 +157,15 @@ function effectiveDisplayStatus(
   return row.shiftStatus === 'cancelled' ? 'cancelled' : row.displayStatus
 }
 
+/** Fichaje «Sin validar» que la administración todavía no marcó como válido. */
+function isUnvalidated(geo: AttendanceBoardRow['checkInGeo']): boolean {
+  return geo?.status === 'unvalidated' && !geo.overridden
+}
+
 /**
  * Color de la fila de las tablas de asistencia (`07` sección 3): `crit` con
  * `no_record`/ausencia avisada, `warn` con demora avisada, salida anticipada,
- * `late` o un fichaje «Fuera de zona» sin corregir, `info` con `on_the_way`,
+ * `late` o un fichaje «Fuera de zona» o «Sin validar» sin corregir (P19.10), `info` con `on_the_way`,
  * y `ok` (P19.9, verde pastel) con presente o finalizado sin nada de lo
  * anterior. En blanco queda lo que todavía no sucedió.
  */
@@ -172,6 +177,8 @@ export function getAttendanceRowVariant(
     | 'status'
     | 'minutesEarlyLeave'
     | 'hasOutsideGeo'
+    | 'checkInGeo'
+    | 'checkOutGeo'
   >,
 ): TableRowVariant | undefined {
   if (row.shiftStatus === 'cancelled') {
@@ -186,7 +193,9 @@ export function getAttendanceRowVariant(
     display === 'no_checkout' ||
     row.status === 'delay_notified' ||
     (row.minutesEarlyLeave != null && row.minutesEarlyLeave > 0) ||
-    row.hasOutsideGeo === true
+    row.hasOutsideGeo === true ||
+    isUnvalidated(row.checkInGeo) ||
+    isUnvalidated(row.checkOutGeo)
   ) {
     return 'warn'
   }
