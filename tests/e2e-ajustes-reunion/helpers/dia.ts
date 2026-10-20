@@ -47,7 +47,13 @@ export async function elegirDia(
   await expect(abierto).toHaveCount(0)
   await expect(async () => {
     if (!(await abierto.isVisible())) {
-      await page.getByRole('button', { name: nombre }).first().click()
+      await page
+        .getByRole('button', {
+          name: nombre,
+          exact: typeof nombre === 'string',
+        })
+        .first()
+        .click()
     }
     await expect(abierto).toBeVisible({ timeout: 3_000 })
   }).toPass({ timeout: 20_000 })
