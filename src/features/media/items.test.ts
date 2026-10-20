@@ -160,7 +160,7 @@ describe('shiftSlotLabel y toDetailedMediaItem', () => {
 
   it('el rol sale de uploader_role', () => {
     expect(uploaderRoleLabel('employee')).toBe('Empleado/a')
-    expect(uploaderRoleLabel('supervisor')).toBe('Supervisor/a')
+    expect(uploaderRoleLabel('supervisor')).toBe('Coordinador/a')
     expect(uploaderRoleLabel(null)).toBeUndefined()
   })
 

@@ -205,8 +205,8 @@ function SupervisionsAdminScreen({
     },
     {
       id: 'supervisor',
-      header: 'Supervisor',
-      meta: { card: 'meta', cardLabel: 'Supervisor' },
+      header: 'Coordinador',
+      meta: { card: 'meta', cardLabel: 'Coordinador' },
       cell: ({ row }) => (
         <PersonCell
           id={row.original.supervisorId}
@@ -278,8 +278,8 @@ function SupervisionsAdminScreen({
     },
     {
       id: 'supervisor',
-      header: 'Supervisor',
-      meta: { card: 'meta', cardLabel: 'Supervisor' },
+      header: 'Coordinador',
+      meta: { card: 'meta', cardLabel: 'Coordinador' },
       cell: ({ row }) => (
         <PersonCell
           id={row.original.supervisorId}
@@ -344,11 +344,11 @@ function SupervisionsAdminScreen({
             setFilters((prev) => ({ ...prev, supervisorId: value }))
           }
         >
-          <SelectTrigger aria-label="Filtrar por supervisor" className="w-52">
+          <SelectTrigger aria-label="Filtrar por coordinador" className="w-52">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos los supervisores</SelectItem>
+            <SelectItem value="all">Todos los coordinadores</SelectItem>
             {supervisorOptions.map((option) => (
               <SelectItem key={option.id} value={option.id}>
                 {option.name}

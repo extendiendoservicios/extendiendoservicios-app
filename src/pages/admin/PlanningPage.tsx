@@ -51,7 +51,7 @@ export default function PlanningPage() {
   return (
     <div className="flex flex-col gap-4">
       <SegmentedControl
-        aria-label="Vista de planificación"
+        aria-label="Vista del calendario"
         options={VISTA_OPTIONS}
         value={vista}
         onValueChange={goToVista}

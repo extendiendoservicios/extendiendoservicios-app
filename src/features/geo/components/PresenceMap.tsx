@@ -39,7 +39,7 @@ function PresencePopup({ row }: { row: PresenceRow }) {
     )
   }
 
-  const role = row.kind === 'supervisor' ? 'Supervisor' : 'Empleado'
+  const role = row.kind === 'supervisor' ? 'Coordinador' : 'Empleado'
   return (
     <div className="flex min-w-52 flex-col gap-1 text-[12px]">
       <p className="font-semibold text-text">
@@ -186,7 +186,7 @@ function PresenceMap({
             aria-hidden
             className="size-2.5 rotate-45 rounded-[2px] bg-text-3"
           />
-          Supervisor
+          Coordinador
         </li>
         <li className="flex items-center gap-1.5">
           <img
@@ -212,7 +212,7 @@ function PresenceMap({
                 <span className="font-medium text-text">
                   {presencePersonName(row)}
                 </span>
-                {row.kind === 'supervisor' ? ' (supervisor)' : ''} ·{' '}
+                {row.kind === 'supervisor' ? ' (coordinador)' : ''} ·{' '}
                 {presenceClientName(row)} · {row.siteName}
                 {row.checkInAt ? ` · inicio ${formatTime(row.checkInAt)}` : ''}
                 {row.shiftId && (

@@ -28,7 +28,7 @@ export const adminRoutes: RouteObject[] = [
     ...lazyPage(() => import('@/pages/admin/PlanningPage')),
     handle: {
       screenId: 'ADM-03',
-      title: 'Planificación',
+      title: 'Calendario',
       subtitle: 'Ver y navegar el cronograma',
     },
   },
@@ -92,7 +92,7 @@ export const adminRoutes: RouteObject[] = [
     handle: {
       screenId: 'ADM-14',
       title: 'Asignar supervisión',
-      subtitle: 'Elegir turno y supervisor',
+      subtitle: 'Elegir turno y coordinador',
     },
   },
   {
@@ -128,7 +128,7 @@ export const adminRoutes: RouteObject[] = [
     handle: {
       screenId: 'ADM-18',
       title: 'Nuevo empleado',
-      subtitle: 'Alta de empleado o supervisor',
+      subtitle: 'Alta de empleado o coordinador',
     },
   },
   {

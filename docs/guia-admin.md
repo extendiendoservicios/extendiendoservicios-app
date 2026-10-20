@@ -19,7 +19,7 @@ Las imágenes son de ejemplo, con datos inventados. Esta guía cubre solo la **P
 6. [Tareas de cada servicio (plantillas)](#tareas-de-cada-servicio-plantillas)
 7. [Servicios y turnos](#servicios-y-turnos)
 8. [Asignar personal](#asignar-personal)
-9. [Empleados y supervisores](#empleados-y-supervisores)
+9. [Empleados y coordinadores](#empleados-y-coordinadores)
 10. [Seguir el día: Resumen y Asistencia](#seguir-el-día-resumen-y-asistencia)
 11. [Fotos y videos](#fotos-y-videos)
 12. [Supervisiones y calificaciones](#supervisiones-y-calificaciones)
@@ -41,15 +41,15 @@ Hay dos roles de administración:
 
 El dueño los activa por persona (ver [Usuarios y roles](#usuarios-y-roles)). Sin el permiso, el botón directamente no aparece.
 
-| Permiso                        | Qué habilita                                                                                                                        |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Gestionar usuarios             | Dar de alta empleados y supervisores; resetear contraseñas, cambiar emails, cerrar sesiones y desactivar a empleados y supervisores |
-| Cancelar turnos                | **Cancelar turno**                                                                                                                  |
-| Editar calificaciones          | Corregir las calificaciones que cargaron los supervisores                                                                           |
-| Editar plantillas de tareas    | Crear y cambiar las listas de tareas de clientes y sedes                                                                            |
-| Registrar asistencia por otros | **Registrar en nombre** de un empleado; asignar o quitar personal una vez que el turno ya empezó                                    |
-| Generar turnos del mes         | **Generar turnos del mes**                                                                                                          |
-| Asignar supervisiones          | **Asignar supervisión** y cancelar supervisiones                                                                                    |
+| Permiso                        | Qué habilita                                                                                                                          |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Gestionar usuarios             | Dar de alta empleados y coordinadores; resetear contraseñas, cambiar emails, cerrar sesiones y desactivar a empleados y coordinadores |
+| Cancelar turnos                | **Cancelar turno**                                                                                                                    |
+| Editar calificaciones          | Corregir las calificaciones que cargaron los coordinadores                                                                            |
+| Editar plantillas de tareas    | Crear y cambiar las listas de tareas de clientes y sedes                                                                              |
+| Registrar asistencia por otros | **Registrar en nombre** de un empleado; asignar o quitar personal una vez que el turno ya empezó                                      |
+| Generar turnos del mes         | **Generar turnos del mes**                                                                                                            |
+| Asignar supervisiones          | **Asignar supervisión** y cancelar supervisiones                                                                                      |
 
 ### Lo que es solo del dueño
 
@@ -59,7 +59,7 @@ El dueño los activa por persona (ver [Usuarios y roles](#usuarios-y-roles)). Si
 - Las pantallas **Feriados**, **Criterios de calificación** y **Eventos de seguridad**.
 - Ver el **último ingreso** de cada usuario en la lista de usuarios.
 
-Todo lo demás lo hacen igual el dueño y los administradores: clientes, sedes, servicios, turnos, asignaciones, empleados y supervisores (con el permiso que corresponda), seguimiento del día y consulta de supervisiones.
+Todo lo demás lo hacen igual el dueño y los administradores: clientes, sedes, servicios, turnos, asignaciones, empleados y coordinadores (con el permiso que corresponda), seguimiento del día y consulta de supervisiones.
 
 ---
 
@@ -111,17 +111,17 @@ A la izquierda está el **menú**, con ocho secciones:
 | Sección              | Para qué sirve                                                        |
 | -------------------- | --------------------------------------------------------------------- |
 | **Resumen**          | Cómo viene el día de hoy y qué requiere atención                      |
-| **Planificación**    | El cronograma por mes, semana y día; crear y generar turnos           |
+| **Calendario**       | El cronograma por mes, semana y día; crear y generar turnos           |
 | **Asistencia**       | Quién llegó, quién avisó y quién no registró                          |
 | **Supervisiones**    | Asignar supervisiones y consultar calificaciones                      |
-| **Empleados**        | La dotación: empleados y supervisores                                 |
+| **Empleados**        | La dotación: empleados y coordinadores                                |
 | **Clientes y sedes** | Clientes, sus sedes, contactos y servicios                            |
 | **Tareas**           | Las listas de tareas de cada cliente y de cada sede                   |
 | **Configuración**    | Usuarios y roles, datos de la empresa, feriados, criterios, seguridad |
 
 Arriba hay un **buscador** (también se abre con las teclas `Ctrl` y `K`) y tu foto, que abre el menú con **Mi perfil** y **Cerrar sesión**. Abajo del menú ves tu nombre, tu rol y la versión de la plataforma.
 
-Las listas que se miran en vivo (Resumen, Asistencia, Planificación del día) se **actualizan solas** cada 30 segundos; dicen "Actualizado hace n s". No hace falta recargar.
+Las listas que se miran en vivo (Resumen, Asistencia, Calendario del día) se **actualizan solas** cada 30 segundos; dicen "Actualizado hace n s". No hace falta recargar.
 
 ---
 
@@ -131,12 +131,12 @@ Si empezás desde cero (o querés revisar que no falte nada), este es el orden q
 
 1. **Empresa** (solo dueño): logo, nombre, teléfono de soporte y texto de consentimiento de ubicación.
 2. **Feriados** (solo dueño): cargar los del año.
-3. **Criterios de calificación** (solo dueño): la guía que usan los supervisores.
+3. **Criterios de calificación** (solo dueño): la guía que usan los coordinadores.
 4. **Clientes**, con sus **contactos**.
 5. **Sedes** de cada cliente (con ubicación en el mapa si querés verlas ahí).
 6. **Tareas:** la lista de tareas de cada cliente (y de las sedes que necesiten una propia).
 7. **Servicios** de cada sede: días de la semana, horario y dotación.
-8. **Empleados y supervisores**, con su usuario.
+8. **Empleados y coordinadores**, con su usuario.
 9. **Generar los turnos del mes.**
 10. **Asignar personal** a cada turno.
 
@@ -253,7 +253,7 @@ Si más adelante cambiás un servicio, **los turnos ya generados no cambian**: s
 
 ![Generar turnos del mes](guias/img/adm-turnos-generar.png)
 
-1. Entrá a **Planificación** y tocá **Generar turnos del mes** (o a la pantalla del mismo nombre).
+1. Entrá a **Calendario** y tocá **Generar turnos del mes** (o a la pantalla del mismo nombre).
 2. Elegí el **Mes a generar**. Ves cuántos servicios activos vigentes hay y cuántos feriados tiene el mes.
 3. Tocá **Generar turnos del mes**.
 4. Al terminar, un mensaje dice cuántos turnos creó, cuántos omitió porque ya existían y cuántos porque caían en feriado.
@@ -264,7 +264,7 @@ Es seguro repetirlo: **solo crea los turnos que todavía no existen**; nunca bor
 
 Para un trabajo que no es recurrente (una limpieza especial, un reemplazo):
 
-1. En **Planificación**, tocá **Nuevo turno**.
+1. En **Calendario**, tocá **Nuevo turno**.
 2. Elegí **Cliente**, **Sede**, **Fecha**, **Desde**, **Hasta** y **Dotación**. Podés agregar **Notas** y tildar **Pide fotos**.
 3. Tocá **Crear turno**. Si la fecha es feriado, la pantalla te avisa.
 
@@ -274,18 +274,18 @@ Para cambiar **Pide fotos** en un turno que ya existe, usá **Editar franja** de
 
 ### Ver el cronograma
 
-En **Planificación** hay tres vistas, con las pestañas **Mes**, **Semana** y **Día**.
+En **Calendario** hay tres vistas, con las pestañas **Mes**, **Semana** y **Día**.
 
-![Planificación, vista mensual](guias/img/adm-planificacion-mes.png)
+![Calendario, vista mensual](guias/img/adm-planificacion-mes.png)
 
 - **Mes:** un calendario con un chip por turno (cliente y sede), con el color del estado y los feriados marcados. Con las flechas o el selector cambiás de mes. Podés filtrar por cliente, sede, empleado y estado. En el celular se convierte en una lista de días.
 - **Semana:** una grilla con cada empleado y sus servicios de la semana. Las celdas vacías dicen **Libre**. Sirve para ver la carga de cada persona.
 
-  ![Planificación, vista semanal](guias/img/adm-planificacion-semana.png)
+  ![Calendario, vista semanal](guias/img/adm-planificacion-semana.png)
 
 - **Día:** los turnos de una fecha, agrupados por franja horaria, con la **dotación** (asignados sobre requeridos) y el estado. Con **Ver** abrís el turno, con **Editar** cambiás la franja, con **Cancelar** lo cancelás.
 
-  ![Planificación, vista diaria](guias/img/adm-planificacion-dia.png)
+  ![Calendario, vista diaria](guias/img/adm-planificacion-dia.png)
 
 **Estados de un turno:** **Programado** (todavía sin personal), **Asignado**, **En curso**, **Finalizado** y **Cancelado**. Además, un turno aparece como **Sin cubrir** cuando le falta personal.
 
@@ -311,7 +311,7 @@ Un turno que ya empezó solo permite cambiar la hora de fin. Un turno cancelado 
 
 ## Asignar personal
 
-1. Abrí el turno (desde **Planificación**, **Resumen** o **Asistencia**).
+1. Abrí el turno (desde **Calendario**, **Resumen** o **Asistencia**).
 2. Tocá **Asignar empleado**. Se abre una lista con todas las personas activas y un buscador.
 
    Cada persona muestra etiquetas que te ayudan a decidir:
@@ -339,20 +339,20 @@ Otras acciones sobre una asignación, en el detalle del turno:
 
 ---
 
-## Empleados y supervisores
+## Empleados y coordinadores
 
 ![Listado de empleados](guias/img/adm-empleados.png)
 
 En **Empleados** ves a todo el personal, con su foto, nombre, legajo, roles, estado y teléfono. Se puede buscar por **nombre, DNI o legajo** y filtrar por **rol**, **estado** y **cliente habilitado**.
 
-Un supervisor es una persona con el rol **Supervisor**. Una misma persona puede ser **empleado y supervisor** a la vez: en su celular ve las dos vías.
+Un coordinador es una persona con el rol **Coordinador**. Una misma persona puede ser **empleado y coordinador** a la vez: en su celular ve las dos vías.
 
-### Dar de alta un empleado o un supervisor
+### Dar de alta un empleado o un coordinador
 
 **Permiso "Gestionar usuarios".**
 
 1. Tocá **Nuevo empleado**.
-2. En **Roles** tildá **Empleado**, **Supervisor** o los dos.
+2. En **Roles** tildá **Empleado**, **Coordinador** o los dos.
 3. En **Usuario y contraseña** completá el **Email de login** (con ese email la persona entra a la app) y una **Contraseña inicial** de al menos 8 caracteres. La persona la puede cambiar después desde su perfil. Pasale la contraseña por un **canal seguro**, nunca por un grupo.
 4. En **Datos personales**: **Nombre**, **Apellido**, **DNI** (solo números), **CUIL** (11 números), **Teléfono**, **Fecha de nacimiento** y **Domicilio**.
 5. En **Datos laborales**: **Legajo** (la plataforma sugiere el siguiente, lo podés cambiar), **Fecha de ingreso** y **Notas**.
@@ -377,7 +377,7 @@ Arriba tenés las acciones: **Resetear contraseña**, **Cerrar sesiones**, **Dar
 - **Licencias:** períodos en que no trabaja (vacaciones, enfermedad). **Agregar licencia** con fecha de inicio y de fin. En el cronograma semanal la persona aparece atenuada y, al asignarla, se avisa.
 - **Próximos turnos:** lo que tiene asignado. Con **Ver semana** abrís la grilla de esa persona.
 - **Asistencia:** el historial de turnos pasados con inicio, fin, avisos y observaciones. Se puede cambiar el rango de fechas.
-- **Calificaciones:** las que recibió de los supervisores (solo lo ve Administración; el empleado no las ve).
+- **Calificaciones:** las que recibió de los coordinadores (solo lo ve Administración; el empleado no las ve).
 
 ### Resetear la contraseña, cerrar sesiones y dar de baja
 
@@ -444,7 +444,7 @@ Queda anotado que lo cargó Administración y quién fue. El **cierre manual** s
 
 ## Fotos y videos
 
-Los empleados y supervisores pueden subir **fotos y videos generales del turno** desde el celular (con la cámara o desde la galería). En el menú lateral, dentro de **Operación**, **Fotos y videos** (en el celular, dentro de **Más**) los ves todos. Es solo para el dueño y los administradores: cada empleado ve únicamente lo que subió.
+Los empleados y coordinadores pueden subir **fotos y videos generales del turno** desde el celular (con la cámara o desde la galería). En el menú lateral, dentro de **Operación**, **Fotos y videos** (en el celular, dentro de **Más**) los ves todos. Es solo para el dueño y los administradores: cada empleado ve únicamente lo que subió.
 
 ### Cómo se usa la pantalla
 
@@ -461,7 +461,7 @@ Las fotos y los videos se **borran solos de noche** cuando pasa el plazo (60 dí
 ### Dónde más aparecen
 
 - **Detalle del turno:** sección **Fotos y videos** con las miniaturas por persona, y la marca **Sin fotos** si el turno pide fotos, ya empezó y no hay ninguna.
-- **Detalle de la supervisión:** las miniaturas que subió el supervisor.
+- **Detalle de la supervisión:** las miniaturas que subió el coordinador.
 - **Resumen:** el aviso de espacio, cuando pasa del 70 %.
 - **Servicio y turno:** la casilla **Pide fotos**.
 - **Eliminar un servicio:** no se puede si algún turno tiene fotos o videos (la pantalla lo explica como «fotos o videos»); dalo de baja.
@@ -474,10 +474,10 @@ Las fotos y los videos se **borran solos de noche** cuando pasa el plazo (60 dí
 
 En **Supervisiones** consultás y asignás. La pantalla tiene dos pestañas:
 
-- **Supervisiones:** una fila por supervisión, con la fecha, el turno (cliente, sede, franja), el supervisor, el estado (**Asignada**, **En curso**, **Completada**, **No realizada** o **Cancelada**), el inicio y el fin, y cuántas calificaciones se cargaron sobre el total de empleados.
-- **Calificaciones:** una fila por empleado calificado, con la fecha, la sede, el supervisor, el puntaje y el comentario.
+- **Supervisiones:** una fila por supervisión, con la fecha, el turno (cliente, sede, franja), el coordinador, el estado (**Asignada**, **En curso**, **Completada**, **No realizada** o **Cancelada**), el inicio y el fin, y cuántas calificaciones se cargaron sobre el total de empleados.
+- **Calificaciones:** una fila por empleado calificado, con la fecha, la sede, el coordinador, el puntaje y el comentario.
 
-Los filtros permiten buscar por empleado, supervisor, cliente, sede, rango de fechas y estado.
+Los filtros permiten buscar por empleado, coordinador, cliente, sede, rango de fechas y estado.
 
 ### Asignar una supervisión
 
@@ -486,9 +486,9 @@ Los filtros permiten buscar por empleado, supervisor, cliente, sede, rango de fe
 ![Asignar supervisión](guias/img/adm-supervision-asignar.png)
 
 1. En **Supervisiones**, tocá **Asignar supervisión** (también se puede hacer desde el detalle de un turno).
-2. Elegí la **Fecha**, el **Turno** (la lista muestra los turnos de esa fecha que no están cancelados ni terminados) y el **Supervisor**.
-3. Si el supervisor también está asignado como empleado en ese turno, la pantalla te avisa: conviene elegir a otra persona, porque nadie puede calificarse a sí mismo.
-4. Confirmá. La supervisión aparece en **Hoy** del supervisor.
+2. Elegí la **Fecha**, el **Turno** (la lista muestra los turnos de esa fecha que no están cancelados ni terminados) y el **Coordinador**.
+3. Si el coordinador también está asignado como empleado en ese turno, la pantalla te avisa: conviene elegir a otra persona, porque nadie puede calificarse a sí mismo.
+4. Confirmá. La supervisión aparece en **Hoy** del coordinador.
 
 ### Ver, cancelar o corregir una supervisión
 
@@ -496,10 +496,10 @@ Tocá una fila para abrir su detalle.
 
 ![Detalle de una supervisión](guias/img/adm-supervision-detalle.png)
 
-Ves el turno, el supervisor, el estado, los criterios que se usaron y las **calificaciones por empleado**, con el puntaje (de 1 a 5 estrellas), el comentario y quién lo editó y cuándo. Acciones:
+Ves el turno, el coordinador, el estado, los criterios que se usaron y las **calificaciones por empleado**, con el puntaje (de 1 a 5 estrellas), el comentario y quién lo editó y cuándo. Acciones:
 
 - **Marcar como no realizada** y **Cancelar supervisión** (**Permiso "Asignar supervisiones"**).
-- **Calificar** o **Editar** una calificación (**Permiso "Editar calificaciones"**). El supervisor solo puede cambiar sus calificaciones mientras dura el turno; Administración puede hacerlo siempre, y queda anotado quién lo hizo.
+- **Calificar** o **Editar** una calificación (**Permiso "Editar calificaciones"**). El coordinador solo puede cambiar sus calificaciones mientras dura el turno; Administración puede hacerlo siempre, y queda anotado quién lo hizo.
 
 ---
 
@@ -513,14 +513,14 @@ Lista a todas las personas con acceso, con su rol y su estado (**Activo** o desa
 
 En la fila de cada persona, el botón de los tres puntos abre las acciones:
 
-| Acción                          | Quién la hace                                                                                   |
-| ------------------------------- | ----------------------------------------------------------------------------------------------- |
-| **Resetear contraseña**         | Dueño; administrador con **permiso "Gestionar usuarios"** (solo sobre empleados y supervisores) |
-| **Cambiar email**               | Ídem                                                                                            |
-| **Cerrar sesiones**             | Ídem                                                                                            |
-| **Desactivar** (pide un motivo) | Ídem                                                                                            |
-| **Reactivar**                   | **Solo dueño**                                                                                  |
-| **Editar roles y capacidades**  | **Solo dueño**                                                                                  |
+| Acción                          | Quién la hace                                                                                    |
+| ------------------------------- | ------------------------------------------------------------------------------------------------ |
+| **Resetear contraseña**         | Dueño; administrador con **permiso "Gestionar usuarios"** (solo sobre empleados y coordinadores) |
+| **Cambiar email**               | Ídem                                                                                             |
+| **Cerrar sesiones**             | Ídem                                                                                             |
+| **Desactivar** (pide un motivo) | Ídem                                                                                             |
+| **Reactivar**                   | **Solo dueño**                                                                                   |
+| **Editar roles y capacidades**  | **Solo dueño**                                                                                   |
 
 **Solo dueño: nuevo administrador.** Con **Nuevo administrador** completás nombre, apellido, **Email de login** y una **Contraseña inicial**, igual que para un empleado.
 
@@ -544,7 +544,7 @@ El calendario de feriados, por año. Con **Cargar feriados nacionales de <año>*
 
 ![Criterios de calificación](guias/img/adm-criterios.png)
 
-La guía de texto que ven los supervisores cuando califican (por ejemplo "Puntualidad", "Calidad de la limpieza"). **No se les pone puntaje a cada criterio**: el puntaje es uno solo por empleado, de 1 a 5. Con **Nuevo criterio** agregás uno (**Título** y **Descripción**) y lo guardás con **Agregar criterio**; empieza a regir desde ese momento. Para dejar de usar uno, **Cerrar criterio**: las supervisiones que ya empezaron conservan los criterios con los que se hicieron.
+La guía de texto que ven los coordinadores cuando califican (por ejemplo "Puntualidad", "Calidad de la limpieza"). **No se les pone puntaje a cada criterio**: el puntaje es uno solo por empleado, de 1 a 5. Con **Nuevo criterio** agregás uno (**Título** y **Descripción**) y lo guardás con **Agregar criterio**; empieza a regir desde ese momento. Para dejar de usar uno, **Cerrar criterio**: las supervisiones que ya empezaron conservan los criterios con los que se hicieron.
 
 ### Eventos de seguridad (solo dueño)
 
@@ -554,7 +554,7 @@ Una tabla de consulta con los inicios de sesión y los cambios de acceso (altas,
 
 ## Usar la administración desde el celular
 
-La administración se adapta a tablet y celular. En el celular, el menú pasa a una barra de abajo con cinco botones: **Hoy**, **Planificar**, **Asistencia**, **Supervisiones** y **Más** (donde está el resto: empleados, clientes y sedes, tareas y configuración).
+La administración se adapta a tablet y celular. En el celular, el menú pasa a una barra de abajo con cinco botones: **Hoy**, **Calendario**, **Asistencia**, **Supervisiones** y **Más** (donde está el resto: empleados, clientes y sedes, tareas y configuración).
 
 ![Resumen en el celular](guias/img/adm-celular-resumen.png)
 

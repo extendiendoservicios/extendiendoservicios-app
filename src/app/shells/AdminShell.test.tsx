@@ -110,8 +110,8 @@ function renderAdminShell(
           },
           {
             path: '/admin/planificacion',
-            element: <p>Planificación</p>,
-            handle: { screenId: 'ADM-05', title: 'Planificación' },
+            element: <p>Calendario</p>,
+            handle: { screenId: 'ADM-05', title: 'Calendario' },
           },
           {
             path: '/admin/supervisiones',
@@ -321,7 +321,7 @@ describe('AdminShell — menos de 1024 px', () => {
     })
     expect(tabbar).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Hoy/ })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Planificar/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Calendario/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Más' })).toBeInTheDocument()
   })
 

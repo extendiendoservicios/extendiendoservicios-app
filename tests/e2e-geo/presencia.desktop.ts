@@ -134,7 +134,7 @@ test.describe('el dueño o un administrador mira el Resumen', () => {
         })
 
         await test.step('el supervisor con una supervisión en curso, con otro ícono (rombo) (B-12)', async () => {
-          const etiqueta = `Supervisor ${nombreDe('supervisor1')}`
+          const etiqueta = `Coordinador ${nombreDe('supervisor1')}`
           await expect(punto(page, etiqueta)).toBeVisible()
           await expect(
             punto(page, etiqueta).locator('span.rotate-45'),

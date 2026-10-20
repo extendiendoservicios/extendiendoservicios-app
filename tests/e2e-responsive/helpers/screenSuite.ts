@@ -37,7 +37,7 @@ import { SEED_ACCOUNTS } from '../../fixtures/seed-accounts.ts'
 
 const TABBAR_LABELS = [
   'Hoy',
-  'Planificar',
+  'Calendario',
   'Asistencia',
   'Supervisiones',
   'Más',

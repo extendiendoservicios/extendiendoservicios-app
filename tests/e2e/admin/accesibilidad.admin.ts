@@ -69,10 +69,10 @@ test.describe('axe: administrador', () => {
 
         const pantallas: Array<[nombre: string, ruta: string]> = [
           ['ADM-02 Resumen', '/admin'],
-          ['ADM-03 Planificación mes', '/admin/planificacion?vista=mes'],
-          ['ADM-04 Planificación semana', '/admin/planificacion?vista=semana'],
+          ['ADM-03 Calendario mes', '/admin/planificacion?vista=mes'],
+          ['ADM-04 Calendario semana', '/admin/planificacion?vista=semana'],
           [
-            'ADM-05 Planificación día',
+            'ADM-05 Calendario día',
             `/admin/planificacion?vista=dia&fecha=${sc.today}`,
           ],
           ['ADM-06 Detalle del turno', `/admin/turnos/${turno}`],

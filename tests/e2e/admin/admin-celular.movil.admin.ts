@@ -119,12 +119,12 @@ test(
             name: new RegExp(`${cliente.name}.*${sede.name}.*14:00–18:00`),
           })
           .click()
-        await page.getByRole('combobox', { name: 'Supervisor' }).click()
+        await page.getByRole('combobox', { name: 'Coordinador' }).click()
         await page
           .getByRole('option', { name: nombreDe('supervisor1') })
           .click()
         await page.getByRole('button', { name: 'Asignar supervisión' }).click()
-        await expect(page.getByText('Asignamos al supervisor.')).toBeVisible()
+        await expect(page.getByText('Asignamos al coordinador.')).toBeVisible()
         const { data } = await sc.db
           .from('supervisions')
           .select('status')

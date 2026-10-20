@@ -136,7 +136,7 @@ function EmployeeRolesDialog({
                       field.onChange(checked === true)
                     }
                   />
-                  Supervisor
+                  Coordinador
                 </label>
               )}
             />

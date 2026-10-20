@@ -254,12 +254,12 @@ test(
             name: new RegExp(`${nombreCliente}.*${nombreSede}.*00:02–00:03`),
           })
           .click()
-        await hoja.getByRole('combobox', { name: 'Supervisor' }).click()
+        await hoja.getByRole('combobox', { name: 'Coordinador' }).click()
         await page
           .getByRole('option', { name: nombreDe('supervisor2') })
           .click()
         await hoja.getByRole('button', { name: 'Asignar supervisión' }).click()
-        await expect(page.getByText('Asignamos al supervisor.')).toBeVisible()
+        await expect(page.getByText('Asignamos al coordinador.')).toBeVisible()
         const { data: supervision } = await sc.db
           .from('supervisions')
           .select('id, status')

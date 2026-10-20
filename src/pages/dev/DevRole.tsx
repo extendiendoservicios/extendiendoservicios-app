@@ -42,11 +42,11 @@ const SEED_ACCOUNTS: { email: string; label: string }[] = [
   },
   {
     email: 'paula.lemos@extendiendoservicios.com',
-    label: 'Paula Lemos — supervisora',
+    label: 'Paula Lemos — coordinadora',
   },
   {
     email: 'noelia.vera@extendiendoservicios.com',
-    label: 'Noelia Vera — supervisora',
+    label: 'Noelia Vera — coordinadora',
   },
   {
     email: 'maria.gomez@extendiendoservicios.com',

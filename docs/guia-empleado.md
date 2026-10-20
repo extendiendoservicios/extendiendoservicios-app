@@ -67,7 +67,7 @@ Abajo tenés tres botones:
 - **El botón redondo del medio (la huella):** **Fichar**, para registrar que empezás o seguir el servicio que ya empezaste.
 - **Más:** tu perfil, avisar demora o ausencia, y cerrar sesión.
 
-Si además sos supervisor o supervisora, en **Más** vas a encontrar **Supervisión**, que te lleva a tus supervisiones (ver la [guía del supervisor](guia-supervisor.md)).
+Si además sos coordinador o coordinadora, en **Más** vas a encontrar **Supervisión**, que te lleva a tus supervisiones (ver la [guía del coordinador](guia-supervisor.md)).
 
 ## Ver tus servicios
 
@@ -166,7 +166,7 @@ Sirve para contar algo que Administración tenga que saber: un problema, algo qu
 
 ![Observaciones](guias/img/emp-observaciones.png)
 
-Administración y el supervisor del turno la ven. Podés volver a entrar y corregirla mientras el servicio no esté terminado.
+Administración y el coordinador del turno la ven. Podés volver a entrar y corregirla mientras el servicio no esté terminado.
 
 ### Sacar fotos y grabar videos
 

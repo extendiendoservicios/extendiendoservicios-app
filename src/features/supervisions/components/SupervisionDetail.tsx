@@ -105,7 +105,7 @@ function SupervisionDetail({ supervisionId }: SupervisionDetailProps) {
         <PersonCell
           id={detail.supervisorId}
           name={`${detail.supervisorFirstName} ${detail.supervisorLastName}`}
-          subtitle="Supervisor"
+          subtitle="Coordinador"
         />
         <dl className="mt-1 grid grid-cols-2 gap-x-6 gap-y-1 text-[12px] text-text-2 sm:grid-cols-4">
           <div>
@@ -279,7 +279,7 @@ function SupervisionDetail({ supervisionId }: SupervisionDetailProps) {
         rows={mediaQuery.data}
         isLoading={mediaQuery.isLoading}
         isError={mediaQuery.isError}
-        emptyMessage="El supervisor no subió fotos ni videos."
+        emptyMessage="El coordinador no subió fotos ni videos."
       />
 
       <CancelSupervisionDialog

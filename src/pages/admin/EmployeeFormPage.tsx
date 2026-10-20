@@ -241,7 +241,7 @@ function EmployeeCreateForm() {
                     field.onChange(checked === true)
                   }
                 />
-                Supervisor
+                Coordinador
               </label>
             )}
           />

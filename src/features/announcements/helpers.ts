@@ -16,7 +16,7 @@ export function audienceText(
     case 'employees':
       return 'Empleados'
     case 'supervisors':
-      return 'Supervisores'
+      return 'Coordinadores'
     case 'all':
       return 'Todos'
     case 'custom':
@@ -62,7 +62,7 @@ export function readAtText(readAt: string | null): string {
 
 const ROLE_LABELS: Record<string, string> = {
   employee: 'Empleado',
-  supervisor: 'Supervisor',
+  supervisor: 'Coordinador',
 }
 
 /** «Empleado», «Supervisor» o «Empleado y supervisor». */
@@ -73,7 +73,7 @@ export function rolesText(roles: string[]): string {
   if (labels.length === 0) {
     return '—'
   }
-  return labels.length === 2 ? 'Empleado y supervisor' : (labels[0] as string)
+  return labels.length === 2 ? 'Empleado y coordinador' : (labels[0] as string)
 }
 
 /**

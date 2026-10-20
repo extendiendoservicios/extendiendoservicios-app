@@ -299,7 +299,7 @@ test.describe('Supervisor con doble rol en la ficha', () => {
           hoja.getByRole('row', { name: /Total del período/ }),
         ).toContainText('5 h')
         await expect(
-          hoja.getByText(/^(Empleado y supervisor|Supervisor y empleado)$/),
+          hoja.getByText(/^(Empleado y coordinador|Coordinador y empleado)$/),
         ).toBeVisible()
         await expect(hoja.getByText('Firma', { exact: true })).toHaveCount(2)
         await expectNoHorizontalScroll(page)

@@ -161,8 +161,8 @@ describe('buildAttendanceSheet (AJ-06)', () => {
     const sheet = buildAttendanceSheet({
       person: {
         ...person,
-        roleLabels: ['Empleado', 'Supervisor'],
-        signerLabel: 'Empleado y supervisor',
+        roleLabels: ['Empleado', 'Coordinador'],
+        signerLabel: 'Empleado y coordinador',
       },
       from: '2026-09-01',
       to: '2026-09-30',
@@ -317,9 +317,9 @@ describe('printableEntries / personSignerLabel', () => {
 
   it('arma la etiqueta de la firma de la persona según sus roles', () => {
     expect(personSignerLabel(['Empleado'])).toBe('Empleado')
-    expect(personSignerLabel(['Supervisor'])).toBe('Supervisor')
-    expect(personSignerLabel(['Empleado', 'Supervisor'])).toBe(
-      'Empleado y supervisor',
+    expect(personSignerLabel(['Coordinador'])).toBe('Coordinador')
+    expect(personSignerLabel(['Empleado', 'Coordinador'])).toBe(
+      'Empleado y coordinador',
     )
     expect(personSignerLabel([])).toBe('Persona')
   })

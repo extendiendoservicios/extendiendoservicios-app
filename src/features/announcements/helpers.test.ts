@@ -17,7 +17,7 @@ import {
 describe('texto de destinatarios y vigencia', () => {
   it('arma el texto de destinatarios', () => {
     expect(audienceText('employees', 12)).toBe('Empleados')
-    expect(audienceText('supervisors', 3)).toBe('Supervisores')
+    expect(audienceText('supervisors', 3)).toBe('Coordinadores')
     expect(audienceText('all', 15)).toBe('Todos')
     expect(audienceText('custom', 5)).toBe('5 personas')
     expect(audienceText('custom', 1)).toBe('1 persona')
@@ -38,8 +38,8 @@ describe('texto de destinatarios y vigencia', () => {
 
   it('arma el rol', () => {
     expect(rolesText(['employee'])).toBe('Empleado')
-    expect(rolesText(['supervisor'])).toBe('Supervisor')
-    expect(rolesText(['employee', 'supervisor'])).toBe('Empleado y supervisor')
+    expect(rolesText(['supervisor'])).toBe('Coordinador')
+    expect(rolesText(['employee', 'supervisor'])).toBe('Empleado y coordinador')
     expect(rolesText([])).toBe('—')
   })
 })

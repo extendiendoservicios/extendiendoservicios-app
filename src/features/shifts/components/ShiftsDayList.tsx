@@ -150,8 +150,8 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
     },
     {
       id: 'supervisor',
-      header: 'Supervisor',
-      meta: { card: 'meta', cardLabel: 'Supervisor', width: '16%' },
+      header: 'Coordinador',
+      meta: { card: 'meta', cardLabel: 'Coordinador', width: '16%' },
       cell: ({ row }) => {
         const { supervisors } = peopleOfShift(people, row.original.id)
         if (supervisors.length === 0) {

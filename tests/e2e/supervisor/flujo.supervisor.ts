@@ -403,7 +403,7 @@ test.describe('con la geoposición negada', () => {
       await expectNoHorizontalScroll(page)
       await page.getByRole('link', { name: 'Mi perfil' }).click()
       await expect(page).toHaveURL(/\/perfil$/)
-      await expect(page.getByText('Supervisor', { exact: true })).toBeVisible()
+      await expect(page.getByText('Coordinador', { exact: true })).toBeVisible()
     },
   )
 })
