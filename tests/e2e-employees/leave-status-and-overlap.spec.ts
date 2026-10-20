@@ -102,7 +102,7 @@ test.describe('EMP-014: licencias y el estado efectivo de la ficha', () => {
         await page.getByRole('button', { name: 'Agregar licencia' }).click()
         await expect(
           page.getByText(
-            'Esa persona ya tiene una licencia cargada que se superpone con esas fechas.',
+            'Esas fechas se superponen con otra licencia ya cargada de esa persona.',
           ),
         ).toBeVisible()
       })

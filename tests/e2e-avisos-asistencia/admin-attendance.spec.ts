@@ -220,6 +220,8 @@ test.describe('ATT-015: registrar en nombre del empleado, cierre manual, "Sin re
         await page
           .getByRole('option', { name: 'Problema de transporte' })
           .click()
+        // P19.11 (0059): administración tiene que indicar si presenta certificado.
+        await page.getByRole('radio', { name: 'Sin certificado' }).click()
         await page.getByRole('button', { name: 'Avisar ausencia' }).click()
         await expect(page.getByText('Avisamos la ausencia.')).toBeVisible()
       })
