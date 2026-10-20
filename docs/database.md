@@ -2352,6 +2352,23 @@ falló a mitad de camino (las sentencias se aplican una por una) y quedó parte 
 
 pgTAP: `0060_p19_11c_fecha_avisos_certificado.test.sql` (más ajustes en `0009`, `0029`, `0035` y `0042`).
 
+## Coordinador de licencia (migración `0061`, P19.11e)
+
+Decisión de Mike del 20 oct 2026: un coordinador de licencia no puede recibir supervisiones.
+
+- **`assign_supervision(p_shift_id, p_supervisor_id)`** da `ON_LEAVE` («El coordinador está de licencia ese día.») si
+  el coordinador tiene una licencia (`employee_leaves`, sin baja lógica) que cubre la fecha del turno; `ends_on` nulo es
+  una licencia abierta. Se evalúa después del control de rol y de la ficha de `employees` (que ya era obligatoria: sin
+  ficha da `SUPERVISOR_ROLE_REQUIRED`, así que no hay licencia que mirar). Es el único camino que crea o cambia el
+  coordinador de una supervisión: no hay reasignar y `generate_shifts` no genera supervisiones.
+- **`update_shift_time(..., p_date)`**: al mover la fecha, si el coordinador de la supervisión vigente (`assigned` o
+  `in_progress`) está de licencia en la nueva fecha, da `ON_LEAVE` nombrándolo («El coordinador está de licencia en la
+  nueva fecha: Nombre Apellido.»). Una supervisión cancelada no cuenta. El resto de la función no cambia.
+- Sin cambios de firmas, grants ni columnas. No existe una RPC ni una vista de candidatos a coordinador: el selector
+  lee `v_employees` (`roles` con `supervisor`), cuyo `effective_status` solo refleja la licencia de hoy.
+
+pgTAP: `0061_p19_11e_coordinador_licencia.test.sql`.
+
 ## Tipos para el frontend
 
 `src/lib/database.types.ts` se genera con `pnpm db:types` (`supabase gen types --linked`) contra
