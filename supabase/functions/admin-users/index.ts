@@ -130,7 +130,7 @@ const errors = {
   employeeDataRequired: () =>
     new DomainError(
       'EMPLOYEE_DATA_REQUIRED',
-      'Para asignar el rol de empleado o supervisor hace falta cargar los datos de empleado (al menos el DNI).',
+      'Para asignar el rol de empleado o coordinador hace falta cargar los datos de empleado (al menos el DNI).',
       400,
     ),
   // `owner`: a quién pertenece (quien da de alta ya puede ver a todo el personal), así se nota si

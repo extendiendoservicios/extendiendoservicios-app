@@ -100,7 +100,7 @@ select plan(67);
 -- Existencia y firma --------------------------------------------------------------------------
 
 select has_function('public', 'notify_delay', array['uuid', 'integer', 'text'], 'existe public.notify_delay(uuid, integer, text)');
-select has_function('public', 'notify_absence', array['uuid', 'absence_reason', 'text'], 'existe public.notify_absence(uuid, absence_reason, text)');
+select has_function('public', 'notify_absence', array['uuid', 'absence_reason', 'text', 'boolean'], 'existe public.notify_absence(uuid, absence_reason, text, boolean)');
 select has_function('public', 'admin_record_attendance', array['uuid', 'attendance_kind', 'timestamptz', 'text'], 'existe public.admin_record_attendance(uuid, attendance_kind, timestamptz, text)');
 select has_function('public', 'close_assignment', array['uuid', 'text', 'timestamptz'], 'existe public.close_assignment(uuid, text, timestamptz)');
 
@@ -438,7 +438,7 @@ select throws_ok('notify_absence_empezada_admin', 'P0001', 'La asignación ya em
 
 -- Feliz "en nombre" DESPUÉS del inicio, sin check-in registrado (decisión de Mike, 26 sep 2026, P14.0).
 select is(
-  (public.notify_absence('e2700000-0000-0000-0000-00000000030b', 'transport')).source::text,
+  (public.notify_absence('e2700000-0000-0000-0000-00000000030b', 'transport', null, false)).source::text,
   'admin',
   'notify_absence en nombre, después del inicio y sin check-in: se acepta (P14.0)'
 );

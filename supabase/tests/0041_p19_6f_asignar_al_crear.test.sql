@@ -135,7 +135,8 @@ set local role postgres;
 select tests.as_user('test-db041-admin@example.com');
 
 -- Dotación 2; pedimos Ana (libre), Beto (superpuesto), Diego (inactivo), Carla (licencia), Elena (sobra),
--- y Ana repetida. Esperado: Ana y Carla asignadas (Carla con ON_LEAVE), Beto/Diego/Elena rechazados.
+-- y Ana repetida. Esperado (0059: la licencia bloquea): Ana y Elena asignadas; Beto (superposición),
+-- Diego (inactivo) y Carla (licencia) rechazados.
 select set_config('t.c1', public.create_shift(
   'f4100000-0000-0000-0000-000000000001', 'f4100000-0000-0000-0000-000000000011',
   date '2199-05-04', time '08:00', time '12:00', 2::smallint, null, null, false, true,
@@ -146,13 +147,13 @@ select set_config('t.c1', public.create_shift(
 
 select is(
   (select array_agg(e ->> 'employee_id' order by o) from jsonb_array_elements(current_setting('t.c1')::jsonb -> 'assigned') with ordinality as t(e, o)),
-  array['f4100000-0000-0000-0000-000000000091', 'f4100000-0000-0000-0000-000000000093'],
-  'create_shift: asigna a Ana y a Carla (sin repetir a Ana)'
+  array['f4100000-0000-0000-0000-000000000091', 'f4100000-0000-0000-0000-000000000095'],
+  'create_shift: asigna a Ana y a Elena (sin repetir a Ana); Carla, de licencia, no'
 );
 select is(
   (select array_agg(e ->> 'code' order by o) from jsonb_array_elements(current_setting('t.c1')::jsonb -> 'rejected') with ordinality as t(e, o)),
-  array['ASSIGNMENT_OVERLAP', 'EMPLOYEE_NOT_ACTIVE', 'SHIFT_FULL'],
-  'create_shift: rechaza con su motivo a Beto (superposición), Diego (inactivo) y Elena (dotación completa)'
+  array['ASSIGNMENT_OVERLAP', 'EMPLOYEE_NOT_ACTIVE', 'ON_LEAVE'],
+  'create_shift: rechaza con su motivo a Beto (superposición), Diego (inactivo) y Carla (licencia, 0059)'
 );
 select is(
   current_setting('t.c1')::jsonb -> 'rejected' -> 0 ->> 'employee_name',
@@ -165,9 +166,9 @@ select is(
   'create_shift: cada rechazado trae el mensaje de la misma validación que la asignación manual'
 );
 select is(
-  current_setting('t.c1')::jsonb -> 'assigned' -> 1 -> 'warnings',
-  '["ON_LEAVE"]'::jsonb,
-  'create_shift: la licencia advierte y no bloquea (igual que assign_employee)'
+  current_setting('t.c1')::jsonb -> 'rejected' -> 2 ->> 'message',
+  'El empleado está de licencia ese día.',
+  'create_shift: la licencia bloquea (0059) igual que en assign_employee'
 );
 select is(
   current_setting('t.c1')::jsonb -> 'shift' ->> 'status',
