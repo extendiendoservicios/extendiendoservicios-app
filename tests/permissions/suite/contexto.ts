@@ -124,14 +124,17 @@ const renovados = new Map<PerfilConSesion, Promise<string>>()
 /**
  * Los tokens del `globalSetup` vencen a los 15 minutos (`jwt_expiry = 900`) y la matriz completa
  * dura más de 20: los archivos que arrancan tarde recibían `PGRST303 JWT expired`. Cuando al token
- * le queda menos de un minuto se inicia una sesión NUEVA con la misma cuenta (no se renueva con el
+ * le queda menos de `minimoSegundos` (un minuto por omisión) se inicia una sesión NUEVA con la misma cuenta (no se renueva con el
  * refresh token: eso rotaría el de los demás archivos; un ingreso nuevo no invalida nada).
  */
-export async function tokenVigente(perfil: PerfilConSesion): Promise<string> {
+export async function tokenVigente(
+  perfil: PerfilConSesion,
+  minimoSegundos = 60,
+): Promise<string> {
   const original = contexto().tokens[perfil]
   const previo = renovados.get(perfil)
   const actual = previo ? await previo : original
-  if (segundosRestantes(actual) > 60) return actual
+  if (segundosRestantes(actual) > minimoSegundos) return actual
   const env = requireE2eEnv()
   const nuevo = (async () => {
     const cliente = createClient<Database>(env.supabaseUrl, env.anonKey, {

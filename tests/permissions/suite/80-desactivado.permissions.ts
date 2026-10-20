@@ -17,7 +17,13 @@ import { createClient } from '@supabase/supabase-js'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import type { Database } from '../../../src/lib/database.types.ts'
 import { requireE2eEnv } from '../../fixtures/env.ts'
-import { clienteConToken, contexto, servicio, type Db } from './contexto.ts'
+import {
+  clienteConToken,
+  contexto,
+  servicio,
+  tokenVigente,
+  type Db,
+} from './contexto.ts'
 import { caso, claveCaso } from './defectos.ts'
 import { denegado, describir, filas, tabla } from './ayudas.ts'
 import { llamarEdge } from './edge-cliente.ts'
@@ -40,7 +46,8 @@ for (const perfil of PERFILES_A_DESACTIVAR) {
 
     beforeAll(async () => {
       const c = contexto()
-      token = c.tokens[perfil]
+      // Fresco: la prueba necesita varios minutos de token «todavía vigente» después de la baja.
+      token = await tokenVigente(perfil, 600)
       id = idPerfil(c, perfil)
       db = clienteConToken(token)
       // Control: ANTES de la baja el token funciona (si no, lo que sigue no probaría nada).
