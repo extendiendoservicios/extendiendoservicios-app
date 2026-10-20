@@ -2286,6 +2286,37 @@ Con `--linked`, la CLI entra con el rol temporal `cli_login_postgres`, que es mi
 el tablero y la planificación sepan si el turno exige fotos sin consultar `shifts`. Se recrea con la definición de 0040,
 `security_invoker = true` y sin cambios de grants. pgTAP: `0048_p21_6b_board_requires_photos.test.sql`.
 
+## Ausente con certificado, licencias que bloquean y fecha del turno (migración `0059`, P19.11a)
+
+Decisiones de Mike de la reunión del 19 oct 2026.
+
+- **Ausente con certificado.** `attendance_notices.has_certificate boolean` (null salvo ausencias cargadas por
+  administración; check `kind = 'absence' or has_certificate is null`). `attendance_notices_reason_code_check` pasa a
+  exigir `reason_code` en una ausencia solo si `source = 'employee_app'`; la regla de `reason_text` con `other` no cambia.
+  `notify_absence(p_assignment_id, p_reason_code default null, p_reason_text default null, p_has_certificate default null)`
+  (se reemplaza la firma de tres parámetros): el empleado sigue obligado a dar motivo (`REASON_REQUIRED`) y su
+  `p_has_certificate` se ignora; administración (`manage_attendance`) puede omitir el motivo pero tiene que indicar el
+  certificado (`CERTIFICATE_REQUIRED`). `v_assignments_board`, `v_my_day` y `v_my_history` suman al final
+  `last_notice_has_certificate`.
+- **Licencias bloquean.** `app.assign_employee_core` da siempre `ON_LEAVE` (error, mensaje «El empleado está de licencia
+  ese día.») cuando hay una licencia vigente (`deleted_at is null`, `ends_on` nulo = abierta) que cubre la fecha del turno.
+  Aplica a `assign_employee`, `create_shift` (el empleado queda en `rejected` con `code = 'ON_LEAVE'`),
+  `create_shift_series` y `generate_shifts` (queda en `unassigned`). `OUTSIDE_AVAILABILITY` y `NOT_ENABLED_FOR_CLIENT`
+  siguen siendo advertencias. `get_leave_conflicts(p_employee_id, p_starts_on, p_ends_on default null)` (O, A) devuelve los
+  turnos ya asignados en el período, no cancelados ni finalizados, desde hoy; no desasigna nada. Las licencias se guardan
+  con escritura directa a `employee_leaves`, por eso la pantalla llama a esta RPC después de guardar.
+- **Fecha del turno.** `update_shift_time(p_shift_id, p_start, p_end, p_open_ended default false, p_date default null)`
+  (se reemplaza la firma de cuatro parámetros; sigue devolviendo la fila de `shifts`). Con `p_date` distinta de la
+  fecha actual: `SHIFT_STARTED` si el estado no es `scheduled`/`assigned` o algún fichaje cuelga de sus asignaciones;
+  `ON_LEAVE` si un asignado vigente está de licencia en la fecha nueva; `ASSIGNMENT_OVERLAP`; `SHIFT_DATE_TAKEN` si el
+  servicio ya tiene otro turno vigente ese día. La fecha de las asignaciones y sus ventanas las recalcula el trigger de
+  `0007`; `starts_at`/`ends_at` son columnas generadas; supervisiones, tareas y evidencia cuelgan de `shift_id` y las vistas
+  del día leen `shifts.shift_date`, así que no hace falta tocar nada más.
+  `get_shift_date_warnings(p_shift_id, p_date, p_start?, p_end?)` (O, A, solo lectura) devuelve
+  `{"warnings": ["HOLIDAY", "OUTSIDE_AVAILABILITY"], "outside_availability": [{employee_id, employee_name}]}`.
+
+pgTAP: `0059_p19_11_ausente_licencias_fecha.test.sql` (más ajustes en `0023`, `0024`, `0027`, `0028`, `0037` y `0041`).
+
 ## Tipos para el frontend
 
 `src/lib/database.types.ts` se genera con `pnpm db:types` (`supabase gen types --linked`) contra

@@ -121,7 +121,7 @@ insert into public.employee_availability (employee_id, weekday, start_time, end_
   ('e2400000-0000-0000-0000-000000000093', 0, '00:00', '01:00');
 
 -- e-licencia (0094) está de licencia abierta desde 2199-01-01: cualquier turno de 2199 cae
--- dentro -> ON_LEAVE (P-033).
+-- dentro -> ON_LEAVE (P-033; error desde 0059).
 insert into public.employee_leaves (employee_id, starts_on, ends_on, reason) values
   ('e2400000-0000-0000-0000-000000000094', '2199-01-01', null, 'Licencia de prueba 0024');
 
@@ -225,10 +225,11 @@ select is(
   'assign_employee: disponibilidad declarada solo otro día -> advierte OUTSIDE_AVAILABILITY (P-035)'
 );
 
-select is(
-  (public.assign_employee('e2400000-0000-0000-0000-000000000044', 'e2400000-0000-0000-0000-000000000094') ->> 'warnings')::jsonb,
-  '["ON_LEAVE"]'::jsonb,
-  'assign_employee: empleado de licencia vigente el día del turno -> advierte ON_LEAVE (P-033)'
+select throws_ok(
+  $$select public.assign_employee('e2400000-0000-0000-0000-000000000044', 'e2400000-0000-0000-0000-000000000094')$$,
+  'P0001',
+  'El empleado está de licencia ese día.',
+  'assign_employee: empleado de licencia vigente el día del turno -> error ON_LEAVE (P-033, bloquea desde 0059)'
 );
 
 set local role postgres;

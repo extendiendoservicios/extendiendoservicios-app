@@ -511,6 +511,7 @@ export type Database = {
           assignment_id: string
           created_at: string
           estimated_arrival_at: string | null
+          has_certificate: boolean | null
           id: string
           kind: Database["public"]["Enums"]["notice_kind"]
           minutes_late: number | null
@@ -523,6 +524,7 @@ export type Database = {
           assignment_id: string
           created_at?: string
           estimated_arrival_at?: string | null
+          has_certificate?: boolean | null
           id?: string
           kind: Database["public"]["Enums"]["notice_kind"]
           minutes_late?: number | null
@@ -535,6 +537,7 @@ export type Database = {
           assignment_id?: string
           created_at?: string
           estimated_arrival_at?: string | null
+          has_certificate?: boolean | null
           id?: string
           kind?: Database["public"]["Enums"]["notice_kind"]
           minutes_late?: number | null
@@ -3277,6 +3280,7 @@ export type Database = {
           id: string | null
           last_notice_at: string | null
           last_notice_estimated_arrival_at: string | null
+          last_notice_has_certificate: boolean | null
           last_notice_kind: Database["public"]["Enums"]["notice_kind"] | null
           last_notice_minutes_late: number | null
           last_notice_reason_code:
@@ -3662,6 +3666,7 @@ export type Database = {
           is_today: boolean | null
           last_notice_at: string | null
           last_notice_estimated_arrival_at: string | null
+          last_notice_has_certificate: boolean | null
           last_notice_kind: Database["public"]["Enums"]["notice_kind"] | null
           last_notice_minutes_late: number | null
           last_notice_reason_code:
@@ -3821,6 +3826,7 @@ export type Database = {
           is_today: boolean | null
           last_notice_at: string | null
           last_notice_estimated_arrival_at: string | null
+          last_notice_has_certificate: boolean | null
           last_notice_kind: Database["public"]["Enums"]["notice_kind"] | null
           last_notice_minutes_late: number | null
           last_notice_reason_code:
@@ -3887,13 +3893,6 @@ export type Database = {
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_out_recorded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -3902,13 +3901,20 @@ export type Database = {
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_out_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_in_recorded_by"]
+            columns: ["check_out_recorded_by"]
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
@@ -4970,6 +4976,31 @@ export type Database = {
         Args: { p_record_id: string; p_record_type: string }
         Returns: Json
       }
+      get_leave_conflicts: {
+        Args: { p_employee_id: string; p_ends_on?: string; p_starts_on: string }
+        Returns: {
+          assignment_id: string
+          client_id: string
+          client_name: string
+          end_time: string
+          open_ended: boolean
+          shift_date: string
+          shift_id: string
+          shift_status: Database["public"]["Enums"]["shift_status"]
+          site_id: string
+          site_name: string
+          start_time: string
+        }[]
+      }
+      get_shift_date_warnings: {
+        Args: {
+          p_date: string
+          p_end?: string
+          p_shift_id: string
+          p_start?: string
+        }
+        Returns: Json
+      }
       mark_changes_seen: {
         Args: never
         Returns: {
@@ -5024,13 +5055,15 @@ export type Database = {
       notify_absence: {
         Args: {
           p_assignment_id: string
-          p_reason_code: Database["public"]["Enums"]["absence_reason"]
+          p_has_certificate?: boolean
+          p_reason_code?: Database["public"]["Enums"]["absence_reason"]
           p_reason_text?: string
         }
         Returns: {
           assignment_id: string
           created_at: string
           estimated_arrival_at: string | null
+          has_certificate: boolean | null
           id: string
           kind: Database["public"]["Enums"]["notice_kind"]
           minutes_late: number | null
@@ -5056,6 +5089,7 @@ export type Database = {
           assignment_id: string
           created_at: string
           estimated_arrival_at: string | null
+          has_certificate: boolean | null
           id: string
           kind: Database["public"]["Enums"]["notice_kind"]
           minutes_late: number | null
@@ -5077,6 +5111,7 @@ export type Database = {
           assignment_id: string
           created_at: string
           estimated_arrival_at: string | null
+          has_certificate: boolean | null
           id: string
           kind: Database["public"]["Enums"]["notice_kind"]
           minutes_late: number | null
@@ -5696,6 +5731,7 @@ export type Database = {
       }
       update_shift_time: {
         Args: {
+          p_date?: string
           p_end: string
           p_open_ended?: boolean
           p_shift_id: string

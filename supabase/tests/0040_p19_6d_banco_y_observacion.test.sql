@@ -96,7 +96,7 @@ select is(
 select is(
   (select attname::text from pg_attribute
    where attrelid = 'public.v_assignments_board'::regclass and attnum > 0 and not attisdropped order by attnum desc limit 1),
-  'has_outside_geo', 'v_assignments_board: shift_observation va antes de la validación de 0052, que va al final'
+  'last_notice_has_certificate', 'v_assignments_board: shift_observation va antes de la validación de 0052, que va al final'
 );
 select is(
   (select count(*)::int from information_schema.columns
