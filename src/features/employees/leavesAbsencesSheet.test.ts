@@ -8,10 +8,17 @@ import {
   buildLeavesAbsencesSheet,
   currentYearRange,
   daysText,
+  LEAVES_ABSENCES_CONSENT_TEXT,
   leaveDaysInPeriod,
 } from './leavesAbsencesSheet'
 
-const PERSON = { name: 'Ana Gómez', dni: '30111222', employeeNumber: 7 }
+const PERSON = {
+  name: 'Ana Gómez',
+  dni: '30111222',
+  employeeNumber: 7,
+  roleLabels: ['Empleado'],
+  signerLabel: 'Empleado',
+}
 
 function leave(overrides: Partial<EmployeeLeave> = {}): EmployeeLeave {
   return {
@@ -246,5 +253,16 @@ describe('buildLeavesAbsencesSheet', () => {
     )
     expect(facts['Período']).toBe('1 ene 2026 al 31 dic 2026')
     expect(model.documentTitle).toContain('Ana Gómez')
+  })
+
+  it('lleva los mismos datos personales, el consentimiento y las dos firmas que el detalle de asistencia', () => {
+    expect(model.facts.slice(0, 4)).toEqual([
+      { label: 'Nombre y Apellido', value: 'Ana Gómez' },
+      { label: 'DNI', value: '30111222' },
+      { label: 'Legajo', value: '7' },
+      { label: 'Rol', value: 'Empleado' },
+    ])
+    expect(model.consentText).toBe(LEAVES_ABSENCES_CONSENT_TEXT)
+    expect(model.signers).toEqual(['Responsable (administración)', 'Empleado'])
   })
 })

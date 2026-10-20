@@ -23,6 +23,12 @@ interface PrintSheetProps {
  * la hoja (A4, con márgenes) o la guarda como PDF desde su diálogo. Sin
  * librerías de PDF.
  *
+ * Ancho fijo: la hoja mide siempre 210 mm (A4) con 15 mm de margen interno,
+ * sin importar la ventana ni el contenido. En pantallas angostas el contenedor
+ * se desplaza en horizontal (la hoja no se reacomoda). Al imprimir, el ancho
+ * pasa a ser el útil de la página (210 mm menos los 15 mm de margen de
+ * `@page` a cada lado = los mismos 180 mm de la vista previa).
+ *
  * AJ3-03: «Editar texto» vuelve `contentEditable` el contenido de la hoja
  * (menos el membrete, que se marca `contentEditable={false}`) para corregir
  * texto antes de imprimir. Los cambios viven solo en el DOM de esta vista
@@ -117,12 +123,12 @@ function PrintSheet({ children, onClose, documentTitle }: PrintSheetProps) {
       {isEditing && (
         <p
           role="status"
-          className="mx-auto w-full max-w-[210mm] px-4 pt-3 text-[12px] text-text-2 print:hidden"
+          className="mx-auto w-[210mm] shrink-0 px-4 pt-3 text-[12px] text-text-2 print:hidden"
         >
           Los cambios valen solo para esta impresión: no se guardan en la app.
         </p>
       )}
-      <div className="print-sheet mx-auto my-4 w-full max-w-[210mm] bg-white p-4 text-[12px] text-black shadow-card sm:p-[15mm] print:m-0 print:max-w-none print:p-0 print:shadow-none">
+      <div className="print-sheet mx-auto my-4 box-border w-[210mm] shrink-0 bg-white p-[15mm] text-[12px] text-black shadow-card print:m-0 print:w-auto print:p-0 print:shadow-none">
         <div
           key={contentKey}
           data-testid="print-content"

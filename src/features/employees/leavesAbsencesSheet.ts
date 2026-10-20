@@ -22,7 +22,14 @@ export interface LeavesAbsencesPerson {
   name: string
   dni?: string | null
   employeeNumber: number
+  /** Etiquetas de rol en español: «Empleado», «Supervisor». */
+  roleLabels: string[]
+  /** Etiqueta de quien firma por la persona. */
+  signerLabel: string
 }
+
+export const LEAVES_ABSENCES_CONSENT_TEXT =
+  'Las partes prestan conformidad con el detalle de licencias e inasistencias consignado.'
 
 export interface LeavesAbsencesSheetModel {
   title: string
@@ -33,6 +40,8 @@ export interface LeavesAbsencesSheetModel {
   leavesFooter: { label: string; value: string }
   absenceColumns: PrintColumn[]
   absenceRows: PrintRowData[]
+  signers: string[]
+  consentText: string
 }
 
 /** Primer día del año y último día del año de una fecha `"YYYY-MM-DD"`: período por omisión. */
@@ -213,6 +222,7 @@ export function buildLeavesAbsencesSheet(input: {
       { label: 'Nombre y Apellido', value: person.name },
       { label: 'DNI', value: person.dni || '—' },
       { label: 'Legajo', value: String(person.employeeNumber) },
+      { label: 'Rol', value: person.roleLabels.join(', ') || '—' },
       {
         label: 'Período',
         value: `${formatCalendarDate(from)} al ${formatCalendarDate(to)}`,
@@ -250,5 +260,7 @@ export function buildLeavesAbsencesSheet(input: {
       { key: 'loadedBy', header: 'Lo cargó' },
     ],
     absenceRows,
+    signers: ['Responsable (administración)', person.signerLabel],
+    consentText: LEAVES_ABSENCES_CONSENT_TEXT,
   }
 }

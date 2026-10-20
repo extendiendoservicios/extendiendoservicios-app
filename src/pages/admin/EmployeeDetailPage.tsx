@@ -22,6 +22,10 @@ import {
 } from '@/features/employees/components/EmployeeAccountDialogs'
 import { EmployeeAvailabilityTab } from '@/features/employees/components/EmployeeAvailabilityTab'
 import { EmployeeClientPermissionsTab } from '@/features/employees/components/EmployeeClientPermissionsTab'
+import {
+  personSignerLabel,
+  printRoleLabels,
+} from '@/features/attendance/detailSheet'
 import { EmployeeLeavesTab } from '@/features/employees/components/EmployeeLeavesTab'
 import { EmployeeRatingsTab } from '@/features/employees/components/EmployeeRatingsTab'
 import { EmployeeUpcomingShiftsTab } from '@/features/employees/components/EmployeeUpcomingShiftsTab'
@@ -233,6 +237,8 @@ export default function EmployeeDetailPage() {
               name: `${employee.firstName} ${employee.lastName}`,
               dni: employee.dni,
               employeeNumber: employee.employeeNumber,
+              roleLabels: printRoleLabels(employee.roles),
+              signerLabel: personSignerLabel(printRoleLabels(employee.roles)),
             }}
           />
         </TabsContent>

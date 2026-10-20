@@ -259,8 +259,96 @@ describe('printableEntries / personSignerLabel', () => {
       entries,
       now: NOW,
     })
-    expect(sheet.rows[0]?.novelty).toBe('Ausencia avisada: Enfermedad')
+    expect(sheet.rows[0]?.novelty).toBe(
+      'Inasistencia — certificado sin indicar — Enfermedad',
+    )
     expect(sheet.footer.value).toBe('0 min')
+  })
+
+  it('intercala licencias e inasistencias con los turnos, ordenadas por fecha, y las licencias no suman horas', () => {
+    const entries = buildAttendanceEntries(
+      [
+        worked('a1', '2026-09-10', 240),
+        worked('a2', '2026-09-20', 120),
+        makeAssignment({
+          id: 'a3',
+          shiftDate: '2026-09-15',
+          status: 'absence_notified',
+          lastNoticeKind: 'absence',
+          lastNoticeReasonCode: 'illness',
+          lastNoticeHasCertificate: true,
+        }),
+      ],
+      [],
+    )
+    const leaves = [
+      // Empezó antes del período: va al inicio.
+      {
+        id: 'l0',
+        startsOn: '2026-08-25',
+        endsOn: '2026-09-03',
+        reason: 'Vacaciones',
+        deletedAt: null,
+      },
+      {
+        id: 'l1',
+        startsOn: '2026-09-18',
+        endsOn: null,
+        reason: null,
+        deletedAt: null,
+      },
+      // Dada de baja y de otro período: no entran.
+      {
+        id: 'l2',
+        startsOn: '2026-09-05',
+        endsOn: '2026-09-06',
+        reason: 'x',
+        deletedAt: '2026-09-01T00:00:00Z',
+      },
+      {
+        id: 'l3',
+        startsOn: '2026-01-05',
+        endsOn: '2026-01-06',
+        reason: 'y',
+        deletedAt: null,
+      },
+    ]
+    const sheet = buildAttendanceSheet({
+      person: {
+        name: 'Carlos Medina',
+        employeeNumber: 19,
+        roleLabels: ['Empleado'],
+        signerLabel: 'Empleado',
+      },
+      from: '2026-09-01',
+      to: '2026-09-30',
+      entries,
+      leaves,
+      now: NOW,
+    })
+    expect(sheet.rows.map((row) => row.key)).toEqual([
+      'leave-l0',
+      'service-a1',
+      'service-a3',
+      'leave-l1',
+      'service-a2',
+    ])
+    expect(sheet.rows[0]).toMatchObject({
+      date: '1 sep 2026',
+      hours: '—',
+      novelty: 'Licencia del 25/08/2026 al 03/09/2026 — Vacaciones',
+    })
+    expect(sheet.rows[2]?.novelty).toBe(
+      'Inasistencia — con certificado — Enfermedad',
+    )
+    expect(sheet.rows[3]?.novelty).toBe(
+      'Licencia del 18/09/2026 al abierta — Sin motivo',
+    )
+    // Solo suman las horas de los turnos trabajados: 4 h + 2 h.
+    expect(sheet.totalMinutes).toBe(360)
+    expect(sheet.footer.value).toBe('6 h')
+    expect(sheet.facts).toContainEqual({ label: 'Inasistencias', value: '1' })
+    expect(sheet.facts).toContainEqual({ label: 'Licencias', value: '2' })
   })
 
   it('la hoja imprimible lleva la validación por ubicación sin coordenadas (B-20)', () => {

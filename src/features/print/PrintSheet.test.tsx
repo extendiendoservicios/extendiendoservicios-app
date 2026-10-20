@@ -68,3 +68,12 @@ describe('PrintSheet: editar texto (AJ3-03)', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('PrintSheet: hoja A4 de ancho fijo', () => {
+  it('la hoja mide siempre 210 mm, sin achicarse con la ventana ni crecer con el contenido', () => {
+    renderSheet()
+    const sheet = screen.getByTestId('print-content').parentElement
+    expect(sheet).toHaveClass('w-[210mm]', 'shrink-0', 'p-[15mm]')
+    expect(sheet?.className).not.toMatch(/\bw-full\b|max-w-/)
+  })
+})

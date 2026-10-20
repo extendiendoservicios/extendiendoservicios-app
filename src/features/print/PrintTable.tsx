@@ -20,11 +20,13 @@ interface PrintTableProps {
   emptyText: string
 }
 
-const cellClass = 'border border-neutral-400 px-2 py-1 align-top'
+// `overflow-wrap:anywhere` deja que el texto largo se parta en vez de ensanchar la tabla más allá de la hoja.
+const cellClass =
+  'border border-neutral-400 px-2 py-1 align-top [overflow-wrap:anywhere]'
 
 function PrintTable({ columns, rows, footer, emptyText }: PrintTableProps) {
   return (
-    <table className="w-full text-[11.5px]">
+    <table className="w-full table-auto text-[11.5px]">
       <thead>
         <tr className="bg-neutral-200">
           {columns.map((column) => (
@@ -85,11 +87,11 @@ function PrintTable({ columns, rows, footer, emptyText }: PrintTableProps) {
 /** Datos del documento en dos columnas (persona, período, cliente…). */
 function PrintFacts({ facts }: { facts: { label: string; value: string }[] }) {
   return (
-    <dl className="print-keep-together mb-4 grid grid-cols-1 gap-x-6 gap-y-1 text-[12px] sm:grid-cols-2">
+    <dl className="print-keep-together mb-4 grid grid-cols-2 gap-x-6 gap-y-1 text-[12px]">
       {facts.map((fact) => (
         <div key={fact.label} className="flex gap-1.5">
-          <dt className="font-semibold">{fact.label}:</dt>
-          <dd>{fact.value}</dd>
+          <dt className="shrink-0 font-semibold">{fact.label}:</dt>
+          <dd className="min-w-0 [overflow-wrap:anywhere]">{fact.value}</dd>
         </div>
       ))}
     </dl>
@@ -110,7 +112,7 @@ function PrintSignatures({
   return (
     <section className="print-keep-together mt-10">
       {intro && <p className="mb-8 text-[11.5px]">{intro}</p>}
-      <div className="grid grid-cols-1 gap-10 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-10">
         {signers.map((signer) => (
           <div key={signer} className="text-[11.5px]">
             <div className="h-14 border-b border-black" />

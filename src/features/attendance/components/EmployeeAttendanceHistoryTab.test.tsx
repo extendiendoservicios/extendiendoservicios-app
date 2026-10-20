@@ -16,6 +16,10 @@ vi.mock('@/features/attendance/queries', () => ({
   useEmployeeAttendanceHistoryQuery: historyMock,
 }))
 
+vi.mock('@/features/employees/queries', () => ({
+  useEmployeeLeavesQuery: () => ({ data: [], isLoading: false }),
+}))
+
 vi.mock('@/features/supervisions/queries', () => ({
   useSupervisionsAdminQuery: supervisionsMock,
 }))

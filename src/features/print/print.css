@@ -5,7 +5,7 @@
  * navegador la reparta en páginas A4.
  */
 @page {
-  size: A4;
+  size: A4 portrait;
   margin: 15mm;
 }
 
@@ -25,6 +25,13 @@
     position: static !important;
     overflow: visible !important;
     background: #fff !important;
+  }
+
+  /* Ancho útil de la página: 210 mm menos los 15 mm de `@page` a cada lado. */
+  .print-sheet {
+    box-sizing: border-box;
+    width: auto !important;
+    max-width: none !important;
   }
 
   .print-sheet table {
