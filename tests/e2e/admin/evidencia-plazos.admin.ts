@@ -125,9 +125,15 @@ for (const cuenta of ['owner', 'admin'] as const) {
 
           await test.step('lo restaura a como estaba', async () => {
             const recargada = await abrirSeccion(page)
-            await recargada
-              .getByLabel('Los videos vencen a los (días)')
-              .fill(String(original.video))
+            const videosRecargados = recargada.getByLabel(
+              'Los videos vencen a los (días)',
+            )
+            // El formulario recibe los valores guardados un instante después de dibujarse: si se
+            // escribe antes, esos valores pisan lo escrito y «Guardar plazos» queda apagado.
+            await expect(videosRecargados).not.toHaveValue(
+              String(original.video),
+            )
+            await videosRecargados.fill(String(original.video))
             await recargada
               .getByRole('button', { name: 'Guardar plazos' })
               .click()
