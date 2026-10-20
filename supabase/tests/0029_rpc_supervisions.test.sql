@@ -254,7 +254,7 @@ prepare assign_sup_sin_rol as
   select public.assign_supervision('e2900000-0000-0000-0000-000000000110', 'e2900000-0000-0000-0000-000000000087');
 
 select throws_ok(
-  'assign_sup_sin_rol', 'P0001', 'Ese supervisor no tiene el rol vigente o no está activo.',
+  'assign_sup_sin_rol', 'P0001', 'Ese coordinador no tiene el rol vigente o no está activo.',
   'assign_supervision: persona sin rol supervisor -> SUPERVISOR_ROLE_REQUIRED'
 );
 
@@ -262,7 +262,7 @@ prepare assign_sup_inactivo as
   select public.assign_supervision('e2900000-0000-0000-0000-000000000110', 'e2900000-0000-0000-0000-000000000086');
 
 select throws_ok(
-  'assign_sup_inactivo', 'P0001', 'Ese supervisor no tiene el rol vigente o no está activo.',
+  'assign_sup_inactivo', 'P0001', 'Ese coordinador no tiene el rol vigente o no está activo.',
   'assign_supervision: supervisor con employees.status = terminated -> SUPERVISOR_ROLE_REQUIRED'
 );
 
@@ -278,7 +278,7 @@ prepare assign_sup_doble as
   select public.assign_supervision('e2900000-0000-0000-0000-000000000101', 'e2900000-0000-0000-0000-000000000084');
 
 select throws_ok(
-  'assign_sup_doble', 'P0001', 'Ese supervisor ya tiene una supervisión asignada a este turno.',
+  'assign_sup_doble', 'P0001', 'Ese coordinador ya tiene una supervisión asignada a este turno.',
   'assign_supervision: doble asignación al mismo turno -> ALREADY_ASSIGNED'
 );
 
