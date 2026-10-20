@@ -44,6 +44,7 @@ const {
   fetchActiveServicesCountForMonth,
   createShift,
   generateShifts,
+  getShiftDateWarnings,
   updateShiftTime,
   cancelShift,
   reloadShiftTasks,
@@ -534,6 +535,36 @@ describe('updateShiftTime', () => {
     })
   })
 
+  it('P19.11d: manda la fecha nueva como p_date', async () => {
+    rpcMock.mockResolvedValue({ data: {}, error: null })
+
+    await updateShiftTime('sh1', '09:00', '13:00', false, '2026-10-21')
+
+    expect(rpcMock).toHaveBeenCalledWith('update_shift_time', {
+      p_shift_id: 'sh1',
+      p_start: '09:00',
+      p_end: '13:00',
+      p_open_ended: false,
+      p_date: '2026-10-21',
+    })
+  })
+
+  it.each([
+    'SHIFT_STARTED',
+    'SHIFT_DATE_IN_PAST',
+    'SHIFT_DATE_TAKEN',
+    'ON_LEAVE',
+  ])('propaga %s como ApiError con el hint', async (hint) => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: { message: 'Mensaje del servidor.', hint },
+    })
+
+    await expect(
+      updateShiftTime('sh1', '09:00', '13:00', false, '2026-10-21'),
+    ).rejects.toMatchObject({ hint })
+  })
+
   it('traduce ASSIGNMENT_OVERLAP a ApiError', async () => {
     rpcMock.mockResolvedValue({
       data: null,
@@ -728,5 +759,48 @@ describe('previewShiftSeries y createShiftSeries (AJ3-08)', () => {
     expect((failure as Error).message).toBe(
       'Texto del servidor (turno del 20/10/2026)',
     )
+  })
+})
+
+describe('getShiftDateWarnings', () => {
+  it('llama a la RPC y traduce feriado y disponibilidad', async () => {
+    rpcMock.mockResolvedValue({
+      data: {
+        warnings: ['HOLIDAY', 'OUTSIDE_AVAILABILITY'],
+        outside_availability: [
+          { employee_id: 'e1', employee_name: 'Ana Gómez' },
+        ],
+      },
+      error: null,
+    })
+
+    const result = await getShiftDateWarnings(
+      'sh1',
+      '2026-10-21',
+      '08:00',
+      '12:00',
+    )
+
+    expect(rpcMock).toHaveBeenCalledWith('get_shift_date_warnings', {
+      p_shift_id: 'sh1',
+      p_date: '2026-10-21',
+      p_start: '08:00',
+      p_end: '12:00',
+    })
+    expect(result).toEqual({
+      holiday: true,
+      outsideAvailability: [{ employeeId: 'e1', employeeName: 'Ana Gómez' }],
+    })
+  })
+
+  it('sin advertencias devuelve todo vacío', async () => {
+    rpcMock.mockResolvedValue({
+      data: { warnings: [], outside_availability: [] },
+      error: null,
+    })
+    expect(await getShiftDateWarnings('sh1', '2026-10-21')).toEqual({
+      holiday: false,
+      outsideAvailability: [],
+    })
   })
 })

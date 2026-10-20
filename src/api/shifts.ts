@@ -614,25 +614,74 @@ export async function generateShifts(
 // -------------------------------------------------------------------------
 
 /**
- * Cambia la franja de un turno existente (`06` sección 7: `update_shift_time`).
- * Ver la nota del comentario de arriba: es la única escritura de edición
- * que existe hoy para un turno ya creado (sin RPC para dotación ni notas).
+ * Cambia la franja de un turno existente y, desde 0059 (P19.11d), también su
+ * fecha (`06` sección 7: `update_shift_time`, `p_date`). `date` sin valor deja
+ * la fecha como está. Con fecha nueva el servidor puede devolver
+ * `SHIFT_STARTED` (el turno ya empezó o alguien fichó), `SHIFT_DATE_IN_PAST`,
+ * `SHIFT_DATE_TAKEN`, `ON_LEAVE` o `ASSIGNMENT_OVERLAP`, y anula los avisos de
+ * demora y ausencia que el turno tenía (0060).
  */
 export async function updateShiftTime(
   shiftId: string,
   start: string,
   end: string | null,
   openEnded = false,
+  date?: string,
 ): Promise<void> {
   const { error } = await supabase.rpc('update_shift_time', {
     p_shift_id: shiftId,
     p_start: start,
     p_end: openEnded ? OPEN_ENDED_WIRE_END : (end ?? ''),
     p_open_ended: openEnded,
+    p_date: date,
   })
 
   if (error) {
     throw fromPostgrestError(error)
+  }
+}
+
+/** Advertencias previas a mover un turno de fecha (`get_shift_date_warnings`, 0059): no bloquean. */
+export interface ShiftDateWarnings {
+  /** La fecha nueva es feriado. */
+  holiday: boolean
+  /** Asignados cuya disponibilidad declarada no cubre el día y la franja nuevos. */
+  outsideAvailability: Array<{ employeeId: string; employeeName: string }>
+}
+
+/**
+ * Se llama antes de confirmar el cambio de fecha. Solo lectura; dueño y
+ * administrador. `start`/`end` son la franja que se va a guardar.
+ */
+export async function getShiftDateWarnings(
+  shiftId: string,
+  date: string,
+  start?: string,
+  end?: string | null,
+): Promise<ShiftDateWarnings> {
+  const { data, error } = await supabase.rpc('get_shift_date_warnings', {
+    p_shift_id: shiftId,
+    p_date: date,
+    p_start: start || undefined,
+    p_end: end || undefined,
+  })
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  const payload = (data ?? {}) as {
+    warnings?: string[]
+    outside_availability?: Array<{
+      employee_id: string
+      employee_name: string
+    }>
+  }
+  return {
+    holiday: (payload.warnings ?? []).includes('HOLIDAY'),
+    outsideAvailability: (payload.outside_availability ?? []).map((item) => ({
+      employeeId: item.employee_id,
+      employeeName: item.employee_name,
+    })),
   }
 }
 

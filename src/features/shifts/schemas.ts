@@ -251,6 +251,8 @@ export const shiftEditFormSchema = z
     notes: z.string().trim().optional(),
     showInPrint: z.boolean().optional(),
     requiresPhotos: z.boolean().optional(),
+    /** P19.11d: fecha del turno (`"YYYY-MM-DD"`); vacía o ausente = no se edita. */
+    date: z.string().optional(),
   })
   .superRefine(checkEndTime)
 
@@ -262,6 +264,7 @@ export function shiftEditFormValuesToInputs(values: ShiftEditFormValues) {
       start: values.startTime,
       end: values.openEnded ? null : values.endTime,
       openEnded: Boolean(values.openEnded),
+      date: values.date || undefined,
     },
     details: {
       requiredStaff: Number(values.requiredStaff),

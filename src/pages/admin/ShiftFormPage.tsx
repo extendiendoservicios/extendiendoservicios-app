@@ -42,7 +42,15 @@ import {
   rejectedLines,
   rejectedTitle,
 } from '@/features/shifts/assignOnCreate'
+import {
+  canEditShiftDate,
+  DATE_CHANGE_NOTICE,
+  dateWarningLines,
+  shiftDateErrorMessage,
+} from '@/features/shifts/dateChange'
 import { employeesOnLeaveIn } from '@/features/shifts/leaveBlocking'
+import { SimpleConfirmDialog } from '@/features/settings/components/SimpleConfirmDialog'
+import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
 import { useHolidaysQuery } from '@/features/settings/queries'
 import {
   formatDateOnly,
@@ -54,6 +62,7 @@ import {
   useCreateShiftSeriesMutation,
   useShiftForEditQuery,
   useShiftSeriesPreviewQuery,
+  useShiftDateWarningsMutation,
   useUpdateShiftTimeMutation,
 } from '@/features/shifts/queries'
 import {
@@ -783,7 +792,13 @@ function EditShiftTimeForm({
     shiftQuery.data?.shiftDate ?? '',
   )
   const updateShiftDetails = useUpdateShiftDetailsMutation()
+  const dateWarnings = useShiftDateWarningsMutation()
   const isSaving = updateShiftTime.isPending || updateShiftDetails.isPending
+  // P19.11d: advertencias del cambio de fecha pendientes de confirmar.
+  const [pendingDateSave, setPendingDateSave] = useState<{
+    values: ShiftEditFormValues
+    lines: string[]
+  } | null>(null)
 
   const {
     control,
@@ -803,17 +818,63 @@ function EditShiftTimeForm({
           notes: shiftQuery.data.notes ?? '',
           showInPrint: shiftQuery.data.showInPrint ?? true,
           requiresPhotos: shiftQuery.data.requiresPhotos,
+          date: shiftQuery.data.shiftDate,
         }
       : undefined,
   })
 
   const watchedOpenEnded = useWatch({ control, name: 'openEnded' }) ?? false
+  const watchedDate = useWatch({ control, name: 'date' })
 
   // Franja (`update_shift_time`) y dotación/notas (`update_shift_details`)
   // son dos RPC separadas (`06` sección 7, ASSIGN-013): un solo formulario
   // las llama a las dos, así la persona no tiene que guardar dos veces.
   async function onSubmit(values: ShiftEditFormValues) {
+    const shift = shiftQuery.data
+    const dateChanged =
+      shift != null &&
+      canEditShiftDate(shift.status) &&
+      Boolean(values.date) &&
+      values.date !== shift.shiftDate
+    if (dateChanged) {
+      // Antes de confirmar: feriado y disponibilidad de los asignados.
+      const inputs = shiftEditFormValuesToInputs(values)
+      try {
+        const warnings = await dateWarnings.mutateAsync({
+          shiftId: id,
+          date: values.date as string,
+          start: inputs.time.start,
+          end: inputs.time.end,
+        })
+        const lines = dateWarningLines(warnings)
+        if (lines.length > 0) {
+          setPendingDateSave({ values, lines })
+          return
+        }
+      } catch (error) {
+        toast.error(
+          shiftDateErrorMessage(
+            error,
+            'No pudimos revisar la fecha nueva. Probá de nuevo.',
+          ),
+        )
+        return
+      }
+    }
+    await save(values)
+  }
+
+  async function save(values: ShiftEditFormValues) {
     const inputs = shiftEditFormValuesToInputs(values)
+    const shift = shiftQuery.data
+    // Solo se manda la fecha si cambió y el turno todavía la admite.
+    const newDate =
+      shift != null &&
+      canEditShiftDate(shift.status) &&
+      inputs.time.date &&
+      inputs.time.date !== shift.shiftDate
+        ? inputs.time.date
+        : undefined
     try {
       // Un turno «A terminar» finalizado solo admite ponerle la hora de fin
       // (AJ2-10): ni la dotación ni las notas se tocan.
@@ -825,6 +886,7 @@ function EditShiftTimeForm({
           start: inputs.time.start,
           end: inputs.time.end,
           openEnded: inputs.time.openEnded,
+          date: newDate,
         }),
         ...(onlyEndTime
           ? []
@@ -838,14 +900,21 @@ function EditShiftTimeForm({
               }),
             ]),
       ])
-      toast.success('Actualizamos el turno.')
+      setPendingDateSave(null)
+      toast.success(
+        newDate
+          ? `Movimos el turno al ${formatDateOnly(newDate)}.`
+          : 'Actualizamos el turno.',
+      )
+      // Si cambió la fecha, se lleva al usuario al día nuevo del calendario.
       leaveForm(
-        `/admin/planificacion?vista=dia&fecha=${shiftQuery.data?.shiftDate ?? ''}`,
+        `/admin/planificacion?vista=dia&fecha=${newDate ?? shiftQuery.data?.shiftDate ?? ''}`,
         'edit',
       )
     } catch (error) {
+      setPendingDateSave(null)
       toast.error(
-        isApiError(error) ? error.message : 'No pudimos actualizar el turno.',
+        shiftDateErrorMessage(error, 'No pudimos actualizar el turno.'),
       )
     }
   }
@@ -898,8 +967,8 @@ function EditShiftTimeForm({
           <StatusBadge domain="shift" status={shift.status} />
         </div>
         <p className="text-[12.5px] text-text-3">
-          Cliente, sede y fecha no se pueden editar desde acá: solo el horario,
-          la dotación y las notas del turno.
+          Cliente y sede no se pueden editar desde acá: sí la fecha (si el turno
+          todavía no empezó), el horario, la dotación y las notas.
         </p>
       </div>
 
@@ -936,6 +1005,43 @@ function EditShiftTimeForm({
             </Alert>
           )}
           <div className="grid grid-cols-2 gap-4 rounded-lg border border-border bg-surface p-5">
+            <Field className="col-span-2">
+              <FieldLabel>Fecha del turno</FieldLabel>
+              {canEditShiftDate(shift.status) ? (
+                <>
+                  <Controller
+                    control={control}
+                    name="date"
+                    render={({ field }) => (
+                      <DatePicker
+                        aria-label="Fecha del turno"
+                        value={isoDateToDate(field.value)}
+                        minDate={isoDateToDate(todayInBuenosAires())}
+                        onValueChange={(date) =>
+                          field.onChange(date ? localDateToIsoDate(date) : '')
+                        }
+                      />
+                    )}
+                  />
+                  <p className="text-[11.5px] text-text-3">
+                    {DATE_CHANGE_NOTICE}
+                  </p>
+                  {watchedDate && watchedDate !== shift.shiftDate && (
+                    <p className="text-[11.5px] font-semibold text-warning-800">
+                      El turno pasa del {formatDateOnly(shift.shiftDate)} al{' '}
+                      {formatDateOnly(watchedDate)}.
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-[13px] text-text-2">
+                  <span className="capitalize">
+                    {formatDateOnly(shift.shiftDate)}
+                  </span>{' '}
+                  · El turno ya empezó o terminó: la fecha no se puede cambiar.
+                </p>
+              )}
+            </Field>
             <Field data-invalid={Boolean(errors.startTime) || undefined}>
               <FieldLabel htmlFor="shift-start-time">Desde</FieldLabel>
               <Input
@@ -1048,6 +1154,32 @@ function EditShiftTimeForm({
           </div>
         </form>
       )}
+
+      <SimpleConfirmDialog
+        open={pendingDateSave != null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDateSave(null)
+        }}
+        title="Confirmar el cambio de fecha"
+        description={`Vas a mover el turno al ${
+          pendingDateSave?.values.date
+            ? formatDateOnly(pendingDateSave.values.date)
+            : ''
+        }. Revisá estos avisos: no impiden el cambio.`}
+        confirmLabel="Mover igual"
+        cancelLabel="Volver"
+        isLoading={isSaving}
+        onConfirm={() => {
+          if (pendingDateSave) void save(pendingDateSave.values)
+        }}
+      >
+        <ul className="list-disc pl-5 text-[13px] text-text-2">
+          {pendingDateSave?.lines.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+          <li>{DATE_CHANGE_NOTICE}</li>
+        </ul>
+      </SimpleConfirmDialog>
     </div>
   )
 }
