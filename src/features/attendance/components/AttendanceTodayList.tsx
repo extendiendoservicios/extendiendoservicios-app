@@ -31,6 +31,7 @@ import type { AttendanceBoardRow } from '@/api/attendance'
 import {
   getArrivalHint,
   getAttendanceRowVariant,
+  getAbsenceCertificateHint,
   getAttendanceRowBadge,
   getAvailableAttendanceActions,
 } from '@/features/attendance/derive'
@@ -234,11 +235,15 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
       meta: { card: 'meta', cardLabel: 'Estado' },
       cell: ({ row }) => {
         const arrival = getArrivalHint(row.original)
+        const certificate = getAbsenceCertificateHint(row.original)
         return (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <StatusBadge {...getAttendanceRowBadge(row.original)} />
             {arrival && (
               <span className="text-[12px] text-text-2">{arrival}</span>
+            )}
+            {certificate && (
+              <span className="text-[12px] text-text-2">{certificate}</span>
             )}
           </div>
         )

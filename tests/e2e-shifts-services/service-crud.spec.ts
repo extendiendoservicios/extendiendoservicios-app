@@ -66,7 +66,7 @@ test.describe('SERVICE-007: alta y edición de servicio (ADM-25)', () => {
         await page.getByRole('button', { name: 'Vigente desde' }).click()
         // El calendario abre mostrando el mes de hoy; el botón de "hoy" tiene un aria-label
         // propio ("Today, …") que lo distingue sin ambigüedad de cualquier otro día visible.
-        await page.getByRole('button', { name: /^Today,/ }).click()
+        await page.getByRole('button', { name: /^(Today|Hoy),/ }).click()
         await page.getByRole('button', { name: 'Crear servicio' }).click()
         await expect(page.getByText('Creamos el servicio.')).toBeVisible()
         await expect(page).toHaveURL(

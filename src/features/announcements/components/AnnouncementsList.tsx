@@ -130,7 +130,7 @@ export function AnnouncementsList() {
           icon: Megaphone,
           title: EMPTY_TITLES[filter],
           description:
-            'Los anuncios les aparecen a empleados y supervisores en el celular.',
+            'Los anuncios les aparecen a empleados y coordinadores en el celular.',
         }}
       />
     </div>

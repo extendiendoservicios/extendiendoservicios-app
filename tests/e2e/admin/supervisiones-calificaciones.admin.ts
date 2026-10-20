@@ -89,7 +89,7 @@ test.describe('supervisiones y calificaciones (ADM-13, ADM-15)', () => {
 
         await test.step('filtro por supervisor', async () => {
           await page
-            .getByRole('combobox', { name: 'Filtrar por supervisor' })
+            .getByRole('combobox', { name: 'Filtrar por coordinador' })
             .click()
           await page
             .getByRole('option', { name: nombreDe('supervisor2') })
@@ -97,10 +97,10 @@ test.describe('supervisiones y calificaciones (ADM-13, ADM-15)', () => {
           await expect(fila(clienteB.name)).toBeVisible(ESPERA_LISTA)
           await expect(fila(clienteA.name)).toHaveCount(0, ESPERA_LISTA)
           await page
-            .getByRole('combobox', { name: 'Filtrar por supervisor' })
+            .getByRole('combobox', { name: 'Filtrar por coordinador' })
             .click()
           await page
-            .getByRole('option', { name: 'Todos los supervisores' })
+            .getByRole('option', { name: 'Todos los coordinadores' })
             .click()
         })
 

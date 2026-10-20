@@ -295,7 +295,7 @@ export default function EmployeesPage() {
       </div>
 
       <DataTable
-        caption="Empleados y supervisores"
+        caption="Empleados y coordinadores"
         columns={columns}
         data={pageRows}
         sorting={sorting}

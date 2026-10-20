@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Timeline, type TimelineItem } from '@/components/Timeline'
 import { formatMinutes, formatTime } from '@/lib/format'
-import { absenceReasonLabel } from '@/lib/absenceReasons'
+import { absenceReasonLabel, certificateLabel } from '@/lib/absenceReasons'
 import type { AttendanceEvent, AttendanceBoardRow } from '@/api/attendance'
 import type { PersonName } from '@/api/attendance'
 import {
@@ -13,6 +13,8 @@ import { getAvailableAttendanceActions } from '@/features/attendance/derive'
 import { CorrectionsHistory } from '@/features/geo/components/CorrectionsHistory'
 import { RecordGeoDetail } from '@/features/geo/components/RecordGeoDetail'
 import { useAttendanceCorrectionsQuery } from '@/features/geo/queries'
+import { AbsenceCertificateDialog } from './AbsenceCertificateDialog'
+import { MarkAbsentDialog } from './MarkAbsentDialog'
 import { RecordAttendanceSheet } from './RecordAttendanceSheet'
 
 /**
@@ -60,12 +62,15 @@ function noticeDetail(event: AttendanceEvent): string[] {
       quoted,
     ].filter((part): part is string => Boolean(part))
   }
+  const certificate =
+    event.kind === 'absence' ? certificateLabel(event.hasCertificate) : null
   if (event.reasonCode === 'other' && quoted) {
-    return [quoted]
+    return [quoted, certificate].filter((part): part is string => Boolean(part))
   }
   return [
     event.reasonCode ? absenceReasonLabel(event.reasonCode) : null,
     quoted,
+    certificate,
   ].filter((part): part is string => Boolean(part))
 }
 
@@ -107,6 +112,8 @@ function AssignmentAttendanceDetail({
   canManage,
 }: AssignmentAttendanceDetailProps) {
   const [isRecordOpen, setRecordOpen] = useState(false)
+  const [isAbsentOpen, setAbsentOpen] = useState(false)
+  const [isCertificateOpen, setCertificateOpen] = useState(false)
 
   // B1: validación por ubicación del inicio y del fin, y su historial de correcciones.
   const checkInGeo = attendance?.checkInAt ? attendance.checkInGeo : null
@@ -128,6 +135,12 @@ function AssignmentAttendanceDetail({
         startsAt: attendance.startsAt,
       })
     : []
+
+  // P19.11d: «Ausente» (sin ausencia avisada) o su estado con el certificado.
+  const absenceNotice =
+    attendance?.status === 'absence_notified' &&
+    attendance.lastNoticeKind === 'absence'
+  const canMarkAbsent = availableActions.includes('absence')
 
   return (
     <div className="flex flex-col gap-2 border-t border-border pt-2">
@@ -189,15 +202,64 @@ function AssignmentAttendanceDetail({
         />
       )}
 
-      {canManage && availableActions.length > 0 && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="self-start"
-          onClick={() => setRecordOpen(true)}
-        >
-          Registrar en nombre
-        </Button>
+      {absenceNotice && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[12px] font-semibold text-danger">
+            Ausente · {certificateLabel(attendance.lastNoticeHasCertificate)}
+          </span>
+          {canManage && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCertificateOpen(true)}
+            >
+              {attendance.lastNoticeHasCertificate == null
+                ? 'Marcar certificado'
+                : 'Cambiar'}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {canManage && (
+        <div className="flex flex-wrap gap-2">
+          {availableActions.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setRecordOpen(true)}
+            >
+              Registrar en nombre
+            </Button>
+          )}
+          {canMarkAbsent && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setAbsentOpen(true)}
+            >
+              Ausente
+            </Button>
+          )}
+        </div>
+      )}
+
+      {canManage && isAbsentOpen && (
+        <MarkAbsentDialog
+          assignmentId={assignmentId}
+          employeeName={employeeName}
+          open
+          onOpenChange={setAbsentOpen}
+        />
+      )}
+      {canManage && isCertificateOpen && absenceNotice && (
+        <AbsenceCertificateDialog
+          assignmentId={assignmentId}
+          employeeName={employeeName}
+          current={attendance.lastNoticeHasCertificate ?? null}
+          open
+          onOpenChange={setCertificateOpen}
+        />
       )}
 
       {canManage && (

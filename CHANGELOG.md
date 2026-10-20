@@ -7,6 +7,30 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.22.0] - 2026-10-20
+
+Observaciones de la reunión del 19 oct 2026 con los dueños (P19.11). Migraciones 0059 a 0061.
+
+### Agregado
+
+- Detalle del turno: botón «Ausente» en cada empleado asignado. Pide «Con certificado» o «Sin certificado» (obligatorio) y un motivo opcional. En una ausencia ya avisada, también la que avisó el empleado desde el celular, administración puede «Marcar certificado» o «Cambiar» en cualquier momento.
+- La ausencia con su certificado se ve en la ficha del empleado (Asistencia), en la línea de tiempo del turno y en Asistencia de hoy.
+- Ficha del empleado: imprimible «Licencias y ausencias», con período elegible.
+- Editar turno: se puede cambiar la fecha mientras nadie haya fichado; no se ofrecen fechas pasadas. Antes de confirmar avisa si es feriado o si alguien queda fuera de su disponibilidad. Al mover de día se limpian los avisos de demora y de ausencia, que quedan en el historial.
+- Al guardar una licencia, si la persona ya tenía turnos asignados en esas fechas, se listan con «Abrir turno» para reasignarlos. No se desasigna nada.
+
+### Cambiado
+
+- «Planificación» pasa a llamarse «Calendario», y «Supervisor» pasa a «Coordinador» en toda la aplicación, incluidos los mensajes de error y la entrega de credenciales. «Supervisión» y «supervisiones» no cambian.
+- Las licencias bloquean: un empleado de licencia no se puede asignar a turnos de esas fechas (alta de turno, «Asignar empleado», repeticiones y generación), ni un coordinador de licencia a supervisiones. Tampoco se puede mover un turno a un día de licencia de quien está asignado.
+- «Registrar en nombre → Ausencia» también pide el certificado.
+- Calendario · semana: se ajusta al ancho de la pantalla, con desplazamiento horizontal de respaldo y la columna de empleados y el encabezado fijos. El horario del turno ya no se corta.
+- Calendario · día: entra sin desplazamiento horizontal desde 1024 px; las acciones pasan a ser íconos.
+
+### Corregido
+
+- Los clientes y sedes inactivos ya no aparecen al crear turnos ni servicios.
+
 ## [0.21.1] - 2026-10-19
 
 Observaciones de uso posteriores al módulo B1 (P19.9, P19.9b y P19.10). Sin migraciones: son solo cambios de la aplicación.

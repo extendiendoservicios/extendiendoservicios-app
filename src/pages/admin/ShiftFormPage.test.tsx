@@ -51,6 +51,7 @@ vi.mock('@/features/clients/queries', () => ({
 
 vi.mock('@/features/employees/queries', () => ({
   useActiveEmployeeOptionsQuery: () => ({ data: [], isLoading: false }),
+  useLeavesInRangeQuery: () => ({ data: [] }),
 }))
 
 vi.mock('@/features/settings/queries', () => ({
@@ -113,7 +114,7 @@ const { default: ShiftFormPage } = await import('./ShiftFormPage')
 
 function Destino() {
   const location = useLocation()
-  return <p>Planificación {location.search}</p>
+  return <p>Calendario {location.search}</p>
 }
 
 function renderPage() {
@@ -262,7 +263,7 @@ describe('ShiftFormPage — repetir el turno', () => {
       expect(toastSuccess).toHaveBeenCalledWith('Se crearon 2 turnos.'),
     )
     expect(
-      await screen.findByText(/Planificación \?vista=dia&fecha=2026-10-13/),
+      await screen.findByText(/Calendario \?vista=dia&fecha=2026-10-13/),
     ).toBeInTheDocument()
   })
 

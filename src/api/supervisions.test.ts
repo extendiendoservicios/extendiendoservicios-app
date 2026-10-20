@@ -280,7 +280,7 @@ describe('assignSupervision', () => {
     rpcMock.mockResolvedValue({
       data: null,
       error: {
-        message: 'Ese supervisor no tiene el rol vigente o no está activo.',
+        message: 'Ese coordinador no tiene el rol vigente o no está activo.',
         hint: 'SUPERVISOR_ROLE_REQUIRED',
       },
     })

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  absenceFormValuesToInput,
   notifyAbsenceSchema,
   notifyDelayFormValuesToMinutes,
   notifyDelaySchema,
@@ -48,25 +49,68 @@ describe('notifyDelaySchema', () => {
 })
 
 describe('notifyAbsenceSchema', () => {
+  it('exige elegir con o sin certificado', () => {
+    expect(notifyAbsenceSchema.safeParse({}).success).toBe(false)
+    expect(
+      notifyAbsenceSchema.safeParse({ reasonCode: 'illness' }).success,
+    ).toBe(false)
+  })
+
+  it('acepta el certificado sin motivo (el motivo es opcional)', () => {
+    expect(
+      notifyAbsenceSchema.safeParse({ hasCertificate: 'no' }).success,
+    ).toBe(true)
+  })
+
   it('acepta un motivo sin texto (si no es "otro")', () => {
-    const result = notifyAbsenceSchema.safeParse({ reasonCode: 'illness' })
+    const result = notifyAbsenceSchema.safeParse({
+      hasCertificate: 'yes',
+      reasonCode: 'illness',
+    })
     expect(result.success).toBe(true)
   })
 
   it('exige el texto cuando el motivo es "otro"', () => {
-    const result = notifyAbsenceSchema.safeParse({ reasonCode: 'other' })
+    const result = notifyAbsenceSchema.safeParse({
+      hasCertificate: 'yes',
+      reasonCode: 'other',
+    })
     expect(result.success).toBe(false)
   })
 
   it('acepta "otro" con texto', () => {
     const result = notifyAbsenceSchema.safeParse({
+      hasCertificate: 'yes',
       reasonCode: 'other',
       reasonText: 'Turno médico de urgencia',
     })
     expect(result.success).toBe(true)
   })
+})
 
-  it('rechaza si falta el motivo', () => {
-    expect(notifyAbsenceSchema.safeParse({}).success).toBe(false)
+describe('absenceFormValuesToInput', () => {
+  it('convierte el certificado a booleano y "sin motivo" a undefined', () => {
+    expect(
+      absenceFormValuesToInput({
+        hasCertificate: 'yes',
+        reasonCode: 'none',
+        reasonText: '  ',
+      }),
+    ).toEqual({
+      hasCertificate: true,
+      reasonCode: undefined,
+      reasonText: undefined,
+    })
+    expect(
+      absenceFormValuesToInput({
+        hasCertificate: 'no',
+        reasonCode: 'other',
+        reasonText: ' Mudanza ',
+      }),
+    ).toEqual({
+      hasCertificate: false,
+      reasonCode: 'other',
+      reasonText: 'Mudanza',
+    })
   })
 })

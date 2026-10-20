@@ -10,6 +10,7 @@ import {
 } from '@/components/DataTable'
 import { StatusBadge } from '@/components/status'
 import { Badge } from '@/components/ui/badge'
+import { certificateLabel } from '@/lib/absenceReasons'
 import { formatMinutes, formatTime } from '@/lib/format'
 import type { AttendanceBoardRow } from '@/api/attendance'
 import type { Role } from '@/api/users'
@@ -62,10 +63,14 @@ function noticeLabel(row: AttendanceBoardRow): string {
     row.lastNoticeReasonCode === 'other' &&
     text
   ) {
-    return `${kindLabel}: "${text}"`
+    return `${kindLabel}: "${text}" (${certificateLabel(row.lastNoticeHasCertificate)})`
   }
-  if (row.lastNoticeKind === 'absence' && row.lastNoticeReasonCode) {
-    return `${kindLabel}: ${ABSENCE_REASON_LABELS[row.lastNoticeReasonCode]}`
+  if (row.lastNoticeKind === 'absence') {
+    const certificate = certificateLabel(row.lastNoticeHasCertificate)
+    if (row.lastNoticeReasonCode) {
+      return `${kindLabel}: ${ABSENCE_REASON_LABELS[row.lastNoticeReasonCode]} (${certificate})`
+    }
+    return `${kindLabel} (${certificate})`
   }
   if (row.lastNoticeKind === 'delay' && row.lastNoticeMinutesLate != null) {
     return `${kindLabel}: ${row.lastNoticeMinutesLate} min`

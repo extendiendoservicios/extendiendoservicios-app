@@ -38,7 +38,7 @@ function RatingCriteriaPreviewDialog({
         <DialogHeader>
           <DialogTitle>Guía de calificación</DialogTitle>
           <DialogDescription>
-            Así la ve el supervisor al calificar a un empleado.
+            Así la ve el coordinador al calificar a un empleado.
           </DialogDescription>
         </DialogHeader>
 

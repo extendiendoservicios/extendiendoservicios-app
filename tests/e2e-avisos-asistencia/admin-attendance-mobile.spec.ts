@@ -83,9 +83,15 @@ test.describe('ATT-016: ADM-10/ADM-11 a 390 px', () => {
       })
 
       await test.step('ADM-11 a 390 px: el panel ocupa toda la pantalla', async () => {
-        await page.getByRole('button', { name: 'Registrar en nombre' }).click()
         const sheet = page.getByRole('dialog')
-        await expect(sheet).toBeVisible()
+        // La tarjeta se vuelve a montar cuando llega la consulta de teléfonos y el primer toque
+        // puede caer en el aire (P19.11g): se repite hasta que abre la hoja.
+        await expect(async () => {
+          await page
+            .getByRole('button', { name: 'Registrar en nombre' })
+            .click()
+          await expect(sheet).toBeVisible({ timeout: 3_000 })
+        }).toPass({ timeout: 30_000 })
         const box = await sheet.boundingBox()
         expect(box?.width).toBeGreaterThanOrEqual(380)
         await page

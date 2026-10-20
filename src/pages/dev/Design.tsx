@@ -1268,7 +1268,7 @@ function DesignPage() {
             />
           </div>
         </Row>
-        <Row label="Solo lectura (supervisor o antes de iniciar el turno)">
+        <Row label="Solo lectura (coordinador o antes de iniciar el turno)">
           <div className="w-full max-w-md rounded-lg border border-border bg-surface px-[14px]">
             <TaskList tasks={tasks} readOnly />
           </div>

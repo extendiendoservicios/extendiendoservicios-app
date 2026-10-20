@@ -249,7 +249,7 @@ describe.skipIf(!hayCredenciales)(
       const ana = filas.find((f) => f.email === EMAILS.ana)
       const beto = filas.find((f) => f.email === EMAILS.beto)
       expect(ana?.rol).toBe('Empleado')
-      expect(beto?.rol).toBe('Empleado y Supervisor')
+      expect(beto?.rol).toBe('Empleado y Coordinador')
       expect(ana?.nombre).toBe(`${PREFIJO}Ana Prueba`)
       for (const f of filas) {
         expect(f.contrasena).toMatch(

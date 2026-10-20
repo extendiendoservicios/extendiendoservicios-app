@@ -19,7 +19,7 @@ export const AUDIENCE_OPTIONS: {
   label: string
 }[] = [
   { value: 'employees', label: 'Empleados' },
-  { value: 'supervisors', label: 'Supervisores' },
+  { value: 'supervisors', label: 'Coordinadores' },
   { value: 'all', label: 'Todos' },
   { value: 'custom', label: 'Elegir personas' },
 ]

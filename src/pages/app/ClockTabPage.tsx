@@ -126,7 +126,7 @@ export default function ClockTabPage() {
           today.length === 0
             ? 'No tenés servicios para fichar hoy'
             : today.some((a) => a.noCheckout)
-              ? 'Tenés un servicio sin salida registrada: avisale a tu supervisor o a la oficina'
+              ? 'Tenés un servicio sin salida registrada: avisale a tu coordinador o a la oficina'
               : 'Ya fichaste todos tus servicios de hoy'
         }
         className="mt-4"

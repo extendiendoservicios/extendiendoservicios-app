@@ -9,7 +9,7 @@ DEPLOY-001 (F19). Prueba de aceptación de la Plataforma Base de Extendiendo Ser
 1. [Preparación (para quien organiza la sesión)](#1-preparación-para-quien-organiza-la-sesión)
 2. [Cómo se usa este guion](#2-cómo-se-usa-este-guion)
 3. [Orden recomendado de la sesión](#3-orden-recomendado-de-la-sesión)
-4. [Escenarios](#4-escenarios): dueño, administración, empleado, supervisor y transversales
+4. [Escenarios](#4-escenarios): dueño, administración, empleado, coordinador y transversales
 5. [Acta de la sesión](#5-acta-de-la-sesión)
 
 ---
@@ -31,28 +31,28 @@ Esta sección no la lee la referente. La completa **quien organiza la sesión** 
 | Dueño                                   | 1                 | Escenarios UAT-DUE                                                                                                   |
 | Administrador con los 7 permisos        | 1                 | Casi todos los escenarios de administración (**Administrador 1**)                                                    |
 | Administrador con los 7 permisos        | 1                 | Para quitarle un permiso y probar que no puede (UAT-DUE-02 y UAT-ADM-02) (**Administrador 2**)                       |
-| Supervisor o supervisora                | 1 (2 si se puede) | Escenarios UAT-SUP. Una segunda sirve para comprobar que cada una ve solo lo suyo                                    |
+| Coordinador o coordinadora              | 1 (2 si se puede) | Escenarios UAT-SUP. Una segunda sirve para comprobar que cada una ve solo lo suyo                                    |
 | Empleado o empleada                     | 2                 | **Empleado A** hace toda la jornada de prueba; **Empleado B** prueba el inicio sin ubicación y "registrar en nombre" |
 | Empleado B (opcional) y una persona más | 1                 | Para dar de baja y resetear contraseña (UAT-ADM-22 y UAT-ADM-23): puede ser una cuenta creada en la propia sesión    |
 
-**Importante, los emails:** la planilla que devolvió la empresa trae los empleados y supervisores **sin email**, y sin email no se puede crear el usuario. Antes de la sesión hay que **pedir a la empresa un email de login** para, como mínimo, el Empleado A, el Empleado B y la supervisora, o usar casillas de prueba que el organizador controle. Los administradores y el dueño también necesitan email.
+**Importante, los emails:** la planilla que devolvió la empresa trae los empleados y coordinadores **sin email**, y sin email no se puede crear el usuario. Antes de la sesión hay que **pedir a la empresa un email de login** para, como mínimo, el Empleado A, el Empleado B y la coordinadora, o usar casillas de prueba que el organizador controle. Los administradores y el dueño también necesitan email.
 
-Cada persona tiene que poder **recibir correo** en ese email (para probar la recuperación de contraseña) y **entrar con su celular** (empleados y supervisora).
+Cada persona tiene que poder **recibir correo** en ese email (para probar la recuperación de contraseña) y **entrar con su celular** (empleados y coordinadora).
 
 ### 1.3. Teléfonos y equipos
 
 - **Una computadora** con Chrome o Edge para administración (la referente y el dueño).
-- **Dos celulares** para la jornada: uno para el Empleado A y otro para la supervisora. Si se puede, un **Android con Chrome** y un **iPhone con Safari (iOS 16.4 o más nuevo)**, para ver las dos formas de instalación (UAT-TRA-04).
+- **Dos celulares** para la jornada: uno para el Empleado A y otro para la coordinadora. Si se puede, un **Android con Chrome** y un **iPhone con Safari (iOS 16.4 o más nuevo)**, para ver las dos formas de instalación (UAT-TRA-04).
 - Un **tercer celular** (o el mismo de la referente) para probar la administración desde el celular (UAT-ADM-20) y, si hay un Empleado B, para él.
 - **Internet** en todos (wifi o datos móviles). Para UAT-TRA-03 hace falta poder poner el celular en modo avión.
-- **Ubicación activada** en los celulares de empleados y supervisora, para probar el registro con ubicación.
+- **Ubicación activada** en los celulares de empleados y coordinadora, para probar el registro con ubicación.
 - La sesión conviene hacerla **de día y en horario laboral**: los escenarios de la jornada usan turnos de hoy.
 
 ### 1.4. Datos que tienen que estar cargados
 
-La empresa devolvió la planilla con **clientes**, **empleados** y **supervisores**, pero **sin sedes ni servicios**. Por eso:
+La empresa devolvió la planilla con **clientes**, **empleados** y **coordinadores**, pero **sin sedes ni servicios**. Por eso:
 
-- **Antes de la sesión (importación):** los clientes, con su CUIT y, si los mandó, sus contactos. Los empleados y supervisores solo si ya hay un email para cada uno; si no, se crean en la sesión (UAT-ADM-07 y UAT-ADM-08).
+- **Antes de la sesión (importación):** los clientes, con su CUIT y, si los mandó, sus contactos. Los empleados y coordinadores solo si ya hay un email para cada uno; si no, se crean en la sesión (UAT-ADM-07 y UAT-ADM-08).
 - **Durante la sesión (por pantalla):** las sedes, los servicios, las tareas, los turnos y las asignaciones. Los escenarios del bloque B (UAT-ADM-04 a UAT-ADM-10) los cargan **a mano**, con los datos de la tabla siguiente.
 - Los **criterios de calificación definitivos** de la empresa, el **teléfono de soporte** y el **texto de consentimiento de ubicación**: si la empresa ya los mandó, tenerlos escritos aparte para cargarlos en UAT-DUE-03 y UAT-DUE-04.
 
@@ -69,7 +69,7 @@ Esta tabla se llena **en la copia impresa o en la copia de trabajo**, nunca en e
 | **Plantilla de tareas** del cliente (4 o 5 tareas)                        |                                                                     |
 | **Empleado A**: nombre y email de login                                   |                                                                     |
 | **Empleado B**: nombre y email de login                                   |                                                                     |
-| **Supervisora**: nombre y email de login                                  |                                                                     |
+| **Coordinadora**: nombre y email de login                                 |                                                                     |
 | **Administrador 1** y **Administrador 2**: nombre y email                 |                                                                     |
 | **Dueño**: nombre y email                                                 |                                                                     |
 | Contraseñas iniciales                                                     | Las entrega el organizador por un canal seguro. No se escriben acá. |
@@ -147,7 +147,7 @@ Los escenarios están agrupados en bloques. **Conviene respetar el orden**, porq
 | ------ | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------- | --------------- |
 | A      | Ingreso y permisos                                                 | UAT-DUE-01, UAT-DUE-02, UAT-ADM-01, UAT-ADM-02                                      | 20 minutos      |
 | B      | Carga por pantalla: clientes, sedes, tareas, servicios y personas  | UAT-ADM-03 a UAT-ADM-09, UAT-DUE-03, UAT-DUE-04                                     | 60 minutos      |
-| C      | Planificación: turnos y asignaciones                               | UAT-ADM-10 a UAT-ADM-16                                                             | 45 minutos      |
+| C      | Calendario: turnos y asignaciones                                  | UAT-ADM-10 a UAT-ADM-16                                                             | 45 minutos      |
 | D      | La jornada de hoy: empleado en el celular y administración mirando | UAT-EMP-01 a UAT-EMP-11, UAT-ADM-17 a UAT-ADM-19, UAT-ADM-20                        | 60 minutos      |
 | E      | La supervisión                                                     | UAT-SUP-01 a UAT-SUP-07, UAT-ADM-21                                                 | 40 minutos      |
 | F      | Cierre: contraseñas, bajas, sesión y seguridad                     | UAT-ADM-22, UAT-ADM-23, UAT-TRA-01 a UAT-TRA-04, UAT-DUE-05, UAT-EMP-12, UAT-SUP-08 | 30 minutos      |
@@ -161,7 +161,7 @@ Resumen por rol (para ubicarse):
 | Dueño (UAT-DUE)          | 01 a 05    | 5        |
 | Administración (UAT-ADM) | 01 a 23    | 23       |
 | Empleado (UAT-EMP)       | 01 a 12    | 12       |
-| Supervisor (UAT-SUP)     | 01 a 08    | 8        |
+| Coordinador (UAT-SUP)    | 01 a 08    | 8        |
 | Transversales (UAT-TRA)  | 01 a 04    | 4        |
 
 ---
@@ -190,7 +190,7 @@ Resumen por rol (para ubicarse):
 **Resultado esperado**
 
 - Se abre **Resumen**. Abajo del menú izquierdo figura el nombre del dueño con el rol **Dueño**.
-- El menú tiene ocho secciones: Resumen, Planificación, Asistencia, Supervisiones, Empleados, Clientes y sedes, Tareas y Configuración.
+- El menú tiene ocho secciones: Resumen, Calendario, Asistencia, Supervisiones, Empleados, Clientes y sedes, Tareas y Configuración.
 - En **Configuración** hay cinco pestañas: **Usuarios**, **Empresa**, **Feriados**, **Criterios de calificación** y **Eventos de seguridad**.
 
 | Resultado           | Observación | Clasificación                             |
@@ -263,7 +263,7 @@ Resumen por rol (para ubicarse):
 **Pasos**
 
 1. Si el Administrador 2 tenía la sesión abierta, tocá su foto, **Cerrar sesión**, y volvé a ingresar. (Los permisos se leen al ingresar.)
-2. Entrá a **Planificación**.
+2. Entrá a **Calendario**.
 3. Buscá el botón **Generar turnos del mes**.
 4. Probá con otra acción que sí le corresponde: tocá **Nuevo turno** y mirá que se abre el formulario (no lo guardes).
 
@@ -425,27 +425,27 @@ En este bloque se cargan a mano las **sedes, los servicios, las tareas y las per
 
 > Repetí este escenario para el **Empleado B** si lo vas a usar en la jornada (UAT-EMP-08 y UAT-ADM-19).
 
-#### UAT-ADM-08 · Dar de alta un supervisor con su usuario
+#### UAT-ADM-08 · Dar de alta un coordinador con su usuario
 
 |                  |                                                                        |
 | ---------------- | ---------------------------------------------------------------------- |
 | **Rol**          | Administrador (Administrador 1, con el permiso **Gestionar usuarios**) |
 | **Dónde**        | Computadora                                                            |
 | **Tipo**         | Imprescindible                                                         |
-| **Cubre**        | RB-A02 (alta de un supervisor real; ingresa desde su celular)          |
-| **Precondición** | Tenés el email de login de la supervisora y una contraseña inicial.    |
+| **Cubre**        | RB-A02 (alta de un coordinador real; ingresa desde su celular)         |
+| **Precondición** | Tenés el email de login de la coordinadora y una contraseña inicial.   |
 
 **Pasos**
 
 1. Entrá a **Empleados** y tocá **Nuevo empleado**.
-2. En **Roles**, **destildá Empleado** y tildá **Supervisor**.
+2. En **Roles**, **destildá Empleado** y tildá **Coordinador**.
 3. Completá el email, la contraseña inicial y los datos personales y laborales, como en UAT-ADM-07.
 4. Tocá **Crear**.
 
 **Resultado esperado**
 
-- La persona aparece en **Empleados** con el rol **Supervisor**.
-- Más adelante (UAT-SUP-01) va a poder ingresar desde su celular y ver su pantalla de supervisora.
+- La persona aparece en **Empleados** con el rol **Coordinador**.
+- Más adelante (UAT-SUP-01) va a poder ingresar desde su celular y ver su pantalla de coordinadora.
 
 | Resultado           | Observación | Clasificación                             |
 | ------------------- | ----------- | ----------------------------------------- |
@@ -499,7 +499,7 @@ En este bloque se cargan a mano las **sedes, los servicios, las tareas y las per
 **Resultado esperado**
 
 - Los criterios definitivos de la empresa figuran en la lista, en el orden correcto.
-- Más adelante (UAT-SUP-04), la supervisora los ve como guía al calificar. Los criterios cerrados ya no aparecen.
+- Más adelante (UAT-SUP-04), la coordinadora los ve como guía al calificar. Los criterios cerrados ya no aparecen.
 
 | Resultado           | Observación | Clasificación                             |
 | ------------------- | ----------- | ----------------------------------------- |
@@ -526,7 +526,7 @@ En este bloque se cargan a mano las **sedes, los servicios, las tareas y las per
 
 **Resultado esperado**
 
-- Los feriados del año figuran en la lista. En **Planificación**, esos días se marcan como **Feriado**.
+- Los feriados del año figuran en la lista. En **Calendario**, esos días se marcan como **Feriado**.
 - En la pantalla de ingreso se ve el **logo** de la empresa y, abajo, el teléfono de soporte ("Si no podés entrar, comunicate con Administración al ...").
 - El texto de consentimiento se verá en el celular del empleado (UAT-EMP-07).
 
@@ -534,7 +534,7 @@ En este bloque se cargan a mano las **sedes, los servicios, las tareas y las per
 | ------------------- | ----------- | ----------------------------------------- |
 | ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
 
-### Bloque C · Planificación
+### Bloque C · Calendario
 
 #### UAT-ADM-10 · Generar los turnos de un mes
 
@@ -548,12 +548,12 @@ En este bloque se cargan a mano las **sedes, los servicios, las tareas y las per
 
 **Pasos**
 
-1. Entrá a **Planificación** y tocá **Generar turnos del mes**.
+1. Entrá a **Calendario** y tocá **Generar turnos del mes**.
 2. Elegí el **mes** en curso. Mirá cuántos servicios activos vigentes y cuántos feriados tiene.
 3. Tocá **Generar turnos del mes**.
 4. Leé el mensaje del resultado.
 5. Volvé a tocar **Generar turnos del mes** para el mismo mes.
-6. Volvé a **Planificación** y mirá el calendario del mes.
+6. Volvé a **Calendario** y mirá el calendario del mes.
 
 **Resultado esperado**
 
@@ -577,7 +577,7 @@ En este bloque se cargan a mano las **sedes, los servicios, las tareas y las per
 
 **Pasos**
 
-1. En **Planificación**, mirá la pestaña **Mes**. Cambiá de mes con las flechas.
+1. En **Calendario**, mirá la pestaña **Mes**. Cambiá de mes con las flechas.
 2. Usá los filtros: elegí el **cliente de prueba** y mirá cómo cambia el calendario. Sacá el filtro.
 3. Entrá a la pestaña **Semana**. Mirá la grilla de empleados por día. Las celdas vacías dicen **Libre**.
 4. Entrá a la pestaña **Día** y elegí una fecha con turnos. Mirá la **Franja**, la **Dotación** (por ejemplo 0/2) y el **Estado**.
@@ -605,7 +605,7 @@ En este bloque se cargan a mano las **sedes, los servicios, las tareas y las per
 
 **Pasos**
 
-1. En **Planificación**, abrí un turno futuro de la sede de prueba.
+1. En **Calendario**, abrí un turno futuro de la sede de prueba.
 2. Tocá **Asignar empleado**. Se abre la lista de personas.
 3. Mirá las etiquetas de cada persona: **Habilitado y disponible**, **No habilitado para el cliente**, **Fuera de su disponibilidad**, **De licencia**.
 4. Elegí al **Empleado A** y tocá **Asignar**.
@@ -664,7 +664,7 @@ En este bloque se cargan a mano las **sedes, los servicios, las tareas y las per
 1. Abrí el turno de prueba.
 2. Tocá **Cancelar turno**.
 3. Escribí el **Motivo de la cancelación** y confirmá.
-4. Volvé a **Planificación** y buscá ese turno.
+4. Volvé a **Calendario** y buscá ese turno.
 
 **Resultado esperado**
 
@@ -680,13 +680,13 @@ En este bloque se cargan a mano las **sedes, los servicios, las tareas y las per
 
 Este escenario no prueba nada nuevo: **deja listo lo que usan los escenarios de la jornada** (bloque D). Hacelo justo antes de empezar el bloque D, porque depende de la hora.
 
-|                  |                                                                                                    |
-| ---------------- | -------------------------------------------------------------------------------------------------- |
-| **Rol**          | Administrador (Administrador 1)                                                                    |
-| **Dónde**        | Computadora                                                                                        |
-| **Tipo**         | Imprescindible                                                                                     |
-| **Cubre**        | RB-A04 (creación de turnos y asignación de personal)                                               |
-| **Precondición** | UAT-ADM-07 y UAT-ADM-08 hechos (Empleado A y supervisora). El cliente y la sede de prueba existen. |
+|                  |                                                                                                     |
+| ---------------- | --------------------------------------------------------------------------------------------------- |
+| **Rol**          | Administrador (Administrador 1)                                                                     |
+| **Dónde**        | Computadora                                                                                         |
+| **Tipo**         | Imprescindible                                                                                      |
+| **Cubre**        | RB-A04 (creación de turnos y asignación de personal)                                                |
+| **Precondición** | UAT-ADM-07 y UAT-ADM-08 hechos (Empleado A y coordinadora). El cliente y la sede de prueba existen. |
 
 **Pasos**
 
@@ -700,7 +700,7 @@ Este escenario no prueba nada nuevo: **deja listo lo que usan los escenarios de 
 
    Los horarios del Turno 1 y del Turno 2 **no se pueden pisar** entre sí. Las franjas no pueden cruzar la medianoche.
 
-2. En **Planificación**, tocá **Nuevo turno**. Elegí el **cliente de prueba**, la **sede de prueba**, la **fecha de hoy**, **Desde**, **Hasta** y la **Dotación** (1). Tocá **Crear turno**. Hacelo para cada turno.
+2. En **Calendario**, tocá **Nuevo turno**. Elegí el **cliente de prueba**, la **sede de prueba**, la **fecha de hoy**, **Desde**, **Hasta** y la **Dotación** (1). Tocá **Crear turno**. Hacelo para cada turno.
 3. Abrí cada turno y tocá **Asignar empleado** con la persona de la tabla.
 4. Abrí el **Turno 2** y mirá la sección **Tareas**: tiene que tener la lista de la sede. Si dice que no tiene tareas, tocá **Recargar tareas**.
 
@@ -722,22 +722,22 @@ Este escenario no prueba nada nuevo: **deja listo lo que usan los escenarios de 
 | **Dónde**        | Computadora                                                               |
 | **Tipo**         | Imprescindible                                                            |
 | **Cubre**        | RB-S02 (las supervisiones las asigna la administración)                   |
-| **Precondición** | UAT-ADM-15 hecho. La supervisora existe (UAT-ADM-08).                     |
+| **Precondición** | UAT-ADM-15 hecho. La coordinadora existe (UAT-ADM-08).                    |
 
 **Pasos**
 
 1. Entrá a **Supervisiones** y tocá **Asignar supervisión**.
 2. Elegí la **Fecha** de hoy.
 3. En **Turno**, elegí el **Turno 2** (el de 12:00 a 15:00 del ejemplo).
-4. En **Supervisor**, elegí a la supervisora y confirmá.
+4. En **Coordinador**, elegí a la coordinadora y confirmá.
 5. Volvé a la lista de **Supervisiones**.
 6. Abrí el **Turno 2** y mirá la sección **Supervisiones**.
 
 **Resultado esperado**
 
-- La supervisión aparece en la lista, con estado **Asignada** y la supervisora elegida.
-- El detalle del turno muestra a la supervisora.
-- Más adelante (UAT-SUP-01) aparece en la pantalla **Hoy** de la supervisora, y **de nadie más**.
+- La supervisión aparece en la lista, con estado **Asignada** y la coordinadora elegida.
+- El detalle del turno muestra a la coordinadora.
+- Más adelante (UAT-SUP-01) aparece en la pantalla **Hoy** de la coordinadora, y **de nadie más**.
 
 | Resultado           | Observación | Clasificación                             |
 | ------------------- | ----------- | ----------------------------------------- |
@@ -1028,13 +1028,13 @@ Se hace **a la vez** que UAT-EMP-05.
 
 #### UAT-EMP-10 · Cargar una observación del servicio
 
-|                  |                                                                            |
-| ---------------- | -------------------------------------------------------------------------- |
-| **Rol**          | Empleado (Empleado A)                                                      |
-| **Dónde**        | Celular                                                                    |
-| **Tipo**         | Imprescindible                                                             |
-| **Cubre**        | RB-E06 (la observación se ve en el detalle del turno y para el supervisor) |
-| **Precondición** | El Turno 2 está en curso.                                                  |
+|                  |                                                                             |
+| ---------------- | --------------------------------------------------------------------------- |
+| **Rol**          | Empleado (Empleado A)                                                       |
+| **Dónde**        | Celular                                                                     |
+| **Tipo**         | Imprescindible                                                              |
+| **Cubre**        | RB-E06 (la observación se ve en el detalle del turno y para el coordinador) |
+| **Precondición** | El Turno 2 está en curso.                                                   |
 
 **Pasos**
 
@@ -1046,7 +1046,7 @@ Se hace **a la vez** que UAT-EMP-05.
 **Resultado esperado**
 
 - La observación queda guardada y se ve al volver a entrar.
-- Administración la ve en el detalle del Turno 2 (UAT-ADM-18) y la supervisora la ve en el detalle de su supervisión.
+- Administración la ve en el detalle del Turno 2 (UAT-ADM-18) y la coordinadora la ve en el detalle de su supervisión.
 
 | Resultado           | Observación | Clasificación                             |
 | ------------------- | ----------- | ----------------------------------------- |
@@ -1064,7 +1064,7 @@ Se hace **a la vez** que UAT-EMP-05.
 
 **Pasos**
 
-1. Abrí el **Turno 2** desde **Planificación** (vista **Día**) o desde **Resumen**.
+1. Abrí el **Turno 2** desde **Calendario** (vista **Día**) o desde **Resumen**.
 2. Mirá la sección **Dotación**: el estado del Empleado A, el **Inicio real**, el **Fin real** y cómo se registró.
 3. Mirá la sección **Tareas**.
 4. Buscá la **observación** del empleado.
@@ -1152,7 +1152,7 @@ Se hace **a la vez** que UAT-EMP-05.
 
 1. En el celular, ingresá con el email del Administrador 1.
 2. Mirá **Hoy** (el tablero): los números del día y **Servicios de hoy**.
-3. Tocá **Planificar**, elegí un turno con lugar libre y tocá **Asignar empleado**. Asigná a una persona.
+3. Tocá **Calendario**, elegí un turno con lugar libre y tocá **Asignar empleado**. Asigná a una persona.
 4. Tocá **Asistencia** y, en una fila sin registro, tocá **Registrar en nombre** (con motivo) y confirmá.
 5. Tocá **Supervisiones**, **Asignar supervisión**, y asigná una supervisión a un turno.
 
@@ -1167,26 +1167,26 @@ Se hace **a la vez** que UAT-EMP-05.
 
 ### Bloque E · La supervisión
 
-#### UAT-SUP-01 · La supervisora ingresa y ve solo sus supervisiones
+#### UAT-SUP-01 · La coordinadora ingresa y ve solo sus supervisiones
 
-|                  |                                                                                                            |
-| ---------------- | ---------------------------------------------------------------------------------------------------------- |
-| **Rol**          | Supervisor (la supervisora)                                                                                |
-| **Dónde**        | Celular                                                                                                    |
-| **Tipo**         | Imprescindible                                                                                             |
-| **Cubre**        | RB-S01 (ingreso con su propio usuario) y RB-S02 (aparece en Hoy de la supervisora correcta y de nadie más) |
-| **Precondición** | UAT-ADM-08 y UAT-ADM-16 hechos.                                                                            |
+|                  |                                                                                                             |
+| ---------------- | ----------------------------------------------------------------------------------------------------------- |
+| **Rol**          | Coordinador (la coordinadora)                                                                               |
+| **Dónde**        | Celular                                                                                                     |
+| **Tipo**         | Imprescindible                                                                                              |
+| **Cubre**        | RB-S01 (ingreso con su propio usuario) y RB-S02 (aparece en Hoy de la coordinadora correcta y de nadie más) |
+| **Precondición** | UAT-ADM-08 y UAT-ADM-16 hechos.                                                                             |
 
 **Pasos**
 
-1. En el celular de la supervisora, abrí la dirección de la plataforma e ingresá con su email y contraseña.
+1. En el celular de la coordinadora, abrí la dirección de la plataforma e ingresá con su email y contraseña.
 2. Mirá la pantalla **Hoy**.
 3. Tocá **Supervisiones**, abajo, y mirá la lista.
-4. Si hay una segunda supervisora (o el Empleado A, que no es supervisor), pedile que mire que **esa supervisión no aparece** en su pantalla.
+4. Si hay una segunda coordinadora (o el Empleado A, que no es coordinador), pedile que mire que **esa supervisión no aparece** en su pantalla.
 
 **Resultado esperado**
 
-- Se abre **Hoy** con el saludo de la supervisora y la supervisión del **Turno 2** con estado **Asignada**: cliente, sede, horario y los empleados a supervisar.
+- Se abre **Hoy** con el saludo de la coordinadora y la supervisión del **Turno 2** con estado **Asignada**: cliente, sede, horario y los empleados a supervisar.
 - La pestaña **Supervisiones** también la muestra.
 - **Nadie más** la ve.
 - Abajo hay cuatro botones: **Hoy**, **Supervisiones**, **Historial** y **Más**.
@@ -1199,7 +1199,7 @@ Se hace **a la vez** que UAT-EMP-05.
 
 |                  |                                                                                   |
 | ---------------- | --------------------------------------------------------------------------------- |
-| **Rol**          | Supervisor                                                                        |
+| **Rol**          | Coordinador                                                                       |
 | **Dónde**        | Celular                                                                           |
 | **Tipo**         | Imprescindible                                                                    |
 | **Cubre**        | RB-S03 (sede, horario y personal a supervisar con su asistencia)                  |
@@ -1215,7 +1215,7 @@ Se hace **a la vez** que UAT-EMP-05.
 - Se ven la sede, el horario, las instrucciones, las restricciones y el contacto.
 - **Empleados a supervisar** muestra a los empleados del turno con su estado (**Presente**, con la hora de inicio, o **Finalizado**).
 - Las **tareas del turno** se ven con su estado, solo para mirar.
-- La supervisora ve **solo** las supervisiones que le asignaron a ella.
+- La coordinadora ve **solo** las supervisiones que le asignaron a ella.
 
 | Resultado           | Observación | Clasificación                             |
 | ------------------- | ----------- | ----------------------------------------- |
@@ -1225,7 +1225,7 @@ Se hace **a la vez** que UAT-EMP-05.
 
 |                  |                                                         |
 | ---------------- | ------------------------------------------------------- |
-| **Rol**          | Supervisor                                              |
+| **Rol**          | Coordinador                                             |
 | **Dónde**        | Celular                                                 |
 | **Tipo**         | Imprescindible                                          |
 | **Cubre**        | RB-S01 (registra inicio y fin en cada sede supervisada) |
@@ -1252,7 +1252,7 @@ Se hace **a la vez** que UAT-EMP-05.
 
 |                  |                                                                                                                              |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| **Rol**          | Supervisor                                                                                                                   |
+| **Rol**          | Coordinador                                                                                                                  |
 | **Dónde**        | Celular                                                                                                                      |
 | **Tipo**         | Imprescindible                                                                                                               |
 | **Cubre**        | RB-S04 (cada empleado recibe un puntaje de 1 a 5 y un comentario opcional) y RB-X04 (los criterios se muestran al calificar) |
@@ -1282,7 +1282,7 @@ Se hace **a la vez** que UAT-EMP-05.
 
 |                  |                                                                              |
 | ---------------- | ---------------------------------------------------------------------------- |
-| **Rol**          | Supervisor                                                                   |
+| **Rol**          | Coordinador                                                                  |
 | **Dónde**        | Celular                                                                      |
 | **Tipo**         | Imprescindible                                                               |
 | **Cubre**        | RB-S01 (registra inicio y fin) y RB-S04 (la supervisión se completa)         |
@@ -1308,13 +1308,13 @@ Se hace **a la vez** que UAT-EMP-05.
 
 #### UAT-SUP-06 · Marcar una supervisión como "No se pudo realizar"
 
-|                  |                                                                                                  |
-| ---------------- | ------------------------------------------------------------------------------------------------ |
-| **Rol**          | Supervisor                                                                                       |
-| **Dónde**        | Celular                                                                                          |
-| **Tipo**         | Opcional                                                                                         |
-| **Cubre**        | RB-S04 (cierre de la supervisión)                                                                |
-| **Precondición** | Otra supervisión asignada a la supervisora (asignala desde **Supervisiones**, sobre el Turno 3). |
+|                  |                                                                                                   |
+| ---------------- | ------------------------------------------------------------------------------------------------- |
+| **Rol**          | Coordinador                                                                                       |
+| **Dónde**        | Celular                                                                                           |
+| **Tipo**         | Opcional                                                                                          |
+| **Cubre**        | RB-S04 (cierre de la supervisión)                                                                 |
+| **Precondición** | Otra supervisión asignada a la coordinadora (asignala desde **Supervisiones**, sobre el Turno 3). |
 
 **Pasos**
 
@@ -1325,7 +1325,7 @@ Se hace **a la vez** que UAT-EMP-05.
 **Resultado esperado**
 
 - Sin escribir el motivo no deja continuar.
-- La supervisión queda **No realizada**, con el motivo, y se ve en el **Historial** de la supervisora y en la administración.
+- La supervisión queda **No realizada**, con el motivo, y se ve en el **Historial** de la coordinadora y en la administración.
 
 | Resultado           | Observación | Clasificación                             |
 | ------------------- | ----------- | ----------------------------------------- |
@@ -1335,7 +1335,7 @@ Se hace **a la vez** que UAT-EMP-05.
 
 |                  |                                                                                     |
 | ---------------- | ----------------------------------------------------------------------------------- |
-| **Rol**          | Supervisor                                                                          |
+| **Rol**          | Coordinador                                                                         |
 | **Dónde**        | Celular                                                                             |
 | **Tipo**         | Imprescindible                                                                      |
 | **Cubre**        | RB-S05 (el historial muestra solo las supervisiones propias con sus calificaciones) |
@@ -1349,7 +1349,7 @@ Se hace **a la vez** que UAT-EMP-05.
 
 **Resultado esperado**
 
-- El historial muestra las supervisiones **completadas** (y **no realizadas**) de esta supervisora, con las estrellas.
+- El historial muestra las supervisiones **completadas** (y **no realizadas**) de esta coordinadora, con las estrellas.
 - El detalle se ve **solo para leer**, con cada calificación y su comentario.
 - No hay supervisiones de otras personas.
 
@@ -1370,15 +1370,15 @@ Se hace **a la vez** que UAT-EMP-05.
 **Pasos**
 
 1. Entrá a **Supervisiones**. Mirá la lista.
-2. Filtrá por **supervisor**, por **cliente**, por **estado** y por **fecha**. Sacá los filtros.
+2. Filtrá por **coordinador**, por **cliente**, por **estado** y por **fecha**. Sacá los filtros.
 3. Entrá a la pestaña **Calificaciones**. Mirá una fila por empleado calificado.
 4. Abrí la supervisión del Turno 2. Mirá los **criterios usados** y las calificaciones por empleado.
 5. En un empleado, tocá **Editar** y cambiá el puntaje. Guardá.
 
 **Resultado esperado**
 
-- Los filtros por empleado, supervisor, cliente, sede, fecha y estado funcionan.
-- La pestaña **Calificaciones** muestra puntaje y comentario de cada empleado, con fecha, sede y supervisor.
+- Los filtros por empleado, coordinador, cliente, sede, fecha y estado funcionan.
+- La pestaña **Calificaciones** muestra puntaje y comentario de cada empleado, con fecha, sede y coordinador.
 - El administrador con el permiso puede **editar** una calificación, y el detalle muestra **quién la editó y cuándo**.
 
 | Resultado           | Observación | Clasificación                             |
@@ -1394,7 +1394,7 @@ Se hace **a la vez** que UAT-EMP-05.
 | **Rol**          | Administrador (con el permiso **Gestionar usuarios**)                 |
 | **Dónde**        | Computadora, y el celular de la persona                               |
 | **Tipo**         | Imprescindible                                                        |
-| **Cubre**        | RB-A02 (gestión de empleados y supervisores)                          |
+| **Cubre**        | RB-A02 (gestión de empleados y coordinadores)                         |
 | **Precondición** | Una persona de prueba que pueda ingresar (por ejemplo el Empleado B). |
 
 **Pasos**
@@ -1480,7 +1480,7 @@ Se hace **a la vez** que UAT-EMP-05.
 
 **Pasos**
 
-1. **Empleado y supervisora:** en el celular, tocá **Más** y **Cerrar sesión**.
+1. **Empleado y coordinadora:** en el celular, tocá **Más** y **Cerrar sesión**.
 2. **Administración y dueño:** en la computadora, tocá tu foto (arriba a la derecha) y **Cerrar sesión**.
 3. Probá volver atrás o abrir de nuevo la dirección.
 
@@ -1524,7 +1524,7 @@ Se hace **a la vez** que UAT-EMP-05.
 
 |                  |                                                                 |
 | ---------------- | --------------------------------------------------------------- |
-| **Rol**          | Empleado y supervisora                                          |
+| **Rol**          | Empleado y coordinadora                                         |
 | **Dónde**        | Un Android con Chrome y un iPhone con Safari                    |
 | **Tipo**         | Opcional                                                        |
 | **Cubre**        | RB-E01 y RB-S01 (ingresan desde su celular) en los dos sistemas |
@@ -1574,7 +1574,7 @@ Se hace **a la vez** que UAT-EMP-05.
 
 |                  |                                                                                    |
 | ---------------- | ---------------------------------------------------------------------------------- |
-| **Rol**          | Supervisor y administración                                                        |
+| **Rol**          | Coordinador y administración                                                       |
 | **Dónde**        | Celular y computadora                                                              |
 | **Tipo**         | Opcional (parte se prueba al día siguiente)                                        |
 | **Cubre**        | RB-S04 (fuera del plazo no se edita)                                               |
@@ -1582,13 +1582,13 @@ Se hace **a la vez** que UAT-EMP-05.
 
 **Pasos**
 
-1. **Dentro del plazo:** mientras el turno no terminó, la supervisora abre la supervisión y cambia una calificación. (Ya se probó en UAT-SUP-04.)
-2. **Fuera del plazo:** al día siguiente, la supervisora entra a **Historial**, abre la supervisión y trata de cambiar una calificación.
+1. **Dentro del plazo:** mientras el turno no terminó, la coordinadora abre la supervisión y cambia una calificación. (Ya se probó en UAT-SUP-04.)
+2. **Fuera del plazo:** al día siguiente, la coordinadora entra a **Historial**, abre la supervisión y trata de cambiar una calificación.
 3. La administración (con el permiso **Editar calificaciones**) intenta cambiar esa misma calificación.
 
 **Resultado esperado**
 
-- La supervisora **no puede** cambiarla: aparece "El plazo para editar esta calificación terminó."
+- La coordinadora **no puede** cambiarla: aparece "El plazo para editar esta calificación terminó."
 - La administración **sí puede** y queda anotado quién la editó y cuándo.
 
 | Resultado           | Observación | Clasificación                             |
@@ -1638,13 +1638,13 @@ Se completa **al final de la sesión**, con la referente. Es el documento que qu
 
 ### 5.2. Participantes
 
-| Nombre | Rol en la sesión (referente, dueño, administración, empleado, supervisora, organizador) | Firma |
-| ------ | --------------------------------------------------------------------------------------- | ----- |
-|        |                                                                                         |       |
-|        |                                                                                         |       |
-|        |                                                                                         |       |
-|        |                                                                                         |       |
-|        |                                                                                         |       |
+| Nombre | Rol en la sesión (referente, dueño, administración, empleado, coordinadora, organizador) | Firma |
+| ------ | ---------------------------------------------------------------------------------------- | ----- |
+|        |                                                                                          |       |
+|        |                                                                                          |       |
+|        |                                                                                          |       |
+|        |                                                                                          |       |
+|        |                                                                                          |       |
 
 ### 5.3. Resumen de resultados
 

@@ -262,14 +262,14 @@ test.describe('configuración del dueño (ADM-28 a ADM-31)', () => {
   )
 
   test(
-    'ADM-30: la lista de criterios ofrece la vista previa "Ver como supervisor"',
+    'ADM-30: la lista de criterios ofrece la vista previa "Ver como coordinador"',
     cubre('RB-A01', 'RB-X04', 'P-087'),
     async ({ page }) => {
       await page.goto('/admin/configuracion/criterios')
       await expect(
         page.getByRole('button', { name: 'Nuevo criterio' }),
       ).toBeVisible()
-      await page.getByRole('button', { name: 'Ver como supervisor' }).click()
+      await page.getByRole('button', { name: 'Ver como coordinador' }).click()
       await expect(page.getByRole('dialog')).toBeVisible()
     },
   )

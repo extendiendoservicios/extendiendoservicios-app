@@ -88,14 +88,17 @@ test(
           name: 'Registrar en nombre',
         })
         await expect(registrar).toHaveCount(1)
-        await registrar.click()
-        await expect(
-          page.getByRole('dialog', {
-            name: new RegExp(
-              `Registrar en nombre de ${reNombreDe('empleado4').source}`,
-            ),
-          }),
-        ).toBeVisible()
+        // La tarjeta se vuelve a montar cuando llega la consulta de teléfonos y el primer toque
+        // puede caer en el aire (P19.11g): se repite el toque hasta que abre la hoja.
+        const hojaRegistrar = page.getByRole('dialog', {
+          name: new RegExp(
+            `Registrar en nombre de ${reNombreDe('empleado4').source}`,
+          ),
+        })
+        await expect(async () => {
+          await registrar.click()
+          await expect(hojaRegistrar).toBeVisible({ timeout: 3_000 })
+        }).toPass({ timeout: 30_000 })
         await page.getByLabel('Hora').fill(`${sc.today}T00:02`)
         await page
           .getByLabel('Motivo')
@@ -119,12 +122,12 @@ test(
             name: new RegExp(`${cliente.name}.*${sede.name}.*14:00–18:00`),
           })
           .click()
-        await page.getByRole('combobox', { name: 'Supervisor' }).click()
+        await page.getByRole('combobox', { name: 'Coordinador' }).click()
         await page
           .getByRole('option', { name: nombreDe('supervisor1') })
           .click()
         await page.getByRole('button', { name: 'Asignar supervisión' }).click()
-        await expect(page.getByText('Asignamos al supervisor.')).toBeVisible()
+        await expect(page.getByText('Asignamos al coordinador.')).toBeVisible()
         const { data } = await sc.db
           .from('supervisions')
           .select('status')

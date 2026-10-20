@@ -226,7 +226,15 @@ export default function EmployeeDetailPage() {
         </TabsContent>
 
         <TabsContent value="licencias" className="pt-3">
-          <EmployeeLeavesTab profileId={employee.profileId} canEdit={canEdit} />
+          <EmployeeLeavesTab
+            profileId={employee.profileId}
+            canEdit={canEdit}
+            person={{
+              name: `${employee.firstName} ${employee.lastName}`,
+              dni: employee.dni,
+              employeeNumber: employee.employeeNumber,
+            }}
+          />
         </TabsContent>
 
         <TabsContent value="proximos-turnos" className="pt-3">

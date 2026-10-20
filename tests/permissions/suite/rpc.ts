@@ -261,6 +261,41 @@ export const CASOS_RPC: CasoRpc[] = [
     admins('SHIFT_NOT_FOUND'),
     { cubre: ['RB-A04'] },
   ),
+  // P19.11 (0059): la fecha del turno se puede mover (update_shift_time con p_date) y se consultan
+  // las advertencias antes (solo lectura). Con un turno inexistente, los perfiles de administración
+  // pasan la puerta y reciben SHIFT_NOT_FOUND.
+  caso(
+    'update_shift_time',
+    () => ({
+      p_shift_id: U,
+      p_start: '08:00',
+      p_end: '12:00',
+      p_date: '2099-01-01',
+    }),
+    admins('SHIFT_NOT_FOUND'),
+    { variante: 'con cambio de fecha', cubre: ['RB-A04', 'RB-X02'] },
+  ),
+  caso(
+    'get_shift_date_warnings',
+    () => ({ p_shift_id: U, p_date: '2099-01-01' }),
+    admins('SHIFT_NOT_FOUND'),
+    { cubre: ['RB-A04', 'RB-X02'] },
+  ),
+  // Turnos que una licencia nueva pisa (0059): dueño y administradores; con un empleado
+  // inexistente no hay turnos y la RPC responde sin error.
+  caso(
+    'get_leave_conflicts',
+    () => ({ p_employee_id: U, p_starts_on: '2099-01-01' }),
+    admins('OK'),
+    { cubre: ['RB-A03', 'RB-X02'] },
+  ),
+  // «Marcar certificado» / «Cambiar» (0060): dueño y administrador con manage_attendance.
+  caso(
+    'set_absence_certificate',
+    () => ({ p_assignment_id: U, p_has_certificate: true }),
+    conCapacidad('ASSIGNMENT_NOT_FOUND'),
+    { cubre: ['RB-A08', 'RB-X02', 'CB-17'] },
+  ),
   caso(
     'cancel_shift',
     () => ({ p_shift_id: U, p_reason: 'e2e-perm' }),

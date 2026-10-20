@@ -2286,6 +2286,89 @@ Con `--linked`, la CLI entra con el rol temporal `cli_login_postgres`, que es mi
 el tablero y la planificación sepan si el turno exige fotos sin consultar `shifts`. Se recrea con la definición de 0040,
 `security_invoker = true` y sin cambios de grants. pgTAP: `0048_p21_6b_board_requires_photos.test.sql`.
 
+## Ausente con certificado, licencias que bloquean y fecha del turno (migración `0059`, P19.11a)
+
+Decisiones de Mike de la reunión del 19 oct 2026.
+
+- **Ausente con certificado.** `attendance_notices.has_certificate boolean` (null salvo ausencias cargadas por
+  administración; check `kind = 'absence' or has_certificate is null`). `attendance_notices_reason_code_check` pasa a
+  exigir `reason_code` en una ausencia solo si `source = 'employee_app'`; la regla de `reason_text` con `other` no cambia.
+  `notify_absence(p_assignment_id, p_reason_code default null, p_reason_text default null, p_has_certificate default null)`
+  (se reemplaza la firma de tres parámetros): el empleado sigue obligado a dar motivo (`REASON_REQUIRED`) y su
+  `p_has_certificate` se ignora; administración (`manage_attendance`) puede omitir el motivo pero tiene que indicar el
+  certificado (`CERTIFICATE_REQUIRED`). `v_assignments_board`, `v_my_day` y `v_my_history` suman al final
+  `last_notice_has_certificate`.
+- **Licencias bloquean.** `app.assign_employee_core` da siempre `ON_LEAVE` (error, mensaje «El empleado está de licencia
+  ese día.») cuando hay una licencia vigente (`deleted_at is null`, `ends_on` nulo = abierta) que cubre la fecha del turno.
+  Aplica a `assign_employee`, `create_shift` (el empleado queda en `rejected` con `code = 'ON_LEAVE'`),
+  `create_shift_series` y `generate_shifts` (queda en `unassigned`). `OUTSIDE_AVAILABILITY` y `NOT_ENABLED_FOR_CLIENT`
+  siguen siendo advertencias. `get_leave_conflicts(p_employee_id, p_starts_on, p_ends_on default null)` (O, A) devuelve los
+  turnos ya asignados en el período, no cancelados ni finalizados, desde hoy; no desasigna nada. Las licencias se guardan
+  con escritura directa a `employee_leaves`, por eso la pantalla llama a esta RPC después de guardar.
+- **Fecha del turno.** `update_shift_time(p_shift_id, p_start, p_end, p_open_ended default false, p_date default null)`
+  (se reemplaza la firma de cuatro parámetros; sigue devolviendo la fila de `shifts`). Con `p_date` distinta de la
+  fecha actual: `SHIFT_STARTED` si el estado no es `scheduled`/`assigned` o algún fichaje cuelga de sus asignaciones;
+  `ON_LEAVE` si un asignado vigente está de licencia en la fecha nueva; `ASSIGNMENT_OVERLAP`; `SHIFT_DATE_TAKEN` si el
+  servicio ya tiene otro turno vigente ese día. La fecha de las asignaciones y sus ventanas las recalcula el trigger de
+  `0007`; `starts_at`/`ends_at` son columnas generadas; supervisiones, tareas y evidencia cuelgan de `shift_id` y las vistas
+  del día leen `shifts.shift_date`, así que no hace falta tocar nada más.
+  `get_shift_date_warnings(p_shift_id, p_date, p_start?, p_end?)` (O, A, solo lectura) devuelve
+  `{"warnings": ["HOLIDAY", "OUTSIDE_AVAILABILITY"], "outside_availability": [{employee_id, employee_name}]}`.
+
+pgTAP: `0059_p19_11_ausente_licencias_fecha.test.sql` (más ajustes en `0023`, `0024`, `0027`, `0028`, `0037` y `0041`).
+
+## Fecha sin pasado, avisos que se limpian, certificado posterior y «coordinador» (migración `0060`, P19.11c)
+
+Decisiones de Mike del 20 oct 2026, sobre la `0059`.
+
+- **No mover un turno al pasado.** `update_shift_time(..., p_date)` da `SHIFT_DATE_IN_PAST` («No se puede mover el turno
+  a una fecha que ya pasó.») si la fecha nueva es anterior a `app.today()` (hoy en Argentina). Mover a hoy se permite y
+  la hora no se valida: si ya pasó, las asignaciones quedan con la ventana vencida y el tablero las muestra como
+  «Llegada tarde» o «Sin registro», igual que con un turno de hoy al que se le edita la hora. Un turno que ya pasó sigue
+  admitiendo cambiar la hora con su misma fecha (no es mover la fecha).
+- **Al mover de día se limpian los avisos.** Forma elegida: una anulación a nivel del aviso. `attendance_notices` suma
+  `voided_at`, `voided_by` y `void_reason` (hoy solo `SHIFT_DATE_CHANGED`); los avisos no se borran, quedan como
+  historial. `update_shift_time` anula todos los avisos de las asignaciones del turno cuando cambia la fecha y devuelve
+  a `expected` las asignaciones vigentes en `delay_notified` o `absence_notified` (el «en camino» no es un estado: es un
+  aviso, así que se limpia solo al anularlo). `v_assignments_board`, `v_my_day` y `v_my_history` toman como último aviso
+  el último con `voided_at is null`: no cambian sus columnas. Un aviso nuevo, posterior al cambio, se muestra con
+  normalidad. Se eligió esto frente a una marca en la asignación porque el filtro es explícito, no depende de
+  comparar instantes y deja registrado quién y por qué.
+- **Certificado después.** `set_absence_certificate(p_assignment_id, p_has_certificate) returns attendance_notices`
+  (O, A + `manage_attendance`; `authenticated`, sin `anon`). Actualiza `has_certificate` del último aviso de ausencia
+  vigente de la asignación (sea de la app del empleado o de administración), sin ventana horaria. Errores: `FORBIDDEN`,
+  `ASSIGNMENT_NOT_FOUND` (no existe o está quitada), `CERTIFICATE_REQUIRED` (parámetro null) y `NO_ABSENCE` (sin ausencia
+  avisada vigente, o la asignación ya no está en `absence_notified`). `attendance_notices` suma `updated_at` (trigger
+  `app.set_updated_at`; null si nunca se modificó) y `updated_by`. El check `kind = 'absence' or has_certificate is null`
+  sigue valiendo.
+- **«Coordinador» en los mensajes.** Se redefinen con solo el texto cambiado `assign_supervision` («Ese coordinador no
+  tiene el rol vigente…», «Ese coordinador ya tiene una supervisión…»), `admin_create_user_records` («…empleado o
+  coordinador…») y `app.set_announcement_recipients` («…ni coordinadores.»). Los hints (`SUPERVISOR_ROLE_REQUIRED`, etc.)
+  y el valor del rol `supervisor` no cambian. La Edge Function `admin-users` dice «coordinador» en
+  `EMPLOYEE_DATA_REQUIRED`.
+
+La migración tiene guardas (`if not exists`, `drop trigger if exists`) porque el primer intento de aplicarla en `App_dev`
+falló a mitad de camino (las sentencias se aplican una por una) y quedó parte hecha.
+
+pgTAP: `0060_p19_11c_fecha_avisos_certificado.test.sql` (más ajustes en `0009`, `0029`, `0035` y `0042`).
+
+## Coordinador de licencia (migración `0061`, P19.11e)
+
+Decisión de Mike del 20 oct 2026: un coordinador de licencia no puede recibir supervisiones.
+
+- **`assign_supervision(p_shift_id, p_supervisor_id)`** da `ON_LEAVE` («El coordinador está de licencia ese día.») si
+  el coordinador tiene una licencia (`employee_leaves`, sin baja lógica) que cubre la fecha del turno; `ends_on` nulo es
+  una licencia abierta. Se evalúa después del control de rol y de la ficha de `employees` (que ya era obligatoria: sin
+  ficha da `SUPERVISOR_ROLE_REQUIRED`, así que no hay licencia que mirar). Es el único camino que crea o cambia el
+  coordinador de una supervisión: no hay reasignar y `generate_shifts` no genera supervisiones.
+- **`update_shift_time(..., p_date)`**: al mover la fecha, si el coordinador de la supervisión vigente (`assigned` o
+  `in_progress`) está de licencia en la nueva fecha, da `ON_LEAVE` nombrándolo («El coordinador está de licencia en la
+  nueva fecha: Nombre Apellido.»). Una supervisión cancelada no cuenta. El resto de la función no cambia.
+- Sin cambios de firmas, grants ni columnas. No existe una RPC ni una vista de candidatos a coordinador: el selector
+  lee `v_employees` (`roles` con `supervisor`), cuyo `effective_status` solo refleja la licencia de hoy.
+
+pgTAP: `0061_p19_11e_coordinador_licencia.test.sql`.
+
 ## Tipos para el frontend
 
 `src/lib/database.types.ts` se genera con `pnpm db:types` (`supabase gen types --linked`) contra

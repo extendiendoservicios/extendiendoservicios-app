@@ -38,6 +38,14 @@ interface EmployeeMultiPickerProps {
   /** Tope de personas (dotación pedida). */
   max: number
   loading?: boolean
+  /**
+   * P19.11d: empleados que no se pueden elegir (licencia el día del turno): la
+   * fila queda deshabilitada y dice «De licencia». Sacar a uno ya elegido
+   * siempre se puede.
+   */
+  blockedIds?: ReadonlySet<string>
+  /** P19.11d: con licencia en parte de la repetición: se pueden elegir, con un aviso en la fila. */
+  partialLeaveIds?: ReadonlySet<string>
   'aria-label'?: string
   placeholder?: string
   className?: string
@@ -49,6 +57,8 @@ function EmployeeMultiPicker({
   onValueChange,
   max,
   loading = false,
+  blockedIds,
+  partialLeaveIds,
   'aria-label': ariaLabel = 'Empleados',
   placeholder = 'Elegí empleados',
   className,
@@ -106,11 +116,15 @@ function EmployeeMultiPicker({
               <CommandGroup>
                 {options.map((option) => {
                   const isSelected = value.includes(option.profileId)
+                  const isBlocked = blockedIds?.has(option.profileId) ?? false
+                  const hasPartialLeave =
+                    !isBlocked &&
+                    (partialLeaveIds?.has(option.profileId) ?? false)
                   return (
                     <CommandItem
                       key={option.profileId}
                       value={`${option.name} ${option.employeeNumber}`}
-                      disabled={!isSelected && atLimit}
+                      disabled={isBlocked || (!isSelected && atLimit)}
                       onSelect={() => toggle(option.profileId)}
                     >
                       <Check
@@ -123,6 +137,16 @@ function EmployeeMultiPicker({
                       <span className="min-w-0 flex-1 truncate">
                         {option.name}
                       </span>
+                      {isBlocked && (
+                        <span className="text-[11px] font-semibold text-danger">
+                          De licencia
+                        </span>
+                      )}
+                      {hasPartialLeave && (
+                        <span className="text-[11px] text-warning-800">
+                          Licencia en parte del período
+                        </span>
+                      )}
                       <span className="text-[11px] text-text-3">
                         Legajo {option.employeeNumber}
                       </span>

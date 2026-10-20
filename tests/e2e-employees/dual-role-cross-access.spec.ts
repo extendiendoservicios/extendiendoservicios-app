@@ -68,7 +68,7 @@ test.describe('EMP-014: persona con ambos roles (empleado y supervisor)', () => 
         await expect(
           page.getByRole('heading', { name: 'Editar roles' }),
         ).toBeVisible()
-        await page.getByRole('checkbox', { name: 'Supervisor' }).click()
+        await page.getByRole('checkbox', { name: 'Coordinador' }).click()
         await page.getByRole('button', { name: 'Guardar roles' }).click()
         await expect(
           page.getByText(`Actualizamos los roles de E2E ${dualLastName}.`),

@@ -38,7 +38,7 @@ function renderProtectedRoute(auth: AuthContextValue, allow: Role[]) {
         <Route path="/ingresar" element={<p>Pantalla de ingreso</p>} />
         <Route path="/sin-acceso" element={<p>Sin acceso</p>} />
         <Route path="/app" element={<p>Inicio del empleado</p>} />
-        <Route path="/sup" element={<p>Inicio del supervisor</p>} />
+        <Route path="/sup" element={<p>Inicio del coordinador</p>} />
         <Route
           path="/admin"
           element={
@@ -87,7 +87,7 @@ describe('RequireRole', () => {
       ['owner', 'admin'],
     )
 
-    expect(screen.getByText('Inicio del supervisor')).toBeInTheDocument()
+    expect(screen.getByText('Inicio del coordinador')).toBeInTheDocument()
   })
 
   it('con sesión pero sin ningún rol redirige a /sin-acceso (desactivado o sin roles)', () => {

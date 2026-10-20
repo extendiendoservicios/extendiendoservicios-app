@@ -123,7 +123,7 @@ export function buildPresenceMarkers(
       position: { lat: row.latitude as number, lng: row.longitude as number },
       variant: presenceVariant(row),
       shape: isSupervisor ? 'supervisor' : 'dot',
-      label: `${isSupervisor ? 'Supervisor' : 'Empleado'} ${presencePersonName(row)}${row.inProgress ? '' : ' (finalizó)'}`,
+      label: `${isSupervisor ? 'Coordinador' : 'Empleado'} ${presencePersonName(row)}${row.inProgress ? '' : ' (finalizó)'}`,
       data: row,
     })
   }

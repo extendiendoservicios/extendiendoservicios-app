@@ -93,7 +93,7 @@ const TEXTO_MOTIVO: Record<MotivoOmision, string> = {
 /** En este orden se escriben los roles de una persona con más de uno. */
 const ROL_LEGIBLE: Record<string, string> = {
   employee: 'Empleado',
-  supervisor: 'Supervisor',
+  supervisor: 'Coordinador',
   admin: 'Administrador',
   owner: 'Dueño',
 }

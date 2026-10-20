@@ -20,6 +20,8 @@ import type { SupervisionWarning } from '@/api/supervisions'
 import { localDateToIsoDate } from '@/features/settings/dateOnly'
 import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
 import { formatShiftRange } from '@/features/shifts/openEnded'
+import { useLeavesInRangeQuery } from '@/features/employees/queries'
+import { employeesOnLeaveIn } from '@/features/shifts/leaveBlocking'
 import { useShiftsByDateQuery } from '@/features/shifts/queries'
 import {
   useAssignSupervisionMutation,
@@ -29,7 +31,7 @@ import {
 /** Mensaje de la única advertencia de `assign_supervision` (ratificada 27 sep 2026, P15.0): no bloquea. */
 const WARNING_MESSAGES: Record<SupervisionWarning, string> = {
   SUPERVISES_OWN_SHIFT:
-    'Este supervisor también está asignado como empleado en este turno.',
+    'Este coordinador también está asignado como empleado en este turno.',
 }
 
 /** Estados de turno que `assign_supervision` acepta (`0029`: "scheduled, assigned o in_progress"). */
@@ -64,7 +66,7 @@ function AssignSupervisionForm({
   const navigate = useNavigate()
   const [date, setDate] = useState(initialDate ?? todayInBuenosAires())
   const [shiftId, setShiftId] = useState(initialShiftId ?? '')
-  const [supervisorId, setSupervisorId] = useState('')
+  const [pickedSupervisorId, setSupervisorId] = useState('')
   // Id de la supervisión ya creada cuando volvió con advertencias: el panel
   // queda abierto para leerlas, pero no se puede volver a asignar.
   const [assignedId, setAssignedId] = useState<string | null>(null)
@@ -78,6 +80,20 @@ function AssignSupervisionForm({
   )
   const candidatesQuery = useSupervisorCandidatesQuery()
   const assignSupervision = useAssignSupervisionMutation()
+
+  // P19.11f: el coordinador de licencia el día del turno no se puede elegir
+  // (`assign_supervision` devuelve ON_LEAVE). Si ya estaba elegido y cambió la
+  // fecha, se lo saca de la selección y se avisa.
+  const leavesQuery = useLeavesInRangeQuery(date, date)
+  const onLeaveIds = employeesOnLeaveIn(leavesQuery.data ?? [], date, date)
+  const supervisorId = onLeaveIds.has(pickedSupervisorId)
+    ? ''
+    : pickedSupervisorId
+  const droppedSupervisor = onLeaveIds.has(pickedSupervisorId)
+    ? (candidatesQuery.data ?? []).find(
+        (candidate) => candidate.profileId === pickedSupervisorId,
+      )
+    : undefined
 
   function handleDateChange(next: Date | undefined) {
     if (!next) return
@@ -102,15 +118,23 @@ function AssignSupervisionForm({
         setAssignedId(result.supervision.id)
         toast.warning('Asignamos igual, con una advertencia: revisá el aviso.')
       } else {
-        toast.success('Asignamos al supervisor.')
+        toast.success('Asignamos al coordinador.')
         // Sin `onDone()`: su `navigate(-1)` pisaría este `replace`.
         void navigate(`/admin/supervisiones/${result.supervision.id}`, {
           replace: true,
         })
       }
     } catch (error) {
+      if (isApiError(error) && error.hint === 'ON_LEAVE') {
+        // La licencia se cargó con el formulario abierto: se refresca la lista
+        // para que ya figure «De licencia» y se saca de la selección.
+        void leavesQuery.refetch()
+        setSupervisorId('')
+      }
       toast.error(
-        isApiError(error) ? error.message : 'No pudimos asignar al supervisor.',
+        isApiError(error)
+          ? error.message
+          : 'No pudimos asignar al coordinador.',
       )
     }
   }
@@ -172,31 +196,40 @@ function AssignSupervisionForm({
 
       <Field>
         <FieldLabel htmlFor="assign-supervision-supervisor">
-          Supervisor
+          Coordinador
         </FieldLabel>
         {candidatesQuery.isLoading ? (
           <Skeleton className="h-9" />
         ) : (candidatesQuery.data ?? []).length === 0 ? (
           <FieldError>
-            No hay personas con el rol de supervisor activas. Cargalas desde
+            No hay personas con el rol de coordinador activas. Cargalas desde
             «Empleados».
           </FieldError>
         ) : (
           <Select value={supervisorId} onValueChange={setSupervisorId}>
             <SelectTrigger id="assign-supervision-supervisor">
-              <SelectValue placeholder="Elegí un supervisor" />
+              <SelectValue placeholder="Elegí un coordinador" />
             </SelectTrigger>
             <SelectContent>
               {(candidatesQuery.data ?? []).map((candidate) => (
                 <SelectItem
                   key={candidate.profileId}
                   value={candidate.profileId}
+                  disabled={onLeaveIds.has(candidate.profileId)}
                 >
                   {candidate.firstName} {candidate.lastName}
+                  {onLeaveIds.has(candidate.profileId) && ' · De licencia'}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+        )}
+        {droppedSupervisor && (
+          <Alert variant="warn">
+            <AlertDescription>
+              {`Sacamos a ${droppedSupervisor.firstName} ${droppedSupervisor.lastName} de la selección porque está de licencia el día elegido.`}
+            </AlertDescription>
+          </Alert>
         )}
       </Field>
 

@@ -97,7 +97,7 @@ function refineAtLeastOneRole<
   return schema.refine(
     (values) => values.isEmployeeRole || values.isSupervisorRole,
     {
-      message: 'Elegí al menos un rol: empleado o supervisor.',
+      message: 'Elegí al menos un rol: empleado o coordinador.',
       path: ['isEmployeeRole'],
     },
   )

@@ -21,7 +21,7 @@ export type Role = Database['public']['Enums']['app_role']
 export const ROLE_LABELS: Record<Role, string> = {
   owner: 'Dueño',
   admin: 'Administrador',
-  supervisor: 'Supervisor',
+  supervisor: 'Coordinador',
   employee: 'Empleado',
 }
 

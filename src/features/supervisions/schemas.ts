@@ -10,7 +10,7 @@ import { z } from 'zod'
 /** ADM-14: turno y supervisor obligatorios (la fecha solo filtra la lista de turnos, no se manda a la RPC). */
 export const assignSupervisionSchema = z.object({
   shiftId: z.string().trim().min(1, 'Elegí un turno.'),
-  supervisorId: z.string().trim().min(1, 'Elegí un supervisor.'),
+  supervisorId: z.string().trim().min(1, 'Elegí un coordinador.'),
 })
 
 export type AssignSupervisionFormValues = z.infer<

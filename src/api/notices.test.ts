@@ -11,7 +11,8 @@ vi.mock('@/lib/supabase', () => ({
   supabase: { rpc: rpcMock },
 }))
 
-const { notifyDelay, notifyAbsence, notifyOnTheWay } = await import('./notices')
+const { notifyDelay, notifyAbsence, notifyOnTheWay, setAbsenceCertificate } =
+  await import('./notices')
 
 beforeEach(() => {
   rpcMock.mockReset()
@@ -53,6 +54,7 @@ describe('notifyDelay', () => {
       p_reason_text: 'Corte de calle',
     })
     expect(result).toEqual({
+      hasCertificate: null,
       id: 'n1',
       assignmentId: 'a1',
       kind: 'delay',
@@ -137,6 +139,37 @@ describe('notifyAbsence', () => {
     })
   })
 
+  it('manda el certificado cuando lo carga administración, sin motivo', async () => {
+    rpcMock.mockResolvedValue({
+      data: { ...ABSENCE_ROW, has_certificate: true },
+      error: null,
+    })
+
+    const result = await notifyAbsence('a1', undefined, undefined, true)
+
+    expect(rpcMock).toHaveBeenCalledWith('notify_absence', {
+      p_assignment_id: 'a1',
+      p_reason_code: undefined,
+      p_reason_text: undefined,
+      p_has_certificate: true,
+    })
+    expect(result.hasCertificate).toBe(true)
+  })
+
+  it('propaga CERTIFICATE_REQUIRED', async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: {
+        message: 'Indicá si la ausencia tiene certificado.',
+        hint: 'CERTIFICATE_REQUIRED',
+      },
+    })
+
+    await expect(notifyAbsence('a1', undefined)).rejects.toMatchObject({
+      hint: 'CERTIFICATE_REQUIRED',
+    })
+  })
+
   it('propaga REASON_REQUIRED', async () => {
     rpcMock.mockResolvedValue({
       data: null,
@@ -205,6 +238,34 @@ describe('notifyOnTheWay', () => {
 
     await expect(notifyOnTheWay('a1')).rejects.toMatchObject({
       hint: 'ON_THE_WAY_TOO_EARLY',
+    })
+  })
+})
+
+describe('setAbsenceCertificate', () => {
+  it('llama a set_absence_certificate y mapea el certificado', async () => {
+    rpcMock.mockResolvedValue({
+      data: { ...ABSENCE_ROW, has_certificate: false },
+      error: null,
+    })
+
+    const result = await setAbsenceCertificate('a1', false)
+
+    expect(rpcMock).toHaveBeenCalledWith('set_absence_certificate', {
+      p_assignment_id: 'a1',
+      p_has_certificate: false,
+    })
+    expect(result.hasCertificate).toBe(false)
+  })
+
+  it('propaga NO_ABSENCE', async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: { message: 'No hay ausencia.', hint: 'NO_ABSENCE' },
+    })
+
+    await expect(setAbsenceCertificate('a1', true)).rejects.toMatchObject({
+      hint: 'NO_ABSENCE',
     })
   })
 })

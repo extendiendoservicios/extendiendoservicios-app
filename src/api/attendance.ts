@@ -295,6 +295,8 @@ export interface AttendanceBoardRow {
   lastNoticeAt: string | null
   /** AJ-02: hora de llegada que informó el empleado con «En camino» (instante), si la informó. */
   lastNoticeEstimatedArrivalAt: string | null
+  /** P19.11d: la última ausencia avisada tiene certificado (`true`), no (`false`) o no se indicó (`null`). */
+  lastNoticeHasCertificate?: boolean | null
   /** AJ-03: minutos previstos de la franja efectiva; `null` en una asignación «A terminar» (AJ2-10: sin comparación ni tilde). */
   plannedMinutes: number | null
   /** AJ-03 / AJ2-09: minutos trabajados dentro de la franja efectiva (con tope), redondeados; `null` sin fin registrado; 0 en «Sin salida». */
@@ -321,7 +323,7 @@ const ATTENDANCE_BOARD_SELECT = `
   minutes_late, minutes_early_leave,
   last_notice_kind, last_notice_minutes_late, last_notice_reason_code, last_notice_reason_text,
   last_notice_reported_by, last_notice_source, last_notice_at,
-  last_notice_estimated_arrival_at, planned_minutes, worked_minutes, removed_at, shift_observation,
+  last_notice_estimated_arrival_at, last_notice_has_certificate, planned_minutes, worked_minutes, removed_at, shift_observation,
   check_in_record_id, check_in_geo_status, check_in_geo_reason, check_in_distance_m, check_in_geofence_radius_m,
   check_in_accuracy_m, check_in_outside_reason, check_in_geo_overridden, check_in_time_corrected,
   check_out_record_id, check_out_geo_status, check_out_geo_reason, check_out_distance_m, check_out_geofence_radius_m,
@@ -366,6 +368,7 @@ interface AttendanceBoardRawRow {
   last_notice_source: AttendanceSource | null
   last_notice_at: string | null
   last_notice_estimated_arrival_at: string | null
+  last_notice_has_certificate: boolean | null
   planned_minutes: number | null
   worked_minutes: number | null
   removed_at: string | null
@@ -460,6 +463,7 @@ function mapAttendanceBoardRow(row: AttendanceBoardRawRow): AttendanceBoardRow {
     lastNoticeSource: row.last_notice_source,
     lastNoticeAt: row.last_notice_at,
     lastNoticeEstimatedArrivalAt: row.last_notice_estimated_arrival_at,
+    lastNoticeHasCertificate: row.last_notice_has_certificate,
     plannedMinutes: row.planned_minutes,
     workedMinutes: row.worked_minutes,
     removedAt: row.removed_at,
@@ -682,6 +686,8 @@ export interface AttendanceEvent {
   /** Solo para un aviso de ausencia (`attendance_notices`). */
   reasonCode?: AbsenceReason | null
   reasonText?: string | null
+  /** P19.11d: solo para un aviso de ausencia. */
+  hasCertificate?: boolean | null
 }
 
 function isAttendanceKind(kind: string): kind is AttendanceKind {
@@ -710,9 +716,11 @@ export async function fetchAttendanceTimeline(
     supabase
       .from('attendance_notices')
       .select(
-        'id, assignment_id, kind, minutes_late, reason_code, reason_text, reported_by, source, created_at',
+        'id, assignment_id, kind, minutes_late, reason_code, reason_text, has_certificate, reported_by, source, created_at',
       )
-      .in('assignment_id', assignmentIds),
+      .in('assignment_id', assignmentIds)
+      // 0060: un aviso anulado (cambio de fecha del turno) ya no vale.
+      .is('voided_at', null),
   ])
 
   if (recordsResult.error) {
@@ -751,6 +759,7 @@ export async function fetchAttendanceTimeline(
       minutesLate: row.minutes_late,
       reasonCode: row.reason_code,
       reasonText: row.reason_text,
+      hasCertificate: row.has_certificate,
     })
   }
 

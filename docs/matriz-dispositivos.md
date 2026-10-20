@@ -11,7 +11,7 @@ Dirección para probar: **https://dev.extendiendoservicios.com** (entorno de pru
 Pedile esto a Claude **antes** de arrancar (no escribas contraseñas en este archivo: el repositorio es público; anotalas a mano en papel):
 
 - [ ] Un usuario de prueba **empleado** con **un servicio de hoy** sin iniciar, con al menos dos tareas, y **otro servicio** que todavía no haya empezado (para el aviso de demora; puede ser el mismo si empieza más tarde).
-- [ ] Un usuario de prueba **supervisor** con **una supervisión asignada para hoy**, sobre un servicio donde haya al menos un empleado que **ya fichó el inicio**.
+- [ ] Un usuario de prueba **coordinador** con **una supervisión asignada para hoy**, sobre un servicio donde haya al menos un empleado que **ya fichó el inicio**.
 - [ ] Un usuario de prueba **dueño** (o administrador).
 - [ ] Que alguien pueda **publicar una versión nueva en staging** durante la prueba (punto 10).
 
@@ -146,11 +146,11 @@ Necesitás tres cuentas de prueba (ver «Antes de empezar»). Hacé cada ingreso
 | Android 2 | OK                     |               |
 | iPhone    | OK                     |               |
 
-### 2.2 · Supervisor
+### 2.2 · Coordinador
 
-1. Cerrá sesión (**Más** → **Cerrar sesión**) e ingresá con la cuenta de **supervisor**.
+1. Cerrá sesión (**Más** → **Cerrar sesión**) e ingresá con la cuenta de **coordinador**.
 
-**Tiene que pasar:** Entrás a **Hoy** del supervisor con la lista de supervisiones, y abajo la barra con **Hoy · Supervisiones · Historial · Más**.
+**Tiene que pasar:** Entrás a **Hoy** del coordinador con la lista de supervisiones, y abajo la barra con **Hoy · Supervisiones · Historial · Más**.
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
@@ -162,7 +162,7 @@ Necesitás tres cuentas de prueba (ver «Antes de empezar»). Hacé cada ingreso
 
 1. Cerrá sesión e ingresá con la cuenta de **dueño** (o administrador).
 
-**Tiene que pasar:** Entrás al tablero **Hoy** de administración, con los números de la jornada, y abajo la barra con **Hoy · Planificar · Asistencia · Supervisiones · Más**.
+**Tiene que pasar:** Entrás al tablero **Hoy** de administración, con los números de la jornada, y abajo la barra con **Hoy · Calendario · Asistencia · Supervisiones · Más**.
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
@@ -268,9 +268,9 @@ Usá la cuenta de **empleado** con un servicio de hoy sin iniciar (ver «Antes d
 | Android 2 | OK                     |               |
 | iPhone    | OK                     |               |
 
-## 5. Supervisor: supervisión y calificación
+## 5. Coordinador: supervisión y calificación
 
-Usá la cuenta de **supervisor**, con una supervisión asignada para hoy sobre un servicio que tenga al menos un empleado que ya fichó (ver «Antes de empezar»).
+Usá la cuenta de **coordinador**, con una supervisión asignada para hoy sobre un servicio que tenga al menos un empleado que ya fichó (ver «Antes de empezar»).
 
 ### 5.1 · Abrir la supervisión
 
@@ -329,7 +329,7 @@ Usá la cuenta de **dueño**.
 
 ### 6.1 · Las cinco pestañas
 
-1. Tocá una por una: **Hoy**, **Planificar**, **Asistencia**, **Supervisiones**.
+1. Tocá una por una: **Hoy**, **Calendario**, **Asistencia**, **Supervisiones**.
 
 **Tiene que pasar:** Cada una abre su pantalla; la pestaña en la que estás se ve resaltada; ninguna pantalla se corta ni obliga a mover la pantalla hacia los costados.
 
@@ -354,7 +354,7 @@ Usá la cuenta de **dueño**.
 
 ### 6.3 · Nada se corta hacia los costados
 
-1. En **Planificar** y en **Empleados**, pasá el dedo hacia la izquierda y la derecha sobre el contenido.
+1. En **Calendario** y en **Empleados**, pasá el dedo hacia la izquierda y la derecha sobre el contenido.
 
 **Tiene que pasar:** La pantalla no se corre de costado. (Las pestañas de arriba de una pantalla sí pueden deslizarse; eso es normal.)
 
@@ -394,7 +394,7 @@ Cuando aparece el teclado, la pantalla tiene que acomodarse para que veas lo que
 
 ### 7.3 · Comentario de la calificación
 
-1. Con la cuenta de **supervisor**, abrí la calificación de un empleado y tocá el cuadro de comentario.
+1. Con la cuenta de **coordinador**, abrí la calificación de un empleado y tocá el cuadro de comentario.
 
 **Tiene que pasar:** Igual que arriba: se ve lo que escribís y se llega al botón de guardar.
 

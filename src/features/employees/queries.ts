@@ -34,6 +34,8 @@ export const employeesKeys = {
     [...employeesKeys.all, 'clientPermissionsFor', profileId] as const,
   availability: (profileId: string) =>
     [...employeesKeys.all, 'availability', profileId] as const,
+  leavesInRange: (from: string, to: string) =>
+    [...employeesKeys.all, 'leavesInRange', from, to] as const,
   leaves: (profileId: string) =>
     [...employeesKeys.all, 'leaves', profileId] as const,
   ratingsSummary: () => [...employeesKeys.all, 'ratingsSummary'] as const,
@@ -317,10 +319,37 @@ function useInvalidateEmployeeLeaves(profileId: string) {
   }
 }
 
+/** P19.11d: licencias que tocan un rango, para bloquear empleados de licencia al elegirlos para un turno. */
+export function useLeavesInRangeQuery(
+  from: string | undefined,
+  to: string | undefined,
+) {
+  return useQuery({
+    queryKey: employeesKeys.leavesInRange(from ?? '', to ?? ''),
+    queryFn: () =>
+      employeesApi.fetchLeavesInRange(from as string, to as string),
+    enabled: Boolean(from && to),
+    staleTime: 60_000,
+  })
+}
+
 export function useEmployeeLeavesQuery(profileId: string) {
   return useQuery({
     queryKey: employeesKeys.leaves(profileId),
     queryFn: () => employeesApi.fetchEmployeeLeaves(profileId),
+  })
+}
+
+/** P19.11d: turnos ya asignados dentro del período de una licencia recién guardada (se llama después de guardar). */
+export function useLeaveConflictsMutation(profileId: string) {
+  return useMutation({
+    mutationFn: ({
+      startsOn,
+      endsOn,
+    }: {
+      startsOn: string
+      endsOn: string | null
+    }) => employeesApi.fetchLeaveConflicts(profileId, startsOn, endsOn),
   })
 }
 

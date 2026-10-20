@@ -27,6 +27,10 @@ import { DatePicker } from '@/components/DatePicker'
 import { isApiError } from '@/api/errors'
 import { useAuth } from '@/features/auth/AuthProvider'
 import {
+  newClientPickerOptions,
+  newSitePickerOptions,
+} from '@/features/clients/pickerOptions'
+import {
   useClientsQuery,
   useClientSitesQuery,
 } from '@/features/clients/queries'
@@ -188,18 +192,16 @@ export default function ServiceFormPage() {
   const clientsQuery = useClientsQuery({})
   const sitesQuery = useClientSitesQuery(watchedClientId || undefined)
 
-  const clientOptions = (clientsQuery.data ?? []).map((client) => ({
-    value: client.id,
-    label:
-      (client.tradeName ?? client.legalName) +
-      (client.status !== 'active'
-        ? ` (${client.status === 'suspended' ? 'suspendido' : 'baja'})`
-        : ''),
-  }))
-  const siteOptions = (sitesQuery.data ?? []).map((site) => ({
-    value: site.id,
-    label: site.name + (site.status !== 'active' ? ' (inactiva)' : ''),
-  }))
+  // P19.11d: al crear un servicio no se ofrecen clientes ni sedes inactivos;
+  // al editar, se conserva el vigente.
+  const clientOptions = newClientPickerOptions(
+    clientsQuery.data ?? [],
+    isEditMode ? watchedClientId || undefined : undefined,
+  )
+  const siteOptions = newSitePickerOptions(
+    sitesQuery.data ?? [],
+    isEditMode ? watch('siteId') || undefined : undefined,
+  )
 
   function handleClientChange(value: string) {
     setValue('clientId', value, { shouldValidate: true, shouldDirty: true })

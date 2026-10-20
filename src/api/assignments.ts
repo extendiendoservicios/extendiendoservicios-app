@@ -31,9 +31,17 @@ import { weekdayOfIsoDate } from '@/features/settings/dateOnly'
 
 export type AssignmentStatus = Database['public']['Enums']['assignment_status']
 
-/** Las tres advertencias que puede devolver `assign_employee` (`06` sección 8, P-034, P-035, P-033). No bloquean. */
+/**
+ * Las dos advertencias que puede devolver `assign_employee` (`06` sección 8,
+ * P-034, P-035). No bloquean.
+ *
+ * P19.11d (migración 0059): `ON_LEAVE` ya NO es una advertencia sino un error
+ * (`ApiError` con `hint === 'ON_LEAVE'`): el empleado de licencia ese día no se
+ * puede asignar. En `create_shift`, `create_shift_series` y `generate_shifts`
+ * aparece en `rejected[]` / `unassigned[]` con ese `code`.
+ */
 export type AssignEmployeeWarning =
-  'NOT_ENABLED_FOR_CLIENT' | 'OUTSIDE_AVAILABILITY' | 'ON_LEAVE'
+  'NOT_ENABLED_FOR_CLIENT' | 'OUTSIDE_AVAILABILITY'
 
 // -------------------------------------------------------------------------
 // 0. Paginado de las lecturas por rango
@@ -755,7 +763,7 @@ export async function fetchAssignCandidates(
     // El estado guardado, no `effective_status`: ese se calcula con la
     // licencia vigente HOY, y dejaba afuera para cualquier turno futuro a
     // quien está de licencia hoy. La licencia en la fecha del turno se
-    // muestra como marca (`onLeave`), igual que la advertencia `ON_LEAVE`.
+    // muestra como marca (`onLeave`) y, desde P19.11d, esos candidatos no se pueden elegir.
     .eq('status', 'active')
     .is('deleted_at', null)
     .order('last_name', { ascending: true })
