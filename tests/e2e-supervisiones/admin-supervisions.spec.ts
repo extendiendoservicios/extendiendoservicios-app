@@ -153,7 +153,7 @@ test.describe('SUP-013: administración de supervisiones (ADM-13 a ADM-15)', () 
 
         await expect(
           assignSheet.getByText(
-            'Este supervisor también está asignado como empleado en este turno.',
+            'Este coordinador también está asignado como empleado en este turno.',
           ),
         ).toBeVisible()
         const verButton = assignSheet.getByRole('button', {
