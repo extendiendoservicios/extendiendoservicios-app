@@ -44,3 +44,16 @@ export function absenceReasonLabel(value: AbsenceReason): string {
 export function absenceReasonRequiresText(value: AbsenceReason): boolean {
   return value === 'other'
 }
+
+/**
+ * P19.11d: estado del certificado de una ausencia. `null` o `undefined`:
+ * la ausencia se avisó antes de que existiera el dato (o la cargó el
+ * empleado, que no lo indica).
+ */
+export function certificateLabel(
+  hasCertificate: boolean | null | undefined,
+): string {
+  if (hasCertificate === true) return 'con certificado'
+  if (hasCertificate === false) return 'sin certificado'
+  return 'certificado sin indicar'
+}

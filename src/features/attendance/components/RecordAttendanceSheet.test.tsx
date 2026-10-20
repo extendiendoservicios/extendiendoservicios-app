@@ -134,7 +134,8 @@ describe('RecordAttendanceSheet', () => {
     )
   })
 
-  it('ausencia: exige el detalle cuando el motivo es "Otro"', async () => {
+  function renderAbsence() {
+    notifyAbsenceMock.mockClear()
     render(
       <RecordAttendanceSheet
         assignmentId="a1"
@@ -145,7 +146,23 @@ describe('RecordAttendanceSheet', () => {
         onOpenChange={() => {}}
       />,
     )
+  }
 
+  it('ausencia: exige elegir con o sin certificado antes de avisar', async () => {
+    renderAbsence()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Avisar ausencia' }))
+
+    expect(
+      await screen.findByText('Indicá si la ausencia tiene certificado.'),
+    ).toBeInTheDocument()
+    expect(notifyAbsenceMock).not.toHaveBeenCalled()
+  })
+
+  it('ausencia: exige el detalle cuando el motivo es "Otro" y manda el certificado', async () => {
+    renderAbsence()
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Con certificado' }))
     fireEvent.click(screen.getByRole('combobox', { name: 'Elegir motivo' }))
     fireEvent.click(screen.getByRole('option', { name: 'Otro' }))
     fireEvent.click(screen.getByRole('button', { name: 'Avisar ausencia' }))
@@ -164,9 +181,25 @@ describe('RecordAttendanceSheet', () => {
     expect(notifyAbsenceMock).toHaveBeenCalledWith(
       expect.objectContaining({
         assignmentId: 'a1',
+        hasCertificate: true,
         reasonCode: 'other',
         reasonText: 'Turno médico de urgencia',
       }),
     )
+  })
+
+  it('ausencia: el motivo es opcional (sin motivo manda solo el certificado)', async () => {
+    renderAbsence()
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Sin certificado' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Avisar ausencia' }))
+
+    await waitFor(() => expect(notifyAbsenceMock).toHaveBeenCalled())
+    expect(notifyAbsenceMock).toHaveBeenCalledWith({
+      assignmentId: 'a1',
+      hasCertificate: false,
+      reasonCode: undefined,
+      reasonText: undefined,
+    })
   })
 })

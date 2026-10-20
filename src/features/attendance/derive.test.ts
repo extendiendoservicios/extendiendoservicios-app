@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  getAbsenceCertificateHint,
   getArrivalHint,
   getAttendanceRowBadge,
   getAttendanceRowVariant,
@@ -446,5 +447,35 @@ describe('getWorkedHoursIndicator (AJ-03)', () => {
         checkOutAt: null,
       }),
     ).toEqual({ kind: 'none' })
+  })
+})
+
+describe('getAbsenceCertificateHint', () => {
+  it('describe el certificado de una ausencia avisada', () => {
+    const base = {
+      status: 'absence_notified',
+      lastNoticeKind: 'absence',
+    } as const
+    expect(
+      getAbsenceCertificateHint({ ...base, lastNoticeHasCertificate: true }),
+    ).toBe('con certificado')
+    expect(
+      getAbsenceCertificateHint({ ...base, lastNoticeHasCertificate: false }),
+    ).toBe('sin certificado')
+    expect(
+      getAbsenceCertificateHint({ ...base, lastNoticeHasCertificate: null }),
+    ).toBe('certificado sin indicar')
+  })
+
+  it('es null si no hay ausencia avisada', () => {
+    expect(
+      getAbsenceCertificateHint({ status: 'expected', lastNoticeKind: null }),
+    ).toBeNull()
+    expect(
+      getAbsenceCertificateHint({
+        status: 'delay_notified',
+        lastNoticeKind: 'delay',
+      }),
+    ).toBeNull()
   })
 })

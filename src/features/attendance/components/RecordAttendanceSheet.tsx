@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -27,19 +27,16 @@ import {
   shiftDayStartAsDateTimeLocal,
   toDateTimeLocal,
 } from '@/features/attendance/dateTimeLocal'
-import { ABSENCE_REASON_LABELS } from '@/features/attendance/reasonLabels'
+import { AbsenceNoticeForm } from './AbsenceNoticeForm'
 import {
-  useAdminNotifyAbsenceMutation,
   useAdminNotifyDelayMutation,
   useAdminRecordAttendanceMutation,
   useCloseAssignmentMutation,
 } from '@/features/attendance/queries'
 import {
-  notifyAbsenceSchema,
   notifyDelayFormValuesToMinutes,
   notifyDelaySchema,
   recordAttendanceSchema,
-  type NotifyAbsenceFormValues,
   type NotifyDelayFormValues,
   type RecordAttendanceFormValues,
 } from '@/features/attendance/schemas'
@@ -52,11 +49,6 @@ const ACTION_LABELS: Record<AttendanceAction, string> = {
   delay: 'Demora',
   absence: 'Ausencia',
 }
-
-const ABSENCE_REASON_OPTIONS = Object.entries(ABSENCE_REASON_LABELS) as [
-  keyof typeof ABSENCE_REASON_LABELS,
-  string,
-][]
 
 /**
  * ADM-11 "Registrar en nombre del empleado" (ATT-010, ABS-008, `05`
@@ -151,9 +143,12 @@ function RecordAttendanceSheet({
           )}
 
           {selectedAction === 'absence' && (
-            <NotifyAbsenceForm
+            <AbsenceNoticeForm
               assignmentId={assignmentId}
               onDone={handleDone}
+              footer={(submit) => (
+                <SheetFooter className="p-0">{submit}</SheetFooter>
+              )}
             />
           )}
         </div>
@@ -344,101 +339,6 @@ function NotifyDelayForm({
       <SheetFooter className="p-0">
         <Button type="submit" loading={notifyDelay.isPending}>
           Avisar demora
-        </Button>
-      </SheetFooter>
-    </form>
-  )
-}
-
-/** Aviso de ausencia en nombre del empleado (`notify_absence`, P-073, ABS-008). */
-function NotifyAbsenceForm({
-  assignmentId,
-  onDone,
-}: {
-  assignmentId: string
-  onDone: () => void
-}) {
-  const notifyAbsence = useAdminNotifyAbsenceMutation()
-
-  const {
-    register,
-    control,
-    handleSubmit,
-    watch,
-    formState: { errors },
-  } = useForm<NotifyAbsenceFormValues>({
-    resolver: zodResolver(notifyAbsenceSchema),
-    defaultValues: { reasonText: '' },
-  })
-  const reasonCode = watch('reasonCode')
-
-  async function onSubmit(values: NotifyAbsenceFormValues) {
-    try {
-      await notifyAbsence.mutateAsync({
-        assignmentId,
-        reasonCode: values.reasonCode,
-        reasonText: values.reasonText?.trim() || undefined,
-      })
-      toast.success('Avisamos la ausencia.')
-      onDone()
-    } catch (error) {
-      toast.error(
-        isApiError(error) ? error.message : 'No pudimos avisar la ausencia.',
-      )
-    }
-  }
-
-  return (
-    <form
-      noValidate
-      onSubmit={(event) => void handleSubmit(onSubmit)(event)}
-      className="flex flex-col gap-4"
-    >
-      <Field data-invalid={Boolean(errors.reasonCode) || undefined}>
-        <FieldLabel htmlFor="absence-reason-code">Motivo</FieldLabel>
-        <Controller
-          control={control}
-          name="reasonCode"
-          render={({ field }) => (
-            <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger
-                id="absence-reason-code"
-                aria-label="Elegir motivo"
-              >
-                <SelectValue placeholder="Elegí un motivo" />
-              </SelectTrigger>
-              <SelectContent>
-                {ABSENCE_REASON_OPTIONS.map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        />
-        {errors.reasonCode && (
-          <FieldError>{errors.reasonCode.message}</FieldError>
-        )}
-      </Field>
-      <Field data-invalid={Boolean(errors.reasonText) || undefined}>
-        <FieldLabel htmlFor="absence-reason-text">
-          Detalle{reasonCode === 'other' ? '' : ' (opcional)'}
-        </FieldLabel>
-        <Textarea
-          id="absence-reason-text"
-          rows={3}
-          placeholder="Por ejemplo: turno médico de urgencia"
-          aria-invalid={Boolean(errors.reasonText)}
-          {...register('reasonText')}
-        />
-        {errors.reasonText && (
-          <FieldError>{errors.reasonText.message}</FieldError>
-        )}
-      </Field>
-      <SheetFooter className="p-0">
-        <Button type="submit" loading={notifyAbsence.isPending}>
-          Avisar ausencia
         </Button>
       </SheetFooter>
     </form>

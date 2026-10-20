@@ -63,12 +63,21 @@ const ABSENCE_REASON_CODES = [
   'other',
 ] as const
 
-/** Aviso de ausencia en nombre del empleado (`notify_absence`, P-073): motivo obligatorio, texto obligatorio si es "Otro". */
+export type AbsenceReasonFormCode = (typeof ABSENCE_REASON_CODES)[number]
+
+/**
+ * Aviso de ausencia cargado por administración (`notify_absence`, P-073,
+ * P19.11d): el certificado es obligatorio (`CERTIFICATE_REQUIRED`), el motivo
+ * es opcional (`'none'` = sin motivo) y, si es "Otro", el texto es obligatorio.
+ * `hasCertificate` queda como `'yes' | 'no'` porque viaja por un grupo de
+ * radios; `absenceFormValuesToInput` lo convierte a booleano.
+ */
 export const notifyAbsenceSchema = z
   .object({
-    reasonCode: z.enum(ABSENCE_REASON_CODES, {
-      message: 'Indicá el motivo de la ausencia.',
+    hasCertificate: z.enum(['yes', 'no'], {
+      message: 'Indicá si la ausencia tiene certificado.',
     }),
+    reasonCode: z.enum([...ABSENCE_REASON_CODES, 'none']).default('none'),
     reasonText: z.string().trim().optional(),
   })
   .refine(
@@ -80,4 +89,34 @@ export const notifyAbsenceSchema = z
     },
   )
 
-export type NotifyAbsenceFormValues = z.infer<typeof notifyAbsenceSchema>
+export type NotifyAbsenceFormValues = z.input<typeof notifyAbsenceSchema>
+
+export function absenceFormValuesToInput(values: {
+  hasCertificate: 'yes' | 'no'
+  reasonCode?: AbsenceReasonFormCode | 'none'
+  reasonText?: string
+}): {
+  hasCertificate: boolean
+  reasonCode: AbsenceReasonFormCode | undefined
+  reasonText: string | undefined
+} {
+  return {
+    hasCertificate: values.hasCertificate === 'yes',
+    reasonCode:
+      values.reasonCode && values.reasonCode !== 'none'
+        ? values.reasonCode
+        : undefined,
+    reasonText: values.reasonText?.trim() || undefined,
+  }
+}
+
+/** Corrección de certificado sobre una ausencia ya avisada (`set_absence_certificate`). */
+export const absenceCertificateSchema = z.object({
+  hasCertificate: z.enum(['yes', 'no'], {
+    message: 'Indicá si la ausencia tiene certificado.',
+  }),
+})
+
+export type AbsenceCertificateFormValues = z.infer<
+  typeof absenceCertificateSchema
+>
