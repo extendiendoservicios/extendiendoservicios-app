@@ -36,7 +36,7 @@ describe('formatSupervisionRange', () => {
 })
 
 describe('OPEN_SHIFT_DAY_ENDED_MESSAGE', () => {
-  it('indica avisar al supervisor o a la oficina', () => {
-    expect(OPEN_SHIFT_DAY_ENDED_MESSAGE).toContain('supervisor o a la oficina')
+  it('indica avisar al coordinador o a la oficina', () => {
+    expect(OPEN_SHIFT_DAY_ENDED_MESSAGE).toContain('coordinador o a la oficina')
   })
 })

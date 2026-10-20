@@ -189,7 +189,7 @@ export default function RatingCriteriaPage() {
         <>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-[12.5px] text-text-3">
-              Guía de texto para calificar: el supervisor la ve como ayuda, no
+              Guía de texto para calificar: el coordinador la ve como ayuda, no
               se puntúa por criterio.
             </p>
             <div className="flex items-center gap-2">
@@ -199,7 +199,7 @@ export default function RatingCriteriaPage() {
                 size="sm"
                 onClick={() => setPreviewOpen(true)}
               >
-                Ver como supervisor
+                Ver como coordinador
               </Button>
               <Button icon={Plus} size="sm" onClick={openNewCriterionForm}>
                 Nuevo criterio

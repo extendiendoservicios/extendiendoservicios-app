@@ -39,7 +39,7 @@ function MarkSupervisionNotDoneDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="Marcar como no realizada"
-      description="Usalo cuando la supervisión no se pudo llevar a cabo (por ejemplo, el supervisor no pudo asistir)."
+      description="Usalo cuando la supervisión no se pudo llevar a cabo (por ejemplo, el coordinador no pudo asistir)."
       reasonLabel="Motivo"
       confirmLabel="Marcar como no realizada"
       cancelLabel="Volver"

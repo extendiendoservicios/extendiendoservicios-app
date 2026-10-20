@@ -71,7 +71,7 @@ describe('getNoticeMessage · Sin salida (AJ2-09)', () => {
       baseAssignment({ noCheckout: true, status: 'present' }),
     )
     expect(notice?.text).toContain('Sin salida')
-    expect(notice?.text).toContain('supervisor o a la oficina')
+    expect(notice?.text).toContain('coordinador o a la oficina')
   })
 })
 

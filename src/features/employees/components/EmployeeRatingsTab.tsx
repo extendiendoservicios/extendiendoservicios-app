@@ -38,8 +38,8 @@ function EmployeeRatingsTab({ profileId }: { profileId: string }) {
     },
     {
       id: 'supervisor',
-      header: 'Supervisor',
-      meta: { card: 'meta', cardLabel: 'Supervisor' },
+      header: 'Coordinador',
+      meta: { card: 'meta', cardLabel: 'Coordinador' },
       cell: ({ row }) => (
         <PersonCell
           id={row.original.supervisorId}

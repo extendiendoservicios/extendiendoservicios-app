@@ -186,8 +186,8 @@ export default function ShiftsGeneratePage() {
             </AlertTitle>
             <AlertDescription>
               <p>
-                Los turnos se crearon igual. Asignalos a mano desde la
-                planificación:
+                Los turnos se crearon igual. Asignalos a mano desde el
+                calendario:
               </p>
               <ul
                 className="mt-2 flex flex-col gap-1"

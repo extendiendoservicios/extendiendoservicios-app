@@ -125,9 +125,9 @@ const PRESENCE_MARKERS: MapViewMarker[] = [
     position: { lat: -34.5, lng: -58.54 },
     variant: 'success',
     shape: 'supervisor',
-    label: 'Diego Sosa, supervisor (validado)',
+    label: 'Diego Sosa, coordinador (validado)',
     data: {
-      who: 'Diego Sosa (supervisor)',
+      who: 'Diego Sosa (coordinador)',
       since: '09:15',
       status: 'Validado',
     },

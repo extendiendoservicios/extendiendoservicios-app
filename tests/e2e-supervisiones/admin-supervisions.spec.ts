@@ -141,7 +141,7 @@ test.describe('SUP-013: administración de supervisiones (ADM-13 a ADM-15)', () 
             name: new RegExp(`${client.legalName}.*${site.name}.*09:00–10:00`),
           })
           .click()
-        await assignSheet.getByRole('combobox', { name: 'Supervisor' }).click()
+        await assignSheet.getByRole('combobox', { name: 'Coordinador' }).click()
         await page
           .getByRole('option', {
             name: `${supervisor.firstName} ${supervisor.lastName}`,

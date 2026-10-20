@@ -49,7 +49,7 @@ export const EMPLOYEE_ROLE_FILTER_OPTIONS: {
 }[] = [
   { value: 'all', label: 'Todos los roles' },
   { value: 'employee', label: 'Empleado' },
-  { value: 'supervisor', label: 'Supervisor' },
+  { value: 'supervisor', label: 'Coordinador' },
 ]
 
 export type { EmployeeListRow }

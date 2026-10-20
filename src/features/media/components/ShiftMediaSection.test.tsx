@@ -107,10 +107,10 @@ describe('ShiftMediaSection (ADM-06 y ADM-15)', () => {
   it('muestra el mensaje vacío del ADM-15', () => {
     renderSection({
       rows: [],
-      emptyMessage: 'El supervisor no subió fotos ni videos.',
+      emptyMessage: 'El coordinador no subió fotos ni videos.',
     })
     expect(
-      screen.getByText('El supervisor no subió fotos ni videos.'),
+      screen.getByText('El coordinador no subió fotos ni videos.'),
     ).toBeInTheDocument()
   })
 

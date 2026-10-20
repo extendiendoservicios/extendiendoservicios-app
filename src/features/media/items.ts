@@ -192,7 +192,7 @@ export function shiftSlotLabel(
 
 /** Rol de quien subió, según `uploader_role`. */
 export function uploaderRoleLabel(role: string | null): string | undefined {
-  if (role === 'supervisor') return 'Supervisor/a'
+  if (role === 'supervisor') return 'Coordinador/a'
   if (role === 'employee') return 'Empleado/a'
   return undefined
 }

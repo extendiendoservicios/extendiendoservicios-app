@@ -155,7 +155,7 @@ describe('ProfilePage (COM-04)', () => {
     )
     expect(screen.getByLabelText('Email de login')).toBeDisabled()
     expect(screen.getByText('Empleado')).toBeInTheDocument()
-    expect(screen.getByText('Supervisor')).toBeInTheDocument()
+    expect(screen.getByText('Coordinador')).toBeInTheDocument()
   })
 
   it('guarda el nombre propio con update_person_name y refresca el perfil (AJ-01)', async () => {

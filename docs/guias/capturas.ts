@@ -474,7 +474,7 @@ export const CAPTURAS: Captura[] = [
     rol: 'admin',
     vista: 'escritorio',
     ruta: '/admin/planificacion?vista=semana',
-    espera: 'Planificación',
+    espera: 'Calendario',
   },
   {
     nombre: 'adm-planificacion-dia',

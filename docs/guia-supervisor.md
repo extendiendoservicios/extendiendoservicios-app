@@ -1,6 +1,6 @@
-# Guía del supervisor
+# Guía del coordinador
 
-DOC-020. Cómo usar la aplicación de Extendiendo Servicios desde tu celular si sos supervisor o supervisora: ver las supervisiones que te asignaron, registrar tu paso por cada sede, calificar a cada empleado y cerrar la supervisión.
+DOC-020. Cómo usar la aplicación de Extendiendo Servicios desde tu celular si sos coordinador o coordinadora: ver las supervisiones que te asignaron, registrar tu paso por cada sede, calificar a cada empleado y cerrar la supervisión.
 
 Las imágenes son de ejemplo, con datos inventados. Los nombres de los botones son los mismos que vas a ver en tu celular.
 
@@ -68,7 +68,7 @@ Si además sos empleada o empleado, en **Más** vas a encontrar **Mis servicios*
 
 ## Ver tus supervisiones
 
-![Pantalla Hoy del supervisor](guias/img/sup-hoy.png)
+![Pantalla Hoy del coordinador](guias/img/sup-hoy.png)
 
 En **Hoy** ves una tarjeta por cada supervisión con:
 
@@ -180,7 +180,7 @@ Tu nombre y tu email de ingreso no se cambian desde acá: si hay un error, avis�
 
 En **Más**, tocá **Cerrar sesión**. Usalo si prestás o cambiás el celular. Al pie de la pantalla ves la versión de la aplicación ("Versión x.y.z").
 
-![Pantalla Más del supervisor](guias/img/sup-mas.png)
+![Pantalla Más del coordinador](guias/img/sup-mas.png)
 
 ## Cuando algo no anda
 

@@ -29,7 +29,7 @@ import {
 /** Mensaje de la única advertencia de `assign_supervision` (ratificada 27 sep 2026, P15.0): no bloquea. */
 const WARNING_MESSAGES: Record<SupervisionWarning, string> = {
   SUPERVISES_OWN_SHIFT:
-    'Este supervisor también está asignado como empleado en este turno.',
+    'Este coordinador también está asignado como empleado en este turno.',
 }
 
 /** Estados de turno que `assign_supervision` acepta (`0029`: "scheduled, assigned o in_progress"). */
@@ -102,7 +102,7 @@ function AssignSupervisionForm({
         setAssignedId(result.supervision.id)
         toast.warning('Asignamos igual, con una advertencia: revisá el aviso.')
       } else {
-        toast.success('Asignamos al supervisor.')
+        toast.success('Asignamos al coordinador.')
         // Sin `onDone()`: su `navigate(-1)` pisaría este `replace`.
         void navigate(`/admin/supervisiones/${result.supervision.id}`, {
           replace: true,
@@ -110,7 +110,9 @@ function AssignSupervisionForm({
       }
     } catch (error) {
       toast.error(
-        isApiError(error) ? error.message : 'No pudimos asignar al supervisor.',
+        isApiError(error)
+          ? error.message
+          : 'No pudimos asignar al coordinador.',
       )
     }
   }
@@ -172,19 +174,19 @@ function AssignSupervisionForm({
 
       <Field>
         <FieldLabel htmlFor="assign-supervision-supervisor">
-          Supervisor
+          Coordinador
         </FieldLabel>
         {candidatesQuery.isLoading ? (
           <Skeleton className="h-9" />
         ) : (candidatesQuery.data ?? []).length === 0 ? (
           <FieldError>
-            No hay personas con el rol de supervisor activas. Cargalas desde
+            No hay personas con el rol de coordinador activas. Cargalas desde
             «Empleados».
           </FieldError>
         ) : (
           <Select value={supervisorId} onValueChange={setSupervisorId}>
             <SelectTrigger id="assign-supervision-supervisor">
-              <SelectValue placeholder="Elegí un supervisor" />
+              <SelectValue placeholder="Elegí un coordinador" />
             </SelectTrigger>
             <SelectContent>
               {(candidatesQuery.data ?? []).map((candidate) => (

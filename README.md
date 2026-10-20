@@ -2,7 +2,7 @@
 
 Plataforma de gestión para **Extendiendo Servicios** (empresa de limpieza): una
 SPA instalable como PWA con tres experiencias —administración, empleado y
-supervisor— sobre Supabase.
+coordinador— sobre Supabase.
 
 ## Estado actual
 

@@ -36,7 +36,7 @@ const CAPABILITY_INFO: Record<
   manage_users: {
     label: 'Gestionar usuarios',
     description:
-      'Crear, desactivar y resetear usuarios con rol empleado o supervisor.',
+      'Crear, desactivar y resetear usuarios con rol empleado o coordinador.',
   },
   cancel_shifts: { label: 'Cancelar turnos' },
   edit_ratings: { label: 'Editar calificaciones' },

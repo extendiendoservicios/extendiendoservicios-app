@@ -38,7 +38,7 @@ export async function createEmployeeViaForm(
   // "Empleado" está tildado por omisión (`defaultValues.isEmployeeRole: true`): se ajusta a lo
   // pedido en vez de asumir el estado inicial, así el helper sirve para cualquier combinación.
   const employeeCheckbox = page.getByRole('checkbox', { name: 'Empleado' })
-  const supervisorCheckbox = page.getByRole('checkbox', { name: 'Supervisor' })
+  const supervisorCheckbox = page.getByRole('checkbox', { name: 'Coordinador' })
   if ((await employeeCheckbox.isChecked()) !== input.isEmployeeRole) {
     await employeeCheckbox.click()
   }

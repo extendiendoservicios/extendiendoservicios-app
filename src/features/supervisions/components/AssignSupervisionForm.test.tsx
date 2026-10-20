@@ -106,14 +106,14 @@ describe('AssignSupervisionForm', () => {
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Turno' }))
     fireEvent.click(screen.getByRole('option', { name: /Cliente Uno/ }))
-    fireEvent.click(screen.getByRole('combobox', { name: 'Supervisor' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Coordinador' }))
     fireEvent.click(screen.getByRole('option', { name: 'Marta Ruiz' }))
     fireEvent.click(screen.getByRole('button', { name: 'Asignar supervisión' }))
 
     await vi.waitFor(() => {
       expect(
         screen.getByText(
-          'Este supervisor también está asignado como empleado en este turno.',
+          'Este coordinador también está asignado como empleado en este turno.',
         ),
       ).toBeInTheDocument()
     })

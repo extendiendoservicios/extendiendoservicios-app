@@ -40,7 +40,7 @@ export interface AdminNavItem {
 export const ADMIN_NAV_OPERATION: AdminNavItem[] = [
   { label: 'Resumen', path: '/admin', icon: Home },
   {
-    label: 'Planificación',
+    label: 'Calendario',
     path: '/admin/planificacion',
     icon: Calendar,
     matchPrefixes: ['/admin/planificacion', '/admin/turnos'],
@@ -83,7 +83,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
 export const ADMIN_TABBAR_ITEMS: AdminNavItem[] = [
   { label: 'Hoy', path: '/admin', icon: Home },
   {
-    label: 'Planificar',
+    label: 'Calendario',
     path: '/admin/planificacion?vista=dia',
     icon: Calendar,
     matchPrefixes: ['/admin/planificacion', '/admin/turnos'],
