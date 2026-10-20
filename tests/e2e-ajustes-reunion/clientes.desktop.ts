@@ -219,15 +219,21 @@ test(
           'Fecha',
           'Sede',
           'Franja',
-          'Empleados',
+          'Nombre y Apellido',
+          'DNI',
+          'Observaciones',
+          'Validación',
           'Horas',
         ]) {
           await expect(
             hoja.getByRole('columnheader', { name: encabezado, exact: true }),
           ).toBeVisible()
         }
+        // La hoja lista una fila por persona y por turno (no una por turno): la sede A tiene dos
+        // empleados y la sede B uno.
         const filas = hoja.getByRole('row').filter({ has: page.locator('td') })
-        await expect(filas.filter({ hasText: sedeA.name })).toHaveCount(1)
+        await expect(filas.filter({ hasText: sedeA.name })).toHaveCount(2)
+        await expect(filas.filter({ hasText: sedeB.name })).toHaveCount(1)
         await expect(
           hoja.getByRole('row', { name: /Horas totales/ }),
         ).toContainText('7 h')
