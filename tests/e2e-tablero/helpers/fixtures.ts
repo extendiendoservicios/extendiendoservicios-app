@@ -301,6 +301,8 @@ export class TableroScenario {
     const { error } = await owner.rpc('notify_absence', {
       p_assignment_id: assignmentId,
       p_reason_code: 'illness',
+      // P19.11 (0059): administración tiene que indicar el certificado.
+      p_has_certificate: false,
     })
     if (error) {
       throw new Error(`No se pudo avisar la ausencia: ${error.message}`)

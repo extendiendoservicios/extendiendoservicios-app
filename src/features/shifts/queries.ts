@@ -158,7 +158,11 @@ export function useGenerateShiftsMutation() {
   })
 }
 
-/** Cambio de franja de ADM-07 en edición (SHIFT-008). `date`: la del turno editado, para invalidar su lista del día. */
+/**
+ * Cambio de franja y fecha de ADM-07 en edición (SHIFT-008, P19.11d). Si
+ * cambia la fecha se invalidan los turnos de las dos fechas, el calendario y
+ * la asistencia (la base anula los avisos de demora y ausencia del turno).
+ */
 export function useUpdateShiftTimeMutation(date: string) {
   const queryClient = useQueryClient()
   return useMutation({
@@ -167,20 +171,46 @@ export function useUpdateShiftTimeMutation(date: string) {
       start,
       end,
       openEnded,
+      date: newDate,
     }: {
       shiftId: string
       start: string
       end: string | null
       openEnded?: boolean
-    }) => shiftsApi.updateShiftTime(shiftId, start, end, openEnded),
+      date?: string
+    }) => shiftsApi.updateShiftTime(shiftId, start, end, openEnded, newDate),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({
         queryKey: shiftsKeys.byDate(date),
       })
+      if (variables.date) {
+        void queryClient.invalidateQueries({
+          queryKey: shiftsKeys.byDate(variables.date),
+        })
+        void queryClient.invalidateQueries({ queryKey: PLANNING_KEY_ROOT })
+        void queryClient.invalidateQueries({ queryKey: ATTENDANCE_KEY_ROOT })
+      }
       void queryClient.invalidateQueries({
         queryKey: shiftsKeys.edit(variables.shiftId),
       })
     },
+  })
+}
+
+/** Advertencias previas a un cambio de fecha (`get_shift_date_warnings`): se llama a mano antes de confirmar. */
+export function useShiftDateWarningsMutation() {
+  return useMutation({
+    mutationFn: ({
+      shiftId,
+      date,
+      start,
+      end,
+    }: {
+      shiftId: string
+      date: string
+      start?: string
+      end?: string | null
+    }) => shiftsApi.getShiftDateWarnings(shiftId, date, start, end),
   })
 }
 

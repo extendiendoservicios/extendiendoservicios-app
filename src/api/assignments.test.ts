@@ -222,7 +222,7 @@ describe('assignEmployee', () => {
           status: 'expected',
           notes: null,
         },
-        warnings: ['ON_LEAVE'],
+        warnings: ['OUTSIDE_AVAILABILITY'],
       },
       error: null,
     })
@@ -245,7 +245,24 @@ describe('assignEmployee', () => {
         status: 'expected',
         notes: null,
       },
-      warnings: ['ON_LEAVE'],
+      warnings: ['OUTSIDE_AVAILABILITY'],
+    })
+  })
+
+  it('ON_LEAVE es un error (el empleado de licencia no se puede asignar)', async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: {
+        message: 'El empleado está de licencia ese día.',
+        hint: 'ON_LEAVE',
+      },
+    })
+
+    await expect(
+      assignEmployee({ shiftId: 'sh1', employeeId: 'emp1' }),
+    ).rejects.toMatchObject({
+      message: 'El empleado está de licencia ese día.',
+      hint: 'ON_LEAVE',
     })
   })
 

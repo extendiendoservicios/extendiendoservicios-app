@@ -18,6 +18,20 @@ que cada test limpia. Nunca corre contra producción.
 | `clientes.desktop.ts`         | AJ-09/10       | Pestaña «Resumen de servicios» del cliente (período, totales, detalle por turno, hoja con una firma) y columna «Horas (mes)» de Clientes coherente con el resumen; 390 px.                                                                                                                                                                 |
 | `accesibilidad.*.ts`          | todos          | axe-core (sin violaciones críticas ni serias) sobre las pantallas nuevas o cambiadas, en escritorio y en celular.                                                                                                                                                                                                                          |
 
+### Observaciones de la reunión del 19 de octubre (P19.11g)
+
+Mismo conjunto de cuentas (`ajustes`) y mismas reglas de datos propios (`e2e-…`, motivo de licencia
+`E2E-P1911 …`, fechas futuras recortadas al día). Las licencias se dan de baja al final (baja lógica).
+
+| Archivo                         | Punto           | Qué prueba                                                                                                                                                                                                                                      |
+| ------------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ausente.desktop.ts`            | Ausente         | «Ausente» del detalle del turno: con certificado, sin elegir (error y `CERTIFICATE_REQUIRED`), motivo «Otro» sin detalle, «Cambiar» a sin certificado (queda `updated_by`) y el certificado en Asistencia de hoy.                               |
+| `ausente.movil.ts`              | Ausente         | Ausencia avisada por el empleado desde el celular (no pregunta certificado; el servidor ignora el que mande): administración ve «Ausente · certificado sin indicar» y completa con «Marcar certificado».                                        |
+| `licencias.desktop.ts`          | Licencias       | Aviso con «Abrir turno» al guardar una licencia sobre un turno asignado; «De licencia» deshabilitado en «Nuevo turno», «Asignar empleado» y «Asignar supervisión» (coordinador); `ON_LEAVE` por API; imprimible «Licencias y ausencias».        |
+| `clientes-inactivos.desktop.ts` | Clientes        | Un cliente suspendido o dado de baja y una sede inactiva no se ofrecen en «Nuevo turno» ni en «Nuevo servicio».                                                                                                                                 |
+| `fecha-turno.desktop.ts`        | Fecha del turno | Mover de día limpia la ausencia (aviso anulado, asignación «Esperado») y lleva al día nuevo; día de licencia del asignado da el error; fecha pasada no se ofrece (`SHIFT_DATE_IN_PAST`); con fichaje no es editable (`SHIFT_STARTED`); feriado. |
+| `calendario.desktop.ts`         | Calendario      | Semana a 1024 px con el menú abierto: desplazamiento horizontal en la grilla y horario del chip completo; día a 1024 px sin desplazamiento y con «Coordinador» separado de «Estado».                                                            |
+
 ## Cómo correrla
 
 Desde `app/`, con `.env.local` completo (las mismas cuatro variables de `scripts/seed-dev.ts`):

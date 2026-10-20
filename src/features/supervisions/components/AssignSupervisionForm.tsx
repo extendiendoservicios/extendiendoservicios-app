@@ -20,6 +20,8 @@ import type { SupervisionWarning } from '@/api/supervisions'
 import { localDateToIsoDate } from '@/features/settings/dateOnly'
 import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
 import { formatShiftRange } from '@/features/shifts/openEnded'
+import { useLeavesInRangeQuery } from '@/features/employees/queries'
+import { employeesOnLeaveIn } from '@/features/shifts/leaveBlocking'
 import { useShiftsByDateQuery } from '@/features/shifts/queries'
 import {
   useAssignSupervisionMutation,
@@ -64,7 +66,7 @@ function AssignSupervisionForm({
   const navigate = useNavigate()
   const [date, setDate] = useState(initialDate ?? todayInBuenosAires())
   const [shiftId, setShiftId] = useState(initialShiftId ?? '')
-  const [supervisorId, setSupervisorId] = useState('')
+  const [pickedSupervisorId, setSupervisorId] = useState('')
   // Id de la supervisión ya creada cuando volvió con advertencias: el panel
   // queda abierto para leerlas, pero no se puede volver a asignar.
   const [assignedId, setAssignedId] = useState<string | null>(null)
@@ -78,6 +80,20 @@ function AssignSupervisionForm({
   )
   const candidatesQuery = useSupervisorCandidatesQuery()
   const assignSupervision = useAssignSupervisionMutation()
+
+  // P19.11f: el coordinador de licencia el día del turno no se puede elegir
+  // (`assign_supervision` devuelve ON_LEAVE). Si ya estaba elegido y cambió la
+  // fecha, se lo saca de la selección y se avisa.
+  const leavesQuery = useLeavesInRangeQuery(date, date)
+  const onLeaveIds = employeesOnLeaveIn(leavesQuery.data ?? [], date, date)
+  const supervisorId = onLeaveIds.has(pickedSupervisorId)
+    ? ''
+    : pickedSupervisorId
+  const droppedSupervisor = onLeaveIds.has(pickedSupervisorId)
+    ? (candidatesQuery.data ?? []).find(
+        (candidate) => candidate.profileId === pickedSupervisorId,
+      )
+    : undefined
 
   function handleDateChange(next: Date | undefined) {
     if (!next) return
@@ -109,6 +125,12 @@ function AssignSupervisionForm({
         })
       }
     } catch (error) {
+      if (isApiError(error) && error.hint === 'ON_LEAVE') {
+        // La licencia se cargó con el formulario abierto: se refresca la lista
+        // para que ya figure «De licencia» y se saca de la selección.
+        void leavesQuery.refetch()
+        setSupervisorId('')
+      }
       toast.error(
         isApiError(error)
           ? error.message
@@ -193,12 +215,21 @@ function AssignSupervisionForm({
                 <SelectItem
                   key={candidate.profileId}
                   value={candidate.profileId}
+                  disabled={onLeaveIds.has(candidate.profileId)}
                 >
                   {candidate.firstName} {candidate.lastName}
+                  {onLeaveIds.has(candidate.profileId) && ' · De licencia'}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+        )}
+        {droppedSupervisor && (
+          <Alert variant="warn">
+            <AlertDescription>
+              {`Sacamos a ${droppedSupervisor.firstName} ${droppedSupervisor.lastName} de la selección porque está de licencia el día elegido.`}
+            </AlertDescription>
+          </Alert>
         )}
       </Field>
 

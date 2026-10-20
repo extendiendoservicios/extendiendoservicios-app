@@ -91,11 +91,15 @@ describe('avisos al crear el turno', () => {
   it('traduce las advertencias de los asignados con los textos de la asignación manual', () => {
     const lines = assignedWarningLines(
       [
-        { employeeId: 'e1', assignmentId: 'a1', warnings: ['ON_LEAVE'] },
+        {
+          employeeId: 'e1',
+          assignmentId: 'a1',
+          warnings: ['OUTSIDE_AVAILABILITY'],
+        },
         { employeeId: 'e2', assignmentId: 'a2', warnings: [] },
       ],
       { e1: 'Ana Pérez', e2: 'Luis Díaz' },
-      { ON_LEAVE: 'Tiene una licencia cargada.' },
+      { OUTSIDE_AVAILABILITY: 'Tiene una licencia cargada.' },
     )
     expect(lines).toEqual([
       {

@@ -197,7 +197,7 @@ export function useAdminNotifyDelayMutation() {
   })
 }
 
-/** `notify_absence` en nombre del empleado (ADM-11, ATT-010, ABS-008). */
+/** `notify_absence` en nombre del empleado (ADM-11, ATT-010, ABS-008; certificado obligatorio desde P19.11d). */
 export function useAdminNotifyAbsenceMutation() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -205,11 +205,34 @@ export function useAdminNotifyAbsenceMutation() {
       assignmentId,
       reasonCode,
       reasonText,
+      hasCertificate,
     }: {
       assignmentId: string
-      reasonCode: AbsenceReason
+      reasonCode?: AbsenceReason
       reasonText?: string
-    }) => noticesApi.notifyAbsence(assignmentId, reasonCode, reasonText),
+      hasCertificate: boolean
+    }) =>
+      noticesApi.notifyAbsence(
+        assignmentId,
+        reasonCode,
+        reasonText,
+        hasCertificate,
+      ),
+    onSuccess: () => invalidateAttendanceAndBoards(queryClient),
+  })
+}
+
+/** `set_absence_certificate`: marca o corrige el certificado de una ausencia ya avisada (P19.11d). */
+export function useSetAbsenceCertificateMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      assignmentId,
+      hasCertificate,
+    }: {
+      assignmentId: string
+      hasCertificate: boolean
+    }) => noticesApi.setAbsenceCertificate(assignmentId, hasCertificate),
     onSuccess: () => invalidateAttendanceAndBoards(queryClient),
   })
 }

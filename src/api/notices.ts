@@ -41,6 +41,8 @@ export interface AttendanceNotice {
   createdAt: string
   /** Hora estimada de llegada (solo si `kind === 'on_the_way'` y la persona indicó minutos). */
   estimatedArrivalAt: string | null
+  /** P19.11d: ausencia con (`true`), sin (`false`) o con certificado sin indicar (`null`). Solo si `kind === 'absence'`. */
+  hasCertificate: boolean | null
 }
 
 interface AttendanceNoticeRow {
@@ -54,6 +56,7 @@ interface AttendanceNoticeRow {
   source: Database['public']['Enums']['attendance_source']
   created_at: string
   estimated_arrival_at: string | null
+  has_certificate?: boolean | null
 }
 
 function mapNotice(row: AttendanceNoticeRow): AttendanceNotice {
@@ -68,6 +71,7 @@ function mapNotice(row: AttendanceNoticeRow): AttendanceNotice {
     source: row.source,
     createdAt: row.created_at,
     estimatedArrivalAt: row.estimated_arrival_at ?? null,
+    hasCertificate: row.has_certificate ?? null,
   }
 }
 
@@ -90,6 +94,8 @@ export type NoticeErrorHint =
   | 'INVALID_ETA'
   | 'ON_THE_WAY_TOO_EARLY'
   | 'ON_THE_WAY_TOO_LATE'
+  | 'CERTIFICATE_REQUIRED'
+  | 'NO_ABSENCE'
 
 /**
  * Avisa una demora (`06` sección 11: `notify_delay`). Solo antes de la hora
@@ -125,16 +131,22 @@ export async function notifyDelay(
  * (`REASON_REQUIRED` si falta). `reasonText`: obligatorio si el motivo es
  * `other` (mismo `REASON_REQUIRED`), opcional en cualquier otro motivo. La
  * ausencia avisada NO libera el cupo: el administrador decide.
+ *
+ * P19.11d (migración 0059): cuando la carga la administración, `hasCertificate`
+ * es obligatorio (`CERTIFICATE_REQUIRED`) y el motivo pasa a ser opcional
+ * (`reasonCode` puede ir vacío). El empleado no lo manda: el servidor lo ignora.
  */
 export async function notifyAbsence(
   assignmentId: string,
-  reasonCode: AbsenceReason,
+  reasonCode: AbsenceReason | undefined,
   reasonText?: string,
+  hasCertificate?: boolean,
 ): Promise<AttendanceNotice> {
   const { data, error } = await supabase.rpc('notify_absence', {
     p_assignment_id: assignmentId,
     p_reason_code: reasonCode,
     p_reason_text: reasonText?.trim() || undefined,
+    p_has_certificate: hasCertificate,
   })
 
   if (error) {
@@ -158,6 +170,27 @@ export async function notifyOnTheWay(
   const { data, error } = await supabase.rpc('notify_on_the_way', {
     p_assignment_id: assignmentId,
     p_eta_minutes: etaMinutes ?? undefined,
+  })
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return mapNotice(data as unknown as AttendanceNoticeRow)
+}
+
+/**
+ * Marca o corrige si una ausencia ya avisada tiene certificado
+ * (`set_absence_certificate`, migración 0060, P19.11d). Dueño y
+ * administrador con `manage_attendance`; sin ventana horaria. Errores:
+ * `ASSIGNMENT_NOT_FOUND`, `CERTIFICATE_REQUIRED`, `NO_ABSENCE`, `FORBIDDEN`.
+ */
+export async function setAbsenceCertificate(
+  assignmentId: string,
+  hasCertificate: boolean,
+): Promise<AttendanceNotice> {
+  const { data, error } = await supabase.rpc('set_absence_certificate', {
+    p_assignment_id: assignmentId,
+    p_has_certificate: hasCertificate,
   })
 
   if (error) {

@@ -5,6 +5,7 @@ import type {
   StatusBadgeInput,
   TableRowVariant,
 } from '@/components/status'
+import { certificateLabel } from '@/lib/absenceReasons'
 import { formatMinutes, formatTime } from '@/lib/format'
 
 /**
@@ -206,6 +207,21 @@ export function getAttendanceRowVariant(
     return 'ok'
   }
   return undefined
+}
+
+/**
+ * P19.11d: estado del certificado de una ausencia avisada («con certificado»,
+ * «sin certificado», «certificado sin indicar»); `null` si la asignación no
+ * tiene una ausencia avisada.
+ */
+export function getAbsenceCertificateHint(
+  row: Pick<AttendanceBoardRow, 'status' | 'lastNoticeKind'> &
+    Partial<Pick<AttendanceBoardRow, 'lastNoticeHasCertificate'>>,
+): string | null {
+  if (row.status !== 'absence_notified' || row.lastNoticeKind !== 'absence') {
+    return null
+  }
+  return certificateLabel(row.lastNoticeHasCertificate)
 }
 
 /**
