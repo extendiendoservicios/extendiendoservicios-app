@@ -56,6 +56,7 @@ function AttendanceDetailSheet({
       <PrintTable
         columns={sheet.columns}
         rows={sheet.rows}
+        spans={sheet.spans}
         footer={sheet.footer}
         emptyText="No hay horas registradas en este período."
       />

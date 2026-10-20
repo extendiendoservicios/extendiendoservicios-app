@@ -336,12 +336,23 @@ describe('printableEntries / personSignerLabel', () => {
     expect(sheet.rows[0]).toMatchObject({
       date: '1 sep 2026',
       hours: '—',
-      novelty: 'Licencia del 25/08/2026 al 03/09/2026 — Vacaciones',
+      client: 'Licencia del 25/08/2026 al 03/09/2026 — Vacaciones',
+      novelty: '',
     })
+    // La observación ocupa de Cliente a Observaciones en una sola celda.
+    expect(sheet.spans).toEqual({
+      'leave-l0': { from: 'client', to: 'novelty' },
+      'leave-l1': { from: 'client', to: 'novelty' },
+    })
+    expect(sheet.columns.filter((c) => c.wrap).map((c) => c.key)).toEqual([
+      'client',
+      'site',
+      'novelty',
+    ])
     expect(sheet.rows[2]?.novelty).toBe(
       'Inasistencia — con certificado — Enfermedad',
     )
-    expect(sheet.rows[3]?.novelty).toBe(
+    expect(sheet.rows[3]?.client).toBe(
       'Licencia del 18/09/2026 al abierta — Sin motivo',
     )
     // Solo suman las horas de los turnos trabajados: 4 h + 2 h.

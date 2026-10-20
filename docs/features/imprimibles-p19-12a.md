@@ -51,3 +51,11 @@ que cada render (llegada de teléfonos, polling de 30 s) desmontaba y volvía a
 montar todas las celdas; un toque entre `pointerdown` y `click` caía en un nodo
 descartado. Ahora las columnas están memorizadas, y las acciones son el
 componente estable `AttendanceRowActions`, que lee los teléfonos de un contexto.
+
+## Segunda vuelta
+
+- **Columnas cortas y largas (`PrintTable`)**: las columnas son cortas por defecto (`white-space: nowrap`: fecha, franja, inicio, fin, horas, días, validación, total) y solo parten texto las marcadas con `wrap: true` (cliente, sede, nombre, observaciones, motivo, «lo cargó»), por palabras (`overflow-wrap: break-word`, ya no `anywhere`). El texto de la tabla baja a 11 px. La validación es columna corta: un texto muy largo («Inicio: … · Fin: …») ensancharía la tabla.
+- **Texto de conformidad del detalle de asistencia**: un único texto, con o sin licencias e inasistencias: «Las partes prestan conformidad con el detalle de horas, licencias e inasistencias consignado.».
+- **Fila de licencia**: `PrintTable` acepta `spans` (por `key` de fila, `{ from, to }`) y une las celdas con `colSpan`. La licencia ocupa de Cliente a Observaciones con una sola celda (el texto vive en `client`).
+- **Vista previa angosta**: si el ancho disponible es menor que la hoja se aplica `transform: scale()` (calculado con `ResizeObserver`, `computeSheetFit`); el diseño de 210 mm no se reacomoda. Al imprimir no se escala (`print.css`).
+- **Páginas A4 completas**: la hoja mide siempre un múltiplo de 297 mm (`min-height`), con una línea fina en cada límite de página. El bloque de firmas (`data-print-signatures`, con `break-inside: avoid`) se empuja entero a la página siguiente si cruzaría el fondo útil (297 mm menos 2 × 15 mm). La paginación en pantalla es una aproximación (`computePageLayout`); los cortes reales los decide el navegador al imprimir. Las firmas quedan a continuación del contenido, no pegadas al pie.

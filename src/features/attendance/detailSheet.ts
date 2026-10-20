@@ -8,7 +8,11 @@ import {
   leaveOverlapsPeriod,
 } from '@/features/employees/leavesAbsencesSheet'
 import { formatCalendarDate, formatMinutes, formatTime } from '@/lib/format'
-import type { PrintColumn, PrintRowData } from '@/features/print/PrintTable'
+import type {
+  PrintColumn,
+  PrintRowData,
+  PrintRowSpan,
+} from '@/features/print/PrintTable'
 import { formatShiftRange } from '@/features/shifts/openEnded'
 import { absenceDetail, isAbsence } from '@/features/attendance/absences'
 import { joinObservations } from '@/features/shifts/observation'
@@ -128,6 +132,8 @@ export interface AttendanceSheetModel {
   facts: { label: string; value: string }[]
   columns: PrintColumn[]
   rows: PrintRowData[]
+  /** Filas con celda unida (las licencias: Cliente → Observaciones). */
+  spans: Record<string, PrintRowSpan>
   footer: { label: string; value: string }
   totalMinutes: number
   signers: string[]
@@ -136,8 +142,9 @@ export interface AttendanceSheetModel {
 }
 
 export const ATTENDANCE_SHEET_TITLE = 'Detalle de asistencia'
+// Texto único (con o sin licencias e inasistencias): la hoja las puede incluir.
 export const ATTENDANCE_CONSENT_TEXT =
-  'Las partes prestan conformidad con el detalle de horas consignado.'
+  'Las partes prestan conformidad con el detalle de horas, licencias e inasistencias consignado.'
 
 /** Quién firma por la persona, según sus roles. */
 export function personSignerLabel(roleLabels: string[]): string {
@@ -285,30 +292,33 @@ export function buildAttendanceSheet(input: {
   const columns: PrintColumn[] = [
     { key: 'date', header: 'Fecha' },
     ...(hasSupervisions ? [{ key: 'kind', header: 'Tipo' }] : []),
-    { key: 'client', header: 'Cliente' },
-    { key: 'site', header: 'Sede' },
+    { key: 'client', header: 'Cliente', wrap: true },
+    { key: 'site', header: 'Sede', wrap: true },
     { key: 'franja', header: 'Franja' },
     { key: 'start', header: 'Inicio' },
     { key: 'end', header: 'Fin' },
     // B1 (B-20): validación por ubicación, solo el resultado, sin coordenadas.
     { key: 'geo', header: 'Validación' },
-    { key: 'novelty', header: 'Observaciones' },
+    { key: 'novelty', header: 'Observaciones', wrap: true },
     { key: 'hours', header: 'Horas', align: 'right' },
   ]
 
+  const spans: Record<string, PrintRowSpan> = {}
   const rows: PrintRowData[] = allLines.map((line) => {
     if (line.type === 'leave') {
+      spans[`leave-${line.leave.id}`] = { from: 'client', to: 'novelty' }
       return {
         key: `leave-${line.leave.id}`,
         date: formatPeriodDate(line.date),
         kind: 'Licencia',
-        client: '—',
-        site: '—',
-        franja: '—',
-        start: '—',
-        end: '—',
+        // La observación va en la celda unida que arranca en Cliente y llega hasta Observaciones (`spans`).
+        client: leaveSheetNote(line.leave),
+        site: '',
+        franja: '',
+        start: '',
+        end: '',
         geo: '',
-        novelty: leaveSheetNote(line.leave),
+        novelty: '',
         hours: '—',
       }
     }
@@ -357,6 +367,7 @@ export function buildAttendanceSheet(input: {
     ],
     columns,
     rows,
+    spans,
     footer: {
       label: 'Total del período',
       value: formatMinutes(totalMinutes),

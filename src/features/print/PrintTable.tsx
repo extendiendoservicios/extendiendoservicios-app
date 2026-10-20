@@ -7,33 +7,62 @@ export interface PrintColumn {
   key: string
   header: string
   align?: 'left' | 'right'
+  /**
+   * Columna de texto largo (cliente, sede, observaciones, motivo…): puede
+   * partir el texto en renglones, siempre por palabras. Sin esta marca la
+   * columna es corta (fecha, franja, horas…) y nunca parte su contenido.
+   */
+  wrap?: boolean
 }
 
 export type PrintRowData = Record<string, string> & { key: string }
+
+/**
+ * Celda unida de una fila: el valor de la columna `from` ocupa desde `from`
+ * hasta `to` (inclusive) y las columnas del medio no se dibujan.
+ */
+export interface PrintRowSpan {
+  from: string
+  to: string
+}
 
 interface PrintTableProps {
   columns: PrintColumn[]
   rows: PrintRowData[]
   /** Fila de totales al pie: la etiqueta ocupa todas las columnas menos la última, el valor va en la última. */
   footer?: { label: string; value: string }
+  /** Filas con celda unida, por `key` de fila. */
+  spans?: Record<string, PrintRowSpan>
   /** Texto cuando no hay filas. */
   emptyText: string
 }
 
-// `overflow-wrap:anywhere` deja que el texto largo se parta en vez de ensanchar la tabla más allá de la hoja.
-const cellClass =
-  'border border-neutral-400 px-2 py-1 align-top [overflow-wrap:anywhere]'
+const cellClass = 'border border-neutral-400 px-1.5 py-1 align-top'
+/** Columna corta: nunca se parte (ancho mínimo = el del contenido). */
+const shortCellClass = 'whitespace-nowrap'
+/** Columna larga: parte por palabras (no a mitad de palabra salvo que no entre una sola). */
+const longCellClass = '[overflow-wrap:break-word]'
 
-function PrintTable({ columns, rows, footer, emptyText }: PrintTableProps) {
+function columnClass(column: PrintColumn): string {
+  return column.wrap ? longCellClass : shortCellClass
+}
+
+function PrintTable({
+  columns,
+  rows,
+  footer,
+  spans,
+  emptyText,
+}: PrintTableProps) {
   return (
-    <table className="w-full table-auto text-[11.5px]">
+    <table className="w-full table-auto text-[11px]">
       <thead>
         <tr className="bg-neutral-200">
           {columns.map((column) => (
             <th
               key={column.key}
               scope="col"
-              className={`${cellClass} font-semibold ${column.align === 'right' ? 'text-right' : 'text-left'}`}
+              className={`${cellClass} ${columnClass(column)} font-semibold ${column.align === 'right' ? 'text-right' : 'text-left'}`}
             >
               {column.header}
             </th>
@@ -52,16 +81,7 @@ function PrintTable({ columns, rows, footer, emptyText }: PrintTableProps) {
           </tr>
         ) : (
           rows.map((row) => (
-            <tr key={row.key}>
-              {columns.map((column) => (
-                <td
-                  key={column.key}
-                  className={`${cellClass} ${column.align === 'right' ? 'text-right tabular-nums' : ''}`}
-                >
-                  {row[column.key]}
-                </td>
-              ))}
-            </tr>
+            <tr key={row.key}>{renderCells(columns, row, spans?.[row.key])}</tr>
           ))
         )}
       </tbody>
@@ -74,7 +94,9 @@ function PrintTable({ columns, rows, footer, emptyText }: PrintTableProps) {
             >
               {footer.label}
             </td>
-            <td className={`${cellClass} text-right tabular-nums`}>
+            <td
+              className={`${cellClass} ${shortCellClass} text-right tabular-nums`}
+            >
               {footer.value}
             </td>
           </tr>
@@ -82,6 +104,33 @@ function PrintTable({ columns, rows, footer, emptyText }: PrintTableProps) {
       )}
     </table>
   )
+}
+
+function renderCells(
+  columns: PrintColumn[],
+  row: PrintRowData,
+  span: PrintRowSpan | undefined,
+) {
+  const fromIndex = span ? columns.findIndex((c) => c.key === span.from) : -1
+  const toIndex = span ? columns.findIndex((c) => c.key === span.to) : -1
+  const merged = fromIndex >= 0 && toIndex > fromIndex
+  const cells: React.ReactNode[] = []
+  columns.forEach((column, index) => {
+    if (merged && index > fromIndex && index <= toIndex) {
+      return
+    }
+    const isMerged = merged && index === fromIndex
+    cells.push(
+      <td
+        key={column.key}
+        colSpan={isMerged ? toIndex - fromIndex + 1 : undefined}
+        className={`${cellClass} ${isMerged ? longCellClass : columnClass(column)} ${column.align === 'right' ? 'text-right tabular-nums' : ''}`}
+      >
+        {row[column.key]}
+      </td>,
+    )
+  })
+  return cells
 }
 
 /** Datos del documento en dos columnas (persona, período, cliente…). */
@@ -110,7 +159,10 @@ function PrintSignatures({
   signers: string[]
 }) {
   return (
-    <section className="print-keep-together mt-10">
+    <section
+      data-print-signatures
+      className="print-keep-together mt-[calc(2.5rem+var(--sig-push,0px))]"
+    >
       {intro && <p className="mb-8 text-[11.5px]">{intro}</p>}
       <div className="grid grid-cols-2 gap-10">
         {signers.map((signer) => (

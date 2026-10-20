@@ -9,6 +9,17 @@
   margin: 15mm;
 }
 
+/* Vista previa: líneas finas que marcan el límite entre páginas A4 (297 mm). */
+.print-sheet {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(297mm - 1px),
+    #cbd5e1 calc(297mm - 1px),
+    #cbd5e1 297mm
+  );
+}
+
 @media print {
   html,
   body {
@@ -25,6 +36,23 @@
     position: static !important;
     overflow: visible !important;
     background: #fff !important;
+  }
+
+  /* La escala de la vista previa no se aplica al imprimir: A4 normal. */
+  .print-sheet-frame {
+    width: auto !important;
+    height: auto !important;
+  }
+
+  .print-sheet {
+    transform: none !important;
+    min-height: 0 !important;
+    background-image: none !important;
+  }
+
+  /* Sin el empuje de la vista previa: el navegador pagina. */
+  .print-sheet [data-print-signatures] {
+    margin-top: 2.5rem !important;
   }
 
   /* Ancho útil de la página: 210 mm menos los 15 mm de `@page` a cada lado. */
