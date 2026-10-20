@@ -9,7 +9,7 @@
 // La lógica fina la cubren además los tests Deno de `supabase/functions/admin-users`.
 
 import { afterAll, describe, expect, it } from 'vitest'
-import { clienteDe, contexto } from './contexto.ts'
+import { clienteDe, contexto, tokenVigente } from './contexto.ts'
 import { caso, claveCaso } from './defectos.ts'
 import { liberarLimite, llamarEdge, preflight } from './edge-cliente.ts'
 import { requireE2eEnv } from '../../fixtures/env.ts'
@@ -31,7 +31,7 @@ describe('Edge Function admin-users por acción y perfil', () => {
             const token =
               perfil === 'anon'
                 ? requireE2eEnv().anonKey
-                : contextoActual.tokens[perfil]
+                : await tokenVigente(perfil)
             const r = await llamarEdge(token, c.cuerpo(contextoActual))
             expect(r.hint, JSON.stringify(r.cuerpo)).toBe(hint)
           },
@@ -67,7 +67,7 @@ describe('Edge Function admin-users por acción y perfil', () => {
     })
 
     it('acción desconocida: 400 UNKNOWN_ACTION, sin detalles internos (RB-X02)', async () => {
-      const r = await llamarEdge(contexto().tokens.owner, {
+      const r = await llamarEdge(await tokenVigente('owner'), {
         action: 'borrar_todo',
       })
       expect(r.status).toBe(400)
@@ -86,7 +86,7 @@ describe('Edge Function admin-users por acción y perfil', () => {
           headers: {
             'Content-Type': 'text/plain',
             apikey: env.anonKey,
-            Authorization: `Bearer ${contexto().tokens.owner}`,
+            Authorization: `Bearer ${await tokenVigente('owner')}`,
           },
           body: '{no es json',
         },
@@ -125,7 +125,7 @@ describe('Edge Function admin-users por acción y perfil', () => {
             email: 'e2e-perm-nunca@example.com',
             reason: 'e2e-perm',
           }
-          const r = await llamarEdge(c.tokens.admin, cuerpo)
+          const r = await llamarEdge(await tokenVigente('admin'), cuerpo)
           expect(r.hint, JSON.stringify(r.cuerpo)).toBe('FORBIDDEN')
         })
       }
@@ -133,7 +133,7 @@ describe('Edge Function admin-users por acción y perfil', () => {
 
     for (const rolPrivilegiado of ['admin', 'owner']) {
       it(`[admin con todas] create_user con el rol ${rolPrivilegiado}: FORBIDDEN (RB-A01, RB-X02, CB-17)`, async () => {
-        const r = await llamarEdge(contexto().tokens.admin, {
+        const r = await llamarEdge(await tokenVigente('admin'), {
           action: 'create_user',
           email: 'e2e-perm-nunca@example.com',
           password: 'Passw0rd-e2e-perm',
@@ -149,12 +149,12 @@ describe('Edge Function admin-users por acción y perfil', () => {
   describe('límite de acciones por minuto (SEG-03)', () => {
     afterAll(async () => {
       for (const perfil of ['adminSin', 'admin', 'owner'] as const) {
-        await liberarLimite(contexto().tokens[perfil])
+        await liberarLimite(await tokenVigente(perfil))
       }
     })
 
     it('10 intentos rechazados en un minuto bloquean el siguiente con RATE_LIMITED (SEG-03, RB-X02)', async () => {
-      const token = contexto().tokens.adminSin
+      const token = await tokenVigente('adminSin')
       // El administrador sin capacidades no puede cerrar sesiones: cada intento es FORBIDDEN.
       const cuerpo = { action: 'sign_out_user', profile_id: INEXISTENTE }
       try {
@@ -199,7 +199,7 @@ describe('Edge Function admin-users por acción y perfil', () => {
       })
       it(`POST con token de dueño desde ${origen}: 403 ORIGIN_NOT_ALLOWED (RB-X02)`, async () => {
         const r = await llamarEdge(
-          contexto().tokens.owner,
+          await tokenVigente('owner'),
           { action: 'reactivate_user', profile_id: INEXISTENTE },
           { origen },
         )

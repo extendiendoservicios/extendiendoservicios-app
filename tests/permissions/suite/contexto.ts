@@ -14,7 +14,8 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { inject } from 'vitest'
 import type { Database } from '../../../src/lib/database.types.ts'
 import { requireE2eEnv } from '../../fixtures/env.ts'
-import type { Perfil, PerfilConSesion } from './perfiles.ts'
+import { esLimiteDeTasa } from '../../fixtures/sessions.ts'
+import { EMAIL_DE, type Perfil, type PerfilConSesion } from './perfiles.ts'
 
 export type Db = SupabaseClient<Database>
 
@@ -105,15 +106,72 @@ export function contexto(): Contexto {
   return inject('permisos')
 }
 
+/** Segundos que le quedan al token (0 si no se puede leer). */
+function segundosRestantes(token: string): number {
+  try {
+    const payload = JSON.parse(
+      Buffer.from(token.split('.')[1] ?? '', 'base64url').toString('utf8'),
+    ) as { exp?: number }
+    return (payload.exp ?? 0) - Date.now() / 1000
+  } catch {
+    return 0
+  }
+}
+
+// Tokens renovados por perfil en ESTE archivo de prueba (cada archivo corre en su propio módulo).
+const renovados = new Map<PerfilConSesion, Promise<string>>()
+
+/**
+ * Los tokens del `globalSetup` vencen a los 15 minutos (`jwt_expiry = 900`) y la matriz completa
+ * dura más de 20: los archivos que arrancan tarde recibían `PGRST303 JWT expired`. Cuando al token
+ * le queda menos de un minuto se inicia una sesión NUEVA con la misma cuenta (no se renueva con el
+ * refresh token: eso rotaría el de los demás archivos; un ingreso nuevo no invalida nada).
+ */
+export async function tokenVigente(perfil: PerfilConSesion): Promise<string> {
+  const original = contexto().tokens[perfil]
+  const previo = renovados.get(perfil)
+  const actual = previo ? await previo : original
+  if (segundosRestantes(actual) > 60) return actual
+  const env = requireE2eEnv()
+  const nuevo = (async () => {
+    const cliente = createClient<Database>(env.supabaseUrl, env.anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+    for (const espera of [0, 5, 10, 20, 30, 40, 60]) {
+      if (espera) await new Promise((r) => setTimeout(r, espera * 1000))
+      const { data, error } = await cliente.auth.signInWithPassword({
+        email: EMAIL_DE[perfil],
+        password: env.seedPassword,
+      })
+      if (data.session) return data.session.access_token
+      if (!error || !esLimiteDeTasa(error)) break
+    }
+    return actual
+  })()
+  renovados.set(perfil, nuevo)
+  return nuevo
+}
+
 /** Cliente `anon` o con la sesión del perfil (cabecera `Authorization`, sin renovar nada). */
 export function clienteDe(perfil: Perfil): Db {
   const env = requireE2eEnv()
-  const token = perfil === 'anon' ? null : contexto().tokens[perfil]
+  if (perfil === 'anon') {
+    return createClient<Database>(env.supabaseUrl, env.anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+  }
+  // El `fetch` pone el token vigente en cada pedido (ver `tokenVigente`).
+  const conToken: typeof fetch = async (entrada, init) => {
+    const cabeceras = new Headers(init?.headers)
+    cabeceras.set('Authorization', `Bearer ${await tokenVigente(perfil)}`)
+    return fetch(entrada, { ...init, headers: cabeceras })
+  }
   return createClient<Database>(env.supabaseUrl, env.anonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
-    ...(token
-      ? { global: { headers: { Authorization: `Bearer ${token}` } } }
-      : {}),
+    global: {
+      headers: { Authorization: `Bearer ${contexto().tokens[perfil]}` },
+      fetch: conToken,
+    },
   })
 }
 
