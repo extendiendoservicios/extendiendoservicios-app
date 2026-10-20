@@ -49,6 +49,16 @@ vi.mock('@/features/planning/queries', () => ({
         endTime: '12:00:00',
         openEnded: false,
       },
+      {
+        id: 'a2',
+        shiftId: 'sh2',
+        employeeId: 'e1',
+        shiftDate: '2026-10-20',
+        siteName: 'Sede Norte',
+        startTime: '10:00:00',
+        endTime: '23:59:00',
+        openEnded: true,
+      },
     ],
   }),
 }))
@@ -112,5 +122,36 @@ describe('WeekGrid (escritorio)', () => {
     const row = screen.getByText('Luis Díaz').closest('tr')
     expect(row?.className ?? '').not.toContain('opacity')
     expect(screen.getByText('(de licencia)')).toBeInTheDocument()
+  })
+
+  it('el horario nunca se recorta: va en su propia línea y sin cortes', () => {
+    renderGrid()
+    const ranges = screen.getAllByTestId('week-chip-range')
+    const closed = ranges.find((node) => node.textContent === '08:00–12:00')
+    expect(closed).toBeDefined()
+    expect(closed?.className).toContain('whitespace-nowrap')
+    expect(closed?.className).toContain('tabular-nums')
+    expect(closed?.className).not.toContain('truncate')
+    // La sede sí se recorta.
+    for (const site of screen.getAllByTestId('week-chip-site')) {
+      expect(site.className).toContain('truncate')
+    }
+  })
+
+  it('«A terminar» se parte en dos líneas completas', () => {
+    renderGrid()
+    const open = screen
+      .getAllByTestId('week-chip-range')
+      .find((node) => node.textContent === '10:00–A terminar')
+    expect(open).toBeDefined()
+    const lines = Array.from(open?.children ?? [])
+    expect(lines.map((line) => line.textContent)).toEqual([
+      '10:00–',
+      'A terminar',
+    ])
+    for (const line of lines) {
+      expect(line.className).toContain('whitespace-nowrap')
+      expect(line.className).not.toContain('truncate')
+    }
   })
 })

@@ -105,3 +105,28 @@ de márgenes:
 | 1280 px  | 992 px (entra)            | 1168 px (entra) |
 | 1366 px  | 1078 px (entra)           | 1254 px (entra) |
 | 1440 px  | 1152 px (entra)           | 1328 px (entra) |
+
+### Revisión visual (chip del horario)
+
+El horario del chip es el dato principal y nunca se recorta: va en su propia
+línea con `whitespace-nowrap` y cifras de ancho fijo (`tabular-nums`) en 10,5 px
+(unos 62 px). El relleno de la celda baja a 4 px por lado y el del chip a 4 px:
+en una celda de 88 px quedan 72 px útiles. «A terminar» se parte en dos líneas
+completas («10:00–» y «A terminar»). Solo la sede se recorta con puntos
+suspensivos (el texto completo queda en el título del chip).
+
+## 6 bis. Calendario del día (ADM-05)
+
+`ShiftsDayList.tsx`, desde 1024 px: la tabla entra en el ancho sin desplazar.
+
+- Relleno de celdas de 8 px (antes 14 px) y columnas más angostas: horario
+  6,25 rem, dotación 5,5 rem, estado 6,75 rem, acciones 7,5 rem; cliente · sede
+  19 %, asignados 13 %, coordinador 12 % (recortados con puntos suspensivos y
+  título).
+- Acciones solo con ícono (Ver, Editar, Cancelar) con `aria-label` y `title`:
+  mismos nombres accesibles que antes.
+- Respaldo: contenedor con alto máximo y desplazamiento interno, y ancho mínimo
+  de 44 rem (704 px), menor que los 736 px de 1024 px con el menú abierto.
+- Ancho de contenido (menú abierto / cerrado): 1024 px: 736 / 912; 1145 px:
+  857 / 1033; 1280 px: 992 / 1168; 1366 px: 1078 / 1254. En todos entra.
+- En celular se mantiene la vista de tarjetas con botones de texto.

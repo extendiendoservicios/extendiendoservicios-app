@@ -35,6 +35,42 @@ const DESKTOP_QUERY = '(min-width: 1024px)'
 const WEEK_GRID_MIN_WIDTH = 'min-w-[760px]'
 
 /**
+ * Horario del chip (P19.11d): es el dato principal y nunca se recorta. Va en
+ * su propia línea, sin cortes y con cifras de ancho fijo en 10.5 px (unos
+ * 62 px: entra en los 72 px útiles de una celda de 88 px). Con "A terminar"
+ * (largo) se parte en dos líneas: "08:00–" y "A terminar".
+ */
+function ShiftRange({
+  startTime,
+  endTime,
+  openEnded,
+}: {
+  startTime: string
+  endTime: string | null | undefined
+  openEnded: boolean | null | undefined
+}) {
+  const range = formatShiftRange(startTime, endTime, openEnded)
+  const closed = !openEnded && endTime
+  if (closed) {
+    return (
+      <span
+        data-testid="week-chip-range"
+        className="block text-[10.5px] whitespace-nowrap tabular-nums"
+      >
+        {range}
+      </span>
+    )
+  }
+  const [from, to] = range.split('–')
+  return (
+    <span data-testid="week-chip-range" className="block text-[10.5px]">
+      <span className="block whitespace-nowrap tabular-nums">{from}–</span>
+      <span className="block whitespace-nowrap">{to}</span>
+    </span>
+  )
+}
+
+/**
  * ADM-04 "Planificación · semana por empleado" (ASSIGN-009, `05` línea 38):
  * grilla empleados × 7 días, una tarjeta por asignación con sede y franja
  * (la propia si la tiene, `effective_start_time`/`effective_end_time` de
@@ -181,7 +217,8 @@ function WeekGrid() {
       {isDesktop ? (
         // P19.11d: la grilla se ajusta sola al ancho disponible (la columna de
         // empleados tiene ancho fijo y los 7 días se reparten el resto en
-        // partes iguales, con el texto recortado con puntos suspensivos) y,
+        // partes iguales; la sede se recorta con puntos suspensivos y el
+        // horario nunca) y,
         // si ni así entra (menos de `WEEK_GRID_MIN_WIDTH`), el contenedor
         // desplaza en horizontal con la columna de empleados y los días
         // fijos. El contenedor también tiene alto máximo: así la barra de
@@ -238,7 +275,7 @@ function WeekGrid() {
                       return (
                         <td
                           key={day}
-                          className="border-b border-border px-2 py-2 align-top"
+                          className="border-b border-border px-1 py-2 align-top"
                         >
                           <div
                             className={`min-w-0 ${onLeave ? 'opacity-50' : ''}`}
@@ -258,14 +295,19 @@ function WeekGrid() {
                                       key={assignment.id}
                                       to={`/admin/turnos/${assignment.shiftId}`}
                                       title={`${assignment.siteName} · ${range}`}
-                                      className="block min-w-0 rounded bg-primary-100 px-1.5 py-1 text-left text-[11px] font-medium text-primary-800 outline-none hover:bg-primary-100/80 focus-visible:ring-3 focus-visible:ring-ring"
+                                      className="block min-w-0 rounded bg-primary-100 px-1 py-1 text-left text-[11px] font-medium text-primary-800 outline-none hover:bg-primary-100/80 focus-visible:ring-3 focus-visible:ring-ring"
                                     >
-                                      <span className="block truncate">
+                                      <span
+                                        data-testid="week-chip-site"
+                                        className="block truncate"
+                                      >
                                         {assignment.siteName}
                                       </span>
-                                      <span className="block truncate">
-                                        {range}
-                                      </span>
+                                      <ShiftRange
+                                        startTime={assignment.startTime}
+                                        endTime={assignment.endTime}
+                                        openEnded={assignment.openEnded}
+                                      />
                                     </Link>
                                   )
                                 })}

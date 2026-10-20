@@ -1,9 +1,18 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { CalendarClock, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import {
+  Ban,
+  CalendarClock,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Pencil,
+  Plus,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/IconButton'
 import { DatePicker } from '@/components/DatePicker'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { DataTable, type DataTableColumnDef } from '@/components/DataTable'
 import { StatusBadge } from '@/components/status'
 import type { ShiftStatus as BadgeShiftStatus } from '@/components/status'
@@ -31,6 +40,20 @@ import { NO_CHECKOUT_LABEL } from '@/features/shifts/openEnded'
 import { UpdatedAgo } from './UpdatedAgo'
 import { CancelShiftDialog } from './CancelShiftDialog'
 
+const DESKTOP_QUERY = '(min-width: 1024px)'
+
+/**
+ * Contenedor de las franjas (P19.11d). Desde 1024 px las columnas son más
+ * angostas (relleno de 8 px, acciones solo con ícono) para que la tabla entre
+ * en el ancho sin desplazar: con el menú abierto el contenido mide 736 px a
+ * 1024 px de pantalla y 857 px a 1145. El desplazamiento horizontal queda solo
+ * de respaldo (menos de 44 rem = 704 px) y con alto máximo, así la barra no
+ * queda al final de una lista larga.
+ */
+const DAY_LIST_SCROLL_CLASS =
+  'max-h-[calc(100dvh-16rem)] min-h-64 overflow-auto [&_td]:px-2 [&_th]:px-2'
+const DAY_LIST_MIN_WIDTH = 'lg:min-w-[44rem]'
+
 /** `"YYYY-MM-DD"` → `Date` para `DatePicker` (mismo criterio que `isoDateToDate` de `ServiceFormPage`). */
 function isoDateToDate(isoDate: string): Date {
   return new Date(`${isoDate}T00:00:00`)
@@ -57,6 +80,7 @@ interface ShiftsDayListProps {
 
 function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
   const auth = useAuth()
+  const isDesktop = useMediaQuery(DESKTOP_QUERY)
   const actor = { roles: auth.roles, capabilities: auth.capabilities }
   const canManage = canManageShiftTime(actor)
   // "Cancelar" exige además `cancel_shifts` (06 sección 7), igual que el servidor.
@@ -77,11 +101,13 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
     {
       id: 'time',
       header: 'Horario',
-      meta: { card: 'title', width: '7.5rem' },
+      meta: { card: 'title', width: '6.25rem' },
       cell: ({ row }) => (
         <Link
           to={`/admin/turnos/${row.original.id}`}
-          className="font-semibold whitespace-nowrap text-text hover:text-primary-800"
+          className={`font-semibold text-text hover:text-primary-800 ${
+            row.original.openEnded ? '' : 'whitespace-nowrap'
+          }`}
         >
           {shiftFranjaKey(row.original)}
         </Link>
@@ -90,7 +116,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
     {
       id: 'client',
       header: 'Cliente · sede',
-      meta: { card: 'subtitle', width: '28%' },
+      meta: { card: 'subtitle', width: '19%' },
       cell: ({ row }) => {
         const label = `${row.original.clientName} · ${row.original.siteName}`
         return (
@@ -110,7 +136,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
         card: 'meta',
         cardLabel: 'Dotación',
         align: 'end',
-        width: '6rem',
+        width: '5.5rem',
       },
       cell: ({ row }) => {
         const noCheckout = `${row.original.noCheckoutCount} ${NO_CHECKOUT_LABEL.toLowerCase()}`
@@ -134,7 +160,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
     {
       id: 'employees',
       header: 'Asignados',
-      meta: { card: 'meta', cardLabel: 'Asignados', width: '24%' },
+      meta: { card: 'meta', cardLabel: 'Asignados', width: '13%' },
       cell: ({ row }) => {
         const { employees } = peopleOfShift(people, row.original.id)
         if (employees.length === 0) {
@@ -151,7 +177,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
     {
       id: 'supervisor',
       header: 'Coordinador',
-      meta: { card: 'meta', cardLabel: 'Coordinador', width: '16%' },
+      meta: { card: 'meta', cardLabel: 'Coordinador', width: '12%' },
       cell: ({ row }) => {
         const { supervisors } = peopleOfShift(people, row.original.id)
         if (supervisors.length === 0) {
@@ -168,7 +194,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
     {
       id: 'status',
       header: 'Estado',
-      meta: { card: 'meta', cardLabel: 'Estado', width: '7.5rem' },
+      meta: { card: 'meta', cardLabel: 'Estado', width: '6.75rem' },
       cell: ({ row }) => (
         <StatusBadge
           domain="shift"
@@ -179,12 +205,47 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
     {
       id: 'actions',
       header: 'Acciones',
-      meta: { card: 'trailing', width: '13.5rem' },
+      meta: { card: 'trailing', width: '7.5rem' },
       cell: ({ row }) => {
         const shift = row.original
         const isEditable =
           shift.status === 'scheduled' || shift.status === 'assigned'
         const isCancellable = isShiftCancellable(shift.status)
+        if (isDesktop) {
+          // Solo ícono (con nombre accesible y título): ocupa 3 × 34 px.
+          return (
+            <div className="flex items-center gap-1">
+              <Button asChild variant="ghost" size="icon">
+                <Link
+                  to={`/admin/turnos/${shift.id}`}
+                  aria-label="Ver"
+                  title="Ver"
+                >
+                  <Eye />
+                </Link>
+              </Button>
+              {canManage && isEditable && (
+                <Button asChild variant="ghost" size="icon">
+                  <Link
+                    to={`/admin/turnos/${shift.id}/editar`}
+                    aria-label="Editar"
+                    title="Editar"
+                  >
+                    <Pencil />
+                  </Link>
+                </Button>
+              )}
+              {canManage && isCancellable && canCancel && (
+                <IconButton
+                  icon={Ban}
+                  aria-label="Cancelar"
+                  title="Cancelar"
+                  onClick={() => setCancelTarget(shift)}
+                />
+              )}
+            </div>
+          )
+        }
         return (
           <div className="flex items-center gap-2">
             <Button asChild variant="ghost" size="sm">
@@ -275,8 +336,14 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
       ) : (
         // AJ4-02: con poco ancho (1024 px con el menú abierto) las franjas se
         // desplazan de costado todas juntas, así las columnas siguen alineadas.
-        <div className="overflow-x-auto">
-          <div className="flex flex-col gap-4 lg:min-w-[60rem]">
+        <div
+          data-testid="day-list-scroll"
+          className={isDesktop ? DAY_LIST_SCROLL_CLASS : 'overflow-x-auto'}
+        >
+          <div
+            className={`flex flex-col gap-4 ${DAY_LIST_MIN_WIDTH}`}
+            data-testid="day-list-content"
+          >
             {franjaGroups.map((group) => (
               <div key={group.franja} className="flex flex-col gap-2">
                 <h3 className="text-[12.5px] font-semibold text-text-3">
