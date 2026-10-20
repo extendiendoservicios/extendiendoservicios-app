@@ -24,6 +24,9 @@ async function plazosEnLaBase() {
   }
 }
 
+/** Plazos de fábrica (migración 0047): punto de partida fijo de la prueba. */
+const PLAZOS_BASE = { foto: 60, video: 30 }
+
 async function reponer(foto: number, video: number): Promise<void> {
   await getAdminDb()
     .from('company_settings')
@@ -47,8 +50,14 @@ for (const cuenta of ['owner', 'admin'] as const) {
       cubre('H-08', 'H-17'),
       async ({ page }) => {
         test.setTimeout(120_000)
-        const original = await plazosEnLaBase()
+        const real = await plazosEnLaBase()
         try {
+          // Parte de plazos conocidos (los de fábrica) y no de lo que haya en App_dev: con 7 o 365
+          // guardados de antes, el botón «Guardar plazos» queda apagado al escribir el mismo valor
+          // y el clic espera en vano. Lo real se repone en el `finally`.
+          await reponer(PLAZOS_BASE.foto, PLAZOS_BASE.video)
+          const original = await plazosEnLaBase()
+          expect(original).toEqual(PLAZOS_BASE)
           const seccion = await abrirSeccion(page)
           const fotos = seccion.getByLabel('Las fotos vencen a los (días)')
           const videos = seccion.getByLabel('Los videos vencen a los (días)')
@@ -125,7 +134,7 @@ for (const cuenta of ['owner', 'admin'] as const) {
             await expect.poll(async () => plazosEnLaBase()).toEqual(original)
           })
         } finally {
-          await reponer(original.foto, original.video)
+          await reponer(real.foto, real.video)
         }
       },
     )
