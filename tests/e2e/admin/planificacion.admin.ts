@@ -6,8 +6,8 @@ import {
   franjaSigueProgramada,
 } from '../../fixtures/dates.ts'
 import { MISSING_ENV_MESSAGE, readE2eEnv } from '../../fixtures/env.ts'
-import { Scenario } from '../../fixtures/scenario.ts'
-import { storageStatePath } from '../../fixtures/sessions.ts'
+import { Scenario, sessionClient } from '../../fixtures/scenario.ts'
+import { readId, storageStatePath } from '../../fixtures/sessions.ts'
 import { cubre } from '../../fixtures/trace.ts'
 import { pickMonth } from '../../fixtures/ui.ts'
 
@@ -155,7 +155,7 @@ test.describe('cronograma (ADM-03, ADM-04, ADM-05)', () => {
 
 test.describe('asignar con advertencias (ADM-08, ADM-04)', () => {
   test(
-    'un empleado de licencia o no habilitado se asigna igual, con advertencia, y la grilla semanal lo atenúa',
+    'el de licencia no se puede asignar (ON_LEAVE), el no habilitado se asigna igual con advertencia y la grilla semanal atenúa al de licencia',
     cubre('RB-A04', 'RB-A06', 'CB-25', 'P-033', 'P-034'),
     async ({ page }) => {
       const sc = new Scenario()
@@ -170,8 +170,15 @@ test.describe('asignar con advertencias (ADM-08, ADM-04)', () => {
           { start: '20:00', end: '23:00' },
           2,
         )
-        // empleado3: licencia de hoy. empleado4: habilitado solo para OTRO cliente (si la lista
+        // P19.11 (0059): la licencia ya no se asigna "igual": `ON_LEAVE` es un error. Para que la
+        // grilla semanal tenga algo que atenuar, empleado3 se asigna a OTRO turno de hoy ANTES de
+        // cargarle la licencia. empleado4: habilitado solo para OTRO cliente (si la lista
         // de habilitaciones está vacía, el empleado está habilitado para todos, P-034).
+        const turnoPrevio = await sc.shift(client.id, site.id, sc.today, {
+          start: '14:00',
+          end: '16:00',
+        })
+        await sc.assign(turnoPrevio, 'empleado3')
         await sc.leave('empleado3', sc.today, sc.today)
         await sc.enableForClient('empleado4', otro.id)
 
@@ -199,24 +206,17 @@ test.describe('asignar con advertencias (ADM-08, ADM-04)', () => {
           ).toContainText('Habilitado y disponible')
         })
 
-        await test.step('asigna al de licencia: se asigna igual y avisa (no bloquea)', async () => {
+        await test.step('P19.11: el de licencia no se puede elegir y el servidor lo rechaza con ON_LEAVE', async () => {
           const hoja = page.getByRole('dialog', { name: 'Asignar empleado' })
-          await hoja
-            .getByRole('radio', { name: reNombreDe('empleado3') })
-            .click()
-          await hoja
-            .getByRole('button', { name: 'Asignar', exact: true })
-            .click()
           await expect(
-            page.getByText(
-              'Asignamos igual, con advertencias: revisalas abajo.',
-            ),
-          ).toBeVisible()
-          await expect(
-            hoja.getByText(
-              'Este empleado tiene una licencia cargada para la fecha del turno.',
-            ),
-          ).toBeVisible()
+            hoja.getByRole('radio', { name: reNombreDe('empleado3') }),
+          ).toBeDisabled()
+          const owner = await sessionClient('owner')
+          const { error } = await owner.rpc('assign_employee', {
+            p_shift_id: shiftId,
+            p_employee_id: readId('empleado3'),
+          })
+          expect(error?.message).toContain('de licencia')
         })
 
         await test.step('asigna al no habilitado: se asigna igual y avisa', async () => {
@@ -234,19 +234,20 @@ test.describe('asignar con advertencias (ADM-08, ADM-04)', () => {
           ).toBeVisible()
         })
 
-        await test.step('quedaron las dos asignaciones y el turno pasó a Asignado', async () => {
+        await test.step('quedó solo la asignación del no habilitado', async () => {
           const { data: asignaciones } = await sc.db
             .from('assignments')
             .select('employee_id')
             .eq('shift_id', shiftId)
             .is('removed_at', null)
-          expect(asignaciones).toHaveLength(2)
+          expect(asignaciones).toHaveLength(1)
           const { data: turno } = await sc.db
             .from('shifts')
             .select('status')
             .eq('id', shiftId)
             .single()
-          expect(turno?.status).toBe('assigned')
+          // Dotación 1/2: el turno sigue programado hasta completarse.
+          expect(turno?.status).toBe('scheduled')
         })
 
         await test.step('ADM-04: la semana muestra al empleado de licencia atenuado, con su turno', async () => {
@@ -257,7 +258,7 @@ test.describe('asignar con advertencias (ADM-08, ADM-04)', () => {
           await expect(fila).toContainText('(de licencia)')
           await expect(
             fila.getByRole('link', {
-              name: new RegExp(`${site.name} 20:00–23:00`),
+              name: new RegExp(`${site.name} 14:00–16:00`),
             }),
           ).toBeVisible()
         })
