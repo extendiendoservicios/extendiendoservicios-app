@@ -11,6 +11,8 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { EmptyState } from '@/components/EmptyState'
+import { LeavesAbsencesPrintAction } from '@/features/employees/components/LeavesAbsencesPrintAction'
+import type { LeavesAbsencesPerson } from '@/features/employees/leavesAbsencesSheet'
 import { SimpleConfirmDialog } from '@/features/settings/components/SimpleConfirmDialog'
 import { isApiError } from '@/api/errors'
 import type { EmployeeLeave, LeaveConflict } from '@/api/employees'
@@ -56,9 +58,12 @@ const LEAVE_STATUS_VARIANT: Record<
 function EmployeeLeavesTab({
   profileId,
   canEdit,
+  person,
 }: {
   profileId: string
   canEdit: boolean
+  /** Datos de la persona para el imprimible «Licencias y ausencias» (P19.11d); sin esto no se ofrece. */
+  person?: LeavesAbsencesPerson
 }) {
   const auth = useAuth()
   const leavesQuery = useEmployeeLeavesQuery(profileId)
@@ -179,8 +184,17 @@ function EmployeeLeavesTab({
     }
   }
 
+  const canPrint = auth.roles.some(
+    (role) => role === 'owner' || role === 'admin',
+  )
+
   return (
     <div className="flex flex-col gap-4">
+      {person && canPrint && (
+        <div className="flex justify-end">
+          <LeavesAbsencesPrintAction profileId={profileId} person={person} />
+        </div>
+      )}
       {canEdit && (
         <form
           noValidate
