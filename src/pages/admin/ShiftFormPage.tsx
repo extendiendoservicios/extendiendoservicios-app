@@ -23,10 +23,17 @@ import { StatusBadge } from '@/components/status'
 import { isApiError } from '@/api/errors'
 import { useAuth } from '@/features/auth/AuthProvider'
 import {
+  newClientPickerOptions,
+  newSitePickerOptions,
+} from '@/features/clients/pickerOptions'
+import {
   useClientsQuery,
   useClientSitesQuery,
 } from '@/features/clients/queries'
-import { useActiveEmployeeOptionsQuery } from '@/features/employees/queries'
+import {
+  useActiveEmployeeOptionsQuery,
+  useLeavesInRangeQuery,
+} from '@/features/employees/queries'
 import { EmployeeMultiPicker } from '@/features/planning/components/EmployeeMultiPicker'
 import { WARNING_MESSAGES } from '@/features/planning/components/AssignEmployeeSheet'
 import {
@@ -35,6 +42,7 @@ import {
   rejectedLines,
   rejectedTitle,
 } from '@/features/shifts/assignOnCreate'
+import { employeesOnLeaveIn } from '@/features/shifts/leaveBlocking'
 import { useHolidaysQuery } from '@/features/settings/queries'
 import {
   formatDateOnly,
@@ -206,7 +214,38 @@ function CreateShiftForm({
     Number.isInteger(staffNumber) && staffNumber >= 1 && staffNumber <= 10
       ? staffNumber
       : 10
-  const employeeIds = clampSelection(pickedEmployeeIds, staffLimit)
+
+  // P19.11d: la licencia bloquea. Quien está de licencia el día del turno no
+  // se puede elegir (y si ya estaba elegido y la fecha cambió, se saca de la
+  // selección y se avisa); con una repetición, quien tiene licencia en parte
+  // del período se puede elegir, pero el servidor no lo asigna esas fechas.
+  const leaveRangeEnd =
+    watchedRepeat && watchedRepeatTo && watchedRepeatTo >= watchedDate
+      ? watchedRepeatTo
+      : watchedDate
+  const leavesQuery = useLeavesInRangeQuery(
+    watchedDate || undefined,
+    leaveRangeEnd || undefined,
+  )
+  const blockedEmployeeIds = employeesOnLeaveIn(
+    leavesQuery.data ?? [],
+    watchedDate,
+    watchedDate,
+  )
+  const partialLeaveEmployeeIds = new Set(
+    [
+      ...employeesOnLeaveIn(leavesQuery.data ?? [], watchedDate, leaveRangeEnd),
+    ].filter((employeeId) => !blockedEmployeeIds.has(employeeId)),
+  )
+  const employeeIds = clampSelection(
+    pickedEmployeeIds.filter(
+      (employeeId) => !blockedEmployeeIds.has(employeeId),
+    ),
+    staffLimit,
+  )
+  const droppedForLeave = pickedEmployeeIds.filter((employeeId) =>
+    blockedEmployeeIds.has(employeeId),
+  )
 
   const holidayYear = watchedDate ? Number(watchedDate.slice(0, 4)) : undefined
   const holidaysQuery = useHolidaysQuery(
@@ -218,18 +257,10 @@ function CreateShiftForm({
       (holiday) => holiday.holidayDate === watchedDate && !holiday.deletedAt,
     )
 
-  const clientOptions = (clientsQuery.data ?? []).map((client) => ({
-    value: client.id,
-    label:
-      (client.tradeName ?? client.legalName) +
-      (client.status !== 'active'
-        ? ` (${client.status === 'suspended' ? 'suspendido' : 'baja'})`
-        : ''),
-  }))
-  const siteOptions = (sitesQuery.data ?? []).map((site) => ({
-    value: site.id,
-    label: site.name + (site.status !== 'active' ? ' (inactiva)' : ''),
-  }))
+  // P19.11d: al crear un turno no se ofrecen clientes ni sedes inactivos
+  // (la base los rechaza con CLIENT_NOT_ACTIVE / SITE_NOT_ACTIVE).
+  const clientOptions = newClientPickerOptions(clientsQuery.data ?? [])
+  const siteOptions = newSitePickerOptions(sitesQuery.data ?? [])
 
   function handleClientChange(value: string) {
     setValue('clientId', value, { shouldValidate: true, shouldDirty: true })
@@ -661,10 +692,27 @@ function CreateShiftForm({
             loading={employeeOptionsQuery.isLoading}
             value={employeeIds}
             onValueChange={setPickedEmployeeIds}
+            blockedIds={blockedEmployeeIds}
+            partialLeaveIds={partialLeaveEmployeeIds}
             max={staffLimit}
             placeholder="Elegí quién va a este turno"
           />
+          {droppedForLeave.length > 0 && (
+            <Alert variant="warn">
+              <AlertDescription>
+                {`Sacamos de la selección a ${droppedForLeave
+                  .map(
+                    (employeeId) =>
+                      (employeeOptionsQuery.data ?? []).find(
+                        (option) => option.profileId === employeeId,
+                      )?.name ?? 'un empleado',
+                  )
+                  .join(', ')} porque está de licencia el día elegido.`}
+              </AlertDescription>
+            </Alert>
+          )}
           <p className="text-[11px] text-text-3">
+            Quien está de licencia ese día no se puede elegir.{' '}
             {watchedRepeat
               ? 'Quedan asignados en cada turno de la repetición, hasta completar la dotación. Si alguno no se puede asignar en una fecha, el turno se crea igual y te avisamos.'
               : 'Quedan asignados al crear el turno, hasta completar la dotación. Si alguno no se puede asignar, el turno se crea igual y te avisamos.'}

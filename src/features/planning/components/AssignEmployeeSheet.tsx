@@ -29,13 +29,12 @@ import {
 } from '@/features/planning/schemas'
 import { formatShiftRange } from '@/features/shifts/openEnded'
 
-/** Mensajes de las tres advertencias de `assign_employee` (P-033, P-034, P-035): no bloquean, se muestran tal cual las devuelve la RPC. */
+/** Mensajes de las dos advertencias de `assign_employee` (P-034, P-035): no bloquean. La licencia (`ON_LEAVE`) es un error desde P19.11d. */
 const WARNING_MESSAGES: Record<AssignEmployeeWarning, string> = {
   NOT_ENABLED_FOR_CLIENT:
     'Este empleado no figura habilitado para este cliente.',
   OUTSIDE_AVAILABILITY:
     'La franja no coincide con la disponibilidad que declaró.',
-  ON_LEAVE: 'Este empleado tiene una licencia cargada para la fecha del turno.',
 }
 
 /**
@@ -238,6 +237,9 @@ function AssignEmployeeSheet({
                       type="button"
                       role="radio"
                       aria-checked={isSelected}
+                      // P19.11d: la licencia bloquea, no se puede elegir.
+                      disabled={candidate.onLeave}
+                      aria-disabled={candidate.onLeave}
                       data-testid="assign-candidate"
                       onClick={() =>
                         selectCandidate(
@@ -245,7 +247,7 @@ function AssignEmployeeSheet({
                           candidate.conflicts.some((c) => c.overlaps),
                         )
                       }
-                      className="w-full rounded-lg p-3 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring"
+                      className="w-full rounded-lg p-3 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <PersonCell
                         id={candidate.employeeId}
@@ -285,7 +287,7 @@ function AssignEmployeeSheet({
                             )}
                             {candidate.onLeave && (
                               <Badge variant="danger" className="text-[10.5px]">
-                                De licencia
+                                De licencia: no se puede asignar
                               </Badge>
                             )}
                           </>

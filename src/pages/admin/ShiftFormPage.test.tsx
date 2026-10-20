@@ -51,6 +51,7 @@ vi.mock('@/features/clients/queries', () => ({
 
 vi.mock('@/features/employees/queries', () => ({
   useActiveEmployeeOptionsQuery: () => ({ data: [], isLoading: false }),
+  useLeavesInRangeQuery: () => ({ data: [] }),
 }))
 
 vi.mock('@/features/settings/queries', () => ({

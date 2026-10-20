@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
-import { CalendarOff, Pencil, Plus, Save } from 'lucide-react'
+import { Link } from 'react-router'
+import { CalendarOff, Pencil, Plus, Save, TriangleAlert } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,8 +13,10 @@ import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { EmptyState } from '@/components/EmptyState'
 import { SimpleConfirmDialog } from '@/features/settings/components/SimpleConfirmDialog'
 import { isApiError } from '@/api/errors'
-import type { EmployeeLeave } from '@/api/employees'
+import type { EmployeeLeave, LeaveConflict } from '@/api/employees'
 import { formatCalendarDate } from '@/lib/format'
+import { formatDateOnly } from '@/features/settings/dateOnly'
+import { formatShiftRange } from '@/features/shifts/openEnded'
 import { useAuth } from '@/features/auth/AuthProvider'
 import {
   deriveEmployeeLeaveStatus,
@@ -28,6 +32,7 @@ import {
   useCreateEmployeeLeaveMutation,
   useDeactivateEmployeeLeaveMutation,
   useEmployeeLeavesQuery,
+  useLeaveConflictsMutation,
   useUpdateEmployeeLeaveMutation,
 } from '@/features/employees/queries'
 
@@ -60,6 +65,9 @@ function EmployeeLeavesTab({
   const createLeave = useCreateEmployeeLeaveMutation(profileId)
   const updateLeave = useUpdateEmployeeLeaveMutation(profileId)
   const deactivateLeave = useDeactivateEmployeeLeaveMutation(profileId)
+  const leaveConflicts = useLeaveConflictsMutation(profileId)
+  // P19.11d: turnos ya asignados dentro de la licencia recién guardada.
+  const [conflicts, setConflicts] = useState<LeaveConflict[]>([])
   // AJ2-08: licencia que se está editando con el mismo formulario del alta.
   const [editingLeave, setEditingLeave] = useState<EmployeeLeave | null>(null)
   const [leaveToEnd, setLeaveToEnd] = useState<EmployeeLeave | null>(null)
@@ -78,6 +86,30 @@ function EmployeeLeavesTab({
   // registro), pero se muestran atenuadas y sin estado derivado -- ya no
   // cuentan para "de licencia" ni para bloquear un rango de fechas.
   const leaves = leavesQuery.data ?? []
+
+  /**
+   * La licencia ya está guardada (escritura directa): se consulta qué turnos
+   * quedaron asignados en el período para avisar y dejar reasignarlos. No se
+   * desasigna nada.
+   */
+  async function checkConflicts(input: {
+    startsOn: string
+    endsOn: string | null
+  }) {
+    try {
+      setConflicts(
+        await leaveConflicts.mutateAsync({
+          startsOn: input.startsOn,
+          endsOn: input.endsOn,
+        }),
+      )
+    } catch {
+      setConflicts([])
+      toast.warning(
+        'Guardamos la licencia, pero no pudimos revisar si tiene turnos asignados en esas fechas.',
+      )
+    }
+  }
 
   function startEditing(leave: EmployeeLeave) {
     setEditingLeave(leave)
@@ -104,6 +136,7 @@ function EmployeeLeavesTab({
         })
         cancelEditing()
         toast.success('Guardamos los cambios de la licencia.')
+        await checkConflicts(input)
       } catch (error) {
         toast.error(
           isApiError(error)
@@ -120,6 +153,7 @@ function EmployeeLeavesTab({
       })
       reset({ startsOn: '', endsOn: '', reason: '' })
       toast.success('Agregamos la licencia.')
+      await checkConflicts(input)
     } catch (error) {
       toast.error(
         isApiError(error) ? error.message : 'No pudimos agregar la licencia.',
@@ -200,6 +234,57 @@ function EmployeeLeavesTab({
             )}
           </div>
         </form>
+      )}
+
+      {conflicts.length > 0 && (
+        <Alert variant="warn">
+          <TriangleAlert />
+          <AlertDescription>
+            <p className="font-semibold">
+              {conflicts.length === 1
+                ? 'Esta persona tiene 1 turno asignado en las fechas de la licencia.'
+                : `Esta persona tiene ${conflicts.length} turnos asignados en las fechas de la licencia.`}{' '}
+              No se desasignó nada: abrí cada turno para reasignarlo.
+            </p>
+            <ul className="mt-2 flex flex-col gap-1">
+              {conflicts.map((conflict) => (
+                <li
+                  key={conflict.assignmentId}
+                  className="flex flex-wrap items-center gap-x-2"
+                >
+                  <span className="capitalize">
+                    {formatDateOnly(conflict.shiftDate)}
+                  </span>
+                  <span>
+                    {formatShiftRange(
+                      conflict.startTime,
+                      conflict.endTime,
+                      conflict.openEnded,
+                    )}
+                  </span>
+                  <span>
+                    {conflict.clientName} · {conflict.siteName}
+                  </span>
+                  <Link
+                    to={`/admin/turnos/${conflict.shiftId}`}
+                    className="font-semibold underline"
+                  >
+                    Abrir turno
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="mt-2"
+              onClick={() => setConflicts([])}
+            >
+              Cerrar aviso
+            </Button>
+          </AlertDescription>
+        </Alert>
       )}
 
       {leavesQuery.isLoading ? (

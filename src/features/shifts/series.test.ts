@@ -213,7 +213,11 @@ describe('resultado de la creación', () => {
           shiftDate: '2026-10-20',
           warnings: [],
           assigned: [
-            { employeeId: 'e1', assignmentId: 'x', warnings: ['ON_LEAVE'] },
+            {
+              employeeId: 'e1',
+              assignmentId: 'x',
+              warnings: ['OUTSIDE_AVAILABILITY'],
+            },
           ],
           rejected: [
             {
@@ -226,7 +230,7 @@ describe('resultado de la creación', () => {
         },
       ],
       { e1: 'Luis Pérez' },
-      { ON_LEAVE: 'Está de licencia.' },
+      { OUTSIDE_AVAILABILITY: 'Está de licencia.' },
     )
     expect(issues).toEqual([
       {

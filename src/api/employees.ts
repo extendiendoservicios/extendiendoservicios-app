@@ -677,6 +677,85 @@ export interface EmployeeLeave {
   deletedAt: string | null
 }
 
+/** P19.11d: una licencia vigente en un rango de fechas, de cualquier empleado. */
+export interface LeaveInRange {
+  employeeId: string
+  startsOn: string
+  endsOn: string | null
+}
+
+/**
+ * Licencias (no dadas de baja) que tocan el rango `[from, to]`, de todos los
+ * empleados: alimenta el selector de empleados de «Nuevo turno», donde quien
+ * está de licencia ese día no se puede elegir (`ON_LEAVE` es un error).
+ */
+export async function fetchLeavesInRange(
+  from: string,
+  to: string,
+): Promise<LeaveInRange[]> {
+  const { data, error } = await supabase
+    .from('employee_leaves')
+    .select('employee_id, starts_on, ends_on')
+    .is('deleted_at', null)
+    .lte('starts_on', to)
+    .or(`ends_on.is.null,ends_on.gte.${from}`)
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data ?? []).map((row) => ({
+    employeeId: row.employee_id,
+    startsOn: row.starts_on,
+    endsOn: row.ends_on,
+  }))
+}
+
+/** P19.11d: un turno ya asignado al empleado dentro de una licencia (`get_leave_conflicts`). */
+export interface LeaveConflict {
+  assignmentId: string
+  shiftId: string
+  shiftDate: string
+  startTime: string
+  endTime: string
+  openEnded: boolean
+  clientName: string
+  siteName: string
+  shiftStatus: Database['public']['Enums']['shift_status']
+}
+
+/**
+ * Turnos ya asignados al empleado en el período de una licencia
+ * (`get_leave_conflicts`, 0059; dueño y administrador). Las licencias se
+ * guardan por escritura directa, así que la pantalla lo llama DESPUÉS de
+ * guardar. No desasigna nada.
+ */
+export async function fetchLeaveConflicts(
+  employeeId: string,
+  startsOn: string,
+  endsOn: string | null,
+): Promise<LeaveConflict[]> {
+  const { data, error } = await supabase.rpc('get_leave_conflicts', {
+    p_employee_id: employeeId,
+    p_starts_on: startsOn,
+    p_ends_on: endsOn ?? undefined,
+  })
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data ?? []).map((row) => ({
+    assignmentId: row.assignment_id,
+    shiftId: row.shift_id,
+    shiftDate: row.shift_date,
+    startTime: row.start_time,
+    endTime: row.end_time,
+    openEnded: row.open_ended,
+    clientName: row.client_name,
+    siteName: row.site_name,
+    shiftStatus: row.shift_status,
+  }))
+}
+
 /** Todas las licencias de la persona, incluidas las dadas de baja lógica (para el historial, `06` sección 3). */
 export async function fetchEmployeeLeaves(
   employeeId: string,
