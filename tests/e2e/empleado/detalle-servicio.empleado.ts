@@ -202,7 +202,9 @@ test(
       await test.step('es solo informativo: se puede registrar el inicio igual', async () => {
         await page.goto('/app/fichar')
         const registrar = page.getByRole('button', { name: 'Registrar inicio' })
-        await expect(registrar).toBeEnabled()
+        // El botón aparece cuando carga el turno de hoy: con App_dev cargada (corrida nocturna,
+        // WebKit) tardó más de los 10 s por omisión una vez.
+        await expect(registrar).toBeEnabled({ timeout: 30_000 })
         await registrar.click()
         await continuarTrasFichar(page)
         await expect(page).toHaveURL(new RegExp(`/app/en-curso/${asignacion}$`))

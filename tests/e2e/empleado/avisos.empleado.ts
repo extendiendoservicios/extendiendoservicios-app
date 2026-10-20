@@ -270,7 +270,11 @@ test(
         await page.getByRole('button', { name: 'Continuar' }).click()
         await page.getByRole('button', { name: 'Continuar' }).click()
         await page.getByRole('button', { name: 'Confirmar aviso' }).click()
-        await expect(page.getByText(TEXTO.avisoTarde)).toBeVisible()
+        // El servidor tiene que responder el rechazo: con App_dev cargada (corrida nocturna, WebKit)
+        // pasó de los 10 s por omisión una vez.
+        await expect(page.getByText(TEXTO.avisoTarde)).toBeVisible({
+          timeout: 30_000,
+        })
       })
 
       await test.step('por la API, la ausencia propia también (TOO_LATE_TO_NOTIFY)', async () => {
