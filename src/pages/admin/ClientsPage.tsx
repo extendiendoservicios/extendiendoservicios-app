@@ -139,7 +139,7 @@ function ClientsListTab() {
         return (
           <Link
             to={`/admin/clientes/${client.id}`}
-            className="flex min-w-0 items-center gap-[9px] font-semibold text-text hover:text-primary-800 hover:underline"
+            className="flex min-w-0 items-center gap-[9px] font-semibold text-text hover:text-primary-800 hover:underline max-md:min-h-11"
           >
             <Avatar
               id={client.id}
