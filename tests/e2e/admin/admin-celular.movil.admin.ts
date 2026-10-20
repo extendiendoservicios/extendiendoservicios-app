@@ -88,17 +88,15 @@ test(
           name: 'Registrar en nombre',
         })
         await expect(registrar).toHaveCount(1)
-        // La tarjeta se vuelve a montar cuando llega la consulta de teléfonos y el primer toque
-        // puede caer en el aire (P19.11g): se repite el toque hasta que abre la hoja.
+        // Un solo toque (P19.12a arregló el toque perdido cuando la tarjeta se vuelve a montar al
+        // llegar la consulta de teléfonos): abre la hoja sin reintentos.
         const hojaRegistrar = page.getByRole('dialog', {
           name: new RegExp(
             `Registrar en nombre de ${reNombreDe('empleado4').source}`,
           ),
         })
-        await expect(async () => {
-          await registrar.click()
-          await expect(hojaRegistrar).toBeVisible({ timeout: 3_000 })
-        }).toPass({ timeout: 30_000 })
+        await registrar.click()
+        await expect(hojaRegistrar).toBeVisible()
         await page.getByLabel('Hora').fill(`${sc.today}T00:02`)
         await page
           .getByLabel('Motivo')
