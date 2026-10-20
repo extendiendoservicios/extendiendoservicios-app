@@ -52,6 +52,15 @@ describe('shiftDateErrorMessage', () => {
     ).toBe('Ana está de licencia.')
     expect(
       shiftDateErrorMessage(
+        new ApiError(
+          'El coordinador está de licencia en la nueva fecha: Marta Ruiz.',
+          'ON_LEAVE',
+        ),
+        'f',
+      ),
+    ).toBe('El coordinador está de licencia en la nueva fecha: Marta Ruiz.')
+    expect(
+      shiftDateErrorMessage(
         new ApiError('Ana queda superpuesta.', 'ASSIGNMENT_OVERLAP'),
         'f',
       ),

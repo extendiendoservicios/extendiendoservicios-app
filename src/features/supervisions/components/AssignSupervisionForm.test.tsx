@@ -1,7 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ShiftListRow } from '@/api/shifts'
+import { ApiError } from '@/api/errors'
 import { AssignSupervisionForm } from './AssignSupervisionForm'
 
 /**
@@ -42,11 +43,26 @@ function shift(overrides: Partial<ShiftListRow>): ShiftListRow {
   }
 }
 
-const { assignSupervisionMock } = vi.hoisted(() => ({
+const { assignSupervisionMock, toastError } = vi.hoisted(() => ({
   assignSupervisionMock: vi.fn(),
+  toastError: vi.fn(),
+}))
+
+vi.mock('sonner', () => ({
+  toast: { success: vi.fn(), warning: vi.fn(), error: toastError },
 }))
 
 const shiftsData: { current: ShiftListRow[] } = { current: [] }
+const leavesData: {
+  current: { employeeId: string; startsOn: string; endsOn: string | null }[]
+} = { current: [] }
+
+vi.mock('@/features/employees/queries', () => ({
+  useLeavesInRangeQuery: () => ({
+    data: leavesData.current,
+    refetch: vi.fn(),
+  }),
+}))
 
 vi.mock('@/features/shifts/queries', () => ({
   useShiftsByDateQuery: () => ({
@@ -75,6 +91,47 @@ function renderForm() {
 }
 
 describe('AssignSupervisionForm', () => {
+  beforeEach(() => {
+    leavesData.current = []
+    assignSupervisionMock.mockReset()
+  })
+
+  it('el coordinador de licencia el día del turno figura deshabilitado «De licencia»', () => {
+    shiftsData.current = [shift({ id: 'a', status: 'scheduled' })]
+    leavesData.current = [
+      { employeeId: 'sup-1', startsOn: '2000-01-01', endsOn: null },
+    ]
+    renderForm()
+    fireEvent.click(screen.getByRole('combobox', { name: 'Coordinador' }))
+    const option = screen.getByRole('option', { name: /Marta Ruiz/ })
+    expect(option).toHaveTextContent('De licencia')
+    expect(option).toHaveAttribute('aria-disabled', 'true')
+    fireEvent.keyDown(option, { key: 'Escape' })
+  })
+
+  it('si el servidor responde ON_LEAVE muestra su mensaje', async () => {
+    shiftsData.current = [shift({ id: 'a', status: 'scheduled' })]
+    assignSupervisionMock.mockRejectedValueOnce(
+      new ApiError('El coordinador está de licencia ese día.', 'ON_LEAVE'),
+    )
+    renderForm()
+    fireEvent.click(screen.getByRole('combobox', { name: 'Turno' }))
+    fireEvent.click(screen.getByRole('option', { name: /Cliente Uno/ }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Coordinador' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Marta Ruiz' }))
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Asignar supervisión',
+        hidden: true,
+      }),
+    )
+    await vi.waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith(
+        'El coordinador está de licencia ese día.',
+      ),
+    )
+  })
+
   it('el selector de turno solo ofrece los no cancelados ni completados', () => {
     shiftsData.current = [
       shift({ id: 'a', status: 'scheduled' }),

@@ -130,3 +130,24 @@ suspensivos (el texto completo queda en el título del chip).
 - Ancho de contenido (menú abierto / cerrado): 1024 px: 736 / 912; 1145 px:
   857 / 1033; 1280 px: 992 / 1168; 1366 px: 1078 / 1254. En todos entra.
 - En celular se mantiene la vista de tarjetas con botones de texto.
+
+## 7. Coordinador de licencia y encabezado de la vista día (P19.11f)
+
+- Migración `0061`: `assign_supervision` devuelve `ON_LEAVE` («El coordinador
+  está de licencia ese día.») si el coordinador tiene licencia vigente el día
+  del turno, y `update_shift_time` con cambio de fecha devuelve `ON_LEAVE` («El
+  coordinador está de licencia en la nueva fecha: …») si el coordinador de la
+  supervisión vigente está de licencia ese día. No hay RPC de candidatos.
+- «Asignar supervisión» (`AssignSupervisionForm`) lee las licencias del día del
+  turno (`useLeavesInRangeQuery`) y deja al coordinador de licencia
+  deshabilitado con la marca «De licencia». Si ya estaba elegido y se cambia la
+  fecha, se lo saca de la selección y se avisa. Si la licencia se carga con el
+  formulario abierto y el servidor responde `ON_LEAVE`, se muestra su mensaje,
+  se refresca la lista y se vacía la selección.
+- Editar la fecha del turno: `shiftDateErrorMessage` deja pasar el mensaje del
+  servidor para `ON_LEAVE` (cubierto con un test con el texto del coordinador).
+- Vista día (`ShiftsDayList`): el encabezado «Coordinador» se abrevia «Coord.»
+  (con `title` y `aria-label` «Coordinador») porque a 1024 px con el menú abierto
+  se pegaba con «Estado». En tarjetas (celular) se sigue viendo «Coordinador».
+  El ancho de las columnas no cambia, así que no vuelve el desplazamiento
+  horizontal.

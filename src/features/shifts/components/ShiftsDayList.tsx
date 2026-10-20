@@ -176,7 +176,18 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
     },
     {
       id: 'supervisor',
-      header: 'Coordinador',
+      // P19.11f: «Coordinador» no entra en 12 % de la tabla a 1024 px con el
+      // menú abierto y se pegaba con «Estado»: se abrevia con el nombre completo
+      // accesible. En tarjeta se sigue viendo «Coordinador» (`cardLabel`).
+      header: () => (
+        <abbr
+          title="Coordinador"
+          aria-label="Coordinador"
+          className="no-underline"
+        >
+          Coord.
+        </abbr>
+      ),
       meta: { card: 'meta', cardLabel: 'Coordinador', width: '12%' },
       cell: ({ row }) => {
         const { supervisors } = peopleOfShift(people, row.original.id)
