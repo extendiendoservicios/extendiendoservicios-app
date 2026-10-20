@@ -36,8 +36,9 @@ select columns_are(
 
 select columns_are(
   'public', 'attendance_notices',
-  array['id', 'assignment_id', 'kind', 'minutes_late', 'reason_code', 'reason_text', 'reported_by', 'source', 'created_at', 'estimated_arrival_at', 'has_certificate'],
-  'attendance_notices tiene exactamente las columnas de 04 sección 2.3 más estimated_arrival_at (0033, P19.5a) y has_certificate (0059, P19.11a)'
+  array['id', 'assignment_id', 'kind', 'minutes_late', 'reason_code', 'reason_text', 'reported_by', 'source', 'created_at', 'estimated_arrival_at', 'has_certificate',
+    'voided_at', 'voided_by', 'void_reason', 'updated_at', 'updated_by'],
+  'attendance_notices tiene exactamente las columnas de 04 sección 2.3 más estimated_arrival_at (0033, P19.5a), has_certificate (0059, P19.11a) y la anulación y traza de cambios (0060, P19.11c)'
 );
 
 select has_pk('public', 'attendance_records', 'attendance_records tiene primary key');

@@ -2317,6 +2317,41 @@ Decisiones de Mike de la reunión del 19 oct 2026.
 
 pgTAP: `0059_p19_11_ausente_licencias_fecha.test.sql` (más ajustes en `0023`, `0024`, `0027`, `0028`, `0037` y `0041`).
 
+## Fecha sin pasado, avisos que se limpian, certificado posterior y «coordinador» (migración `0060`, P19.11c)
+
+Decisiones de Mike del 20 oct 2026, sobre la `0059`.
+
+- **No mover un turno al pasado.** `update_shift_time(..., p_date)` da `SHIFT_DATE_IN_PAST` («No se puede mover el turno
+  a una fecha que ya pasó.») si la fecha nueva es anterior a `app.today()` (hoy en Argentina). Mover a hoy se permite y
+  la hora no se valida: si ya pasó, las asignaciones quedan con la ventana vencida y el tablero las muestra como
+  «Llegada tarde» o «Sin registro», igual que con un turno de hoy al que se le edita la hora. Un turno que ya pasó sigue
+  admitiendo cambiar la hora con su misma fecha (no es mover la fecha).
+- **Al mover de día se limpian los avisos.** Forma elegida: una anulación a nivel del aviso. `attendance_notices` suma
+  `voided_at`, `voided_by` y `void_reason` (hoy solo `SHIFT_DATE_CHANGED`); los avisos no se borran, quedan como
+  historial. `update_shift_time` anula todos los avisos de las asignaciones del turno cuando cambia la fecha y devuelve
+  a `expected` las asignaciones vigentes en `delay_notified` o `absence_notified` (el «en camino» no es un estado: es un
+  aviso, así que se limpia solo al anularlo). `v_assignments_board`, `v_my_day` y `v_my_history` toman como último aviso
+  el último con `voided_at is null`: no cambian sus columnas. Un aviso nuevo, posterior al cambio, se muestra con
+  normalidad. Se eligió esto frente a una marca en la asignación porque el filtro es explícito, no depende de
+  comparar instantes y deja registrado quién y por qué.
+- **Certificado después.** `set_absence_certificate(p_assignment_id, p_has_certificate) returns attendance_notices`
+  (O, A + `manage_attendance`; `authenticated`, sin `anon`). Actualiza `has_certificate` del último aviso de ausencia
+  vigente de la asignación (sea de la app del empleado o de administración), sin ventana horaria. Errores: `FORBIDDEN`,
+  `ASSIGNMENT_NOT_FOUND` (no existe o está quitada), `CERTIFICATE_REQUIRED` (parámetro null) y `NO_ABSENCE` (sin ausencia
+  avisada vigente, o la asignación ya no está en `absence_notified`). `attendance_notices` suma `updated_at` (trigger
+  `app.set_updated_at`; null si nunca se modificó) y `updated_by`. El check `kind = 'absence' or has_certificate is null`
+  sigue valiendo.
+- **«Coordinador» en los mensajes.** Se redefinen con solo el texto cambiado `assign_supervision` («Ese coordinador no
+  tiene el rol vigente…», «Ese coordinador ya tiene una supervisión…»), `admin_create_user_records` («…empleado o
+  coordinador…») y `app.set_announcement_recipients` («…ni coordinadores.»). Los hints (`SUPERVISOR_ROLE_REQUIRED`, etc.)
+  y el valor del rol `supervisor` no cambian. La Edge Function `admin-users` dice «coordinador» en
+  `EMPLOYEE_DATA_REQUIRED`.
+
+La migración tiene guardas (`if not exists`, `drop trigger if exists`) porque el primer intento de aplicarla en `App_dev`
+falló a mitad de camino (las sentencias se aplican una por una) y quedó parte hecha.
+
+pgTAP: `0060_p19_11c_fecha_avisos_certificado.test.sql` (más ajustes en `0009`, `0029`, `0035` y `0042`).
+
 ## Tipos para el frontend
 
 `src/lib/database.types.ts` se genera con `pnpm db:types` (`supabase gen types --linked`) contra

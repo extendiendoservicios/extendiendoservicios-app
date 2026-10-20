@@ -343,11 +343,11 @@ select throws_ok(
 );
 select throws_ok(
   $$select public.create_announcement('t', 'b', 'custom', null, array['f4200000-0000-0000-0000-000000000007']::uuid[])$$,
-  'P0001', 'Hay personas elegidas que no están activas o no son empleados ni supervisores.', 'create: custom con una persona inactiva'
+  'P0001', 'Hay personas elegidas que no están activas o no son empleados ni coordinadores.', 'create: custom con una persona inactiva'
 );
 select throws_ok(
   $$select public.create_announcement('t', 'b', 'custom', null, array['f4200000-0000-0000-0000-000000000001']::uuid[])$$,
-  'P0001', 'Hay personas elegidas que no están activas o no son empleados ni supervisores.', 'create: custom con un dueño (sin rol de empleado ni supervisor)'
+  'P0001', 'Hay personas elegidas que no están activas o no son empleados ni coordinadores.', 'create: custom con un dueño (sin rol de empleado ni supervisor)'
 );
 select is(
   (select count(*)::int from public.announcements where title = 't'), 0, 'create: los rechazos no dejan filas'

@@ -119,7 +119,7 @@ select throws_ok(
        'c3500000-0000-0000-0000-000000000003', 'c3500000-0000-0000-0000-000000000001',
        'Nora', 'Celeste', array['employee']::public.app_role[], null) $$,
   'P0001',
-  'Para asignar el rol de empleado o supervisor hace falta cargar los datos de empleado (al menos el DNI).',
+  'Para asignar el rol de empleado o coordinador hace falta cargar los datos de empleado (al menos el DNI).',
   'rol de empleado sin ficha: EMPLOYEE_DATA_REQUIRED'
 );
 

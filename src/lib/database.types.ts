@@ -519,6 +519,11 @@ export type Database = {
           reason_text: string | null
           reported_by: string | null
           source: Database["public"]["Enums"]["attendance_source"]
+          updated_at: string | null
+          updated_by: string | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
         }
         Insert: {
           assignment_id: string
@@ -532,6 +537,11 @@ export type Database = {
           reason_text?: string | null
           reported_by?: string | null
           source: Database["public"]["Enums"]["attendance_source"]
+          updated_at?: string | null
+          updated_by?: string | null
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Update: {
           assignment_id?: string
@@ -545,6 +555,11 @@ export type Database = {
           reason_text?: string | null
           reported_by?: string | null
           source?: Database["public"]["Enums"]["attendance_source"]
+          updated_at?: string | null
+          updated_by?: string | null
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Relationships: [
           {
@@ -585,6 +600,34 @@ export type Database = {
           {
             foreignKeyName: "attendance_notices_reported_by_fkey"
             columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_notices_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_notices_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_notices_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_notices_voided_by_fkey"
+            columns: ["voided_by"]
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
@@ -5071,6 +5114,11 @@ export type Database = {
           reason_text: string | null
           reported_by: string | null
           source: Database["public"]["Enums"]["attendance_source"]
+          updated_at: string | null
+          updated_by: string | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
         }
         SetofOptions: {
           from: "*"
@@ -5097,6 +5145,11 @@ export type Database = {
           reason_text: string | null
           reported_by: string | null
           source: Database["public"]["Enums"]["attendance_source"]
+          updated_at: string | null
+          updated_by: string | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
         }
         SetofOptions: {
           from: "*"
@@ -5119,6 +5172,11 @@ export type Database = {
           reason_text: string | null
           reported_by: string | null
           source: Database["public"]["Enums"]["attendance_source"]
+          updated_at: string | null
+          updated_by: string | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
         }
         SetofOptions: {
           from: "*"
@@ -5335,6 +5393,33 @@ export type Database = {
       }
       revoke_location_consent: { Args: never; Returns: undefined }
       service_delete_preview: { Args: { p_service_id: string }; Returns: Json }
+      set_absence_certificate: {
+        Args: { p_assignment_id: string; p_has_certificate: boolean }
+        Returns: {
+          assignment_id: string
+          created_at: string
+          estimated_arrival_at: string | null
+          has_certificate: boolean | null
+          id: string
+          kind: Database["public"]["Enums"]["notice_kind"]
+          minutes_late: number | null
+          reason_code: Database["public"]["Enums"]["absence_reason"] | null
+          reason_text: string | null
+          reported_by: string | null
+          source: Database["public"]["Enums"]["attendance_source"]
+          updated_at: string | null
+          updated_by: string | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "attendance_notices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       set_admin_capability: {
         Args: {
           p_capability: Database["public"]["Enums"]["admin_capability"]
