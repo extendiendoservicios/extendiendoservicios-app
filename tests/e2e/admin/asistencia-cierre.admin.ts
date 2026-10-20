@@ -145,6 +145,8 @@ test.describe('asistencia administrativa (ADM-02, ADM-06, ADM-10, ADM-11, ADM-12
         const aviso = await admin.rpc('notify_absence', {
           p_assignment_id: assignmentId,
           p_reason_code: 'illness',
+          // P19.11 (0059): administración tiene que indicar el certificado.
+          p_has_certificate: false,
         })
         expect(aviso.error, aviso.error?.message).toBeNull()
 
