@@ -119,11 +119,11 @@ export function buildClientSummarySheet(input: {
   const dnis = input.dnis ?? new Map<string, string>()
   const columns: PrintColumn[] = [
     { key: 'date', header: 'Fecha' },
-    { key: 'site', header: 'Sede' },
+    { key: 'site', header: 'Sede', wrap: true },
     { key: 'franja', header: 'Franja' },
-    { key: 'name', header: 'Nombre y Apellido' },
+    { key: 'name', header: 'Nombre y Apellido', wrap: true },
     { key: 'dni', header: 'DNI' },
-    { key: 'novelty', header: 'Observaciones' },
+    { key: 'novelty', header: 'Observaciones', wrap: true },
     { key: 'geo', header: 'Validación' },
     { key: 'hours', header: 'Horas', align: 'right' },
   ]

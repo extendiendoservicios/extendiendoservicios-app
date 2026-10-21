@@ -5,6 +5,12 @@ import { MISSING_ENV_MESSAGE, readE2eEnv } from '../fixtures/env.ts'
 import { Scenario } from '../fixtures/scenario.ts'
 import { readId, storageStatePath } from '../fixtures/sessions.ts'
 import { cubre } from '../fixtures/trace.ts'
+import {
+  expectColumnasCortasEnUnRenglon,
+  expectFirmasSinCruzar,
+  expectHojaA4,
+  medirHoja,
+} from '../e2e-ajustes-reunion/helpers/hoja.ts'
 import { cargarJornadaConGeo, sedeGeo, SEDE_COORDS } from './helpers/geo.ts'
 
 // P22.5 · Imprimibles con la validación (B-20): en la hoja de asistencia de la ficha del empleado
@@ -155,6 +161,13 @@ test(
         await expect(celdaDe(sedeCorregida)).toContainText(
           'Inicio: Validado (corregido) · Fin: Validado',
         )
+        // Hoja A4 (P19.12a): 210 mm de ancho, alto múltiplo de 297 mm, firmas enteras y las
+        // columnas cortas con la validación larga en una columna que sí parte.
+        const medida = await medirHoja(page)
+        expectHojaA4(medida)
+        expectFirmasSinCruzar(medida)
+        expectColumnasCortasEnUnRenglon(medida)
+        await expect(hoja.getByText('Nombre y Apellido:')).toBeVisible()
         const texto = await hoja.innerText()
         for (const prohibido of SIN_COORDENADAS) {
           if (typeof prohibido === 'string')
@@ -256,6 +269,12 @@ test(
       await expect(fila(sedeD)).toContainText(
         'Inicio: Validado (corregido) · Fin: Validado',
       )
+      // Hoja A4 (P19.12a): 210 mm de ancho, alto múltiplo de 297 mm, firmas enteras y columnas
+      // cortas de un renglón.
+      const medida = await medirHoja(page)
+      expectHojaA4(medida)
+      expectFirmasSinCruzar(medida)
+      expectColumnasCortasEnUnRenglon(medida)
       const texto = await hoja.innerText()
       for (const prohibido of SIN_COORDENADAS) {
         if (typeof prohibido === 'string')

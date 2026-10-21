@@ -30,21 +30,26 @@ export async function pickFarMonth(
   month: number,
 ): Promise<void> {
   await page.getByRole('button', { name: triggerName }).click()
-  const yearLabel = page.getByText(/^\d{4}$/, { exact: true })
+  // Todo se busca dentro del selector abierto: fuera de él hay otros textos de cuatro cifras (por
+  // ejemplo, números de turnos del calendario) y el selector de año quedaba ambiguo.
+  const popover = page.locator(
+    '[data-slot="popover-content"][data-state="open"]',
+  )
+  const yearLabel = popover.getByText(/^\d{4}$/)
   await yearLabel.waitFor()
 
   const currentYear = Number(await yearLabel.textContent())
   const yearDiff = year - currentYear
   const button =
     yearDiff >= 0
-      ? page.getByRole('button', { name: 'Año siguiente' })
-      : page.getByRole('button', { name: 'Año anterior' })
+      ? popover.getByRole('button', { name: 'Año siguiente' })
+      : popover.getByRole('button', { name: 'Año anterior' })
   for (let i = 0; i < Math.abs(yearDiff); i++) {
     await button.click()
   }
 
   const monthAbbrev = MESES_ABREVIADOS[month - 1]
-  await page
+  await popover
     .getByRole('button', { name: new RegExp(`^${monthAbbrev}\\.?$`, 'i') })
     .click()
 }

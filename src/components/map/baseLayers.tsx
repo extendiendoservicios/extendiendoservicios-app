@@ -101,7 +101,7 @@ export function BaseLayerToggle({
           aria-checked={value === option.value}
           onClick={() => onChange(option.value)}
           className={cn(
-            'rounded px-2.5 py-1 text-[11.5px] font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring max-md:min-h-9',
+            'rounded px-2.5 py-1 text-[11.5px] font-semibold outline-none focus-visible:ring-3 focus-visible:ring-ring max-md:min-h-11 max-md:px-3.5',
             value === option.value
               ? 'bg-primary text-white'
               : 'text-text-2 hover:bg-bg',

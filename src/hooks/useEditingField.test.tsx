@@ -15,6 +15,7 @@ function mockPointer(coarse: boolean) {
 }
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.unstubAllGlobals()
 })
 
@@ -63,5 +64,74 @@ describe('useEditingField (RESP-008)', () => {
       fireEvent.focusIn(container.querySelector('input')!)
     })
     expect(result.current).toBe(false)
+  })
+
+  it('si el foco sale por un toque en otro control, la barra no reaparece hasta después del click', () => {
+    vi.useFakeTimers()
+    mockPointer(true)
+    const { container } = render(
+      <div>
+        <input aria-label="Nombre" />
+        <button type="button">Registrar</button>
+      </div>,
+    )
+    const { result } = renderHook(() => useEditingField())
+    const input = container.querySelector('input')!
+    const button = container.querySelector('button')!
+
+    act(() => {
+      fireEvent.focusIn(input)
+    })
+    expect(result.current).toBe(true)
+
+    act(() => {
+      fireEvent.pointerDown(button)
+      fireEvent.focusOut(input, { relatedTarget: button })
+      fireEvent.focusIn(button)
+    })
+    expect(result.current).toBe(true)
+
+    act(() => {
+      fireEvent.pointerUp(button)
+    })
+    expect(result.current).toBe(true)
+
+    act(() => {
+      fireEvent.click(button)
+    })
+    expect(result.current).toBe(true)
+
+    act(() => {
+      vi.advanceTimersByTime(200)
+    })
+    expect(result.current).toBe(false)
+    vi.useRealTimers()
+  })
+
+  it('si el toque vuelve a un campo, la barra sigue oculta', () => {
+    vi.useFakeTimers()
+    mockPointer(true)
+    const { container } = render(
+      <div>
+        <input aria-label="A" />
+        <button type="button">X</button>
+      </div>,
+    )
+    const { result } = renderHook(() => useEditingField())
+    const input = container.querySelector('input')!
+    const button = container.querySelector('button')!
+
+    act(() => {
+      fireEvent.focusIn(input)
+      fireEvent.pointerDown(button)
+      fireEvent.focusOut(input, { relatedTarget: button })
+      fireEvent.pointerUp(button)
+      fireEvent.focusIn(input)
+    })
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(result.current).toBe(true)
+    vi.useRealTimers()
   })
 })

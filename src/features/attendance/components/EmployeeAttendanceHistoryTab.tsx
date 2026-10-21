@@ -15,7 +15,6 @@ import { formatMinutes, formatTime } from '@/lib/format'
 import type { AttendanceBoardRow } from '@/api/attendance'
 import type { Role } from '@/api/users'
 import { useAuth } from '@/features/auth/AuthProvider'
-import { ROLE_LABELS } from '@/features/auth/session'
 import { getAttendanceRowBadge } from '@/features/attendance/derive'
 import {
   buildAttendanceEntries,
@@ -24,11 +23,13 @@ import {
   entryCheckOut,
   entryFranja,
   personSignerLabel,
+  printRoleLabels,
   sumWorkedMinutes,
   type AttendanceDetailEntry,
   type AttendanceSheetPerson,
 } from '@/features/attendance/detailSheet'
 import { useEmployeeAttendanceHistoryQuery } from '@/features/attendance/queries'
+import { useEmployeeLeavesQuery } from '@/features/employees/queries'
 import {
   ABSENCE_REASON_LABELS,
   NOTICE_KIND_LABELS,
@@ -122,6 +123,7 @@ function EmployeeAttendanceHistoryTab({
   const [isSheetOpen, setSheetOpen] = useState(false)
 
   const historyQuery = useEmployeeAttendanceHistoryQuery(profileId, from, to)
+  const leavesQuery = useEmployeeLeavesQuery(profileId)
   const supervisionsQuery = useSupervisionsAdminQuery(
     { supervisorId: profileId, dateFrom: from, dateTo: to },
     false,
@@ -138,7 +140,9 @@ function EmployeeAttendanceHistoryTab({
   )
   const totalMinutes = sumWorkedMinutes(entries)
   const isLoading =
-    historyQuery.isLoading || (isSupervisor && supervisionsQuery.isLoading)
+    historyQuery.isLoading ||
+    (canDownload && leavesQuery.isLoading) ||
+    (isSupervisor && supervisionsQuery.isLoading)
 
   const pageRows = entries.slice(
     pagination.pageIndex * pagination.pageSize,
@@ -146,9 +150,7 @@ function EmployeeAttendanceHistoryTab({
   )
 
   const sheetPerson = useMemo<AttendanceSheetPerson>(() => {
-    const roleLabels = person.roles
-      .filter((role) => role === 'employee' || role === 'supervisor')
-      .map((role) => ROLE_LABELS[role])
+    const roleLabels = printRoleLabels(person.roles)
     return {
       name: person.name,
       dni: person.dni,
@@ -363,6 +365,7 @@ function EmployeeAttendanceHistoryTab({
           from={from}
           to={to}
           entries={entries}
+          leaves={leavesQuery.data}
           onClose={() => setSheetOpen(false)}
         />
       )}

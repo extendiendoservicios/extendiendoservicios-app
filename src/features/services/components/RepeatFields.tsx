@@ -81,14 +81,14 @@ export function RepeatFields({
         >
           <label
             htmlFor={`${idPrefix}-weeks-all`}
-            className="flex items-center gap-[6px] text-[13px] text-text"
+            className="flex items-center gap-[6px] text-[13px] text-text max-md:min-h-11"
           >
             <RadioGroupItem id={`${idPrefix}-weeks-all`} value="all" />
             Todas las semanas
           </label>
           <label
             htmlFor={`${idPrefix}-weeks-some`}
-            className="flex items-center gap-[6px] text-[13px] text-text"
+            className="flex items-center gap-[6px] text-[13px] text-text max-md:min-h-11"
           >
             <RadioGroupItem id={`${idPrefix}-weeks-some`} value="some" />
             Solo algunas semanas del mes

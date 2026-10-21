@@ -76,7 +76,12 @@ function describir(v: ViolacionAxe): string {
 export async function esperarPantallaLista(page: Page): Promise<void> {
   await expect(page.locator('main').first()).toBeVisible()
   await expect(page.locator('[data-slot="skeleton"]')).toHaveCount(0)
-  await page.waitForLoadState('networkidle')
+  // «Sin pedidos en vuelo» es solo una ayuda: con App_dev cargada (corrida nocturna) alguna imagen
+  // o consulta lenta mantiene la red ocupada más de 30 s sin que la pantalla esté incompleta (ya
+  // se verificó que hay contenido y que no quedan esqueletos). Se espera un rato y se sigue.
+  await page
+    .waitForLoadState('networkidle', { timeout: 10_000 })
+    .catch(() => {})
 }
 
 export async function auditarAccesibilidad(

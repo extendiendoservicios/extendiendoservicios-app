@@ -1,8 +1,11 @@
 name: E2E App_dev
 
 # TEST-021 (F18, P18): corre las suites e2e REALES (backend verdadero, no el humo de `ci.yml` con
-# variables falsas) contra `App_dev`. Decisión de Mike (3 oct 2026): cada noche y a mano, nunca en
-# cada Pull Request. docs/deployment.md sección 14 lo documenta completo (clic por clic, qué hacer
+# variables falsas) contra `App_dev`. Decisión de Mike (3 oct 2026): de noche y a mano, nunca en
+# cada Pull Request. Desde el 21 oct 2026 (P19.13) la nocturna corre 3 veces por semana (lunes,
+# miércoles y viernes) y la matriz de permisos solo los lunes: en el plan gratis de Supabase la
+# organización consumió 2,29 GB de Log Ingestion (límite 1 GB) y 2,15 GB eran de `App_dev`, por la
+# cantidad de pedidos de las e2e (en Postgres los logs ya son mínimos). Menos corridas, menos pedidos. docs/deployment.md sección 14 lo documenta completo (clic por clic, qué hacer
 # si falla y cómo sumar una suite).
 #
 # QUÉ CÓDIGO PRUEBA. GitHub ejecuta `schedule` y `workflow_dispatch` con la versión de ESTE archivo
@@ -11,7 +14,7 @@ name: E2E App_dev
 #
 # INTERRUPTOR. El cron solo corre si la variable de repositorio `E2E_NOCTURNO_ENABLED` vale
 # "true" (mismo mecanismo que los otros workflows): así fusionar este archivo no genera una falla
-# diaria antes de que Mike cargue los cuatro secretos `E2E_*` (P18_cargar_secretos_e2e.ps1). La
+# en cada corrida antes de que Mike cargue los cuatro secretos `E2E_*` (P18_cargar_secretos_e2e.ps1). La
 # corrida a mano ignora el interruptor.
 #
 # JOBS EN TANDAS. Una corrida a la vez (`concurrency`). Cada suite corre en su runner y con su
@@ -24,7 +27,8 @@ name: E2E App_dev
 #   guarda ──► build   ──┐
 #          └─► barrido ──┴─► tanda 1: admin, emp-movil, sup
 #                            tanda 2: admin-edge, emp-webkit, admin-a11y
-#                            tanda 3: perm (sola: es la que más consultas hace)
+#                            tanda 3: perm (sola: es la que más consultas hace; en el cron solo
+#                                     corre los lunes, ver MATRIZ DE PERMISOS)
 #                            al final: dueno, y después ajustes
 #
 # Tiempo estimado de la corrida completa: 40 a 45 minutos (tanda 1 ~11, tanda 2 ~8, perm ~8,
@@ -42,15 +46,22 @@ name: E2E App_dev
 #  - `ajustes` (P19.5d, ajustes de la reunión del 6 oct 2026) va después de `dueno`: cambia y repone
 #    el nombre del dueño del seed (AJ-01), una cuenta única que las demás suites leen.
 #
+# MATRIZ DE PERMISOS. El job `perm` corre en el cron solo los lunes (miércoles y viernes se saltea) y,
+# a mano, según el input `matriz_permisos` (por defecto `true`). La decisión la toma el paso
+# "Decidir si corre la matriz de permisos" de `guarda` (salida `correr_perm`, con `date -u +%u`):
+# así no hace falta un segundo cron. `dueno` y `ajustes` tienen `!cancelled()` en su `if`, de modo que
+# un `perm` salteado (`skipped`) no los bloquea ni marca falla; un `perm` fallido sigue fallando la
+# corrida igual que antes.
+#
 # Mientras corre, no se puede usar App_dev a mano ni correr `restore-test.yml` (comparten
 # `concurrency`). Detalle y tiempos: docs/deployment.md sección 14 y docs/test-inventory.md sección 10.
 
 on:
   schedule:
-    # 07:30 UTC = 04:30 Argentina (UTC-3 todo el año, ADR-019). `backup.yml` corre a las 06:00 UTC
+    # Lunes, miércoles y viernes (1,3,5). 07:30 UTC = 04:30 Argentina (UTC-3 todo el año, ADR-019). `backup.yml` corre a las 06:00 UTC
     # y dura un par de minutos; una hora y media de margen evita que compitan por los runners y
     # por las conexiones de Supabase. GitHub puede demorar los cron unos minutos.
-    - cron: '30 7 * * *'
+    - cron: '30 7 * * 1,3,5'
   workflow_dispatch:
     inputs:
       rama:
@@ -58,6 +69,11 @@ on:
         required: false
         default: 'develop'
         type: string
+      matriz_permisos:
+        description: 'Correr la matriz de permisos (la que más pedidos hace)'
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -91,7 +107,27 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || vars.E2E_NOCTURNO_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 2
+    outputs:
+      correr_perm: ${{ steps.perm.outputs.correr_perm }}
     steps:
+      # Cron: solo los lunes (`date -u +%u` = 1; el cron corre a las 07:30 UTC, lejos del cambio de
+      # día). A mano: lo que diga el input `matriz_permisos`.
+      - name: Decidir si corre la matriz de permisos
+        id: perm
+        env:
+          EVENTO: ${{ github.event_name }}
+          INPUT_PERM: ${{ inputs.matriz_permisos }}
+        run: |
+          set -eu
+          correr=false
+          if [ "${EVENTO}" = "workflow_dispatch" ]; then
+            [ "${INPUT_PERM}" = "true" ] && correr=true
+          elif [ "$(date -u +%u)" = "1" ]; then
+            correr=true
+          fi
+          echo "correr_perm=${correr}" >> "$GITHUB_OUTPUT"
+          echo "Matriz de permisos: ${correr}"
+
       - name: Guarda contra producción (corta antes de tocar nada)
         run: |
           set -eu
@@ -493,9 +529,10 @@ jobs:
 
   perm:
     name: matriz de permisos (API)
-    # Tanda 3: sola, después de las dos primeras.
-    needs: [build, barrido, admin-edge, emp-webkit, admin-a11y]
-    if: ${{ !cancelled() && needs.build.result == 'success' && needs.barrido.result == 'success' }}
+    # Tanda 3: sola, después de las dos primeras. Se saltea si `guarda` dijo `correr_perm=false`
+    # (cron de miércoles y viernes, o corrida a mano con `matriz_permisos` apagado).
+    needs: [guarda, build, barrido, admin-edge, emp-webkit, admin-a11y]
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.barrido.result == 'success' && needs.guarda.outputs.correr_perm == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
@@ -529,8 +566,9 @@ jobs:
         sup,
         perm,
       ]
-    # `!cancelled()`: corre aunque alguna suite haya fallado (así se ve el resto), pero no si el
-    # build o el barrido fallaron (no habría `dist/` ni cuentas) ni si la guarda lo salteó.
+    # `!cancelled()`: corre aunque alguna suite haya fallado (así se ve el resto) o `perm` se haya
+    # salteado, pero no si el build o el barrido fallaron (no habría `dist/` ni cuentas) ni si la
+    # guarda lo salteó.
     if: ${{ !cancelled() && needs.build.result == 'success' && needs.barrido.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10

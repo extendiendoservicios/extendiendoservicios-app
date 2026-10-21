@@ -8,6 +8,14 @@ import { cubre } from '../fixtures/trace.ts'
 import { expectNoHorizontalScroll } from '../fixtures/ui.ts'
 import { elegirFecha, partesDe } from './helpers/fechas.ts'
 import { cargarJornada, cargarSupervision } from './helpers/historial.ts'
+import {
+  agregarFilasDeRelleno,
+  expectColumnasCortasEnUnRenglon,
+  expectFirmasSinCruzar,
+  expectHojaA4,
+  expectHojaEntraEnPantalla,
+  medirHoja,
+} from './helpers/hoja.ts'
 
 // P19.5d · AJ-06 (módulo F, P-102): pestaña Asistencia de la ficha.
 //   - Columna «Horas trabajadas» por turno, con el mismo indicador que «Servicios de hoy».
@@ -138,8 +146,10 @@ for (const quien of ['owner', 'admin'] as const) {
             ).toBeVisible()
             await expect(hoja.getByText(/^Emitido el /)).toBeVisible()
             // Datos de la persona y del período.
-            await expect(hoja.getByText('Persona:')).toBeVisible()
+            await expect(hoja.getByText('Nombre y Apellido:')).toBeVisible()
+            await expect(hoja.getByText('Persona:')).toHaveCount(0)
             await expect(hoja.getByText(nombreDe('empleado1'))).toBeVisible()
+            await expect(hoja.getByText('Rol:')).toBeVisible()
             await expect(hoja.getByText('Período:')).toBeVisible()
             // Tabla: encabezados, dos filas en orden cronológico (anteayer y ayer) y el total.
             for (const encabezado of [
@@ -184,6 +194,23 @@ for (const quien of ['owner', 'admin'] as const) {
             await expect(
               hoja.getByText('Aclaración', { exact: true }),
             ).toHaveCount(2)
+            // Sin licencias en el período: ni dato «Licencias:» ni filas de licencia; la
+            // conformidad nombra las horas, las licencias y las inasistencias.
+            await expect(hoja.getByText('Licencias:')).toHaveCount(0)
+            await expect(
+              hoja.getByText(
+                'Las partes prestan conformidad con el detalle de horas, licencias e inasistencias consignado.',
+              ),
+            ).toBeVisible()
+
+            // Medidas de la hoja A4 (P19.12a): 210 mm, alto múltiplo de 297 mm, firmas enteras
+            // dentro de una página y columnas cortas de un solo renglón.
+            await expect(page.getByTestId('print-sheet')).toBeVisible()
+            const medida = await medirHoja(page)
+            expectHojaA4(medida)
+            expect(medida.escala, 'a 1280 px la hoja no se achica').toBe(1)
+            expectFirmasSinCruzar(medida)
+            expectColumnasCortasEnUnRenglon(medida)
 
             // Imprimir llama a window.print (reemplazado) y Cerrar vuelve a la ficha.
             await hoja
@@ -353,8 +380,193 @@ test.describe('Asistencia de la ficha en el celular (390 px)', () => {
         await expect(
           hoja.getByRole('row', { name: /Total del período/ }),
         ).toContainText('2 h 15 min')
-        // La hoja tiene su propio scroll interno; la página de atrás no se desborda.
+        // La hoja sigue siendo A4 (210 mm) pero se achica para entrar entera en los 390 px, sin
+        // scroll horizontal (P19.12a).
+        await expect(page.getByTestId('print-sheet')).toBeVisible()
+        await expect
+          .poll(async () => (await medirHoja(page)).escala, {
+            message: 'la vista previa se achica a 390 px',
+          })
+          .toBeLessThan(1)
+        const medida = await medirHoja(page)
+        expectHojaA4(medida)
+        expectHojaEntraEnPantalla(medida)
+        expectFirmasSinCruzar(medida)
+        expectColumnasCortasEnUnRenglon(medida)
         await expectNoHorizontalScroll(page)
+      } finally {
+        expect(await sc.cleanup(), 'limpieza').toEqual([])
+      }
+    },
+  )
+})
+
+test.describe('Licencias en el detalle de asistencia (P19.12a)', () => {
+  test.use({ storageState: storageStatePath('admin') })
+
+  test(
+    'una licencia aparece como fila en su fecha entre los turnos, no cambia el total de horas y la hoja la nombra',
+    cubre('RB-A06', 'RB-A04', 'P-102', 'P-033'),
+    async ({ page }) => {
+      test.setTimeout(240_000)
+      await interceptarImpresion(page)
+      const hace4 = daysFromToday(-4)
+      const hace3 = daysFromToday(-3)
+      const hace2 = daysFromToday(-2)
+      const sc = new Scenario()
+      try {
+        const cliente = await sc.client('ficha-licencia')
+        const sede = await sc.site(cliente.id, 'ficha-licencia')
+        // Turnos de 3 h hace 4 y hace 2 días; la licencia de un día cae en el medio.
+        for (const fecha of [hace4, hace2]) {
+          await cargarJornada(sc, {
+            cliente,
+            sede,
+            fecha,
+            franja: FRANJA,
+            quien: 'empleado2',
+            entrada: '08:00',
+            salida: '11:00',
+          })
+        }
+
+        await page.goto(`/admin/empleados/${readId('empleado2')}`)
+        await page.getByRole('tab', { name: 'Asistencia' }).click()
+        const total = page.getByLabel('Total de horas del período')
+        await expect(total).toContainText('6 h')
+
+        // Sin licencia: la hoja no trae el dato «Licencias:» ni fila de licencia.
+        await page.getByRole('button', { name: 'Descargar detalle' }).click()
+        const hoja = page.getByRole('dialog', {
+          name: new RegExp(
+            `^Detalle de asistencia - ${nombreDe('empleado2')} - `,
+          ),
+        })
+        await expect(hoja).toBeVisible()
+        await expect(hoja.getByText('Licencias:')).toHaveCount(0)
+        await expect(hoja.getByText(/Licencia del /)).toHaveCount(0)
+        await page.keyboard.press('Escape')
+        await expect(hoja).toHaveCount(0)
+
+        // Se carga la licencia de un día (hace 3 días) y se recarga la ficha.
+        await sc.leave('empleado2', hace3, hace3)
+        await page.reload()
+        await page.getByRole('tab', { name: 'Asistencia' }).click()
+        // El total de horas no cambia: la licencia no suma ni resta horas.
+        await expect(total).toContainText('6 h')
+        await expect(total).not.toContainText('min')
+
+        await page.getByRole('button', { name: 'Descargar detalle' }).click()
+        await expect(hoja).toBeVisible()
+        await expect(hoja.getByText('Licencias:')).toBeVisible()
+        await expect(
+          hoja.getByText('Licencias:').locator('xpath=..'),
+        ).toContainText('1')
+        const dd = (iso: string) => {
+          const [a, m, d] = iso.split('-')
+          return `${d}/${m}/${a}`
+        }
+        // En la tabla la fecha va como «17 oct 2026» (día sin cero, mes abreviado, año).
+        const fechaCorta = (iso: string) => {
+          const [a, , d] = iso.split('-')
+          return new RegExp(`^${Number(d)} [a-zñ]+[.]? ${a}$`, 'u')
+        }
+        const filaLicencia = hoja
+          .getByRole('row')
+          .filter({ hasText: 'Licencia del ' })
+        await expect(filaLicencia).toHaveCount(1)
+        await expect(filaLicencia).toContainText(
+          `Licencia del ${dd(hace3)} al ${dd(hace3)} — e2e-licencia`,
+        )
+        // Celda unida: una sola celda de Cliente a Observaciones, con el texto de la licencia.
+        const celdaUnida = filaLicencia.getByRole('cell', {
+          name: /^Licencia del /,
+        })
+        await expect(celdaUnida).toHaveCount(1)
+        const colspan = Number(await celdaUnida.getAttribute('colspan'))
+        expect(colspan, 'colspan de la celda unida').toBeGreaterThanOrEqual(4)
+        await expect(filaLicencia.getByRole('cell').first()).toHaveText(
+          fechaCorta(hace3),
+        )
+        await expect(filaLicencia.getByRole('cell').last()).toHaveText('—')
+
+        // Orden cronológico: turno de hace 4 días, licencia, turno de hace 2 días.
+        const filas = hoja.getByRole('row').filter({ has: page.locator('td') })
+        const textos = await filas.allInnerTexts()
+        const posicion = (patron: RegExp) =>
+          textos.findIndex((texto) => patron.test(texto))
+        const iTurno4 = posicion(
+          new RegExp(fechaCorta(hace4).source.replace('$', ''), 'u'),
+        )
+        const iLicencia = posicion(/Licencia del /)
+        const iTurno2 = posicion(
+          new RegExp(fechaCorta(hace2).source.replace('$', ''), 'u'),
+        )
+        expect(iTurno4, 'turno de hace 4 días').toBeGreaterThanOrEqual(0)
+        expect(iLicencia, 'fila de licencia').toBeGreaterThan(iTurno4)
+        expect(iTurno2, 'turno de hace 2 días').toBeGreaterThan(iLicencia)
+        // El total de la hoja sigue siendo el de los dos turnos.
+        await expect(
+          hoja.getByRole('row', { name: /Total del período/ }),
+        ).toContainText('6 h')
+        await expect(
+          hoja.getByText(
+            'Las partes prestan conformidad con el detalle de horas, licencias e inasistencias consignado.',
+          ),
+        ).toBeVisible()
+
+        await test.step('la hoja mide 210 mm, su alto es múltiplo de 297 mm y las columnas cortas no se parten', async () => {
+          const medida = await medirHoja(page)
+          expectHojaA4(medida)
+          expectFirmasSinCruzar(medida)
+          expectColumnasCortasEnUnRenglon(medida)
+        })
+
+        await test.step('con filas de más, el bloque de firmas nunca cruza el límite de una página', async () => {
+          // Se suman filas de a una (solo en el DOM de la vista previa, nada se guarda) y en cada
+          // paso se verifica la regla: tarde o temprano las firmas llegan al fondo útil de la
+          // página 1 y la hoja tiene que empujarlas al comienzo de la siguiente.
+          let empujadas = false
+          let paginas = 1
+          for (let paso = 0; paso < 70; paso++) {
+            await agregarFilasDeRelleno(hoja, 1)
+            await expect
+              .poll(
+                async () => {
+                  const m = await medirHoja(page)
+                  try {
+                    expectHojaA4(m)
+                    expectFirmasSinCruzar(m)
+                    return 'ok'
+                  } catch (error) {
+                    return String(error)
+                  }
+                },
+                {
+                  message: `firmas dentro de una página con ${paso + 1} filas de más`,
+                },
+              )
+              .toBe('ok')
+            const m = await medirHoja(page)
+            paginas = Math.round(m.altoMm / 297)
+            const huecoMm = await hoja.evaluate((nodo) => {
+              const ultima = nodo.querySelector('table tbody tr:last-child')
+              const firmas = nodo.querySelector('[data-print-signatures]')
+              if (!ultima || !firmas) return 0
+              return (
+                (firmas.getBoundingClientRect().top -
+                  ultima.getBoundingClientRect().bottom) /
+                (96 / 25.4)
+              )
+            })
+            // Hueco normal bajo la tabla: pie + 2,5 rem; mucho más grande = firmas empujadas.
+            if (huecoMm > 30) empujadas = true
+          }
+          expect(paginas, 'las filas de más sumaron páginas').toBeGreaterThan(1)
+          expect(empujadas, 'en algún paso las firmas fueron empujadas').toBe(
+            true,
+          )
+        })
       } finally {
         expect(await sc.cleanup(), 'limpieza').toEqual([])
       }

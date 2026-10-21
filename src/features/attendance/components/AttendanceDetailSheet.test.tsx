@@ -79,7 +79,7 @@ describe('AttendanceDetailSheet (AJ-06)', () => {
     expect(screen.getByText('Empleado', { selector: 'p' })).toBeInTheDocument()
     expect(
       screen.getByText(
-        'Las partes prestan conformidad con el detalle de horas consignado.',
+        'Las partes prestan conformidad con el detalle de horas, licencias e inasistencias consignado.',
       ),
     ).toBeInTheDocument()
   })

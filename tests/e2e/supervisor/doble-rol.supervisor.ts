@@ -20,7 +20,7 @@ import { irARedirigida } from '../../fixtures/ui.ts'
 
 // TEST-018 (P18.2): el doble rol empleado y supervisor (`e2e-fijo-dual`): el ingreso va a la vía
 // de empleado, "Más" ofrece "Supervisión" (EMP-13) y "Mis servicios" (SUP-09) con los enlaces
-// reales, cada vía muestra solo lo suyo, y CB-13 (supervisor que también trabaja como empleado
+// reales, cada vía muestra lo suyo (la de supervisión, desde P19.9, suma «Tus servicios de hoy»), y CB-13 (supervisor que también trabaja como empleado
 // del turno: se ve "Vos", no puede calificarse y el servidor lo rechaza con
 // `SELF_RATING_NOT_ALLOWED`). RB-E01, RB-S01, RB-S04, P-042, P-122. Cuentas: dual; empleado1 es
 // el compañero del turno.
@@ -74,10 +74,23 @@ test(
         await page.getByRole('link', { name: 'Supervisión' }).click()
         await expect(page).toHaveURL(/\/sup$/)
         await expect(page.getByText(sedeSupervision.name)).toBeVisible()
+        // P19.9: quien también es empleado ve su servicio aparte, en «Tus servicios de hoy»
+        // (enlace a /app/servicio), sin mezclarlo con las supervisiones a su cargo.
+        const propios = page.getByRole('region', {
+          name: 'Tus servicios de hoy',
+        })
+        await expect(propios.getByText(sedeEmpleado.name)).toBeVisible()
         await expect(
-          page.getByText(sedeEmpleado.name),
-          'la vía de supervisor no mezcla sus servicios de empleado',
+          propios.getByText(sedeSupervision.name),
+          'sus servicios de empleado no incluyen el turno que supervisa',
         ).toHaveCount(0)
+        await expect(
+          page.getByRole('link', { name: new RegExp(sedeSupervision.name) }),
+        ).toHaveAttribute('href', /\/sup\/supervisiones\//)
+        await expect(
+          page.getByRole('link', { name: new RegExp(sedeEmpleado.name) }),
+          'el servicio de empleado lleva a la vía de empleado, no a una supervisión',
+        ).toHaveAttribute('href', /\/app\/servicio\//)
       })
 
       await test.step('SUP-09 Más ofrece "Mis servicios" y vuelve a EMP-03', async () => {

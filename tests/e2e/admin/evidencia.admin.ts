@@ -163,7 +163,13 @@ test.describe('ADM-32 Fotos y videos', () => {
           )
         })
 
-        await test.step('«Conservadas» arranca vacío; el visor conserva y la marca se refleja en la base y en el filtro', async () => {
+        await test.step('«Conservadas» arranca vacío para el cliente de la prueba; el visor conserva y la marca se refleja en la base y en el filtro', async () => {
+          // App_dev puede tener fotos conservadas de otras personas o de otras pruebas: el vacío se
+          // exige solo para el cliente propio (recién creado), no para toda la base.
+          await page
+            .getByRole('combobox', { name: 'Filtrar por cliente' })
+            .click()
+          await page.getByRole('option', { name: a.cliente.name }).click()
           await page
             .getByRole('combobox', { name: 'Filtrar por conservación' })
             .click()
@@ -175,6 +181,10 @@ test.describe('ADM-32 Fotos y videos', () => {
             .getByRole('combobox', { name: 'Filtrar por conservación' })
             .click()
           await page.getByRole('option', { name: 'Todas' }).click()
+          await page
+            .getByRole('combobox', { name: 'Filtrar por cliente' })
+            .click()
+          await page.getByRole('option', { name: 'Todos los clientes' }).click()
 
           await grupo(page, a.cliente.name)
             .getByRole('button', { name: /^Foto de / })

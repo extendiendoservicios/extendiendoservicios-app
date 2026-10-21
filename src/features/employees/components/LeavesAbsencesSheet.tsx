@@ -2,7 +2,11 @@ import { useMemo } from 'react'
 import type { PersonName } from '@/api/attendance'
 import { PrintSheet } from '@/features/print/PrintSheet'
 import { PrintableLetterhead } from '@/features/print/PrintableLetterhead'
-import { PrintFacts, PrintTable } from '@/features/print/PrintTable'
+import {
+  PrintFacts,
+  PrintSignatures,
+  PrintTable,
+} from '@/features/print/PrintTable'
 import {
   useEmployeeAttendanceHistoryQuery,
   usePeopleNamesQuery,
@@ -30,7 +34,9 @@ interface LeavesAbsencesSheetProps {
  * Hoja membretada «Licencias y ausencias» (P19.11d): licencias del empleado
  * (desde, hasta o «Abierta», motivo, días) y sus ausencias a turnos (fecha,
  * cliente y sede, horario, motivo, con o sin certificado y quién la cargó), en
- * el período elegido. Usa la misma vista previa que los demás imprimibles
+ * el período elegido, con los mismos datos de la persona y el mismo bloque de
+ * conformidad y firmas que el «Detalle de asistencia». Usa la misma vista
+ * previa que los demás imprimibles
  * (logo, «Editar texto», imprimir o guardar como PDF).
  */
 function LeavesAbsencesSheet({
@@ -106,6 +112,7 @@ function LeavesAbsencesSheet({
             rows={sheet.absenceRows}
             emptyText="No hay ausencias avisadas en este período."
           />
+          <PrintSignatures intro={sheet.consentText} signers={sheet.signers} />
         </>
       )}
     </PrintSheet>

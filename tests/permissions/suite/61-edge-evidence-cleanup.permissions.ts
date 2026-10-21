@@ -13,7 +13,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { requireE2eEnv } from '../../fixtures/env.ts'
-import { contexto } from './contexto.ts'
+import { tokenVigente } from './contexto.ts'
 import { ETIQUETA, PERFILES } from './perfiles.ts'
 
 const ENCABEZADO = 'x-evidence-cleanup-secret'
@@ -48,7 +48,7 @@ async function llamar(opciones: {
 describe('Edge Function evidence-cleanup: la puerta es el secreto (H-08, RB-X02)', () => {
   for (const perfil of PERFILES) {
     it(`[${ETIQUETA[perfil]}] su sesión no alcanza: sin el secreto, 401 UNAUTHORIZED`, async () => {
-      const token = perfil === 'anon' ? null : contexto().tokens[perfil]
+      const token = perfil === 'anon' ? null : await tokenVigente(perfil)
       const r = await llamar({ token })
       expect(r.texto).toContain('UNAUTHORIZED')
       expect(r.status).toBe(401)
@@ -64,7 +64,7 @@ describe('Edge Function evidence-cleanup: la puerta es el secreto (H-08, RB-X02)
 
   it('con un secreto falso y la sesión del dueño: 401 UNAUTHORIZED (el rol no reemplaza al secreto)', async () => {
     const r = await llamar({
-      token: contexto().tokens.owner,
+      token: await tokenVigente('owner'),
       secreto: 'falso-e2e-perm',
     })
     expect(r.status, r.texto).toBe(401)
