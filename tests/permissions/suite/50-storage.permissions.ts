@@ -12,7 +12,7 @@
 // Todo lo que sube la suite lleva el prefijo `e2e-perm-` y se borra al final.
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { clienteDe, contexto, servicio } from './contexto.ts'
+import { clienteDe, contexto, servicio, tokenVigente } from './contexto.ts'
 import { caso, claveCaso } from './defectos.ts'
 import { ES_ADMIN, ETIQUETA, PERFILES, type Perfil } from './perfiles.ts'
 import { idPerfil } from './tablas.ts'
@@ -109,7 +109,7 @@ describe('Storage: avatars y branding', () => {
             headers:
               perfil === 'anon'
                 ? {}
-                : { Authorization: `Bearer ${contexto().tokens[perfil]}` },
+                : { Authorization: `Bearer ${await tokenVigente(perfil)}` },
           })
           expect(respuesta.status).toBe(200)
         },
@@ -300,7 +300,7 @@ describe('Storage: avatars y branding', () => {
             headers:
               perfil === 'anon'
                 ? {}
-                : { Authorization: `Bearer ${contexto().tokens[perfil]}` },
+                : { Authorization: `Bearer ${await tokenVigente(perfil)}` },
           })
           expect(respuesta.status).toBe(200)
         },

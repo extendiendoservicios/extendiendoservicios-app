@@ -1,7 +1,18 @@
 import type { AttendanceBoardRow } from '@/api/attendance'
 import type { SupervisionListRow } from '@/api/supervisions'
+import type { EmployeeLeave } from '@/api/employees'
+import type { Role } from '@/api/users'
+import { ROLE_LABELS } from '@/features/auth/session'
+import {
+  absenceReasonText,
+  leaveOverlapsPeriod,
+} from '@/features/employees/leavesAbsencesSheet'
 import { formatCalendarDate, formatMinutes, formatTime } from '@/lib/format'
-import type { PrintColumn, PrintRowData } from '@/features/print/PrintTable'
+import type {
+  PrintColumn,
+  PrintRowData,
+  PrintRowSpan,
+} from '@/features/print/PrintTable'
 import { formatShiftRange } from '@/features/shifts/openEnded'
 import { absenceDetail, isAbsence } from '@/features/attendance/absences'
 import { joinObservations } from '@/features/shifts/observation'
@@ -121,6 +132,8 @@ export interface AttendanceSheetModel {
   facts: { label: string; value: string }[]
   columns: PrintColumn[]
   rows: PrintRowData[]
+  /** Filas con celda unida (las licencias: Cliente → Observaciones). */
+  spans: Record<string, PrintRowSpan>
   footer: { label: string; value: string }
   totalMinutes: number
   signers: string[]
@@ -129,8 +142,9 @@ export interface AttendanceSheetModel {
 }
 
 export const ATTENDANCE_SHEET_TITLE = 'Detalle de asistencia'
+// Texto único (con o sin licencias e inasistencias): la hoja las puede incluir.
 export const ATTENDANCE_CONSENT_TEXT =
-  'Las partes prestan conformidad con el detalle de horas consignado.'
+  'Las partes prestan conformidad con el detalle de horas, licencias e inasistencias consignado.'
 
 /** Quién firma por la persona, según sus roles. */
 export function personSignerLabel(roleLabels: string[]): string {
@@ -140,6 +154,48 @@ export function personSignerLabel(roleLabels: string[]): string {
         .toLowerCase()
         .replace(/^./, (c) => c.toUpperCase())
     : 'Persona'
+}
+
+/** Etiquetas de rol para el imprimible (solo empleado y supervisor). */
+export function printRoleLabels(roles: Role[]): string[] {
+  return roles
+    .filter((role) => role === 'employee' || role === 'supervisor')
+    .map((role) => ROLE_LABELS[role])
+}
+
+/** «dd/mm/aaaa» de una fecha `"YYYY-MM-DD"`. */
+function numericDate(isoDate: string): string {
+  const [year = '', month = '', day = ''] = isoDate.slice(0, 10).split('-')
+  return `${day}/${month}/${year}`
+}
+
+/**
+ * Novedad de una inasistencia. Si fue avisada como ausencia:
+ * «Inasistencia — con certificado — Enfermedad». Si no tuvo aviso queda el
+ * texto de siempre («Inasistencia: sin fichaje de inicio»).
+ */
+export function absenceSheetNote(row: AttendanceBoardRow): string {
+  if (row.status === 'absence_notified' && row.lastNoticeKind === 'absence') {
+    const certificate =
+      row.lastNoticeHasCertificate === true
+        ? 'con certificado'
+        : row.lastNoticeHasCertificate === false
+          ? 'sin certificado'
+          : 'certificado sin indicar'
+    return `Inasistencia — ${certificate} — ${absenceReasonText(row)}`
+  }
+  return absenceDetail(row)
+}
+
+/**
+ * Texto de una licencia dentro de la tabla: «Licencia del 02/03/2026 al
+ * 06/03/2026 — Vacaciones» (o «abierta» si no tiene fin).
+ */
+export function leaveSheetNote(
+  leave: Pick<EmployeeLeave, 'startsOn' | 'endsOn' | 'reason'>,
+): string {
+  const until = leave.endsOn ? numericDate(leave.endsOn) : 'abierta'
+  return `Licencia del ${numericDate(leave.startsOn)} al ${until} — ${leave.reason?.trim() || 'Sin motivo'}`
 }
 
 /**
@@ -183,15 +239,49 @@ export function buildAttendanceSheet(input: {
   from: string
   to: string
   entries: AttendanceDetailEntry[]
+  /** Licencias de la persona: las del período se intercalan en la tabla, sin horas. */
+  leaves?: EmployeeLeave[]
   /** Inyectable para tests; por defecto el momento de armar la hoja. */
   now?: Date
 }): AttendanceSheetModel {
   const now = input.now ?? new Date()
-  const lines = printableEntries(input.entries, now).sort(
+  const lines = printableEntries(input.entries, now)
+  const leaves = (input.leaves ?? []).filter(
+    (leave) =>
+      leave.deletedAt == null &&
+      leaveOverlapsPeriod(leave, input.from, input.to),
+  )
+  // Cada fila de la tabla (turno o licencia) con su clave de orden: fecha y
+  // hora de inicio. Una licencia va en su fecha de inicio (o al comienzo del
+  // período si empezó antes) y antes de los turnos de ese día.
+  type Line =
+    | {
+        type: 'entry'
+        date: string
+        sortTime: string
+        entry: AttendanceDetailEntry
+      }
+    | { type: 'leave'; date: string; sortTime: string; leave: EmployeeLeave }
+  const allLines: Line[] = [
+    ...lines.map((entry): Line => ({
+      type: 'entry',
+      date: entry.date,
+      sortTime: entry.startTime,
+      entry,
+    })),
+    ...leaves.map((leave): Line => ({
+      type: 'leave',
+      date: leave.startsOn > input.from ? leave.startsOn : input.from,
+      sortTime: '',
+      leave,
+    })),
+  ].sort(
     (a, b) =>
       a.date.localeCompare(b.date) ||
-      a.startTime.localeCompare(b.startTime) ||
-      a.key.localeCompare(b.key),
+      a.sortTime.localeCompare(b.sortTime) ||
+      (a.type === 'leave' ? a.leave.id : a.entry.key).localeCompare(
+        b.type === 'leave' ? b.leave.id : b.entry.key,
+      ),
   )
   const hasSupervisions = lines.some((entry) => entry.kind === 'supervision')
   const totalMinutes = sumWorkedMinutes(lines)
@@ -202,18 +292,37 @@ export function buildAttendanceSheet(input: {
   const columns: PrintColumn[] = [
     { key: 'date', header: 'Fecha' },
     ...(hasSupervisions ? [{ key: 'kind', header: 'Tipo' }] : []),
-    { key: 'client', header: 'Cliente' },
-    { key: 'site', header: 'Sede' },
+    { key: 'client', header: 'Cliente', wrap: true },
+    { key: 'site', header: 'Sede', wrap: true },
     { key: 'franja', header: 'Franja' },
     { key: 'start', header: 'Inicio' },
     { key: 'end', header: 'Fin' },
     // B1 (B-20): validación por ubicación, solo el resultado, sin coordenadas.
     { key: 'geo', header: 'Validación' },
-    { key: 'novelty', header: 'Observaciones' },
+    { key: 'novelty', header: 'Observaciones', wrap: true },
     { key: 'hours', header: 'Horas', align: 'right' },
   ]
 
-  const rows: PrintRowData[] = lines.map((entry) => {
+  const spans: Record<string, PrintRowSpan> = {}
+  const rows: PrintRowData[] = allLines.map((line) => {
+    if (line.type === 'leave') {
+      spans[`leave-${line.leave.id}`] = { from: 'client', to: 'novelty' }
+      return {
+        key: `leave-${line.leave.id}`,
+        date: formatPeriodDate(line.date),
+        kind: 'Licencia',
+        // La observación va en la celda unida que arranca en Cliente y llega hasta Observaciones (`spans`).
+        client: leaveSheetNote(line.leave),
+        site: '',
+        franja: '',
+        start: '',
+        end: '',
+        geo: '',
+        novelty: '',
+        hours: '—',
+      }
+    }
+    const entry = line.entry
     const checkIn = entryCheckIn(entry)
     const checkOut = entryCheckOut(entry)
     const worked = entryWorkedMinutes(entry)
@@ -232,7 +341,7 @@ export function buildAttendanceSheet(input: {
       novelty:
         entry.kind === 'service'
           ? joinObservations(
-              absent ? absenceDetail(entry.row) : '',
+              absent ? absenceSheetNote(entry.row) : '',
               entry.row.shiftObservation,
             )
           : '',
@@ -252,9 +361,13 @@ export function buildAttendanceSheet(input: {
       ...(absencesCount > 0
         ? [{ label: 'Inasistencias', value: String(absencesCount) }]
         : []),
+      ...(leaves.length > 0
+        ? [{ label: 'Licencias', value: String(leaves.length) }]
+        : []),
     ],
     columns,
     rows,
+    spans,
     footer: {
       label: 'Total del período',
       value: formatMinutes(totalMinutes),

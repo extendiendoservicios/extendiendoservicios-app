@@ -13,6 +13,12 @@ import {
   fechaDelAnio,
   PREFIJO,
 } from './helpers/dia.ts'
+import {
+  expectColumnasCortasEnUnRenglon,
+  expectFirmasSinCruzar,
+  expectHojaA4,
+  medirHoja,
+} from './helpers/hoja.ts'
 
 // P19.11g · Las licencias bloquean (0059, 0061 y P19.11d, punto 4 de la reunión del 19 oct) y el
 // imprimible «Licencias y ausencias» (punto 2).
@@ -319,6 +325,41 @@ test.describe('imprimible «Licencias y ausencias» (ADM-17)', () => {
           await expect(fila).toContainText('Enfermedad')
           await expect(fila).toContainText('Con certificado')
           await expect(fila).toContainText('(administración)')
+        })
+
+        await test.step('datos personales, conformidad y dos firmas (P19.12a)', async () => {
+          await expect(hoja.getByText('Nombre y Apellido:')).toBeVisible()
+          await expect(
+            hoja.getByText(nombreDe('empleado4')).first(),
+          ).toBeVisible()
+          await expect(hoja.getByText('DNI:')).toBeVisible()
+          await expect(hoja.getByText('Legajo:')).toBeVisible()
+          const rol = hoja.getByText('Rol:').locator('xpath=..')
+          await expect(rol).toContainText('Empleado')
+          await expect(hoja.getByText('Período:')).toBeVisible()
+          await expect(
+            hoja.getByText(
+              'Las partes prestan conformidad con el detalle de licencias e inasistencias consignado.',
+            ),
+          ).toBeVisible()
+          await expect(
+            hoja.getByText('Responsable (administración)'),
+          ).toBeVisible()
+          await expect(
+            hoja.getByRole('paragraph').filter({ hasText: /^Empleado$/ }),
+          ).toBeVisible()
+          await expect(hoja.getByText('Firma', { exact: true })).toHaveCount(2)
+          await expect(
+            hoja.getByText('Aclaración', { exact: true }),
+          ).toHaveCount(2)
+        })
+
+        await test.step('mide 210 mm, alto múltiplo de 297 mm, firmas enteras y columnas cortas de un renglón', async () => {
+          await expect(page.getByTestId('print-sheet')).toBeVisible()
+          const medida = await medirHoja(page)
+          expectHojaA4(medida)
+          expectFirmasSinCruzar(medida)
+          expectColumnasCortasEnUnRenglon(medida)
         })
 
         await test.step('si se corrige el certificado, la hoja nueva dice «Sin certificado»', async () => {

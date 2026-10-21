@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { createContext, useContext, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { ChevronLeft, ChevronRight, Phone, Search, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -65,6 +65,52 @@ const STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: 'on_the_way', label: 'En camino' },
   { value: 'late', label: 'Llegada tarde' },
 ]
+
+/** Teléfonos por empleado (los trae `useEmployeePhonesQuery` y llegan después de la grilla). */
+const PhonesContext = createContext<Map<string, string | null> | undefined>(
+  undefined,
+)
+
+/**
+ * Acciones de la fila. Es un componente estable (no una función de `cell`
+ * nueva en cada render) para que el teléfono, al llegar, solo agregue
+ * «Llamar» sin volver a montar el botón «Registrar en nombre».
+ */
+function AttendanceRowActions({
+  row,
+  canManage,
+  onRecord,
+}: {
+  row: AttendanceBoardRow
+  canManage: boolean
+  onRecord: (row: AttendanceBoardRow) => void
+}) {
+  const phone = useContext(PhonesContext)?.get(row.employeeId)
+  const rowActions = getAvailableAttendanceActions({
+    shiftStatus: row.shiftStatus,
+    status: row.status,
+    checkInAt: row.checkInAt,
+    checkOutAt: row.checkOutAt,
+    startsAt: row.startsAt,
+  })
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button asChild variant="ghost" size="sm">
+        <Link to={`/admin/turnos/${row.shiftId}`}>Abrir turno</Link>
+      </Button>
+      {canManage && rowActions.length > 0 && (
+        <Button variant="ghost" size="sm" onClick={() => onRecord(row)}>
+          Registrar en nombre
+        </Button>
+      )}
+      {phone && (
+        <Button asChild variant="ghost" size="sm" icon={Phone}>
+          <a href={`tel:${phone}`}>Llamar</a>
+        </Button>
+      )}
+    </div>
+  )
+}
 
 /**
  * ADM-10 "Asistencia de hoy" (ATT-011, ATT-012, `05` línea 49): tabla de
@@ -162,148 +208,132 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
       })
     : []
 
-  const columns: DataTableColumnDef<AttendanceBoardRow>[] = [
-    {
-      id: 'employee',
-      header: 'Empleado',
-      meta: { card: 'title' },
-      cell: ({ row }) => (
-        <PersonCell
-          id={row.original.employeeId}
-          name={`${row.original.employeeFirstName} ${row.original.employeeLastName}`}
-          avatarSrc={
-            row.original.employeeAvatarPath
-              ? avatarUrl(row.original.employeeAvatarPath)
-              : null
-          }
-        />
-      ),
-    },
-    {
-      id: 'client',
-      header: 'Cliente · sede',
-      meta: { card: 'subtitle' },
-      cell: ({ row }) => (
-        <span>
-          {row.original.clientName} · {row.original.siteName}
-        </span>
-      ),
-    },
-    {
-      id: 'schedule',
-      header: 'Franja',
-      meta: { card: 'meta', cardLabel: 'Franja' },
-      cell: ({ row }) =>
-        formatShiftRange(
-          row.original.startTime,
-          row.original.endTime,
-          row.original.openEnded,
+  // Las columnas se memorizan: TanStack Table renderiza cada `cell` como un
+  // componente (`flexRender`), así que una función nueva en cada render
+  // desmontaba y volvía a montar todas las celdas (con el botón «Registrar en
+  // nombre» incluido) cada vez que llegaba una consulta o un refresco. Un
+  // toque entre el `pointerdown` y el `click` caía en un nodo ya descartado y
+  // se perdía. Los datos cambiantes (teléfonos) llegan por contexto, no por
+  // la identidad de las funciones.
+  const columns = useMemo<DataTableColumnDef<AttendanceBoardRow>[]>(
+    () => [
+      {
+        id: 'employee',
+        header: 'Empleado',
+        meta: { card: 'title' },
+        cell: ({ row }) => (
+          <PersonCell
+            id={row.original.employeeId}
+            name={`${row.original.employeeFirstName} ${row.original.employeeLastName}`}
+            avatarSrc={
+              row.original.employeeAvatarPath
+                ? avatarUrl(row.original.employeeAvatarPath)
+                : null
+            }
+          />
         ),
-    },
-    {
-      id: 'checkIn',
-      header: 'Inicio real',
-      meta: { card: 'meta', cardLabel: 'Inicio real' },
-      cell: ({ row }) =>
-        row.original.checkInAt
-          ? `${formatTime(row.original.checkInAt)}${timeCorrectedSuffix(row.original.checkInGeo)}`
-          : '—',
-    },
-    {
-      id: 'checkOut',
-      header: 'Fin real',
-      meta: { card: 'meta', cardLabel: 'Fin real' },
-      cell: ({ row }) =>
-        row.original.checkOutAt
-          ? `${formatTime(row.original.checkOutAt)}${timeCorrectedSuffix(row.original.checkOutGeo)}`
-          : '—',
-    },
-    {
-      id: 'geo',
-      header: 'Validación',
-      meta: { card: 'meta', cardLabel: 'Validación' },
-      cell: ({ row }) => (
-        <GeoValidationCell
-          checkIn={row.original.checkInGeo}
-          checkOut={row.original.checkOutGeo}
-        />
-      ),
-    },
-    {
-      id: 'status',
-      header: 'Estado',
-      meta: { card: 'meta', cardLabel: 'Estado' },
-      cell: ({ row }) => {
-        const arrival = getArrivalHint(row.original)
-        const certificate = getAbsenceCertificateHint(row.original)
-        return (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <StatusBadge {...getAttendanceRowBadge(row.original)} />
-            {arrival && (
-              <span className="text-[12px] text-text-2">{arrival}</span>
-            )}
-            {certificate && (
-              <span className="text-[12px] text-text-2">{certificate}</span>
-            )}
-          </div>
-        )
       },
-    },
-    {
-      id: 'workedHours',
-      header: 'Horas',
-      meta: { card: 'meta', cardLabel: 'Horas' },
-      cell: ({ row }) => <WorkedHoursCell {...row.original} />,
-    },
-    {
-      id: 'earlyLeave',
-      header: 'Salida anticipada',
-      meta: { card: 'meta', cardLabel: 'Salida anticipada' },
-      cell: ({ row }) =>
-        row.original.minutesEarlyLeave != null &&
-        row.original.minutesEarlyLeave > 0
-          ? formatMinutes(row.original.minutesEarlyLeave)
-          : '—',
-    },
-    {
-      id: 'actions',
-      header: 'Acciones',
-      meta: { card: 'actions' },
-      cell: ({ row }) => {
-        const rowActions = getAvailableAttendanceActions({
-          shiftStatus: row.original.shiftStatus,
-          status: row.original.status,
-          checkInAt: row.original.checkInAt,
-          checkOutAt: row.original.checkOutAt,
-          startsAt: row.original.startsAt,
-        })
-        const phone = phonesQuery.data?.get(row.original.employeeId)
-        return (
-          <div className="flex flex-wrap items-center gap-2">
-            <Button asChild variant="ghost" size="sm">
-              <Link to={`/admin/turnos/${row.original.shiftId}`}>
-                Abrir turno
-              </Link>
-            </Button>
-            {canManage && rowActions.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setRecordTarget(row.original)}
-              >
-                Registrar en nombre
-              </Button>
-            )}
-            {phone && (
-              <Button asChild variant="ghost" size="sm" icon={Phone}>
-                <a href={`tel:${phone}`}>Llamar</a>
-              </Button>
-            )}
-          </div>
-        )
+      {
+        id: 'client',
+        header: 'Cliente · sede',
+        meta: { card: 'subtitle' },
+        cell: ({ row }) => (
+          <span>
+            {row.original.clientName} · {row.original.siteName}
+          </span>
+        ),
       },
-    },
-  ]
+      {
+        id: 'schedule',
+        header: 'Franja',
+        meta: { card: 'meta', cardLabel: 'Franja' },
+        cell: ({ row }) =>
+          formatShiftRange(
+            row.original.startTime,
+            row.original.endTime,
+            row.original.openEnded,
+          ),
+      },
+      {
+        id: 'checkIn',
+        header: 'Inicio real',
+        meta: { card: 'meta', cardLabel: 'Inicio real' },
+        cell: ({ row }) =>
+          row.original.checkInAt
+            ? `${formatTime(row.original.checkInAt)}${timeCorrectedSuffix(row.original.checkInGeo)}`
+            : '—',
+      },
+      {
+        id: 'checkOut',
+        header: 'Fin real',
+        meta: { card: 'meta', cardLabel: 'Fin real' },
+        cell: ({ row }) =>
+          row.original.checkOutAt
+            ? `${formatTime(row.original.checkOutAt)}${timeCorrectedSuffix(row.original.checkOutGeo)}`
+            : '—',
+      },
+      {
+        id: 'geo',
+        header: 'Validación',
+        meta: { card: 'meta', cardLabel: 'Validación' },
+        cell: ({ row }) => (
+          <GeoValidationCell
+            checkIn={row.original.checkInGeo}
+            checkOut={row.original.checkOutGeo}
+          />
+        ),
+      },
+      {
+        id: 'status',
+        header: 'Estado',
+        meta: { card: 'meta', cardLabel: 'Estado' },
+        cell: ({ row }) => {
+          const arrival = getArrivalHint(row.original)
+          const certificate = getAbsenceCertificateHint(row.original)
+          return (
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <StatusBadge {...getAttendanceRowBadge(row.original)} />
+              {arrival && (
+                <span className="text-[12px] text-text-2">{arrival}</span>
+              )}
+              {certificate && (
+                <span className="text-[12px] text-text-2">{certificate}</span>
+              )}
+            </div>
+          )
+        },
+      },
+      {
+        id: 'workedHours',
+        header: 'Horas',
+        meta: { card: 'meta', cardLabel: 'Horas' },
+        cell: ({ row }) => <WorkedHoursCell {...row.original} />,
+      },
+      {
+        id: 'earlyLeave',
+        header: 'Salida anticipada',
+        meta: { card: 'meta', cardLabel: 'Salida anticipada' },
+        cell: ({ row }) =>
+          row.original.minutesEarlyLeave != null &&
+          row.original.minutesEarlyLeave > 0
+            ? formatMinutes(row.original.minutesEarlyLeave)
+            : '—',
+      },
+      {
+        id: 'actions',
+        header: 'Acciones',
+        meta: { card: 'actions' },
+        cell: ({ row }) => (
+          <AttendanceRowActions
+            row={row.original}
+            canManage={canManage}
+            onRecord={setRecordTarget}
+          />
+        ),
+      },
+    ],
+    [canManage],
+  )
 
   return (
     <div className="flex flex-col gap-4">
@@ -404,20 +434,22 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
         </label>
       </div>
 
-      <DataTable
-        caption={`Asistencia del ${formatDateOnly(date)}`}
-        columns={columns}
-        data={filteredRows}
-        getRowId={(row) => row.id}
-        isLoading={boardQuery.isLoading}
-        rowVariant={getAttendanceRowVariant}
-        emptyState={{
-          icon: Users,
-          title: onlyOutside
-            ? 'Nadie fichó fuera de zona en este día'
-            : 'No hay asignaciones para este día',
-        }}
-      />
+      <PhonesContext.Provider value={phonesQuery.data}>
+        <DataTable
+          caption={`Asistencia del ${formatDateOnly(date)}`}
+          columns={columns}
+          data={filteredRows}
+          getRowId={(row) => row.id}
+          isLoading={boardQuery.isLoading}
+          rowVariant={getAttendanceRowVariant}
+          emptyState={{
+            icon: Users,
+            title: onlyOutside
+              ? 'Nadie fichó fuera de zona en este día'
+              : 'No hay asignaciones para este día',
+          }}
+        />
+      </PhonesContext.Provider>
 
       {recordTarget && (
         <RecordAttendanceSheet

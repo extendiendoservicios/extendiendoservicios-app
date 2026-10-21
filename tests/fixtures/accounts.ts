@@ -122,11 +122,25 @@ const DEF_CONJUNTOS: Record<Conjunto, DefConjunto> = {
   edge: { tag: 'eg', keys: TODAS_Y_EMPLEADO5 },
   'emp-movil': {
     tag: 'em',
-    keys: ['empleado1', 'empleado2', 'empleado3', 'empleado4', 'supervisor1'],
+    keys: [
+      'empleado1',
+      'empleado2',
+      'empleado3',
+      'empleado4',
+      'empleado5',
+      'supervisor1',
+    ],
   },
   'emp-webkit': {
     tag: 'ew',
-    keys: ['empleado1', 'empleado2', 'empleado3', 'empleado4', 'supervisor1'],
+    keys: [
+      'empleado1',
+      'empleado2',
+      'empleado3',
+      'empleado4',
+      'empleado5',
+      'supervisor1',
+    ],
   },
   sup: {
     tag: 'su',

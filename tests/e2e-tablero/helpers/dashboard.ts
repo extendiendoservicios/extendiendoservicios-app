@@ -33,7 +33,8 @@ export async function waitForDashboardLoaded(page: Page): Promise<void> {
     page.getByRole('heading', { name: 'Requiere atención' }),
   ).toBeVisible()
   await expect(attentionSection(page).getByText('Cargando…')).toHaveCount(0)
-  await expect(page.getByText(/Actualizado hace/)).toBeVisible()
+  // Hay un indicador en el tablero y otro en el mapa de presencia (P22.5): alcanza con el primero.
+  await expect(page.getByText(/Actualizado hace/).first()).toBeVisible()
 }
 
 function kpiValueLocator(page: Page, label: string): Locator {

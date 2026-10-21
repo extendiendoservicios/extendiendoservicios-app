@@ -83,7 +83,13 @@ describe('LeavesAbsencesPrintAction', () => {
     render(
       <LeavesAbsencesPrintAction
         profileId="e1"
-        person={{ name: 'Ana Gómez', dni: '30111222', employeeNumber: 7 }}
+        person={{
+          name: 'Ana Gómez',
+          dni: '30111222',
+          employeeNumber: 7,
+          roleLabels: ['Empleado'],
+          signerLabel: 'Empleado',
+        }}
       />,
     )
     fireEvent.click(
@@ -102,5 +108,10 @@ describe('LeavesAbsencesPrintAction', () => {
     expect(screen.getByText('Limpia Ya SRL')).toBeInTheDocument()
     expect(screen.getByText('Editar texto')).toBeInTheDocument()
     expect(screen.getByText('El propio empleado')).toBeInTheDocument()
+    // Mismo bloque de conformidad y firmas que el detalle de asistencia.
+    expect(screen.getByText('Rol:')).toBeInTheDocument()
+    expect(screen.getByText(/prestan conformidad/)).toBeInTheDocument()
+    expect(screen.getByText('Responsable (administración)')).toBeInTheDocument()
+    expect(screen.getAllByText('Aclaración')).toHaveLength(2)
   })
 })

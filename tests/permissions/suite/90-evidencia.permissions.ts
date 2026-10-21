@@ -42,6 +42,7 @@ import {
   clienteDe,
   contexto,
   servicio,
+  tokenVigente,
   type Db,
 } from './contexto.ts'
 import { PREFIJO } from './escenario.ts'
@@ -101,7 +102,7 @@ describe('Evidencia fotográfica (módulo H): permisos por rol', () => {
       throw new Error(`Sin sesión de empleado2: ${login.error?.message}`)
     empleado2 = clienteConToken(login.data.session.access_token)
 
-    const dueno = clienteConToken(c.tokens.owner)
+    const dueno = clienteConToken(await tokenVigente('owner'))
     const { data: cliente, error: errorCliente } = await db
       .from('clients')
       .insert({
