@@ -7,6 +7,28 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.22.1] - 2026-10-21
+
+Ajustes de los imprimibles, de las licencias en asistencia y del celular, y cambios en las pruebas automáticas (P19.12 y P19.13). Sin migraciones: son solo cambios de la aplicación y de la automatización.
+
+### Cambiado
+
+- Todos los imprimibles salen siempre en A4: hojas de 210 mm de ancho y páginas completas de 297 mm. El texto de conformidad y las firmas van en la última página y el sobrante queda en blanco.
+- En el celular, la vista previa del imprimible se achica para entrar en la pantalla sin desplazamiento horizontal.
+- Las columnas cortas, como las horas y las fechas, ya no se parten en dos renglones.
+- «Licencias y ausencias» ahora lleva membrete, datos personales, conformidad de ambas partes y firmas, igual que el imprimible de asistencia.
+- El detalle de asistencia intercala por fecha las licencias y las inasistencias. Las licencias no suman horas.
+- Celular: los objetivos táctiles miden 44 px en el selector de capa del mapa, en la opción «Se repite» y en el enlace al cliente.
+
+### Corregido
+
+- Celular: en Asistencia se perdía el toque en «Registrar en nombre». Al sacar el foco del buscador reaparecía la barra inferior, empujaba el contenido y el toque caía en otro botón. Ahora la barra espera a que termine el gesto.
+
+### Pruebas y automatización
+
+- La corrida nocturna de pruebas e2e quedó estabilizada: se corrigieron pruebas desactualizadas o frágiles y la matriz de permisos pide un token nuevo cuando el anterior está por vencer.
+- La corrida nocturna ahora se ejecuta lunes, miércoles y viernes, y la matriz de permisos solo los lunes, para no pasar el límite de ingesta de logs del plan gratis de Supabase. Las corridas a mano pueden elegir si incluyen la matriz de permisos. Este cambio rige desde este pase a producción.
+
 ## [0.22.0] - 2026-10-20
 
 Observaciones de la reunión del 19 oct 2026 con los dueños (P19.11). Migraciones 0059 a 0061.
