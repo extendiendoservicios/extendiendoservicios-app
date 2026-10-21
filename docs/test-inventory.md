@@ -396,14 +396,16 @@ barrido   ──┴─► suites en paralelo, cada una con su conjunto de cuenta
 | `emp-movil`  | `--config=tests/e2e/empleado/playwright.empleado.config.ts --project=mobile`                                                   | `emp-movil`    | 1,2 + 6,0 = 7,2 min               |
 | `emp-webkit` | igual, `--project=webkit --no-deps` (hace falta `playwright install --with-deps webkit`)                                       | `emp-webkit`   | 1,5 + 4,4 = 5,9 min               |
 | `sup`        | `--config=tests/e2e/supervisor/playwright.supervisor.config.ts` (los dos proyectos) y después `e2e-auth`                       | `sup`          | 1,5 + 4,7 = 6,2 min               |
-| `perm`       | `pnpm test:permissions` con `node --env-file` reemplazado por el `env` del job (sin navegador)                                 | `perm`         | 1,0 + 5,9 = 6,9 min               |
+| `perm`       | `pnpm test:permissions` con `node --env-file` reemplazado por el `env` del job (sin navegador); solo lunes en el cron (P19.13) | `perm`         | 1,0 + 5,9 = 6,9 min               |
 | `dueno`      | `needs` de todos los anteriores, `if: !cancelled()`: `--project=dueno-config --no-deps` (el `dueno-final` se quitó en P18.6)   | `base`         | 1,2 + 1,3 = 2,5 min               |
 
 Variables de todos los jobs de suites: `E2E_SKIP_SWEEP=1` (nadie barre salvo `barrido`), `E2E_CONJUNTO` (la de la tabla) y los cuatro secretos `E2E_*` de hoy; el `webServer` de cada config levanta su `vite preview` en el 5173 sobre el `dist/` descargado. Cada job de Playwright usa `--reporter=dot,html` y sube el reporte si falla.
 
 **Tiempo total estimado: de 12 a 14 minutos** (camino crítico: `build` 2,0 + el job más largo, `emp-movil` 7,2 o `perm` 6,9, + `dueno` 2,7 = 11,9 minutos con los tiempos de esta máquina; unos 14 con runners un 25 % más lentos). Margen angosto. Si se pasa de 15: (1) partir `emp-movil` en dos jobs por archivo (necesita un conjunto más), (2) partir `11-tablas-escritura` (2 min 32 s) de la matriz de permisos, (3) `dueno` (solo la configuración de la empresa) podría fundirse al final del job `perm`, que es el otro que toca `company_settings`.
 
-**Consumo de minutos de GitHub Actions:** unos 47 minutos de job por noche (≈ 1.400 por mes). Si el repositorio es privado en el plan gratuito (2.000 minutos por mes), con `ci.yml`, los despliegues y el respaldo queda justo: conviene correrlo tres o cuatro noches por semana o pasar los jobs de Edge y de accesibilidad a semanal.
+**Frecuencia (P19.13, 21 oct 2026).** La nocturna corre lunes, miércoles y viernes (`30 7 * * 1,3,5`) y `perm` solo los lunes (a mano, input `matriz_permisos`). Motivo: el límite de Log Ingestion del plan gratis de Supabase (1 GB; la organización llegó a 2,29 GB, 2,15 GB de `App_dev`, por la cantidad de pedidos de las e2e). Rige desde el próximo pase a `main`, porque GitHub ejecuta el `schedule` con el archivo de `main`.
+
+**Consumo de minutos de GitHub Actions:** unos 47 minutos de job por corrida completa (≈ 1.400 por mes cuando corría todas las noches; con 3 por semana, la mitad). Si el repositorio es privado en el plan gratuito (2.000 minutos por mes), con `ci.yml`, los despliegues y el respaldo queda justo: conviene correrlo tres o cuatro noches por semana o pasar los jobs de Edge y de accesibilidad a semanal.
 
 **Por qué el dueño va al final.** Es una sola cuenta compartida por todas las suites. Desde P18.6 el «Cerrar sesión» de la app es local (DEF-04 corregido), así que `recorrido-dueno` ya no necesita ir al final: corre con `admin` y `admin-edge`. Lo que sí sigue yendo aparte es `configuracion-dueno`: la matriz de permisos toca y repone `company_settings`, igual que él. Va solo en `dueno`, que espera a todo.
 

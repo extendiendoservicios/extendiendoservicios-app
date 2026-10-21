@@ -52,7 +52,7 @@ Baja** (hojas Empleados y Supervisores): no se cargan ni se les crea usuario (se
 - El importador verifica el proyecto **antes de escribir**: la URL tiene que ser la del entorno
   elegido (`App_dev`: `anesttvrnpsaaaxaquce`; `App`: `fysuppdadwvabrjpnnoh`) y, si la clave es un
   JWT, su `ref` también. Se niega a correr contra `App` salvo con `--permitir-produccion-f20`.
-- No corras una carga mientras corre el workflow nocturno de e2e (4:30 hora de Argentina): usa
+- No corras una carga mientras corre el workflow nocturno de e2e (lunes, miércoles y viernes a las 4:30 hora de Argentina): usa
   `App_dev`.
 
 ## 3. Paso a paso
