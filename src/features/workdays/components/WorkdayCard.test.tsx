@@ -125,6 +125,29 @@ describe('WorkdayCard', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
+  it('una pausa de menos de un minuto figura como «menos de 1 min» y no como 0 min', () => {
+    renderCard(
+      makeWorkday({
+        pauseMinutes: 1,
+        pauses: [
+          {
+            type: 'pause',
+            pauseEventId: 'e2',
+            resumeEventId: 'e3',
+            startsAt: '2026-10-22T23:33:00Z',
+            endsAt: '2026-10-22T23:33:20Z',
+            minutes: 0,
+            reason: null,
+            corrected: false,
+          },
+        ],
+      }),
+      true,
+    )
+    expect(screen.getByText(/20:33 a 20:33 · menos de 1 min/)).toBeVisible()
+    expect(screen.getByText('1 min')).toBeVisible()
+  })
+
   it('muestra «Cerrada automáticamente» mientras no se corrija (CJ-31)', () => {
     renderCard(makeWorkday({ autoClosed: true, autoCloseWarning: true }), true)
     expect(screen.getByRole('alert')).toHaveTextContent(

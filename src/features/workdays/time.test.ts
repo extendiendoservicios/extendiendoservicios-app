@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { isWithinWorkdayBounds, workdayTimeBounds } from './time'
+import {
+  formatPauseDuration,
+  isWithinWorkdayBounds,
+  workdayTimeBounds,
+} from './time'
 
 describe('workdayTimeBounds', () => {
   it('de una jornada pasada va de las 0:00 a las 23:59 de ese día', () => {
@@ -25,5 +29,47 @@ describe('isWithinWorkdayBounds', () => {
     expect(isWithinWorkdayBounds('2026-10-20T23:59', bounds)).toBe(true)
     expect(isWithinWorkdayBounds('2026-10-21T00:00', bounds)).toBe(false)
     expect(isWithinWorkdayBounds('2026-10-19T23:59', bounds)).toBe(false)
+  })
+})
+
+describe('formatPauseDuration', () => {
+  const fmt = (m: number) => `${m} min`
+
+  it('una pausa cerrada de menos de un minuto se lee «menos de 1 min», aunque el servidor la redondee a 0 o a 1', () => {
+    const base = { startsAt: '2026-10-23T23:33:00Z' }
+    expect(
+      formatPauseDuration(
+        { ...base, endsAt: '2026-10-23T23:33:20Z', minutes: 0 },
+        fmt,
+      ),
+    ).toBe('menos de 1 min')
+    expect(
+      formatPauseDuration(
+        { ...base, endsAt: '2026-10-23T23:33:40Z', minutes: 1 },
+        fmt,
+      ),
+    ).toBe('menos de 1 min')
+  })
+
+  it('desde un minuto muestra lo que da el servidor', () => {
+    expect(
+      formatPauseDuration(
+        {
+          startsAt: '2026-10-23T23:33:00Z',
+          endsAt: '2026-10-23T23:34:10Z',
+          minutes: 1,
+        },
+        fmt,
+      ),
+    ).toBe('1 min')
+  })
+
+  it('una pausa abierta muestra lo que da el servidor', () => {
+    expect(
+      formatPauseDuration(
+        { startsAt: '2026-10-23T23:33:00Z', endsAt: null, minutes: 0 },
+        fmt,
+      ),
+    ).toBe('0 min')
   })
 })

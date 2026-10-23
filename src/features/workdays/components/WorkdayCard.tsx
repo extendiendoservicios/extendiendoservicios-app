@@ -14,6 +14,7 @@ import {
 import { formatDateOnly } from '@/features/settings/dateOnly'
 import { SupervisionStateBadges } from '@/features/supervisions/components/UnclosedBadge'
 import type { SupervisionStatus } from '@/api/supervisions'
+import { formatPauseDuration } from '../time'
 import { AddWorkdayPauseDialog } from './AddWorkdayPauseDialog'
 import { CorrectWorkdayEventDialog } from './CorrectWorkdayEventDialog'
 import { RemoveWorkdayPauseDialog } from './RemoveWorkdayPauseDialog'
@@ -138,7 +139,7 @@ function WorkdayCard({ workday, canCorrect }: WorkdayCardProps) {
                 {' a '}
                 {pause.endsAt ? formatTime(pause.endsAt) : 'sin cerrar'}
                 {' · '}
-                {formatMinutes(pause.minutes)}
+                {formatPauseDuration(pause, formatMinutes)}
                 {pause.reason ? ` · ${pause.reason}` : ''}
                 {pause.corrected ? ' · corregida' : ''}
               </li>
