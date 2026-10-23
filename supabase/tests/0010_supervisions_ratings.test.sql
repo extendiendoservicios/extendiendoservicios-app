@@ -35,9 +35,9 @@ select columns_are(
   array[
     'id', 'shift_id', 'supervisor_id', 'status', 'assigned_by', 'assigned_at',
     'not_done_reason', 'cancel_reason', 'general_notes', 'criteria_snapshot',
-    'created_at', 'updated_at', 'created_by', 'updated_by'
+    'created_at', 'updated_at', 'created_by', 'updated_by', 'workday_id'
   ],
-  'supervisions tiene exactamente las columnas de 04 sección 2.5'
+  'supervisions tiene exactamente las columnas de 04 sección 2.5 (más workday_id, 0063, P24.1)'
 );
 
 select columns_are(

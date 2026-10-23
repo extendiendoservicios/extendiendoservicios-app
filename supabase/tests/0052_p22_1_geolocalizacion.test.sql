@@ -405,41 +405,46 @@ select results_eq(
 
 -- Supervisor: valida contra la sede supervisada (B-07) -----------------------------------------------
 
-select tests.as_user('test-db052-super@example.com');
+-- Desde P24.1 (0063) supervision_check_in y supervision_check_out ya no se pueden ejecutar: el inicio
+-- es take_supervision y el fin es complete_supervision, que evalúan la sede con el mismo
+-- app.geo_for_site (el flujo completo está en 0063_p24_1_supervision_libre.test.sql). Acá se
+-- conserva la cobertura de la lógica de sede: radio general, radio propio, sin ubicación y el tope
+-- del motivo.
+set local role postgres;
 
--- Está parado en S3 (-34.5937) pero la supervisión 401 es de la sede S1: queda fuera de zona.
+-- Parado en S3 (-34.5937) contra la sede S1: queda fuera de zona.
 select results_eq(
-  $$select geo_status::text, site_distance_m, geofence_radius_m, outside_reason
-    from public.supervision_check_in('e5200000-0000-0000-0000-000000000401', -34.5937, -58.3816, 10, 'Me adelanté a otra sede')$$,
-  $$values ('outside'::text, 1112, 150::smallint, 'Me adelanté a otra sede'::text)$$,
-  'supervision_check_in: parado en otra sede queda outside contra la sede supervisada (S1), con su motivo'
+  $$select status::text, distance_m, radius_m
+    from app.geo_for_site('e5200000-0000-0000-0000-000000000011', -34.5937, -58.3816, 10)$$,
+  $$values ('outside'::text, 1112, 150::smallint)$$,
+  'validación de sede de la supervisión: parado en otra sede queda outside contra la sede supervisada (S1)'
 );
 
 select results_eq(
-  $$select geo_status::text, site_distance_m, geofence_radius_m
-    from public.supervision_check_in('e5200000-0000-0000-0000-000000000402', -34.5937, -58.3816, 10)$$,
+  $$select status::text, distance_m, radius_m
+    from app.geo_for_site('e5200000-0000-0000-0000-000000000013', -34.5937, -58.3816, 10)$$,
   $$values ('valid'::text, 0, 60::smallint)$$,
-  'supervision_check_in: la misma posición contra la sede S3 es valid, con el radio propio de S3'
+  'validación de sede de la supervisión: la misma posición contra la sede S3 es valid, con el radio propio de S3'
 );
 
 select results_eq(
-  $$select geo_status::text, geo_unvalidated_reason::text, site_distance_m
-    from public.supervision_check_out('e5200000-0000-0000-0000-000000000402', null, null, null)$$,
+  $$select status::text, reason::text, distance_m
+    from app.geo_for_site('e5200000-0000-0000-0000-000000000013', null, null, null)$$,
   $$values ('unvalidated'::text, 'no_location'::text, null::integer)$$,
-  'supervision_check_out: sin ubicación = unvalidated / no_location'
+  'validación de sede de la supervisión: sin ubicación = unvalidated / no_location'
 );
 
 select throws_ok(
-  $$select * from public.supervision_check_out('e5200000-0000-0000-0000-000000000401', 1, 1, 1, repeat('x', 301))$$,
+  $$select app.validate_position(1, 1, 1, repeat('x', 301))$$,
   'P0001',
   'El motivo es demasiado largo (máximo 300 caracteres).',
-  'supervision_check_out: un motivo de 301 caracteres = OUTSIDE_REASON_TOO_LONG'
+  'validación de la posición de la supervisión: un motivo de 301 caracteres = OUTSIDE_REASON_TOO_LONG'
 );
 
 select results_eq(
-  $$select geo_status::text, site_distance_m from public.supervision_check_out('e5200000-0000-0000-0000-000000000401', -34.6037, -58.3816, 10)$$,
+  $$select status::text, distance_m from app.geo_for_site('e5200000-0000-0000-0000-000000000011', -34.6037, -58.3816, 10)$$,
   $$values ('valid'::text, 0)$$,
-  'supervision_check_out: ya en la sede S1 queda valid'
+  'validación de sede de la supervisión: ya en la sede S1 queda valid'
 );
 
 -- admin_record_attendance: origen admin (B-03) -----------------------------------------------------
@@ -519,8 +524,9 @@ select ok(
 );
 select ok(
   not has_function_privilege('anon', 'public.supervision_check_in(uuid, numeric, numeric, numeric, text)', 'execute')
-  and has_function_privilege('authenticated', 'public.supervision_check_out(uuid, numeric, numeric, numeric, text)', 'execute'),
-  'supervision_check_in / supervision_check_out: authenticated sí, anon no'
+  and not has_function_privilege('authenticated', 'public.supervision_check_in(uuid, numeric, numeric, numeric, text)', 'execute')
+  and not has_function_privilege('authenticated', 'public.supervision_check_out(uuid, numeric, numeric, numeric, text)', 'execute'),
+  'supervision_check_in / supervision_check_out: revocadas en 0063 (P24.1), ni authenticated ni anon'
 );
 
 -- Roles que no pueden fichar (siguen igual) -----------------------------------------------------------
@@ -538,9 +544,9 @@ select tests.as_user('test-db052-emp-f@example.com');
 
 select throws_ok(
   $$select * from public.supervision_check_in('e5200000-0000-0000-0000-000000000401', -34.6037, -58.3816, 10)$$,
-  'P0001',
-  'No tenés permiso para hacer esto.',
-  'supervision_check_in: un empleado no ficha supervisiones'
+  '42501',
+  null,
+  'supervision_check_in: revocada (0063, P24.1), un empleado tampoco la puede ejecutar'
 );
 
 select throws_ok(

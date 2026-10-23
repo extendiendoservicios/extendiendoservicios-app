@@ -22,8 +22,8 @@ select is(
   (select attname::text from pg_attribute
    where attrelid = 'public.v_supervisions_admin'::regclass and attnum > 0 and not attisdropped
    order by attnum desc limit 1),
-  'check_out_geo_overridden',
-  'v_supervisions_admin: mismas columnas, la validación de 0052 va al final'
+  'workday_auto_closed',
+  'v_supervisions_admin: mismas columnas, la validación de 0052 y las columnas de la jornada de 0063 (P24.1) van al final'
 );
 
 select * from finish();
