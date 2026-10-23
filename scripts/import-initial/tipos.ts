@@ -152,6 +152,21 @@ export interface PlanHabilitacion {
   clienteId: number
 }
 
+/**
+ * Cliente o sede preferencial de un coordinador (P24, CJ-03 y CJ-24). Si `sedeNombre` es `null`
+ * es del cliente entero (cubre todas sus sedes); si no, es de esa sede.
+ */
+export interface PlanPreferencia {
+  /** Fila de la hoja Supervisores en la que está la lista. */
+  fila: number
+  /** DNI del coordinador (solo dígitos). */
+  dni: string
+  clienteId: number
+  sedeNombre: string | null
+  /** Cómo se la nombra en los informes: "Cliente" o "Cliente / Sede". */
+  descripcion: string
+}
+
 export interface PlanFeriado {
   fila: number
   fecha: string
@@ -174,6 +189,7 @@ export interface Plan {
   personas: PlanPersona[]
   servicios: PlanServicio[]
   habilitaciones: PlanHabilitacion[]
+  preferencias: PlanPreferencia[]
   feriados: PlanFeriado[]
   criterios: PlanCriterio[]
 }
