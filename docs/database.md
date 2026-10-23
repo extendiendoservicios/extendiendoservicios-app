@@ -2369,6 +2369,126 @@ Decisión de Mike del 20 oct 2026: un coordinador de licencia no puede recibir s
 
 pgTAP: `0061_p19_11e_coordinador_licencia.test.sql`.
 
+## Coordinación libre y jornada del coordinador (migraciones `0062` y `0063`, P24.1)
+
+Especificación: `Docs/Plan_Maestro/modulos/P24_coordinacion_libre_y_jornada.md` (decisiones `CJ-01` a `CJ-34`).
+Desaparece la asignación manual de coordinadores: el coordinador ve todos los turnos de hoy, elige cuál supervisar y
+«Supervisar» registra el inicio. Sus horas pasan a ser las de su **jornada** (inicio a fin menos pausas), no la suma de
+sus supervisiones. `0062` solo agrega dos valores a `security_event_type` (`workday_corrected`, `workday_auto_closed`):
+Postgres no deja usarlos en la transacción que los crea. El resto está en `0063`. Versión prevista: `0.23.0`.
+
+### Tablas
+
+- **`supervisor_priorities`** (CJ-03, CJ-24): clientes o sedes preferenciales de un coordinador. `client_id` o `site_id`
+  (exactamente uno). La prioridad de un cliente cubre todas sus sedes, también las futuras. Baja lógica con
+  `removed_at` / `removed_by`; unicidad parcial entre las vigentes (`supervisor_id + client_id` y `supervisor_id + site_id`).
+  Solo la escriben `set_supervisor_priority` y `remove_supervisor_priority`.
+- **`supervisor_workdays`**: una jornada por coordinador y por día (`unique (supervisor_id, work_date)`, CJ-30), con
+  `started_at`, `ended_at`, `auto_closed` (cerrada sola, CJ-31) y `corrected` (corregida por la administración, CJ-32).
+  Un `check` impide que cruce la medianoche de Argentina (CJ-15, ADR-019; compara con `app.local_ts`).
+- **`supervisor_workday_events`**: `kind` (`start`, `pause`, `resume`, `end`, `reopen`, `supervision_start`,
+  `supervision_end`), `recorded_at` (hora del servidor), posición opcional (`latitude`, `longitude`, `accuracy_m`),
+  `reason`, `supervision_id`, traza de corrección (`corrected_from`, `corrected_at`, `corrected_by`,
+  `correction_reason`) y baja lógica (`removed_at`, `removed_by`). `seq` desempata eventos con el mismo instante y
+  `has_position` (columna generada) permite saber «Sin ubicación» sin leer las coordenadas.
+- **`supervisions.workday_id`**: la jornada a la que pertenece. Nulo en las anteriores. `assigned_by` y `assigned_at`
+  quedan como historial.
+- **Privacidad de coordenadas** (criterio de `0054`): `authenticated` no tiene `select` sobre `latitude`, `longitude` ni
+  `accuracy_m` de los eventos (ni el administrador). Se leen por `app.workday_event_position(event_id)` (definidor, solo
+  dueño y administradores), que usan las vistas de administración.
+- **RLS**: administración (dueño y administradores) lee todo; el coordinador lee solo lo propio; el empleado nada. Ninguna
+  tabla tiene políticas de escritura: solo escriben las RPC.
+
+### Modelo de la jornada
+
+Estado = último evento de jornada vigente: `start`/`resume`/`reopen` → `running`; `pause` → `paused`; `end` → `ended`.
+Minutos netos (`app.workday_minutes`) = suma de los tramos en marcha (desde inicio, reanudación o reapertura hasta la
+pausa o el fin siguiente; si sigue en marcha, hasta ahora), redondeado al minuto. Los viajes entre sedes cuentan. El tiempo
+de cada supervisión es informativo y no suma (CJ-14). El hueco entre `end` y `reopen` cuenta como pausa con el motivo
+«Jornada reabierta» (CJ-30). Una pausa que sigue abierta cuando se finaliza termina en el propio `end`.
+Auxiliares en `app` (invocador, con `execute` para `authenticated` y `service_role`): `workday_state`, `workday_minutes`,
+`workday_pauses`, `workday_supervisions`, `workday_events_json`, `open_supervision_id`. Internos (sin `execute`):
+`validate_position`, `add_workday_event`, `assert_workday_consistent` (secuencia válida, `INVALID_EVENT_ORDER`),
+`sync_workday`, `workday_snapshot`.
+
+### RPC
+
+Todas `security definer`, con `app.require_role` / `app.require_capability` como primera línea. Errores:
+`errcode P0001`, mensaje en voseo y `hint` estable.
+
+| RPC                                                                                                   | Quién                        | Qué hace                                                                                                                                                                                        | Errores (`hint`)                                                                                                                                                                                           |
+| ----------------------------------------------------------------------------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `start_workday(p_lat, p_lng, p_accuracy)`                                                             | coordinador                  | Inicia la jornada de hoy. Devuelve el estado `{workday_id, state, started_at, ended_at, minutes, paused_since, pause_reason, auto_closed, corrected}`                                           | `FORBIDDEN`, `SUPERVISOR_ROLE_REQUIRED`, `ON_LEAVE` (licencia hoy), `WORKDAY_ALREADY_STARTED`, `COORDINATES_INCOMPLETE`, `COORDINATES_OUT_OF_RANGE`                                                        |
+| `pause_workday(p_reason, p_lat, p_lng, p_accuracy)`                                                   | coordinador                  | Pausa; el motivo es opcional                                                                                                                                                                    | `WORKDAY_NOT_STARTED`, `WORKDAY_ENDED`, `WORKDAY_PAUSED`, `REASON_TOO_LONG`, `SUPERVISION_OPEN` (CJ-29)                                                                                                    |
+| `resume_workday(...)`                                                                                 | coordinador                  | Reanuda                                                                                                                                                                                         | `WORKDAY_NOT_STARTED`, `WORKDAY_ENDED`, `WORKDAY_NOT_PAUSED`                                                                                                                                               |
+| `end_workday(...)`                                                                                    | coordinador                  | Finaliza (también estando en pausa)                                                                                                                                                             | `WORKDAY_NOT_STARTED`, `WORKDAY_ENDED`, `SUPERVISION_OPEN`                                                                                                                                                 |
+| `reopen_workday(...)`                                                                                 | coordinador                  | Reabre la jornada finalizada de hoy                                                                                                                                                             | `WORKDAY_NOT_STARTED`, `WORKDAY_NOT_ENDED`                                                                                                                                                                 |
+| `take_supervision(p_shift_id, p_lat, p_lng, p_accuracy, p_outside_reason)`                            | coordinador                  | Crea la supervisión en `in_progress`, registra el inicio con la validación de sede de B1 y el evento `supervision_start`. Devuelve `{supervision, check_in, warnings}` (`SUPERVISES_OWN_SHIFT`) | `SHIFT_NOT_FOUND`, `SHIFT_NOT_SUPERVISABLE` (cancelado), `NOT_TODAY`, `WORKDAY_NOT_STARTED`, `WORKDAY_ENDED`, `WORKDAY_PAUSED`, `SUPERVISION_ALREADY_OPEN` (CJ-08), `ALREADY_SUPERVISED` (CJ-27), posición |
+| `discard_supervision(p_supervision_id)`                                                               | coordinador (propia)         | Cancela con el motivo «Descartada por el coordinador» si no calificó a nadie y da de baja su evento de inicio                                                                                   | `SUPERVISION_NOT_FOUND`, `NOT_YOUR_SUPERVISION`, `SUPERVISION_NOT_EDITABLE`, `SUPERVISION_HAS_RATINGS`                                                                                                     |
+| `complete_supervision(p_supervision_id, p_general_notes, p_lat, p_lng, p_accuracy, p_outside_reason)` | coordinador (propia)         | Exige calificar a los empleados asignados vigentes con inicio registrado (menos el propio coordinador) y registra el fin (validación de sede y evento `supervision_end`)                        | `SUPERVISION_NOT_FOUND`, `NOT_YOUR_SUPERVISION`, `NOT_STARTED`, `SUPERVISION_NOT_EDITABLE`, `RATINGS_PENDING` («Falta calificar a: Nombre Apellido, ...»), posición                                        |
+| `admin_correct_workday_event(p_event_id, p_reason, p_new_time, p_remove)`                             | O, A + `manage_attendance`   | Corrige la hora de un evento de jornada o da de baja una pausa con su reanudación (`p_remove`)                                                                                                  | `EVENT_NOT_FOUND`, `REASON_REQUIRED`, `EVENT_NOT_CORRECTABLE` (eventos de supervisión), `EVENT_NOT_REMOVABLE`, `TIME_REQUIRED`, `AT_OUT_OF_RANGE`, `SAME_TIME`, `INVALID_EVENT_ORDER`                      |
+| `admin_add_workday_pause(p_workday_id, p_starts_at, p_ends_at, p_reason, p_pause_reason)`             | O, A + `manage_attendance`   | Agrega una pausa                                                                                                                                                                                | `WORKDAY_NOT_FOUND`, `REASON_REQUIRED`, `TIME_REQUIRED`, `INVALID_TIME_RANGE`, `AT_OUT_OF_RANGE`, `REASON_TOO_LONG`, `INVALID_EVENT_ORDER`                                                                 |
+| `admin_record_workday(p_supervisor_id, p_work_date, p_started_at, p_reason, p_ended_at)`              | O, A + `manage_attendance`   | Registra una jornada en nombre del coordinador                                                                                                                                                  | `REASON_REQUIRED`, `TIME_REQUIRED`, `SUPERVISOR_ROLE_REQUIRED`, `DATE_IN_FUTURE`, `AT_OUT_OF_RANGE`, `INVALID_TIME_RANGE`, `ENDED_AT_REQUIRED`, `WORKDAY_ALREADY_EXISTS`                                   |
+| `set_supervisor_priority(p_supervisor_id, p_client_id, p_site_id)`                                    | O, A + `manage_supervisions` | Agrega una prioridad (cliente o sede)                                                                                                                                                           | `INVALID_PRIORITY_TARGET`, `SUPERVISOR_ROLE_REQUIRED`, `CLIENT_NOT_FOUND`, `SITE_NOT_FOUND`, `PRIORITY_ALREADY_EXISTS`                                                                                     |
+| `remove_supervisor_priority(p_priority_id)`                                                           | O, A + `manage_supervisions` | Da de baja una prioridad                                                                                                                                                                        | `PRIORITY_NOT_FOUND`, `PRIORITY_ALREADY_REMOVED`                                                                                                                                                           |
+
+Las RPC de jornada devuelven siempre el estado nuevo de la jornada. Una corrección o un registro administrativo marcan la
+jornada `corrected = true`, dejan la traza en el evento y registran `workday_corrected` en `security_events`.
+`rate_employee` queda igual salvo la ventana de P-083: mientras la supervisión sigue abierta (sin fin registrado) no
+corre, porque con un turno ya terminado (CJ-06) el coordinador no podría calificar; desde que se registra el fin rige como
+antes. Cada coordinador califica con su criterio: un empleado puede tener varias calificaciones en el mismo turno (una
+por supervisión, CJ-09, CJ-11).
+
+**Revocadas** (`execute` fuera para `public`, `anon` y `authenticated`): `assign_supervision` (CJ-01),
+`mark_supervision_not_done` (CJ-26), `supervision_check_in` y `supervision_check_out` (reemplazadas por
+`take_supervision` y `complete_supervision`). Las funciones quedan, el historial y los valores de la enumeración
+(`assigned`, `not_done`) no se tocan.
+
+### Vistas (todas `security_invoker`)
+
+- **`v_supervisor_today`** (SUP-02, SUP-03; CJ-02, CJ-04, CJ-25): los turnos de hoy no cancelados de todos los clientes.
+  Respaldada por `app.supervisor_today()` (definidor, devuelve filas solo con el rol `supervisor`; el coordinador no ve
+  esos turnos por RLS). Columnas: datos del turno y de la sede, `display_state` (`in_progress`, `pending`, `finished`),
+  `priority_kind` (`site`, `client`, nulo) / `is_priority`, `assigned_employees` (con `assignment_id`),
+  `supervisors` (quién supervisa o ya supervisó, con `is_me`), `my_supervision_id`, `my_supervision_status`.
+- **`v_supervisor_status`** (mapa del Resumen, Asistencia de hoy; CJ-22, CJ-33): una fila por coordinador activo.
+  `status`: `in_activity`, `supervising` (con `supervision_id`, cliente y sede), `paused` (con `pause_reason`),
+  `finished`, `not_started`. Posición del último evento (`latitude`, `longitude`, `accuracy_m`; nula = «Sin ubicación»),
+  `worked_minutes`, `auto_closed`, `corrected`, `on_leave`. Solo la leen dueño y administradores.
+- **`v_supervisor_workdays_admin`** (ficha, correcciones, informes; CJ-13, CJ-19, CJ-32): jornadas con `state`,
+  `worked_minutes`, `pause_minutes`, `auto_closed`, `auto_close_warning` (`auto_closed` y sin corregir), `corrected`,
+  `pauses`, `supervisions`, `supervisions_count` y `events` (sin coordenadas; las bajas con `removed`).
+- **`v_my_workdays`**: las mismas columnas pero solo las del coordinador que consulta (barra de jornada de SUP-02 e
+  historial de SUP-08). No figuraba en la especificación: el esquema `app` no se expone y la pantalla necesita su propio estado.
+- **`v_supervisions_admin`**: mismas columnas y orden, más `workday_id`, `duration_minutes` (informativa, cuenta hasta
+  ahora si está abierta), `unclosed` («Sin cerrar») y `workday_auto_closed`. Pasa a tener varias filas por turno.
+
+### Cierre automático (CJ-31)
+
+`app.auto_close_workdays(p_now default now())` cierra las jornadas abiertas a las 23:55 de Argentina (o al último evento si
+fue posterior; nunca pasa la medianoche) y las marca `auto_closed`. La pausa abierta termina en el evento `end` («Cierre
+automático»). Si había una supervisión abierta registra su fin y la deja `in_progress` con fin registrado («Sin cerrar»,
+`unclosed` en las vistas); la administración puede cancelarla con `cancel_supervision`. Cada cierre deja un
+`workday_auto_closed` en `security_events` (el aviso a la administración). También cierra las jornadas de días anteriores que
+hubieran quedado abiertas. `p_now` existe para las pruebas.
+
+La programa **`pg_cron`**: tarea `auto-close-workdays`, `55 2 * * *` (UTC; Argentina es UTC-3 todo el año, ADR-019).
+La migración hace `create extension if not exists pg_cron` y programa la tarea; si la extensión no se puede habilitar con
+ese rol, avisa con un `WARNING` sin fallar. **En `App` (producción) hay que verificar, al aplicar `0063`, que
+`select * from cron.job where jobname = 'auto-close-workdays'` devuelva la tarea; si no, habilitar `pg_cron` desde el
+panel (Database → Extensions) y correr
+`select cron.schedule('auto-close-workdays', '55 2 * * *', 'select app.auto_close_workdays()');`.**
+
+### Datos (CJ-23)
+
+La migración pasa las supervisiones `assigned` a `cancelled` con el motivo «Cambio de lógica de coordinación (23 oct
+2026)». Las completadas y las `in_progress` quedan como historial. Nada se borra (P-014). Una supervisión `in_progress`
+anterior a la migración no tiene `workday_id` y no cuenta como «abierta» (CJ-08, CJ-29).
+
+pgTAP: `0063_p24_1_jornada_coordinador.test.sql` (estructura, privilegios, jornada, minutos, cierre automático,
+administración, prioridades, RLS) y `0063_p24_1_supervision_libre.test.sql` (tomar, descartar, cerrar, calificar,
+permisos, vistas), más ajustes en los tests de migraciones anteriores que usaban la asignación manual.
+
 ## Tipos para el frontend
 
 `src/lib/database.types.ts` se genera con `pnpm db:types` (`supabase gen types --linked`) contra
