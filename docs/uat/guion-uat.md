@@ -1711,23 +1711,25 @@ Se hace **a la vez** que UAT-EMP-05.
 
 #### UAT-SUP-08 · Editar una calificación: con la supervisión abierta y ya cerrada
 
-|                  |                                                               |
-| ---------------- | ------------------------------------------------------------- |
-| **Rol**          | Coordinador y administración                                  |
-| **Dónde**        | Celular y computadora                                         |
-| **Tipo**         | Opcional (parte se prueba al día siguiente)                   |
-| **Cubre**        | RB-S04 (después del cierre no se edita)                       |
-| **Precondición** | UAT-SUP-05 hecho. Una supervisión cerrada con calificaciones. |
+|                  |                                                                                                 |
+| ---------------- | ----------------------------------------------------------------------------------------------- |
+| **Rol**          | Coordinador y administración                                                                    |
+| **Dónde**        | Celular y computadora                                                                           |
+| **Tipo**         | Opcional (parte se prueba al día siguiente)                                                     |
+| **Cubre**        | RB-S04 (la coordinadora edita hasta el fin del turno o de su supervisión, lo que ocurra último) |
+| **Precondición** | UAT-SUP-05 hecho. Una supervisión cerrada con calificaciones.                                   |
 
 **Pasos**
 
 1. **Con la supervisión abierta:** la coordinadora puede cambiar una calificación. (Ya se probó en UAT-SUP-04.)
-2. **Ya cerrada:** al día siguiente, la coordinadora entra a **Historial**, abre la supervisión y trata de cambiar una calificación.
-3. La administración (con el permiso **Editar calificaciones**) intenta cambiar esa misma calificación.
+2. **Recién cerrada, dentro del plazo:** la coordinadora cierra la supervisión y, antes de que termine el turno (o de que pase el fin de su supervisión, lo que ocurra último), entra a **Historial**, abre la supervisión y cambia una calificación.
+3. **Fuera del plazo:** al día siguiente, la coordinadora vuelve a abrir esa supervisión y trata de cambiar una calificación.
+4. La administración (con el permiso **Editar calificaciones**) intenta cambiar esa misma calificación.
 
 **Resultado esperado**
 
-- La coordinadora **no puede** cambiarla: aparece "El plazo para editar esta calificación terminó."
+- En el paso 2, la coordinadora **sí puede** cambiarla aunque la supervisión esté cerrada.
+- En el paso 3, la coordinadora **no puede** cambiarla: aparece "El plazo para editar esta calificación terminó."
 - La administración **sí puede** y queda anotado quién la editó y cuándo.
 
 | Resultado           | Observación | Clasificación                             |

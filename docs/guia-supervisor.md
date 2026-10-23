@@ -238,7 +238,7 @@ Reglas para tener en cuenta:
 
 - **Cada coordinador califica con su criterio.** Si otro coordinador supervisa el mismo turno, el empleado recibe las dos calificaciones, cada una por separado. No se pisan.
 - Si volvés a calificar a la misma persona **en tu supervisión**, se **reemplaza** tu calificación anterior. En el detalle, el botón pasa a decir **Editar**.
-- Podés crear y cambiar tus calificaciones **mientras tu supervisión está abierta**. Una vez cerrada, si necesitás cambiar una, pedíselo a Administración.
+- Podés crear y cambiar tus calificaciones **mientras tu supervisión está abierta** y también **después de cerrarla**, hasta el **fin del turno o el fin de tu supervisión, lo que ocurra último**. Pasado ese momento ya no podés cambiarlas: si necesitás corregir una, pedíselo a Administración.
 - No podés calificarte a vos mismo. Si estás asignado como empleado en ese turno, la app te lo avisa y vos quedás fuera de la lista de los que hay que calificar.
 - Los empleados **no ven** sus calificaciones.
 
@@ -283,6 +283,8 @@ En **Historial** ves tus **jornadas por día**: las horas, las pausas y las supe
 (captura pendiente: historial de jornadas)
 
 Ves solo lo tuyo.
+
+**Períodos anteriores a la versión 0.23.0:** en los meses anteriores a que existieran las jornadas, las horas figuran en **0**. Las supervisiones viejas ya no suman horas: ahora solo cuentan las jornadas (de inicio a fin, menos las pausas). No es un error ni se perdió nada.
 
 ---
 

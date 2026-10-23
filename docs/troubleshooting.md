@@ -283,8 +283,8 @@ Desde la coordinación libre (P24) **nadie asigna supervisiones**: el coordinado
 
 ### 6.8. No me deja calificar o editar una calificación
 
-- **Por qué pasa:** podés crear y cambiar tus calificaciones mientras tu supervisión está abierta. Una vez cerrada, ya no.
-- **Lo resolvés vos:** avisá a Administración.
+- **Por qué pasa:** podés crear y cambiar tus calificaciones mientras tu supervisión está abierta y también después de cerrarla, hasta el fin del turno o el fin de tu supervisión, lo que ocurra último. Pasado ese momento, ya no.
+- **Lo resolvés vos:** si todavía estás dentro de ese plazo, entrá a la supervisión y tocá **Editar**. Si el plazo ya terminó, avisá a Administración.
 - **Lo resuelve Administración:** el dueño, o un administrador con el permiso "Editar calificaciones", edita la calificación desde **Supervisiones**, la supervisión, **Calificar** (o **Editar**) sin límite de plazo.
 
 ### 6.9. "No podés calificarte a vos mismo."
@@ -301,6 +301,11 @@ Desde la coordinación libre (P24) **nadie asigna supervisiones**: el coordinado
 
 - **Por qué pasa:** la posición se toma solo en cada evento (iniciar, pausar, reanudar o finalizar la jornada, y empezar o cerrar una supervisión). Si ese evento se hizo sin ubicación (sin consentimiento, permiso bloqueado o sin señal), no hay punto para mostrar.
 - **Lo resolvés vos:** revisá el permiso de ubicación (ver la [sección 2](#2-ubicación)) y dá tu consentimiento en **Más**, **Mi perfil**. El próximo evento ya queda con ubicación.
+
+### 6.12. El coordinador figura con 0 horas en un mes anterior
+
+- **Por qué pasa:** en los períodos anteriores a la versión 0.23.0, antes de que existieran las jornadas, el coordinador figura con **0 horas** en la asistencia, en el **Resumen** y en la ficha imprimible. Las supervisiones viejas ya no suman horas: ahora solo cuentan las jornadas (de inicio a fin, menos las pausas). No se perdió ningún dato.
+- **Qué hacer:** nada. Desde que existen las jornadas, las horas aparecen bien. Si hace falta el registro de un período viejo, usá el tiempo de cada supervisión, que sigue visible como dato informativo.
 
 ---
 

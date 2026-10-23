@@ -466,6 +466,8 @@ Una corrección **quita la advertencia** del cierre automático y deja la consta
 
 Igual que la de los empleados, es el **registro en papel de la jornada** del coordinador.
 
+> **Aviso: períodos anteriores a la versión 0.23.0.** Antes de que existieran las jornadas, el coordinador figura con **0 horas** en la asistencia, en el **Resumen** y en esta ficha imprimible. Es a propósito: las supervisiones viejas ya no suman horas, ahora solo cuentan las jornadas (de inicio a fin, menos las pausas). No se perdió ningún dato; el tiempo de cada supervisión sigue visible como dato informativo.
+
 1. En la ficha del coordinador, pestaña **Jornadas**, elegí el **período**.
 2. Tocá **Imprimir** (captura pendiente).
 3. Revisá la hoja. Como las demás hojas imprimibles, podés **Editar texto** antes de imprimir o guardar como PDF.
