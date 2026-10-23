@@ -1,232 +1,178 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import CloseSupervisionPage from './CloseSupervisionPage'
 import * as mySupervisionsModule from '@/api/mySupervisions'
-import type { MySupervision } from '@/api/mySupervisions'
-import * as authModule from '@/features/auth/AuthProvider'
-import type { AuthContextValue } from '@/features/auth/AuthProvider'
-import * as onlineModule from '@/features/employee/useOnlineStatus'
+import type { MySupervision, SupervisionRating } from '@/api/mySupervisions'
+import { ApiError } from '@/api/errors'
+import { makeMySupervision } from '@/features/coordinator/fixtures'
+import { mockCommonHooks, renderRoute } from '@/features/coordinator/testUtils'
+
+vi.mock('@/features/settings/queries', () => ({
+  useCompanySettingsQuery: () => ({
+    data: { locationConsentText: 'Texto de consentimiento de la empresa' },
+  }),
+}))
 
 /**
- * SUP-06 (MOB-SUP-007): "Completar" exige fin registrado (si falta, ofrece
- * ir a registrarlo en vez del botón) y avisa si faltan empleados por
- * calificar sin bloquear; "No se pudo realizar" pide motivo obligatorio y
- * no exige fin registrado (`06` sección 12).
+ * SUP-06 (P24.2, CJ-10, CJ-28): «Cerrar supervisión» exige haber calificado a
+ * todos los empleados con inicio registrado (lista a quién falta) y registra
+ * el fin con la posición; sin ubicación el cierre se hace igual (CJ-21).
  */
-function supervision(overrides: Partial<MySupervision>): MySupervision {
-  return {
-    id: 'sv1',
-    shiftId: 'sh1',
-    shiftDate: '2026-09-27',
-    isToday: true,
-    clientId: 'c1',
-    clientName: 'Limpiadora SRL',
-    siteId: 'si1',
-    siteName: 'Sede Centro',
-    siteAddress: 'Av. Siempre Viva 123',
-    siteCity: 'San Isidro',
-    siteLatitude: -34.47,
-    siteLongitude: -58.5,
-    siteContactName: null,
-    siteContactPhone: null,
-    accessInstructions: null,
-    buildingHours: null,
-    phoneRestricted: false,
-    photosNotAllowed: false,
-    requiresPhotos: false,
-    myPhotosCount: 0,
-    myVideosCount: 0,
-    restrictionsNotes: null,
-    startTime: '08:00:00',
-    endTime: '12:00:00',
-    startsAt: null,
-    endsAt: '2030-01-01T12:00:00Z',
-    shiftOpenEnded: false,
-    status: 'in_progress',
-    assignedAt: '2026-09-20T10:00:00Z',
-    notDoneReason: null,
-    cancelReason: null,
-    generalNotes: null,
-    criteriaSnapshot: null,
-    checkInAt: '2026-09-27T11:00:00Z',
-    checkOutAt: null,
-    siteGeofenceRadiusM: 150,
-    geofenceMaxAccuracyM: 150,
-    checkInGeo: null,
-    checkOutGeo: null,
-    assignedEmployees: [
-      {
-        employeeId: 'e1',
-        firstName: 'Ana',
-        lastName: 'Gómez',
-        status: 'present',
-        checkInAt: '2026-09-27T11:05:00Z',
-      },
-    ],
-    ...overrides,
-  }
-}
-
-function authValue(overrides: Partial<AuthContextValue>): AuthContextValue {
-  return {
-    status: 'authenticated',
-    userId: 'sup-1',
-    email: 'marta.rios@extendiendoservicios.com',
-    roles: ['supervisor'],
-    capabilities: [],
-    profile: null,
-    displayName: 'Marta Ríos',
-    isPasswordRecovery: false,
-    signOut: vi.fn(),
-    refreshProfile: vi.fn().mockResolvedValue(undefined),
-    ...overrides,
-  }
-}
-
-function renderPage() {
-  return render(
-    <MemoryRouter initialEntries={['/sup/supervisiones/sv1/cerrar']}>
-      <Routes>
-        <Route
-          path="/sup/supervisiones/:id/cerrar"
-          element={<CloseSupervisionPage />}
-        />
-      </Routes>
-    </MemoryRouter>,
-  )
-}
-
-function mockCommon() {
-  vi.spyOn(onlineModule, 'useOnlineStatus').mockReturnValue(true)
-  vi.spyOn(authModule, 'useAuth').mockReturnValue(authValue({}))
+function setup(
+  supervision: MySupervision,
+  {
+    ratings = [],
+    mutateAsync = vi.fn().mockResolvedValue({}),
+    consent = 'declined',
+    online = true,
+  }: {
+    ratings?: SupervisionRating[]
+    mutateAsync?: ReturnType<typeof vi.fn>
+    consent?: 'granted' | 'needs-consent' | 'declined'
+    online?: boolean
+  } = {},
+) {
+  mockCommonHooks({ consent, online })
+  vi.spyOn(mySupervisionsModule, 'useMySupervisionQuery').mockReturnValue({
+    data: supervision,
+    isLoading: false,
+    isError: false,
+  } as never)
+  vi.spyOn(
+    mySupervisionsModule,
+    'useSupervisionAssignmentsQuery',
+  ).mockReturnValue({
+    data: [{ assignmentId: 'a1', employeeId: 'e1' }],
+  } as never)
   vi.spyOn(mySupervisionsModule, 'useSupervisionRatingsQuery').mockReturnValue({
-    data: [],
+    data: ratings,
   } as never)
   vi.spyOn(
     mySupervisionsModule,
     'useCompleteSupervisionMutation',
-  ).mockReturnValue({
-    mutateAsync: vi.fn().mockResolvedValue({}),
-    isPending: false,
-  } as never)
-  vi.spyOn(
-    mySupervisionsModule,
-    'useMarkSupervisionNotDoneMutation',
-  ).mockReturnValue({
-    mutateAsync: vi.fn().mockResolvedValue({}),
-    isPending: false,
-  } as never)
+  ).mockReturnValue({ mutateAsync, isPending: false } as never)
+  renderRoute(<CloseSupervisionPage />, {
+    path: '/sup/supervisiones/:id/cerrar',
+    entry: '/sup/supervisiones/sv1/cerrar',
+  })
+  return mutateAsync
 }
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
+const RATING = { id: 'r1', assignmentId: 'a1', score: 5, comment: null }
+
+afterEach(() => vi.restoreAllMocks())
 
 describe('CloseSupervisionPage (SUP-06)', () => {
-  it('sin fin registrado, ofrece ir a registrarlo en vez de "Completar supervisión"', () => {
-    mockCommon()
-    vi.spyOn(mySupervisionsModule, 'useMySupervisionQuery').mockReturnValue({
-      data: supervision({ checkOutAt: null }),
-      isLoading: false,
-      isError: false,
-    } as never)
-
-    renderPage()
-    // Sin fin registrado la pestaña inicial es "No se pudo realizar" (la
-    // alternativa que no lo exige): se elige "Completar" a propósito para
-    // este caso.
-    fireEvent.click(screen.getByRole('radio', { name: 'Completar' }))
-
-    expect(
-      screen.getByText(/Todavía no registraste el fin de la supervisión/),
-    ).toBeInTheDocument()
-    const link = screen.getByText('Registrar fin de supervisión').closest('a')
-    expect(link).toHaveAttribute('href', '/sup/supervisiones/sv1/registro')
-    expect(
-      screen.getByRole('button', { name: 'Completar supervisión' }),
-    ).toBeDisabled()
-  })
-
-  it('con fin registrado y empleados sin calificar, avisa pero permite completar igual', () => {
-    mockCommon()
-    const mutateAsync = vi.fn().mockResolvedValue({})
-    vi.spyOn(
-      mySupervisionsModule,
-      'useCompleteSupervisionMutation',
-    ).mockReturnValue({ mutateAsync, isPending: false } as never)
-    vi.spyOn(mySupervisionsModule, 'useMySupervisionQuery').mockReturnValue({
-      data: supervision({ checkOutAt: '2026-09-27T12:00:00Z' }),
-      isLoading: false,
-      isError: false,
-    } as never)
-
-    renderPage()
+  it('con alguien sin calificar, deshabilita el cierre y lista a quién falta con acceso a calificar', () => {
+    setup(makeMySupervision())
 
     expect(
       screen.getByText('Calificaste a 0 de 1 empleado.'),
     ).toBeInTheDocument()
     expect(
-      screen.getByText(/Falta 1 empleado por calificar/),
-    ).toBeInTheDocument()
-
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Completar supervisión' }),
-    )
-    expect(mutateAsync).toHaveBeenCalledWith({
-      supervisionId: 'sv1',
-      generalNotes: undefined,
-    })
+      screen.getByRole('button', { name: 'Cerrar supervisión' }),
+    ).toBeDisabled()
+    const link = screen.getByRole('link', { name: 'Ana Gómez' })
+    expect(link).toHaveAttribute('href', '/sup/supervisiones/sv1/calificar/a1')
   })
 
-  it('"No se pudo realizar" exige el motivo antes de guardar', () => {
-    mockCommon()
-    const mutateAsync = vi.fn().mockResolvedValue({})
-    vi.spyOn(
-      mySupervisionsModule,
-      'useMarkSupervisionNotDoneMutation',
-    ).mockReturnValue({ mutateAsync, isPending: false } as never)
-    vi.spyOn(mySupervisionsModule, 'useMySupervisionQuery').mockReturnValue({
-      data: supervision({ checkInAt: null, checkOutAt: null }),
-      isLoading: false,
-      isError: false,
-    } as never)
+  it('con todos calificados cierra con la nota, sin ubicación si no hay consentimiento, y vuelve a Hoy', async () => {
+    const mutateAsync = setup(makeMySupervision(), { ratings: [RATING] })
 
-    renderPage()
+    expect(
+      screen.getByText('Calificaste a 1 de 1 empleado.'),
+    ).toBeInTheDocument()
+    fireEvent.change(screen.getByPlaceholderText('Nota general (opcional)…'), {
+      target: { value: 'Todo en orden' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar supervisión' }))
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Marcar como no realizada' }),
+    await waitFor(() =>
+      expect(mutateAsync).toHaveBeenCalledWith({
+        supervisionId: 'sv1',
+        generalNotes: 'Todo en orden',
+        coords: null,
+        outsideReason: null,
+      }),
     )
-    expect(screen.getByText('Indicá el motivo.')).toBeInTheDocument()
+    expect(await screen.findByText('otra pantalla')).toBeInTheDocument()
+  })
+
+  it('los ausentes no se califican y no bloquean el cierre (CJ-28)', () => {
+    setup(
+      makeMySupervision({
+        assignedEmployees: [
+          {
+            employeeId: 'e1',
+            firstName: 'Ana',
+            lastName: 'Gómez',
+            status: 'absence_notified',
+            checkInAt: null,
+          },
+        ],
+      }),
+    )
+
+    expect(
+      screen.getByRole('button', { name: 'Cerrar supervisión' }),
+    ).toBeEnabled()
+    expect(
+      screen.getByText('Calificaste a 0 de 0 empleados.'),
+    ).toBeInTheDocument()
+  })
+
+  it('si la base devuelve RATINGS_PENDING, muestra el mensaje con los nombres', async () => {
+    setup(makeMySupervision(), {
+      ratings: [RATING],
+      mutateAsync: vi
+        .fn()
+        .mockRejectedValue(
+          new ApiError('Falta calificar a: Ana Gómez.', 'RATINGS_PENDING'),
+        ),
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar supervisión' }))
+
+    expect(
+      await screen.findByText('Falta calificar a: Ana Gómez.'),
+    ).toBeInTheDocument()
+  })
+
+  it('si falta el consentimiento, lo muestra antes de cerrar', async () => {
+    const mutateAsync = setup(makeMySupervision(), {
+      ratings: [RATING],
+      consent: 'needs-consent',
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar supervisión' }))
+
+    expect(
+      await screen.findByText('Texto de consentimiento de la empresa'),
+    ).toBeInTheDocument()
     expect(mutateAsync).not.toHaveBeenCalled()
+  })
 
-    fireEvent.change(screen.getByPlaceholderText('Motivo…'), {
-      target: { value: 'El cliente cerró la sede' },
-    })
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Marcar como no realizada' }),
-    )
-    expect(mutateAsync).toHaveBeenCalledWith({
-      supervisionId: 'sv1',
-      reason: 'El cliente cerró la sede',
-    })
+  it('sin conexión no se puede cerrar', () => {
+    setup(makeMySupervision(), { ratings: [RATING], online: false })
+
+    expect(screen.getByText(/Estás sin conexión/)).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Cerrar supervisión' }),
+    ).toBeDisabled()
+  })
+
+  it('ya no existe «No se pudo realizar» (mark_supervision_not_done está revocada)', () => {
+    setup(makeMySupervision(), { ratings: [RATING] })
+
+    expect(screen.queryByText(/No se pudo realizar/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/no realizada/)).not.toBeInTheDocument()
   })
 
   it('no ofrece nada para cerrar cuando la supervisión ya está completada', () => {
-    mockCommon()
-    vi.spyOn(mySupervisionsModule, 'useMySupervisionQuery').mockReturnValue({
-      data: supervision({ status: 'completed' }),
-      isLoading: false,
-      isError: false,
-    } as never)
-
-    renderPage()
+    setup(makeMySupervision({ status: 'completed' }), { ratings: [RATING] })
 
     expect(
-      screen.queryByRole('button', { name: 'Completar supervisión' }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: 'Marcar como no realizada' }),
+      screen.queryByRole('button', { name: 'Cerrar supervisión' }),
     ).not.toBeInTheDocument()
   })
 })

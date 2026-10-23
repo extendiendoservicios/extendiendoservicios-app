@@ -6,6 +6,8 @@ import type { AssignmentStatus } from './assignments'
 import { fetchShiftTasksReadOnly } from './tasks'
 import { mapAttendanceGeo, type AttendanceGeo } from './attendanceGeo'
 import type { GeolocationCoords } from '@/lib/geolocation'
+import { supervisorTodayKeys } from './supervisorToday'
+import { workdayKeys } from './myWorkdays'
 import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
 
 /**
@@ -250,7 +252,7 @@ export async function fetchMySupervisionsPending(): Promise<MySupervision[]> {
   const { data, error } = await supabase
     .from('v_my_supervisions')
     .select(MY_SUPERVISIONS_SELECT)
-    .in('status', ['assigned', 'in_progress'])
+    .eq('status', 'in_progress')
     .order('shift_date', { ascending: true })
     .order('start_time', { ascending: true })
 
@@ -342,8 +344,8 @@ export async function fetchVigentRatingCriteria(): Promise<RatingCriterion[]> {
 }
 
 // -------------------------------------------------------------------------
-// 3. supervision_check_in / supervision_check_out (SUP-04, `06` sección 12,
-//    ADR-009, P-041, P-085)
+// 3. take_supervision / discard_supervision (SUP-03, SUP-04, P24.2, CJ-26,
+//    CJ-27, ADR-009): reemplazan a supervision_check_in/out, ya revocadas
 // -------------------------------------------------------------------------
 
 export type SupervisionAttendanceKind =
@@ -386,39 +388,28 @@ function mapSupervisionAttendanceRecord(row: {
   }
 }
 
-/**
- * Registra el inicio de la supervisión (`06` sección 12:
- * `supervision_check_in`). `coords`: mismo criterio que `recordCheckIn`
- * (`src/api/attendance.ts`) -- `null` si no hay consentimiento, se negó el
- * permiso o no llegó a tiempo; el registro se hace igual (ADR-009).
- */
-export async function supervisionCheckIn(
-  supervisionId: string,
-  coords: GeolocationCoords | null,
-  outsideReason?: string | null,
-): Promise<SupervisionAttendanceRecord> {
-  const { data, error } = await supabase.rpc('supervision_check_in', {
-    p_supervision_id: supervisionId,
-    p_lat: coords?.lat,
-    p_lng: coords?.lng,
-    p_accuracy: coords?.accuracyM,
-    p_outside_reason: outsideReason?.trim() || undefined,
-  })
-
-  if (error) {
-    throw fromPostgrestError(error)
-  }
-  return mapSupervisionAttendanceRecord(data)
+/** Resultado de `take_supervision` (P24.2, CJ-26): la supervisión creada, el inicio registrado y los avisos. */
+export interface TakeSupervisionResult {
+  supervisionId: string
+  checkIn: SupervisionAttendanceRecord
+  /** Avisos que no bloquean (`SUPERVISES_OWN_SHIFT`: también está asignado como empleado en el turno). */
+  warnings: string[]
 }
 
-/** Registra el fin de la supervisión (`06` sección 12: `supervision_check_out`). Mismo criterio de ubicación que `supervisionCheckIn`. */
-export async function supervisionCheckOut(
-  supervisionId: string,
+/**
+ * «Supervisar» (P24.2, CJ-26): toma un turno de hoy y registra el inicio con la
+ * posición en un solo paso (`take_supervision`). Reemplaza a
+ * `assign_supervision` + `supervision_check_in`, ya revocadas. `coords`: `null`
+ * si no hay consentimiento, se negó el permiso o no llegó a tiempo; el registro
+ * se hace igual (ADR-009, CJ-21).
+ */
+export async function takeSupervision(
+  shiftId: string,
   coords: GeolocationCoords | null,
   outsideReason?: string | null,
-): Promise<SupervisionAttendanceRecord> {
-  const { data, error } = await supabase.rpc('supervision_check_out', {
-    p_supervision_id: supervisionId,
+): Promise<TakeSupervisionResult> {
+  const { data, error } = await supabase.rpc('take_supervision', {
+    p_shift_id: shiftId,
     p_lat: coords?.lat,
     p_lng: coords?.lng,
     p_accuracy: coords?.accuracyM,
@@ -428,15 +419,40 @@ export async function supervisionCheckOut(
   if (error) {
     throw fromPostgrestError(error)
   }
-  return mapSupervisionAttendanceRecord(data)
+  const result = data as {
+    supervision: { id: string }
+    check_in: Parameters<typeof mapSupervisionAttendanceRecord>[0]
+    warnings: string[] | null
+  }
+  return {
+    supervisionId: result.supervision.id,
+    checkIn: mapSupervisionAttendanceRecord(result.check_in),
+    warnings: result.warnings ?? [],
+  }
+}
+
+/**
+ * Descarta una supervisión empezada por error (P24.2, CJ-27): queda cancelada
+ * con el motivo «Descartada por el coordinador» y se puede volver a tomar el
+ * turno. Solo si todavía no calificó a nadie (`SUPERVISION_HAS_RATINGS`).
+ */
+export async function discardSupervision(
+  supervisionId: string,
+): Promise<MySupervisionStatusResult> {
+  const { data, error } = await supabase.rpc('discard_supervision', {
+    p_supervision_id: supervisionId,
+  })
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return mapMySupervisionShallowRpcResult(data)
 }
 
 // -------------------------------------------------------------------------
-// 4. Accesos preparados para P15.5 (SUP-05, SUP-06): `rate_employee`,
-//    `complete_supervision`, `mark_supervision_not_done` -- sin pantalla
-//    propia en este paquete, tipados y listos para que ese encargo los use
-//    tal cual (mismo criterio que dejó P13.2 con `record_check_in` para
-//    P13.3, ver `src/api/attendance.ts`).
+// 4. Calificar y cerrar (SUP-05, SUP-06): `rate_employee` y
+//    `complete_supervision` (desde P24.1 exige calificar a todos y registra el
+//    fin con la posición). `mark_supervision_not_done` está revocada y se quitó.
 // -------------------------------------------------------------------------
 
 /** El resultado de calificar a un empleado (`06` sección 13: `rate_employee`, upsert). */
@@ -479,30 +495,25 @@ export async function rateEmployee(
   }
 }
 
-/** Completa la supervisión (SUP-06, `06` sección 12: `complete_supervision`, requiere fin registrado). Nota general opcional. */
+/**
+ * Cierra la supervisión (SUP-06, `complete_supervision`, P24.1): exige haber
+ * calificado a todos los empleados con inicio registrado (CJ-10, CJ-28,
+ * `RATINGS_PENDING`) y registra el fin con la posición. Nota general opcional.
+ * `coords` `null` = sin ubicación; el cierre se hace igual.
+ */
 export async function completeSupervision(
   supervisionId: string,
-  generalNotes?: string,
+  generalNotes: string | undefined,
+  coords: GeolocationCoords | null,
+  outsideReason?: string | null,
 ): Promise<MySupervisionStatusResult | null> {
   const { data, error } = await supabase.rpc('complete_supervision', {
     p_supervision_id: supervisionId,
-    p_general_notes: generalNotes,
-  })
-
-  if (error) {
-    throw fromPostgrestError(error)
-  }
-  return data ? mapMySupervisionShallowRpcResult(data) : null
-}
-
-/** Marca la supervisión como no realizada (SUP-06, `06` sección 12: `mark_supervision_not_done`, motivo obligatorio). */
-export async function markSupervisionNotDone(
-  supervisionId: string,
-  reason: string,
-): Promise<MySupervisionStatusResult | null> {
-  const { data, error } = await supabase.rpc('mark_supervision_not_done', {
-    p_supervision_id: supervisionId,
-    p_reason: reason,
+    p_general_notes: generalNotes?.trim() || undefined,
+    p_lat: coords?.lat,
+    p_lng: coords?.lng,
+    p_accuracy: coords?.accuracyM,
+    p_outside_reason: outsideReason?.trim() || undefined,
   })
 
   if (error) {
@@ -512,7 +523,7 @@ export async function markSupervisionNotDone(
 }
 
 /**
- * `complete_supervision`/`mark_supervision_not_done` devuelven la fila cruda
+ * `complete_supervision`/`discard_supervision` devuelven la fila cruda
  * de `supervisions` (sin los joins de `v_my_supervisions`): alcanza con el
  * subconjunto que SUP-06 necesita mostrar (estado y motivo), sin fingir que
  * es una `MySupervision` completa -- se deja como un tipo aparte, más chico,
@@ -646,8 +657,9 @@ export async function fetchSupervisionRatings(
 //    esta pantalla (SUP-05 es exclusiva de la vía `/sup`).
 //    AJ2-10: en un turno «A terminar» (`shiftOpenEnded`) el fin del turno
 //    guardado es 23:59; la RPC sigue usándolo, así que el plazo se cuenta
-//    igual (nunca se bloquea por "fin no alcanzado": calificar y completar
-//    solo piden el fin REGISTRADO de la supervisión).
+//    igual (nunca se bloquea por "fin no alcanzado").
+//    P24.1: la ventana no corre mientras la supervisión está abierta (sin fin
+//    registrado); corre desde que se registra el fin.
 // -------------------------------------------------------------------------
 
 export function isRatingWindowClosed(
@@ -658,11 +670,12 @@ export function isRatingWindowClosed(
   const checkOutAt = supervision.checkOutAt
     ? new Date(supervision.checkOutAt)
     : null
-  const deadline =
-    shiftEndsAt && checkOutAt
-      ? new Date(Math.max(shiftEndsAt.getTime(), checkOutAt.getTime()))
-      : (shiftEndsAt ?? checkOutAt)
-  if (!deadline) return false
+  // P24.1: mientras la supervisión sigue abierta (sin fin registrado) la ventana
+  // no corre, porque con un turno ya terminado (CJ-06) no se podría calificar.
+  if (!checkOutAt) return false
+  const deadline = shiftEndsAt
+    ? new Date(Math.max(shiftEndsAt.getTime(), checkOutAt.getTime()))
+    : checkOutAt
   return now.getTime() > deadline.getTime()
 }
 
@@ -815,44 +828,39 @@ export function useSupervisionShiftTasksQuery(shiftId: string) {
  */
 function invalidateSupervisionCaches(
   queryClient: ReturnType<typeof useQueryClient>,
-  _supervisionId: string,
+  _supervisionId?: string,
 ) {
-  return queryClient.invalidateQueries({ queryKey: mySupervisionsKeys.all })
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: mySupervisionsKeys.all }),
+    queryClient.invalidateQueries({ queryKey: supervisorTodayKeys.all }),
+    queryClient.invalidateQueries({ queryKey: workdayKeys.all }),
+  ])
 }
 
-/** SUP-04: registrar el inicio. Invalida todas las listas y el detalle (el estado cambió a `in_progress`). */
-export function useSupervisionCheckInMutation() {
+/** SUP-03: «Supervisar». Invalida la lista del día, las supervisiones y la jornada (el estado pasa a «Supervisando»). */
+export function useTakeSupervisionMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({
-      supervisionId,
+      shiftId,
       coords,
       outsideReason,
     }: {
-      supervisionId: string
+      shiftId: string
       coords: GeolocationCoords | null
       outsideReason?: string | null
-    }) => supervisionCheckIn(supervisionId, coords, outsideReason),
-    onSuccess: (_, { supervisionId }) =>
-      invalidateSupervisionCaches(queryClient, supervisionId),
+    }) => takeSupervision(shiftId, coords, outsideReason),
+    onSuccess: () => invalidateSupervisionCaches(queryClient),
   })
 }
 
-/** SUP-04: registrar el fin. Mismo criterio de invalidación que `useSupervisionCheckInMutation`. */
-export function useSupervisionCheckOutMutation() {
+/** SUP-04: descartar una supervisión empezada por error (CJ-27). */
+export function useDiscardSupervisionMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({
-      supervisionId,
-      coords,
-      outsideReason,
-    }: {
-      supervisionId: string
-      coords: GeolocationCoords | null
-      outsideReason?: string | null
-    }) => supervisionCheckOut(supervisionId, coords, outsideReason),
-    onSuccess: (_, { supervisionId }) =>
-      invalidateSupervisionCaches(queryClient, supervisionId),
+    mutationFn: ({ supervisionId }: { supervisionId: string }) =>
+      discardSupervision(supervisionId),
+    onSuccess: () => invalidateSupervisionCaches(queryClient),
   })
 }
 
@@ -876,17 +884,22 @@ export function useRateEmployeeMutation() {
   })
 }
 
-/** SUP-06 (P15.5): completar la supervisión. Sin pantalla propia en este paquete, ver la sección 4. */
+/** SUP-06: cerrar la supervisión con la posición del fin (CJ-10). */
 export function useCompleteSupervisionMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({
       supervisionId,
       generalNotes,
+      coords,
+      outsideReason,
     }: {
       supervisionId: string
       generalNotes?: string
-    }) => completeSupervision(supervisionId, generalNotes),
+      coords: GeolocationCoords | null
+      outsideReason?: string | null
+    }) =>
+      completeSupervision(supervisionId, generalNotes, coords, outsideReason),
     onSuccess: (_, { supervisionId }) =>
       invalidateSupervisionCaches(queryClient, supervisionId),
   })
@@ -927,21 +940,5 @@ export function useHistoryRatingsSummaryQuery(supervisionIds: string[]) {
     queryKey: [...mySupervisionsKeys.all, 'ratingsSummary', ...key] as const,
     queryFn: () => fetchRatingsSummaryBySupervisionIds(supervisionIds),
     enabled: supervisionIds.length > 0,
-  })
-}
-
-/** SUP-06 (P15.5): marcar como no realizada. Sin pantalla propia en este paquete, ver la sección 4. */
-export function useMarkSupervisionNotDoneMutation() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({
-      supervisionId,
-      reason,
-    }: {
-      supervisionId: string
-      reason: string
-    }) => markSupervisionNotDone(supervisionId, reason),
-    onSuccess: (_, { supervisionId }) =>
-      invalidateSupervisionCaches(queryClient, supervisionId),
   })
 }

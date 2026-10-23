@@ -9,6 +9,10 @@
 > mencionan quedan como historia; lo vigente está en la última sección,
 > «P24.3 · Coordinación libre (administración)».
 
+> **P24.2 (coordinación libre y jornada):** la vía móvil del coordinador cambió. Ya no hay supervisiones asignadas ni
+> `supervision_check_in/out`; ver `docs/features/coordinador-celular.md`. Lo que sigue describe el diseño de F15 y queda como
+> historial donde difiera.
+
 `08_Fases_y_Backlog.md` F15 "Supervisiones". Dos vías sobre la misma base:
 
 - **Administración** (P15.3, SUP-008 a SUP-012, DOC-015): ADM-13

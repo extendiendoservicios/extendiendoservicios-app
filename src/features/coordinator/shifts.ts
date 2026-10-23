@@ -1,0 +1,125 @@
+import type { MyWorkday } from '@/api/myWorkdays'
+import type { TodayShift } from '@/api/supervisorToday'
+import { openSupervisionOf } from './workday'
+
+/**
+ * Lógica pura de la lista de turnos del día del coordinador (P24.2, CJ-02,
+ * CJ-04, CJ-25) y de las condiciones para tomar un turno (CJ-07, CJ-08, CJ-27).
+ */
+
+const STATE_RANK: Record<TodayShift['displayState'], number> = {
+  in_progress: 0,
+  pending: 1,
+  finished: 2,
+}
+
+/** En cada bloque: primero los turnos en curso, después los que faltan y al final los terminados (CJ-25). */
+export function sortShifts(shifts: TodayShift[]): TodayShift[] {
+  return [...shifts].sort(
+    (a, b) =>
+      STATE_RANK[a.displayState] - STATE_RANK[b.displayState] ||
+      a.startTime.localeCompare(b.startTime) ||
+      a.siteName.localeCompare(b.siteName, 'es'),
+  )
+}
+
+function normalize(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+}
+
+/** `true` si el cliente o la sede contienen el texto buscado (sin acentos ni mayúsculas). */
+export function matchesShiftSearch(shift: TodayShift, search: string): boolean {
+  const query = normalize(search.trim())
+  if (query === '') return true
+  return (
+    normalize(shift.clientName).includes(query) ||
+    normalize(shift.siteName).includes(query)
+  )
+}
+
+/**
+ * Los dos bloques de SUP-02: «Mis sedes» (prioridad propia, por sede o por
+ * cliente, CJ-24) y «Otras sedes», con buscador por cliente o sede (solo
+ * filtra «Otras sedes», CJ-25).
+ */
+export function splitTodayShifts(
+  shifts: TodayShift[],
+  search = '',
+): { mine: TodayShift[]; others: TodayShift[] } {
+  return {
+    mine: sortShifts(shifts.filter((shift) => shift.isPriority)),
+    others: sortShifts(
+      shifts.filter(
+        (shift) => !shift.isPriority && matchesShiftSearch(shift, search),
+      ),
+    ),
+  }
+}
+
+function personName(
+  person: { firstName: string; lastName: string; isMe: boolean },
+  full: boolean,
+): string {
+  if (person.isMe) return 'Vos'
+  return full
+    ? `${person.firstName} ${person.lastName}`.trim()
+    : person.firstName
+}
+
+/**
+ * Quién supervisa o ya supervisó el turno, para que no se pisen (CJ-25):
+ * «Supervisando: Ana» y/o «Supervisó: Luis». Vacío si nadie lo tomó.
+ */
+export function supervisorsLabels(shift: TodayShift, full = false): string[] {
+  const active = shift.supervisors.filter(
+    (s) => s.status === 'in_progress' && s.checkOutAt == null,
+  )
+  const done = shift.supervisors.filter((s) => !active.includes(s))
+  const labels: string[] = []
+  if (active.length > 0) {
+    labels.push(
+      `Supervisando: ${active.map((s) => personName(s, full)).join(', ')}`,
+    )
+  }
+  if (done.length > 0) {
+    labels.push(`Supervisó: ${done.map((s) => personName(s, full)).join(', ')}`)
+  }
+  return labels
+}
+
+export const SHIFT_STATE_LABELS: Record<TodayShift['displayState'], string> = {
+  in_progress: 'En curso',
+  pending: 'Por empezar',
+  finished: 'Terminado',
+}
+
+/**
+ * Por qué no puede tocar «Supervisar» (CJ-07, CJ-08, CJ-27), o `null` si puede.
+ * La base vuelve a validar todo (`take_supervision`); esto evita el viaje y
+ * deja el motivo a la vista. `workday` en `undefined` = todavía cargando.
+ */
+export function takeSupervisionBlock(
+  shift: TodayShift,
+  workday: MyWorkday | null | undefined,
+): string | null {
+  if (workday === undefined) return 'Cargando tu jornada…'
+  if (shift.mySupervisionId != null) {
+    return shift.mySupervisionStatus === 'in_progress'
+      ? 'Ya estás supervisando este turno.'
+      : 'Ya supervisaste este turno.'
+  }
+  if (workday === null) return 'Iniciá tu jornada para poder supervisar.'
+  if (workday.state === 'ended') {
+    return 'Tu jornada está finalizada: reabrila para poder supervisar.'
+  }
+  if (workday.state === 'paused') {
+    return 'Estás en pausa: reanudá tu jornada para poder supervisar.'
+  }
+  if (openSupervisionOf(workday)) {
+    return 'Cerrá o descartá tu supervisión abierta antes de empezar otra.'
+  }
+  return null
+}

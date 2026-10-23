@@ -2,154 +2,131 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import HistoryPage from './HistoryPage'
-import * as mySupervisionsModule from '@/api/mySupervisions'
-import type { MySupervision } from '@/api/mySupervisions'
+import * as workdaysModule from '@/api/myWorkdays'
+import {
+  makeWorkday,
+  makeWorkdaySupervision,
+} from '@/features/coordinator/fixtures'
 
 /**
- * SUP-08 (MOB-SUP-008): lista de supervisiones completadas y no realizadas,
- * con sede y puntajes (promedio de las calificaciones cargadas y cuántos
- * empleados quedaron calificados sobre el total del turno). Enlaza a SUP-03
- * en modo lectura.
+ * SUP-08 (P24.2): jornadas por día, con horas netas, pausas y supervisiones.
+ * El tiempo de cada supervisión es informativo (CJ-14).
  */
-function supervision(overrides: Partial<MySupervision>): MySupervision {
-  return {
-    id: 'sv1',
-    shiftId: 'sh1',
-    shiftDate: '2026-09-20',
-    isToday: false,
-    clientId: 'c1',
-    clientName: 'Limpiadora SRL',
-    siteId: 'si1',
-    siteName: 'Sede Centro',
-    siteAddress: 'Av. Siempre Viva 123',
-    siteCity: 'San Isidro',
-    siteLatitude: -34.47,
-    siteLongitude: -58.5,
-    siteContactName: null,
-    siteContactPhone: null,
-    accessInstructions: null,
-    buildingHours: null,
-    phoneRestricted: false,
-    photosNotAllowed: false,
-    requiresPhotos: false,
-    myPhotosCount: 0,
-    myVideosCount: 0,
-    restrictionsNotes: null,
-    startTime: '08:00:00',
-    endTime: '12:00:00',
-    startsAt: null,
-    endsAt: '2026-09-20T12:00:00Z',
-    shiftOpenEnded: false,
-    status: 'completed',
-    assignedAt: '2026-09-19T10:00:00Z',
-    notDoneReason: null,
-    cancelReason: null,
-    generalNotes: null,
-    criteriaSnapshot: null,
-    checkInAt: '2026-09-20T08:05:00Z',
-    checkOutAt: '2026-09-20T12:00:00Z',
-    siteGeofenceRadiusM: 150,
-    geofenceMaxAccuracyM: 150,
-    checkInGeo: null,
-    checkOutGeo: null,
-    assignedEmployees: [
-      {
-        employeeId: 'e1',
-        firstName: 'Ana',
-        lastName: 'Gómez',
-        status: 'finished',
-        checkInAt: '2026-09-20T08:00:00Z',
-      },
-    ],
-    ...overrides,
-  }
+function mockHistory(data: workdaysModule.MyWorkday[] | undefined) {
+  vi.spyOn(workdaysModule, 'useMyWorkdaysHistoryQuery').mockReturnValue({
+    data,
+    isLoading: false,
+    isError: data === undefined,
+  } as never)
 }
-
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 function renderPage() {
   return render(
-    <MemoryRouter initialEntries={['/sup/historial']}>
+    <MemoryRouter>
       <HistoryPage />
     </MemoryRouter>,
   )
 }
 
+afterEach(() => vi.restoreAllMocks())
+
 describe('HistoryPage (SUP-08)', () => {
-  it('muestra el cliente, la sede, la fecha y el promedio de calificaciones', () => {
-    vi.spyOn(
-      mySupervisionsModule,
-      'useMySupervisionsHistoryQuery',
-    ).mockReturnValue({
-      data: [supervision({})],
-      isLoading: false,
-      isError: false,
-    } as never)
-    vi.spyOn(
-      mySupervisionsModule,
-      'useHistoryRatingsSummaryQuery',
-    ).mockReturnValue({
-      data: [{ supervisionId: 'sv1', ratedCount: 1, averageScore: 4 }],
-    } as never)
-
+  it('lista cada jornada con las horas netas, el horario y las pausas', () => {
+    mockHistory([
+      makeWorkday({
+        state: 'ended',
+        startedAt: '2026-10-22T11:00:00Z',
+        endedAt: '2026-10-22T20:30:00Z',
+        workDate: '2026-10-22',
+        workedMinutes: 480,
+        pauseMinutes: 60,
+        pauses: [
+          {
+            type: 'pause',
+            startsAt: '2026-10-22T15:00:00Z',
+            endsAt: '2026-10-22T16:00:00Z',
+            minutes: 60,
+            reason: null,
+          },
+        ],
+      }),
+    ])
     renderPage()
 
-    expect(screen.getByText('Limpiadora SRL')).toBeInTheDocument()
-    expect(screen.getByText('Sede Centro')).toBeInTheDocument()
-    expect(screen.getByText('1 de 1 calificado')).toBeInTheDocument()
+    expect(screen.getByText('8 h')).toBeInTheDocument()
+    expect(screen.getByText('08:00 a 17:30')).toBeInTheDocument()
+    expect(screen.getByText('1 pausa · 1 h')).toBeInTheDocument()
+    expect(screen.getByText('Finalizada')).toBeInTheDocument()
+  })
+
+  it('muestra las supervisiones de la jornada con su duración informativa y un enlace a cada una', () => {
+    mockHistory([
+      makeWorkday({
+        id: 'wd2',
+        state: 'ended',
+        endedAt: '2026-10-23T20:00:00Z',
+        supervisions: [
+          makeWorkdaySupervision({
+            status: 'completed',
+            checkOutAt: '2026-10-23T12:45:00Z',
+            durationMinutes: 45,
+          }),
+        ],
+      }),
+    ])
+    renderPage()
+
+    const link = screen.getByText('Limpiadora SRL · Sede Centro').closest('a')
+    expect(link).toHaveAttribute('href', '/sup/supervisiones/sv1')
+    expect(screen.getByText(/45 min/)).toBeInTheDocument()
+  })
+
+  it('marca la jornada cerrada automáticamente y la supervisión «Sin cerrar» (CJ-31)', () => {
+    mockHistory([
+      makeWorkday({
+        state: 'ended',
+        autoClosed: true,
+        autoCloseWarning: true,
+        endedAt: '2026-10-24T02:55:00Z',
+        supervisions: [
+          makeWorkdaySupervision({
+            checkOutAt: '2026-10-24T02:55:00Z',
+            unclosed: true,
+          }),
+        ],
+      }),
+    ])
+    renderPage()
+
+    expect(screen.getByText('Cerrada automáticamente')).toBeInTheDocument()
     expect(
-      screen.getByRole('img', { name: '4 de 5 estrellas' }),
+      screen.getByText(/Se cerró sola porque no la finalizaste/),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Sin cerrar')).toBeInTheDocument()
+  })
+
+  it('indica si la administración corrigió la jornada', () => {
+    mockHistory([makeWorkday({ state: 'ended', corrected: true })])
+    renderPage()
+
+    expect(
+      screen.getByText('Corregida por la administración.'),
     ).toBeInTheDocument()
   })
 
-  it('muestra el motivo cuando la supervisión quedó como no realizada', () => {
-    vi.spyOn(
-      mySupervisionsModule,
-      'useMySupervisionsHistoryQuery',
-    ).mockReturnValue({
-      data: [
-        supervision({
-          status: 'not_done',
-          notDoneReason: 'El cliente cerró la sede',
-          checkInAt: null,
-          checkOutAt: null,
-        }),
-      ],
-      isLoading: false,
-      isError: false,
-    } as never)
-    vi.spyOn(
-      mySupervisionsModule,
-      'useHistoryRatingsSummaryQuery',
-    ).mockReturnValue({ data: [] } as never)
-
+  it('sin jornadas muestra el estado vacío', () => {
+    mockHistory([])
     renderPage()
 
-    expect(
-      screen.getByText('Motivo: El cliente cerró la sede'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('Todavía no tenés jornadas')).toBeInTheDocument()
   })
 
-  it('muestra el estado vacío cuando todavía no hay supervisiones cerradas', () => {
-    vi.spyOn(
-      mySupervisionsModule,
-      'useMySupervisionsHistoryQuery',
-    ).mockReturnValue({
-      data: [],
-      isLoading: false,
-      isError: false,
-    } as never)
-    vi.spyOn(
-      mySupervisionsModule,
-      'useHistoryRatingsSummaryQuery',
-    ).mockReturnValue({ data: [] } as never)
-
+  it('si falla la carga, avisa', () => {
+    mockHistory(undefined)
     renderPage()
 
     expect(
-      screen.getByText('Todavía no cerraste ninguna supervisión'),
+      screen.getByText(/No pudimos cargar tu historial/),
     ).toBeInTheDocument()
   })
 })
