@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { CalendarX, Search, Users } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -10,6 +10,7 @@ import { useSupervisorTodayQuery, type TodayShift } from '@/api/supervisorToday'
 import { formatSupervisionRange } from '@/features/employee/shiftRange'
 import {
   SHIFT_STATE_LABELS,
+  effectiveShiftState,
   splitTodayShifts,
   supervisorsLabels,
 } from '../shifts'
@@ -28,7 +29,18 @@ const STATE_VARIANTS = {
  * «Otras sedes» tiene buscador por cliente o sede. Cualquier turno se puede
  * tomar: las sedes propias solo ordenan.
  */
+/** Reloj de la pantalla: se actualiza cada 30 s para que los turnos pasen de estado solos. */
+function useNowMs(): number {
+  const [nowMs, setNowMs] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 30_000)
+    return () => clearInterval(id)
+  }, [])
+  return nowMs
+}
+
 export function TodayShiftsList() {
+  const nowMs = useNowMs()
   const { data, isLoading, isError } = useSupervisorTodayQuery()
   const [search, setSearch] = useState('')
 
@@ -57,7 +69,7 @@ export function TodayShiftsList() {
     )
   }
 
-  const { mine, others } = splitTodayShifts(data, search)
+  const { mine, others } = splitTodayShifts(data, search, nowMs)
   const searching = search.trim() !== ''
 
   return (
@@ -65,11 +77,13 @@ export function TodayShiftsList() {
       <ShiftsBlock
         title="Mis sedes"
         shifts={mine}
+        nowMs={nowMs}
         emptyText="Hoy no hay turnos en tus sedes preferenciales."
       />
       <ShiftsBlock
         title="Otras sedes"
         shifts={others}
+        nowMs={nowMs}
         emptyText={
           searching
             ? 'No encontramos turnos con esa búsqueda.'
@@ -84,11 +98,13 @@ export function TodayShiftsList() {
 function ShiftsBlock({
   title,
   shifts,
+  nowMs,
   emptyText,
   search,
 }: {
   title: string
   shifts: TodayShift[]
+  nowMs: number
   emptyText: string
   search?: { value: string; onChange: (value: string) => void }
 }) {
@@ -113,13 +129,16 @@ function ShiftsBlock({
           {emptyText}
         </p>
       ) : (
-        shifts.map((shift) => <ShiftCard key={shift.shiftId} shift={shift} />)
+        shifts.map((shift) => (
+          <ShiftCard key={shift.shiftId} shift={shift} nowMs={nowMs} />
+        ))
       )}
     </section>
   )
 }
 
-function ShiftCard({ shift }: { shift: TodayShift }) {
+function ShiftCard({ shift, nowMs }: { shift: TodayShift; nowMs: number }) {
+  const state = effectiveShiftState(shift, nowMs)
   const supervisors = supervisorsLabels(shift)
   const employeesCount = shift.assignedEmployees.length
   return (
@@ -135,8 +154,8 @@ function ShiftCard({ shift }: { shift: TodayShift }) {
                 {shift.siteName}
               </p>
             </div>
-            <Badge variant={STATE_VARIANTS[shift.displayState]} dot>
-              {SHIFT_STATE_LABELS[shift.displayState]}
+            <Badge variant={STATE_VARIANTS[state]} dot>
+              {SHIFT_STATE_LABELS[state]}
             </Badge>
           </div>
           <p className="text-[13px] font-semibold text-text-2">

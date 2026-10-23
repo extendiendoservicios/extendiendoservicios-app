@@ -13,11 +13,41 @@ const STATE_RANK: Record<TodayShift['displayState'], number> = {
   finished: 2,
 }
 
-/** En cada bloque: primero los turnos en curso, despuÃ©s los que faltan y al final los terminados (CJ-25). */
-export function sortShifts(shifts: TodayShift[]): TodayShift[] {
+/**
+ * Estado a mostrar del turno, derivado de la hora y no del estado guardado
+ * (`v_supervisor_today.display_state` solo mira `shifts.status`, que sigue en
+ * `scheduled` aunque el turno ya haya pasado). Usa los instantes `startsAt` y
+ * `endsAt` (ya resuelven los turnos que cruzan medianoche):
+ * - terminado si el turno está completado o su fin ya pasó;
+ * - en curso si está en curso o su inicio ya pasó (sin fin: «A terminar», sigue
+ *   en curso hasta que se complete);
+ * - por empezar en cualquier otro caso.
+ * `nowMs` es inyectable para los tests; en la pantalla es la hora del dispositivo,
+ * solo para ordenar y rotular (ninguna regla depende de ella).
+ */
+export function effectiveShiftState(
+  shift: TodayShift,
+  nowMs: number = Date.now(),
+): TodayShift['displayState'] {
+  if (shift.displayState === 'finished') return 'finished'
+  const endsMs =
+    !shift.openEnded && shift.endsAt != null ? Date.parse(shift.endsAt) : NaN
+  if (!Number.isNaN(endsMs) && nowMs >= endsMs) return 'finished'
+  if (shift.displayState === 'in_progress') return 'in_progress'
+  const startsMs = shift.startsAt != null ? Date.parse(shift.startsAt) : NaN
+  if (!Number.isNaN(startsMs) && nowMs >= startsMs) return 'in_progress'
+  return 'pending'
+}
+
+/** En cada bloque: primero los turnos en curso, después los que faltan y al final los terminados (CJ-25). */
+export function sortShifts(
+  shifts: TodayShift[],
+  nowMs: number = Date.now(),
+): TodayShift[] {
   return [...shifts].sort(
     (a, b) =>
-      STATE_RANK[a.displayState] - STATE_RANK[b.displayState] ||
+      STATE_RANK[effectiveShiftState(a, nowMs)] -
+        STATE_RANK[effectiveShiftState(b, nowMs)] ||
       a.startTime.localeCompare(b.startTime) ||
       a.siteName.localeCompare(b.siteName, 'es'),
   )
@@ -48,13 +78,18 @@ export function matchesShiftSearch(shift: TodayShift, search: string): boolean {
 export function splitTodayShifts(
   shifts: TodayShift[],
   search = '',
+  nowMs: number = Date.now(),
 ): { mine: TodayShift[]; others: TodayShift[] } {
   return {
-    mine: sortShifts(shifts.filter((shift) => shift.isPriority)),
+    mine: sortShifts(
+      shifts.filter((shift) => shift.isPriority),
+      nowMs,
+    ),
     others: sortShifts(
       shifts.filter(
         (shift) => !shift.isPriority && matchesShiftSearch(shift, search),
       ),
+      nowMs,
     ),
   }
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  effectiveShiftState,
   matchesShiftSearch,
   sortShifts,
   splitTodayShifts,
@@ -10,28 +11,31 @@ import { makeTodayShift, makeWorkday, makeWorkdaySupervision } from './fixtures'
 
 describe('sortShifts (CJ-25)', () => {
   it('pone primero los turnos en curso, después los que faltan y al final los terminados', () => {
-    const sorted = sortShifts([
-      makeTodayShift({
-        shiftId: 'fin',
-        displayState: 'finished',
-        startTime: '06:00:00',
-      }),
-      makeTodayShift({
-        shiftId: 'pend',
-        displayState: 'pending',
-        startTime: '14:00:00',
-      }),
-      makeTodayShift({
-        shiftId: 'curso',
-        displayState: 'in_progress',
-        startTime: '10:00:00',
-      }),
-      makeTodayShift({
-        shiftId: 'pend2',
-        displayState: 'pending',
-        startTime: '09:00:00',
-      }),
-    ])
+    const sorted = sortShifts(
+      [
+        makeTodayShift({
+          shiftId: 'fin',
+          displayState: 'finished',
+          startTime: '06:00:00',
+        }),
+        makeTodayShift({
+          shiftId: 'pend',
+          displayState: 'pending',
+          startTime: '14:00:00',
+        }),
+        makeTodayShift({
+          shiftId: 'curso',
+          displayState: 'in_progress',
+          startTime: '10:00:00',
+        }),
+        makeTodayShift({
+          shiftId: 'pend2',
+          displayState: 'pending',
+          startTime: '09:00:00',
+        }),
+      ],
+      Date.parse('2026-10-23T10:00:00Z'),
+    )
     expect(sorted.map((s) => s.shiftId)).toEqual([
       'curso',
       'pend2',
@@ -170,5 +174,113 @@ describe('takeSupervisionBlock (CJ-07, CJ-08, CJ-27)', () => {
         makeWorkday(),
       ),
     ).toMatch(/Ya supervisaste/)
+  })
+})
+
+describe('effectiveShiftState (CJ-25, estado por hora)', () => {
+  // 23/10/2026 20:30 en Argentina (UTC-3).
+  const now = Date.parse('2026-10-23T23:30:00Z')
+
+  it('un turno programado cuyo fin ya pas� figura �finished�', () => {
+    const shift = makeTodayShift({
+      displayState: 'pending',
+      startsAt: '2026-10-23T09:00:00Z',
+      endsAt: '2026-10-23T13:00:00Z',
+    })
+    expect(effectiveShiftState(shift, now)).toBe('finished')
+  })
+
+  it('un turno que todav�a no empez� figura �pending�', () => {
+    const shift = makeTodayShift({
+      displayState: 'pending',
+      startsAt: '2026-10-24T01:00:00Z',
+      endsAt: '2026-10-24T03:00:00Z',
+    })
+    expect(effectiveShiftState(shift, now)).toBe('pending')
+  })
+
+  it('un turno entre su inicio y su fin figura �in_progress�', () => {
+    const shift = makeTodayShift({
+      displayState: 'pending',
+      startsAt: '2026-10-23T22:00:00Z',
+      endsAt: '2026-10-24T01:00:00Z',
+    })
+    expect(effectiveShiftState(shift, now)).toBe('in_progress')
+  })
+
+  it('un turno que cruza la medianoche sigue en curso pasadas las 00:00', () => {
+    const shift = makeTodayShift({
+      displayState: 'pending',
+      startsAt: '2026-10-23T23:00:00Z', // 20:00
+      endsAt: '2026-10-24T05:00:00Z', // 02:00 del d�a siguiente
+    })
+    expect(effectiveShiftState(shift, Date.parse('2026-10-24T03:00:00Z'))).toBe(
+      'in_progress',
+    )
+    expect(effectiveShiftState(shift, Date.parse('2026-10-24T05:00:00Z'))).toBe(
+      'finished',
+    )
+  })
+
+  it('�A terminar� (sin fin) no termina por hora: solo si est� completado', () => {
+    const open = makeTodayShift({
+      displayState: 'pending',
+      openEnded: true,
+      startsAt: '2026-10-23T09:00:00Z',
+      endsAt: null,
+    })
+    expect(effectiveShiftState(open, now)).toBe('in_progress')
+    expect(
+      effectiveShiftState({ ...open, displayState: 'finished' }, now),
+    ).toBe('finished')
+  })
+
+  it('un turno completado queda �finished� aunque su fin sea futuro', () => {
+    const shift = makeTodayShift({
+      displayState: 'finished',
+      endsAt: '2026-10-24T03:00:00Z',
+    })
+    expect(effectiveShiftState(shift, now)).toBe('finished')
+  })
+})
+
+describe('sortShifts con la hora (CJ-25)', () => {
+  it('ordena por el estado seg�n la hora aunque todos vengan �pending�', () => {
+    const now = Date.parse('2026-10-23T23:30:00Z')
+    const sorted = sortShifts(
+      [
+        makeTodayShift({
+          shiftId: 'manana',
+          startTime: '06:00:00',
+          startsAt: '2026-10-23T09:00:00Z',
+          endsAt: '2026-10-23T13:00:00Z',
+        }),
+        makeTodayShift({
+          shiftId: 'tarde',
+          startTime: '15:00:00',
+          startsAt: '2026-10-23T18:00:00Z',
+          endsAt: '2026-10-23T22:00:00Z',
+        }),
+        makeTodayShift({
+          shiftId: 'curso',
+          startTime: '19:00:00',
+          startsAt: '2026-10-23T22:00:00Z',
+          endsAt: '2026-10-24T01:00:00Z',
+        }),
+        makeTodayShift({
+          shiftId: 'noche',
+          startTime: '22:00:00',
+          startsAt: '2026-10-24T01:00:00Z',
+          endsAt: '2026-10-24T03:00:00Z',
+        }),
+      ],
+      now,
+    )
+    expect(sorted.map((s) => s.shiftId)).toEqual([
+      'curso',
+      'noche',
+      'manana',
+      'tarde',
+    ])
   })
 })

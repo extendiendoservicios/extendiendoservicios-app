@@ -1,5 +1,5 @@
 import { fireEvent, screen, within } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TodayShiftsList } from './TodayShiftsList'
 import * as todayModule from '@/api/supervisorToday'
 import { makeTodayShift } from '../fixtures'
@@ -18,9 +18,59 @@ function renderList() {
   return renderRoute(<TodayShiftsList />, { path: '/sup', entry: '/sup' })
 }
 
-afterEach(() => vi.restoreAllMocks())
+// Reloj fijo: 23/10/2026 20:30 en Argentina (23:30 UTC).
+const NOW = '2026-10-23T23:30:00Z'
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(NOW))
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+  vi.restoreAllMocks()
+})
 
 describe('TodayShiftsList', () => {
+  it('a las 20:30 los turnos de la mañana figuran «Terminado» y van al final', () => {
+    mockShifts([
+      makeTodayShift({
+        shiftId: 'manana',
+        startTime: '06:00:00',
+        endTime: '10:00:00',
+        startsAt: '2026-10-23T09:00:00Z',
+        endsAt: '2026-10-23T13:00:00Z',
+      }),
+      makeTodayShift({
+        shiftId: 'noche',
+        startTime: '22:00:00',
+        endTime: '23:59:00',
+        startsAt: '2026-10-24T01:00:00Z',
+        endsAt: '2026-10-24T02:59:00Z',
+      }),
+      makeTodayShift({
+        shiftId: 'curso',
+        startTime: '19:00:00',
+        endTime: '22:00:00',
+        startsAt: '2026-10-23T22:00:00Z',
+        endsAt: '2026-10-24T01:00:00Z',
+      }),
+    ])
+    renderList()
+
+    const links = within(
+      screen.getByRole('region', { name: 'Otras sedes' }),
+    ).getAllByRole('link')
+    expect(links.map((l) => l.getAttribute('href'))).toEqual([
+      '/sup/turnos/curso',
+      '/sup/turnos/noche',
+      '/sup/turnos/manana',
+    ])
+    expect(within(links[0]!).getByText('En curso')).toBeInTheDocument()
+    expect(within(links[1]!).getByText('Por empezar')).toBeInTheDocument()
+    expect(within(links[2]!).getByText('Terminado')).toBeInTheDocument()
+  })
+
   it('separa Â«Mis sedesÂ» y Â«Otras sedesÂ», con los turnos en curso primero', () => {
     mockShifts([
       makeTodayShift({
@@ -34,6 +84,7 @@ describe('TodayShiftsList', () => {
         isPriority: true,
         siteName: 'Torre Sur',
         displayState: 'in_progress',
+        endsAt: '2026-10-24T03:00:00Z',
       }),
       makeTodayShift({ shiftId: 'o1', siteName: 'Local Centro' }),
     ])

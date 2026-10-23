@@ -27,6 +27,7 @@ import { LocationConsentGate } from '@/features/coordinator/components/LocationC
 import { coordinatorErrorMessage } from '@/features/coordinator/errors'
 import {
   SHIFT_STATE_LABELS,
+  effectiveShiftState,
   supervisorsLabels,
   takeSupervisionBlock,
 } from '@/features/coordinator/shifts'
@@ -180,8 +181,8 @@ export default function SupervisorShiftPage() {
             <CardTitle>{shift.clientName}</CardTitle>
             <p className="text-[12px] text-text-3">{shift.siteName}</p>
           </div>
-          <Badge variant={STATE_VARIANTS[shift.displayState]} dot>
-            {SHIFT_STATE_LABELS[shift.displayState]}
+          <Badge variant={STATE_VARIANTS[effectiveShiftState(shift)]} dot>
+            {SHIFT_STATE_LABELS[effectiveShiftState(shift)]}
           </Badge>
         </CardHeader>
         <CardContent>
