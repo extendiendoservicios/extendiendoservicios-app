@@ -1,5 +1,4 @@
 import type { AttendanceBoardRow } from '@/api/attendance'
-import type { SupervisionListRow } from '@/api/supervisions'
 import type { EmployeeLeave } from '@/api/employees'
 import type { Role } from '@/api/users'
 import { ROLE_LABELS } from '@/features/auth/session'
@@ -17,54 +16,38 @@ import { formatShiftRange } from '@/features/shifts/openEnded'
 import { absenceDetail, isAbsence } from '@/features/attendance/absences'
 import { joinObservations } from '@/features/shifts/observation'
 import { geoPrintText } from '@/features/geo/printText'
+import type { SupervisorWorkday } from '@/features/attendance/workdaysAdmin'
 
 /**
- * Detalle de asistencia de una persona (AJ-06): lógica sin React que arma las
- * filas de la pestaña «Asistencia» de la ficha y la hoja imprimible.
+ * Detalle de asistencia de una persona (AJ-06, P24.4): lógica sin React que
+ * arma las filas de la pestaña «Asistencia» de la ficha y la hoja imprimible.
  *
- * Una persona con doble rol (supervisor y empleado) tiene dos fuentes de
- * horas: sus servicios (`v_assignments_board`) y sus supervisiones
- * (`v_supervisions_admin`). Se muestran juntas, ordenadas por fecha, con una
- * columna «Tipo» (Servicio / Supervisión), y el total del período las suma.
+ * Las horas de un empleado son las de sus servicios (`v_assignments_board`).
+ * Las de un coordinador son las de su jornada (`v_supervisor_workdays_admin`,
+ * CJ-13): inicio a fin menos las pausas. El tiempo de cada supervisión es
+ * informativo y no suma (CJ-14). Una persona con los dos roles tiene dos
+ * secciones en la hoja, cada una con su total, y la suma al final (CJ-34).
  */
 
-export type AttendanceDetailEntry =
-  | {
-      kind: 'service'
-      key: string
-      date: string
-      startTime: string
-      row: AttendanceBoardRow
-    }
-  | {
-      kind: 'supervision'
-      key: string
-      date: string
-      startTime: string
-      row: SupervisionListRow
-    }
+export interface AttendanceDetailEntry {
+  kind: 'service'
+  key: string
+  date: string
+  startTime: string
+  row: AttendanceBoardRow
+}
 
-/** Une servicios y supervisiones, de la fecha más reciente a la más antigua. */
+/** Ordena los servicios de la fecha más reciente a la más antigua. */
 export function buildAttendanceEntries(
   services: AttendanceBoardRow[],
-  supervisions: SupervisionListRow[],
 ): AttendanceDetailEntry[] {
-  const entries: AttendanceDetailEntry[] = [
-    ...services.map((row): AttendanceDetailEntry => ({
-      kind: 'service',
-      key: `service-${row.id}`,
-      date: row.shiftDate,
-      startTime: row.startTime,
-      row,
-    })),
-    ...supervisions.map((row): AttendanceDetailEntry => ({
-      kind: 'supervision',
-      key: `supervision-${row.id}`,
-      date: row.shiftDate,
-      startTime: row.startTime,
-      row,
-    })),
-  ]
+  const entries = services.map((row): AttendanceDetailEntry => ({
+    kind: 'service',
+    key: `service-${row.id}`,
+    date: row.shiftDate,
+    startTime: row.startTime,
+    row,
+  }))
   return entries.sort(
     (a, b) =>
       b.date.localeCompare(a.date) ||
@@ -103,14 +86,14 @@ export function entryFranja(entry: AttendanceDetailEntry): string {
   return formatShiftRange(
     entry.row.startTime,
     entry.row.endTime,
-    entry.kind === 'service' ? entry.row.openEnded : entry.row.shiftOpenEnded,
+    entry.row.openEnded,
   )
 }
 
-export const ENTRY_KIND_LABELS = {
-  service: 'Servicio',
-  supervision: 'Supervisión',
-} as const
+/** Total de horas de las jornadas del período, en minutos (CJ-13, CJ-18). */
+export function sumWorkdayMinutes(workdays: SupervisorWorkday[]): number {
+  return workdays.reduce((total, workday) => total + workday.workedMinutes, 0)
+}
 
 // -------------------------------------------------------------------------
 // Hoja imprimible
@@ -127,14 +110,26 @@ export interface AttendanceSheetPerson {
   signerLabel: string
 }
 
+/** Una tabla de la hoja: los turnos como empleado o las jornadas como coordinador. */
+export interface AttendanceSheetSection {
+  key: 'services' | 'workdays'
+  /** Título de la sección; solo cuando la hoja lleva las dos (CJ-34). */
+  heading?: string
+  columns: PrintColumn[]
+  rows: PrintRowData[]
+  /** Filas con celda unida (las licencias y las supervisiones). */
+  spans: Record<string, PrintRowSpan>
+  footer: { label: string; value: string }
+  emptyText: string
+  totalMinutes: number
+}
+
 export interface AttendanceSheetModel {
   title: string
   facts: { label: string; value: string }[]
-  columns: PrintColumn[]
-  rows: PrintRowData[]
-  /** Filas con celda unida (las licencias: Cliente → Observaciones). */
-  spans: Record<string, PrintRowSpan>
-  footer: { label: string; value: string }
+  sections: AttendanceSheetSection[]
+  /** Suma de las secciones, solo cuando hay más de una (CJ-34). */
+  grandTotal?: { label: string; value: string }
   totalMinutes: number
   signers: string[]
   consentText: string
@@ -142,9 +137,14 @@ export interface AttendanceSheetModel {
 }
 
 export const ATTENDANCE_SHEET_TITLE = 'Detalle de asistencia'
+export const WORKDAYS_SHEET_TITLE = 'Detalle de jornadas'
+export const ATTENDANCE_AND_WORKDAYS_TITLE = 'Detalle de asistencia y jornadas'
 // Texto único (con o sin licencias e inasistencias): la hoja las puede incluir.
 export const ATTENDANCE_CONSENT_TEXT =
   'Las partes prestan conformidad con el detalle de horas, licencias e inasistencias consignado.'
+
+export const WORKDAYS_CONSENT_TEXT =
+  'Las partes prestan conformidad con el detalle de jornadas y horas consignado.'
 
 /** Quién firma por la persona, según sus roles. */
 export function personSignerLabel(roleLabels: string[]): string {
@@ -230,9 +230,124 @@ function formatPeriodDate(isoDate: string): string {
   return formatCalendarDate(isoDate)
 }
 
+// -------------------------------------------------------------------------
+// Jornadas del coordinador (P24.4, CJ-19, CJ-34)
+// -------------------------------------------------------------------------
+
+export const WORKDAYS_SECTION_HEADING = 'Jornadas como coordinador'
+export const SERVICES_SECTION_HEADING = 'Turnos como empleado'
+export const AUTO_CLOSED_MARK = 'Cerrada automáticamente'
+export const CORRECTED_MARK = 'Corregida'
+
+/** Texto de las pausas de una jornada: «12:00 a 12:35 (35 min) — motivo». */
+export function workdayPausesText(workday: SupervisorWorkday): string {
+  if (workday.pauses.length === 0) {
+    return '—'
+  }
+  return workday.pauses
+    .map((pause) => {
+      const range = pause.endsAt
+        ? `${formatTime(pause.startsAt)} a ${formatTime(pause.endsAt)} (${formatMinutes(pause.minutes)})`
+        : `desde ${formatTime(pause.startsAt)}`
+      return pause.reason ? `${range} — ${pause.reason}` : range
+    })
+    .join('; ')
+}
+
+/** Marcas de la jornada: «Cerrada automáticamente» (CJ-31) y «Corregida» (CJ-32). */
+export function workdayMarks(workday: SupervisorWorkday): string {
+  return [
+    workday.autoClosed ? AUTO_CLOSED_MARK : '',
+    workday.corrected ? CORRECTED_MARK : '',
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
+/** Renglón de una supervisión: cliente, sede, inicio a fin y duración informativa (CJ-14). */
+export function workdaySupervisionText(
+  supervision: SupervisorWorkday['supervisions'][number],
+): string {
+  const where = [supervision.clientName, supervision.siteName]
+    .filter(Boolean)
+    .join(' · ')
+  const range = supervision.checkInAt
+    ? supervision.checkOutAt
+      ? `${formatTime(supervision.checkInAt)} a ${formatTime(supervision.checkOutAt)}`
+      : `desde ${formatTime(supervision.checkInAt)}`
+    : 'sin horario'
+  const duration =
+    supervision.durationMinutes != null
+      ? `${formatMinutes(supervision.durationMinutes)}, informativo`
+      : 'informativo'
+  const unclosed = supervision.unclosed ? ' — Sin cerrar' : ''
+  return `Supervisión: ${where}, ${range} (${duration})${unclosed}`
+}
+
+const WORKDAY_COLUMNS: PrintColumn[] = [
+  { key: 'date', header: 'Fecha' },
+  { key: 'start', header: 'Inicio' },
+  { key: 'end', header: 'Fin' },
+  { key: 'pauses', header: 'Pausas', wrap: true },
+  { key: 'notes', header: 'Observaciones', wrap: true },
+  { key: 'hours', header: 'Horas netas', align: 'right' },
+]
+
+/** Sección de jornadas: una fila por día y, debajo, sus supervisiones. */
+export function buildWorkdaysSection(
+  workdays: SupervisorWorkday[],
+  footerLabel: string,
+  heading?: string,
+): AttendanceSheetSection {
+  const spans: Record<string, PrintRowSpan> = {}
+  const rows: PrintRowData[] = []
+  for (const workday of [...workdays].sort(
+    (a, b) =>
+      a.workDate.localeCompare(b.workDate) ||
+      a.startedAt.localeCompare(b.startedAt),
+  )) {
+    rows.push({
+      key: `workday-${workday.id}`,
+      date: formatCalendarDate(workday.workDate),
+      start: formatTime(workday.startedAt),
+      end: workday.endedAt ? formatTime(workday.endedAt) : 'En curso',
+      pauses: workdayPausesText(workday),
+      notes: workdayMarks(workday),
+      hours: formatMinutes(workday.workedMinutes),
+    })
+    for (const supervision of workday.supervisions) {
+      const key = `supervision-${supervision.supervisionId}`
+      // Cliente, sede, horario y duración van en una celda unida (Inicio → Observaciones).
+      spans[key] = { from: 'start', to: 'notes' }
+      rows.push({
+        key,
+        date: '',
+        start: workdaySupervisionText(supervision),
+        end: '',
+        pauses: '',
+        notes: '',
+        hours: '',
+      })
+    }
+  }
+  const totalMinutes = sumWorkdayMinutes(workdays)
+  return {
+    key: 'workdays',
+    heading,
+    columns: WORKDAY_COLUMNS,
+    rows,
+    spans,
+    footer: { label: footerLabel, value: formatMinutes(totalMinutes) },
+    emptyText: 'No hay jornadas registradas en este período.',
+    totalMinutes,
+  }
+}
+
 /**
- * Arma el contenido de la hoja «Detalle de asistencia»: datos de la persona,
- * período, tabla en orden cronológico, total y los dos espacios de firma.
+ * Arma el contenido de la hoja de asistencia: datos de la persona, período,
+ * las tablas (turnos como empleado y/o jornadas como coordinador), totales y
+ * los dos espacios de firma. Con las dos secciones, cada una lleva su total y
+ * al final va la suma (CJ-34).
  */
 export function buildAttendanceSheet(input: {
   person: AttendanceSheetPerson
@@ -241,9 +356,97 @@ export function buildAttendanceSheet(input: {
   entries: AttendanceDetailEntry[]
   /** Licencias de la persona: las del período se intercalan en la tabla, sin horas. */
   leaves?: EmployeeLeave[]
+  /**
+   * Jornadas del período de un coordinador (CJ-19). Si viene (aunque vacío),
+   * la hoja lleva la sección de jornadas.
+   */
+  workdays?: SupervisorWorkday[]
+  /** Si lleva la sección de turnos como empleado. Por omisión, sí. */
+  includeServices?: boolean
   /** Inyectable para tests; por defecto el momento de armar la hoja. */
   now?: Date
 }): AttendanceSheetModel {
+  const includeServices = input.includeServices ?? true
+  const hasWorkdays = input.workdays != null
+  const both = includeServices && hasWorkdays
+  const sections: AttendanceSheetSection[] = []
+  let absencesCount = 0
+  let leavesCount = 0
+
+  if (includeServices) {
+    const services = buildServicesSection(input, both)
+    sections.push(services.section)
+    absencesCount = services.absencesCount
+    leavesCount = services.leavesCount
+  }
+  if (input.workdays) {
+    sections.push(
+      buildWorkdaysSection(
+        input.workdays,
+        both ? 'Total como coordinador' : 'Total del período',
+        both ? WORKDAYS_SECTION_HEADING : undefined,
+      ),
+    )
+  }
+
+  const totalMinutes = sections.reduce(
+    (total, section) => total + section.totalMinutes,
+    0,
+  )
+  const title = both
+    ? ATTENDANCE_AND_WORKDAYS_TITLE
+    : includeServices
+      ? ATTENDANCE_SHEET_TITLE
+      : WORKDAYS_SHEET_TITLE
+  const fullPeriod = `${formatPeriodDate(input.from)} al ${formatPeriodDate(input.to)}`
+  return {
+    title,
+    facts: [
+      { label: 'Nombre y Apellido', value: input.person.name },
+      { label: 'DNI', value: input.person.dni || '—' },
+      { label: 'Legajo', value: String(input.person.employeeNumber) },
+      { label: 'Rol', value: input.person.roleLabels.join(', ') || '—' },
+      { label: 'Período', value: fullPeriod },
+      ...(absencesCount > 0
+        ? [{ label: 'Inasistencias', value: String(absencesCount) }]
+        : []),
+      ...(leavesCount > 0
+        ? [{ label: 'Licencias', value: String(leavesCount) }]
+        : []),
+      ...(input.workdays
+        ? [{ label: 'Jornadas', value: String(input.workdays.length) }]
+        : []),
+    ],
+    sections,
+    grandTotal: both
+      ? {
+          label: 'Total general (empleado y coordinador)',
+          value: formatMinutes(totalMinutes),
+        }
+      : undefined,
+    totalMinutes,
+    signers: ['Responsable (administración)', input.person.signerLabel],
+    consentText: includeServices
+      ? ATTENDANCE_CONSENT_TEXT
+      : WORKDAYS_CONSENT_TEXT,
+    documentTitle: `${title} - ${input.person.name} - ${input.from} al ${input.to}`,
+  }
+}
+
+function buildServicesSection(
+  input: {
+    from: string
+    to: string
+    entries: AttendanceDetailEntry[]
+    leaves?: EmployeeLeave[]
+    now?: Date
+  },
+  withHeading: boolean,
+): {
+  section: AttendanceSheetSection
+  absencesCount: number
+  leavesCount: number
+} {
   const now = input.now ?? new Date()
   const lines = printableEntries(input.entries, now)
   const leaves = (input.leaves ?? []).filter(
@@ -283,7 +486,6 @@ export function buildAttendanceSheet(input: {
         b.type === 'leave' ? b.leave.id : b.entry.key,
       ),
   )
-  const hasSupervisions = lines.some((entry) => entry.kind === 'supervision')
   const totalMinutes = sumWorkedMinutes(lines)
   const absencesCount = lines.filter((entry) =>
     isAbsenceEntry(entry, now),
@@ -291,7 +493,6 @@ export function buildAttendanceSheet(input: {
 
   const columns: PrintColumn[] = [
     { key: 'date', header: 'Fecha' },
-    ...(hasSupervisions ? [{ key: 'kind', header: 'Tipo' }] : []),
     { key: 'client', header: 'Cliente', wrap: true },
     { key: 'site', header: 'Sede', wrap: true },
     { key: 'franja', header: 'Franja' },
@@ -310,7 +511,6 @@ export function buildAttendanceSheet(input: {
       return {
         key: `leave-${line.leave.id}`,
         date: formatPeriodDate(line.date),
-        kind: 'Licencia',
         // La observación va en la celda unida que arranca en Cliente y llega hasta Observaciones (`spans`).
         client: leaveSheetNote(line.leave),
         site: '',
@@ -330,7 +530,6 @@ export function buildAttendanceSheet(input: {
     return {
       key: entry.key,
       date: formatPeriodDate(entry.date),
-      kind: ENTRY_KIND_LABELS[entry.kind],
       client: entry.row.clientName,
       site: entry.row.siteName,
       franja: entryFranja(entry),
@@ -338,43 +537,29 @@ export function buildAttendanceSheet(input: {
       end: checkOut ? formatTime(checkOut) : '—',
       geo: geoPrintText(entry.row.checkInGeo, entry.row.checkOutGeo),
       // AJ2-15: la observación del turno (si tiene tildado «mostrar en la impresión») va junto a la novedad.
-      novelty:
-        entry.kind === 'service'
-          ? joinObservations(
-              absent ? absenceSheetNote(entry.row) : '',
-              entry.row.shiftObservation,
-            )
-          : '',
+      novelty: joinObservations(
+        absent ? absenceSheetNote(entry.row) : '',
+        entry.row.shiftObservation,
+      ),
       hours: worked != null ? formatMinutes(worked) : '—',
     }
   })
 
-  const fullPeriod = `${formatPeriodDate(input.from)} al ${formatPeriodDate(input.to)}`
   return {
-    title: ATTENDANCE_SHEET_TITLE,
-    facts: [
-      { label: 'Nombre y Apellido', value: input.person.name },
-      { label: 'DNI', value: input.person.dni || '—' },
-      { label: 'Legajo', value: String(input.person.employeeNumber) },
-      { label: 'Rol', value: input.person.roleLabels.join(', ') || '—' },
-      { label: 'Período', value: fullPeriod },
-      ...(absencesCount > 0
-        ? [{ label: 'Inasistencias', value: String(absencesCount) }]
-        : []),
-      ...(leaves.length > 0
-        ? [{ label: 'Licencias', value: String(leaves.length) }]
-        : []),
-    ],
-    columns,
-    rows,
-    spans,
-    footer: {
-      label: 'Total del período',
-      value: formatMinutes(totalMinutes),
+    absencesCount,
+    leavesCount: leaves.length,
+    section: {
+      key: 'services',
+      heading: withHeading ? SERVICES_SECTION_HEADING : undefined,
+      columns,
+      rows,
+      spans,
+      footer: {
+        label: withHeading ? 'Total como empleado' : 'Total del período',
+        value: formatMinutes(totalMinutes),
+      },
+      emptyText: 'No hay horas registradas en este período.',
+      totalMinutes,
     },
-    totalMinutes,
-    signers: ['Responsable (administración)', input.person.signerLabel],
-    consentText: ATTENDANCE_CONSENT_TEXT,
-    documentTitle: `Detalle de asistencia - ${input.person.name} - ${input.from} al ${input.to}`,
   }
 }

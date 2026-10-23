@@ -124,3 +124,23 @@ Ubicación validada, incidencias, insumos, solicitudes, exportar, campana: ver
 `kpis.test.ts`, `attention.test.ts` (fixtures con día y hora fijos) y
 `components/AttentionBlock.test.tsx`. El e2e del escenario del seed
 (DASH-008) y la prueba de rendimiento (DASH-009) son de qa-pruebas.
+
+## P24.4: jornadas de los coordinadores en el Resumen
+
+Especificación: `Docs/Plan_Maestro/modulos/P24_coordinacion_libre_y_jornada.md`
+(CJ-14, CJ-22, CJ-31, CJ-33).
+
+- **Bloque «Supervisiones de hoy»** (`SupervisionsTodayBlock`): ya no lista
+  supervisiones «asignadas» (la asignación manual desapareció). Muestra las
+  **jornadas abiertas** (en actividad, supervisando o en pausa) y las
+  **cerradas automáticamente** (CJ-31), cada una con el estado, el horario, las
+  horas netas y un enlace a la ficha del coordinador
+  (`/admin/empleados/:id?pestana=jornadas`). Las supervisiones ya no aparecen
+  acá: su tiempo es informativo (CJ-14) y se ve en «Supervisiones».
+- Sale de `v_supervisor_status` por `src/api/supervisorStatus.ts`; el cálculo
+  de qué entra en cada grupo es `coordinatorWorkdays.ts`
+  (`summarizeCoordinatorWorkdays`).
+- **Polling**: el estado de los coordinadores se refresca cada 60 s
+  (`useSupervisorStatusQuery`, ADR-012). El mapa, este bloque y «Asistencia de
+  hoy» comparten la misma consulta (misma clave de caché).
+- Tests: `components/SupervisionsTodayBlock.test.tsx`.

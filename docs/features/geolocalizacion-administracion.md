@@ -67,3 +67,36 @@ Los mensajes de error de estas RPC están fijados en `src/features/geo/errors.ts
 
 - El resumen de servicios por cliente imprimible trae desde `0056` (P22.4b) una columna «Validación» (`geoPrintText`): «Validado», «Fuera de zona (350 m)», «Validado (corregido)» o «Sin validar», para el inicio y el fin, sin coordenadas. Las filas de inasistencia llevan «—».
 - El radio terrestre de `haversineDistanceM` (6 371 008,8 m) difiere del de la base (6 371 000 m): lo señaló P22.2 y se corrige en `src/lib/geo`, no acá.
+
+## P24.4: coordinadores en el mapa del Resumen
+
+Especificación: `Docs/Plan_Maestro/modulos/P24_coordinacion_libre_y_jornada.md`
+(CJ-20 a CJ-22, CJ-33). Lo ven solo el dueño y los administradores (el mapa es
+de ADM-02 y la vista `v_supervisor_status` solo la leen ellos).
+
+- **Un punto por coordinador**, en la **última posición conocida** (la del
+  último evento de la jornada: inicio, pausa, reanudación, fin o inicio/fin de
+  supervisión). Forma de rombo y **un color por estado**: Supervisando
+  (azul principal), En actividad (celeste), En pausa (ámbar), Finalizada
+  (oscuro) y Sin iniciar (gris). La leyenda lista los cinco.
+- **Filtro «Coordinadores»** (interruptor, encendido por omisión): apaga los
+  puntos, la leyenda de estados y la lista «Coordinadores sin ubicación».
+- **Popup**: nombre, estado (con cliente y sede si está supervisando, o con el
+  motivo de la pausa), hora del último registro, horas de hoy, la marca
+  «Cerrada automáticamente» si corresponde y el enlace «Ver jornada»
+  (`/admin/empleados/:id?pestana=jornadas`; la pestaña «Jornadas» la agrega
+  P24.3).
+- **«Coordinadores sin ubicación»**: si el último evento no trajo posición (el
+  coordinador no dio consentimiento o no había señal), no hay punto y aparece
+  en una lista debajo del mapa con su estado; también quien no inició la
+  jornada.
+- **Sin doble punto**: las filas `kind = supervisor` de `v_presence_today` (la
+  supervisión en curso, de B1) **ya no se dibujan**; el coordinador sale solo de
+  `v_supervisor_status`. Por lo mismo, una supervisión en curso ya no activa el
+  círculo de su sede.
+- **Refresco**: 60 s para los coordinadores (ADR-012) y 45 s para los empleados
+  (B-39), más al volver a la pestaña.
+- Código: `src/api/supervisorStatus.ts`, `features/geo/coordinators.ts` (colores,
+  etiquetas, marcadores y lista), `presence.ts` (`buildPresenceMarkers` recibe
+  `coordinators` y `showCoordinators`) y `components/PresenceMap.tsx`. Tests:
+  `coordinators.test.ts`, `presence.test.ts`, `src/api/supervisorStatus.test.ts`.

@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { at, makeAssignment } from '@/features/dashboard/fixtures'
 import { buildAttendanceEntries } from '@/features/attendance/detailSheet'
+import { makeWorkday } from '@/features/geo/coordinatorFixtures'
 import { AttendanceDetailSheet } from './AttendanceDetailSheet'
 
 vi.mock('@/features/settings/queries', () => ({
@@ -22,20 +23,17 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-const entries = buildAttendanceEntries(
-  [
-    makeAssignment({
-      id: 'a1',
-      shiftDate: '2026-09-28',
-      clientName: 'Logística Central',
-      siteName: 'Munro',
-      checkInAt: at('08:01'),
-      checkOutAt: at('12:00'),
-      workedMinutes: 239,
-    }),
-  ],
-  [],
-)
+const entries = buildAttendanceEntries([
+  makeAssignment({
+    id: 'a1',
+    shiftDate: '2026-09-28',
+    clientName: 'Logística Central',
+    siteName: 'Munro',
+    checkInAt: at('08:01'),
+    checkOutAt: at('12:00'),
+    workedMinutes: 239,
+  }),
+])
 
 function renderSheet(onClose = vi.fn()) {
   render(
@@ -96,5 +94,54 @@ describe('AttendanceDetailSheet (AJ-06)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }))
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(2)
+  })
+
+  it('persona con dos roles: una sección por rol, cada una con su total, y la suma al final (CJ-34)', () => {
+    render(
+      <AttendanceDetailSheet
+        person={{
+          name: 'Sofía Ruiz',
+          employeeNumber: 7,
+          roleLabels: ['Empleado', 'Coordinador'],
+          signerLabel: 'Empleado y coordinador',
+        }}
+        from="2026-10-01"
+        to="2026-10-31"
+        entries={entries}
+        workdays={[
+          makeWorkday({
+            autoClosed: true,
+            autoCloseWarning: true,
+            workedMinutes: 480,
+          }),
+        ]}
+        issuedAt={new Date('2026-10-23T17:05:00Z')}
+        onClose={vi.fn()}
+      />,
+    )
+
+    expect(
+      screen.getByRole('heading', { name: 'Detalle de asistencia y jornadas' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Turnos como empleado' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Jornadas como coordinador' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Total como empleado')).toBeInTheDocument()
+    expect(screen.getByText('Total como coordinador')).toBeInTheDocument()
+    // 3 h 59 min como empleado + 8 h como coordinador.
+    expect(
+      screen.getByText('Total general (empleado y coordinador)'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('11 h 59 min')).toBeInTheDocument()
+    // La jornada marcada y la supervisión con su duración informativa.
+    expect(screen.getByText('Cerrada automáticamente')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Supervisión: Logística Central · Munro, 10:00 a 10:45/),
+    ).toBeInTheDocument()
+    // El pie de firmas existente.
+    expect(screen.getByText('Responsable (administración)')).toBeInTheDocument()
   })
 })

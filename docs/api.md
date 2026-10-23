@@ -528,6 +528,22 @@ a `SupervisionListRow`; `sites` suma `geofenceRadiusM` a `SiteDetail`,
 `sites`, `null` usa el general); `settings` suma `locationConsentUpdatedAt`.
 Los mensajes de error de las RPC nuevas están en `src/features/geo/errors.ts`.
 
+### `supervisorStatus` (`src/api/supervisorStatus.ts`, P24.4 — monitoreo de coordinadores)
+
+Solo lectura de la vista `v_supervisor_status` (dueño y administradores; una fila por
+coordinador activo, CJ-22 y CJ-33).
+
+| Función                   | Tabla / vista         | Devuelve                                                                                                                                                                                                                                                            |
+| ------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fetchSupervisorStatus()` | `v_supervisor_status` | `SupervisorStatusRow[]`: estado (`in_activity`, `supervising`, `paused`, `finished`, `not_started`), posición del último evento (nula = «Sin ubicación»), horas netas de hoy, cliente y sede si supervisa, motivo de la pausa, `autoClosed`, `corrected`, `onLeave` |
+
+Las coordenadas llegan por la vista (criterio de `0054`): no se pide
+`supervisor_workday_events`. `mapSupervisorStatusRow` descarta las filas con un
+estado desconocido. En `src/features/attendance/workdaysAdmin.ts` hay una lectura
+propia de `v_supervisor_workdays_admin` (`fetchSupervisorWorkdays`,
+`fetchWorkdaysByDate`) para la ficha imprimible y «Asistencia de hoy»; las pausas,
+supervisiones y eventos de la vista llegan como `jsonb` y se tipan ahí.
+
 ## Próximos dominios
 
 Cada paquete de F10 en adelante agrega su sección acá (`myDay`) siguiendo
