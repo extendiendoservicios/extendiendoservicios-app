@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { ShieldCheck, Star, UserPlus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { ShieldCheck, Star } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -14,42 +13,26 @@ import { DataTable, type DataTableColumnDef } from '@/components/DataTable'
 import { DatePicker } from '@/components/DatePicker'
 import { PersonCell } from '@/components/PersonCell'
 import { StarRating } from '@/components/StarRating'
-import { StatusBadge } from '@/components/status'
 import {
   formatDateOnly,
   localDateToIsoDate,
 } from '@/features/settings/dateOnly'
-import { formatTime } from '@/lib/format'
-import { useAuth } from '@/features/auth/AuthProvider'
+import { formatMinutes, formatTime } from '@/lib/format'
 import { useEmployeesQuery } from '@/features/employees/queries'
-import {
-  SUPERVISION_STATUS_LABELS,
-  type SupervisionListRow,
-  type SupervisionStatus,
-} from '@/api/supervisions'
+import type { SupervisionListRow } from '@/api/supervisions'
 import type { RatingListRow } from '@/api/ratings'
-import { canManageSupervisions } from '@/features/supervisions/permissions'
 import {
   useRatingsQuery,
   useSupervisionsAdminQuery,
 } from '@/features/supervisions/queries'
 import { formatShiftRange } from '@/features/shifts/openEnded'
+import { SupervisionStateBadges } from './UnclosedBadge'
 import { UpdatedAgo } from './UpdatedAgo'
 
 /** "YYYY-MM-DD" → `Date` para `DatePicker` (mismo criterio que `ShiftsDayList`/`AttendanceTodayList`). */
 function isoDateToDate(isoDate: string): Date {
   return new Date(`${isoDate}T00:00:00`)
 }
-
-const STATUS_FILTER_OPTIONS: {
-  value: SupervisionStatus | 'all'
-  label: string
-}[] = [
-  { value: 'all', label: 'Todos los estados' },
-  ...(
-    Object.entries(SUPERVISION_STATUS_LABELS) as [SupervisionStatus, string][]
-  ).map(([value, label]) => ({ value, label })),
-]
 
 interface Filters {
   employeeId: string
@@ -58,7 +41,6 @@ interface Filters {
   siteId: string
   dateFrom: string
   dateTo: string
-  status: SupervisionStatus | 'all'
 }
 
 const EMPTY_FILTERS: Filters = {
@@ -68,17 +50,21 @@ const EMPTY_FILTERS: Filters = {
   siteId: 'all',
   dateFrom: '',
   dateTo: '',
-  status: 'all',
 }
 
 /**
  * ADM-13 "Supervisiones · listado" (SUP-010, `05` línea 57): tabla de
- * supervisiones con filtros, pestaña "Calificaciones" con filas por
- * empleado calificado, y el botón "Asignar supervisión" (ADM-14).
+ * supervisiones con filtros y pestaña "Calificaciones" con una fila por
+ * calificación (CJ-11).
+ *
+ * P24.3 (coordinación libre): ya no hay asignación, así que se quitaron el
+ * botón "Asignar supervisión" y el filtro por estado (CJ-01, CJ-26). Un
+ * turno puede aparecer en varias filas, una por coordinador (CJ-05); la
+ * duración es informativa (CJ-14) y las que quedaron abiertas por el cierre
+ * automático llevan la marca «Sin cerrar» (CJ-31).
  *
  * Las dos pestañas comparten el mismo estado de filtros (empleado,
- * supervisor, cliente, sede, rango de fechas): el estado no se aplica a la
- * pestaña "Calificaciones" (las calificaciones no tienen "estado" propio).
+ * coordinador, cliente, sede, rango de fechas).
  * Las opciones de supervisor/cliente/sede del selector se arman con las
  * filas ya cargadas de las dos consultas (mismo criterio que
  * `AttendanceTodayList`); las de empleado, con la lista completa de
@@ -98,12 +84,6 @@ function SupervisionsAdminScreen({
   tab,
   onTabChange,
 }: SupervisionsAdminScreenProps) {
-  const auth = useAuth()
-  const canAssign = canManageSupervisions({
-    roles: auth.roles,
-    capabilities: auth.capabilities,
-  })
-
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
 
   const apiFilters = {
@@ -116,10 +96,7 @@ function SupervisionsAdminScreen({
     dateTo: filters.dateTo || undefined,
   }
 
-  const supervisionsQuery = useSupervisionsAdminQuery({
-    ...apiFilters,
-    status: filters.status === 'all' ? undefined : filters.status,
-  })
+  const supervisionsQuery = useSupervisionsAdminQuery(apiFilters)
   const ratingsQuery = useRatingsQuery(apiFilters, tab === 'calificaciones')
   const employeesQuery = useEmployeesQuery({ status: 'all' })
 
@@ -219,7 +196,10 @@ function SupervisionsAdminScreen({
       header: 'Estado',
       meta: { card: 'meta', cardLabel: 'Estado' },
       cell: ({ row }) => (
-        <StatusBadge domain="supervision" status={row.original.status} />
+        <SupervisionStateBadges
+          status={row.original.status}
+          unclosed={row.original.unclosed}
+        />
       ),
     },
     {
@@ -235,6 +215,15 @@ function SupervisionsAdminScreen({
       meta: { card: 'meta', cardLabel: 'Fin' },
       cell: ({ row }) =>
         row.original.checkOutAt ? formatTime(row.original.checkOutAt) : '—',
+    },
+    {
+      id: 'duration',
+      header: 'Duración',
+      meta: { card: 'meta', cardLabel: 'Duración' },
+      cell: ({ row }) =>
+        row.original.durationMinutes != null
+          ? formatMinutes(row.original.durationMinutes)
+          : '—',
     },
     {
       id: 'ratings',
@@ -312,11 +301,6 @@ function SupervisionsAdminScreen({
         {tab === 'calificaciones' && ratingsQuery.dataUpdatedAt > 0 && (
           <UpdatedAgo dataUpdatedAt={ratingsQuery.dataUpdatedAt} />
         )}
-        {canAssign && (
-          <Button asChild icon={UserPlus}>
-            <Link to="/admin/supervisiones/nueva">Asignar supervisión</Link>
-          </Button>
-        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -392,28 +376,6 @@ function SupervisionsAdminScreen({
             ))}
           </SelectContent>
         </Select>
-        {tab === 'supervisiones' && (
-          <Select
-            value={filters.status}
-            onValueChange={(value) =>
-              setFilters((prev) => ({
-                ...prev,
-                status: value as SupervisionStatus | 'all',
-              }))
-            }
-          >
-            <SelectTrigger aria-label="Filtrar por estado" className="w-52">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_FILTER_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-semibold text-text-2">Desde</span>
           <DatePicker

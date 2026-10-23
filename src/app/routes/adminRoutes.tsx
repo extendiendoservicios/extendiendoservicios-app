@@ -83,16 +83,8 @@ export const adminRoutes: RouteObject[] = [
     handle: {
       screenId: 'ADM-13',
       title: 'Supervisiones',
-      subtitle: 'Consultar supervisiones y calificaciones',
-    },
-  },
-  {
-    path: 'supervisiones/nueva',
-    ...lazyPage(() => import('@/pages/admin/AssignSupervisionPage')),
-    handle: {
-      screenId: 'ADM-14',
-      title: 'Asignar supervisión',
-      subtitle: 'Elegir turno y coordinador',
+      subtitle:
+        'Consultar las supervisiones que hicieron los coordinadores y sus calificaciones',
     },
   },
   {
@@ -101,7 +93,7 @@ export const adminRoutes: RouteObject[] = [
     handle: {
       screenId: 'ADM-15',
       title: 'Detalle de la supervisión',
-      subtitle: 'Ver y editar una supervisión',
+      subtitle: 'Ver, calificar o cancelar una supervisión',
     },
   },
   {

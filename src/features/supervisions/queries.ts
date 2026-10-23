@@ -3,6 +3,7 @@ import * as ratingsApi from '@/api/ratings'
 import type { RatingListFilters, RateEmployeeInput } from '@/api/ratings'
 import * as supervisionsApi from '@/api/supervisions'
 import type { SupervisionListFilters } from '@/api/supervisions'
+import * as prioritiesApi from '@/api/supervisorPriorities'
 
 /**
  * Hooks de TanStack Query de supervisiones y calificaciones (SUP-008):
@@ -26,6 +27,12 @@ export const supervisionsKeys = {
   detail: (id: string) => [...supervisionsKeys.all, 'detail', id] as const,
   supervisorCandidates: () =>
     [...supervisionsKeys.all, 'supervisorCandidates'] as const,
+}
+
+export const prioritiesKeys = {
+  all: ['supervisorPriorities'] as const,
+  list: () => [...prioritiesKeys.all, 'list'] as const,
+  siteOptions: () => [...prioritiesKeys.all, 'siteOptions'] as const,
 }
 
 export const ratingsKeys = {
@@ -72,7 +79,7 @@ export function useSupervisionDetailQuery(id: string | undefined) {
   })
 }
 
-/** ADM-14 (SUP-009): supervisores activos para el selector. */
+/** P24.3: coordinadores activos para el selector de «Coordinadores preferenciales». */
 export function useSupervisorCandidatesQuery() {
   return useQuery({
     queryKey: supervisionsKeys.supervisorCandidates(),
@@ -88,22 +95,7 @@ function invalidateSupervisionsAndRatings(
   void queryClient.invalidateQueries({ queryKey: ratingsKeys.all })
 }
 
-/** `assign_supervision` (ADM-14, SUP-009). */
-export function useAssignSupervisionMutation() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({
-      shiftId,
-      supervisorId,
-    }: {
-      shiftId: string
-      supervisorId: string
-    }) => supervisionsApi.assignSupervision(shiftId, supervisorId),
-    onSuccess: () => invalidateSupervisionsAndRatings(queryClient),
-  })
-}
-
-/** `cancel_supervision` (ADM-15, SUP-011). */
+/** `cancel_supervision` (ADM-15, SUP-011): cancela una supervisión en curso o «Sin cerrar». */
 export function useCancelSupervisionMutation() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -118,26 +110,54 @@ export function useCancelSupervisionMutation() {
   })
 }
 
-/** `mark_supervision_not_done` (ADM-15, SUP-011). */
-export function useMarkSupervisionNotDoneMutation() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({
-      supervisionId,
-      reason,
-    }: {
-      supervisionId: string
-      reason: string
-    }) => supervisionsApi.markSupervisionNotDone(supervisionId, reason),
-    onSuccess: () => invalidateSupervisionsAndRatings(queryClient),
-  })
-}
-
 /** `rate_employee` (ADM-15, edición administrativa, SUP-011). */
 export function useRateEmployeeMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: RateEmployeeInput) => ratingsApi.rateEmployee(input),
     onSuccess: () => invalidateSupervisionsAndRatings(queryClient),
+  })
+}
+
+// -------------------------------------------------------------------------
+// Coordinadores preferenciales (P24.3, CJ-03 y CJ-24)
+// -------------------------------------------------------------------------
+
+/** Prioridades vigentes de todos los coordinadores (ADM-16, ADM-21 y ADM-22). Sin polling: se editan en la misma pantalla. */
+export function useSupervisorPrioritiesQuery() {
+  return useQuery({
+    queryKey: prioritiesKeys.list(),
+    queryFn: prioritiesApi.fetchSupervisorPriorities,
+    staleTime: 60_000,
+  })
+}
+
+/** Sedes con el nombre de su cliente, para elegir una sede preferencial. */
+export function useSiteOptionsQuery(enabled = true) {
+  return useQuery({
+    queryKey: prioritiesKeys.siteOptions(),
+    queryFn: prioritiesApi.fetchSiteOptions,
+    staleTime: 5 * 60_000,
+    enabled,
+  })
+}
+
+/** `set_supervisor_priority`. */
+export function useSetSupervisorPriorityMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: prioritiesApi.setSupervisorPriority,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: prioritiesKeys.all }),
+  })
+}
+
+/** `remove_supervisor_priority`. */
+export function useRemoveSupervisorPriorityMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: prioritiesApi.removeSupervisorPriority,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: prioritiesKeys.all }),
   })
 }

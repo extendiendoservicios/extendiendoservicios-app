@@ -12,6 +12,7 @@ import { describeSiteRadius, effectiveSiteRadiusM } from '@/features/geo/radius'
 import { useSiteDetailQuery } from '@/features/sites/queries'
 import { ChangeSiteStatusDialog } from '@/features/sites/components/ChangeSiteStatusDialog'
 import { SiteInfo } from '@/features/sites/components/SiteInfo'
+import { PreferredSupervisorsBlock } from '@/features/supervisions/components/PreferredSupervisorsBlock'
 import { SiteTemplateSummary } from '@/features/checklists/components/SiteTemplateSummary'
 import {
   NewServiceButton,
@@ -162,6 +163,8 @@ export default function SiteDetailPage() {
         </h3>
         <SiteTemplateSummary clientId={site.clientId} siteId={site.id} />
       </div>
+
+      <PreferredSupervisorsBlock clientId={site.clientId} siteId={site.id} />
 
       <div className="rounded-lg border border-border bg-surface p-5">
         <h3 className="mb-3 text-[13px] font-semibold text-text">
