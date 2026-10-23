@@ -1,13 +1,14 @@
 // scripts/import-initial/cargar.ts — DATA-003, DATA-004
 //
 // Escribe en la base el plan ya validado. Orden: clientes, contactos, sedes, empleados y
-// supervisores con su usuario, habilitaciones, servicios, feriados y criterios (la planilla no
+// supervisores con su usuario, habilitaciones, clientes y sedes preferenciales de los
+// coordinadores, servicios, feriados y criterios (la planilla no
 // trae disponibilidad: cada persona la declara desde la aplicación).
 //
 // Cada paso identifica lo que ya existe por su clave natural, sin depender de ids:
 //   clientes -> CUIT (o razón social si no tiene CUIT) · contactos -> cliente + nombre ·
 //   sedes -> cliente + nombre · personas -> DNI · habilitaciones -> persona + cliente ·
-//   servicios -> cliente + sede + nombre · feriados -> fecha · criterios -> título.
+//   preferencias -> coordinador + cliente o sede (solo las vigentes) · servicios -> cliente + sede + nombre · feriados -> fecha · criterios -> título.
 // Sin `--resume`, si algo del archivo ya está en la base se corta ANTES de escribir (para no
 // duplicar ni pisar por accidente). Con `--resume` se omite lo existente y se carga lo que falta.
 //
@@ -137,6 +138,11 @@ interface FilaHabilitacion {
   employee_id: Id
   client_id: Id
 }
+interface FilaPreferencia {
+  supervisor_id: Id
+  client_id: Id | null
+  site_id: Id | null
+}
 interface FilaFeriado {
   holiday_date: string
 }
@@ -153,6 +159,7 @@ export interface Existentes {
   cuentas: Map<string, Id>
   servicios: FilaServicio[]
   habilitaciones: FilaHabilitacion[]
+  preferencias: FilaPreferencia[]
   feriados: FilaFeriado[]
   criterios: FilaCriterio[]
 }
@@ -204,6 +211,15 @@ export async function leerExistentes(
       'employee_id, client_id',
       'employee_id',
     ),
+    // Solo las vigentes: una prioridad dada de baja se puede volver a cargar.
+    preferencias: (
+      await leerTodo<FilaPreferencia & { removed_at: string | null }>(
+        admin,
+        'supervisor_priorities',
+        'id, supervisor_id, client_id, site_id, removed_at',
+        'id',
+      )
+    ).filter((p) => p.removed_at === null),
     feriados: await leerTodo<FilaFeriado>(
       admin,
       'holidays',
@@ -233,6 +249,7 @@ interface Indices {
   rolesPorPersona: Map<Id, Set<string>>
   servicioPorClave: Set<string>
   habilitacionPorClave: Set<string>
+  preferenciaPorClave: Set<string>
   feriadoPorFecha: Set<string>
   criterioPorTitulo: Set<string>
 }
@@ -282,6 +299,12 @@ function indexar(e: Existentes): Indices {
     ),
     habilitacionPorClave: new Set(
       e.habilitaciones.map((h) => `${h.employee_id}|${h.client_id}`),
+    ),
+    preferenciaPorClave: new Set(
+      e.preferencias.map(
+        (p) =>
+          `${p.supervisor_id}|${p.site_id ? `s:${p.site_id}` : `c:${p.client_id}`}`,
+      ),
     ),
     feriadoPorFecha: new Set(e.feriados.map((f) => f.holiday_date)),
     criterioPorTitulo: new Set(e.criterios.map((c) => claveNorm(c.title))),
@@ -683,6 +706,53 @@ export async function cargar(
           .insert({ employee_id: persona, client_id: cliente })
         if (error) fallo(paso, h.fila, traducirError(error))
         else paso.creados++
+      }
+    }
+
+    // ---- Clientes y sedes preferenciales de los coordinadores (P24.6) ----
+    // Se escribe directo en `supervisor_priorities` (igual que el resto de este importador, con la
+    // clave de servicio): la RPC `set_supervisor_priority` pide el rol de dueño o administrador en
+    // el JWT de quien llama y con la clave de servicio respondería FORBIDDEN. El resultado es el
+    // mismo que el de la RPC; la unicidad parcial de la tabla (23505) equivale a
+    // PRIORITY_ALREADY_EXISTS y se toma como ya cargado.
+    {
+      const paso = nuevoPaso(
+        'Clientes y sedes preferenciales de los coordinadores',
+      )
+      for (const p of plan.preferencias) {
+        const coordinador = personaUuid.get(p.dni)
+        const cliente = clienteUuid.get(p.clienteId)
+        const sede =
+          p.sedeNombre === null
+            ? null
+            : (sedeUuid.get(`${p.clienteId}|${claveNorm(p.sedeNombre)}`) ??
+              null)
+        if (!coordinador || !cliente || (p.sedeNombre !== null && !sede)) {
+          fallo(
+            paso,
+            p.fila,
+            `No se pudo cargar el coordinador, el cliente o la sede de "${p.descripcion}".`,
+          )
+          continue
+        }
+        const clave = `${coordinador}|${sede ? `s:${sede}` : `c:${cliente}`}`
+        if (ix.preferenciaPorClave.has(clave)) {
+          paso.omitidos++
+          continue
+        }
+        const { error } = await admin.from('supervisor_priorities').insert({
+          supervisor_id: coordinador,
+          client_id: sede ? null : cliente,
+          site_id: sede,
+        })
+        if (error?.code === '23505') {
+          paso.omitidos++
+        } else if (error) {
+          fallo(paso, p.fila, traducirError(error))
+        } else {
+          ix.preferenciaPorClave.add(clave)
+          paso.creados++
+        }
       }
     }
 

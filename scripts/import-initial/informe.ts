@@ -31,6 +31,7 @@ export interface Cantidades {
   conAmbosRoles: number
   servicios: number
   habilitaciones: number
+  preferencias: number
   feriados: number
   criterios: number
 }
@@ -113,6 +114,7 @@ export function resumir(resultado: ResultadoValidacion): Resumen {
       conAmbosRoles: plan.personas.filter((p) => p.roles.length === 2).length,
       servicios: plan.servicios.length,
       habilitaciones: plan.habilitaciones.length,
+      preferencias: plan.preferencias.length,
       feriados: plan.feriados.length,
       criterios: plan.criterios.length,
     },
@@ -177,6 +179,9 @@ export function informeTexto(
   )
   lineas.push(`Servicios: ${c.servicios}`)
   lineas.push(`Habilitaciones: ${c.habilitaciones}`)
+  lineas.push(
+    `Clientes y sedes preferenciales de coordinadores: ${c.preferencias}`,
+  )
   lineas.push(`Feriados: ${c.feriados}`)
   lineas.push(`Criterios: ${c.criterios}`)
 
@@ -335,6 +340,10 @@ export async function escribirInformeValidacion(
     {
       dato: 'Habilitaciones a cargar',
       valor: resumen.cantidades.habilitaciones,
+    },
+    {
+      dato: 'Clientes y sedes preferenciales a cargar',
+      valor: resumen.cantidades.preferencias,
     },
     { dato: 'Feriados a cargar', valor: resumen.cantidades.feriados },
     { dato: 'Criterios a cargar', valor: resumen.cantidades.criterios },
