@@ -18,8 +18,8 @@ const STATE_RANK: Record<TodayShift['displayState'], number> = {
  * (`v_supervisor_today.display_state` solo mira `shifts.status`, que sigue en
  * `scheduled` aunque el turno ya haya pasado). Usa los instantes `startsAt` y
  * `endsAt` (ya resuelven los turnos que cruzan medianoche):
- * - terminado si el turno está completado o su fin ya pasó;
- * - en curso si está en curso o su inicio ya pasó (sin fin: «A terminar», sigue
+ * - terminado si el turno estÃ¡ completado o su fin ya pasÃ³;
+ * - en curso si estÃ¡ en curso o su inicio ya pasÃ³ (sin fin: Â«A terminarÂ», sigue
  *   en curso hasta que se complete);
  * - por empezar en cualquier otro caso.
  * `nowMs` es inyectable para los tests; en la pantalla es la hora del dispositivo,
@@ -39,7 +39,7 @@ export function effectiveShiftState(
   return 'pending'
 }
 
-/** En cada bloque: primero los turnos en curso, después los que faltan y al final los terminados (CJ-25). */
+/** En cada bloque: primero los turnos en curso, despuÃ©s los que faltan y al final los terminados (CJ-25). */
 export function sortShifts(
   shifts: TodayShift[],
   nowMs: number = Date.now(),

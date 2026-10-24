@@ -32,7 +32,7 @@ afterEach(() => {
 })
 
 describe('TodayShiftsList', () => {
-  it('a las 20:30 los turnos de la mañana figuran «Terminado» y van al final', () => {
+  it('a las 20:30 los turnos de la maÃ±ana figuran Â«TerminadoÂ» y van al final', () => {
     mockShifts([
       makeTodayShift({
         shiftId: 'manana',

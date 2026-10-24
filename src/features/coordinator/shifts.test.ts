@@ -181,7 +181,7 @@ describe('effectiveShiftState (CJ-25, estado por hora)', () => {
   // 23/10/2026 20:30 en Argentina (UTC-3).
   const now = Date.parse('2026-10-23T23:30:00Z')
 
-  it('un turno programado cuyo fin ya pas� figura �finished�', () => {
+  it('un turno programado cuyo fin ya pasó figura «finished»', () => {
     const shift = makeTodayShift({
       displayState: 'pending',
       startsAt: '2026-10-23T09:00:00Z',
@@ -190,7 +190,7 @@ describe('effectiveShiftState (CJ-25, estado por hora)', () => {
     expect(effectiveShiftState(shift, now)).toBe('finished')
   })
 
-  it('un turno que todav�a no empez� figura �pending�', () => {
+  it('un turno que todavía no empezó figura «pending»', () => {
     const shift = makeTodayShift({
       displayState: 'pending',
       startsAt: '2026-10-24T01:00:00Z',
@@ -199,7 +199,7 @@ describe('effectiveShiftState (CJ-25, estado por hora)', () => {
     expect(effectiveShiftState(shift, now)).toBe('pending')
   })
 
-  it('un turno entre su inicio y su fin figura �in_progress�', () => {
+  it('un turno entre su inicio y su fin figura «in_progress»', () => {
     const shift = makeTodayShift({
       displayState: 'pending',
       startsAt: '2026-10-23T22:00:00Z',
@@ -212,7 +212,7 @@ describe('effectiveShiftState (CJ-25, estado por hora)', () => {
     const shift = makeTodayShift({
       displayState: 'pending',
       startsAt: '2026-10-23T23:00:00Z', // 20:00
-      endsAt: '2026-10-24T05:00:00Z', // 02:00 del d�a siguiente
+      endsAt: '2026-10-24T05:00:00Z', // 02:00 del día siguiente
     })
     expect(effectiveShiftState(shift, Date.parse('2026-10-24T03:00:00Z'))).toBe(
       'in_progress',
@@ -222,7 +222,7 @@ describe('effectiveShiftState (CJ-25, estado por hora)', () => {
     )
   })
 
-  it('�A terminar� (sin fin) no termina por hora: solo si est� completado', () => {
+  it('«A terminar» (sin fin) no termina por hora: solo si está completado', () => {
     const open = makeTodayShift({
       displayState: 'pending',
       openEnded: true,
@@ -235,7 +235,7 @@ describe('effectiveShiftState (CJ-25, estado por hora)', () => {
     ).toBe('finished')
   })
 
-  it('un turno completado queda �finished� aunque su fin sea futuro', () => {
+  it('un turno completado queda «finished» aunque su fin sea futuro', () => {
     const shift = makeTodayShift({
       displayState: 'finished',
       endsAt: '2026-10-24T03:00:00Z',
@@ -245,7 +245,7 @@ describe('effectiveShiftState (CJ-25, estado por hora)', () => {
 })
 
 describe('sortShifts con la hora (CJ-25)', () => {
-  it('ordena por el estado seg�n la hora aunque todos vengan �pending�', () => {
+  it('ordena por el estado según la hora aunque todos vengan «pending»', () => {
     const now = Date.parse('2026-10-23T23:30:00Z')
     const sorted = sortShifts(
       [
