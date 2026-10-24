@@ -39,6 +39,9 @@ import {
   useEmployeeRatingsSummaryQuery,
 } from '@/features/employees/queries'
 import { RatingSummary } from '@/features/employees/components/RatingSummary'
+import { SupervisorPrioritiesTab } from '@/features/supervisions/components/SupervisorPrioritiesTab'
+import { canManageSupervisions } from '@/features/supervisions/permissions'
+import { SupervisorWorkdaysTab } from '@/features/workdays/components/SupervisorWorkdaysTab'
 
 const TABS = [
   'datos',
@@ -48,6 +51,8 @@ const TABS = [
   'proximos-turnos',
   'asistencia',
   'calificaciones',
+  'preferenciales',
+  'jornadas',
 ] as const
 type EmployeeDetailTab = (typeof TABS)[number]
 
@@ -57,7 +62,9 @@ function isEmployeeDetailTab(value: string | null): value is EmployeeDetailTab {
 
 /**
  * ADM-17 "Empleado · ficha" (`05` línea 66): cabecera (foto, nombre,
- * legajo, roles, estado efectivo) y las siete pestañas. Datos, Habilitaciones
+ * legajo, roles, estado efectivo) y las siete pestañas (más dos para quien
+ * tiene el rol coordinador, P24.3: «Clientes y sedes preferenciales» y
+ * «Jornadas»). Datos, Habilitaciones
  * (EMP-006), Disponibilidad (EMP-007) y Licencias (EMP-008) están completas;
  * Próximos turnos (EMP-009, conectada en AJ3-04) lista los turnos con
  * asignación vigente de los próximos 30 días (`EmployeeUpcomingShiftsTab`).
@@ -122,6 +129,13 @@ export default function EmployeeDetailPage() {
   const isTerminated = employee.effectiveStatus === 'terminated'
   const canEdit = canEditEmployee(actor)
   const canManageAccount = canManageEmployeeAccounts(actor)
+  const isSupervisor = employee.roles.includes('supervisor')
+  // Las pestañas de coordinador no existen para el resto: un enlace viejo vuelve a «Datos».
+  const visibleTab: EmployeeDetailTab =
+    !isSupervisor &&
+    (activeTab === 'preferenciales' || activeTab === 'jornadas')
+      ? 'datos'
+      : activeTab
 
   return (
     <div className="flex flex-col gap-4">
@@ -196,7 +210,7 @@ export default function EmployeeDetailPage() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={handleTabChange}>
+      <Tabs value={visibleTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="datos">Datos</TabsTrigger>
           <TabsTrigger value="habilitaciones">Habilitaciones</TabsTrigger>
@@ -205,6 +219,14 @@ export default function EmployeeDetailPage() {
           <TabsTrigger value="proximos-turnos">Próximos turnos</TabsTrigger>
           <TabsTrigger value="asistencia">Asistencia</TabsTrigger>
           <TabsTrigger value="calificaciones">Calificaciones</TabsTrigger>
+          {isSupervisor && (
+            <>
+              <TabsTrigger value="preferenciales">
+                Clientes y sedes preferenciales
+              </TabsTrigger>
+              <TabsTrigger value="jornadas">Jornadas</TabsTrigger>
+            </>
+          )}
         </TabsList>
 
         <TabsContent value="datos" className="pt-3">
@@ -262,6 +284,24 @@ export default function EmployeeDetailPage() {
         <TabsContent value="calificaciones" className="pt-3">
           <EmployeeRatingsTab profileId={employee.profileId} />
         </TabsContent>
+
+        {isSupervisor && (
+          <>
+            <TabsContent value="preferenciales" className="pt-3">
+              <SupervisorPrioritiesTab
+                profileId={employee.profileId}
+                canEdit={canManageSupervisions(actor)}
+              />
+            </TabsContent>
+
+            <TabsContent value="jornadas" className="pt-3">
+              <SupervisorWorkdaysTab
+                profileId={employee.profileId}
+                name={`${employee.firstName} ${employee.lastName}`}
+              />
+            </TabsContent>
+          </>
+        )}
       </Tabs>
 
       <ResetEmployeePasswordDialog

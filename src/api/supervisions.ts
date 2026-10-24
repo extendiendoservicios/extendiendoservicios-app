@@ -7,23 +7,27 @@ import { mapBoardAttendanceGeo, type BoardAttendanceGeo } from './attendance'
 /**
  * `src/api/supervisions.ts` (SUP-008, mismo patrón que `src/api/assignments.ts`
  * -- ver `src/api/README.md`): listado y detalle de `v_supervisions_admin`
- * para ADM-13 y ADM-15, más las tres RPC administrativas de
- * `0029_rpc_supervisions.sql` que usa esta capa (`06_API.md` sección 12):
- * `assign_supervision`, `cancel_supervision`, `mark_supervision_not_done`.
- * `supervision_check_in`/`supervision_check_out`/`complete_supervision`
- * son "S (propia)" -- las usa la app del supervisor (`src/api/mySupervisions.ts`,
- * de front-movil), no esta capa.
+ * para ADM-13 y ADM-15, más la única RPC administrativa que queda,
+ * `cancel_supervision` (`06_API.md` sección 12).
  *
- * Las tres RPC ya traen `hint` en mayúsculas y `message` en voseo
- * (`0029_rpc_supervisions.sql`), así que `fromPostgrestError` las deja pasar
- * tal cual, sin un `mapWriteError` propio (mismo criterio que `shifts.ts`/
- * `assignments.ts`).
+ * P24.3 (coordinación libre, CJ-01 y CJ-26): desaparece la asignación
+ * manual. `assign_supervision` y `mark_supervision_not_done` están revocadas
+ * en el servidor (dan 42501) y se quitaron de acá; el coordinador elige y
+ * toma el turno él mismo (`take_supervision`, de la app del coordinador).
+ * Un turno puede tener varias supervisiones (CJ-05) y la duración de cada
+ * una es informativa (CJ-14).
+ *
+ * `cancel_supervision` ya trae `hint` en mayúsculas y `message` en voseo, así
+ * que `fromPostgrestError` lo deja pasar tal cual.
  */
 
 export type SupervisionStatus =
   Database['public']['Enums']['supervision_status']
 
-/** Las cinco etiquetas de `04_Modelo_de_Datos.md` sección 3. */
+/**
+ * Las cinco etiquetas de `04_Modelo_de_Datos.md` sección 3. `assigned` y
+ * `not_done` ya no se generan (CJ-26), pero quedan en el historial.
+ */
 export const SUPERVISION_STATUS_LABELS: Record<SupervisionStatus, string> = {
   assigned: 'Asignada',
   in_progress: 'En curso',
@@ -31,9 +35,6 @@ export const SUPERVISION_STATUS_LABELS: Record<SupervisionStatus, string> = {
   not_done: 'No realizada',
   cancelled: 'Cancelada',
 }
-
-/** La única advertencia de `assign_supervision` (P15.0, no bloquea). */
-export type SupervisionWarning = 'SUPERVISES_OWN_SHIFT'
 
 // -------------------------------------------------------------------------
 // 1. Listado administrativo (ADM-13, `v_supervisions_admin`)
@@ -78,6 +79,15 @@ export interface SupervisionListRow {
   plannedMinutes: number | null
   /** Minutos trabajados, de inicio a fin real; `null` sin fin registrado (AJ-06). */
   workedMinutes: number | null
+  // Opcionales a propósito: las fixtures de otros dominios arman filas sin estos campos.
+  /** P24.1: jornada del coordinador a la que pertenece; `null` en las anteriores a la coordinación libre. */
+  workdayId?: string | null
+  /** CJ-14: duración informativa (no suma horas); cuenta hasta ahora si sigue abierta. */
+  durationMinutes?: number | null
+  /** CJ-31: «Sin cerrar», la jornada se cerró sola con la supervisión abierta. */
+  unclosed?: boolean
+  /** CJ-31: la jornada de esta supervisión se cerró automáticamente. */
+  workdayAutoClosed?: boolean
   /** B1 (B-07): validación por ubicación del fichaje de inicio y de fin; `null` si no hay fichaje. `recordId` es el de `supervision_attendance`. */
   checkInGeo?: BoardAttendanceGeo | null
   checkOutGeo?: BoardAttendanceGeo | null
@@ -110,6 +120,10 @@ interface SupervisionListRawRow {
   assigned_employees_count: number
   planned_minutes: number | null
   worked_minutes: number | null
+  workday_id: string | null
+  duration_minutes: number | null
+  unclosed: boolean | null
+  workday_auto_closed: boolean | null
   check_in_record_id: string | null
   check_in_geo_status: GeoStatus | null
   check_in_geo_reason: GeoUnvalidatedReason | null
@@ -129,7 +143,7 @@ interface SupervisionListRawRow {
 }
 
 const SUPERVISION_LIST_SELECT =
-  'id, shift_id, shift_date, client_id, client_legal_name, site_id, site_name, start_time, end_time, supervisor_id, supervisor_first_name, supervisor_last_name, status, assigned_at, check_in_at, check_out_at, general_notes, cancel_reason, not_done_reason, criteria_snapshot, ratings_count, ratings_avg, assigned_employees_count, planned_minutes, worked_minutes, shift_open_ended, check_in_record_id, check_in_geo_status, check_in_geo_reason, check_in_distance_m, check_in_geofence_radius_m, check_in_accuracy_m, check_in_outside_reason, check_in_geo_overridden, check_out_record_id, check_out_geo_status, check_out_geo_reason, check_out_distance_m, check_out_geofence_radius_m, check_out_accuracy_m, check_out_outside_reason, check_out_geo_overridden'
+  'id, shift_id, shift_date, client_id, client_legal_name, site_id, site_name, start_time, end_time, supervisor_id, supervisor_first_name, supervisor_last_name, status, assigned_at, check_in_at, check_out_at, general_notes, cancel_reason, not_done_reason, criteria_snapshot, ratings_count, ratings_avg, assigned_employees_count, planned_minutes, worked_minutes, shift_open_ended, check_in_record_id, check_in_geo_status, check_in_geo_reason, check_in_distance_m, check_in_geofence_radius_m, check_in_accuracy_m, check_in_outside_reason, check_in_geo_overridden, check_out_record_id, check_out_geo_status, check_out_geo_reason, check_out_distance_m, check_out_geofence_radius_m, check_out_accuracy_m, check_out_outside_reason, check_out_geo_overridden, workday_id, duration_minutes, unclosed, workday_auto_closed'
 
 function mapSupervisionListRow(row: SupervisionListRawRow): SupervisionListRow {
   return {
@@ -159,6 +173,10 @@ function mapSupervisionListRow(row: SupervisionListRawRow): SupervisionListRow {
     assignedEmployeesCount: row.assigned_employees_count,
     plannedMinutes: row.planned_minutes,
     workedMinutes: row.worked_minutes,
+    workdayId: row.workday_id,
+    durationMinutes: row.duration_minutes,
+    unclosed: row.unclosed ?? false,
+    workdayAutoClosed: row.workday_auto_closed ?? false,
     checkInGeo: mapBoardAttendanceGeo(
       row.check_in_record_id,
       row.check_in_geo_status,
@@ -196,7 +214,6 @@ export interface SupervisionListFilters {
   siteId?: string
   dateFrom?: string
   dateTo?: string
-  status?: SupervisionStatus
 }
 
 /** Ids de supervisión donde ese empleado tiene una calificación cargada (filtro "empleado" de ADM-13). */
@@ -257,9 +274,6 @@ export async function fetchSupervisionsAdmin(
   }
   if (filters.siteId) {
     query = query.eq('site_id', filters.siteId)
-  }
-  if (filters.status) {
-    query = query.eq('status', filters.status)
   }
   if (filters.dateFrom) {
     query = query.gte('shift_date', filters.dateFrom)
@@ -409,7 +423,7 @@ export async function fetchSupervisionDetail(
 }
 
 // -------------------------------------------------------------------------
-// 3. Candidatos a supervisor (ADM-14)
+// 3. Candidatos a coordinador (prioridades de ADM-16, ADM-21 y ADM-22)
 // -------------------------------------------------------------------------
 
 export interface SupervisorCandidate {
@@ -419,15 +433,11 @@ export interface SupervisorCandidate {
 }
 
 /**
- * Supervisores activos para ADM-14 (`05` línea 58: "supervisor (personas con
- * rol supervisor activas)"). Mismos tres chequeos que hace
- * `assign_supervision` del lado del servidor (`0029`: perfil activo y sin
- * baja lógica, fila de `employees` activa y sin baja lógica) para no ofrecer
- * a alguien que la RPC va a rechazar con `SUPERVISOR_ROLE_REQUIRED` -- el
- * estado GUARDADO (`status`), no `effective_status`: un supervisor de
- * licencia sigue pudiendo supervisar (la licencia es una regla de
- * disponibilidad de EMPLEADO, `assign_employee`, no de supervisor), mismo
- * criterio que `fetchAssignCandidates` en `src/api/assignments.ts`.
+ * Coordinadores activos (personas con rol supervisor, perfil activo y sin
+ * baja lógica) para el selector de «Coordinadores preferenciales» de la
+ * ficha del cliente y de la sede. Mismos chequeos que hace
+ * `set_supervisor_priority` del lado del servidor (`SUPERVISOR_ROLE_REQUIRED`).
+ * Se usa el estado GUARDADO (`status`), no `effective_status`.
  */
 export async function fetchSupervisorCandidates(): Promise<
   SupervisorCandidate[]
@@ -443,7 +453,7 @@ export async function fetchSupervisorCandidates(): Promise<
   if (error) {
     throw fromPostgrestError(error)
   }
-  // ADM-14 muestra "Nombre Apellido": se ordena por ese mismo texto, con las
+  // El selector muestra "Nombre Apellido": se ordena por ese mismo texto, con las
   // reglas del español (acentos y ñ), y no por apellido en la base.
   return (data ?? [])
     .map((row) => ({
@@ -496,61 +506,12 @@ function mapSupervisionRow(row: {
   }
 }
 
-export interface AssignSupervisionResult {
-  supervision: SupervisionRow
-  warnings: SupervisionWarning[]
-}
-
-/**
- * Asigna un supervisor a un turno (ADM-14, `06` sección 12:
- * `assign_supervision`). Devuelve la supervisión creada y las advertencias
- * (no bloquean, P15.0): `SUPERVISES_OWN_SHIFT` si el supervisor también está
- * asignado como empleado en ese mismo turno.
- */
-export async function assignSupervision(
-  shiftId: string,
-  supervisorId: string,
-): Promise<AssignSupervisionResult> {
-  const { data, error } = await supabase.rpc('assign_supervision', {
-    p_shift_id: shiftId,
-    p_supervisor_id: supervisorId,
-  })
-
-  if (error) {
-    throw fromPostgrestError(error)
-  }
-  const payload = data as {
-    supervision: Parameters<typeof mapSupervisionRow>[0]
-    warnings: SupervisionWarning[]
-  }
-  return {
-    supervision: mapSupervisionRow(payload.supervision),
-    warnings: payload.warnings ?? [],
-  }
-}
-
-/** Cancela una supervisión `assigned`/`in_progress` con motivo obligatorio (ADM-15). */
+/** Cancela una supervisión `in_progress` (también la «Sin cerrar», CJ-31) con motivo obligatorio (ADM-15). */
 export async function cancelSupervision(
   supervisionId: string,
   reason: string,
 ): Promise<SupervisionRow> {
   const { data, error } = await supabase.rpc('cancel_supervision', {
-    p_supervision_id: supervisionId,
-    p_reason: reason,
-  })
-
-  if (error) {
-    throw fromPostgrestError(error)
-  }
-  return mapSupervisionRow(data)
-}
-
-/** Marca una supervisión `assigned`/`in_progress` como no realizada, con motivo obligatorio (ADM-15). */
-export async function markSupervisionNotDone(
-  supervisionId: string,
-  reason: string,
-): Promise<SupervisionRow> {
-  const { data, error } = await supabase.rpc('mark_supervision_not_done', {
     p_supervision_id: supervisionId,
     p_reason: reason,
   })

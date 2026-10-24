@@ -17,6 +17,7 @@ import { BankDetailsCard } from '@/features/bank/components/BankDetailsCard'
 import { useClientBankDetailsQuery } from '@/features/bank/queries'
 import { ClientServiceSummaryTab } from '@/features/clients/components/ClientServiceSummaryTab'
 import { ClientContactsPanel } from '@/features/clients/components/ClientContactsPanel'
+import { PreferredSupervisorsBlock } from '@/features/supervisions/components/PreferredSupervisorsBlock'
 import { ChangeClientStatusDialog } from '@/features/clients/components/ChangeClientStatusDialog'
 import { ClientTemplateSummary } from '@/features/checklists/components/ClientTemplateSummary'
 import {
@@ -33,7 +34,8 @@ function isClientDetailTab(value: string | null): value is ClientDetailTab {
 
 /**
  * ADM-21 "Cliente · detalle" (CLIENT-004, `05` línea 75): cabecera con
- * estado y pestañas Sedes, Contactos, Servicios y Tareas (enlace a ADM-26).
+ * estado y pestañas Sedes, Contactos, Servicios y Tareas (enlace a ADM-26),
+ * más el bloque «Coordinadores preferenciales» (P24.3, CJ-03).
  *
  * El alta y el detalle de sede (ADM-22, ADM-23) son de SITE-001 a SITE-003
  * (P08.4, `src/pages/admin/SiteDetailPage.tsx`/`SiteFormPage.tsx`): la
@@ -146,6 +148,8 @@ export default function ClientDetailPage() {
         details={bankQuery.data}
         isLoading={bankQuery.isLoading}
       />
+
+      <PreferredSupervisorsBlock clientId={client.id} />
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>

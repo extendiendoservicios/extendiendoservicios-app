@@ -1,7 +1,7 @@
 import type { AdminCapability, Role } from '@/api/users'
 
 /**
- * Permisos de ADM-13, ADM-14, ADM-15, y de la sección "Supervisiones" de
+ * Permisos de ADM-13, ADM-15, y de la sección "Supervisiones" de
  * ADM-06 y la pestaña "Calificaciones" de ADM-17 (SUP-008, `06_API.md`
  * secciones 12 y 13). Sin React, mismo criterio que
  * `src/features/planning/permissions.ts`. El servidor vuelve a verificar
@@ -22,26 +22,16 @@ function isAdmin(actor: SupervisionsScreenActor): boolean {
 }
 
 /**
- * `assign_supervision`/`cancel_supervision` (`06` sección 12: "O; A +
- * manage_supervisions"). También decide si se ve el botón "Asignar
- * supervisión" en ADM-06 y ADM-13.
+ * `cancel_supervision`, `set_supervisor_priority` y `remove_supervisor_priority`
+ * (`06` sección 12 y P24.1: "O; A + manage_supervisions"). Decide si se ven
+ * «Cancelar» en ADM-15 y «Quitar» en el turno, y las preferencias de
+ * coordinadores en las fichas del coordinador, del cliente y de la sede.
  */
 export function canManageSupervisions(actor: SupervisionsScreenActor): boolean {
   return (
     isOwner(actor) ||
     (isAdmin(actor) && actor.capabilities.includes('manage_supervisions'))
   )
-}
-
-/**
- * `mark_supervision_not_done` (`06` sección 12: "S (propia); O, A" -- sin
- * capacidad adicional para el administrador, a diferencia de
- * `canManageSupervisions`; `0029`: "no exige ninguna capacidad para O/A").
- */
-export function canMarkSupervisionNotDone(
-  actor: SupervisionsScreenActor,
-): boolean {
-  return isOwner(actor) || isAdmin(actor)
 }
 
 /**

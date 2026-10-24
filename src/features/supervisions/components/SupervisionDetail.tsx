@@ -1,19 +1,17 @@
 import { useState } from 'react'
-import { Ban, ClipboardX, ShieldCheck, Star } from 'lucide-react'
+import { Ban, ShieldCheck, Star, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { PersonCell } from '@/components/PersonCell'
 import { StarRating } from '@/components/StarRating'
-import { StatusBadge } from '@/components/status'
 import { formatDateOnly } from '@/features/settings/dateOnly'
-import { formatShortDate, formatTime } from '@/lib/format'
+import { formatMinutes, formatShortDate, formatTime } from '@/lib/format'
 import { useAuth } from '@/features/auth/AuthProvider'
 import type { SupervisionEmployeeRating } from '@/api/supervisions'
 import {
   canEditRatingsAlways,
   canManageSupervisions,
-  canMarkSupervisionNotDone,
 } from '@/features/supervisions/permissions'
 import { useSupervisionDetailQuery } from '@/features/supervisions/queries'
 import { RecordGeoDetail } from '@/features/geo/components/RecordGeoDetail'
@@ -22,21 +20,23 @@ import { ShiftMediaSection } from '@/features/media/components/ShiftMediaSection
 import { useShiftMediaBySupervisionQuery } from '@/features/media/queries'
 import { CancelSupervisionDialog } from './CancelSupervisionDialog'
 import { formatShiftRange } from '@/features/shifts/openEnded'
-import { MarkSupervisionNotDoneDialog } from './MarkSupervisionNotDoneDialog'
 import { RateEmployeeDialog } from './RateEmployeeDialog'
+import { SupervisionStateBadges } from './UnclosedBadge'
 
-/** `cancel_supervision`/`mark_supervision_not_done` (`0029`): solo `assigned`/`in_progress`. */
-const EDITABLE_STATUSES = new Set(['assigned', 'in_progress'])
+/** `cancel_supervision`: solo una supervisión en curso (también la «Sin cerrar», CJ-31). */
+const EDITABLE_STATUSES = new Set(['in_progress'])
 // `rate_employee` solo acepta supervisiones en curso o completadas
 // (SUPERVISION_NOT_ACTIVE): en las demás no se ofrece calificar.
 const RATEABLE_STATUSES = new Set(['in_progress', 'completed'])
 
 /**
  * ADM-15 "Supervisión · detalle" (SUP-011, `05` línea 59): cabecera (turno,
- * sede, supervisor, estado, inicio y fin), criterios usados, nota general y
- * calificaciones por empleado (estrellas, comentario, quién y cuándo editó).
- * `cancel_supervision`/`mark_supervision_not_done` (motivo obligatorio) y
- * `rate_employee` (edición administrativa, capacidad `edit_ratings`).
+ * sede, coordinador, estado, inicio, fin y duración), criterios usados, nota
+ * general y calificaciones por empleado (estrellas, comentario, quién y cuándo
+ * editó). La duración es informativa (CJ-14) y la marca «Sin cerrar» avisa
+ * que el cierre automático dejó la supervisión abierta (CJ-31).
+ * `cancel_supervision` (motivo obligatorio) y `rate_employee` (edición
+ * administrativa, capacidad `edit_ratings`).
  * `SupervisionDetailPage` decide si esto va en un drawer o en una página
  * completa, mismo criterio que `ShiftDetail`/`ShiftDetailPage`.
  */
@@ -48,15 +48,12 @@ function SupervisionDetail({ supervisionId }: SupervisionDetailProps) {
   const auth = useAuth()
   const actor = { roles: auth.roles, capabilities: auth.capabilities }
   const canManage = canManageSupervisions(actor)
-  // `mark_supervision_not_done` no exige `manage_supervisions` (`06` sección 12).
-  const canMarkNotDone = canMarkSupervisionNotDone(actor)
   const canEditRatings = canEditRatingsAlways(actor)
 
   const detailQuery = useSupervisionDetailQuery(supervisionId)
   // Módulo H: lo que subió el supervisor en esta supervisión.
   const mediaQuery = useShiftMediaBySupervisionQuery(supervisionId)
   const [isCancelOpen, setCancelOpen] = useState(false)
-  const [isNotDoneOpen, setNotDoneOpen] = useState(false)
   const [rateTarget, setRateTarget] =
     useState<SupervisionEmployeeRating | null>(null)
 
@@ -92,7 +89,10 @@ function SupervisionDetail({ supervisionId }: SupervisionDetailProps) {
           <h2 className="text-[15px] font-semibold text-text">
             {detail.clientName} · {detail.siteName}
           </h2>
-          <StatusBadge domain="supervision" status={detail.status} />
+          <SupervisionStateBadges
+            status={detail.status}
+            unclosed={detail.unclosed}
+          />
         </div>
         <p className="text-[12.5px] text-text-3 capitalize">
           {formatDateOnly(detail.shiftDate)} ·{' '}
@@ -119,6 +119,16 @@ function SupervisionDetail({ supervisionId }: SupervisionDetailProps) {
               Fin
             </dt>
             <dd>{detail.checkOutAt ? formatTime(detail.checkOutAt) : '—'}</dd>
+          </div>
+          <div>
+            <dt className="text-[10px] font-semibold tracking-wide text-text-3 uppercase">
+              Duración
+            </dt>
+            <dd>
+              {detail.durationMinutes != null
+                ? formatMinutes(detail.durationMinutes)
+                : '—'}
+            </dd>
           </div>
         </dl>
         {/* B1 (B-07): validación por ubicación del inicio y fin de la supervisión contra la sede. */}
@@ -152,28 +162,25 @@ function SupervisionDetail({ supervisionId }: SupervisionDetailProps) {
             Motivo: {detail.notDoneReason}
           </p>
         )}
-        {(canMarkNotDone || canManage) && isEditable && (
+        {detail.unclosed && (
+          <p className="flex items-start gap-2 text-[12px] text-warning-800">
+            <TriangleAlert aria-hidden="true" className="mt-0.5 size-3.5" />
+            <span>
+              La jornada se cerró sola a las 23:55 con esta supervisión abierta.
+              Si no se terminó de calificar, cancelala.
+            </span>
+          </p>
+        )}
+        {canManage && isEditable && (
           <div className="flex flex-wrap gap-2 pt-1">
-            {canMarkNotDone && (
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={ClipboardX}
-                onClick={() => setNotDoneOpen(true)}
-              >
-                Marcar como no realizada
-              </Button>
-            )}
-            {canManage && (
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={Ban}
-                onClick={() => setCancelOpen(true)}
-              >
-                Cancelar supervisión
-              </Button>
-            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={Ban}
+              onClick={() => setCancelOpen(true)}
+            >
+              Cancelar supervisión
+            </Button>
           </div>
         )}
       </div>
@@ -286,11 +293,6 @@ function SupervisionDetail({ supervisionId }: SupervisionDetailProps) {
         supervisionId={supervisionId}
         open={isCancelOpen}
         onOpenChange={setCancelOpen}
-      />
-      <MarkSupervisionNotDoneDialog
-        supervisionId={supervisionId}
-        open={isNotDoneOpen}
-        onOpenChange={setNotDoneOpen}
       />
       {rateTarget && (
         <RateEmployeeDialog

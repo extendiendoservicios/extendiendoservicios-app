@@ -53,8 +53,9 @@ import { ShiftObservationSection } from './ShiftObservationSection'
 /**
  * ADM-06 "Detalle del turno" (ASSIGN-011, `05` línea 40): cabecera, dotación
  * (con edición ASSIGN-013), asignaciones vigentes (con asignar/quitar/franja
- * propia), tareas, supervisiones (lista con botón "Asignar supervisión",
- * SUP-012, `05` línea 40: "assign_supervision (ADM-14)") y la observación
+ * propia), tareas, supervisiones (lista de los coordinadores que supervisan o
+ * supervisaron el turno; desde P24.3 no hay "Asignar coordinador": lo eligen
+ * ellos, CJ-01) y la observación
  * administrativa (siempre visible y editable ahí mismo, AJ3-06) y las fotos y
  * videos del turno por persona, con la marca «Sin fotos» (módulo H, P21.4). `ShiftDetailPage` decide si esto se ve en un drawer o en
  * una página completa (ASSIGN-014); acá el contenido es el mismo para las
@@ -72,7 +73,7 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
   const canEditTasks = canManageTasks(actor)
   const canReloadChecklist = canEditChecklists(actor)
   const canManageAttendanceNow = canManageAttendance(actor)
-  const canAssignSupervision = canManageSupervisions(actor)
+  const canCancelSupervision = canManageSupervisions(actor)
 
   const shiftQuery = useShiftDetailQuery(shiftId)
   // Módulo H: fotos y videos del turno (ADM-06), de todas las personas.
@@ -414,20 +415,11 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
             <ShieldCheck aria-hidden="true" className="size-4 text-text-3" />
             Supervisiones
           </h3>
-          {isEditable && canAssignSupervision && (
-            <Button asChild variant="ghost" size="sm" icon={ShieldCheck}>
-              <Link
-                to="/admin/supervisiones/nueva"
-                state={{ shiftId: shift.id, shiftDate: shift.shiftDate }}
-              >
-                Asignar supervisión
-              </Link>
-            </Button>
-          )}
         </div>
         {activeSupervisions.length === 0 ? (
           <p className="text-[12px] text-text-3">
-            Este turno no tiene supervisión asignada.
+            Este turno todavía no tuvo supervisión. Los coordinadores eligen qué
+            turno supervisar desde su celular.
           </p>
         ) : (
           <ul className="flex flex-col gap-2">
@@ -450,9 +442,8 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
                     domain="supervision"
                     status={supervision.status}
                   />
-                  {canAssignSupervision &&
-                    (supervision.status === 'assigned' ||
-                      supervision.status === 'in_progress') && (
+                  {canCancelSupervision &&
+                    supervision.status === 'in_progress' && (
                       <Button
                         variant="ghost"
                         size="sm"
