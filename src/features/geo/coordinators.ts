@@ -12,7 +12,8 @@ import type {
  * Hay cinco estados, cada uno con su color. El punto va en la última posición
  * conocida (la del último evento de la jornada); si ese evento no trajo
  * posición, el coordinador no tiene punto y va a la lista «Sin ubicación»
- * con su estado. La forma es siempre el rombo de los coordinadores (B-12), así
+ * con su estado, siempre que tenga la jornada abierta (los «Sin iniciar» y
+ * «Finalizada» no se listan). La forma es siempre el rombo de los coordinadores (B-12), así
  * el estado no depende solo del color.
  */
 
@@ -79,6 +80,15 @@ export interface CoordinatorsModel {
   withoutLocation: SupervisorStatusRow[]
 }
 
+/** Jornada abierta: en actividad, en pausa o supervisando. */
+export function hasOpenWorkday(row: SupervisorStatusRow): boolean {
+  return (
+    row.status === 'in_activity' ||
+    row.status === 'paused' ||
+    row.status === 'supervising'
+  )
+}
+
 /**
  * Marcadores y lista «Sin ubicación» de los coordinadores. Con `enabled`
  * en falso (filtro «Coordinadores» apagado) no se dibuja ni se lista nada.
@@ -102,7 +112,8 @@ export function buildCoordinatorMarkers(
         label: `Coordinador ${coordinatorName(row)}: ${SUPERVISOR_STATUS_LABELS[row.status]}`,
         data: row,
       })
-    } else {
+    } else if (hasOpenWorkday(row)) {
+      // Solo quien tiene la jornada abierta: «Sin iniciar» y «Finalizada» no van.
       withoutLocation.push(row)
     }
   }

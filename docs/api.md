@@ -372,12 +372,17 @@ restringen). Detalle en `docs/features/supervisiones.md`.
 
 ### `workdaysAdmin` (`src/api/workdaysAdmin.ts`, P24.3 — CJ-13, CJ-17, CJ-32)
 
-Jornadas de los coordinadores para la administración. Las RPC de jornada del
+Jornadas de los coordinadores para la administración. Es la única lectura de
+`v_supervisor_workdays_admin` (`AdminWorkday`): la usan la pestaña «Jornadas»,
+Asistencia «Coordinadores» y la ficha imprimible. Los hooks están en
+`src/features/workdays/queries.ts` (`useSupervisorWorkdaysQuery`,
+`useWorkdaysByDateQuery`; claves `['workdaysAdmin', 'list' | 'byDate', ...]`). Las RPC de jornada del
 coordinador (`start_workday`, ...) son de la app del supervisor (P24.2).
 
 | Función                                                                  | Canal                                 | Notas                                                                                                                                                                                                                     |
 | ------------------------------------------------------------------------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `fetchSupervisorWorkdays({ supervisorId, dateFrom?, dateTo? })`          | `from('v_supervisor_workdays_admin')` | Jornadas con horas netas, pausas, supervisiones, eventos (sin coordenadas) y `autoCloseWarning`. O, A.                                                                                                                    |
+| `fetchWorkdaysByDate(date)`                                              | `from('v_supervisor_workdays_admin')` | Jornadas de todos los coordinadores de una fecha (`YYYY-MM-DD`), por hora de inicio. Las usa «Asistencia de hoy» en días pasados (P24.4). O, A.                                                                           |
 | `correctWorkdayEvent({ eventId, reason, newTime?, remove? })`            | RPC `admin_correct_workday_event`     | O; A + `manage_attendance`. Corrige la hora de un evento o, con `remove`, da de baja una pausa. `REASON_REQUIRED`, `EVENT_NOT_CORRECTABLE`, `EVENT_NOT_REMOVABLE`, `AT_OUT_OF_RANGE`, `SAME_TIME`, `INVALID_EVENT_ORDER`. |
 | `addWorkdayPause({ workdayId, startsAt, endsAt, reason, pauseReason? })` | RPC `admin_add_workday_pause`         | O; A + `manage_attendance`. `INVALID_TIME_RANGE`, `AT_OUT_OF_RANGE`, `INVALID_EVENT_ORDER`.                                                                                                                               |
 | `recordWorkday({ supervisorId, workDate, startedAt, endedAt?, reason })` | RPC `admin_record_workday`            | O; A + `manage_attendance`. `ENDED_AT_REQUIRED` (día anterior sin fin), `WORKDAY_ALREADY_EXISTS`, `DATE_IN_FUTURE`.                                                                                                       |
@@ -539,10 +544,7 @@ coordinador activo, CJ-22 y CJ-33).
 
 Las coordenadas llegan por la vista (criterio de `0054`): no se pide
 `supervisor_workday_events`. `mapSupervisorStatusRow` descarta las filas con un
-estado desconocido. En `src/features/attendance/workdaysAdmin.ts` hay una lectura
-propia de `v_supervisor_workdays_admin` (`fetchSupervisorWorkdays`,
-`fetchWorkdaysByDate`) para la ficha imprimible y «Asistencia de hoy»; las pausas,
-supervisiones y eventos de la vista llegan como `jsonb` y se tipan ahí.
+estado desconocido. Las jornadas de la vista `v_supervisor_workdays_admin` se leen en `workdaysAdmin`.
 
 ## Próximos dominios
 

@@ -47,6 +47,7 @@ const {
   addWorkdayPause,
   correctWorkdayEvent,
   fetchSupervisorWorkdays,
+  fetchWorkdaysByDate,
   recordWorkday,
 } = await import('./workdaysAdmin')
 
@@ -192,6 +193,26 @@ describe('fetchSupervisorWorkdays', () => {
     ).rejects.toSatisfy(
       (error: unknown) => isApiError(error) && error.hint === 'FORBIDDEN',
     )
+  })
+})
+
+describe('fetchWorkdaysByDate', () => {
+  it('lee las jornadas de todos los coordinadores de la fecha, por hora de inicio', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({ data: [WORKDAY_ROW], error: null }),
+    )
+
+    const rows = await fetchWorkdaysByDate('2026-10-21')
+
+    expect(fromMock).toHaveBeenCalledWith('v_supervisor_workdays_admin')
+    expect(calls).toEqual(
+      expect.arrayContaining([
+        { method: 'eq', args: ['work_date', '2026-10-21'] },
+        { method: 'order', args: ['started_at', { ascending: true }] },
+      ]),
+    )
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.id).toBe('wd1')
   })
 })
 

@@ -209,10 +209,12 @@ Especificación: `Docs/Plan_Maestro/modulos/P24_coordinacion_libre_y_jornada.md`
   tabla lista solo los turnos como empleado. Si la persona es coordinadora, el
   total del período suma además las horas netas de sus jornadas y debajo
   muestra el desglose («Como empleado … · Como coordinador (jornadas) …»).
-- **Lectura propia de jornadas**: `workdaysAdmin.ts` consulta
-  `v_supervisor_workdays_admin` (pausas, supervisiones y eventos llegan como
-  `jsonb` ya armados; se tipan en `WorkdayPause` y `WorkdaySupervision`). Hooks
-  `useSupervisorWorkdaysQuery` y `useWorkdaysByDateQuery` en `queries.ts`. P24.3
-  tiene su propio `src/api/workdays.ts`; cuando se integren conviene unificar.
-- Tests: `coordinatorDay.test.ts` (filas y mapeo de la vista),
+- **Jornadas**: la ficha imprimible y «Coordinadores» leen de
+  `src/api/workdaysAdmin.ts` (`fetchSupervisorWorkdays`, `fetchWorkdaysByDate`,
+  tipo `AdminWorkday`), con los hooks de `src/features/workdays/queries.ts`
+  (una sola caché, clave `['workdaysAdmin', ...]`).
+- **Lista «Sin ubicación» del Resumen**: solo los coordinadores con la jornada
+  abierta (en actividad, en pausa o supervisando) y sin posición; «Sin iniciar»
+  y «Finalizada» no se listan.
+- Tests: `coordinatorDay.test.ts` (filas),
   `EmployeeAttendanceHistoryTab.test.tsx`.

@@ -18,6 +18,9 @@ const { historyMock, workdaysMock } = vi.hoisted(() => ({
 
 vi.mock('@/features/attendance/queries', () => ({
   useEmployeeAttendanceHistoryQuery: historyMock,
+}))
+
+vi.mock('@/features/workdays/queries', () => ({
   useSupervisorWorkdaysQuery: workdaysMock,
 }))
 
@@ -148,9 +151,7 @@ describe('EmployeeAttendanceHistoryTab (AJ-06)', () => {
       screen.queryByRole('columnheader', { name: 'Tipo' }),
     ).not.toBeInTheDocument()
     expect(workdaysMock).toHaveBeenCalledWith(
-      'e1',
-      '2026-09-07',
-      '2026-10-07',
+      { supervisorId: 'e1', dateFrom: '2026-09-07', dateTo: '2026-10-07' },
       true,
     )
   })
@@ -158,9 +159,7 @@ describe('EmployeeAttendanceHistoryTab (AJ-06)', () => {
   it('un empleado común no consulta jornadas', () => {
     renderTab(['admin'])
     expect(workdaysMock).toHaveBeenCalledWith(
-      'e1',
-      '2026-09-07',
-      '2026-10-07',
+      { supervisorId: 'e1', dateFrom: '2026-09-07', dateTo: '2026-10-07' },
       false,
     )
   })

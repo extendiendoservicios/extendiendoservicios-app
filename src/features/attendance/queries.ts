@@ -5,7 +5,6 @@ import * as noticesApi from '@/api/notices'
 import type { AbsenceReason } from '@/lib/absenceReasons'
 import { planningKeys } from '@/features/planning/queries'
 import { shiftsKeys } from '@/features/shifts/queries'
-import * as workdaysAdmin from './workdaysAdmin'
 
 /**
  * Hooks de TanStack Query de asistencia administrativa (ATT-010 a ATT-014,
@@ -41,16 +40,6 @@ export const attendanceKeys = {
     [...attendanceKeys.all, 'employeePhones', employeeIds] as const,
   clientUnstarted: (clientId: string, from: string, to: string) =>
     [...attendanceKeys.all, 'clientUnstarted', clientId, from, to] as const,
-  supervisorWorkdays: (supervisorId: string, from: string, to: string) =>
-    [
-      ...attendanceKeys.all,
-      'supervisorWorkdays',
-      supervisorId,
-      from,
-      to,
-    ] as const,
-  workdaysByDate: (date: string) =>
-    [...attendanceKeys.all, 'workdaysByDate', date] as const,
   peopleNames: (profileIds: string[]) =>
     [...attendanceKeys.all, 'peopleNames', profileIds] as const,
 }
@@ -245,34 +234,5 @@ export function useSetAbsenceCertificateMutation() {
       hasCertificate: boolean
     }) => noticesApi.setAbsenceCertificate(assignmentId, hasCertificate),
     onSuccess: () => invalidateAttendanceAndBoards(queryClient),
-  })
-}
-
-/**
- * Jornadas de un coordinador en un período (ficha imprimible, CJ-19). Se
- * abre a demanda: sin polling.
- */
-export function useSupervisorWorkdaysQuery(
-  supervisorId: string | undefined,
-  from: string,
-  to: string,
-  enabled = true,
-) {
-  return useQuery({
-    queryKey: attendanceKeys.supervisorWorkdays(supervisorId ?? '', from, to),
-    queryFn: () =>
-      workdaysAdmin.fetchSupervisorWorkdays(supervisorId as string, from, to),
-    enabled: enabled && supervisorId != null && from <= to,
-    staleTime: 30_000,
-  })
-}
-
-/** Jornadas de todos los coordinadores en una fecha (sección «Coordinadores» de ADM-10 en días pasados). */
-export function useWorkdaysByDateQuery(date: string, enabled = true) {
-  return useQuery({
-    queryKey: attendanceKeys.workdaysByDate(date),
-    queryFn: () => workdaysAdmin.fetchWorkdaysByDate(date),
-    enabled,
-    staleTime: 60_000,
   })
 }

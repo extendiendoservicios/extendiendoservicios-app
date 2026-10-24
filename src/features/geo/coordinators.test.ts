@@ -42,15 +42,27 @@ describe('estados de los coordinadores en el mapa (CJ-33)', () => {
     })
   })
 
-  it('sin posición en el último evento va a «Sin ubicación», con su estado y ordenado por estado', () => {
+  it('sin posición en el último evento va a «Sin ubicación» solo si la jornada está abierta, ordenado por estado', () => {
     const model = buildCoordinatorMarkers(
       [
         makeStatusRow({
           supervisorId: 'a',
+          status: 'in_activity',
+          latitude: null,
+          longitude: null,
+        }),
+        makeStatusRow({
+          supervisorId: 'n',
           status: 'not_started',
           latitude: null,
           longitude: null,
           workdayId: null,
+        }),
+        makeStatusRow({
+          supervisorId: 'f',
+          status: 'finished',
+          latitude: null,
+          longitude: null,
         }),
         makeStatusRow({
           supervisorId: 'b',
@@ -63,8 +75,8 @@ describe('estados de los coordinadores en el mapa (CJ-33)', () => {
     )
     expect(model.markers).toEqual([])
     expect(model.withoutLocation.map((row) => row.supervisorId)).toEqual([
-      'b',
       'a',
+      'b',
     ])
   })
 

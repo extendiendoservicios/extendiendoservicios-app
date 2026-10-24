@@ -1,8 +1,5 @@
 import type { SupervisorStatusRow } from '@/api/supervisorStatus'
-import type {
-  SupervisorWorkday,
-  WorkdaySupervision,
-} from '@/features/attendance/workdaysAdmin'
+import type { AdminWorkday, WorkdaySupervision } from '@/api/workdaysAdmin'
 
 /** Filas de ejemplo de `v_supervisor_status` y de `v_supervisor_workdays_admin` para los tests. */
 export function makeStatusRow(
@@ -41,7 +38,9 @@ export function makeWorkdaySupervision(
   return {
     supervisionId: 'sup1',
     shiftId: 's1',
+    clientId: 'c1',
     clientName: 'Logística Central',
+    siteId: 'st1',
     siteName: 'Munro',
     status: 'completed',
     checkInAt: '2026-10-21T13:00:00Z',
@@ -54,13 +53,12 @@ export function makeWorkdaySupervision(
 
 /** Jornada del 21/10 de 08:00 a 17:00 (hora de Argentina) con una pausa de 30 min: 8 h 30 min netas. */
 export function makeWorkday(
-  overrides: Partial<SupervisorWorkday> = {},
-): SupervisorWorkday {
+  overrides: Partial<AdminWorkday> = {},
+): AdminWorkday {
   return {
     id: 'w1',
     supervisorId: 'sv1',
-    supervisorFirstName: 'Sofía',
-    supervisorLastName: 'Ruiz',
+    supervisorName: 'Sofía Ruiz',
     workDate: '2026-10-21',
     startedAt: '2026-10-21T11:00:00Z',
     endedAt: '2026-10-21T20:00:00Z',
@@ -73,6 +71,8 @@ export function makeWorkday(
     pauses: [
       {
         type: 'pause',
+        pauseEventId: 'e-pause',
+        resumeEventId: 'e-resume',
         startsAt: '2026-10-21T15:00:00Z',
         endsAt: '2026-10-21T15:30:00Z',
         minutes: 30,
@@ -81,6 +81,8 @@ export function makeWorkday(
       },
     ],
     supervisions: [makeWorkdaySupervision()],
+    supervisionsCount: 1,
+    events: [],
     ...overrides,
   }
 }

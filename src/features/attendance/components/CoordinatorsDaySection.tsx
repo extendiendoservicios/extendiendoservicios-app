@@ -10,7 +10,7 @@ import {
   coordinatorWorkdayPath,
 } from '@/features/geo/coordinators'
 import { useSupervisorStatusQuery } from '@/features/geo/queries'
-import { useWorkdaysByDateQuery } from '../queries'
+import { useWorkdaysByDateQuery } from '@/features/workdays/queries'
 import {
   rowFromStatus,
   rowFromWorkday,

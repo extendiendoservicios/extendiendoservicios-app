@@ -6,7 +6,7 @@ import {
   coordinatorName,
   SUPERVISOR_STATUS_ORDER,
 } from '@/features/geo/coordinators'
-import type { SupervisorWorkday } from './workdaysAdmin'
+import type { AdminWorkday } from '@/api/workdaysAdmin'
 
 /**
  * Fila de la sección «Coordinadores» de «Asistencia de hoy» (ADM-10, P24.4):
@@ -47,16 +47,13 @@ export function rowFromStatus(row: SupervisorStatusRow): CoordinatorDayRow {
   }
 }
 
-export function rowFromWorkday(workday: SupervisorWorkday): CoordinatorDayRow {
+export function rowFromWorkday(workday: AdminWorkday): CoordinatorDayRow {
   const openPause = workday.pauses.find(
     (pause) => pause.type === 'pause' && pause.endsAt == null,
   )
   return {
     supervisorId: workday.supervisorId,
-    name: coordinatorName({
-      firstName: workday.supervisorFirstName,
-      lastName: workday.supervisorLastName,
-    }),
+    name: workday.supervisorName || 'Sin nombre',
     status:
       workday.state === 'ended'
         ? 'finished'

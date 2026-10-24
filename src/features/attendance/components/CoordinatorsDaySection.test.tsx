@@ -13,7 +13,7 @@ vi.mock('@/features/geo/queries', () => ({
   useSupervisorStatusQuery: statusMock,
 }))
 
-vi.mock('../queries', () => ({
+vi.mock('@/features/workdays/queries', () => ({
   useWorkdaysByDateQuery: workdaysMock,
 }))
 

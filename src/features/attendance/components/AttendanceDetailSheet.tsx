@@ -12,7 +12,7 @@ import {
   type AttendanceDetailEntry,
   type AttendanceSheetPerson,
 } from '@/features/attendance/detailSheet'
-import type { SupervisorWorkday } from '@/features/attendance/workdaysAdmin'
+import type { AdminWorkday } from '@/api/workdaysAdmin'
 
 interface AttendanceDetailSheetProps {
   person: AttendanceSheetPerson
@@ -25,7 +25,7 @@ interface AttendanceDetailSheetProps {
    * Jornadas del período de un coordinador (CJ-19). Si viene, la hoja lleva
    * la sección de jornadas; con los dos roles, una sección por rol (CJ-34).
    */
-  workdays?: SupervisorWorkday[]
+  workdays?: AdminWorkday[]
   /** Si lleva la sección de turnos como empleado. Por omisión, sí. */
   includeServices?: boolean
   onClose: () => void

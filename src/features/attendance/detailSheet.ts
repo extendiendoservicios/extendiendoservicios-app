@@ -16,7 +16,7 @@ import { formatShiftRange } from '@/features/shifts/openEnded'
 import { absenceDetail, isAbsence } from '@/features/attendance/absences'
 import { joinObservations } from '@/features/shifts/observation'
 import { geoPrintText } from '@/features/geo/printText'
-import type { SupervisorWorkday } from '@/features/attendance/workdaysAdmin'
+import type { AdminWorkday } from '@/api/workdaysAdmin'
 
 /**
  * Detalle de asistencia de una persona (AJ-06, P24.4): lógica sin React que
@@ -91,7 +91,7 @@ export function entryFranja(entry: AttendanceDetailEntry): string {
 }
 
 /** Total de horas de las jornadas del período, en minutos (CJ-13, CJ-18). */
-export function sumWorkdayMinutes(workdays: SupervisorWorkday[]): number {
+export function sumWorkdayMinutes(workdays: AdminWorkday[]): number {
   return workdays.reduce((total, workday) => total + workday.workedMinutes, 0)
 }
 
@@ -240,7 +240,7 @@ export const AUTO_CLOSED_MARK = 'Cerrada automáticamente'
 export const CORRECTED_MARK = 'Corregida'
 
 /** Texto de las pausas de una jornada: «12:00 a 12:35 (35 min) — motivo». */
-export function workdayPausesText(workday: SupervisorWorkday): string {
+export function workdayPausesText(workday: AdminWorkday): string {
   if (workday.pauses.length === 0) {
     return '—'
   }
@@ -255,7 +255,7 @@ export function workdayPausesText(workday: SupervisorWorkday): string {
 }
 
 /** Marcas de la jornada: «Cerrada automáticamente» (CJ-31) y «Corregida» (CJ-32). */
-export function workdayMarks(workday: SupervisorWorkday): string {
+export function workdayMarks(workday: AdminWorkday): string {
   return [
     workday.autoClosed ? AUTO_CLOSED_MARK : '',
     workday.corrected ? CORRECTED_MARK : '',
@@ -266,7 +266,7 @@ export function workdayMarks(workday: SupervisorWorkday): string {
 
 /** Renglón de una supervisión: cliente, sede, inicio a fin y duración informativa (CJ-14). */
 export function workdaySupervisionText(
-  supervision: SupervisorWorkday['supervisions'][number],
+  supervision: AdminWorkday['supervisions'][number],
 ): string {
   const where = [supervision.clientName, supervision.siteName]
     .filter(Boolean)
@@ -295,7 +295,7 @@ const WORKDAY_COLUMNS: PrintColumn[] = [
 
 /** Sección de jornadas: una fila por día y, debajo, sus supervisiones. */
 export function buildWorkdaysSection(
-  workdays: SupervisorWorkday[],
+  workdays: AdminWorkday[],
   footerLabel: string,
   heading?: string,
 ): AttendanceSheetSection {
@@ -360,7 +360,7 @@ export function buildAttendanceSheet(input: {
    * Jornadas del período de un coordinador (CJ-19). Si viene (aunque vacío),
    * la hoja lleva la sección de jornadas.
    */
-  workdays?: SupervisorWorkday[]
+  workdays?: AdminWorkday[]
   /** Si lleva la sección de turnos como empleado. Por omisión, sí. */
   includeServices?: boolean
   /** Inyectable para tests; por defecto el momento de armar la hoja. */

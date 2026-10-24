@@ -164,6 +164,8 @@ describe('hoja de jornadas del coordinador (CJ-13, CJ-14, CJ-19)', () => {
           pauses: [
             {
               type: 'reopened',
+              pauseEventId: 'p1',
+              resumeEventId: 'r1',
               startsAt: '2026-10-21T15:00:00Z',
               endsAt: '2026-10-21T16:00:00Z',
               minutes: 60,
@@ -172,6 +174,8 @@ describe('hoja de jornadas del coordinador (CJ-13, CJ-14, CJ-19)', () => {
             },
             {
               type: 'pause',
+              pauseEventId: 'p2',
+              resumeEventId: null,
               startsAt: '2026-10-21T18:00:00Z',
               endsAt: null,
               minutes: 5,

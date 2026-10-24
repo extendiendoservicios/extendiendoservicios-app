@@ -27,11 +27,9 @@ import {
   type AttendanceDetailEntry,
   type AttendanceSheetPerson,
 } from '@/features/attendance/detailSheet'
-import {
-  useEmployeeAttendanceHistoryQuery,
-  useSupervisorWorkdaysQuery,
-} from '@/features/attendance/queries'
+import { useEmployeeAttendanceHistoryQuery } from '@/features/attendance/queries'
 import { useEmployeeLeavesQuery } from '@/features/employees/queries'
+import { useSupervisorWorkdaysQuery } from '@/features/workdays/queries'
 import {
   ABSENCE_REASON_LABELS,
   NOTICE_KIND_LABELS,
@@ -132,10 +130,16 @@ function EmployeeAttendanceHistoryTab({
   const historyQuery = useEmployeeAttendanceHistoryQuery(profileId, from, to)
   const leavesQuery = useEmployeeLeavesQuery(profileId)
   const workdaysQuery = useSupervisorWorkdaysQuery(
-    profileId,
-    from,
-    to,
-    isSupervisor && canDownload,
+    { supervisorId: profileId, dateFrom: from, dateTo: to },
+    isSupervisor && canDownload && from <= to,
+  )
+  // La capa de datos las trae de la más nueva a la más vieja; la ficha las lleva en orden cronológico.
+  const workdays = useMemo(
+    () =>
+      [...(workdaysQuery.data ?? [])].sort((a, b) =>
+        a.workDate.localeCompare(b.workDate),
+      ),
+    [workdaysQuery.data],
   )
 
   const entries = useMemo(
@@ -143,7 +147,7 @@ function EmployeeAttendanceHistoryTab({
     [historyQuery.data],
   )
   const servicesMinutes = sumWorkedMinutes(entries)
-  const workdaysMinutes = sumWorkdayMinutes(workdaysQuery.data ?? [])
+  const workdaysMinutes = sumWorkdayMinutes(workdays)
   const totalMinutes = servicesMinutes + workdaysMinutes
   const isLoading =
     historyQuery.isLoading ||
@@ -342,7 +346,7 @@ function EmployeeAttendanceHistoryTab({
           to={to}
           entries={entries}
           leaves={leavesQuery.data}
-          workdays={isSupervisor ? (workdaysQuery.data ?? []) : undefined}
+          workdays={isSupervisor ? workdays : undefined}
           includeServices={includeServices}
           onClose={() => setSheetOpen(false)}
         />
