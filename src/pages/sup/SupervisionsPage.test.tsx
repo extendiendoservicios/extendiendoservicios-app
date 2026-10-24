@@ -6,8 +6,7 @@ import * as mySupervisionsModule from '@/api/mySupervisions'
 import type { MySupervision } from '@/api/mySupervisions'
 
 /**
- * SUP-07 (MOB-SUP-003): todas las supervisiones asignadas o en curso,
- * futuras incluidas. Mismo patrón de mocks que `TodayPage.test.tsx`.
+ * SUP-07 (MOB-SUP-003): las supervisiones abiertas (desde P24.2 ya no hay asignadas). Mismo patrón de mocks que `TodayPage.test.tsx`.
  */
 function supervision(overrides: Partial<MySupervision>): MySupervision {
   return {
@@ -38,7 +37,7 @@ function supervision(overrides: Partial<MySupervision>): MySupervision {
     startsAt: null,
     endsAt: null,
     shiftOpenEnded: false,
-    status: 'assigned',
+    status: 'in_progress',
     assignedAt: '2026-09-20T10:00:00Z',
     notDoneReason: null,
     cancelReason: null,
@@ -68,7 +67,7 @@ function renderPage() {
 }
 
 describe('SupervisionsPage (SUP-07)', () => {
-  it('muestra el estado vacío sin supervisiones asignadas', () => {
+  it('muestra el estado vacío sin supervisiones abiertas', () => {
     vi.spyOn(
       mySupervisionsModule,
       'useMySupervisionsPendingQuery',
@@ -77,11 +76,11 @@ describe('SupervisionsPage (SUP-07)', () => {
     renderPage()
 
     expect(
-      screen.getByText('No tenés supervisiones asignadas'),
+      screen.getByText('No tenés supervisiones abiertas'),
     ).toBeInTheDocument()
   })
 
-  it('lista las supervisiones asignadas o en curso con enlace al detalle', () => {
+  it('lista las supervisiones abiertas (en curso) con enlace al detalle', () => {
     vi.spyOn(
       mySupervisionsModule,
       'useMySupervisionsPendingQuery',

@@ -4,9 +4,13 @@ import { lazyPage } from './lazyPage'
 /**
  * Rutas de `/sup` (DS-015), `05_Pantallas_y_Navegacion.md` sección 5.
  *
- * SUP-02, SUP-03, SUP-04, SUP-07 y SUP-09 son de P15.4 (MOB-SUP-002 a
- * MOB-SUP-005 y MOB-SUP-009). SUP-05, SUP-06 y SUP-08 son de este paquete
- * (P15.5, MOB-SUP-006/007/008).
+ * SUP-02, SUP-07 y SUP-09 son de P15.4 (MOB-SUP-002/003/009). SUP-05, SUP-06
+ * y SUP-08 son de P15.5 (MOB-SUP-006/007/008).
+ *
+ * P24.2 (coordinación libre y jornada): SUP-03 pasa a ser el detalle del turno
+ * (`turnos/:shiftId`, con «Supervisar»), SUP-04 es la supervisión en curso
+ * (`supervisiones/:id`, con «Descartar» y «Cerrar») y desaparece la ruta
+ * `/registro`: el inicio y el fin se registran al tomar y al cerrar.
  */
 export const supervisorRoutes: RouteObject[] = [
   {
@@ -15,7 +19,16 @@ export const supervisorRoutes: RouteObject[] = [
     handle: {
       screenId: 'SUP-02',
       title: 'Hoy',
-      subtitle: 'Tus supervisiones del día',
+      subtitle: 'Tu jornada y los turnos del día',
+    },
+  },
+  {
+    path: 'turnos/:shiftId',
+    ...lazyPage(() => import('@/pages/sup/SupervisorShiftPage')),
+    handle: {
+      screenId: 'SUP-03',
+      title: 'Detalle del turno',
+      subtitle: 'Servicio, sede y personal del turno',
     },
   },
   {
@@ -24,25 +37,16 @@ export const supervisorRoutes: RouteObject[] = [
     handle: {
       screenId: 'SUP-07',
       title: 'Supervisiones',
-      subtitle: 'Todas las asignadas pendientes',
+      subtitle: 'Las que tenés abiertas',
     },
   },
   {
     path: 'supervisiones/:id',
     ...lazyPage(() => import('@/pages/sup/SupervisionDetailPage')),
     handle: {
-      screenId: 'SUP-03',
-      title: 'Detalle de la supervisión',
-      subtitle: 'Servicio, sede y personal a supervisar',
-    },
-  },
-  {
-    path: 'supervisiones/:id/registro',
-    ...lazyPage(() => import('@/pages/sup/SupervisionAttendancePage')),
-    handle: {
       screenId: 'SUP-04',
-      title: 'Inicio y fin de supervisión',
-      subtitle: 'Registrá la jornada en la sede',
+      title: 'Supervisión',
+      subtitle: 'Calificá al personal y cerrá la supervisión',
     },
   },
   {
@@ -60,7 +64,7 @@ export const supervisorRoutes: RouteObject[] = [
     handle: {
       screenId: 'SUP-06',
       title: 'Cerrar supervisión',
-      subtitle: 'Completar o marcar no realizada',
+      subtitle: 'Registrá el fin de la supervisión',
     },
   },
   {
@@ -69,7 +73,7 @@ export const supervisorRoutes: RouteObject[] = [
     handle: {
       screenId: 'SUP-08',
       title: 'Historial',
-      subtitle: 'Las supervisiones que ya cerraste',
+      subtitle: 'Tus jornadas y supervisiones',
     },
   },
   {

@@ -31,6 +31,7 @@ const MOBILE_PARENT_OVERRIDES: Record<string, string> = {
   '/app/servicio': '/app',
   '/app/en-curso': '/app',
   '/app/resumen': '/app',
+  '/sup/turnos': '/sup',
 }
 
 function normalize(pathname: string): string {
