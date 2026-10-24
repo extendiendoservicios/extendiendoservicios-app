@@ -4,17 +4,16 @@ import {
   esperarPantallaLista,
 } from '../../fixtures/axe.ts'
 import {
+  daysFromToday,
   FRANJAS,
   isTooCloseToMidnight,
   NEAR_MIDNIGHT_MESSAGE,
 } from '../../fixtures/dates.ts'
 import { MISSING_ENV_MESSAGE, readE2eEnv } from '../../fixtures/env.ts'
 import {
-  cerrarSupervision,
   fichar,
   FRANJAS_MOVIL,
   fijarConsentimiento,
-  supervisionFichar,
   tareasDelTurno,
 } from '../../fixtures/movil.ts'
 import { Scenario } from '../../fixtures/scenario.ts'
@@ -34,7 +33,7 @@ test.use({ storageState: storageStatePath('supervisor1') })
 test.use({ permissions: [] })
 
 test(
-  'SUP-02 a SUP-09: Hoy, Supervisiones, detalle, registro, calificar, cerrar, historial y Más',
+  'SUP-02 a SUP-09: Hoy con la barra de jornada, detalle del turno, supervisión, calificar, cerrar, Supervisiones, historial y Más',
   cubre('RB-X01', 'RB-S02', 'RB-S03', 'RB-S04', 'RB-S05'),
   async ({ page }, testInfo) => {
     test.setTimeout(240_000)
@@ -55,23 +54,28 @@ test(
         { title: 'e2e-axe: trapear', required: true },
       ])
       const asignacion = await sc.assign(turno, 'empleado1')
-      const supervision = await sc.assignSupervision(turno, 'supervisor1')
-
-      // Una supervisión ya cerrada (no realizada), en otra franja, para que el historial tenga
-      // una fila.
-      const turnoCerrado = await sc.shift(
-        cliente.id,
-        sede.id,
-        sc.today,
-        FRANJAS.madrugada,
-      )
-      const supCerrada = await sc.assignSupervision(turnoCerrado, 'supervisor1')
-      await cerrarSupervision('supervisor1', supCerrada, {
-        noRealizada: 'e2e-axe: sin acceso a la sede',
-      })
-
       await fijarConsentimiento('empleado1', true)
       await fichar('empleado1', asignacion, 'inicio')
+
+      // Una jornada de ayer con una supervisión cerrada, para que el historial tenga filas.
+      const sedeAyer = await sc.site(cliente.id, 'axe-sup-ayer')
+      const ayer = daysFromToday(-1)
+      const turnoAyer = await sc.shift(
+        cliente.id,
+        sedeAyer.id,
+        ayer,
+        FRANJAS.manana,
+      )
+      const jornadaAyer = await sc.jornadaPasada(
+        'supervisor1',
+        ayer,
+        '08:00',
+        '16:00',
+      )
+      await sc.supervisionDirecta(turnoAyer, 'supervisor1', {
+        jornadaId: jornadaAyer,
+      })
+      await sc.asegurarJornada('supervisor1')
 
       const auditar = async (nombre: string, ruta: string) =>
         test.step(nombre, async () => {
@@ -81,18 +85,16 @@ test(
           )
         })
 
-      await auditar('SUP-02 Hoy', '/sup')
+      await auditar('SUP-02 Hoy con la barra de jornada', '/sup')
+      await auditar('SUP-03 Detalle del turno', `/sup/turnos/${turno}`)
+
+      const supervision = await sc.tomarSupervision(turno, 'supervisor1')
+      await auditar('SUP-02 Hoy supervisando', '/sup')
       await auditar('SUP-07 Supervisiones', '/sup/supervisiones')
       await auditar(
-        'SUP-03 Detalle de la supervisión',
+        'SUP-04 Supervisión en curso',
         `/sup/supervisiones/${supervision}`,
       )
-      await auditar(
-        'SUP-04 Inicio y fin de supervisión',
-        `/sup/supervisiones/${supervision}/registro`,
-      )
-
-      await supervisionFichar('supervisor1', supervision, 'inicio')
       await auditar(
         'SUP-05 Calificar empleado',
         `/sup/supervisiones/${supervision}/calificar/${asignacion}`,
