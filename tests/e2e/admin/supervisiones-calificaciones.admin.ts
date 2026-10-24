@@ -15,13 +15,15 @@ import {
 } from '../../fixtures/sessions.ts'
 import { cubre } from '../../fixtures/trace.ts'
 
-// TEST-016 (P18.1): supervisiones y calificaciones desde la administración (RB-A09, RB-S02).
-//   - ADM-13: consulta con filtros por empleado, supervisor, cliente, sede y estado, y la pestaña
-//     de calificaciones con puntaje y comentario.
+// TEST-016 (P18.1), reescrito en P24.5: supervisiones y calificaciones desde la administración
+// (RB-A09, RB-S02; CJ-05, CJ-11, CJ-31).
+//   - ADM-13: consulta con filtros por empleado, coordinador, cliente y sede (el filtro por estado
+//     de asignación se quitó, CJ-01), varias supervisiones por turno con su duración informativa y
+//     la pestaña de calificaciones con puntaje y comentario.
 //   - CB-14 (P-083): el supervisor fuera de plazo recibe `RATING_WINDOW_CLOSED`; el administrador
 //     con `edit_ratings` edita igual; sin esa capacidad, `FORBIDDEN`.
-// El alta, la cancelación y "no realizada" desde ADM-14/ADM-15 ya las recorre
-// `tests/e2e-supervisiones/` (SUP-013).
+// La cancelación desde ADM-15 la recorre `tests/e2e-supervisiones/` (SUP-013). Ya no hay alta
+// desde administración (el coordinador toma el turno) ni «no realizada» (CJ-01, CJ-26).
 // Cuentas y franjas de este archivo: filtros -> dual (14:00–18:00) y empleado3 (08:00–12:00);
 // plazo -> empleado1 (00:00–00:01); supervisores supervisor1 y supervisor2.
 
@@ -59,16 +61,21 @@ test.describe('supervisiones y calificaciones (ADM-13, ADM-15)', () => {
         )
         const asignacionA = await sc.assign(turnoA, 'dual')
         await sc.assign(turnoB, 'empleado3')
-        const supervisionA = await sc.assignSupervision(turnoA, 'supervisor1')
-        await sc.assignSupervision(turnoB, 'supervisor2')
+        // A: completada por supervisor1 (armada directo: acá se prueba la consulta, no el flujo). B: el
+        // coordinador supervisor2 la tiene en curso y supervisor1 ya la completó (CJ-05: dos filas).
+        const supervisionA = await sc.supervisionDirecta(
+          turnoA,
+          'supervisor1',
+          {
+            estado: 'completada',
+          },
+        )
+        await sc.supervisionDirecta(turnoB, 'supervisor1', {
+          estado: 'completada',
+        })
+        await sc.tomarSupervision(turnoB, 'supervisor2')
 
-        // A queda completada con una calificación de 4 y comentario (preparación directa: el plazo
-        // de `rate_employee` depende de la hora, y acá se prueba la consulta, no la carga).
         const comentario = 'e2e: muy buen trabajo, sin observaciones'
-        await sc.db
-          .from('supervisions')
-          .update({ status: 'completed' })
-          .eq('id', supervisionA)
         const { error } = await sc.db.from('ratings').insert({
           supervision_id: supervisionA,
           assignment_id: asignacionA,
@@ -84,8 +91,22 @@ test.describe('supervisiones y calificaciones (ADM-13, ADM-15)', () => {
         await page.goto('/admin/supervisiones')
         await expect(fila(clienteA.name)).toContainText('Completada')
         await expect(fila(clienteA.name)).toContainText('1/1')
-        await expect(fila(clienteB.name)).toContainText('Asignada')
-        await expect(fila(clienteB.name)).toContainText('0/1')
+        // CJ-05: el turno B tiene dos supervisiones (una fila por coordinador).
+        await expect(fila(clienteB.name)).toHaveCount(2, ESPERA_LISTA)
+        await expect(
+          fila(clienteB.name).filter({ hasText: nombreDe('supervisor2') }),
+        ).toContainText('En curso')
+        await expect(
+          fila(clienteB.name).filter({ hasText: nombreDe('supervisor1') }),
+        ).toContainText('Completada')
+        // CJ-14: la duración de la que sigue abierta es informativa y se cuenta hasta ahora.
+        await expect(
+          fila(clienteB.name).filter({ hasText: nombreDe('supervisor2') }),
+        ).toContainText(/\d+ (min|h)/)
+        // Ya no se filtra por estado de asignación (CJ-01).
+        await expect(
+          page.getByRole('combobox', { name: 'Filtrar por estado' }),
+        ).toHaveCount(0)
 
         await test.step('filtro por supervisor', async () => {
           await page
@@ -94,7 +115,7 @@ test.describe('supervisiones y calificaciones (ADM-13, ADM-15)', () => {
           await page
             .getByRole('option', { name: nombreDe('supervisor2') })
             .click()
-          await expect(fila(clienteB.name)).toBeVisible(ESPERA_LISTA)
+          await expect(fila(clienteB.name)).toHaveCount(1, ESPERA_LISTA)
           await expect(fila(clienteA.name)).toHaveCount(0, ESPERA_LISTA)
           await page
             .getByRole('combobox', { name: 'Filtrar por coordinador' })
@@ -124,26 +145,17 @@ test.describe('supervisiones y calificaciones (ADM-13, ADM-15)', () => {
             .getByRole('combobox', { name: 'Filtrar por cliente' })
             .click()
           await page.getByRole('option', { name: clienteB.name }).click()
-          await expect(fila(clienteB.name)).toBeVisible(ESPERA_LISTA)
+          await expect(fila(clienteB.name).first()).toBeVisible(ESPERA_LISTA)
           await expect(fila(clienteA.name)).toHaveCount(0, ESPERA_LISTA)
           await page.getByRole('combobox', { name: 'Filtrar por sede' }).click()
           await page.getByRole('option', { name: sedeB.name }).click()
-          await expect(fila(clienteB.name)).toBeVisible(ESPERA_LISTA)
+          await expect(fila(clienteB.name).first()).toBeVisible(ESPERA_LISTA)
           await page.getByRole('combobox', { name: 'Filtrar por sede' }).click()
           await page.getByRole('option', { name: 'Todas las sedes' }).click()
           await page
             .getByRole('combobox', { name: 'Filtrar por cliente' })
             .click()
           await page.getByRole('option', { name: 'Todos los clientes' }).click()
-        })
-
-        await test.step('filtro por estado', async () => {
-          await page
-            .getByRole('combobox', { name: 'Filtrar por estado' })
-            .click()
-          await page.getByRole('option', { name: 'Completada' }).click()
-          await expect(fila(clienteA.name)).toBeVisible(ESPERA_LISTA)
-          await expect(fila(clienteB.name)).toHaveCount(0, ESPERA_LISTA)
         })
 
         await test.step('pestaña Calificaciones: puntaje y comentario de lo cargado', async () => {
@@ -183,13 +195,10 @@ test.describe('supervisiones y calificaciones (ADM-13, ADM-15)', () => {
             FRANJAS.madrugada,
           )
           const asignacion = await sc.assign(turno, 'empleado1')
-          const supervision = await sc.assignSupervision(turno, 'supervisor1')
-
+          // Tomar un turno ya terminado se puede (CJ-06); con la supervisión abierta la ventana de
+          // calificación no corre, y al cerrar (registra el fin) el plazo vence al instante.
+          const supervision = await sc.tomarSupervision(turno, 'supervisor1')
           const supervisor = await signedClient('supervisor1')
-          const inicio = await supervisor.rpc('supervision_check_in', {
-            p_supervision_id: supervision,
-          })
-          expect(inicio.error, inicio.error?.message).toBeNull()
           const { error } = await sc.db.from('ratings').insert({
             supervision_id: supervision,
             assignment_id: asignacion,
@@ -198,6 +207,10 @@ test.describe('supervisiones y calificaciones (ADM-13, ADM-15)', () => {
             created_by: readId('supervisor1'),
           })
           expect(error, error?.message).toBeNull()
+          const cierre = await supervisor.rpc('complete_supervision', {
+            p_supervision_id: supervision,
+          })
+          expect(cierre.error, cierre.error?.message).toBeNull()
 
           await test.step('el supervisor ya no puede editar su calificación', async () => {
             const intento = await supervisor.rpc('rate_employee', {
