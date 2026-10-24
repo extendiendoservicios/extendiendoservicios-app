@@ -9,17 +9,20 @@ import {
 import { MISSING_ENV_MESSAGE, readE2eEnv } from '../../fixtures/env.ts'
 import {
   calificar,
+  cerrarSupervision,
+  fichar,
   FRANJAS_MOVIL,
-  supervisionFichar,
+  fijarConsentimiento,
 } from '../../fixtures/movil.ts'
 import { Scenario, sessionClient } from '../../fixtures/scenario.ts'
 import { storageStatePath } from '../../fixtures/sessions.ts'
 import { cubre } from '../../fixtures/trace.ts'
 import { irARedirigida } from '../../fixtures/ui.ts'
 
-// TEST-018 (P18.2): lo que el supervisor NO puede hacer, por pantalla y por API directa
-// (RB-S02, RB-S03, RB-S04, RB-X02, P-020, P-083, P-084; CB-14 por pantalla). La persona que mira
-// es supervisor2; la dueña de la supervisión es supervisor1. Empleados: empleado1 y empleado2.
+// TEST-018 (P18.2), reescrito en P24.5: lo que el coordinador NO puede hacer, por pantalla y por API
+// directa (RB-S02, RB-S03, RB-S04, RB-X02, P-020, P-083, P-084; CB-14 por pantalla; CJ-01, CJ-26).
+// La persona que mira es supervisor2; la dueña de la supervisión es supervisor1. Empleados:
+// empleado1 y empleado2.
 
 test.skip(!readE2eEnv(), MISSING_ENV_MESSAGE)
 test.skip(isTooCloseToMidnight(), NEAR_MIDNIGHT_MESSAGE)
@@ -42,8 +45,7 @@ test(
         FRANJAS_MOVIL.diaCompleto,
       )
       const asignacion = await sc.assign(turno, 'empleado1')
-      const supervision = await sc.assignSupervision(turno, 'supervisor1')
-      await supervisionFichar('supervisor1', supervision, 'inicio')
+      const supervision = await sc.tomarSupervision(turno, 'supervisor1')
       await calificar('supervisor1', supervision, asignacion, 3, 'e2e: ajena')
 
       await test.step('control positivo: la dueña sí ve su supervisión y su calificación', async () => {
@@ -60,18 +62,18 @@ test(
         expect(notas.data).toEqual([{ score: 3 }])
       })
 
-      await test.step('pantallas: Hoy no la lista y las rutas dicen que no la encuentran', async () => {
+      await test.step('pantallas: Hoy lista el turno (CJ-02) pero la supervisión ajena y sus rutas no se encuentran', async () => {
         await page.goto('/sup')
-        await expect(page.getByText('No tenés supervisiones hoy')).toBeVisible()
+        await expect(
+          page.getByRole('link').filter({ hasText: sede.name }),
+        ).toContainText('Supervisando:')
+        await page.goto('/sup/supervisiones')
+        await expect(page.getByText(sede.name)).toHaveCount(0)
         await page.goto(`/sup/supervisiones/${supervision}`)
         await expect(
           page.getByText('No encontramos esa supervisión.'),
         ).toBeVisible()
         await expect(page.getByText(sede.name)).toHaveCount(0)
-        await page.goto(`/sup/supervisiones/${supervision}/registro`)
-        await expect(
-          page.getByText('No encontramos esa supervisión.'),
-        ).toBeVisible()
         await page.goto(`/sup/supervisiones/${supervision}/cerrar`)
         await expect(
           page.getByText('No encontramos esa supervisión.'),
@@ -96,7 +98,7 @@ test(
         }
       })
 
-      await test.step('API: cero filas de lo ajeno (supervisión, asistencia, calificaciones, turno, asignaciones)', async () => {
+      await test.step('API: cero filas de lo ajeno (supervisión, asistencia, calificaciones, eventos de su jornada, turno, asignaciones)', async () => {
         const api = await sessionClient('supervisor2')
         const lecturas = await Promise.all([
           api.from('supervisions').select('id').eq('id', supervision),
@@ -105,6 +107,10 @@ test(
             .select('id')
             .eq('supervision_id', supervision),
           api.from('ratings').select('id').eq('supervision_id', supervision),
+          api
+            .from('supervisor_workday_events')
+            .select('id')
+            .eq('supervision_id', supervision),
           api.from('shifts').select('id').eq('id', turno),
           api.from('assignments').select('id').eq('shift_id', turno),
         ])
@@ -128,31 +134,47 @@ test(
           'NOT_YOUR_SUPERVISION',
         )
         expectHint(
-          await api.rpc('supervision_check_in', {
+          await api.rpc('complete_supervision', {
             p_supervision_id: supervision,
           }),
           'NOT_YOUR_SUPERVISION',
         )
         expectHint(
-          await api.rpc('mark_supervision_not_done', {
+          await api.rpc('discard_supervision', {
             p_supervision_id: supervision,
-            p_reason: 'e2e',
           }),
           'NOT_YOUR_SUPERVISION',
         )
-        expectHint(
-          await api.rpc('assign_supervision', {
-            p_shift_id: turno,
-            p_supervisor_id: (
-              await sc.db
-                .from('supervisions')
-                .select('supervisor_id')
-                .eq('id', supervision)
-                .single()
-            ).data!.supervisor_id,
-          }),
-          'FORBIDDEN',
-        )
+      })
+
+      await test.step('CJ-01, CJ-26: las RPC viejas de asignación y de inicio/fin están revocadas (42501), también para la dueña', async () => {
+        for (const quien of ['supervisor2', 'supervisor1'] as const) {
+          const api = await sessionClient(quien)
+          const llamadas = await Promise.all([
+            api.rpc('supervision_check_in', { p_supervision_id: supervision }),
+            api.rpc('supervision_check_out', { p_supervision_id: supervision }),
+            api.rpc('mark_supervision_not_done', {
+              p_supervision_id: supervision,
+              p_reason: 'e2e',
+            }),
+            api.rpc('assign_supervision', {
+              p_shift_id: turno,
+              p_supervisor_id: (
+                await sc.db
+                  .from('supervisions')
+                  .select('supervisor_id')
+                  .eq('id', supervision)
+                  .single()
+              ).data!.supervisor_id,
+            }),
+          ])
+          for (const llamada of llamadas) {
+            expect(
+              llamada.error?.code,
+              `${quien}: ${llamada.error?.message}`,
+            ).toBe('42501')
+          }
+        }
       })
 
       await test.step('la calificación de la dueña quedó intacta', async () => {
@@ -186,9 +208,12 @@ test(
         FRANJAS.madrugada,
       )
       const asignacion = await sc.assign(turno, 'empleado2')
-      const supervision = await sc.assignSupervision(turno, 'supervisor2')
-      await supervisionFichar('supervisor2', supervision, 'inicio')
-      await supervisionFichar('supervisor2', supervision, 'fin')
+      await fijarConsentimiento('empleado2', true)
+      await fichar('empleado2', asignacion, 'inicio')
+      // Tomar un turno ya terminado se puede (CJ-06) y calificar con la supervisión abierta también.
+      const supervision = await sc.tomarSupervision(turno, 'supervisor2')
+      await calificar('supervisor2', supervision, asignacion, 4)
+      await cerrarSupervision('supervisor2', supervision)
       // La pantalla anticipa el plazo con el reloj del dispositivo: se espera a que ese reloj
       // pase la hora del fin que puso el servidor (puede estar unos segundos adelantado).
       const { data: fin } = await sc.db

@@ -22,7 +22,8 @@ import { interceptMapRequests, pickDate, pickMonth } from '../../fixtures/ui.ts'
 //   cliente y contacto (ADM-20/21) -> sede con coordenadas y mapa (ADM-23/24) -> servicio
 //   (ADM-25) -> plantilla de tareas (ADM-26) -> generación del mes (ADM-09) -> cronograma y
 //   asignación (ADM-05/06/08) -> asistencia en nombre del empleado (ADM-10/11) -> supervisión y
-//   calificación (ADM-14/15) -> tablero (ADM-02).
+//   calificación (ADM-14/15; desde P24.5 el coordinador toma el turno él, la administración ya no
+//   asigna) -> tablero (ADM-02).
 // El mes de la generación es lejano y reservado de este archivo (agosto del año lejano del conjunto, 2193 en `base`; 31 días): la
 // generación es global y no se debe tocar la operación real. Empleado: empleado1 (franja de
 // madrugada 00:02–00:03, que ya terminó a cualquier hora del día); supervisor: supervisor2.
@@ -244,33 +245,23 @@ test(
       })
 
       let supervisionId = ''
-      await test.step('ADM-14: asigna una supervisión al turno de hoy (todavía sin cerrar)', async () => {
+      await test.step('ADM-14: la administración ya no asigna supervisiones (CJ-01); el coordinador toma el turno de hoy', async () => {
         await page.goto('/admin/supervisiones')
-        await page.getByRole('link', { name: 'Asignar supervisión' }).click()
-        const hoja = page.getByRole('dialog', { name: 'Asignar supervisión' })
-        await hoja.getByRole('combobox', { name: 'Turno' }).click()
-        await page
-          .getByRole('option', {
-            name: new RegExp(`${nombreCliente}.*${nombreSede}.*00:02–00:03`),
-          })
-          .click()
-        await hoja.getByRole('combobox', { name: 'Coordinador' }).click()
-        await page
-          .getByRole('option', { name: nombreDe('supervisor2') })
-          .click()
-        await hoja.getByRole('button', { name: 'Asignar supervisión' }).click()
-        await expect(page.getByText('Asignamos al coordinador.')).toBeVisible()
-        const { data: supervision } = await sc.db
-          .from('supervisions')
-          .select('id, status')
-          .eq('shift_id', turnoHoy)
-          .single()
-        expect(supervision?.status).toBe('assigned')
-        supervisionId = supervision!.id
+        await expect(
+          page.getByRole('heading', { name: 'Supervisiones' }).first(),
+        ).toBeVisible()
+        await expect(
+          page.getByRole('link', { name: 'Asignar supervisión' }),
+        ).toHaveCount(0)
+        await expect(
+          page.getByRole('button', { name: 'Asignar supervisión' }),
+        ).toHaveCount(0)
+        // Tomar un turno ya terminado del día se puede (CJ-06).
+        supervisionId = await sc.tomarSupervision(turnoHoy, 'supervisor2')
         await page.goto(`/admin/supervisiones/${supervisionId}`)
         await expect(
           page.getByRole('dialog', { name: 'Detalle de la supervisión' }),
-        ).toContainText('Asignada')
+        ).toContainText('En curso')
       })
 
       await test.step('ADM-11: registra el inicio y el fin en nombre del empleado', async () => {
@@ -305,17 +296,9 @@ test(
       })
 
       await test.step('ADM-15: el supervisor recorre el turno; la administración califica y la supervisión se completa', async () => {
-        // El recorrido del supervisor desde su celular lo cubre `tests/e2e-supervisiones/`: acá se
-        // hace por API para encadenar el resultado con la pantalla de administración.
+        // El recorrido del coordinador desde su celular lo cubre `tests/e2e/supervisor/`: acá el
+        // cierre se hace por API para encadenar el resultado con la pantalla de administración.
         const supervisor = await signedClient('supervisor2')
-        const inicio = await supervisor.rpc('supervision_check_in', {
-          p_supervision_id: supervisionId,
-        })
-        expect(inicio.error, inicio.error?.message).toBeNull()
-        const fin = await supervisor.rpc('supervision_check_out', {
-          p_supervision_id: supervisionId,
-        })
-        expect(fin.error, fin.error?.message).toBeNull()
 
         await page.goto(`/admin/supervisiones/${supervisionId}`)
         const detalle = page.getByRole('dialog', {
@@ -364,9 +347,13 @@ test(
           .getByRole('row')
           .filter({ hasText: nombreCliente })
         await expect(filas.first()).toContainText(nombreDe('empleado1'))
+        // P24.4: el bloque muestra las jornadas de los coordinadores (abiertas y cerradas solas).
         await expect(
           page.getByRole('region', { name: 'Supervisiones de hoy' }),
-        ).toContainText(nombreCliente)
+        ).toContainText(`${nombreDe('supervisor2')}`)
+        await expect(
+          page.getByRole('region', { name: 'Supervisiones de hoy' }),
+        ).toContainText('Jornadas abiertas')
       })
     } finally {
       expect(await sc.cleanup(), 'limpieza').toEqual([])

@@ -246,17 +246,31 @@ export async function ficharComoEmpleado(
   if (error) throw new Error(`fichar ${kind} de ${quien}: ${error.message}`)
 }
 
-/** Inicio o fin de una supervisión con la RPC real y la sesión del supervisor. */
-export async function ficharComoSupervisor(
+/**
+ * El coordinador toma un turno de hoy con la RPC real (`take_supervision`, P24.1) y la sesión de la
+ * cuenta, con la posición pedida. Deja la jornada en marcha (con la misma posición) y devuelve el id
+ * de la supervisión, que queda `in_progress` con el inicio ya validado contra la sede (B-07).
+ */
+export async function tomarComoSupervisor(
+  sc: Scenario,
   quien: FixedAccountKey,
-  supervisionId: string,
-  kind: 'inicio' | 'fin',
+  turnoId: string,
   lectura?: Lectura,
   motivo?: string,
-): Promise<void> {
+): Promise<string> {
+  await sc.asegurarJornada(
+    quien,
+    lectura
+      ? {
+          latitude: lectura.punto.lat,
+          longitude: lectura.punto.lng,
+          accuracy: lectura.precision,
+        }
+      : undefined,
+  )
   const cliente = await sessionClient(quien)
-  const args = {
-    p_supervision_id: supervisionId,
+  const { data, error } = await cliente.rpc('take_supervision', {
+    p_shift_id: turnoId,
     ...(lectura
       ? {
           p_lat: lectura.punto.lat,
@@ -265,13 +279,9 @@ export async function ficharComoSupervisor(
         }
       : {}),
     ...(motivo ? { p_outside_reason: motivo } : {}),
-  }
-  const { error } =
-    kind === 'inicio'
-      ? await cliente.rpc('supervision_check_in', args)
-      : await cliente.rpc('supervision_check_out', args)
-  if (error)
-    throw new Error(`supervisión ${kind} de ${quien}: ${error.message}`)
+  })
+  if (error) throw new Error(`tomar supervisión de ${quien}: ${error.message}`)
+  return (data as unknown as { supervision: { id: string } }).supervision.id
 }
 
 /**

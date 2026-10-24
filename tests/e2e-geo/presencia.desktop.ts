@@ -14,7 +14,7 @@ import {
   desplazar,
   distanciaM,
   ficharComoEmpleado,
-  ficharComoSupervisor,
+  tomarComoSupervisor,
   redondear,
   SEDE_COORDS,
   sedeGeo,
@@ -59,7 +59,6 @@ async function armarPresencia(sc: Scenario) {
     sinUbicacion: await sc.assign(turno, 'empleado3'),
     finalizado: await sc.assign(turno, 'empleado4'),
   }
-  const supervision = await sc.assignSupervision(turno, 'supervisor1')
   await ficharComoEmpleado('empleado1', asig.dentro, 'inicio', {
     punto: ADENTRO,
     precision: 12,
@@ -80,7 +79,7 @@ async function armarPresencia(sc: Scenario) {
     punto: FINALIZADO,
     precision: 9,
   })
-  await ficharComoSupervisor('supervisor1', supervision, 'inicio', {
+  const supervision = await tomarComoSupervisor(sc, 'supervisor1', turno, {
     punto: SUPERVISOR,
     precision: 15,
   })
@@ -133,15 +132,26 @@ test.describe('el dueño o un administrador mira el Resumen', () => {
           ).toHaveCount(0)
         })
 
-        await test.step('el supervisor con una supervisión en curso, con otro ícono (rombo) (B-12)', async () => {
-          const etiqueta = `Coordinador ${nombreDe('supervisor1')}`
+        await test.step('el coordinador supervisando, con otro ícono (rombo) y su estado (B-12, CJ-33)', async () => {
+          const etiqueta = `Coordinador ${nombreDe('supervisor1')}: Supervisando`
           await expect(punto(page, etiqueta)).toBeVisible()
           await expect(
             punto(page, etiqueta).locator('span.rotate-45'),
           ).toHaveCount(1)
+          // «Supervisando» va en el color primario (CJ-33).
           await expect(
-            punto(page, etiqueta).locator('span.bg-success'),
+            punto(page, etiqueta).locator('span.bg-primary'),
           ).toHaveCount(1)
+          // Con otras personas en el mapa los pines pueden superponerse: se dispara el clic del propio pin.
+          await punto(page, etiqueta).dispatchEvent('click')
+          const globo = page.locator('.leaflet-popup-content')
+          await expect(globo).toContainText('Coordinador')
+          await expect(globo).toContainText(t.cliente.name)
+          await expect(globo).toContainText(t.sede.name)
+          await expect(
+            globo.getByRole('link', { name: 'Ver jornada' }),
+          ).toHaveAttribute('href', /pestana=jornadas/)
+          await page.keyboard.press('Escape')
           // Los empleados no llevan rombo.
           await expect(
             punto(page, `Empleado ${nombre('empleado1')}`).locator(

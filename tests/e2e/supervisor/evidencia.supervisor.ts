@@ -9,15 +9,15 @@ import {
   objetosDeEvidencia,
   subirEvidencia,
 } from '../../fixtures/media.ts'
-import { FRANJAS_MOVIL, supervisionFichar } from '../../fixtures/movil.ts'
+import { FRANJAS_MOVIL } from '../../fixtures/movil.ts'
 import { Scenario, sessionClient } from '../../fixtures/scenario.ts'
 import { storageStatePath } from '../../fixtures/sessions.ts'
 import { cubre } from '../../fixtures/trace.ts'
 import { expectNoHorizontalScroll } from '../../fixtures/ui.ts'
 
-// TEST-030 (P21.6, módulo H · evidencia fotográfica), lado supervisor en el celular (390 px):
-// SUP-03 (detalle de la supervisión) y SUP-04 (registro de inicio y fin) con el bloque «Fotos y
-// videos»: subir desde la galería, contador, miniatura, sede sin fotos y supervisión cancelada.
+// TEST-030 (P21.6, módulo H · evidencia fotográfica), lado supervisor en el celular (390 px), con
+// la coordinación libre de P24.5: la supervisión (SUP-04) trae el bloque «Fotos y videos»: subir
+// desde la galería, contador, miniatura, sede sin fotos y supervisión cancelada o «no realizada».
 // Cuenta de este archivo: supervisor2. Trazabilidad: H-02, H-03, H-12, H-13
 // (modulos/H_evidencia_fotografica.md).
 
@@ -45,7 +45,24 @@ async function prepararSupervision(
     1,
     { requiresPhotos: options.pideFotos ?? false },
   )
-  const supervision = await sc.assignSupervision(turno, SUPERVISOR)
+  const supervision = await sc.tomarSupervision(turno, SUPERVISOR)
+  return { sc, turno, supervision }
+}
+
+/** Una supervisión «no realizada» del historial (estado que la app ya no genera), armada directo. */
+async function armarNoRealizada(slug: string) {
+  const sc = new Scenario()
+  const cliente = await sc.client(slug)
+  const sede = await sc.site(cliente.id, slug)
+  const turno = await sc.shift(
+    cliente.id,
+    sede.id,
+    sc.today,
+    FRANJAS_MOVIL.diaCompleto,
+  )
+  const supervision = await sc.supervisionDirecta(turno, SUPERVISOR, {
+    estado: 'no_realizada',
+  })
   return { sc, turno, supervision }
 }
 
@@ -70,7 +87,7 @@ async function filasDelTurno(sc: Scenario, turno: string) {
 }
 
 test(
-  'SUP-03 y SUP-04: el supervisor sube una foto de la galería en su supervisión, ve el contador y la miniatura (H-02, H-03)',
+  'SUP-04: el coordinador sube una foto de la galería en su supervisión, ve el contador y la miniatura (H-02, H-03)',
   cubre('H-02', 'H-03', 'H-12'),
   async ({ page }) => {
     test.setTimeout(180_000)
@@ -78,7 +95,7 @@ test(
       pideFotos: true,
     })
     try {
-      await test.step('SUP-03: el bloque está, avisa que el servicio pide fotos y arranca en 0', async () => {
+      await test.step('SUP-04: el bloque está, avisa que el servicio pide fotos y arranca en 0', async () => {
         await page.goto(`/sup/supervisiones/${supervision}`)
         await esperarBloque(page)
         await expect(page.getByText('Este servicio pide fotos.')).toBeVisible()
@@ -124,9 +141,8 @@ test(
         expect(objetos).toContain(filas[0].thumb_path)
       })
 
-      await test.step('SUP-04: con el inicio registrado, el bloque sigue ahí con lo ya subido', async () => {
-        await supervisionFichar(SUPERVISOR, supervision, 'inicio')
-        await page.goto(`/sup/supervisiones/${supervision}/registro`)
+      await test.step('al volver a abrir la supervisión, el bloque sigue ahí con lo ya subido', async () => {
+        await page.reload()
         await esperarBloque(page)
         await expect(page.getByText('1 de 10 fotos')).toBeVisible()
         await expect(
@@ -149,7 +165,7 @@ test(
 )
 
 test(
-  'SUP-03: en una sede sin fotos no hay botones (H-13)',
+  'SUP-04: en una sede sin fotos no hay botones (H-13)',
   cubre('H-13'),
   async ({ page }) => {
     test.setTimeout(120_000)
@@ -183,12 +199,13 @@ test(
 )
 
 test(
-  'SUP-03: con la supervisión cancelada o «no realizada» no aparece el bloque, y el servidor tampoco deja subir (H-02)',
+  'SUP-04: con la supervisión cancelada o «no realizada» (historial) no aparece el bloque, y el servidor tampoco deja subir (H-02)',
   cubre('H-02'),
   async ({ page }) => {
     test.setTimeout(180_000)
     const cancelada = await prepararSupervision('evid-sup-cancel')
-    const noHecha = await prepararSupervision('evid-sup-nohecha')
+    // `not_done` ya no se produce desde la app (CJ-26): queda en el historial y se arma directo.
+    const noHecha = await armarNoRealizada('evid-sup-nohecha')
     try {
       const dueno = await sessionClient('owner')
       const cancel = await dueno.rpc('cancel_supervision', {
@@ -197,11 +214,6 @@ test(
       })
       expect(cancel.error?.message).toBeUndefined()
       const propio = await sessionClient(SUPERVISOR)
-      const hecha = await propio.rpc('mark_supervision_not_done', {
-        p_supervision_id: noHecha.supervision,
-        p_reason: 'e2e-evidencia: no realizada',
-      })
-      expect(hecha.error?.message).toBeUndefined()
 
       for (const { supervision, turno } of [cancelada, noHecha]) {
         await page.goto(`/sup/supervisiones/${supervision}`)

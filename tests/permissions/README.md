@@ -21,25 +21,26 @@ tests nunca nombran emails: piden el perfil por su clave (`suite/perfiles.ts`).
 
 ## Cómo está organizada (`suite/`)
 
-| Archivo                    | Qué prueba                                                                                                                                 |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `00-inventario`            | Que la matriz no quede vieja: falla si una migración agrega una tabla, vista, RPC, bucket o acción sin casos                               |
-| `10-tablas-lectura`        | `select` de las 25 tablas por los 7 perfiles (`04` §7.2); CB-15, CB-17                                                                     |
-| `11-tablas-escritura`      | `insert`, `update` y `delete` por tabla y perfil; escalamiento (CB-17)                                                                     |
-| `12-columnas-sensibles`    | Columnas de más en filas que el rol sí puede leer (DNI, contacto, observaciones)                                                           |
-| `13-rendimiento`           | Que la RLS no vuelva inutilizable una tabla (`select` sin filtro, menos de 3 s)                                                            |
-| `20-vistas`                | Las 10 vistas `v_*`: qué filas ve cada perfil y que ninguna se pueda escribir                                                              |
-| `30-rpc`                   | Cada RPC llamada por cada perfil (`06` §15)                                                                                                |
-| `40-capacidades`           | Las siete capacidades del administrador, una por una                                                                                       |
-| `50-storage`               | Buckets `avatars` y `branding`: carpeta propia y ajena, límites de tamaño y tipo                                                           |
-| `60-edge`                  | Edge Function `admin-users`: JWT, rol, jerarquía, CORS, errores internos                                                                   |
-| `70-escalamiento`          | Un rol no se escala a sí mismo (CB-17); `anon` solo lee `v_public_branding`                                                                |
-| `80-desactivado`           | Un desactivado con el token vigente no puede hacer nada (CB-18)                                                                            |
-| `90-evidencia`             | Módulo H (evidencia fotográfica, 0047): `shift_media`, bucket `evidence` y sus RPC por rol (P21.6)                                         |
-| `61-edge-evidence-cleanup` | Edge Function `evidence-cleanup` (módulo H): sin el secreto del encabezado, nadie la hace correr (P21.6c)                                  |
-| `92-geo-b1`                | Módulo B1 (0052 a 0057): correcciones, radio, posición, consentimiento, `v_presence_today` y columnas cerradas, por los 7 perfiles (P22.5) |
-| `93-geo-regla`             | Regla de validación contra las RPC reales: bordes, tope de 150 m, radio por sede y resultado congelado (P22.5)                             |
-| `91-modulos-p19`           | Anuncios, datos bancarios, observación del turno, fijos de un servicio y alto contraste (0040 a 0043) (P21.6c)                             |
+| Archivo                    | Qué prueba                                                                                                                                                                                                          |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `00-inventario`            | Que la matriz no quede vieja: falla si una migración agrega una tabla, vista, RPC, bucket o acción sin casos                                                                                                        |
+| `10-tablas-lectura`        | `select` de las 28 tablas por los 7 perfiles (`04` §7.2); CB-15, CB-17                                                                                                                                              |
+| `11-tablas-escritura`      | `insert`, `update` y `delete` por tabla y perfil; escalamiento (CB-17)                                                                                                                                              |
+| `12-columnas-sensibles`    | Columnas de más en filas que el rol sí puede leer (DNI, contacto, observaciones)                                                                                                                                    |
+| `13-rendimiento`           | Que la RLS no vuelva inutilizable una tabla (`select` sin filtro, menos de 3 s)                                                                                                                                     |
+| `20-vistas`                | Las vistas `v_*` (incluidas las 4 de la coordinación): qué filas ve cada perfil y que ninguna se pueda escribir                                                                                                     |
+| `30-rpc`                   | Cada RPC llamada por cada perfil (`06` §15)                                                                                                                                                                         |
+| `40-capacidades`           | Las siete capacidades del administrador, una por una                                                                                                                                                                |
+| `50-storage`               | Buckets `avatars` y `branding`: carpeta propia y ajena, límites de tamaño y tipo                                                                                                                                    |
+| `60-edge`                  | Edge Function `admin-users`: JWT, rol, jerarquía, CORS, errores internos                                                                                                                                            |
+| `70-escalamiento`          | Un rol no se escala a sí mismo (CB-17); `anon` solo lee `v_public_branding`                                                                                                                                         |
+| `80-desactivado`           | Un desactivado con el token vigente no puede hacer nada (CB-18)                                                                                                                                                     |
+| `90-evidencia`             | Módulo H (evidencia fotográfica, 0047): `shift_media`, bucket `evidence` y sus RPC por rol (P21.6)                                                                                                                  |
+| `61-edge-evidence-cleanup` | Edge Function `evidence-cleanup` (módulo H): sin el secreto del encabezado, nadie la hace correr (P21.6c)                                                                                                           |
+| `92-geo-b1`                | Módulo B1 (0052 a 0057): correcciones, radio, posición, consentimiento, `v_presence_today` y columnas cerradas, por los 7 perfiles (P22.5)                                                                          |
+| `93-geo-regla`             | Regla de validación contra las RPC reales: bordes, tope de 150 m, radio por sede y resultado congelado (P22.5)                                                                                                      |
+| `94-coordinacion`          | Coordinación libre y jornada (0063, P24.5): lectura de lo propio y de lo ajeno, coordenadas no legibles, cada RPC nueva con su `hint`, preferencias y correcciones por capacidad, las cuatro RPC revocadas en 42501 |
+| `91-modulos-p19`           | Anuncios, datos bancarios, observación del turno, fijos de un servicio y alto contraste (0040 a 0043) (P21.6c)                                                                                                      |
 
 Apoyos: `tablas.ts`, `vistas.ts`, `rpc.ts` y `edge-casos.ts` (los casos esperados), `escenario.ts`
 (el escenario `e2e-perm-` que se planta y se borra), `contexto.ts`, `perfiles.ts`, `ayudas.ts`,
@@ -101,3 +102,7 @@ usaban (`assignment-fixtures`, `checklist-fixtures`, `supervision-fixtures`, `te
 las suites viejas por dominio) quedaron reemplazados por esta matriz. Quedan `helpers/env.ts`,
 `helpers/clients.ts` y `helpers/admin-lookups.ts` porque los importa `tests/e2e-assignments/`;
 cuando esa carpeta se migre a `tests/fixtures/`, se borran.
+
+## Coordinación libre (P24.5)
+
+Los cuatro archivos que escriben (`90`, `92`, `93` y `94`) dejan el escenario como lo encontraron al terminar: Vitest corre primero los archivos que fallaron la vez anterior, así que el orden entre archivos no está garantizado. El escenario planta, además, dos preferencias, una jornada de **ayer** por coordinador (`supervisor1` y el doble rol; ayer para no chocar con `unique (supervisor_id, work_date)` de las pruebas que inician la jornada de hoy) y un turno de hoy sin asignaciones; `94-coordinacion` usa jornadas propias de `supervisor2` para corregir. Quien termine con una jornada de hoy la borra con `borrarJornadasDe(db, ids, hoy)`: sin la fecha borra también las de ayer del escenario.

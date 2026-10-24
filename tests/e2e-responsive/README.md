@@ -18,7 +18,7 @@ limpiar los datos (prefijo `E2E-P172`), y fuera del CI. Es una de las tres capas
   captura de página completa por pantalla y ancho.
 - `structure.spec.ts`:
   - RESP-005: listados con tarjetas (RowCard) a 390 y 768 px y tabla a 1024.
-  - RESP-006: ADM-06, ADM-14 y ADM-15 son páginas por debajo de 1024 y panel desde 1024; ADM-08,
+  - RESP-006: ADM-06 y ADM-15 (ADM-14 «Asignar supervisión» se quitó en P24.3) son páginas por debajo de 1024 y panel desde 1024; ADM-08,
     ADM-11, ADM-27 (nuevo administrador) y ADM-30 (nuevo criterio) ocupan toda la pantalla a 390 px;
     a 768 px se registra el ancho (ver "Preguntas abiertas").
   - RESP-007: ADM-03 como lista de días con conteo y ADM-04 con un empleado por vez y selector.

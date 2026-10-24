@@ -35,7 +35,8 @@ export default defineConfig({
     command: 'pnpm exec vite preview --port 5173',
     cwd: APP_ROOT,
     url: E2E_RESPONSIVE_BASE_URL,
-    reuseExistingServer: false,
+    // `E2E_REUSE_SERVER=1`: usa el `vite preview` ya levantado en ese puerto (igual que las demás suites).
+    reuseExistingServer: process.env.E2E_REUSE_SERVER === '1',
     timeout: 30_000,
   },
   projects: [{ name: 'responsive' }],

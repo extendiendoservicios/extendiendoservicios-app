@@ -14,7 +14,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { isTooCloseToMidnight, todayAR } from '../../fixtures/dates.ts'
-import { deleteClientDeep } from '../../fixtures/scenario.ts'
+import { borrarJornadasDe, deleteClientDeep } from '../../fixtures/scenario.ts'
 import { clienteDe, contexto, servicio } from './contexto.ts'
 import { PREFIJO } from './escenario.ts'
 
@@ -517,6 +517,14 @@ beforeAll(async () => {
 afterAll(async () => {
   if (!clienteId) return
   const notas = await deleteClientDeep(servicio(), clienteId)
+  // La jornada del coordinador de esta suite (P24.5) es dato de la prueba.
+  notas.push(
+    ...(await borrarJornadasDe(
+      servicio(),
+      [contexto().ids.supervisor1],
+      todayAR(),
+    )),
+  )
   if (notas.length > 0)
     console.warn(`[93-geo-regla] limpieza con notas: ${notas.join(' | ')}`)
 }, 120_000)
@@ -865,8 +873,7 @@ describe.skipIf(CERCA_DE_MEDIANOCHE)(
       expect(count).toBe(0)
     })
 
-    it('la supervisión se valida contra la sede del turno supervisado, con la misma regla; el ajeno no puede fichar la de otro (B-07)', async () => {
-      const c = contexto()
+    it('la supervisión se valida contra la sede del turno supervisado, con la misma regla; el ajeno no puede cerrar la de otro (B-07)', async () => {
       const turno = await aceptar(
         'turno de supervisión',
         servicio()
@@ -882,41 +889,46 @@ describe.skipIf(CERCA_DE_MEDIANOCHE)(
           .select('id')
           .single(),
       )
-      const sup = await clienteDe('owner').rpc('assign_supervision', {
+      // P24.5: el coordinador inicia su jornada y toma el turno (CJ-26): el inicio queda validado
+      // contra la sede supervisada en el mismo paso.
+      const jornada = await clienteDe('supervisor').rpc('start_workday')
+      expect(jornada.error, jornada.error?.message).toBeNull()
+
+      // El inicio a 120 m con precisión 30 (radio 100): 120 <= 130, adentro.
+      const pos = norte(SEDE, 120)
+      const sup = await clienteDe('supervisor').rpc('take_supervision', {
         p_shift_id: turno.id,
-        p_supervisor_id: c.ids.supervisor1,
+        p_lat: pos.lat,
+        p_lng: pos.lng,
+        p_accuracy: 30,
       })
       expect(sup.error, sup.error?.message).toBeNull()
       const supervisionId = (
         sup.data as unknown as { supervision: { id: string } }
       ).supervision.id
 
-      // Otro supervisor (el doble rol) no puede fichar la supervisión de supervisor1.
-      const ajeno = await clienteDe('dual').rpc('supervision_check_in', {
+      // Otro coordinador (el doble rol) no puede cerrar la supervisión de supervisor1.
+      const ajeno = await clienteDe('dual').rpc('complete_supervision', {
         p_supervision_id: supervisionId,
         p_lat: SEDE.lat,
         p_lng: SEDE.lng,
         p_accuracy: 5,
       })
       expect(ajeno.error?.hint).toBe('NOT_YOUR_SUPERVISION')
-      // Un empleado no puede usar la RPC de supervisión.
-      const empleado = await clienteDe('empleado').rpc('supervision_check_in', {
-        p_supervision_id: supervisionId,
+      // Un empleado no puede usar las RPC de supervisión.
+      const empleado = await clienteDe('empleado').rpc('take_supervision', {
+        p_shift_id: turno.id,
       })
       expect(empleado.error?.hint).toBe('FORBIDDEN')
-
-      // El inicio a 120 m con precisión 30 (radio 100): 120 <= 130, adentro.
-      const pos = norte(SEDE, 120)
-      const ini = await clienteDe('supervisor').rpc('supervision_check_in', {
+      // Las RPC viejas de inicio y fin quedaron revocadas (CJ-26).
+      const vieja = await clienteDe('supervisor').rpc('supervision_check_out', {
         p_supervision_id: supervisionId,
-        p_lat: pos.lat,
-        p_lng: pos.lng,
-        p_accuracy: 30,
       })
-      expect(ini.error, ini.error?.message).toBeNull()
-      // El fin a 800 m con precisión 200 (> tope): se tocan? 800 > 300: afuera.
+      expect(vieja.error?.code).toBe('42501')
+
+      // El fin a 800 m con precisión 200 (> tope): 800 > 300, afuera.
       const lejos = norte(SEDE, 800)
-      const fin = await clienteDe('supervisor').rpc('supervision_check_out', {
+      const fin = await clienteDe('supervisor').rpc('complete_supervision', {
         p_supervision_id: supervisionId,
         p_lat: lejos.lat,
         p_lng: lejos.lng,

@@ -85,7 +85,7 @@ test.describe('ADM-32 Fotos y videos', () => {
           start: '00:05',
           end: '00:10',
         })
-        const supervision = await sc.assignSupervision(a.turno, SUPERVISOR)
+        const supervision = await sc.tomarSupervision(a.turno, SUPERVISOR)
         expect(supervision).toBeTruthy()
 
         await page.goto('about:blank')
@@ -471,7 +471,7 @@ test.describe('ADM-06 y ADM-15: fotos del turno y marca «Sin fotos»', () => {
           start: '00:10',
           end: '00:15',
         })
-        const supervision = await sc.assignSupervision(
+        const supervision = await sc.tomarSupervision(
           conFotos.turno,
           SUPERVISOR,
         )

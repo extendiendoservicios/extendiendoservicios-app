@@ -11,12 +11,12 @@ descartables (prefijo `E2E-P156`). Dos proyectos de Playwright:
 
 ## Qué cubre cada archivo
 
-- `admin-supervisions.spec.ts` (SUP-013): asignar una supervisión (ADM-14) con la advertencia
-  SUPERVISES_OWN_SHIFT ("este supervisor también está asignado como empleado en este turno",
-  P15.0) y el botón "Ver supervisión"; el detalle (ADM-15); marcar como no realizada con motivo;
-  cancelar con motivo; editar una calificación ya cargada (`rate_employee`, upsert, capacidad
-  `edit_ratings`). Logueado como el dueño del seed (O: `manage_supervisions`/`edit_ratings`
-  siempre).
+- `admin-supervisions.spec.ts` (SUP-013, reescrito en P24.5): que no haya «Asignar supervisión» ni
+  «No realizada» (CJ-01, CJ-26); el detalle de una supervisión en curso (ADM-15); cancelar con
+  motivo; editar una calificación ya cargada (`rate_employee`, upsert, capacidad `edit_ratings`).
+  Las supervisiones se plantan directo (`plantSupervisionInProgress`): la asignación manual está
+  revocada y `take_supervision` solo toma turnos de hoy. La advertencia SUPERVISES_OWN_SHIFT ahora
+  la devuelve `take_supervision`. Logueado como el dueño del seed.
 - `mobile-supervisor-flow.spec.ts` (MOB-SUP-013): Hoy (SUP-02), detalle (SUP-03), registrar inicio
   con geolocalización simulada y concedida (SUP-04), registrar fin, calificar con estrellas y
   comentario (SUP-05), editar esa calificación dentro de la ventana de P-083, CB-13 (la propia

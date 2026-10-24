@@ -227,6 +227,53 @@ export const VISTAS: VistaSpec[] = [
     }),
     ve: ven({ ...admins }),
   },
+  // --- Coordinación libre y jornada del coordinador (0063, P24.1) -----------------------------
+  {
+    // Los turnos de hoy no cancelados de todos los clientes, SOLO para quien tiene el rol de
+    // coordinador (CJ-02): el escenario planta un turno de hoy sin asignaciones. El empleado y la
+    // administración (que no es coordinador) obtienen cero filas pase lo que pase hoy en `App_dev`.
+    vista: 'v_supervisor_today',
+    propia: true,
+    clave: 'shift_id',
+    filas: (c) => ({ turnoHoy: c.e.turnoHoy }),
+    ve: ven({ supervisor: ['turnoHoy'], dual: ['turnoHoy'] }),
+  },
+  {
+    // Una fila por coordinador activo para el mapa del Resumen y Asistencia de hoy: solo dueño y
+    // administradores (CJ-22, CJ-33). `service_role` no es administración y la ve vacía: por eso es
+    // `propia` (no se cuenta con la clave de servicio; lo prueban las filas que sí ve la administración).
+    vista: 'v_supervisor_status',
+    propia: true,
+    clave: 'supervisor_id',
+    filas: (c) => ({
+      supervisor1: c.ids.supervisor1,
+      supervisor2: c.ids.supervisor2,
+      dual: c.ids.dual,
+    }),
+    ve: ven({ ...admins }),
+  },
+  {
+    // Ídem: solo administración (la ficha del coordinador, las correcciones y los informes).
+    vista: 'v_supervisor_workdays_admin',
+    propia: true,
+    clave: 'id',
+    filas: (c) => ({
+      jornadaSup1: c.e.jornadaSup1,
+      jornadaDual: c.e.jornadaDual,
+    }),
+    ve: ven({ ...admins }),
+  },
+  {
+    // "Mis" jornadas: solo las propias, también para la administración.
+    vista: 'v_my_workdays',
+    propia: true,
+    clave: 'id',
+    filas: (c) => ({
+      jornadaSup1: c.e.jornadaSup1,
+      jornadaDual: c.e.jornadaDual,
+    }),
+    ve: ven({ supervisor: ['jornadaSup1'], dual: ['jornadaDual'] }),
+  },
   {
     vista: 'v_search',
     clave: 'id',

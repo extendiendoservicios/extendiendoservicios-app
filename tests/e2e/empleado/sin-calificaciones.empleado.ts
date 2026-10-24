@@ -6,7 +6,6 @@ import {
   FRANJAS_MOVIL,
   fijarConsentimiento,
   marcarCambiosVistos,
-  supervisionFichar,
 } from '../../fixtures/movil.ts'
 import { Scenario, sessionClient } from '../../fixtures/scenario.ts'
 import { storageStatePath } from '../../fixtures/sessions.ts'
@@ -21,7 +20,8 @@ import { irARedirigida } from '../../fixtures/ui.ts'
 // Decisión de Mike (3 oct 2026): alcanza con que las rutas de supervisor y de administración lo
 // redirijan y que la API le devuelva cero filas en `ratings`. Se hace con una calificación REAL
 // ya cargada sobre el propio empleado: sin ella "cero filas" no probaría nada.
-// Cuentas: empleado1 (quien mira), supervisor1 (califica).
+// P24.5: además no lee nada de la coordinación libre (jornadas, eventos, prioridades, vistas del
+// coordinador y de administración). Cuentas: empleado1 (quien mira), supervisor1 (califica).
 
 test.skip(!readE2eEnv(), MISSING_ENV_MESSAGE)
 test.skip(isTooCloseToMidnight(), NEAR_MIDNIGHT_MESSAGE)
@@ -44,12 +44,11 @@ test(
         FRANJAS_MOVIL.diaCompleto,
       )
       const asignacion = await sc.assign(turno, 'empleado1')
-      const supervision = await sc.assignSupervision(turno, 'supervisor1')
       await fijarConsentimiento('empleado1', true)
       await marcarCambiosVistos('empleado1')
       await fichar('empleado1', asignacion, 'inicio')
       await fichar('empleado1', asignacion, 'fin')
-      await supervisionFichar('supervisor1', supervision, 'inicio')
+      const supervision = await sc.tomarSupervision(turno, 'supervisor1')
       await calificar(
         'supervisor1',
         supervision,
@@ -83,6 +82,41 @@ test(
         }
         const vista = await api.from('v_my_supervisions').select('*')
         expect(vista.data ?? []).toEqual([])
+      })
+
+      await test.step('API (P24.1): jornadas, eventos, prioridades y vistas del coordinador devuelven cero filas', async () => {
+        const api = await sessionClient('empleado1')
+        // Hay una jornada real del coordinador de esta prueba: sin ella "cero filas" no probaría nada.
+        const { data: jornadas } = await sc.db
+          .from('supervisor_workdays')
+          .select('id')
+          .eq('work_date', sc.today)
+        expect((jornadas ?? []).length).toBeGreaterThan(0)
+        for (const tabla of [
+          'supervisor_workdays',
+          'supervisor_priorities',
+        ] as const) {
+          const { data, error } = await api.from(tabla).select('*')
+          expect(error, `${tabla}: ${error?.message}`).toBeNull()
+          expect(data, `${tabla} tiene que venir vacía`).toEqual([])
+        }
+        // Los eventos no abren las coordenadas (select por columna).
+        const eventos = await api
+          .from('supervisor_workday_events')
+          .select('id, kind')
+        expect(eventos.error?.message).toBeUndefined()
+        expect(eventos.data).toEqual([])
+        for (const vista of [
+          'v_my_workdays',
+          'v_supervisor_today',
+          'v_supervisor_status',
+          'v_supervisor_workdays_admin',
+          'v_supervisions_admin',
+        ] as const) {
+          const { data, error } = await api.from(vista).select('*')
+          // Una vista puede dar cero filas o un error de permiso; lo que no puede dar es contenido.
+          expect(error ? [] : data, `${vista} no puede traer filas`).toEqual([])
+        }
       })
 
       await test.step('pantalla: sus propias pantallas no muestran puntaje ni comentario', async () => {

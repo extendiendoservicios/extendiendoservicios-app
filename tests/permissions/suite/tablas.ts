@@ -906,6 +906,100 @@ export const TABLAS: TablaSpec[] = [
       },
     ],
   },
+  // --- Coordinación libre y jornada del coordinador (0063, P24.1): el coordinador lee solo lo
+  // propio, el empleado nada, la administración todo; ninguna tabla tiene políticas de escritura. ---
+  {
+    tabla: 'supervisor_priorities',
+    pk: ['id'],
+    clave: 'id',
+    filas: (c) => ({
+      prioridadSup1: c.e.prioridadSup1,
+      prioridadDual: c.e.prioridadDual,
+    }),
+    objetivo: (c) => ({ id: c.e.prioridadDual }),
+    // Darse una preferencia a uno mismo: solo la escribe `set_supervisor_priority`.
+    insert: {
+      permitido: [],
+      fila: (c, quien) => ({
+        supervisor_id: idPerfil(c, quien),
+        client_id: c.e.clienteA,
+      }),
+    },
+    ve: ven({
+      supervisor: ['prioridadSup1'],
+      dual: ['prioridadDual'],
+      ...admins,
+    }),
+    update: [
+      {
+        nombre: 'baja de la preferencia',
+        permitido: [],
+        parche: { removed_at: new Date().toISOString() },
+      },
+    ],
+  },
+  {
+    tabla: 'supervisor_workdays',
+    pk: ['id'],
+    clave: 'id',
+    filas: (c) => ({
+      jornadaSup1: c.e.jornadaSup1,
+      jornadaDual: c.e.jornadaDual,
+    }),
+    objetivo: (c) => ({ id: c.e.jornadaDual }),
+    insert: {
+      permitido: [],
+      fila: (c, quien) => ({
+        supervisor_id: idPerfil(c, quien),
+        work_date: daysFromToday(-30),
+        started_at: `${daysFromToday(-30)}T11:00:00Z`,
+      }),
+    },
+    ve: ven({
+      supervisor: ['jornadaSup1'],
+      dual: ['jornadaDual'],
+      ...admins,
+    }),
+    update: [
+      {
+        nombre: 'jornada (horas)',
+        permitido: [],
+        parche: { corrected: true },
+      },
+    ],
+  },
+  {
+    tabla: 'supervisor_workday_events',
+    pk: ['id'],
+    clave: 'id',
+    // Las coordenadas no se leen con `select` directo (criterio de 0054): se piden solo las columnas abiertas.
+    columnas: 'id, workday_id, kind, recorded_at, has_position, reason',
+    filas: (c) => ({
+      eventoJornadaSup1: c.e.eventoJornadaSup1,
+      eventoJornadaDual: c.e.eventoJornadaDual,
+    }),
+    objetivo: (c) => ({ id: c.e.eventoJornadaDual }),
+    insert: {
+      permitido: [],
+      fila: (c) => ({
+        workday_id: c.e.jornadaSup1,
+        kind: 'pause',
+        recorded_at: new Date().toISOString(),
+      }),
+    },
+    ve: ven({
+      supervisor: ['eventoJornadaSup1'],
+      dual: ['eventoJornadaDual'],
+      ...admins,
+    }),
+    update: [
+      {
+        nombre: 'hora del evento',
+        permitido: [],
+        parche: { reason: `${PREFIJO}editado` },
+      },
+    ],
+  },
   {
     tabla: 'rating_criteria',
     pk: ['id'],

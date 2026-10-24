@@ -171,6 +171,38 @@ const PRUEBAS: Record<AdminCapability, Prueba[]> = {
     },
   ],
   manage_attendance: [
+    // P24.1: las correcciones de la jornada del coordinador piden `manage_attendance` (CJ-32).
+    {
+      nombre: 'admin_correct_workday_event',
+      ejecutar: (s) =>
+        rpc(s, 'admin_correct_workday_event', {
+          p_event_id: INEXISTENTE,
+          p_reason: 'e2e-perm',
+        }),
+      conCapacidad: 'EVENT_NOT_FOUND',
+    },
+    {
+      nombre: 'admin_add_workday_pause',
+      ejecutar: (s) =>
+        rpc(s, 'admin_add_workday_pause', {
+          p_workday_id: INEXISTENTE,
+          p_starts_at: new Date().toISOString(),
+          p_ends_at: new Date().toISOString(),
+          p_reason: 'e2e-perm',
+        }),
+      conCapacidad: 'WORKDAY_NOT_FOUND',
+    },
+    {
+      nombre: 'admin_record_workday',
+      ejecutar: (s) =>
+        rpc(s, 'admin_record_workday', {
+          p_supervisor_id: INEXISTENTE,
+          p_work_date: new Date().toISOString().slice(0, 10),
+          p_started_at: new Date().toISOString(),
+          p_reason: 'e2e-perm',
+        }),
+      conCapacidad: 'SUPERVISOR_ROLE_REQUIRED',
+    },
     {
       nombre: 'admin_record_attendance',
       ejecutar: (s) =>
@@ -218,14 +250,22 @@ const PRUEBAS: Record<AdminCapability, Prueba[]> = {
     },
   ],
   manage_supervisions: [
+    // P24.1: `assign_supervision` quedó revocada (CJ-01). Las preferencias del coordinador piden
+    // `manage_supervisions` (CJ-03, CJ-24).
     {
-      nombre: 'assign_supervision',
+      nombre: 'set_supervisor_priority',
       ejecutar: (s) =>
-        rpc(s, 'assign_supervision', {
-          p_shift_id: INEXISTENTE,
+        rpc(s, 'set_supervisor_priority', {
           p_supervisor_id: INEXISTENTE,
+          p_client_id: contexto().e.clienteA,
         }),
-      conCapacidad: 'SHIFT_NOT_FOUND',
+      conCapacidad: 'SUPERVISOR_ROLE_REQUIRED',
+    },
+    {
+      nombre: 'remove_supervisor_priority',
+      ejecutar: (s) =>
+        rpc(s, 'remove_supervisor_priority', { p_priority_id: INEXISTENTE }),
+      conCapacidad: 'PRIORITY_NOT_FOUND',
     },
     {
       nombre: 'cancel_supervision',

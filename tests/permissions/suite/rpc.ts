@@ -478,11 +478,14 @@ export const CASOS_RPC: CasoRpc[] = [
   ),
 
   // --- Supervisiones ----------------------------------------------------------------------------
+  // P24.1 (CJ-01, CJ-26): `assign_supervision`, `mark_supervision_not_done`, `supervision_check_in` y
+  // `supervision_check_out` quedaron revocadas para todos los perfiles con sesión y `anon`: el
+  // `execute` es solo de `service_role` (42501, no FORBIDDEN). La puerta de las nuevas está más abajo.
   caso(
     'assign_supervision',
     () => ({ p_shift_id: U, p_supervisor_id: U }),
-    conCapacidad('SHIFT_NOT_FOUND'),
-    { cubre: ['RB-A09', 'RB-X02'] },
+    SOLO_SERVICIO,
+    { cubre: ['RB-A09', 'RB-X02', 'CJ-01'] },
   ),
   caso(
     'cancel_supervision',
@@ -490,24 +493,17 @@ export const CASOS_RPC: CasoRpc[] = [
     conCapacidad('SUPERVISION_NOT_FOUND'),
     { cubre: ['RB-A09', 'RB-X02'] },
   ),
-  // La supervisión A ya está en curso: `ALREADY_STARTED` prueba la puerta sin registrar nada.
   caso(
     'supervision_check_in',
     (c) => ({ p_supervision_id: c.e.supA }),
-    { supervisor: 'ALREADY_STARTED', dual: 'NOT_YOUR_SUPERVISION' },
-    { cubre: ['RB-S01'] },
-  ),
-  caso(
-    'supervision_check_in',
-    (c) => ({ p_supervision_id: c.e.supB }),
-    { supervisor: 'NOT_YOUR_SUPERVISION', dual: 'NOT_YOUR_SUPERVISION' },
-    { variante: 'de otro supervisor', cubre: ['RB-S01', 'RB-X02'] },
+    SOLO_SERVICIO,
+    { cubre: ['RB-S01', 'CJ-26'] },
   ),
   caso(
     'supervision_check_out',
     (c) => ({ p_supervision_id: c.e.supB }),
-    { supervisor: 'NOT_YOUR_SUPERVISION', dual: 'NOT_YOUR_SUPERVISION' },
-    { variante: 'de otro supervisor', cubre: ['RB-S01', 'RB-X02'] },
+    SOLO_SERVICIO,
+    { cubre: ['RB-S01', 'RB-X02', 'CJ-26'] },
   ),
   caso(
     'complete_supervision',
@@ -515,16 +511,11 @@ export const CASOS_RPC: CasoRpc[] = [
     { supervisor: 'NOT_YOUR_SUPERVISION', dual: 'NOT_YOUR_SUPERVISION' },
     { variante: 'de otro supervisor', cubre: ['RB-S04', 'RB-X02'] },
   ),
-  // Sin motivo: se rechaza después de la puerta (REASON_REQUIRED) y no marca nada.
   caso(
     'mark_supervision_not_done',
     (c) => ({ p_supervision_id: c.e.supA, p_reason: '' }),
-    {
-      supervisor: 'REASON_REQUIRED',
-      dual: 'NOT_YOUR_SUPERVISION',
-      ...admins('REASON_REQUIRED'),
-    },
-    { cubre: ['RB-S04', 'RB-A09'] },
+    SOLO_SERVICIO,
+    { cubre: ['RB-S04', 'RB-A09', 'CJ-26'] },
   ),
   // Puntaje 9: fuera de rango, se rechaza después de la puerta y no califica a nadie.
   caso(
@@ -558,6 +549,92 @@ export const CASOS_RPC: CasoRpc[] = [
     },
     { variante: 'a sí mismo (CB-13)', cubre: ['RB-S04', 'CB-13'] },
   ),
+  // =============================================================================================
+  // P24.5: coordinación libre y jornada del coordinador (0062 y 0063, P24.1). Argumentos que se
+  // rechazan DESPUÉS de la puerta de rol y no escriben nada: una posición fuera de rango en las RPC
+  // de jornada y un id inexistente en el resto. Lo que sí escribe (el flujo de punta a punta, los
+  // `hint` de estado y el reparto por capacidad) está en `94-coordinacion`.
+  // =============================================================================================
+
+  // --- Jornada del coordinador (rol `supervisor`: coordinador y doble rol) ----------------------
+  ...[
+    'start_workday',
+    'pause_workday',
+    'resume_workday',
+    'end_workday',
+    'reopen_workday',
+  ].map((rpc) =>
+    caso(
+      rpc,
+      () => ({ p_lat: 999, p_lng: 0, p_accuracy: 1 }),
+      {
+        supervisor: 'COORDINATES_OUT_OF_RANGE',
+        dual: 'COORDINATES_OUT_OF_RANGE',
+      },
+      { cubre: ['RB-S01', 'RB-X02', 'CJ-12', 'CJ-20'] },
+    ),
+  ),
+  caso(
+    'take_supervision',
+    () => ({ p_shift_id: U }),
+    { supervisor: 'SHIFT_NOT_FOUND', dual: 'SHIFT_NOT_FOUND' },
+    { cubre: ['RB-S01', 'RB-X02', 'CJ-02', 'CJ-26'] },
+  ),
+  caso(
+    'discard_supervision',
+    () => ({ p_supervision_id: U }),
+    { supervisor: 'SUPERVISION_NOT_FOUND', dual: 'SUPERVISION_NOT_FOUND' },
+    { cubre: ['RB-S04', 'RB-X02', 'CJ-27'] },
+  ),
+  caso(
+    'discard_supervision',
+    (c) => ({ p_supervision_id: c.e.supB }),
+    { supervisor: 'NOT_YOUR_SUPERVISION', dual: 'NOT_YOUR_SUPERVISION' },
+    { variante: 'de otro coordinador', cubre: ['RB-S04', 'RB-X02', 'CJ-27'] },
+  ),
+
+  // --- Correcciones de la jornada y preferencias (administración con la capacidad) --------------
+  caso(
+    'admin_correct_workday_event',
+    () => ({ p_event_id: U, p_reason: 'e2e-perm' }),
+    conCapacidad('EVENT_NOT_FOUND'),
+    { cubre: ['RB-A07', 'RB-X02', 'CB-17', 'CJ-32'] },
+  ),
+  caso(
+    'admin_add_workday_pause',
+    () => ({
+      p_workday_id: U,
+      p_starts_at: new Date().toISOString(),
+      p_ends_at: new Date().toISOString(),
+      p_reason: 'e2e-perm',
+    }),
+    conCapacidad('WORKDAY_NOT_FOUND'),
+    { cubre: ['RB-A07', 'RB-X02', 'CB-17', 'CJ-32'] },
+  ),
+  caso(
+    'admin_record_workday',
+    () => ({
+      p_supervisor_id: U,
+      p_work_date: new Date().toISOString().slice(0, 10),
+      p_started_at: new Date().toISOString(),
+      p_reason: 'e2e-perm',
+    }),
+    conCapacidad('SUPERVISOR_ROLE_REQUIRED'),
+    { cubre: ['RB-A07', 'RB-X02', 'CB-17', 'CJ-32'] },
+  ),
+  caso(
+    'set_supervisor_priority',
+    (c) => ({ p_supervisor_id: U, p_client_id: c.e.clienteA }),
+    conCapacidad('SUPERVISOR_ROLE_REQUIRED'),
+    { cubre: ['RB-A09', 'RB-X02', 'CB-17', 'CJ-03', 'CJ-24'] },
+  ),
+  caso(
+    'remove_supervisor_priority',
+    () => ({ p_priority_id: U }),
+    conCapacidad('PRIORITY_NOT_FOUND'),
+    { cubre: ['RB-A09', 'RB-X02', 'CB-17', 'CJ-03', 'CJ-24'] },
+  ),
+
   // =============================================================================================
   // P21.6c: al día con las migraciones 0036 a 0048. Alcance según los comentarios de cada
   // migración (el Plan 06 todavía no documenta estas RPC): la puerta es `app.require_admin()` o
