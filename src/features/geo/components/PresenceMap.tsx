@@ -5,15 +5,24 @@ import { Switch } from '@/components/ui/switch'
 import { MapView, type MapViewMarker } from '@/components/map'
 import { GeoStatusBadge } from '@/components/status'
 import { formatDistanceM } from '@/lib/geo'
-import { formatTime } from '@/lib/format'
+import { formatMinutes, formatTime } from '@/lib/format'
 import type { PresenceRow } from '@/api/geo'
+import type { SupervisorStatusRow } from '@/api/supervisorStatus'
 import { UpdatedAgo } from '@/features/attendance/components/UpdatedAgo'
-import { usePresenceTodayQuery } from '../queries'
+import { usePresenceTodayQuery, useSupervisorStatusQuery } from '../queries'
 import {
   buildPresenceMarkers,
   presenceClientName,
   presencePersonName,
 } from '../presence'
+import {
+  coordinatorName,
+  coordinatorStatusDetail,
+  coordinatorWorkdayPath,
+  SUPERVISOR_STATUS_LABELS,
+  SUPERVISOR_STATUS_ORDER,
+  SUPERVISOR_STATUS_VARIANTS,
+} from '../coordinators'
 
 /** Franja `08:00 a 12:00` de la fila (sin segundos); vacía si el turno no la trae. */
 function scheduleLabel(row: PresenceRow): string {
@@ -39,12 +48,11 @@ function PresencePopup({ row }: { row: PresenceRow }) {
     )
   }
 
-  const role = row.kind === 'supervisor' ? 'Coordinador' : 'Empleado'
   return (
     <div className="flex min-w-52 flex-col gap-1 text-[12px]">
       <p className="font-semibold text-text">
         {presencePersonName(row)}{' '}
-        <span className="font-normal text-text-3">· {role}</span>
+        <span className="font-normal text-text-3">· Empleado</span>
       </p>
       <p className="text-text-2">
         {presenceClientName(row)} · {row.siteName}
@@ -90,11 +98,57 @@ function PresencePopup({ row }: { row: PresenceRow }) {
 }
 
 /**
- * Mapa de presencia de ADM-02 (B-11 a B-15): empleados y supervisores que
+ * Popup del coordinador (CJ-22, CJ-33): estado (con cliente y sede si está
+ * supervisando, o el motivo de la pausa), hora del último registro, horas de
+ * hoy y «Ver jornada».
+ */
+function CoordinatorPopup({ row }: { row: SupervisorStatusRow }) {
+  return (
+    <div className="flex min-w-52 flex-col gap-1 text-[12px]">
+      <p className="font-semibold text-text">
+        {coordinatorName(row)}{' '}
+        <span className="font-normal text-text-3">· Coordinador</span>
+      </p>
+      <p className="text-text-2">{coordinatorStatusDetail(row)}</p>
+      {row.lastEventAt && (
+        <p className="text-text-3">
+          Último registro: {formatTime(row.lastEventAt)}
+        </p>
+      )}
+      <p className="text-text-3">
+        Horas de hoy: {formatMinutes(row.workedMinutes)}
+      </p>
+      {row.autoClosed && !row.corrected && (
+        <p className="font-medium text-warning-800">Cerrada automáticamente</p>
+      )}
+      <Link
+        to={coordinatorWorkdayPath(row.supervisorId)}
+        className="font-semibold text-primary-800 hover:underline"
+      >
+        Ver jornada
+      </Link>
+    </div>
+  )
+}
+
+/** Fondo de la muestra de la leyenda (mismos tokens que los marcadores del mapa). */
+const LEGEND_BG: Record<string, string> = {
+  info: 'bg-info',
+  primary: 'bg-primary',
+  warning: 'bg-warning',
+  dark: 'bg-dark',
+  neutral: 'bg-text-3',
+}
+
+/**
+ * Mapa de presencia de ADM-02 (B-11 a B-15, CJ-22, CJ-33): empleados que
  * están trabajando, en la posición de su fichaje de inicio, coloreados por la
- * validación (B-03); las sedes con un turno en la franja actual con su círculo; el interruptor
- * «Mostrar finalizados de hoy»; y debajo, «Trabajando sin ubicación». Se
- * actualiza solo cada 45 s y al volver a la pestaña (B-39), sin Realtime.
+ * validación (B-03); los coordinadores en la posición de su último evento,
+ * con un color por estado y el filtro «Coordinadores»; las sedes con un turno
+ * en la franja actual con su círculo; el interruptor «Mostrar finalizados de
+ * hoy»; y debajo, «Trabajando sin ubicación» y «Coordinadores sin ubicación».
+ * Los empleados se actualizan cada 45 s (B-39) y los coordinadores cada 60 s
+ * (ADR-012), también al volver a la pestaña, sin Realtime.
  */
 function PresenceMap({
   siteIdsInWindow,
@@ -103,21 +157,37 @@ function PresenceMap({
   siteIdsInWindow: ReadonlySet<string>
 }) {
   const query = usePresenceTodayQuery()
+  const coordinatorsQuery = useSupervisorStatusQuery()
   const [showFinished, setShowFinished] = useState(false)
+  const [showCoordinators, setShowCoordinators] = useState(true)
 
   const model = useMemo(
     () =>
       buildPresenceMarkers(query.data ?? [], {
         showFinished,
         siteIdsInWindow,
+        coordinators: coordinatorsQuery.data ?? [],
+        showCoordinators,
       }),
-    [query.data, showFinished, siteIdsInWindow],
+    [
+      query.data,
+      showFinished,
+      siteIdsInWindow,
+      coordinatorsQuery.data,
+      showCoordinators,
+    ],
   )
 
   function renderPopup(marker: MapViewMarker) {
+    if (marker.id.startsWith('coordinator-')) {
+      const coordinator = marker.data as SupervisorStatusRow | undefined
+      return coordinator ? <CoordinatorPopup row={coordinator} /> : null
+    }
     const row = marker.data as PresenceRow | undefined
     return row ? <PresencePopup row={row} /> : null
   }
+
+  const loadError = query.error ?? coordinatorsQuery.error
 
   return (
     <section
@@ -133,22 +203,35 @@ function PresenceMap({
             <UpdatedAgo dataUpdatedAt={query.dataUpdatedAt} />
           )}
         </div>
-        <label
-          htmlFor="presence-show-finished"
-          className="flex items-center gap-3 text-[13px] font-medium text-text"
-        >
-          Mostrar finalizados de hoy
-          <Switch
-            id="presence-show-finished"
-            checked={showFinished}
-            onCheckedChange={setShowFinished}
-          />
-        </label>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <label
+            htmlFor="presence-show-coordinators"
+            className="flex items-center gap-3 text-[13px] font-medium text-text"
+          >
+            Coordinadores
+            <Switch
+              id="presence-show-coordinators"
+              checked={showCoordinators}
+              onCheckedChange={setShowCoordinators}
+            />
+          </label>
+          <label
+            htmlFor="presence-show-finished"
+            className="flex items-center gap-3 text-[13px] font-medium text-text"
+          >
+            Mostrar finalizados de hoy
+            <Switch
+              id="presence-show-finished"
+              checked={showFinished}
+              onCheckedChange={setShowFinished}
+            />
+          </label>
+        </div>
       </div>
 
-      {query.error && (
+      {loadError && (
         <p role="alert" className="text-[13px] text-danger-800">
-          {query.error.message}
+          {loadError.message}
         </p>
       )}
 
@@ -181,13 +264,16 @@ function PresenceMap({
           <span aria-hidden className="size-2.5 rounded-full bg-text-3" />
           Sin validar
         </li>
-        <li className="flex items-center gap-1.5">
-          <span
-            aria-hidden
-            className="size-2.5 rotate-45 rounded-[2px] bg-text-3"
-          />
-          Coordinador
-        </li>
+        {showCoordinators &&
+          SUPERVISOR_STATUS_ORDER.map((status) => (
+            <li key={status} className="flex items-center gap-1.5">
+              <span
+                aria-hidden
+                className={`size-2.5 rotate-45 rounded-[2px] ${LEGEND_BG[SUPERVISOR_STATUS_VARIANTS[status]] ?? 'bg-text-3'}`}
+              />
+              Coordinador: {SUPERVISOR_STATUS_LABELS[status].toLowerCase()}
+            </li>
+          ))}
         <li className="flex items-center gap-1.5">
           <img
             src="/icons/isotipo_blanco_34px@2x.png"
@@ -212,7 +298,7 @@ function PresenceMap({
                 <span className="font-medium text-text">
                   {presencePersonName(row)}
                 </span>
-                {row.kind === 'supervisor' ? ' (coordinador)' : ''} ·{' '}
+                {' · '}
                 {presenceClientName(row)} · {row.siteName}
                 {row.checkInAt ? ` · inicio ${formatTime(row.checkInAt)}` : ''}
                 {row.shiftId && (
@@ -231,6 +317,44 @@ function PresenceMap({
           </ul>
         )}
       </div>
+
+      {showCoordinators && (
+        <div aria-live="polite" className="flex flex-col gap-1">
+          <p className="flex items-center gap-2 text-[13px] font-semibold text-text">
+            <MapPinOff aria-hidden="true" className="size-4 text-text-3" />
+            Coordinadores sin ubicación:{' '}
+            {model.coordinatorsWithoutLocation.length}
+          </p>
+          {model.coordinatorsWithoutLocation.length > 0 && (
+            <ul className="flex flex-col gap-1 pl-6 text-[12.5px] text-text-2">
+              {model.coordinatorsWithoutLocation.map((row) => (
+                <li key={row.supervisorId}>
+                  <span className="font-medium text-text">
+                    {coordinatorName(row)}
+                  </span>
+                  {' · '}
+                  {coordinatorStatusDetail(row)}
+                  {row.onLeave ? ' · de licencia' : ''}
+                  {row.lastEventAt
+                    ? ` · último registro ${formatTime(row.lastEventAt)}`
+                    : ''}
+                  {row.workdayId && (
+                    <>
+                      {' · '}
+                      <Link
+                        to={coordinatorWorkdayPath(row.supervisorId)}
+                        className="font-semibold text-primary-800 hover:underline"
+                      >
+                        Ver jornada
+                      </Link>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </section>
   )
 }

@@ -6,7 +6,8 @@ import { fromPostgrestError } from './errors'
  * `src/api/workdaysAdmin.ts` (P24.3, CJ-13, CJ-17, CJ-32): jornadas de los
  * coordinadores vistas y corregidas por la administración. No se llama
  * `workdays.ts` a propósito: ese nombre es de la app del coordinador
- * (P24.2).
+ * (P24.2). Es la única lectura de `v_supervisor_workdays_admin`: la usan la
+ * pestaña «Jornadas», Asistencia «Coordinadores» y la ficha imprimible (P24.4).
  *
  * Lectura: `v_supervisor_workdays_admin` (solo dueño y administradores;
  * trae los eventos sin coordenadas). Escritura, con motivo obligatorio, O o
@@ -245,6 +246,22 @@ export async function fetchSupervisorWorkdays(
   }
 
   const { data, error } = await query.order('work_date', { ascending: false })
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data ?? []).map((row) => mapWorkdayRow(row))
+}
+
+/** Jornadas de todos los coordinadores en una fecha (`YYYY-MM-DD`), por hora de inicio. */
+export async function fetchWorkdaysByDate(
+  date: string,
+): Promise<AdminWorkday[]> {
+  const { data, error } = await supabase
+    .from('v_supervisor_workdays_admin')
+    .select(WORKDAY_SELECT)
+    .eq('work_date', date)
+    .order('started_at', { ascending: true })
 
   if (error) {
     throw fromPostgrestError(error)

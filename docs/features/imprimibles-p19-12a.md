@@ -59,3 +59,36 @@ componente estable `AttendanceRowActions`, que lee los teléfonos de un contexto
 - **Fila de licencia**: `PrintTable` acepta `spans` (por `key` de fila, `{ from, to }`) y une las celdas con `colSpan`. La licencia ocupa de Cliente a Observaciones con una sola celda (el texto vive en `client`).
 - **Vista previa angosta**: si el ancho disponible es menor que la hoja se aplica `transform: scale()` (calculado con `ResizeObserver`, `computeSheetFit`); el diseño de 210 mm no se reacomoda. Al imprimir no se escala (`print.css`).
 - **Páginas A4 completas**: la hoja mide siempre un múltiplo de 297 mm (`min-height`), con una línea fina en cada límite de página. El bloque de firmas (`data-print-signatures`, con `break-inside: avoid`) se empuja entero a la página siguiente si cruzaría el fondo útil (297 mm menos 2 × 15 mm). La paginación en pantalla es una aproximación (`computePageLayout`); los cortes reales los decide el navegador al imprimir. Las firmas quedan a continuación del contenido, no pegadas al pie.
+
+## P24.4: ficha imprimible de jornadas del coordinador
+
+Especificación: `Docs/Plan_Maestro/modulos/P24_coordinacion_libre_y_jornada.md`
+(CJ-13, CJ-14, CJ-19, CJ-34). Mismo membrete y estilo A4 que el resto
+(`PrintSheet`, `PrintableLetterhead`, `PrintTable`, `PrintSignatures`).
+
+- **`AttendanceDetailSheet`** acepta ahora `workdays` (jornadas del período de
+  un coordinador) e `includeServices`. `buildAttendanceSheet` devuelve
+  `sections` (antes `columns`/`rows`/`footer`): una por rol.
+- **Sección de jornadas** (`buildWorkdaysSection`): una fila por día con
+  **Fecha, Inicio, Fin, Pausas, Observaciones y Horas netas**. Debajo de cada
+  día van sus supervisiones, en una celda unida: «Supervisión: Cliente · Sede,
+  10:00 a 10:45 (45 min, informativo)», con «— Sin cerrar» si corresponde. La
+  duración de las supervisiones **no suma**: el total es la suma de las horas
+  netas de las jornadas.
+- **Marcas**: «Cerrada automáticamente» (CJ-31) y «Corregida» (CJ-32), en
+  Observaciones. Una jornada en curso muestra «En curso» como fin.
+- **Pausas**: «12:00 a 12:30 (30 min) — Almuerzo»; el hueco entre un fin y su
+  reapertura figura como «Jornada reabierta».
+- **Persona con dos roles** (CJ-34): dos secciones con título («Turnos como
+  empleado» y «Jornadas como coordinador»), cada una con su total, y al final
+  «Total general (empleado y coordinador)». Con un solo rol no hay títulos de
+  sección y el total se llama «Total del período».
+- **Títulos**: «Detalle de asistencia» (solo empleado), «Detalle de jornadas»
+  (solo coordinador) y «Detalle de asistencia y jornadas» (los dos). El texto
+  de conformidad del coordinador es «Las partes prestan conformidad con el
+  detalle de jornadas y horas consignado.»; el pie de firmas es el de siempre.
+- **Se abre desde** «Descargar detalle» de la pestaña «Asistencia» de la ficha
+  (solo dueño y administradores). La pestaña «Jornadas» de P24.3 puede reusar
+  el componente pasándole `workdays` y `includeServices={false}`; el hook para
+  traer las jornadas del período es `useSupervisorWorkdaysQuery`.
+- Tests: `detailSheetWorkdays.test.ts`, `components/AttendanceDetailSheet.test.tsx`.

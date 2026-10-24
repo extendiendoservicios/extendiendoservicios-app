@@ -6,6 +6,7 @@ import {
   presencePersonName,
   presenceVariant,
 } from './presence'
+import { makeStatusRow } from './coordinatorFixtures'
 
 function row(overrides: Partial<PresenceRow> = {}): PresenceRow {
   return {
@@ -111,14 +112,49 @@ describe('buildPresenceMarkers', () => {
     expect(model.markers.every((marker) => marker.shape === 'dot')).toBe(true)
   })
 
-  it('los supervisores llevan forma de rombo', () => {
+  it('ignora las filas de supervisión de v_presence_today: el coordinador sale de v_supervisor_status (sin doble punto)', () => {
     const model = buildPresenceMarkers(
       [row({ kind: 'supervisor', recordId: 'sv1' })],
-      { showFinished: false },
+      {
+        showFinished: false,
+        coordinators: [makeStatusRow({ supervisorId: 'sv1' })],
+      },
     )
-    expect(model.markers).toHaveLength(1)
-    expect(model.markers[0]?.shape).toBe('supervisor')
-    expect(model.markers[0]?.id).toBe('supervisor-sv1')
+    expect(model.markers.map((marker) => marker.id)).toEqual([
+      'coordinator-sv1',
+    ])
+    expect(model.peopleOnMap).toBe(0)
+    expect(model.coordinatorsOnMap).toBe(1)
+    expect(model.withoutLocation).toEqual([])
+  })
+
+  it('suma a los coordinadores después de los empleados, y el filtro los apaga', () => {
+    const options = {
+      showFinished: false,
+      coordinators: [
+        makeStatusRow({ supervisorId: 'a', status: 'supervising' as const }),
+        makeStatusRow({
+          supervisorId: 'b',
+          status: 'paused' as const,
+          latitude: null,
+          longitude: null,
+        }),
+      ],
+    }
+    const on = buildPresenceMarkers([row()], options)
+    expect(on.markers.map((marker) => marker.id)).toEqual([
+      'employee-a1',
+      'coordinator-a',
+    ])
+    expect(on.coordinatorsWithoutLocation.map((r) => r.supervisorId)).toEqual([
+      'b',
+    ])
+    const off = buildPresenceMarkers([row()], {
+      ...options,
+      showCoordinators: false,
+    })
+    expect(off.markers.map((marker) => marker.id)).toEqual(['employee-a1'])
+    expect(off.coordinatorsWithoutLocation).toEqual([])
   })
 
   it('oculta a los finalizados salvo con «Mostrar finalizados de hoy»', () => {
@@ -249,12 +285,12 @@ describe('buildPresenceMarkers', () => {
     expect(model.peopleOnMap).toBe(0)
   })
 
-  it('un supervisor en curso también muestra su sede', () => {
+  it('una supervisión en curso ya no activa la sede: el coordinador sale de su estado', () => {
     const model = buildPresenceMarkers(
       [siteRow(), row({ kind: 'supervisor', recordId: 'sv1' })],
       { showFinished: false },
     )
-    expect(model.sitesOnMap).toBe(1)
+    expect(model.sitesOnMap).toBe(0)
   })
 
   it('las sedes van primero y los puntos de personas encima', () => {

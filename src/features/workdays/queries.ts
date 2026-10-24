@@ -12,14 +12,29 @@ export const workdaysKeys = {
   all: ['workdaysAdmin'] as const,
   list: (filters: WorkdayFilters) =>
     [...workdaysKeys.all, 'list', filters] as const,
+  byDate: (date: string) => [...workdaysKeys.all, 'byDate', date] as const,
 }
 
 /** Pestaña «Jornadas» de ADM-16: jornadas de un coordinador en un período. */
-export function useSupervisorWorkdaysQuery(filters: WorkdayFilters) {
+export function useSupervisorWorkdaysQuery(
+  filters: WorkdayFilters,
+  enabled = true,
+) {
   return useQuery({
     queryKey: workdaysKeys.list(filters),
     queryFn: () => workdaysApi.fetchSupervisorWorkdays(filters),
+    enabled,
     staleTime: 30_000,
+  })
+}
+
+/** Jornadas de todos los coordinadores en una fecha (Asistencia «Coordinadores» en días pasados). */
+export function useWorkdaysByDateQuery(date: string, enabled = true) {
+  return useQuery({
+    queryKey: workdaysKeys.byDate(date),
+    queryFn: () => workdaysApi.fetchWorkdaysByDate(date),
+    enabled,
+    staleTime: 60_000,
   })
 }
 

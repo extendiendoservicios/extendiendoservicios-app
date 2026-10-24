@@ -24,6 +24,10 @@ vi.mock('@/features/attendance/queries', () => ({
 
 vi.mock('./UpdatedAgo', () => ({ UpdatedAgo: () => null }))
 
+vi.mock('./CoordinatorsDaySection', () => ({
+  CoordinatorsDaySection: () => null,
+}))
+
 vi.mock('./RecordAttendanceSheet', () => ({
   RecordAttendanceSheet: () => <div role="dialog" aria-label="Registrar" />,
 }))
