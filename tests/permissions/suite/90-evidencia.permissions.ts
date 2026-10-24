@@ -161,13 +161,21 @@ describe('Evidencia fotográfica (módulo H): permisos por rol', () => {
       if (error)
         throw new Error(`asignar (${turnoId}): ${error.hint} ${error.message}`)
     }
+    // P24.5: `assign_supervision` quedó revocada (CJ-01) y `take_supervision` solo toma turnos de
+    // hoy (acá también hay turnos de hace 20 y dentro de 20 días): se plantan directo, sin jornada.
     const supervisar = async (turnoId: string, quien: string) => {
-      const { data, error } = await dueno.rpc('assign_supervision', {
-        p_shift_id: turnoId,
-        p_supervisor_id: quien,
-      })
-      if (error) throw new Error(`supervisar: ${error.hint} ${error.message}`)
-      return (data as unknown as { supervision: { id: string } }).supervision.id
+      const { data, error } = await db
+        .from('supervisions')
+        .insert({
+          shift_id: turnoId,
+          supervisor_id: quien,
+          status: 'assigned',
+          criteria_snapshot: [],
+        })
+        .select('id')
+        .single()
+      if (error) throw new Error(`supervisar: ${error.message}`)
+      return data.id
     }
 
     const hoy = todayAR()
@@ -205,12 +213,16 @@ describe('Evidencia fotográfica (módulo H): permisos por rol', () => {
     })
     if (cancelaSup.error)
       throw new Error(`cancel_supervision: ${cancelaSup.error.message}`)
-    const noHecha = await supervisor().rpc('mark_supervision_not_done', {
-      p_supervision_id: supNoRealizadaId,
-      p_reason: `${PREFIJO}evid no realizada`,
-    })
-    if (noHecha.error)
-      throw new Error(`mark_supervision_not_done: ${noHecha.error.message}`)
+    // «No realizada» ya no se produce desde la app (CJ-26, `mark_supervision_not_done` revocada): el
+    // estado sigue existiendo en el historial y se arma directo.
+    const noHecha = await db
+      .from('supervisions')
+      .update({
+        status: 'not_done',
+        not_done_reason: `${PREFIJO}evid no realizada`,
+      })
+      .eq('id', supNoRealizadaId)
+    if (noHecha.error) throw new Error(`no realizada: ${noHecha.error.message}`)
     const cancelaTurno = await dueno.rpc('cancel_shift', {
       p_shift_id: cancelado,
       p_reason: `${PREFIJO}evid turno cancelado`,

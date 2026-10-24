@@ -81,6 +81,17 @@ export interface IdsEscenario {
   criterio: string
   feriado: string
   evento: string
+  /** P24: turno de HOY del cliente A, sin asignaciones (lo ven los coordinadores en `v_supervisor_today`). */
+  turnoHoy: string
+  /** P24: preferencias (supervisor1 → cliente A, doble rol → cliente B), jornadas de AYER y su evento de inicio. */
+  prioridadSup1: string
+  prioridadDual: string
+  jornadaSup1: string
+  jornadaDual: string
+  eventoJornadaSup1: string
+  eventoJornadaDual: string
+  /** Fecha de las jornadas plantadas (ayer, hora de Argentina). */
+  fechaJornada: string
 }
 
 export interface Contexto {

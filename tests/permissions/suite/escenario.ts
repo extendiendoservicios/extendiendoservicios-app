@@ -8,12 +8,17 @@
 //   Turno D (cliente B): empleado4 y el doble rol asignados, y el doble rol supervisándolo (CB-13).
 //
 // `service_role` no puede llamar a las RPC de negocio ni insertar asignaciones (no hay
-// `auth.uid()`): esas operaciones van con la sesión del dueño.
+// `auth.uid()`): esas operaciones van con la sesión del dueño. Las supervisiones se plantan directo
+// (P24.5: ya no hay asignación manual).
 
 import { randomBytes } from 'node:crypto'
-import type { AdminDb } from '../../fixtures/accounts.ts'
+import {
+  esDelConjuntoActivo,
+  loadAuthUserIds,
+  type AdminDb,
+} from '../../fixtures/accounts.ts'
 import { daysFromToday } from '../../fixtures/dates.ts'
-import { deleteClientDeep } from '../../fixtures/scenario.ts'
+import { borrarJornadasDe, deleteClientDeep } from '../../fixtures/scenario.ts'
 import type { Db, IdsCuentas, IdsEscenario } from './contexto.ts'
 
 export const PREFIJO = 'e2e-perm-'
@@ -45,6 +50,27 @@ async function ok<T>(
   return data
 }
 
+/**
+ * Borra las jornadas y las preferencias de TODAS las cuentas fijas del conjunto activo: son datos
+ * de las pruebas (P24) y las jornadas son únicas por coordinador y por día, así que una que quede
+ * de una corrida cortada haría fallar `start_workday` con `WORKDAY_ALREADY_STARTED`.
+ */
+export async function borrarJornadasDelConjunto(
+  db: AdminDb,
+): Promise<string[]> {
+  const cuentas = [...(await loadAuthUserIds(db))]
+    .filter(([email]) => esDelConjuntoActivo(email))
+    .map(([, id]) => id)
+  if (cuentas.length === 0) return []
+  const notas = await borrarJornadasDe(db, cuentas)
+  const { error } = await db
+    .from('supervisor_priorities')
+    .delete()
+    .in('supervisor_id', cuentas)
+  if (error) notas.push(`supervisor_priorities: ${error.message}`)
+  return notas
+}
+
 /** Barre lo que haya dejado una corrida anterior cortada a la mitad. */
 export async function barrerResiduos(db: AdminDb): Promise<number> {
   const { data } = await db
@@ -56,6 +82,8 @@ export async function barrerResiduos(db: AdminDb): Promise<number> {
     await deleteClientDeep(db, fila.id)
     barridos += 1
   }
+  // P24: jornadas y preferencias de las cuentas fijas del conjunto que dejó una corrida cortada.
+  await borrarJornadasDelConjunto(db)
   // Licencias de una corrida cortada: la siguiente chocaría con `employee_leaves_no_overlap`.
   await db.from('employee_leaves').delete().like('reason', `${PREFIJO}%`)
   await db.from('holidays').delete().like('name', `${PREFIJO}%`)
@@ -128,15 +156,25 @@ export async function plantar(
       throw new Error(`Escenario de permisos, asignar: ${error.message}`)
     return (data as unknown as { assignment: { id: string } }).assignment.id
   }
-  const supervisar = async (turnoId: string, supervisorId: string) => {
-    const { data, error } = await dueno.rpc('assign_supervision', {
-      p_shift_id: turnoId,
-      p_supervisor_id: supervisorId,
-    })
-    if (error)
-      throw new Error(`Escenario de permisos, supervisar: ${error.message}`)
-    return (data as unknown as { supervision: { id: string } }).supervision.id
-  }
+  // P24.5: `assign_supervision` está revocada (CJ-01) y `take_supervision` solo toma turnos de hoy.
+  // Las supervisiones del escenario se plantan directo con la clave de servicio, ya en curso (sin
+  // jornada), para que las RPC de calificar y cerrar lleguen a sus validaciones.
+  const supervisar = async (turnoId: string, supervisorId: string) =>
+    (
+      await ok(
+        'supervisión',
+        db
+          .from('supervisions')
+          .insert({
+            shift_id: turnoId,
+            supervisor_id: supervisorId,
+            status: 'in_progress',
+            criteria_snapshot: [],
+          })
+          .select('id')
+          .single(),
+      )
+    ).id
 
   const clienteA = await crearCliente('a')
   const clienteB = await crearCliente('b')
@@ -175,15 +213,6 @@ export async function plantar(
   const supA = await supervisar(turnoA, ids.supervisor1)
   const supB = await supervisar(turnoB, ids.supervisor2)
   const supD = await supervisar(turnoD, ids.dual)
-  // En curso, para que `rate_employee` llegue a la validación del puntaje (sin escribir nada).
-  await ok(
-    'supervisiones en curso',
-    db
-      .from('supervisions')
-      .update({ status: 'in_progress' })
-      .in('id', [supA, supB, supD])
-      .select('id'),
-  )
 
   const tarea = async (turnoId: string, slug: string) =>
     (
@@ -429,6 +458,94 @@ export async function plantar(
     )
   ).id
 
+  // P24 (coordinación libre y jornada): una preferencia y una jornada de AYER por coordinador (ayer, y
+  // no hoy, para que las pruebas que inician la jornada de hoy no choquen con `unique (supervisor_id,
+  // work_date)`). Se plantan con la clave de servicio: ninguna de esas tablas tiene escritura por API.
+  const fechaJornada = daysFromToday(-1)
+  // Un turno de hoy sin asignaciones: lo ven los coordinadores en `v_supervisor_today` (CJ-02).
+  const turnoHoy = (
+    await ok(
+      'turno de hoy',
+      db
+        .from('shifts')
+        .insert({
+          client_id: clienteA,
+          site_id: sedeA,
+          shift_date: daysFromToday(0),
+          start_time: '00:00',
+          end_time: '23:59',
+          required_staff: 1,
+          notes: `${PREFIJO}turno-hoy`,
+        })
+        .select('id')
+        .single(),
+    )
+  ).id
+  await borrarJornadasDe(db, [ids.supervisor1, ids.dual, ids.supervisor2])
+  const prioridad = async (supervisorId: string, clienteId: string) =>
+    (
+      await ok(
+        'preferencia',
+        db
+          .from('supervisor_priorities')
+          .insert({
+            supervisor_id: supervisorId,
+            client_id: clienteId,
+            created_by: ids.owner,
+          })
+          .select('id')
+          .single(),
+      )
+    ).id
+  const prioridadSup1 = await prioridad(ids.supervisor1, clienteA)
+  const prioridadDual = await prioridad(ids.dual, clienteB)
+  const jornada = async (supervisorId: string) => {
+    const hora = (hhmm: string) => `${fechaJornada}T${hhmm}:00-03:00`
+    const id = (
+      await ok(
+        'jornada',
+        db
+          .from('supervisor_workdays')
+          .insert({
+            supervisor_id: supervisorId,
+            work_date: fechaJornada,
+            started_at: hora('08:00'),
+            ended_at: hora('16:00'),
+          })
+          .select('id')
+          .single(),
+      )
+    ).id
+    const inicio = (
+      await ok(
+        'evento de inicio',
+        db
+          .from('supervisor_workday_events')
+          .insert({
+            workday_id: id,
+            kind: 'start',
+            recorded_at: hora('08:00'),
+            latitude: -34.6037,
+            longitude: -58.3816,
+            accuracy_m: 12,
+          })
+          .select('id')
+          .single(),
+      )
+    ).id
+    await ok(
+      'evento de fin',
+      db
+        .from('supervisor_workday_events')
+        .insert({ workday_id: id, kind: 'end', recorded_at: hora('16:00') })
+        .select('id')
+        .single(),
+    )
+    return { id, inicio }
+  }
+  const jornadaSup1 = await jornada(ids.supervisor1)
+  const jornadaDual = await jornada(ids.dual)
+
   return {
     clienteA,
     clienteB,
@@ -472,6 +589,14 @@ export async function plantar(
     criterio,
     feriado,
     evento,
+    turnoHoy,
+    prioridadSup1,
+    prioridadDual,
+    jornadaSup1: jornadaSup1.id,
+    jornadaDual: jornadaDual.id,
+    eventoJornadaSup1: jornadaSup1.inicio,
+    eventoJornadaDual: jornadaDual.inicio,
+    fechaJornada,
   }
 }
 
@@ -481,6 +606,8 @@ export async function limpiar(db: AdminDb, e: IdsEscenario): Promise<string[]> {
   for (const clienteId of [e.clienteA, e.clienteB]) {
     notas.push(...(await deleteClientDeep(db, clienteId)))
   }
+  // P24: jornadas (con sus eventos) y preferencias; las supervisiones ya se borraron con los clientes.
+  notas.push(...(await borrarJornadasDelConjunto(db)))
   const borrar = async (
     que: string,
     consulta: PromiseLike<{ error: { message: string } | null }>,
