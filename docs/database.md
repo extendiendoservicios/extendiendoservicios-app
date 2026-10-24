@@ -2489,6 +2489,38 @@ pgTAP: `0063_p24_1_jornada_coordinador.test.sql` (estructura, privilegios, jorna
 administración, prioridades, RLS) y `0063_p24_1_supervision_libre.test.sql` (tomar, descartar, cerrar, calificar,
 permisos, vistas), más ajustes en los tests de migraciones anteriores que usaban la asignación manual.
 
+### Correcciones de P24 (migración `0064`, DEF-P24-01 y DEF-P24-02)
+
+**DEF-P24-01: corregir el fin de una jornada cerrada sola con una supervisión «Sin cerrar» (CJ-17, CJ-32).** El cierre
+automático deja un `supervision_end` (motivo «Cierre automático») a las 23:55 y, al llevar el `end` a otra hora, ese
+evento quedaba posterior al fin (`INVALID_EVENT_ORDER`), sin forma de corregirlo (`EVENT_NOT_CORRECTABLE`). Ahora:
+
+- `admin_correct_workday_event`: al corregir el `end` de un cierre automático (motivo «Cierre automático»), los
+  `supervision_end` que generó ese mismo cierre (motivo «Cierre automático», misma hora que el fin, supervisión no
+  cancelada) y el `check_out` sin posición de su supervisión se mueven a la hora nueva, en la misma transacción y con la
+  misma traza (`corrected_from`, `corrected_at`, `corrected_by`, `correction_reason`). `security_events`
+  (`workday_corrected`) suma `adjusted_supervision_event_ids`. El fin se puede llevar a cualquier hora válida del día
+  (también después de las 23:55). El `supervision_end` que registró el coordinador (sin motivo) no se corrige ni se
+  mueve: el fin de la jornada no puede quedar antes de él (`INVALID_EVENT_ORDER`). Corregir directamente el fin
+  automático sigue dando `EVENT_NOT_CORRECTABLE` (con un mensaje que explica que se ajusta solo).
+- **Caso borde**: si la hora nueva queda antes del inicio (`check_in`) de una de esas supervisiones se rechaza con el
+  código nuevo `END_BEFORE_SUPERVISION_START` y no cambia nada. Con la hora igual al inicio se acepta (dura 0 minutos).
+  Para llevar el fin antes hay que cancelar la supervisión primero.
+- `cancel_supervision` y `discard_supervision` dan de baja lógica (`removed_at` / `removed_by`, P-014) los eventos
+  `supervision_start` y `supervision_end` de la supervisión, con `app.remove_supervision_workday_events(uuid)` (interna,
+  sin `execute` para los roles de la API), para que una supervisión cancelada no imponga orden a la jornada. La migración
+  regulariza las ya canceladas.
+- Las horas netas (`worked_minutes`) salen de los eventos de jornada (`start`, `pause`, `resume`, `end`, `reopen`) y la
+  duración de la supervisión de su `check_in` / `check_out`: ambas se recalculan solas en `v_supervisor_workdays_admin`,
+  `v_my_workdays` y `v_supervisions_admin`. Los grants de las RPC no cambian.
+
+**DEF-P24-02: `v_supervisor_today` (y `app.supervisor_today()`) suman al final dos columnas**: `site_radius_m smallint`
+(radio vigente de la sede: el propio `sites.geofence_radius_m` o el general de `company_settings`) y `max_accuracy_m
+smallint` (`company_settings.geofence_max_accuracy_m`), los mismos valores que usa `app.geo_for_site` al tomar la
+supervisión. Se recreó la función y la vista (cambia el tipo de retorno); grants iguales.
+
+pgTAP: `0064_p24_correcciones.test.sql`.
+
 ## Tipos para el frontend
 
 `src/lib/database.types.ts` se genera con `pnpm db:types` (`supabase gen types --linked`) contra

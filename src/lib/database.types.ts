@@ -5867,6 +5867,7 @@ export type Database = {
           end_time: string | null
           ends_at: string | null
           is_priority: boolean | null
+          max_accuracy_m: number | null
           my_supervision_id: string | null
           my_supervision_status:
             | Database["public"]["Enums"]["supervision_status"]
@@ -5883,6 +5884,7 @@ export type Database = {
           site_latitude: number | null
           site_longitude: number | null
           site_name: string | null
+          site_radius_m: number | null
           start_time: string | null
           starts_at: string | null
           supervisors: Json | null
