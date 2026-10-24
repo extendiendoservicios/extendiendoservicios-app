@@ -104,6 +104,7 @@ export class ResponsiveScenario {
   private readonly shiftIds: string[] = []
   private readonly assignmentIds: string[] = []
   private readonly supervisionIds: string[] = []
+  private readonly workdaySupervisorIds: string[] = []
   private readonly profileIds: string[] = []
 
   async owner(): Promise<AdminClient> {
@@ -265,22 +266,71 @@ export class ResponsiveScenario {
     return id
   }
 
-  async assignSupervision(
+  /**
+   * Supervisión en curso de un coordinador, armada directo con la clave de servicio (P24.5): la
+   * asignación manual ya no existe (`assign_supervision` está revocada) y el coordinador descartable
+   * no tiene sesión abierta en este paso. Queda con el inicio registrado y sin jornada.
+   */
+  async createSupervision(
     shiftId: string,
     supervisorId: string,
   ): Promise<string> {
+    const { data, error } = await this.admin
+      .from('supervisions')
+      .insert({
+        shift_id: shiftId,
+        supervisor_id: supervisorId,
+        status: 'in_progress',
+        criteria_snapshot: [],
+      })
+      .select('id')
+      .single()
+    if (error) {
+      throw new Error(`No se pudo crear la supervisión: ${error.message}`)
+    }
+    this.supervisionIds.push(data.id)
+    const marca = await this.admin.from('supervision_attendance').insert({
+      supervision_id: data.id,
+      kind: 'check_in',
+      recorded_at: new Date(Date.now() - 20 * 60_000).toISOString(),
+    })
+    if (marca.error) {
+      throw new Error(`No se pudo registrar el inicio: ${marca.error.message}`)
+    }
+    return data.id
+  }
+
+  /**
+   * Jornada de un coordinador de hoy, registrada en nombre suyo por el dueño con la RPC real
+   * (`admin_record_workday`, CJ-32): de 08:00 a las 08:01 de Argentina, para que exista a cualquier
+   * hora. Se borra al limpiar.
+   */
+  async recordWorkday(supervisorId: string): Promise<string> {
     const owner = await this.owner()
-    const { data, error } = await owner.rpc('assign_supervision', {
-      p_shift_id: shiftId,
+    const { data, error } = await owner.rpc('admin_record_workday', {
       p_supervisor_id: supervisorId,
+      p_work_date: this.today,
+      p_started_at: `${this.today}T00:00:00-03:00`,
+      p_reason: `${E2E_PREFIX}: jornada de fixture`,
+      p_ended_at: `${this.today}T00:01:00-03:00`,
     })
     if (error) {
-      throw new Error(`No se pudo asignar la supervisión: ${error.message}`)
+      throw new Error(`No se pudo registrar la jornada: ${error.message}`)
     }
-    const id = (data as unknown as { supervision: { id: string } }).supervision
-      .id
-    this.supervisionIds.push(id)
-    return id
+    this.workdaySupervisorIds.push(supervisorId)
+    return (data as unknown as { workday_id: string }).workday_id
+  }
+
+  /** Cliente preferencial del coordinador con la RPC real (`set_supervisor_priority`), como el dueño. */
+  async setPriority(supervisorId: string, clientId: string): Promise<void> {
+    const owner = await this.owner()
+    const { error } = await owner.rpc('set_supervisor_priority', {
+      p_supervisor_id: supervisorId,
+      p_client_id: clientId,
+    })
+    if (error) {
+      throw new Error(`No se pudo cargar la preferencia: ${error.message}`)
+    }
   }
 
   async recordCheckIn(assignmentId: string): Promise<void> {
@@ -307,6 +357,66 @@ export class ResponsiveScenario {
       if (error) notes.push(`${what}: ${error.message}`)
     }
 
+    const coordinadores = Array.from(
+      new Set([...this.workdaySupervisorIds, ...this.profileIds]),
+    )
+    if (coordinadores.length > 0) {
+      // P24.1: eventos y jornadas cuelgan de las supervisiones y del coordinador.
+      const { data: jornadas } = await this.admin
+        .from('supervisor_workdays')
+        .select('id')
+        .in('supervisor_id', coordinadores)
+      const jornadaIds = (jornadas ?? []).map((j) => j.id)
+      if (this.supervisionIds.length > 0) {
+        note(
+          'borrar eventos de supervisión',
+          (
+            await this.admin
+              .from('supervisor_workday_events')
+              .delete()
+              .in('supervision_id', this.supervisionIds)
+          ).error,
+        )
+      }
+      if (jornadaIds.length > 0) {
+        note(
+          'soltar supervisiones de la jornada',
+          (
+            await this.admin
+              .from('supervisions')
+              .update({ workday_id: null })
+              .in('workday_id', jornadaIds)
+          ).error,
+        )
+        note(
+          'borrar eventos de jornada',
+          (
+            await this.admin
+              .from('supervisor_workday_events')
+              .delete()
+              .in('workday_id', jornadaIds)
+          ).error,
+        )
+        note(
+          'borrar jornadas',
+          (
+            await this.admin
+              .from('supervisor_workdays')
+              .delete()
+              .in('id', jornadaIds)
+          ).error,
+        )
+      }
+      note(
+        'borrar prioridades',
+        (
+          await this.admin
+            .from('supervisor_priorities')
+            .delete()
+            .in('supervisor_id', coordinadores)
+        ).error,
+      )
+    }
     if (this.supervisionIds.length > 0) {
       note(
         'borrar supervision_attendance',
@@ -513,10 +623,14 @@ export async function buildResponsiveData(
     employeeWorking.profileId,
   )
   await scenario.recordCheckIn(workingAssignmentId)
-  const supervisionId = await scenario.assignSupervision(
+  const supervisionId = await scenario.createSupervision(
     shiftId,
     supervisor.profileId,
   )
+  // Una jornada del coordinador (sin iniciar, finalizada hace un rato) y una preferencia, para que
+  // «Jornadas» y «Clientes y sedes preferenciales» de la ficha tengan contenido.
+  await scenario.recordWorkday(supervisor.profileId)
+  await scenario.setPriority(supervisor.profileId, client.id)
   // Un turno de hoy sin cubrir y varios en otros días cercanos.
   const uncoveredShiftId = await scenario.createShift(
     client.id,

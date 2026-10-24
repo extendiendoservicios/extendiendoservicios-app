@@ -70,7 +70,7 @@ test.describe('axe: administración, pantallas de los ajustes', () => {
           entrada: '08:00',
           salida: '10:30',
         })
-        const supervision = await sc.assignSupervision(shiftId, 'supervisor1')
+        const supervision = await sc.supervisionDirecta(shiftId, 'supervisor1')
         await calificarDirecto(sc, supervision, assignmentId, 4)
 
         for (const tamano of TAMANOS) {

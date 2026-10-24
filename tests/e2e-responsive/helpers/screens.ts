@@ -54,7 +54,6 @@ export const OPERATION_SCREENS: AdminScreen[] = [
     path: () => '/admin/supervisiones?pestana=calificaciones',
     main: false,
   },
-  { id: 'ADM-14', path: () => '/admin/supervisiones/nueva', main: false },
   {
     id: 'ADM-15',
     path: (d) => `/admin/supervisiones/${d.supervisionId}`,
@@ -102,6 +101,17 @@ export const MANAGEMENT_SCREENS: AdminScreen[] = [
     id: 'ADM-17-calificaciones',
     path: (d) =>
       `/admin/empleados/${d.employee.profileId}?pestana=calificaciones`,
+    main: false,
+  },
+  {
+    id: 'ADM-17-preferenciales',
+    path: (d) =>
+      `/admin/empleados/${d.supervisor.profileId}?pestana=preferenciales`,
+    main: false,
+  },
+  {
+    id: 'ADM-17-jornadas',
+    path: (d) => `/admin/empleados/${d.supervisor.profileId}?pestana=jornadas`,
     main: false,
   },
   {
@@ -234,6 +244,11 @@ export const MOBILE_SCREENS: MobileScreen[] = [
     path: (d) => `/app/en-curso/${d.workingAssignmentId}/finalizar`,
   },
   { id: 'SUP-02-hoy', who: 'supervisor', path: () => '/sup' },
+  {
+    id: 'SUP-03-turno',
+    who: 'supervisor',
+    path: (d) => `/sup/turnos/${d.shiftId}`,
+  },
   {
     id: 'SUP-supervisiones',
     who: 'supervisor',

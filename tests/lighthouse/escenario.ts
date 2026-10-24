@@ -185,14 +185,26 @@ export class EscenarioLighthouse {
     this.ids.asignaciones.push(
       (asig.data as unknown as { assignment: { id: string } }).assignment.id,
     )
-    const sup = await dueno.rpc('assign_supervision', {
-      p_shift_id: turno.data.id,
-      p_supervisor_id: this.supervisor.profileId,
-    })
+    // P24.5: `assign_supervision` está revocada (CJ-01). La supervisión en curso se arma directo
+    // con la clave de servicio, con el inicio registrado y sin jornada.
+    const sup = await this.admin
+      .from('supervisions')
+      .insert({
+        shift_id: turno.data.id,
+        supervisor_id: this.supervisor.profileId,
+        status: 'in_progress',
+        criteria_snapshot: [],
+      })
+      .select('id')
+      .single()
     if (sup.error) throw new Error(`Supervisión: ${sup.error.message}`)
-    this.ids.supervisiones.push(
-      (sup.data as unknown as { supervision: { id: string } }).supervision.id,
-    )
+    this.ids.supervisiones.push(sup.data.id)
+    const marca = await this.admin.from('supervision_attendance').insert({
+      supervision_id: sup.data.id,
+      kind: 'check_in',
+      recorded_at: new Date(Date.now() - 20 * 60_000).toISOString(),
+    })
+    if (marca.error) throw new Error(`Inicio: ${marca.error.message}`)
   }
 
   /** Borra todo lo creado. Devuelve notas con lo que no se pudo borrar (queda con baja lógica). */

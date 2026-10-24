@@ -74,7 +74,7 @@ test(
           fecha,
           quien,
         })
-        const supervision = await sc.assignSupervision(shiftId, 'supervisor1')
+        const supervision = await sc.supervisionDirecta(shiftId, 'supervisor1')
         await calificarDirecto(sc, supervision, assignmentId, puntaje)
       }
 

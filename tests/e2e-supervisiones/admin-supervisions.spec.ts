@@ -2,10 +2,11 @@
 // 08_Fases_y_Backlog.md F15, ADM-13 a ADM-15, 06_API.md §12)
 //
 // Escritorio de administración, logueado como el dueño del seed (O: `manage_supervisions` y
-// `edit_ratings` siempre, P-083, 02_Decisiones.md): asignar una supervisión (ADM-14) con la
-// advertencia SUPERVISES_OWN_SHIFT ("este supervisor también está asignado como empleado en
-// este turno", P15.0) y "Ver supervisión"; ver el detalle (ADM-15); marcar como no realizada con
-// motivo; cancelar; editar una calificación (`edit_ratings`).
+// `edit_ratings` siempre, P-083, 02_Decisiones.md). Reescrito en P24.5: la administración ya no
+// asigna supervisiones (CJ-01) ni las marca «no realizada» (CJ-26); acá se ve el detalle de una
+// supervisión en curso (ADM-15), que no hay acción de asignar, y se cancela y se edita una
+// calificación (`edit_ratings`). La advertencia SUPERVISES_OWN_SHIFT ahora la devuelve
+// `take_supervision` (la cubre `permissions/suite/94-coordinacion`).
 //
 // Datos propios (prefijo `E2E-P156`): un cliente, una sede, un supervisor y un empleado
 // descartables, y cuatro turnos de MAÑANA (ancla fija, sin relación con la hora a la que corra
@@ -29,13 +30,10 @@ import {
 } from './helpers/employeeFixture.ts'
 import {
   assignEmployeeToShift,
-  assignSupervisionToShift,
   cancelSupervisionFixture,
   createTomorrowShift,
-  forceSupervisionStatus,
-  tomorrowISODate,
+  plantSupervisionInProgress,
 } from './helpers/shiftFixture.ts'
-import { pickFarDate } from './helpers/datePicker.ts'
 import { loginAs } from './helpers/login.ts'
 import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
@@ -43,7 +41,7 @@ const env = readE2eSupervisionesEnv()
 test.skip(!env, MISSING_ENV_MESSAGE)
 
 test.describe('SUP-013: administración de supervisiones (ADM-13 a ADM-15)', () => {
-  test('asignar con advertencia, ver supervisión, detalle, no realizada, cancelar, editar calificación', async ({
+  test('detalle de una supervisión en curso, sin asignar ni «no realizada», cancelar, editar calificación', async ({
     page,
   }, testInfo) => {
     testInfo.setTimeout(150_000)
@@ -62,8 +60,7 @@ test.describe('SUP-013: administración de supervisiones (ADM-13 a ADM-15)', () 
       env!.seedPassword,
     )
 
-    // Escenario 1 (09:00–10:00): el supervisor también queda asignado como empleado -- dispara
-    // SUPERVISES_OWN_SHIFT al asignar la supervisión.
+    // Escenario 1 (09:00–10:00): el supervisor también queda asignado como empleado del turno.
     const shiftWarning = await createTomorrowShift(
       admin,
       client.id,
@@ -74,15 +71,6 @@ test.describe('SUP-013: administración de supervisiones (ADM-13 a ADM-15)', () 
     const warningAssignmentId = await assignEmployeeToShift(
       shiftWarning.shiftId,
       supervisor.profileId,
-    )
-
-    // Escenario 2 (10:30–11:30): "marcar como no realizada".
-    const shiftNotDone = await createTomorrowShift(
-      admin,
-      client.id,
-      site.id,
-      '10:30',
-      '11:30',
     )
 
     // Escenario 3 (12:00–13:00): "cancelar supervisión".
@@ -109,66 +97,37 @@ test.describe('SUP-013: administración de supervisiones (ADM-13 a ADM-15)', () 
     )
 
     let warningSupervisionId: string | null = null
-    let notDoneSupervisionId: string | null = null
     let cancelSupervisionId: string | null = null
     let rateSupervisionId: string | null = null
 
     try {
       await loginAs(page, SEED_ACCOUNTS.owner, env!.seedPassword, /\/admin/)
 
-      await test.step('ADM-14: asignar supervisión con advertencia SUPERVISES_OWN_SHIFT y "Ver supervisión"', async () => {
+      await test.step('ADM-13: no hay «Asignar supervisión» y la ruta vieja no abre la pantalla (CJ-01)', async () => {
         await page.goto('/admin/supervisiones')
-        // El botón de la lista es `<Button asChild><Link>...` (SupervisionsAdminScreen): rol
-        // accesible "link", no "button".
-        await page.getByRole('link', { name: 'Asignar supervisión' }).click()
-        const assignSheet = page.getByRole('dialog', {
-          name: 'Asignar supervisión',
-        })
         await expect(
-          assignSheet.getByRole('heading', { name: 'Asignar supervisión' }),
+          page.getByRole('combobox', { name: 'Filtrar por coordinador' }),
         ).toBeVisible()
-
-        const tomorrow = tomorrowISODate()
-        const [year, month, day] = tomorrow.split('-').map(Number)
-        await pickFarDate(page, 'Fecha del turno', { year, month, day })
-
-        await assignSheet.getByRole('combobox', { name: 'Turno' }).click()
-        // Por nombre de cliente/sede de ESTA corrida (no solo el horario): si quedó algún turno
-        // de fixture de una corrida anterior sin limpiar en `App_dev`, puede compartir el mismo
-        // horario (09:00–10:00) y volver ambiguo el selector.
-        await page
-          .getByRole('option', {
-            name: new RegExp(`${client.legalName}.*${site.name}.*09:00–10:00`),
-          })
-          .click()
-        await assignSheet.getByRole('combobox', { name: 'Coordinador' }).click()
-        await page
-          .getByRole('option', {
-            name: `${supervisor.firstName} ${supervisor.lastName}`,
-          })
-          .click()
-        await assignSheet
-          .getByRole('button', { name: 'Asignar supervisión' })
-          .click()
-
         await expect(
-          assignSheet.getByText(
-            'Este coordinador también está asignado como empleado en este turno.',
-          ),
-        ).toBeVisible()
-        const verButton = assignSheet.getByRole('button', {
-          name: 'Ver supervisión',
-        })
-        await expect(verButton).toBeVisible()
-        await verButton.click()
-        // "Ver supervisión" entra directo al detalle de la supervisión recién creada.
-        await expect(page).toHaveURL(/\/admin\/supervisiones\/[^/]+$/)
-        warningSupervisionId = page.url().split('/supervisiones/')[1]
+          page.getByRole('link', { name: 'Asignar supervisión' }),
+        ).toHaveCount(0)
+        await expect(
+          page.getByRole('button', { name: 'Asignar supervisión' }),
+        ).toHaveCount(0)
+        await page.goto('/admin/supervisiones/nueva')
+        await expect(
+          page.getByRole('heading', { name: 'Asignar supervisión' }),
+        ).toHaveCount(0)
       })
 
-      await test.step('ADM-15: el detalle muestra cliente, sede, supervisor y estado "Asignada"', async () => {
-        // El listado (ADM-13) sigue montado detrás del drawer ("background location"): hay que
-        // acotar al drawer para no chocar con la misma fila de la tabla.
+      await test.step('ADM-15: el detalle muestra cliente, sede, coordinador y estado «En curso», sin «No realizada»', async () => {
+        const warningSupervision = await plantSupervisionInProgress(
+          admin,
+          shiftWarning.shiftId,
+          supervisor.profileId,
+        )
+        warningSupervisionId = warningSupervision
+        await page.goto(`/admin/supervisiones/${warningSupervision}`)
         const detailSheet = page.getByRole('dialog', {
           name: 'Detalle de la supervisión',
         })
@@ -184,43 +143,17 @@ test.describe('SUP-013: administración de supervisiones (ADM-13 a ADM-15)', () 
             .getByText(`${supervisor.firstName} ${supervisor.lastName}`)
             .first(),
         ).toBeVisible()
-        await expect(detailSheet.getByText('Asignada')).toBeVisible()
-      })
-
-      await test.step('ADM-15: marcar como no realizada, con motivo obligatorio', async () => {
-        const notDoneSupervision = await assignSupervisionToShift(
-          shiftNotDone.shiftId,
-          supervisor.profileId,
-        )
-        notDoneSupervisionId = notDoneSupervision
-        await page.goto(`/admin/supervisiones/${notDoneSupervision}`)
-        await page
-          .getByRole('button', { name: 'Marcar como no realizada' })
-          .click()
+        await expect(detailSheet.getByText('En curso').first()).toBeVisible()
         await expect(
-          page.getByRole('heading', { name: 'Marcar como no realizada' }),
-        ).toBeVisible()
-        const motivo = 'E2E-P156: el supervisor no pudo asistir a la sede.'
-        // Sin nombre, `getByRole('dialog')` también matchea el `Sheet` del detalle (también rol
-        // "dialog", el de ADM-15 queda abierto DEBAJO de este diálogo de confirmación).
-        const notDoneDialog = page.getByRole('dialog', {
-          name: 'Marcar como no realizada',
-        })
-        await notDoneDialog.getByLabel('Motivo').fill(motivo)
-        await notDoneDialog
-          .getByRole('button', { name: 'Marcar como no realizada' })
-          .click()
-        await expect(notDoneDialog).toBeHidden()
-        // `exact: true`: sin esto, también matchea el toast "Marcamos la supervisión como no
-        // realizada." (desaparece solo, no sirve como aserción estable).
-        await expect(
-          page.getByText('No realizada', { exact: true }),
-        ).toBeVisible()
-        await expect(page.getByText(`Motivo: ${motivo}`)).toBeVisible()
+          detailSheet.getByRole('button', {
+            name: 'Marcar como no realizada',
+          }),
+        ).toHaveCount(0)
       })
 
       await test.step('ADM-15: cancelar supervisión, con motivo obligatorio', async () => {
-        const cancelSupervision = await assignSupervisionToShift(
+        const cancelSupervision = await plantSupervisionInProgress(
+          admin,
           shiftCancel.shiftId,
           supervisor.profileId,
         )
@@ -246,15 +179,14 @@ test.describe('SUP-013: administración de supervisiones (ADM-13 a ADM-15)', () 
       })
 
       await test.step('ADM-15: editar una calificación con edit_ratings (rate_employee, upsert)', async () => {
-        const rateSupervision = await assignSupervisionToShift(
+        // `rate_employee` exige in_progress/completed (SUPERVISION_NOT_ACTIVE): la supervisión se
+        // planta en curso, sin tener que tomar el turno de verdad como el coordinador.
+        const rateSupervision = await plantSupervisionInProgress(
+          admin,
           shiftRate.shiftId,
           supervisor.profileId,
         )
         rateSupervisionId = rateSupervision
-        // `rate_employee` exige in_progress/completed (SUPERVISION_NOT_ACTIVE): se fuerza a mano
-        // (clave de servicio), sin tener que fichar de verdad como el supervisor -- mismo
-        // criterio que `tests/permissions/admin.permissions.ts`.
-        await forceSupervisionStatus(admin, rateSupervision, 'in_progress')
         await page.goto(`/admin/supervisiones/${rateSupervision}`)
 
         await page.getByRole('button', { name: 'Calificar' }).click()
@@ -311,7 +243,6 @@ test.describe('SUP-013: administración de supervisiones (ADM-13 a ADM-15)', () 
       if (rateSupervisionId) {
         await cancelSupervisionFixture(rateSupervisionId)
       }
-      void notDoneSupervisionId // ya quedó en un estado terminal (not_done): nada que cancelar.
       void cancelSupervisionId // ya quedó en un estado terminal (cancelled): nada que cancelar.
       void warningAssignmentId
       void rateAssignmentId
