@@ -13,11 +13,149 @@
 // proceso y renovada pasados 40 minutos.
 
 import { randomBytes } from 'node:crypto'
-import { getAdminDb, type AdminDb, type FixedAccountKey } from './accounts.ts'
+import { mkdirSync, rmSync, statSync } from 'node:fs'
+import path from 'node:path'
+import {
+  getAdminDb,
+  loadAuthUserIds,
+  type AdminDb,
+  type FixedAccountKey,
+} from './accounts.ts'
 import { todayAR } from './dates.ts'
-import { readId, signedClient, type SessionKey } from './sessions.ts'
+import { readId, signedClient, STATE_DIR, type SessionKey } from './sessions.ts'
 
 export const E2E_PREFIX = 'e2e-'
+
+/** Posición del celular que mandan las RPC de jornada y de supervisión (precisión en metros). */
+export interface Posicion {
+  latitude: number
+  longitude: number
+  accuracy: number
+}
+
+/** Plaza de Mayo (CABA): las sedes de prueba no tienen coordenadas, así que no se valida contra ellas. */
+export const POSICION_DE_PRUEBA: Posicion = {
+  latitude: -34.6083,
+  longitude: -58.3712,
+  accuracy: 12,
+}
+
+/**
+ * Candado por coordinador (P24.5). La jornada es UNA por coordinador y por día (CJ-30) y una sola
+ * supervisión puede estar abierta a la vez (CJ-08): dos tests que usen la misma cuenta fija al
+ * mismo tiempo (los archivos de administración corren en dos procesos) se pisarían y el que
+ * termina primero borraría la jornada del otro. El candado es una carpeta que se crea de forma
+ * atómica dentro del estado de la corrida; se espera con sondeo (una espera por una condición
+ * real, no un `sleep` fijo) y un candado de más de 20 minutos se considera abandonado.
+ */
+const ESPERA_CANDADO_MS = 5 * 60_000
+const CANDADO_ABANDONADO_MS = 20 * 60_000
+
+function carpetaCandado(who: FixedAccountKey): string {
+  return path.join(STATE_DIR, `candado-${who}`)
+}
+
+async function tomarCandado(who: FixedAccountKey): Promise<void> {
+  const carpeta = carpetaCandado(who)
+  mkdirSync(STATE_DIR, { recursive: true })
+  const limite = Date.now() + ESPERA_CANDADO_MS
+  for (;;) {
+    try {
+      mkdirSync(carpeta)
+      return
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
+    }
+    try {
+      if (Date.now() - statSync(carpeta).mtimeMs > CANDADO_ABANDONADO_MS) {
+        rmSync(carpeta, { recursive: true, force: true })
+        continue
+      }
+    } catch {
+      continue // lo soltaron justo ahora: se reintenta
+    }
+    if (Date.now() > limite) {
+      throw new Error(
+        `No se pudo reservar al coordinador ${who}: lo está usando otro test hace más de 5 minutos.`,
+      )
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500))
+  }
+}
+
+function soltarCandado(who: FixedAccountKey): void {
+  rmSync(carpetaCandado(who), { recursive: true, force: true })
+}
+
+const EVENTOS_DE_JORNADA = ['start', 'pause', 'resume', 'end', 'reopen']
+
+/**
+ * Estado de la jornada de hoy del coordinador según su último evento vigente de jornada
+ * (`running`, `paused` o `ended`); `null` si todavía no la inició. Lee con la clave de servicio.
+ */
+export async function estadoJornada(
+  who: FixedAccountKey,
+  db: AdminDb = getAdminDb(),
+): Promise<'running' | 'paused' | 'ended' | null> {
+  const { data: jornada } = await db
+    .from('supervisor_workdays')
+    .select('id')
+    .eq('supervisor_id', readId(who))
+    .eq('work_date', todayAR())
+    .maybeSingle()
+  if (!jornada) return null
+  const { data: eventos } = await db
+    .from('supervisor_workday_events')
+    .select('kind')
+    .eq('workday_id', jornada.id)
+    .is('removed_at', null)
+    .in('kind', EVENTOS_DE_JORNADA as never)
+    .order('recorded_at', { ascending: false })
+    .order('seq', { ascending: false })
+    .limit(1)
+  const ultimo = eventos?.[0]?.kind
+  if (ultimo === 'pause') return 'paused'
+  if (ultimo === 'end') return 'ended'
+  return 'running'
+}
+
+/**
+ * Borra las jornadas del coordinador (eventos y jornada) y suelta las supervisiones que cuelguen de
+ * ellas. Es solo para limpiar datos de las pruebas (la app nunca borra, P-014). Con `desde` borra
+ * desde esa fecha; sin ella, todas las del coordinador.
+ */
+export async function borrarJornadasDe(
+  db: AdminDb,
+  supervisorIds: string[],
+  desde?: string,
+): Promise<string[]> {
+  const notes: string[] = []
+  if (supervisorIds.length === 0) return notes
+  let consulta = db
+    .from('supervisor_workdays')
+    .select('id')
+    .in('supervisor_id', supervisorIds)
+  if (desde) consulta = consulta.gte('work_date', desde)
+  const { data: jornadas } = await consulta
+  const ids = (jornadas ?? []).map((j) => j.id)
+  if (ids.length === 0) return notes
+  const soltar = await db
+    .from('supervisions')
+    .update({ workday_id: null })
+    .in('workday_id', ids)
+  if (soltar.error)
+    notes.push(`supervisions.workday_id: ${soltar.error.message}`)
+  const eventos = await db
+    .from('supervisor_workday_events')
+    .delete()
+    .in('workday_id', ids)
+  if (eventos.error)
+    notes.push(`supervisor_workday_events: ${eventos.error.message}`)
+  const borradas = await db.from('supervisor_workdays').delete().in('id', ids)
+  if (borradas.error)
+    notes.push(`supervisor_workdays: ${borradas.error.message}`)
+  return notes
+}
 
 /** Nombre único y reconocible: `e2e-<slug>-<sufijo>`. */
 export function uniqueName(slug: string): string {
@@ -80,6 +218,10 @@ export class Scenario {
   readonly farMonths: Array<{ year: number; month: number }> = []
   readonly leaveIds: string[] = []
   readonly availabilityIds: string[] = []
+  /** Coordinadores cuya jornada de hoy armó este escenario (se borra al limpiar). */
+  readonly coordinadores = new Set<FixedAccountKey>()
+  /** Prioridades (`supervisor_priorities`) creadas por este escenario. */
+  readonly prioridadIds: string[] = []
 
   /** Cliente activo con CUIT único. */
   async client(
@@ -203,22 +345,296 @@ export class Scenario {
     return (data as unknown as { assignment: { id: string } }).assignment.id
   }
 
-  /** Asigna una supervisión de una cuenta fija a un turno (`assign_supervision`), como el dueño. */
-  async assignSupervision(
+  /**
+   * Reserva a un coordinador de las cuentas fijas para este escenario (candado entre procesos) y
+   * lo anota para borrar sus jornadas al limpiar. Hay que llamarlo antes de tocar su jornada, su
+   * supervisión abierta o sus consentimientos; `asegurarJornada`, `tomarSupervision` y
+   * `jornadaPasada` ya lo hacen.
+   */
+  async tomarCoordinador(who: FixedAccountKey): Promise<void> {
+    if (this.coordinadores.has(who)) return
+    await tomarCandado(who)
+    this.coordinadores.add(who)
+  }
+
+  /**
+   * Deja la jornada de HOY del coordinador en marcha con las RPC reales y la sesión del propio
+   * coordinador (P24, CJ-12, CJ-30): la inicia si no existe, la reanuda si está en pausa y la
+   * reabre si estaba finalizada. Anota la cuenta para borrar sus jornadas al limpiar.
+   */
+  async asegurarJornada(
+    who: FixedAccountKey,
+    pos: Posicion = POSICION_DE_PRUEBA,
+  ): Promise<void> {
+    await this.tomarCoordinador(who)
+    const client = await sessionClient(who)
+    const estado = await estadoJornada(who)
+    if (estado === 'running') return
+    const args = {
+      p_lat: pos.latitude,
+      p_lng: pos.longitude,
+      p_accuracy: pos.accuracy,
+    }
+    const llamada =
+      estado === null
+        ? await client.rpc('start_workday', args)
+        : estado === 'paused'
+          ? await client.rpc('resume_workday', args)
+          : await client.rpc('reopen_workday', args)
+    if (llamada.error) {
+      throw new Error(
+        `No se pudo dejar en marcha la jornada: ${llamada.error.message}`,
+      )
+    }
+  }
+
+  /**
+   * El coordinador toma un turno de hoy con el flujo real (P24.1, CJ-26): deja la jornada en marcha
+   * y llama a `take_supervision` con su sesión. Devuelve el id de la supervisión, que queda
+   * `in_progress`. Reemplaza al viejo `assignSupervision`: ya no existe el estado «asignada».
+   * El coordinador solo puede tener una supervisión abierta a la vez (CJ-08): cerrala antes de
+   * tomar otro turno (`calificarYCerrar`), o usá `supervisionDirecta` para armar historial.
+   */
+  async tomarSupervision(
     shiftId: string,
     who: FixedAccountKey,
+    pos: Posicion = POSICION_DE_PRUEBA,
   ): Promise<string> {
-    const owner = await sessionClient('owner')
-    const supervisorId = readId(who)
-    const { data, error } = await owner.rpc('assign_supervision', {
+    await this.asegurarJornada(who, pos)
+    const client = await sessionClient(who)
+    const { data, error } = await client.rpc('take_supervision', {
       p_shift_id: shiftId,
-      p_supervisor_id: supervisorId,
+      p_lat: pos.latitude,
+      p_lng: pos.longitude,
+      p_accuracy: pos.accuracy,
     })
     if (error) {
-      throw new Error(`No se pudo asignar la supervisión: ${error.message}`)
+      throw new Error(`No se pudo tomar la supervisión: ${error.message}`)
     }
     const payload = data as unknown as { supervision: { id: string } }
     return payload.supervision.id
+  }
+
+  /**
+   * Jornada de un día anterior (o de hoy) registrada en nombre del coordinador con la RPC real
+   * `admin_record_workday`, como el dueño (CJ-32). `desde` y `hasta` son `HH:MM` de Argentina. La
+   * jornada queda marcada como corregida. Devuelve el id de la jornada.
+   */
+  async jornadaPasada(
+    who: FixedAccountKey,
+    fecha: string,
+    desde: string,
+    hasta: string,
+    motivo = `${E2E_PREFIX}jornada registrada`,
+  ): Promise<string> {
+    await this.tomarCoordinador(who)
+    const owner = await sessionClient('owner')
+    const { data, error } = await owner.rpc('admin_record_workday', {
+      p_supervisor_id: readId(who),
+      p_work_date: fecha,
+      p_started_at: `${fecha}T${desde}:00-03:00`,
+      p_reason: motivo,
+      p_ended_at: `${fecha}T${hasta}:00-03:00`,
+    })
+    if (error) {
+      throw new Error(`No se pudo registrar la jornada: ${error.message}`)
+    }
+    return (data as unknown as { workday_id: string }).workday_id
+  }
+
+  /**
+   * Jornada armada directo con la clave de servicio, para los estados que la app no deja armar a
+   * propósito: cerrada sola a las 23:55 (CJ-31, `autoCerrada`) con o sin una supervisión que queda
+   * «Sin cerrar», o con pausas cargadas. Imita lo que dejan las RPC: evento `start`, pausas
+   * (`pause` y `resume`), eventos de la supervisión y evento `end`. `hasta` es `HH:MM` de Argentina;
+   * sin él la jornada queda abierta. Devuelve los ids de la jornada y, si hay, de la supervisión.
+   */
+  async jornadaDirecta(
+    who: FixedAccountKey,
+    fecha: string,
+    pedido: {
+      desde: string
+      hasta?: string
+      autoCerrada?: boolean
+      pausas?: Array<{ desde: string; hasta: string; motivo?: string }>
+      /** Turno de esa fecha con una supervisión que la jornada cierra sola («Sin cerrar»). */
+      turnoSinCerrar?: { shiftId: string; desde: string }
+    },
+  ): Promise<{ workdayId: string; supervisionId: string | null }> {
+    await this.tomarCoordinador(who)
+    const hora = (hhmm: string) => `${fecha}T${hhmm}:00-03:00`
+    const { data: jornada, error } = await this.db
+      .from('supervisor_workdays')
+      .insert({
+        supervisor_id: readId(who),
+        work_date: fecha,
+        started_at: hora(pedido.desde),
+        ended_at: pedido.hasta ? hora(pedido.hasta) : null,
+        auto_closed: pedido.autoCerrada ?? false,
+      })
+      .select('id')
+      .single()
+    if (error) throw new Error(`No se pudo crear la jornada: ${error.message}`)
+    const evento = async (
+      kind:
+        | 'start'
+        | 'pause'
+        | 'resume'
+        | 'end'
+        | 'supervision_start'
+        | 'supervision_end',
+      hhmm: string,
+      extra: { reason?: string; supervision_id?: string } = {},
+    ) => {
+      const { error: errorEvento } = await this.db
+        .from('supervisor_workday_events')
+        .insert({
+          workday_id: jornada.id,
+          kind,
+          recorded_at: hora(hhmm),
+          reason: extra.reason ?? null,
+          supervision_id: extra.supervision_id ?? null,
+        })
+      if (errorEvento) {
+        throw new Error(
+          `No se pudo crear el evento ${kind}: ${errorEvento.message}`,
+        )
+      }
+    }
+    await evento('start', pedido.desde)
+    for (const pausa of pedido.pausas ?? []) {
+      await evento('pause', pausa.desde, { reason: pausa.motivo })
+      await evento('resume', pausa.hasta)
+    }
+    let supervisionId: string | null = null
+    if (pedido.turnoSinCerrar && pedido.hasta) {
+      supervisionId = await this.supervisionDirecta(
+        pedido.turnoSinCerrar.shiftId,
+        who,
+        {
+          estado: 'en_curso',
+          inicio: hora(pedido.turnoSinCerrar.desde),
+          fin: hora(pedido.hasta),
+          jornadaId: jornada.id,
+        },
+      )
+      await evento('supervision_start', pedido.turnoSinCerrar.desde, {
+        supervision_id: supervisionId,
+      })
+      await evento('supervision_end', pedido.hasta, {
+        supervision_id: supervisionId,
+      })
+    }
+    if (pedido.hasta) {
+      await evento('end', pedido.hasta, {
+        reason: pedido.autoCerrada ? 'Cierre automático' : undefined,
+      })
+    }
+    return { workdayId: jornada.id, supervisionId }
+  }
+
+  /**
+   * Supervisión armada directo con la clave de servicio (sin jornada), para el historial de otros
+   * días, estados cerrados y escenarios que no pasan por el flujo del celular. `en_curso` queda
+   * `in_progress` con el inicio registrado; `completada` suma el fin; `cancelada` lleva motivo.
+   * Nunca la ve `open_supervision_id` (no tiene `workday_id`), así que no bloquea la jornada.
+   */
+  async supervisionDirecta(
+    shiftId: string,
+    who: FixedAccountKey,
+    options: {
+      estado?: 'en_curso' | 'completada' | 'cancelada' | 'no_realizada'
+      inicio?: string
+      fin?: string
+      notas?: string
+      /** Jornada a la que cuelga (por ejemplo, la de un día anterior armada con `jornadaPasada`). */
+      jornadaId?: string
+    } = {},
+  ): Promise<string> {
+    const estado = options.estado ?? 'completada'
+    const { data: criterios } = await this.db
+      .from('rating_criteria')
+      .select('id, title, description, position')
+      .order('position')
+    const { data, error } = await this.db
+      .from('supervisions')
+      .insert({
+        shift_id: shiftId,
+        supervisor_id: readId(who),
+        // `no_realizada` (`not_done`) ya no se usa en la app (CJ-26) pero queda en el historial.
+        status:
+          estado === 'en_curso'
+            ? 'in_progress'
+            : estado === 'completada'
+              ? 'completed'
+              : estado === 'no_realizada'
+                ? 'not_done'
+                : 'cancelled',
+        cancel_reason: estado === 'cancelada' ? `${E2E_PREFIX}cancelada` : null,
+        not_done_reason:
+          estado === 'no_realizada' ? `${E2E_PREFIX}no realizada` : null,
+        general_notes: options.notas ?? null,
+        workday_id: options.jornadaId ?? null,
+        criteria_snapshot: criterios ?? [],
+      })
+      .select('id')
+      .single()
+    if (error) {
+      throw new Error(`No se pudo crear la supervisión: ${error.message}`)
+    }
+    const marcas: Array<{ kind: 'check_in' | 'check_out'; at: string }> = []
+    if (estado === 'en_curso' || estado === 'completada') {
+      marcas.push({
+        kind: 'check_in',
+        at: options.inicio ?? new Date(Date.now() - 30 * 60_000).toISOString(),
+      })
+    }
+    if (estado === 'completada' || (estado === 'en_curso' && options.fin)) {
+      marcas.push({
+        kind: 'check_out',
+        at: options.fin ?? new Date(Date.now() - 5 * 60_000).toISOString(),
+      })
+    }
+    if (marcas.length > 0) {
+      const { error: marcaError } = await this.db
+        .from('supervision_attendance')
+        .insert(
+          marcas.map((m) => ({
+            supervision_id: data.id,
+            kind: m.kind,
+            recorded_at: m.at,
+          })),
+        )
+      if (marcaError) {
+        throw new Error(
+          `No se pudo registrar la asistencia: ${marcaError.message}`,
+        )
+      }
+    }
+    return data.id
+  }
+
+  /**
+   * Prioridad (sede o cliente preferencial) de un coordinador con la RPC real
+   * (`set_supervisor_priority`), como el dueño. Se borra al limpiar. Devuelve el id.
+   */
+  async prioridad(
+    who: FixedAccountKey,
+    objetivo: { clientId: string } | { siteId: string },
+  ): Promise<string> {
+    const owner = await sessionClient('owner')
+    const { data, error } = await owner.rpc('set_supervisor_priority', {
+      p_supervisor_id: readId(who),
+      ...('clientId' in objetivo
+        ? { p_client_id: objetivo.clientId }
+        : { p_site_id: objetivo.siteId }),
+    })
+    if (error) {
+      throw new Error(`No se pudo cargar la prioridad: ${error.message}`)
+    }
+    const id = (data as unknown as { id: string }).id
+    this.prioridadIds.push(id)
+    return id
   }
 
   /**
@@ -313,8 +729,25 @@ export class Scenario {
    */
   async cleanup(): Promise<string[]> {
     const notes: string[] = []
+    if (this.prioridadIds.length > 0) {
+      const { error } = await this.db
+        .from('supervisor_priorities')
+        .delete()
+        .in('id', this.prioridadIds)
+      if (error) notes.push(`supervisor_priorities: ${error.message}`)
+    }
     for (const clientId of this.clientIds) {
       notes.push(...(await deleteClientDeep(this.db, clientId)))
+    }
+    if (this.coordinadores.size > 0) {
+      notes.push(
+        ...(await borrarJornadasDe(
+          this.db,
+          Array.from(this.coordinadores, (who) => readId(who)),
+        )),
+      )
+      for (const who of this.coordinadores) soltarCandado(who)
+      this.coordinadores.clear()
     }
     for (const { year, month } of this.farMonths) {
       notes.push(...(await purgeMonth(this.db, year, month)))
@@ -385,6 +818,16 @@ export async function deleteClientDeep(
       .in('shift_id', shiftIds)
     const supIds = (sups ?? []).map((s) => s.id)
     if (supIds.length > 0) {
+      // P24.1: los eventos de jornada de cada supervisión cuelgan de ella.
+      note(
+        'supervisor_workday_events',
+        (
+          await db
+            .from('supervisor_workday_events')
+            .delete()
+            .in('supervision_id', supIds)
+        ).error,
+      )
       note(
         'ratings',
         (await db.from('ratings').delete().in('supervision_id', supIds)).error,
@@ -495,6 +938,19 @@ export async function deleteClientDeep(
     )
   }
 
+  // P24.1: las prioridades de coordinadores cuelgan del cliente o de sus sedes.
+  note(
+    'supervisor_priorities (cliente)',
+    (await db.from('supervisor_priorities').delete().eq('client_id', clientId))
+      .error,
+  )
+  if (siteIds.length > 0) {
+    note(
+      'supervisor_priorities (sedes)',
+      (await db.from('supervisor_priorities').delete().in('site_id', siteIds))
+        .error,
+    )
+  }
   note(
     'client_contacts',
     (await db.from('client_contacts').delete().eq('client_id', clientId)).error,
@@ -634,6 +1090,15 @@ export async function sweepResidues(
   for (const row of data ?? []) {
     await deleteClientDeep(db, row.id)
     swept += 1
+  }
+  // P24.1: las jornadas y prioridades de los coordinadores de prueba (cuentas `e2e-fijo-*` de
+  // todos los conjuntos) son datos de las pruebas: una corrida cortada puede dejar la de hoy.
+  const fijas = [...(await loadAuthUserIds(db))]
+    .filter(([email]) => email.startsWith('e2e-fijo-'))
+    .map(([, id]) => id)
+  await borrarJornadasDe(db, fijas)
+  if (fijas.length > 0) {
+    await db.from('supervisor_priorities').delete().in('supervisor_id', fijas)
   }
   return swept
 }
