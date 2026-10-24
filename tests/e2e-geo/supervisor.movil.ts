@@ -344,19 +344,8 @@ test.describe('radio propio de la sede', () => {
     'SUP-03: la sede con radio propio de 300 m: a 200 m el panel dice «dentro de la zona», igual que la base',
     cubre('RB-S01', 'B-07', 'B-08', 'CJ-20'),
     async ({ page, context }) => {
-      // DEFECTO (menor, P24.2 pregunta 1): `v_supervisor_today` no trae el radio propio de la sede ni
-      // la precisión máxima de la empresa; SUP-03 usa el radio general y el panel dice «fuera de la
-      // zona» mientras la base, con el radio de la sede, valida «dentro». Se saca el `fail` cuando
-      // la vista los traiga.
-      test.fail(
-        true,
-        'Defecto: el panel de SUP-03 ignora el radio propio de la sede (v_supervisor_today no lo trae).',
-      )
-      test.info().annotations.push({
-        type: 'defecto',
-        description:
-          'SUP-03 no usa el radio propio de la sede para el veredicto del panel; la base sí.',
-      })
+      // DEF-P24-02 (corregido en #222, 0064): `v_supervisor_today` trae `site_radius_m` y
+      // `max_accuracy_m`, así que el panel usa el radio propio de la sede.
       test.setTimeout(180_000)
       const sc = new Scenario()
       try {
