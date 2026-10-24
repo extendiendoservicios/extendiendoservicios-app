@@ -523,6 +523,8 @@ export class Scenario {
       })
       await evento('supervision_end', pedido.hasta, {
         supervision_id: supervisionId,
+        // Igual que `app.auto_close_workdays` (0064 mueve solo los que llevan este motivo).
+        reason: pedido.autoCerrada ? 'Cierre automático' : undefined,
       })
     }
     if (pedido.hasta) {

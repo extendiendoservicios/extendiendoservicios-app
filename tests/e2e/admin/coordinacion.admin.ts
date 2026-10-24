@@ -503,20 +503,9 @@ test.describe('supervisión «Sin cerrar» por el cierre automático', () => {
     'CJ-17, CJ-32: la administración corrige el fin de una jornada cerrada sola que dejó una supervisión «Sin cerrar»',
     cubre('RB-A07', 'CJ-17', 'CJ-31', 'CJ-32'),
     async () => {
-      // DEFECTO (mayor): `app.auto_close_workdays` registra `supervision_end` y `end` en las 23:55, y
-      // `app.assert_workday_consistent` rechaza un `end` anterior a un `supervision_end`
-      // (INVALID_EVENT_ORDER); los eventos de supervisión no se corrigen (EVENT_NOT_CORRECTABLE) y
-      // cancelar la supervisión no los baja. La administración no puede mover el fin a la hora real
-      // en ese caso. Se saca el `fail` cuando se pueda.
-      test.fail(
-        true,
-        'Defecto: no se puede corregir el fin de una jornada cerrada sola con una supervisión «Sin cerrar».',
-      )
-      test.info().annotations.push({
-        type: 'defecto',
-        description:
-          'admin_correct_workday_event da INVALID_EVENT_ORDER al llevar el fin antes del supervision_end del cierre automático.',
-      })
+      // DEF-P24-01 (corregido en #222, migración 0064): al corregir el fin de un cierre automático
+      // se mueven solos el `supervision_end` y el `check_out` de la supervisión que se cerró sola;
+      // si la hora nueva queda antes del inicio de esa supervisión, END_BEFORE_SUPERVISION_START.
       test.setTimeout(180_000)
       const sc = new Scenario()
       try {
@@ -524,12 +513,16 @@ test.describe('supervisión «Sin cerrar» por el cierre automático', () => {
         const cliente = await sc.client('sin-cerrar-corregir')
         const sede = await sc.site(cliente.id, 'sin-cerrar-corregir')
         const turno = await sc.shift(cliente.id, sede.id, dia, FRANJAS.manana)
-        const { workdayId } = await sc.jornadaDirecta('supervisor1', dia, {
-          desde: '08:00',
-          hasta: '23:55',
-          autoCerrada: true,
-          turnoSinCerrar: { shiftId: turno, desde: '10:00' },
-        })
+        const { workdayId, supervisionId } = await sc.jornadaDirecta(
+          'supervisor1',
+          dia,
+          {
+            desde: '08:00',
+            hasta: '23:55',
+            autoCerrada: true,
+            turnoSinCerrar: { shiftId: turno, desde: '10:00' },
+          },
+        )
         const { data: fin } = await sc.db
           .from('supervisor_workday_events')
           .select('id')
@@ -537,12 +530,48 @@ test.describe('supervisión «Sin cerrar» por el cierre automático', () => {
           .eq('kind', 'end')
           .single()
         const dueno = await sessionClient('owner')
+        // Antes del inicio de la supervisión (10:00): la base lo rechaza.
+        const antes = await dueno.rpc('admin_correct_workday_event', {
+          p_event_id: fin!.id,
+          p_reason: 'e2e-jornada: demasiado temprano',
+          p_new_time: `${dia}T09:00:00-03:00`,
+        })
+        expect(antes.error?.hint).toBe('END_BEFORE_SUPERVISION_START')
+        // Después del inicio: se mueve el fin y, con él, el cierre automático de la supervisión.
         const respuesta = await dueno.rpc('admin_correct_workday_event', {
           p_event_id: fin!.id,
           p_reason: 'e2e-jornada: terminó a las 18:00',
           p_new_time: `${dia}T18:00:00-03:00`,
         })
         expect(respuesta.error?.message).toBeUndefined()
+        const a18 = new Date(`${dia}T18:00:00-03:00`).getTime()
+        const { data: eventoSup } = await sc.db
+          .from('supervisor_workday_events')
+          .select('recorded_at')
+          .eq('workday_id', workdayId)
+          .eq('kind', 'supervision_end')
+          .is('removed_at', null)
+          .single()
+        expect(new Date(eventoSup!.recorded_at).getTime()).toBe(a18)
+        const { data: marca } = await sc.db
+          .from('supervision_attendance')
+          .select('recorded_at')
+          .eq('supervision_id', supervisionId!)
+          .eq('kind', 'check_out')
+          .single()
+        expect(new Date(marca!.recorded_at).getTime()).toBe(a18)
+        // Cancelar la supervisión da de baja sus eventos.
+        const cancela = await dueno.rpc('cancel_supervision', {
+          p_supervision_id: supervisionId!,
+          p_reason: 'e2e-jornada: se cerró sola',
+        })
+        expect(cancela.error?.message).toBeUndefined()
+        const { data: vigentes } = await sc.db
+          .from('supervisor_workday_events')
+          .select('id')
+          .eq('supervision_id', supervisionId!)
+          .is('removed_at', null)
+        expect(vigentes).toEqual([])
       } finally {
         expect(await sc.cleanup(), 'limpieza').toEqual([])
       }
