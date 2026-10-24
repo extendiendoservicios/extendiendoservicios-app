@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-generar-plantilla-carga-inicial.py — DATA-001 y DATA-002 (versión 2, octubre 2026)
+generar-plantilla-carga-inicial.py — DATA-001 y DATA-002 (versión 3, octubre 2026)
 (08_Fases_y_Backlog.md, F19 · Staging, UAT y carga inicial).
 
 Genera `docs/plantilla-carga-inicial.xlsx`: la planilla que la empresa
@@ -56,7 +56,7 @@ COLOR_EJEMPLO_TEXTO = "9A6408"  # `--warning` oscurecido, tono de badge del desi
 COLOR_OBLIGATORIA = "CE4B52"  # `--danger`: asterisco de columna obligatoria.
 COLOR_SEPARADOR = "E6E9EF"
 
-VERSION_PLANTILLA = "Versión 2 · octubre 2026"
+VERSION_PLANTILLA = "Versión 3 · octubre 2026"
 
 # Título de la columna que vincula una fila con su cliente (contactos, sedes, servicios y
 # habilitaciones). El importador acepta también el título de la versión de septiembre
@@ -450,7 +450,7 @@ def _crear_hoja_instrucciones(wb: Workbook) -> None:
         "2. Contactos — las personas de referencia en cada cliente.",
         "3. Sedes — los lugares donde se trabaja (puede haber varias por cliente).",
         "4. Empleados — tu personal de limpieza.",
-        "5. Supervisores — quienes supervisan el trabajo del personal.",
+        "5. Supervisores — los coordinadores: quienes supervisan el trabajo del personal. Ahí también podés indicar los clientes y sedes preferenciales de cada uno.",
         "6. Servicios — qué días y en qué horario se trabaja en cada sede. Es la hoja que hace falta para que la plataforma opere: sin servicios no se pueden generar turnos.",
         "7. Habilitaciones — en qué clientes puede trabajar cada persona (opcional).",
         "8. Feriados — el calendario de feriados que la empresa respeta.",
@@ -507,6 +507,25 @@ def _crear_hoja_instrucciones(wb: Workbook) -> None:
         "carguemos los datos.",
         alto=42,
     )
+
+    subtitulo("Sobre los clientes y sedes preferenciales de los coordinadores")
+    parrafo(
+        "En la hoja Supervisores, la última columna (\"Clientes y sedes preferenciales\") es "
+        "opcional. Sirve para que a cada coordinador le aparezcan primero, en su pantalla, los "
+        "lugares que atiende habitualmente. NO restringe nada: cualquier coordinador puede tomar "
+        "cualquier servicio del día, y las preferencias solo ordenan la lista. Las coordinadoras y "
+        "los coordinadores NO se asignan a servicios ni a turnos: eligen ellos cuál supervisar.",
+        alto=56,
+    )
+    for texto in [
+        "Escribí una lista separada por punto y coma (;). Cada elemento de la lista es una de estas dos opciones:",
+        "Opción 1 — solo el cliente (su razón social o su CUIT): vale para TODAS sus sedes, también las que se agreguen más adelante.",
+        "Opción 2 — \"Cliente / Sede\": el cliente, una barra (/) y el nombre de la sede, igual que en la hoja Sedes. Vale solo para esa sede.",
+        "Ejemplo: Ejemplo Limpiezas Del Sur S.A. / Sede Ejemplo Centro; Ejemplo Textiles Norte S.R.L.",
+        "Los clientes y las sedes tienen que estar cargados en las hojas Clientes y Sedes, escritos igual (no importan mayúsculas ni espacios de más). Para un cliente con una sola sede \"Principal\", alcanza con escribir el cliente.",
+        "Un coordinador puede tener varias preferencias, y una misma sede puede ser preferida por varios coordinadores. Si algo no coincide, el importador te lo informa con el número de fila, antes de cargar nada.",
+    ]:
+        item(texto, alto=26)
 
     subtitulo("Sobre las sedes de cada cliente")
     parrafo(
@@ -702,15 +721,29 @@ def construir_libro() -> Workbook:
         columnas_personal(), [fila_ejemplo_empleado],
     )
 
+    # Las supervisoras y los supervisores (coordinadores) suman una columna al final: sus clientes
+    # y sedes preferenciales (P24.6, CJ-03). Es opcional y solo ordena la lista del coordinador.
+    def columnas_supervisores() -> list[Columna]:
+        return columnas_personal() + [
+            Columna(
+                "Clientes y sedes preferenciales", 46, False,
+                "Opcional. Los clientes y sedes que este coordinador atiende habitualmente: le aparecen primero en su pantalla. "
+                "No restringe nada: puede tomar cualquier servicio del día. Escribí una lista separada por punto y coma (;). "
+                "Cada elemento es el cliente (su razón social o su CUIT, vale para todas sus sedes) o \"Cliente / Sede\" "
+                "(solo esa sede). Los clientes y sedes tienen que estar en las hojas Clientes y Sedes, escritos igual.",
+            ),
+        ]
+
     fila_ejemplo_supervisor = [
         "28555666", "Ejemplo Carla", "Pérez", "carla.ejemplo@correo.com", "27285556665",
         "011-5555-3333", "Calle Ejemplo 654, Quilmes", datetime.date(1985, 7, 22),
         datetime.date(2023, 6, 1), "Ana Ejemplo", "011-5555-4444", "Hermana", None, "Activo", None,
+        "Ejemplo Limpiezas Del Sur S.A. / Sede Ejemplo Centro; Ejemplo Textiles Norte S.R.L.",
     ]
     _crear_hoja_datos(
         wb, "Supervisores", "Supervisores",
-        "Quienes supervisan el trabajo del personal. Si una persona también limpia, cargala además en la hoja Empleados con el mismo DNI.",
-        columnas_personal(), [fila_ejemplo_supervisor],
+        "Los coordinadores: quienes supervisan el trabajo del personal. Si una persona también limpia, cargala además en la hoja Empleados con el mismo DNI. No se asignan a servicios: la última columna solo indica sus lugares preferenciales.",
+        columnas_supervisores(), [fila_ejemplo_supervisor],
     )
 
     # ---- Servicios ------------------------------------------------------------------------

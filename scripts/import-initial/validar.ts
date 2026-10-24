@@ -46,6 +46,7 @@ import type {
   PlanFeriado,
   PlanHabilitacion,
   PlanPersona,
+  PlanPreferencia,
   PlanSede,
   PlanServicio,
   ResultadoValidacion,
@@ -511,6 +512,14 @@ export function validar(lectura: LecturaPlantilla): ResultadoValidacion {
     resolverCliente,
     personas,
   )
+  const preferencias = validarPreferencias(
+    ctx,
+    lectura,
+    resolverCliente,
+    sedes,
+    clientes,
+    personas,
+  )
   const feriados = validarFeriados(ctx, lectura)
   const criterios = validarCriterios(ctx, lectura)
 
@@ -521,6 +530,7 @@ export function validar(lectura: LecturaPlantilla): ResultadoValidacion {
     personas,
     servicios,
     habilitaciones,
+    preferencias,
     feriados,
     criterios,
   }
@@ -1285,6 +1295,144 @@ function validarHabilitaciones(
     habilitaciones.push({ fila: f.fila, dni, clienteId: cliente.cliente.id })
   }
   return habilitaciones
+}
+
+// ---- Clientes y sedes preferenciales de los coordinadores (P24.6) ---------------------------
+
+/**
+ * Lee la columna "Clientes y sedes preferenciales" de la hoja Supervisores. Es una lista separada
+ * por punto y coma (o por saltos de línea dentro de la celda). Cada elemento es:
+ *  - un cliente (su CUIT o su razón social): cubre todas sus sedes, también las futuras; o
+ *  - "Cliente / Sede": solo esa sede (la barra puede llevar espacios alrededor).
+ * Se valida aunque la fila del coordinador tenga otros errores, para que la empresa vea todo junto;
+ * al plan pasan solo las de coordinadores que se van a cargar. Un cliente o una sede que no figura
+ * en las hojas Clientes y Sedes es error (la base no tendría a qué referirse).
+ */
+function validarPreferencias(
+  ctx: Contexto,
+  lectura: LecturaPlantilla,
+  resolver: (ref: string) => ResultadoCliente,
+  sedes: PlanSede[],
+  clientes: PlanCliente[],
+  personas: PlanPersona[],
+): PlanPreferencia[] {
+  const h = ctx.hoja('Supervisores')
+  const coordinadores = new Set(
+    personas.filter((p) => p.roles.includes('supervisor')).map((p) => p.dni),
+  )
+  const razonSocial = new Map(clientes.map((c) => [c.id, c.razonSocial]))
+  const preferencias: PlanPreferencia[] = []
+
+  for (const f of lectura.hojas.Supervisores.filas) {
+    // Igual que en leerPersonas: quien está de Baja no se carga y su fila no se valida.
+    if (claveNorm(texto(f.celdas.estado ?? null) ?? '') === 'baja') continue
+    const lista = texto(f.celdas.preferencias ?? null)
+    if (lista === null) continue
+    const dni = soloDigitos(texto(f.celdas.dni ?? null) ?? '')
+    const cargaPersona = coordinadores.has(dni)
+
+    const vistos = new Map<string, PlanPreferencia>()
+    for (const elemento of lista.split(/[;\n]/)) {
+      const item = elemento.trim().replace(/\s+/g, ' ')
+      if (item === '') continue
+
+      let encontrada: PlanPreferencia | null = null
+      let mensajeError: { codigo: string; mensaje: string } | null = null
+
+      // 1) El elemento entero es un cliente.
+      const entero = resolver(item)
+      if (!('error' in entero)) {
+        encontrada = {
+          fila: f.fila,
+          dni,
+          clienteId: entero.cliente.id,
+          sedeNombre: null,
+          descripcion: entero.cliente.razonSocial,
+        }
+      } else if (entero.error.codigo === 'CLIENTE_AMBIGUO') {
+        mensajeError = entero.error
+      } else {
+        // 2) "Cliente / Sede": se prueba cada barra, por si el nombre de alguno la lleva.
+        let clienteSinSede: { cliente: PlanCliente; sede: string } | null = null
+        for (
+          let i = item.indexOf('/');
+          i !== -1;
+          i = item.indexOf('/', i + 1)
+        ) {
+          const izquierda = item.slice(0, i).trim()
+          const derecha = item.slice(i + 1).trim()
+          if (izquierda === '' || derecha === '') continue
+          const cliente = resolver(izquierda)
+          if ('error' in cliente) continue
+          const sede = sedes.find(
+            (s) =>
+              s.clienteId === cliente.cliente.id &&
+              claveNorm(s.nombre) === claveNorm(derecha),
+          )
+          if (sede) {
+            encontrada = {
+              fila: f.fila,
+              dni,
+              clienteId: cliente.cliente.id,
+              sedeNombre: sede.nombre,
+              descripcion: `${cliente.cliente.razonSocial} / ${sede.nombre}`,
+            }
+            break
+          }
+          clienteSinSede ??= { cliente: cliente.cliente, sede: derecha }
+        }
+        if (!encontrada) {
+          mensajeError = clienteSinSede
+            ? {
+                codigo: 'SEDE_NO_ENCONTRADA',
+                mensaje: `"${item}": el cliente "${clienteSinSede.cliente.razonSocial}" existe, pero no tiene ninguna sede llamada "${clienteSinSede.sede}" en la hoja Sedes. Escribila igual que allá (no importan mayúsculas ni espacios de más).`,
+              }
+            : {
+                codigo: 'CLIENTE_NO_ENCONTRADO',
+                mensaje: `"${item}": no encontramos ese cliente en la hoja Clientes (ni, si lleva una barra "/", un cliente y una sede de las hojas Clientes y Sedes). Escribilo como razón social o CUIT; para una sede, "Cliente / Sede".`,
+              }
+        }
+      }
+
+      if (mensajeError) {
+        h.error(
+          f.fila,
+          'preferencias',
+          mensajeError.codigo,
+          mensajeError.mensaje,
+        )
+        continue
+      }
+      if (!encontrada) continue
+      const clave = `${encontrada.clienteId}|${encontrada.sedeNombre === null ? '' : claveNorm(encontrada.sedeNombre)}`
+      if (vistos.has(clave)) {
+        h.aviso(
+          f.fila,
+          'preferencias',
+          'PREFERENCIA_REPETIDA',
+          `"${encontrada.descripcion}" está dos veces en la lista: se carga una sola vez.`,
+        )
+        continue
+      }
+      vistos.set(clave, encontrada)
+    }
+
+    // Una sede de un cliente que también está en la lista es redundante (el cliente ya la cubre).
+    for (const p of vistos.values()) {
+      if (p.sedeNombre === null) continue
+      const delCliente = vistos.get(`${p.clienteId}|`)
+      if (delCliente) {
+        h.aviso(
+          f.fila,
+          'preferencias',
+          'PREFERENCIA_REDUNDANTE',
+          `"${p.descripcion}" ya está cubierta porque "${razonSocial.get(p.clienteId) ?? ''}" figura entero en la lista. Se carga igual; podés sacar la sede.`,
+        )
+      }
+    }
+    if (cargaPersona) preferencias.push(...vistos.values())
+  }
+  return preferencias
 }
 
 // ---- Feriados -------------------------------------------------------------------------------

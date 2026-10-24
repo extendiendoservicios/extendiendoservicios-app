@@ -974,6 +974,169 @@ describe('habilitaciones, feriados y criterios', () => {
   })
 })
 
+describe('clientes y sedes preferenciales de los coordinadores', () => {
+  /** Datos válidos donde Carla (fila 7 de Supervisores) trae la lista indicada. */
+  function conLista(lista: string | null, estado?: string): DatosPlanilla {
+    const datos = datosValidos()
+    const carla = datos.Supervisores?.[1]
+    if (!carla) throw new Error('Falta Carla en los datos de prueba')
+    carla.preferencias = lista
+    if (estado) carla.estado = estado
+    return datos
+  }
+
+  it('un cliente solo cubre todas sus sedes; "Cliente / Sede" es una sede puntual', async () => {
+    const res = await validarDatos(
+      conLista(
+        'Test Limpiezas Alfa S.A.; Test Textiles Beta S.R.L. / Planta Uno; Test Sin Cuit Gamma / Principal',
+      ),
+    )
+    expect(de(res, 'error')).toEqual([])
+    const prefs = res.plan.preferencias
+    expect(prefs.map((p) => [p.dni, p.sedeNombre, p.descripcion])).toEqual([
+      ['40555666', null, 'Test Limpiezas Alfa S.A.'],
+      ['40555666', 'Planta Uno', 'Test Textiles Beta S.R.L. / Planta Uno'],
+      ['40555666', 'Principal', 'Test Sin Cuit Gamma / Principal'],
+    ])
+    expect(resumir(res).cantidades.preferencias).toBe(3)
+  })
+
+  it('acepta el CUIT, mayúsculas, espacios de más, saltos de línea y la barra sin espacios', async () => {
+    const datos = conLista(null)
+    const cuitA = datos.Clientes?.[0].cuit as string
+    const cuitB = datos.Clientes?.[1].cuit as string
+    const lista = `${cuitA} ;  TEST textiles   beta s.r.l./PLANTA  uno\n${cuitB} / planta uno ;`
+    const res = await validarDatos(conLista(lista))
+    expect(de(res, 'error')).toEqual([])
+    expect(res.plan.preferencias).toHaveLength(2)
+    // La misma sede escrita de dos maneras se carga una sola vez, con aviso.
+    expect(res.plan.preferencias.map((p) => p.sedeNombre)).toEqual([
+      null,
+      'Planta Uno',
+    ])
+    expect(codigos(res, 'advertencia')).toContain('PREFERENCIA_REPETIDA')
+  })
+
+  it('un cliente inexistente es error, con hoja, fila y columna', async () => {
+    const res = await validarDatos(
+      conLista('Test Limpiezas Alfa S.A.; Cliente Que No Existe'),
+    )
+    const errores = de(res, 'error')
+    expect(errores).toHaveLength(1)
+    expect(errores[0]).toMatchObject({
+      hoja: 'Supervisores',
+      fila: 7,
+      columna: 'Clientes y sedes preferenciales',
+      codigo: 'CLIENTE_NO_ENCONTRADO',
+    })
+    expect(errores[0].mensaje).toContain('Cliente Que No Existe')
+  })
+
+  it('una sede inexistente es error y el mensaje dice qué cliente sí existe', async () => {
+    const res = await validarDatos(
+      conLista('Test Textiles Beta S.R.L. / Planta Fantasma'),
+    )
+    const errores = de(res, 'error')
+    expect(errores).toHaveLength(1)
+    expect(errores[0]).toMatchObject({
+      hoja: 'Supervisores',
+      fila: 7,
+      codigo: 'SEDE_NO_ENCONTRADA',
+    })
+    expect(errores[0].mensaje).toContain('Planta Fantasma')
+    expect(errores[0].mensaje).toContain('Test Textiles Beta S.R.L.')
+  })
+
+  it('una sede de otro cliente no sirve: la sede se busca dentro de ese cliente', async () => {
+    const res = await validarDatos(
+      conLista('Test Limpiezas Alfa S.A. / Planta Uno'),
+    )
+    expect(codigos(res, 'error')).toEqual(['SEDE_NO_ENCONTRADA'])
+  })
+
+  it('un cliente ambiguo por razón social es error', async () => {
+    const datos = conLista('Repetida SA')
+    datos.Clientes = [
+      { razonSocial: 'Repetida SA', direccion: 'Calle 1' },
+      { razonSocial: 'Repetida SA', direccion: 'Calle 2' },
+    ]
+    datos.Contactos = []
+    datos.Sedes = []
+    datos.Servicios = []
+    datos.Habilitaciones = []
+    const res = await validarDatos(datos)
+    expect(de(res, 'error', 'Supervisores').map((e) => e.codigo)).toContain(
+      'CLIENTE_AMBIGUO',
+    )
+  })
+
+  it('un cliente y una sede suya en la misma lista: se carga todo y avisa de la redundancia', async () => {
+    const res = await validarDatos(
+      conLista(
+        'Test Textiles Beta S.R.L.; Test Textiles Beta S.R.L. / Planta Uno',
+      ),
+    )
+    expect(de(res, 'error')).toEqual([])
+    expect(res.plan.preferencias).toHaveLength(2)
+    expect(codigos(res, 'advertencia')).toContain('PREFERENCIA_REDUNDANTE')
+  })
+
+  it('el mismo elemento dos veces se carga una sola vez, con aviso', async () => {
+    const res = await validarDatos(
+      conLista('Test Limpiezas Alfa S.A.; test limpiezas alfa s.a.'),
+    )
+    expect(res.plan.preferencias).toHaveLength(1)
+    expect(codigos(res, 'advertencia')).toContain('PREFERENCIA_REPETIDA')
+  })
+
+  it('la columna es opcional: en blanco no carga nada ni da error', async () => {
+    const res = await validarDatos(conLista(null))
+    expect(de(res, 'error')).toEqual([])
+    expect(res.plan.preferencias).toEqual([])
+  })
+
+  it('un coordinador de Baja se ignora: su lista no se valida ni se carga', async () => {
+    const res = await validarDatos(conLista('Cliente Que No Existe', 'Baja'))
+    expect(de(res, 'error')).toEqual([])
+    expect(res.plan.preferencias).toEqual([])
+  })
+
+  it('los errores de la lista se informan aunque la fila del coordinador tenga otros errores', async () => {
+    const datos = conLista('Cliente Que No Existe')
+    const carla = datos.Supervisores?.[1]
+    if (carla) carla.email = null
+    const res = await validarDatos(datos)
+    const codigosError = de(res, 'error', 'Supervisores').map((e) => e.codigo)
+    expect(codigosError).toContain('EMAIL_FALTA')
+    expect(codigosError).toContain('CLIENTE_NO_ENCONTRADO')
+    // Sin la persona en el plan, tampoco se carga ninguna preferencia suya.
+    expect(res.plan.preferencias).toEqual([])
+  })
+
+  it('una planilla vieja sin la columna sigue funcionando: solo una advertencia', async () => {
+    const res = await validarDatos(datosValidos(), {
+      sinColumnas: { Supervisores: ['preferencias'] },
+    })
+    expect(de(res, 'error')).toEqual([])
+    expect(
+      de(res, 'advertencia', 'Supervisores').map((a) => a.codigo),
+    ).toContain('COLUMNA_FALTA')
+    expect(res.plan.preferencias).toEqual([])
+  })
+
+  it('el informe de texto menciona las preferencias y el error trae su fila', async () => {
+    const res = await validarDatos(conLista('Cliente Que No Existe'))
+    const texto = informeTexto(res, {
+      archivo: 'planilla.xlsx',
+      modo: 'simulacion',
+      entorno: null,
+      fecha: new Date(2026, 9, 23, 10, 0),
+    })
+    expect(texto).toContain('Clientes y sedes preferenciales de coordinadores')
+    expect(texto).toContain('fila 7')
+  })
+})
+
 describe('estructura del archivo', () => {
   it('una hoja que falta se toma como vacía, con advertencia', async () => {
     const res = await validarDatos(datosValidos(), {
