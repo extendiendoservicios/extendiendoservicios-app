@@ -76,8 +76,10 @@ export default function SupervisorShiftPage() {
     enabled: consent.status === 'granted' && canTake,
     siteLatitude: shift?.siteLatitude ?? null,
     siteLongitude: shift?.siteLongitude ?? null,
-    radiusM: null,
-    maxAccuracyM: null,
+    // Radio y precisión reales de la base; el valor por defecto lo aplica
+    // `useGeoFichaje` solo cuando vienen `null` (DEF-P24-02).
+    radiusM: shift?.siteRadiusM ?? null,
+    maxAccuracyM: shift?.maxAccuracyM ?? null,
   })
 
   if (result && shift) {

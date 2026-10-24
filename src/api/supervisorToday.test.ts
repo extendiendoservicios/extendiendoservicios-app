@@ -105,6 +105,22 @@ describe('fetchSupervisorToday', () => {
     })
   })
 
+  it('mapea el radio efectivo de la sede y la precisión máxima (DEF-P24-02)', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: [
+          { ...ROW, site_radius_m: 300, max_accuracy_m: 120 },
+          { ...ROW, shift_id: 'sh2' },
+        ],
+        error: null,
+      }),
+    )
+    const shifts = await fetchSupervisorToday()
+    expect(shifts[0]).toMatchObject({ siteRadiusM: 300, maxAccuracyM: 120 })
+    // Si la vista no las trae quedan en null y el panel usa los valores por defecto.
+    expect(shifts[1]).toMatchObject({ siteRadiusM: null, maxAccuracyM: null })
+  })
+
   it('tolera campos JSON vacíos', async () => {
     fromMock.mockReturnValue(
       makeChainable({

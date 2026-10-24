@@ -1,6 +1,6 @@
 import type { Json } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
-import { fromPostgrestError } from './errors'
+import { fromPostgrestError, isApiError } from './errors'
 
 /**
  * `src/api/workdaysAdmin.ts` (P24.3, CJ-13, CJ-17, CJ-32): jornadas de los
@@ -267,6 +267,25 @@ export async function fetchWorkdaysByDate(
     throw fromPostgrestError(error)
   }
   return (data ?? []).map((row) => mapWorkdayRow(row))
+}
+
+/** Mensajes fijos de los códigos (`hint`) de `admin_correct_workday_event` que conviene explicar. */
+export const WORKDAY_ADMIN_ERROR_MESSAGES: Record<string, string> = {
+  END_BEFORE_SUPERVISION_START:
+    'La hora de fin queda antes del inicio de una supervisión que se cerró sola. Elegí una hora posterior o cancelá esa supervisión antes.',
+}
+
+/** Texto para mostrar de un error de la corrección de jornadas: el fijo del código o el del servidor. */
+export function workdayAdminErrorMessage(
+  error: unknown,
+  fallback: string,
+): string {
+  if (isApiError(error)) {
+    return (
+      (error.hint && WORKDAY_ADMIN_ERROR_MESSAGES[error.hint]) || error.message
+    )
+  }
+  return fallback
 }
 
 /**

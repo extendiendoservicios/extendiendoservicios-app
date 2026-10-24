@@ -56,6 +56,10 @@ export interface TodayShift {
   siteCity: string | null
   siteLatitude: number | null
   siteLongitude: number | null
+  /** Radio efectivo de la sede (el propio o el general), el mismo que aplica `take_supervision`; `null` si la vista no lo trae. */
+  siteRadiusM: number | null
+  /** Precisión máxima de la empresa (`geofence_max_accuracy_m`); `null` si la vista no la trae. */
+  maxAccuracyM: number | null
   /** `true` si la sede es preferencial (propia o por su cliente, CJ-24): va en «Mis sedes». */
   isPriority: boolean
   assignedEmployees: TodayShiftEmployee[]
@@ -111,6 +115,8 @@ export function mapTodayShiftRow(row: TodayRawRow): TodayShift {
     siteCity: row.site_city,
     siteLatitude: row.site_latitude,
     siteLongitude: row.site_longitude,
+    siteRadiusM: row.site_radius_m ?? null,
+    maxAccuracyM: row.max_accuracy_m ?? null,
     isPriority: Boolean(row.is_priority),
     assignedEmployees: asArray<RawEmployee>(row.assigned_employees).map(
       (e) => ({

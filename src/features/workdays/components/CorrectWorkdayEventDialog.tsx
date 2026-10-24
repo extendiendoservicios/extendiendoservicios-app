@@ -14,8 +14,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { isApiError } from '@/api/errors'
-import { WORKDAY_EVENT_LABELS, type WorkdayEvent } from '@/api/workdaysAdmin'
+import {
+  WORKDAY_EVENT_LABELS,
+  workdayAdminErrorMessage,
+  type WorkdayEvent,
+} from '@/api/workdaysAdmin'
 import {
   dateTimeLocalToIso,
   toDateTimeLocal,
@@ -108,7 +111,7 @@ function CorrectWorkdayEventForm({
       onClose()
     } catch (error) {
       toast.error(
-        isApiError(error) ? error.message : 'No pudimos corregir la hora.',
+        workdayAdminErrorMessage(error, 'No pudimos corregir la hora.'),
       )
     }
   }
