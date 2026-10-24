@@ -10,12 +10,27 @@ import {
   makeWorkday,
   makeWorkdaySupervision,
 } from '@/features/coordinator/fixtures'
+import * as geoModule from '@/lib/geo'
 import { mockCommonHooks, renderRoute } from '@/features/coordinator/testUtils'
 
 vi.mock('@/features/settings/queries', () => ({
   useCompanySettingsQuery: () => ({
     data: { locationConsentText: 'Texto de consentimiento de la empresa' },
   }),
+}))
+
+// Leaflet no corre en jsdom: el mini mapa deja ver el estado y el radio.
+vi.mock('@/components/map', () => ({
+  GeofenceMiniMap: (props: {
+    status: string | null
+    site: { radiusM: number }
+  }) => (
+    <div
+      data-testid="mini-map"
+      data-status={String(props.status)}
+      data-radius={props.site.radiusM}
+    />
+  ),
 }))
 
 /**
@@ -210,5 +225,84 @@ describe('SupervisorShiftPage (SUP-03)', () => {
     expect(
       screen.getByText(/No encontramos ese turno entre los de hoy/),
     ).toBeInTheDocument()
+  })
+
+  describe('radio y precisión reales de la base (DEF-P24-02)', () => {
+    const SITE_COORDS = { siteLatitude: -34.6, siteLongitude: -58.4 }
+    // ~200 m al norte de la sede (1 grado de latitud = 111 195 m).
+    const LAT_200M = -34.6 + 200 / 111_195
+
+    function livePosition(accuracyM: number, lat = LAT_200M) {
+      const fix = { lat, lng: -58.4, accuracyM, timestamp: 0 }
+      vi.spyOn(geoModule, 'useLivePosition').mockReturnValue({
+        state: 'ready',
+        position: fix,
+        latest: fix,
+        accuracyM,
+        elapsedMs: 0,
+        wait: 'idle',
+        waitRemainingMs: 0,
+        startWait: vi.fn(),
+      } as never)
+    }
+
+    it('con radio 300 m y el coordinador a 200 m, está dentro de la zona', () => {
+      livePosition(20)
+      setup({
+        consent: 'granted',
+        shift: makeTodayShift({
+          ...SITE_COORDS,
+          siteRadiusM: 300,
+          maxAccuracyM: 150,
+        }),
+      })
+      expect(screen.getByTestId('mini-map')).toHaveAttribute(
+        'data-status',
+        'valid',
+      )
+      expect(screen.getByTestId('mini-map')).toHaveAttribute(
+        'data-radius',
+        '300',
+      )
+    })
+
+    it('sin datos de la vista usa el radio por defecto (150 m): a 200 m está fuera', () => {
+      livePosition(20)
+      setup({
+        consent: 'granted',
+        shift: makeTodayShift({ ...SITE_COORDS }),
+      })
+      expect(screen.getByTestId('mini-map')).toHaveAttribute(
+        'data-status',
+        'outside',
+      )
+    })
+
+    it('con radio 100 m y 130 m de precisión ofrece «Esperar mejor señal»', () => {
+      livePosition(130, -34.6)
+      setup({
+        consent: 'granted',
+        shift: makeTodayShift({ ...SITE_COORDS, siteRadiusM: 100 }),
+      })
+      expect(
+        screen.getByRole('button', { name: 'Esperar mejor señal' }),
+      ).toBeInTheDocument()
+    })
+
+    it('usa la precisión máxima de la empresa: 130 m con tope de 100 m queda sin validar', () => {
+      livePosition(130, -34.6)
+      setup({
+        consent: 'granted',
+        shift: makeTodayShift({
+          ...SITE_COORDS,
+          siteRadiusM: 300,
+          maxAccuracyM: 100,
+        }),
+      })
+      expect(screen.getByTestId('mini-map')).toHaveAttribute(
+        'data-status',
+        'unvalidated',
+      )
+    })
   })
 })

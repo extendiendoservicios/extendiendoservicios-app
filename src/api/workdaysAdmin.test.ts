@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { isApiError } from './errors'
+import { ApiError, isApiError } from './errors'
 
 /**
  * `src/api/workdaysAdmin.ts` (P24.3): mismo patrón sin red que
@@ -331,6 +331,30 @@ describe('recordWorkday', () => {
     ).rejects.toSatisfy(
       (error: unknown) =>
         isApiError(error) && error.hint === 'WORKDAY_ALREADY_EXISTS',
+    )
+  })
+})
+
+describe('workdayAdminErrorMessage', () => {
+  it('END_BEFORE_SUPERVISION_START tiene su mensaje fijo', async () => {
+    const { workdayAdminErrorMessage } = await import('./workdaysAdmin')
+    expect(
+      workdayAdminErrorMessage(
+        new ApiError('texto del servidor', 'END_BEFORE_SUPERVISION_START'),
+        'respaldo',
+      ),
+    ).toBe(
+      'La hora de fin queda antes del inicio de una supervisión que se cerró sola. Elegí una hora posterior o cancelá esa supervisión antes.',
+    )
+  })
+
+  it('con otro código usa el mensaje del servidor y sin API el respaldo', async () => {
+    const { workdayAdminErrorMessage } = await import('./workdaysAdmin')
+    expect(
+      workdayAdminErrorMessage(new ApiError('del servidor', 'SAME_TIME'), 'x'),
+    ).toBe('del servidor')
+    expect(workdayAdminErrorMessage(new TypeError('red'), 'respaldo')).toBe(
+      'respaldo',
     )
   })
 })

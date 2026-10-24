@@ -64,6 +64,8 @@ export function makeTodayShift(
     siteCity: 'Tigre',
     siteLatitude: null,
     siteLongitude: null,
+    siteRadiusM: null,
+    maxAccuracyM: null,
     isPriority: false,
     assignedEmployees: [],
     supervisors: [],
