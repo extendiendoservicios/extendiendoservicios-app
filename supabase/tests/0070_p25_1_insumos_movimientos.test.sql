@@ -179,7 +179,7 @@ create function tests.stock(p_n integer) returns integer language sql stable sec
 
 grant execute on all functions in schema tests to authenticated, anon;
 
-select plan(121);
+select plan(123);
 
 -- ---------------------------------------------------------------------------------------------
 -- 1. Ingreso: precios del momento (IS-22) y actualización del costo (IS-23)
@@ -495,6 +495,17 @@ select throws_ok(
   '23514',
   null,
   'la restricción supplies_stock_qty_check rechaza un stock negativo'
+);
+
+-- Un test de pgTAP corre en una sola sesión y no puede competir de verdad: se verifica que el
+-- núcleo bloquee las filas de los artículos en orden de id antes de calcular (IS-13).
+select ok(
+  (select prosrc from pg_proc where oid = 'app.stock_post_movement(public.stock_movement_kind, uuid, jsonb, text, timestamptz, uuid, uuid, uuid, text, text, public.stock_adjustment_reason, text, uuid, uuid)'::regprocedure) ~ 'order by s\.id\s+for update of s',
+  'el núcleo bloquea los artículos en orden de id (order by s.id for update)'
+);
+select ok(
+  (select prosrc from pg_proc where oid = 'public.register_stock_count(timestamptz, jsonb, uuid, text, text)'::regprocedure) ~ 'order by s\.id\s+for update of s',
+  'el control también bloquea los artículos en orden de id'
 );
 
 -- ---------------------------------------------------------------------------------------------

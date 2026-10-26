@@ -2650,6 +2650,11 @@ pasada: dos ingresos (uno actualiza el costo), una suba de precio, siete retiros
 coordinadora para una sede, uno cargado por la oficina en nombre de un empleado y después anulado), dos ajustes, un
 control y dos avisos de faltante (uno abierto y uno resuelto). Nada en `seed-prod.sql`.
 
+Nota: la salvaguarda del inicio de `seed.sql` rechaza correrlo en una base con usuarios que no son del seed (por ejemplo,
+`App_dev` con las cuentas de las pruebas E2E): el seed trunca clientes, empleados y configuración. Mientras `App_dev`
+tenga esas cuentas, el bloque 12 se verifica con una corrida de prueba dentro de una transacción que termina en
+`rollback` (sin la salvaguarda y ejecutando el cuerpo dos veces para comprobar que es idempotente), sin dejar datos.
+
 ### Tests pgTAP
 
 `0069_p25_1_enums`, `0070_p25_1_insumos_estructura`, `_catalogo`, `_movimientos`, `_control`, `_permisos` y
