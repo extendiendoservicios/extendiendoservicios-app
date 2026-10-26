@@ -1268,6 +1268,7 @@ export type Database = {
       clients: {
         Row: {
           admin_address: string | null
+          calendar_color: number
           created_at: string
           created_by: string | null
           cuit: string | null
@@ -1285,6 +1286,7 @@ export type Database = {
         }
         Insert: {
           admin_address?: string | null
+          calendar_color?: number
           created_at?: string
           created_by?: string | null
           cuit?: string | null
@@ -1302,6 +1304,7 @@ export type Database = {
         }
         Update: {
           admin_address?: string | null
+          calendar_color?: number
           created_at?: string
           created_by?: string | null
           cuit?: string | null
@@ -4278,6 +4281,7 @@ export type Database = {
             | Database["public"]["Enums"]["attendance_source"]
             | null
           check_out_time_corrected: boolean | null
+          client_calendar_color: number | null
           client_id: string | null
           client_legal_name: string | null
           created_at: string | null
@@ -4447,13 +4451,6 @@ export type Database = {
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_out_recorded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -4463,8 +4460,8 @@ export type Database = {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_out_recorded_by"]
             isOneToOne: false
-            referencedRelation: "v_announcement_recipients"
-            referencedColumns: ["profile_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
@@ -4476,13 +4473,20 @@ export type Database = {
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_out_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "v_supervisor_status"
             referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_in_recorded_by"]
+            columns: ["check_out_recorded_by"]
             isOneToOne: false
             referencedRelation: "v_supervisor_status"
             referencedColumns: ["supervisor_id"]
@@ -4514,6 +4518,7 @@ export type Database = {
         Row: {
           active_services_count: number | null
           admin_address: string | null
+          calendar_color: number | null
           created_at: string | null
           created_by: string | null
           cuit: string | null
@@ -5505,6 +5510,7 @@ export type Database = {
           cancelled_at: string | null
           cancelled_by: string | null
           checklist_template_id: string | null
+          client_calendar_color: number | null
           client_id: string | null
           client_legal_name: string | null
           client_trade_name: string | null
@@ -5859,7 +5865,9 @@ export type Database = {
       }
       v_supervisor_today: {
         Row: {
+          access_instructions: string | null
           assigned_employees: Json | null
+          building_hours: string | null
           client_id: string | null
           client_legal_name: string | null
           client_trade_name: string | null
@@ -5875,11 +5883,14 @@ export type Database = {
           open_ended: boolean | null
           priority_kind: string | null
           required_staff: number | null
+          restrictions_notes: string | null
           shift_date: string | null
           shift_id: string | null
           shift_status: Database["public"]["Enums"]["shift_status"] | null
           site_address: string | null
           site_city: string | null
+          site_contact_name: string | null
+          site_contact_phone: string | null
           site_id: string | null
           site_latitude: number | null
           site_longitude: number | null
