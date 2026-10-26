@@ -124,9 +124,8 @@ export default function SupervisorShiftPage() {
     contactPhone: shift.siteContactPhone,
     accessInstructions: shift.accessInstructions,
     buildingHours: shift.buildingHours,
-    // La vista del coordinador no trae estas dos marcas: solo el texto libre.
-    phoneRestricted: false,
-    photosNotAllowed: false,
+    phoneRestricted: shift.phoneRestricted,
+    photosNotAllowed: shift.photosNotAllowed,
     restrictionsNotes: shift.restrictionsNotes,
   }
   const site =

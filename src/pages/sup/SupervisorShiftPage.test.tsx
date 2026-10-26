@@ -149,6 +149,21 @@ describe('SupervisorShiftPage (SUP-03)', () => {
     )
   })
 
+  it('muestra las marcas «sin celular» y «sin fotos» de la sede', () => {
+    setup({
+      shift: makeTodayShift({
+        ...SHIFT,
+        phoneRestricted: true,
+        photosNotAllowed: true,
+      }),
+    })
+    expect(screen.getByText('Restricciones de la sede')).toBeInTheDocument()
+    expect(
+      screen.getByText('No usar el teléfono en la sede.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('No se permiten fotos.')).toBeInTheDocument()
+  })
+
   it('sin datos de la sede no muestra indicaciones, restricciones ni contacto', () => {
     setup()
     expect(screen.queryByText(/Instrucciones de acceso/)).toBeNull()

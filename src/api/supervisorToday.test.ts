@@ -132,6 +132,8 @@ describe('fetchSupervisorToday', () => {
             access_instructions: 'Timbre 3B',
             building_hours: 'Lunes a viernes de 7 a 20',
             restrictions_notes: 'No mover los equipos',
+            phone_restricted: true,
+            photos_not_allowed: true,
           },
           { ...ROW, shift_id: 'sh2' },
         ],
@@ -145,6 +147,8 @@ describe('fetchSupervisorToday', () => {
       accessInstructions: 'Timbre 3B',
       buildingHours: 'Lunes a viernes de 7 a 20',
       restrictionsNotes: 'No mover los equipos',
+      phoneRestricted: true,
+      photosNotAllowed: true,
     })
     expect(shifts[1]).toMatchObject({
       siteContactName: null,
@@ -152,6 +156,8 @@ describe('fetchSupervisorToday', () => {
       accessInstructions: null,
       buildingHours: null,
       restrictionsNotes: null,
+      phoneRestricted: false,
+      photosNotAllowed: false,
     })
   })
 

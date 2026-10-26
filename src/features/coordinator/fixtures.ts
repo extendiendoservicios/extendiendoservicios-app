@@ -69,6 +69,8 @@ export function makeTodayShift(
     accessInstructions: null,
     buildingHours: null,
     restrictionsNotes: null,
+    phoneRestricted: false,
+    photosNotAllowed: false,
     siteRadiusM: null,
     maxAccuracyM: null,
     isPriority: false,
