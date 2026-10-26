@@ -47,6 +47,15 @@ const COLUMNAS_PERSONAL: ColumnaEsquema[] = [
   c('notas', 'Notas'),
 ]
 
+/**
+ * La hoja Supervisores suma una columna a las del personal (P24.6, CJ-03): los clientes y las
+ * sedes preferenciales del coordinador. Va al final para no mover las demás.
+ */
+const COLUMNAS_SUPERVISORES: ColumnaEsquema[] = [
+  ...COLUMNAS_PERSONAL,
+  c('preferencias', 'Clientes y sedes preferenciales'),
+]
+
 export const ESQUEMA: Record<NombreHoja, ColumnaEsquema[]> = {
   Clientes: [
     // En la plantilla de septiembre el CUIT figura como obligatorio; desde la versión 2 (decisión
@@ -85,7 +94,7 @@ export const ESQUEMA: Record<NombreHoja, ColumnaEsquema[]> = {
     c('estado', 'Estado'),
   ],
   Empleados: COLUMNAS_PERSONAL,
-  Supervisores: COLUMNAS_PERSONAL,
+  Supervisores: COLUMNAS_SUPERVISORES,
   Servicios: [
     c('cliente', TITULO_CLIENTE_V2, true, [TITULO_CLIENTE_V1]),
     c('sede', 'Nombre de la sede', true),

@@ -44,9 +44,7 @@ const {
   fetchSupervisionsAdmin,
   fetchSupervisionDetail,
   fetchSupervisorCandidates,
-  assignSupervision,
   cancelSupervision,
-  markSupervisionNotDone,
 } = await import('./supervisions')
 
 beforeEach(() => {
@@ -67,9 +65,9 @@ const SUPERVISION_LIST_ROW = {
   supervisor_id: 'sup-emp1',
   supervisor_first_name: 'Marta',
   supervisor_last_name: 'Ríos',
-  status: 'assigned' as const,
+  status: 'in_progress' as const,
   assigned_at: '2026-10-01T00:00:00+00:00',
-  check_in_at: null,
+  check_in_at: '2026-10-05T08:10:00+00:00',
   check_out_at: null,
   general_notes: null,
   cancel_reason: null,
@@ -80,6 +78,10 @@ const SUPERVISION_LIST_ROW = {
   ratings_count: 0,
   ratings_avg: null,
   assigned_employees_count: 2,
+  workday_id: 'wd1',
+  duration_minutes: 95,
+  unclosed: false,
+  workday_auto_closed: false,
 }
 
 describe('fetchSupervisionsAdmin', () => {
@@ -98,13 +100,43 @@ describe('fetchSupervisionsAdmin', () => {
         siteName: 'Sede Centro',
         supervisorFirstName: 'Marta',
         supervisorLastName: 'Ríos',
-        status: 'assigned',
+        status: 'in_progress',
+        workdayId: 'wd1',
+        durationMinutes: 95,
+        unclosed: false,
+        workdayAutoClosed: false,
         criteriaSnapshot: [
           { id: 'cr1', title: 'Prolijidad', description: null, position: 1 },
         ],
         assignedEmployeesCount: 2,
       }),
     ])
+  })
+
+  it('devuelve una fila por supervisión aunque haya dos en el mismo turno y marca «Sin cerrar»', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: [
+          SUPERVISION_LIST_ROW,
+          {
+            ...SUPERVISION_LIST_ROW,
+            id: 'sup2',
+            supervisor_id: 'sup-emp2',
+            unclosed: true,
+            workday_auto_closed: true,
+          },
+        ],
+        error: null,
+      }),
+    )
+
+    const rows = await fetchSupervisionsAdmin()
+
+    expect(rows.map((row) => [row.id, row.shiftId, row.unclosed])).toEqual([
+      ['sup1', 'sh1', false],
+      ['sup2', 'sh1', true],
+    ])
+    expect(rows[1]?.workdayAutoClosed).toBe(true)
   })
 
   it('con filtro de empleado, primero busca las supervisiones con calificación de ese empleado', async () => {
@@ -221,7 +253,7 @@ describe('fetchSupervisorCandidates', () => {
     ])
   })
 
-  it('ordena por "Nombre Apellido", como se muestra en ADM-14', async () => {
+  it('ordena por "Nombre Apellido", como se muestra en el selector de preferenciales', async () => {
     fromMock.mockReturnValue(
       makeChainable({
         data: [
@@ -242,53 +274,6 @@ describe('fetchSupervisorCandidates', () => {
       'Noelia',
       'Paula',
     ])
-  })
-})
-
-describe('assignSupervision', () => {
-  it('llama assign_supervision y devuelve la supervisión con las advertencias', async () => {
-    rpcMock.mockResolvedValue({
-      data: {
-        supervision: {
-          id: 'sup1',
-          shift_id: 'sh1',
-          supervisor_id: 'sup-emp1',
-          status: 'assigned',
-          assigned_at: '2026-10-05T08:00:00+00:00',
-          general_notes: null,
-          cancel_reason: null,
-          not_done_reason: null,
-        },
-        warnings: ['SUPERVISES_OWN_SHIFT'],
-      },
-      error: null,
-    })
-
-    const result = await assignSupervision('sh1', 'sup-emp1')
-
-    expect(rpcMock).toHaveBeenCalledWith('assign_supervision', {
-      p_shift_id: 'sh1',
-      p_supervisor_id: 'sup-emp1',
-    })
-    expect(result.warnings).toEqual(['SUPERVISES_OWN_SHIFT'])
-    expect(result.supervision).toEqual(
-      expect.objectContaining({ id: 'sup1', supervisorId: 'sup-emp1' }),
-    )
-  })
-
-  it('traduce SUPERVISOR_ROLE_REQUIRED a ApiError con el mismo mensaje del servidor', async () => {
-    rpcMock.mockResolvedValue({
-      data: null,
-      error: {
-        message: 'Ese coordinador no tiene el rol vigente o no está activo.',
-        hint: 'SUPERVISOR_ROLE_REQUIRED',
-      },
-    })
-
-    await expect(assignSupervision('sh1', 'sup-emp1')).rejects.toSatisfy(
-      (error: unknown) =>
-        isApiError(error) && error.hint === 'SUPERVISOR_ROLE_REQUIRED',
-    )
   })
 })
 
@@ -313,31 +298,6 @@ describe('cancelSupervision', () => {
     expect(rpcMock).toHaveBeenCalledWith('cancel_supervision', {
       p_supervision_id: 'sup1',
       p_reason: 'Se canceló el turno',
-    })
-  })
-})
-
-describe('markSupervisionNotDone', () => {
-  it('llama mark_supervision_not_done con el motivo', async () => {
-    rpcMock.mockResolvedValue({
-      data: {
-        id: 'sup1',
-        shift_id: 'sh1',
-        supervisor_id: 'sup-emp1',
-        status: 'not_done',
-        assigned_at: '2026-10-05T08:00:00+00:00',
-        general_notes: null,
-        cancel_reason: null,
-        not_done_reason: 'El supervisor no pudo asistir',
-      },
-      error: null,
-    })
-
-    await markSupervisionNotDone('sup1', 'El supervisor no pudo asistir')
-
-    expect(rpcMock).toHaveBeenCalledWith('mark_supervision_not_done', {
-      p_supervision_id: 'sup1',
-      p_reason: 'El supervisor no pudo asistir',
     })
   })
 })

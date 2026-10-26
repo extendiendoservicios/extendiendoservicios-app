@@ -175,24 +175,43 @@ export async function assignEmployeeToShift(
   return payload.assignment.id
 }
 
-/** Asigna una supervisión con la RPC real `assign_supervision`, logueado como el dueño del seed. */
-export async function assignSupervisionToShift(
+/**
+ * Supervisión en curso de un coordinador, armada directo con la clave de servicio (P24.5). La
+ * asignación manual ya no existe (`assign_supervision` está revocada, CJ-01) y `take_supervision`
+ * solo toma turnos de hoy, mientras esta suite arma turnos de mañana: la fila se planta `in_progress`
+ * (sin jornada) con el inicio ya registrado, que es el estado que ve administración.
+ */
+export async function plantSupervisionInProgress(
+  admin: AdminClient,
   shiftId: string,
   supervisorId: string,
 ): Promise<string> {
-  const owner = await ownerClient()
-  const { data, error } = await owner.rpc('assign_supervision', {
-    p_shift_id: shiftId,
-    p_supervisor_id: supervisorId,
-  })
-  await owner.auth.signOut()
+  const { data, error } = await admin
+    .from('supervisions')
+    .insert({
+      shift_id: shiftId,
+      supervisor_id: supervisorId,
+      status: 'in_progress',
+      criteria_snapshot: [],
+    })
+    .select('id')
+    .single()
   if (error) {
     throw new Error(
       `No se pudo crear la supervisión de fixture: ${error.message}`,
     )
   }
-  const payload = data as unknown as { supervision: { id: string } }
-  return payload.supervision.id
+  const marca = await admin.from('supervision_attendance').insert({
+    supervision_id: data.id,
+    kind: 'check_in',
+    recorded_at: new Date().toISOString(),
+  })
+  if (marca.error) {
+    throw new Error(
+      `No se pudo registrar el inicio de la supervisión de fixture: ${marca.error.message}`,
+    )
+  }
+  return data.id
 }
 
 /** Cancela una supervisión de fixture (limpieza), logueado como el dueño del seed. Silencioso si ya está en un estado terminal. */

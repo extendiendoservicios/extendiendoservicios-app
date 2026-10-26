@@ -25,7 +25,7 @@ test.describe('CB-03: cancelar un turno en curso con un empleado presente', () =
   test.use({ storageState: storageStatePath('owner') })
 
   test(
-    'el dueño cancela con motivo; se conserva el registro y la supervisión asignada se cancela con el turno',
+    'el dueño cancela con motivo; se conserva el registro y la supervisión en curso se cancela con el turno',
     cubre('RB-A04', 'CB-03', 'CB-17', 'P-049'),
     async ({ page }) => {
       const sc = new Scenario()
@@ -41,7 +41,7 @@ test.describe('CB-03: cancelar un turno en curso con un empleado presente', () =
           FRANJAS.madrugada,
         )
         const assignmentId = await sc.assign(shiftId, 'empleado2')
-        const supervisionId = await sc.assignSupervision(shiftId, 'supervisor2')
+        const supervisionId = await sc.tomarSupervision(shiftId, 'supervisor2')
 
         const empleado = await sessionClient('empleado2')
         const checkIn = await empleado.rpc('record_check_in', {
@@ -83,7 +83,7 @@ test.describe('CB-03: cancelar un turno en curso con un empleado presente', () =
           await expect(page.getByText('Cancelamos el turno.')).toBeVisible()
         })
 
-        await test.step('se conserva el registro y la supervisión asignada queda cancelada', async () => {
+        await test.step('se conserva el registro y la supervisión en curso queda cancelada', async () => {
           const { data: shift } = await sc.db
             .from('shifts')
             .select('status, cancel_reason, cancelled_by')

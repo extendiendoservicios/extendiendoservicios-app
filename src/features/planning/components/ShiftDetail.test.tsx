@@ -3,9 +3,10 @@ import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ShiftDetail } from './ShiftDetail'
 
-// P19.10: «Quitar» en las supervisiones del turno. Solo lo ve el dueño o el
-// administrador con manage_supervisions, y solo con la supervisión asignada
-// o en curso.
+// P19.10 y P24.3: «Quitar» en las supervisiones del turno. Solo lo ve el dueño
+// o el administrador con manage_supervisions, y solo con la supervisión en
+// curso. Ya no existe «Asignar supervisión» (CJ-01): el coordinador toma el
+// turno desde su celular y un turno puede tener varias supervisiones.
 
 const { auth, shiftState } = vi.hoisted(() => ({
   auth: {
@@ -131,7 +132,7 @@ beforeEach(() => {
 })
 
 describe('ShiftDetail: Quitar supervisión (P19.10)', () => {
-  it('muestra «Quitar» solo en asignada y en curso, no en completada ni no realizada', () => {
+  it('muestra «Quitar» solo en la supervisión en curso, no en completada ni no realizada', () => {
     shiftState.data = makeShift([
       sup('a', 'Asig', 'assigned'),
       sup('b', 'Curso', 'in_progress'),
@@ -140,8 +141,8 @@ describe('ShiftDetail: Quitar supervisión (P19.10)', () => {
     ])
     renderDetail()
     expect(
-      within(itemOf('Asig')).getByRole('button', { name: 'Quitar' }),
-    ).toBeVisible()
+      within(itemOf('Asig')).queryByRole('button', { name: 'Quitar' }),
+    ).toBeNull()
     expect(
       within(itemOf('Curso')).getByRole('button', { name: 'Quitar' }),
     ).toBeVisible()
@@ -158,29 +159,35 @@ describe('ShiftDetail: Quitar supervisión (P19.10)', () => {
     renderDetail()
     expect(screen.queryByText(/Cancelada Test/)).toBeNull()
     expect(
-      screen.getByText('Este turno no tiene supervisión asignada.'),
+      screen.getByText(
+        'Este turno todavía no tuvo supervisión. Los coordinadores eligen qué turno supervisar desde su celular.',
+      ),
     ).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Quitar' })).toBeNull()
   })
 
-  it('con el mismo supervisor reasignado lista solo la vigente', () => {
+  it('lista a los dos coordinadores que supervisan el mismo turno (CJ-05)', () => {
     shiftState.data = makeShift([
-      sup('old', 'Vieja', 'cancelled'),
-      sup('new', 'Vieja', 'assigned'),
+      sup('uno', 'Ana', 'in_progress'),
+      sup('dos', 'Bruno', 'completed'),
     ])
     renderDetail()
-    expect(
-      screen
-        .getAllByRole('listitem')
-        .filter((li) => li.textContent?.includes('Vieja Test')),
-    ).toHaveLength(1)
+    expect(itemOf('Ana')).toBeVisible()
+    expect(itemOf('Bruno')).toBeVisible()
     expect(screen.getAllByRole('button', { name: 'Quitar' })).toHaveLength(1)
+  })
+
+  it('no ofrece «Asignar supervisión» ni siquiera al dueño', () => {
+    shiftState.data = makeShift([])
+    renderDetail()
+    expect(screen.queryByText(/Asignar supervisión/)).toBeNull()
+    expect(screen.queryByRole('link', { name: /Asignar/ })).toBeNull()
   })
 
   it('el administrador sin manage_supervisions no ve «Quitar»', () => {
     auth.roles = ['admin']
     auth.capabilities = []
-    shiftState.data = makeShift([sup('a', 'Asig', 'assigned')])
+    shiftState.data = makeShift([sup('a', 'Asig', 'in_progress')])
     renderDetail()
     expect(itemOf('Asig')).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Quitar' })).toBeNull()
@@ -189,14 +196,14 @@ describe('ShiftDetail: Quitar supervisión (P19.10)', () => {
   it('el administrador con manage_supervisions ve «Quitar»', () => {
     auth.roles = ['admin']
     auth.capabilities = ['manage_supervisions']
-    shiftState.data = makeShift([sup('a', 'Asig', 'assigned')])
+    shiftState.data = makeShift([sup('a', 'Asig', 'in_progress')])
     renderDetail()
     expect(screen.getByRole('button', { name: 'Quitar' })).toBeVisible()
   })
 
   it('«Quitar» abre el diálogo con los textos de quitar y el id de esa supervisión', () => {
     shiftState.data = makeShift([
-      sup('a', 'Asig', 'assigned'),
+      sup('a', 'Asig', 'completed'),
       sup('b', 'Curso', 'in_progress'),
     ])
     renderDetail()
@@ -212,7 +219,7 @@ describe('ShiftDetail: Quitar supervisión (P19.10)', () => {
   })
 
   it('en un turno completado igual ofrece «Quitar» (el servidor no lo restringe por el turno)', () => {
-    shiftState.data = makeShift([sup('a', 'Asig', 'assigned')], 'completed')
+    shiftState.data = makeShift([sup('a', 'Asig', 'in_progress')], 'completed')
     renderDetail()
     expect(screen.getByRole('button', { name: 'Quitar' })).toBeVisible()
   })

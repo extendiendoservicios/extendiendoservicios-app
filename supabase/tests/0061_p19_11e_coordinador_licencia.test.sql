@@ -1,10 +1,7 @@
 -- pgTAP de la migración 0061_p19_11e_coordinador_licencia.sql (P19.11e, decisión del 20 oct 2026):
 -- un coordinador de licencia no puede recibir supervisiones.
---   1. assign_supervision da ON_LEAVE si el coordinador tiene una licencia vigente que cubre la
---      fecha del turno (cerrada o abierta); una licencia dada de baja o de otras fechas no bloquea.
---   2. Un perfil con rol supervisor y sin ficha de employees no puede ser coordinador
---      (SUPERVISOR_ROLE_REQUIRED, como siempre): como no tiene ficha no puede tener licencia y la
---      licencia no interviene.
+--   1. (Quitado en P24.1, 0063: assign_supervision ya no se puede ejecutar, CJ-01. La licencia del
+--      coordinador ahora la cubre start_workday con ON_LEAVE: ver 0063_p24_1_jornada_coordinador.)
 --   3. update_shift_time(p_date): mover la fecha a un día de licencia del coordinador de la
 --      supervisión vigente da ON_LEAVE nombrándolo; una supervisión cancelada no cuenta.
 --
@@ -81,15 +78,15 @@ $$;
 
 grant execute on function tests.err_message(text) to authenticated, anon;
 
-select plan(16);
+select plan(10);
 
 -- Estructura -----------------------------------------------------------------------------------
 
 select has_function('public', 'assign_supervision', array['uuid', 'uuid'], 'assign_supervision(uuid, uuid)');
 select ok(
   not has_function_privilege('anon', 'public.assign_supervision(uuid, uuid)', 'execute')
-    and has_function_privilege('authenticated', 'public.assign_supervision(uuid, uuid)', 'execute'),
-  'grants de assign_supervision: anon no, authenticated sí'
+    and not has_function_privilege('authenticated', 'public.assign_supervision(uuid, uuid)', 'execute'),
+  'assign_supervision revocada en 0063 (P24.1, CJ-01): ni anon ni authenticated'
 );
 select ok(
   not has_function_privilege('anon', 'public.update_shift_time(uuid, time, time, boolean, date)', 'execute')
@@ -151,38 +148,9 @@ insert into public.supervisions (id, shift_id, supervisor_id, status, cancel_rea
   ('f6100000-0000-0000-0000-000000000051', 'f6100000-0000-0000-0000-000000000044', 'f6100000-0000-0000-0000-000000000091', 'assigned', null),
   ('f6100000-0000-0000-0000-000000000052', 'f6100000-0000-0000-0000-000000000045', 'f6100000-0000-0000-0000-000000000091', 'cancelled', 'Cancelada de prueba');
 
--- 1. assign_supervision -------------------------------------------------------------------------
+-- 1. (assign_supervision: quitado en P24.1) -------------------------------------------------------
 
 select tests.as_user('test-db061-owner@example.com');
-
-select is(
-  tests.err_hint($$select public.assign_supervision('f6100000-0000-0000-0000-000000000041', 'f6100000-0000-0000-0000-000000000091')$$),
-  'ON_LEAVE',
-  'assign_supervision: coordinadora de licencia ese día -> ON_LEAVE'
-);
-select is(
-  tests.err_message($$select public.assign_supervision('f6100000-0000-0000-0000-000000000041', 'f6100000-0000-0000-0000-000000000091')$$),
-  'El coordinador está de licencia ese día.',
-  'assign_supervision: mensaje de la licencia'
-);
-select lives_ok(
-  $$select public.assign_supervision('f6100000-0000-0000-0000-000000000042', 'f6100000-0000-0000-0000-000000000091')$$,
-  'assign_supervision: el día siguiente a la licencia se asigna bien'
-);
-select is(
-  tests.err_hint($$select public.assign_supervision('f6100000-0000-0000-0000-000000000043', 'f6100000-0000-0000-0000-000000000092')$$),
-  'ON_LEAVE',
-  'assign_supervision: licencia abierta -> ON_LEAVE'
-);
-select lives_ok(
-  $$select public.assign_supervision('f6100000-0000-0000-0000-000000000041', 'f6100000-0000-0000-0000-000000000093')$$,
-  'assign_supervision: licencia dada de baja no bloquea'
-);
-select is(
-  tests.err_hint($$select public.assign_supervision('f6100000-0000-0000-0000-000000000041', 'f6100000-0000-0000-0000-000000000094')$$),
-  'SUPERVISOR_ROLE_REQUIRED',
-  'assign_supervision: sin ficha de employees no es coordinador válido y la licencia no interviene'
-);
 
 -- 2. update_shift_time(p_date) -------------------------------------------------------------------
 

@@ -1,6 +1,8 @@
 # Guía de administración (dueño y administradores)
 
-DOC-018. Cómo usar la plataforma de Extendiendo Servicios desde la oficina: cargar clientes, sedes, servicios y personal, armar el cronograma, asignar gente y seguir la operación del día.
+DOC-018, actualizada con P24.6 y P24.6b (coordinación libre y jornada). Cómo usar la plataforma de Extendiendo Servicios desde la oficina: cargar clientes, sedes, servicios y personal, armar el cronograma, asignar empleados a los turnos y seguir la operación del día, incluida la jornada de los coordinadores.
+
+**Novedad:** los coordinadores **ya no se asignan a los turnos**. Cada coordinador ve todos los turnos del día, elige cuál supervisar desde su celular y lleva su propia jornada. Lo que se carga desde la oficina son sus **clientes y sedes preferenciales** (para ordenarles la lista) y, si hace falta, las **correcciones** de su jornada.
 
 Esta guía sirve para el **dueño** y para los **administradores**. Lo que solo puede hacer el dueño, o lo que un administrador puede hacer únicamente si el dueño le dio un permiso, está marcado así:
 
@@ -20,13 +22,14 @@ Las imágenes son de ejemplo, con datos inventados. Esta guía cubre solo la **P
 7. [Servicios y turnos](#servicios-y-turnos)
 8. [Asignar personal](#asignar-personal)
 9. [Empleados y coordinadores](#empleados-y-coordinadores)
-10. [Seguir el día: Resumen y Asistencia](#seguir-el-día-resumen-y-asistencia)
-11. [Fotos y videos](#fotos-y-videos)
-12. [Supervisiones y calificaciones](#supervisiones-y-calificaciones)
-13. [Configuración](#configuración)
-14. [Usar la administración desde el celular](#usar-la-administración-desde-el-celular)
-15. [Lo que no incluye la Plataforma Base](#lo-que-no-incluye-la-plataforma-base)
-16. [Cuando algo no anda](#cuando-algo-no-anda)
+10. [Coordinadores: sedes preferenciales, jornadas y correcciones](#coordinadores-sedes-preferenciales-jornadas-y-correcciones)
+11. [Seguir el día: Resumen y Asistencia](#seguir-el-día-resumen-y-asistencia)
+12. [Fotos y videos](#fotos-y-videos)
+13. [Supervisiones y calificaciones](#supervisiones-y-calificaciones)
+14. [Configuración](#configuración)
+15. [Usar la administración desde el celular](#usar-la-administración-desde-el-celular)
+16. [Lo que no incluye la Plataforma Base](#lo-que-no-incluye-la-plataforma-base)
+17. [Cuando algo no anda](#cuando-algo-no-anda)
 
 ---
 
@@ -41,15 +44,15 @@ Hay dos roles de administración:
 
 El dueño los activa por persona (ver [Usuarios y roles](#usuarios-y-roles)). Sin el permiso, el botón directamente no aparece.
 
-| Permiso                        | Qué habilita                                                                                                                          |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Gestionar usuarios             | Dar de alta empleados y coordinadores; resetear contraseñas, cambiar emails, cerrar sesiones y desactivar a empleados y coordinadores |
-| Cancelar turnos                | **Cancelar turno**                                                                                                                    |
-| Editar calificaciones          | Corregir las calificaciones que cargaron los coordinadores                                                                            |
-| Editar plantillas de tareas    | Crear y cambiar las listas de tareas de clientes y sedes                                                                              |
-| Registrar asistencia por otros | **Registrar en nombre** de un empleado; asignar o quitar personal una vez que el turno ya empezó                                      |
-| Generar turnos del mes         | **Generar turnos del mes**                                                                                                            |
-| Asignar supervisiones          | **Asignar supervisión** y cancelar supervisiones                                                                                      |
+| Permiso                        | Qué habilita                                                                                                                                 |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gestionar usuarios             | Dar de alta empleados y coordinadores; resetear contraseñas, cambiar emails, cerrar sesiones y desactivar a empleados y coordinadores        |
+| Cancelar turnos                | **Cancelar turno**                                                                                                                           |
+| Editar calificaciones          | Corregir las calificaciones que cargaron los coordinadores                                                                                   |
+| Editar plantillas de tareas    | Crear y cambiar las listas de tareas de clientes y sedes                                                                                     |
+| Registrar asistencia por otros | **Registrar en nombre** de un empleado; asignar o quitar personal una vez que el turno ya empezó; corregir las jornadas de los coordinadores |
+| Generar turnos del mes         | **Generar turnos del mes**                                                                                                                   |
+| Gestionar supervisiones        | Cargar y quitar los clientes y sedes preferenciales de los coordinadores; cancelar supervisiones                                             |
 
 ### Lo que es solo del dueño
 
@@ -108,16 +111,16 @@ Tocá tu foto (arriba a la derecha) y elegí **Cerrar sesión**. En el celular t
 
 A la izquierda está el **menú**, con ocho secciones:
 
-| Sección              | Para qué sirve                                                        |
-| -------------------- | --------------------------------------------------------------------- |
-| **Resumen**          | Cómo viene el día de hoy y qué requiere atención                      |
-| **Calendario**       | El cronograma por mes, semana y día; crear y generar turnos           |
-| **Asistencia**       | Quién llegó, quién avisó y quién no registró                          |
-| **Supervisiones**    | Asignar supervisiones y consultar calificaciones                      |
-| **Empleados**        | La dotación: empleados y coordinadores                                |
-| **Clientes y sedes** | Clientes, sus sedes, contactos y servicios                            |
-| **Tareas**           | Las listas de tareas de cada cliente y de cada sede                   |
-| **Configuración**    | Usuarios y roles, datos de la empresa, feriados, criterios, seguridad |
+| Sección              | Para qué sirve                                                                |
+| -------------------- | ----------------------------------------------------------------------------- |
+| **Resumen**          | Cómo viene el día de hoy y qué requiere atención                              |
+| **Calendario**       | El cronograma por mes, semana y día; crear y generar turnos                   |
+| **Asistencia**       | Quién llegó, quién avisó y quién no registró; la jornada de los coordinadores |
+| **Supervisiones**    | Consultar supervisiones y calificaciones                                      |
+| **Empleados**        | La dotación: empleados y coordinadores                                        |
+| **Clientes y sedes** | Clientes, sus sedes, contactos y servicios                                    |
+| **Tareas**           | Las listas de tareas de cada cliente y de cada sede                           |
+| **Configuración**    | Usuarios y roles, datos de la empresa, feriados, criterios, seguridad         |
 
 Arriba hay un **buscador** (también se abre con las teclas `Ctrl` y `K`) y tu foto, que abre el menú con **Mi perfil** y **Cerrar sesión**. Abajo del menú ves tu nombre, tu rol y la versión de la plataforma.
 
@@ -137,8 +140,9 @@ Si empezás desde cero (o querés revisar que no falte nada), este es el orden q
 6. **Tareas:** la lista de tareas de cada cliente (y de las sedes que necesiten una propia).
 7. **Servicios** de cada sede: días de la semana, horario y dotación.
 8. **Empleados y coordinadores**, con su usuario.
-9. **Generar los turnos del mes.**
-10. **Asignar personal** a cada turno.
+9. **Clientes y sedes preferenciales** de cada coordinador (opcional: solo ordena su lista).
+10. **Generar los turnos del mes.**
+11. **Asignar empleados** a cada turno. Los coordinadores no se asignan: eligen ellos qué turno supervisar.
 
 Si tenés mucha información para cargar de una vez (decenas de clientes o de empleados), no hace falta cargarla a mano: hay una planilla de Excel y un procedimiento de importación (`docs/carga-inicial.md`).
 
@@ -165,7 +169,7 @@ En el listado podés buscar por nombre o CUIT y filtrar por estado. Se ve cuánt
 
 ### La ficha del cliente
 
-Tocá un cliente. Arriba ves sus datos, con **Cambiar estado** y **Editar**. Abajo hay cuatro pestañas:
+Tocá un cliente. Arriba ves sus datos, con **Cambiar estado** y **Editar**. Abajo hay cuatro pestañas. Además, en la ficha ves el bloque **Coordinadores preferenciales** (quiénes tienen a este cliente entre sus preferidos, ver [Coordinadores](#coordinadores-sedes-preferenciales-jornadas-y-correcciones)):
 
 ![Ficha del cliente](guias/img/adm-cliente-detalle.png)
 
@@ -196,7 +200,7 @@ Para dejar de trabajar con un cliente, usá **Cambiar estado**: **Suspendido** s
 
 ![Ficha de la sede](guias/img/adm-sede-detalle.png)
 
-Muestra los datos, el mapa (si cargaste la ubicación), los **servicios** de la sede (con **Nuevo servicio**), la lista de tareas que usa y sus próximos turnos. Desde acá podés **Editar** o **Cambiar estado**.
+Muestra los datos, el mapa (si cargaste la ubicación), los **servicios** de la sede (con **Nuevo servicio**), la lista de tareas que usa, sus próximos turnos y el bloque **Coordinadores preferenciales** (los que la tienen como preferida, ya sea por la sede o por su cliente). Desde acá podés **Editar** o **Cambiar estado**.
 
 ### Ver todas las sedes en un mapa
 
@@ -283,7 +287,7 @@ En **Calendario** hay tres vistas, con las pestañas **Mes**, **Semana** y **Dí
 
   ![Calendario, vista semanal](guias/img/adm-planificacion-semana.png)
 
-- **Día:** los turnos de una fecha, agrupados por franja horaria, con la **dotación** (asignados sobre requeridos) y el estado. Con **Ver** abrís el turno, con **Editar** cambiás la franja, con **Cancelar** lo cancelás.
+- **Día:** los turnos de una fecha, agrupados por franja horaria, con la **dotación** (asignados sobre requeridos), el estado y, si hubo, los **coordinadores que supervisaron** el turno. Con **Ver** abrís el turno, con **Editar** cambiás la franja, con **Cancelar** lo cancelás.
 
   ![Calendario, vista diaria](guias/img/adm-planificacion-dia.png)
 
@@ -299,17 +303,19 @@ Ves el cliente y la sede, la fecha y la franja, el estado, y de dónde viene (se
 
 - **Dotación:** quiénes están asignados, con su estado, el inicio y el fin reales, los avisos y las observaciones que cargaron.
 - **Tareas:** las tareas del turno y su estado.
-- **Supervisiones:** quién supervisa ese turno.
+- **Supervisiones:** los coordinadores que supervisan o supervisaron ese turno (puede haber más de uno), con el estado de cada supervisión.
 - **Notas administrativas.**
 - **Fotos y videos:** las miniaturas que subieron las personas del turno, agrupadas por persona. Si el turno **Pide fotos**, está en curso o finalizado y no hay ninguna foto, aparece la marca **Sin fotos**. Tocá una miniatura para abrir el visor (ver [Fotos y videos](#fotos-y-videos)).
 
-Acciones: **Editar franja** (cambiar el horario del turno), **Editar dotación y notas**, **Cancelar turno** (pide un **Motivo de la cancelación**; **Permiso "Cancelar turnos"**), **Asignar empleado**, **Recargar tareas**, **Asignar supervisión**.
+Acciones: **Editar franja** (cambiar el horario del turno), **Editar dotación y notas**, **Cancelar turno** (pide un **Motivo de la cancelación**; **Permiso "Cancelar turnos"**), **Asignar empleado**, **Recargar tareas**. Ya no existe «Asignar coordinador» ni «Asignar supervisión»: los coordinadores toman el turno desde su celular.
 
 Un turno que ya empezó solo permite cambiar la hora de fin. Un turno cancelado se conserva en el cronograma con su motivo.
 
 ---
 
 ## Asignar personal
+
+Esta sección es para **empleados**. A los coordinadores no se los asigna a los turnos: ven todos los turnos del día y eligen (ver [Coordinadores](#coordinadores-sedes-preferenciales-jornadas-y-correcciones)).
 
 1. Abrí el turno (desde **Calendario**, **Resumen** o **Asistencia**).
 2. Tocá **Asignar empleado**. Se abre una lista con todas las personas activas y un buscador.
@@ -369,7 +375,7 @@ Tocá a una persona para ver todo sobre ella.
 
 ![Ficha del empleado, pestaña Habilitaciones](guias/img/adm-empleado-ficha.png)
 
-Arriba tenés las acciones: **Resetear contraseña**, **Cerrar sesiones**, **Dar de baja** y **Editar**. Abajo, siete pestañas:
+Arriba tenés las acciones: **Resetear contraseña**, **Cerrar sesiones**, **Dar de baja** y **Editar**. Abajo, siete pestañas (los coordinadores tienen además **Clientes y sedes preferenciales** y **Jornadas**, ver [Coordinadores](#coordinadores-sedes-preferenciales-jornadas-y-correcciones)):
 
 - **Datos:** datos personales, laborales, contacto de emergencia, usuario y roles (con **Editar roles**).
 - **Habilitaciones:** a qué clientes puede ir la persona. **Si no habilitás a ningún cliente en particular, queda habilitada para todos.** Habilitá clientes puntuales solo si querés restringirla a algunos: elegí el cliente y tocá **Habilitar**.
@@ -377,7 +383,7 @@ Arriba tenés las acciones: **Resetear contraseña**, **Cerrar sesiones**, **Dar
 - **Licencias:** períodos en que no trabaja (vacaciones, enfermedad). **Agregar licencia** con fecha de inicio y de fin. En el cronograma semanal la persona aparece atenuada y, al asignarla, se avisa.
 - **Próximos turnos:** lo que tiene asignado. Con **Ver semana** abrís la grilla de esa persona.
 - **Asistencia:** el historial de turnos pasados con inicio, fin, avisos y observaciones. Se puede cambiar el rango de fechas.
-- **Calificaciones:** las que recibió de los coordinadores (solo lo ve Administración; el empleado no las ve).
+- **Calificaciones:** las que recibió de los coordinadores (solo lo ve Administración; el empleado no las ve). **Cada calificación se muestra por separado**, con quién la cargó: si dos coordinadores supervisaron el mismo turno, el empleado tiene dos calificaciones en esa tarea y no se promedian ni se agrupan.
 
 ### Resetear la contraseña, cerrar sesiones y dar de baja
 
@@ -386,6 +392,118 @@ Arriba tenés las acciones: **Resetear contraseña**, **Cerrar sesiones**, **Dar
 - **Resetear contraseña:** escribís una contraseña nueva y la pasás a la persona por un canal seguro.
 - **Cerrar sesiones:** cierra la sesión de la persona en todos sus dispositivos (por ejemplo, si perdió el celular).
 - **Dar de baja:** la persona **no puede iniciar sesión** y queda marcada como baja. **El historial se conserva** y nada se borra. Si tiene que volver, el **dueño** la reactiva (ver [Usuarios y roles](#usuarios-y-roles)).
+
+---
+
+## Coordinadores: sedes preferenciales, jornadas y correcciones
+
+Desde la coordinación libre (P24) los coordinadores trabajan así:
+
+1. **Nadie los asigna a los turnos.** Cada coordinador ve todos los turnos del día, de todos los clientes, y elige cuál supervisar.
+2. **Cada uno tiene sus clientes y sedes preferenciales.** Le aparecen primero en su pantalla («Mis sedes»); el resto queda en «Otras sedes». Es solo un orden: puede tomar cualquier turno, y así se cubren las ausencias o demoras de otro coordinador.
+3. **Cada uno lleva su jornada** desde el celular: **Iniciar jornada**, **Pausar**, **Reanudar** y **Finalizar jornada**. Sus horas son las de la jornada (de inicio a fin, menos las pausas, con los viajes entre sedes incluidos). El tiempo de cada supervisión es solo informativo y no suma horas.
+4. **Dos o más coordinadores pueden supervisar el mismo turno**, y cada uno califica con su criterio.
+
+Lo que hacés vos desde la oficina es cargar las preferencias, mirar las jornadas y, si hace falta, corregirlas.
+
+### Clientes y sedes preferenciales
+
+**Permiso "Gestionar supervisiones".** Una preferencia puede ser de un **cliente entero** (cubre todas sus sedes, también las que se creen después) o de **una sede**. Una sede puede tener varios coordinadores preferenciales. No hay límite ni obligación: un coordinador puede no tener ninguna.
+
+**Desde la ficha del coordinador:**
+
+1. Entrá a **Empleados** y abrí la ficha del coordinador.
+2. Abrí la pestaña **Clientes y sedes preferenciales**.
+
+![Pestaña de clientes y sedes preferenciales](guias/img/adm-coordinador-preferenciales.png)
+
+3. Elegí **Cliente entero** o **Una sede**, buscá el cliente o la sede en la lista y tocá **Agregar**. Aparece abajo, con un aviso de confirmación.
+4. Para sacar una, tocá la **X** al lado. No se borra nada: la preferencia queda dada de baja y se conserva el historial.
+
+**Desde la ficha del cliente o de la sede:** en el bloque **Coordinadores preferenciales** podés agregar o quitar coordinadores de la misma manera: elegí el coordinador en **Elegí un coordinador…** y tocá **Agregar**, o la **X** para quitarlo.
+
+![Bloque Coordinadores preferenciales en la ficha del cliente](guias/img/adm-cliente-preferenciales.png)
+
+Si ya tenés los datos en la planilla de la carga inicial, la columna **Clientes y sedes preferenciales** de la hoja Supervisores los carga de una vez (ver [`carga-inicial.md`](carga-inicial.md)).
+
+### Las jornadas de un coordinador
+
+En la ficha del coordinador, la pestaña **Jornadas** muestra cada día con su detalle:
+
+![Pestaña Jornadas de la ficha del coordinador](guias/img/adm-coordinador-jornadas.png)
+
+- La hora de **Inicio** y de **Fin**, y las **Pausas** con su motivo (si lo cargó).
+- Las **horas netas** de la jornada.
+- Las **Supervisiones** que hizo ese día, con su duración (informativa).
+- El **Registro de la jornada**, evento por evento.
+- Las marcas **Cerrada automáticamente** (la jornada se cerró sola, ver más abajo) y **Corregida** (la tocó Administración), y el **Historial de correcciones**.
+
+Se cambia de mes con el selector de arriba a la izquierda.
+
+Las **horas mensuales** de los coordinadores se cuentan igual que las de los empleados, **sin topes ni avisos** de rango.
+
+### Cierre automático y la marca «Sin cerrar»
+
+Si un coordinador no finaliza su jornada, la plataforma la **cierra sola a las 23:55** (hora de Argentina), antes de la medianoche, y la marca **Cerrada automáticamente** con una advertencia. Si ese coordinador tenía una supervisión abierta, se registra su fin a las 23:55 y queda con la marca **Sin cerrar**; Administración recibe el aviso.
+
+Dónde lo ves:
+
+- En **Resumen**, el bloque de supervisiones del día muestra las jornadas abiertas y las cerradas automáticamente.
+- En **Supervisiones**, la marca **Sin cerrar** en la fila (ver más abajo la captura de la lista).
+- En la pestaña **Jornadas**, la marca **Cerrada automáticamente**.
+
+Conviene que la empresa explique en la capacitación que **hay que finalizar la jornada a mano**: si el coordinador terminó a las 18:00 y no finalizó, el cierre automático le suma horas hasta las 23:55.
+
+### Corregir una jornada
+
+**Permiso "Registrar asistencia por otros".** Podés corregir cualquier horario de la jornada: la hora de inicio o de fin, y agregar o quitar pausas. **El motivo es obligatorio** y queda registrado quién lo hizo, cuándo, por qué y el valor anterior.
+
+1. En la ficha del coordinador, abrí la pestaña **Jornadas** y elegí el día.
+2. En el **Registro de la jornada**, tocá **Corregir hora** al lado del horario que querés cambiar.
+
+![Cuadro para corregir la hora](guias/img/adm-jornada-corregir.png)
+
+3. Escribí la **Hora nueva** (tiene que ser del mismo día y no futura) y el **Motivo**.
+4. Confirmá. La jornada pasa a mostrar la marca **Corregida**.
+
+Para las pausas, usá **Agregar pausa** (**Desde** y **Hasta** qué hora, con el motivo de la pausa y el motivo de la corrección) o **Quitar pausa** en una pausa que no corresponde.
+
+Si el coordinador **se olvidó de iniciar la jornada** de un día, tocá **Registrar jornada** (arriba a la derecha de la pestaña): **Inicio**, **Fin** y **Motivo**. Solo se puede si ese día no tiene jornada.
+
+Una corrección **quita la advertencia** del cierre automático y deja la constancia de que la hubo. Los horarios de inicio y fin de cada supervisión no se corrigen desde acá.
+
+### La ficha imprimible
+
+Igual que la de los empleados, es el **registro en papel de la jornada** del coordinador.
+
+> **Aviso: períodos anteriores a la versión 0.23.0.** Antes de que existieran las jornadas, el coordinador figura con **0 horas** en la asistencia, en el **Resumen** y en esta ficha imprimible. Es a propósito: las supervisiones viejas ya no suman horas, ahora solo cuentan las jornadas (de inicio a fin, menos las pausas). No se perdió ningún dato; el tiempo de cada supervisión sigue visible como dato informativo.
+
+1. En la ficha del coordinador, abrí la pestaña **Asistencia** y elegí el período con **Desde** y **Hasta**.
+2. Tocá **Descargar detalle**. Se abre la vista previa.
+
+![Vista previa de la ficha imprimible](guias/img/adm-jornada-imprimir.png)
+
+3. Revisá la hoja. Como las demás hojas imprimibles, podés **Editar texto** y después **Imprimir o guardar como PDF**. **Cerrar** vuelve a la ficha.
+
+Lleva el **detalle de cada jornada con sus supervisiones**, el **acumulado de horas del período** y el **pie de firmas** de consentimiento. Si la persona es **empleado y coordinador** a la vez, la ficha tiene dos secciones (los turnos como empleado y las jornadas como coordinador), cada una con su total, y al final la **suma**.
+
+### El mapa de coordinadores
+
+En **Resumen**, el mapa de presencia («Dónde está el equipo») suma a los coordinadores. Es una herramienta de **dueños y administradores**: los coordinadores no ven el mapa de los demás.
+
+- Un punto por coordinador, en la **última posición conocida**, con un color por estado: **En actividad** (jornada iniciada, entre sedes), **Supervisando** (con cliente y sede), **En pausa** (con el motivo, si lo cargó), **Finalizada** y **Sin iniciar**.
+- Con el interruptor **Coordinadores** (arriba a la derecha del mapa) mostrás u ocultás a los coordinadores.
+- Al tocar un punto ves el estado, el cliente y la sede si está supervisando, la **hora del último registro**, las **horas de hoy** y **Ver jornada** (te lleva a la pestaña **Jornadas**).
+- Si el último evento no trajo posición, el coordinador no tiene punto: figura debajo del mapa, en **Coordinadores sin ubicación**, con su estado.
+- Se actualiza cada 60 segundos.
+
+![Mapa de presencia con coordinadores](guias/img/adm-resumen-mapa.png)
+
+Debajo del mapa, el bloque **Supervisiones de hoy** muestra las **Jornadas abiertas** y las **Cerradas automáticamente**:
+
+![Bloque Supervisiones de hoy](guias/img/adm-resumen-jornadas.png)
+
+La posición se toma **solo en cada evento** (iniciar, pausar, reanudar y finalizar la jornada, y empezar y cerrar cada supervisión): no hay seguimiento continuo. Es **opcional y con consentimiento** del coordinador; la empresa decide si la exige.
 
 ---
 
@@ -414,6 +532,8 @@ Y **Servicios de hoy**: una fila por persona con el cliente, la sede, el horario
 
 **Un aviso que manda un empleado desde su celular aparece acá en menos de un minuto, sin recargar.**
 
+Además, el **mapa de presencia** suma a los coordinadores y el bloque de supervisiones del día muestra las **jornadas abiertas** y las **cerradas automáticamente** (ver [El mapa de coordinadores](#el-mapa-de-coordinadores) y [Cierre automático y la marca «Sin cerrar»](#cierre-automático-y-la-marca-sin-cerrar)).
+
 Arriba de los números puede aparecer un aviso amarillo o rojo: **el espacio de fotos y videos se está llenando** (desde el 70 %) o **está casi lleno** (desde el 90 %). Tocá **Ver fotos y videos** para ver qué ocupa lugar. Si no aparece, el espacio está bien.
 
 ### Asistencia de hoy
@@ -425,6 +545,10 @@ La lista completa del día, para seguir quién está. Cada fila muestra el emple
 Los **estados** son: **Esperado**, **Presente**, **Finalizado**, **Demora avisada** (con los minutos), **Ausencia avisada** (con el motivo) y **Sin registro**. "Sin registro" no lo marca nadie: aparece solo cuando pasó la hora de inicio y la persona no registró nada.
 
 Podés filtrar por estado, cliente y sede, buscar por nombre y cambiar de fecha con las flechas o el calendario. Los días anteriores se ven en solo lectura. Acciones de cada fila: **Abrir turno**, **Registrar en nombre** y **Llamar** (si la persona tiene teléfono cargado).
+
+Debajo, la sección **Coordinadores** muestra el estado de la jornada de cada uno: **Sin iniciar**, **En actividad**, **Supervisando**, **En pausa** o **Finalizada**, con la hora del último registro.
+
+![Sección Coordinadores de Asistencia](guias/img/adm-asistencia-coordinadores.png)
 
 ### Registrar en nombre de un empleado
 
@@ -472,23 +596,18 @@ Las fotos y los videos se **borran solos de noche** cuando pasa el plazo (60 dí
 
 ![Supervisiones](guias/img/adm-supervisiones.png)
 
-En **Supervisiones** consultás y asignás. La pantalla tiene dos pestañas:
+En **Supervisiones** consultás lo que hicieron los coordinadores. Ya no se asignan supervisiones: cada coordinador toma el turno que elige (ver [Coordinadores](#coordinadores-sedes-preferenciales-jornadas-y-correcciones)). La pantalla tiene dos pestañas:
 
-- **Supervisiones:** una fila por supervisión, con la fecha, el turno (cliente, sede, franja), el coordinador, el estado (**Asignada**, **En curso**, **Completada**, **No realizada** o **Cancelada**), el inicio y el fin, y cuántas calificaciones se cargaron sobre el total de empleados.
-- **Calificaciones:** una fila por empleado calificado, con la fecha, la sede, el coordinador, el puntaje y el comentario.
+- **Supervisiones:** una fila por supervisión, con la fecha, el turno (cliente, sede, franja), el coordinador, el estado (**En curso**, **Completada** o **Cancelada**), el inicio y el fin, la **duración** (informativa: no suma horas) y cuántas calificaciones se cargaron sobre el total de empleados. **Un mismo turno puede tener varias filas**, una por cada coordinador que lo supervisó.
+- **Calificaciones:** una fila por empleado calificado, con la fecha, la sede, el coordinador, el puntaje y el comentario. Un empleado puede tener varias calificaciones en el mismo turno, una por coordinador.
 
-Los filtros permiten buscar por empleado, coordinador, cliente, sede, rango de fechas y estado.
+Los filtros permiten buscar por empleado, coordinador, cliente, sede y rango de fechas (**Desde** y **Hasta**).
 
-### Asignar una supervisión
+Marcas y estados que conviene conocer:
 
-**Permiso "Asignar supervisiones".**
-
-![Asignar supervisión](guias/img/adm-supervision-asignar.png)
-
-1. En **Supervisiones**, tocá **Asignar supervisión** (también se puede hacer desde el detalle de un turno).
-2. Elegí la **Fecha**, el **Turno** (la lista muestra los turnos de esa fecha que no están cancelados ni terminados) y el **Coordinador**.
-3. Si el coordinador también está asignado como empleado en ese turno, la pantalla te avisa: conviene elegir a otra persona, porque nadie puede calificarse a sí mismo.
-4. Confirmá. La supervisión aparece en **Hoy** del coordinador.
+- **Sin cerrar** (marca amarilla junto al estado «En curso», ver la captura de arriba): la supervisión quedó abierta cuando se cerró la jornada del coordinador (a mano o por el cierre automático de las 23:55). Revisala: se registró un fin, pero el coordinador no la cerró ni calificó a todos.
+- **Cancelada** con el motivo "Descartada por el coordinador": la empezó por error y la descartó. Con el motivo "Cambio de lógica de coordinación (23 oct 2026)" figuran las que estaban asignadas y sin empezar cuando cambió el funcionamiento.
+- Las supervisiones anteriores al cambio pueden mostrar los estados viejos (**Asignada**, **No realizada**): son historial y no se modifican.
 
 ### Ver, cancelar o corregir una supervisión
 
@@ -496,10 +615,10 @@ Tocá una fila para abrir su detalle.
 
 ![Detalle de una supervisión](guias/img/adm-supervision-detalle.png)
 
-Ves el turno, el coordinador, el estado, los criterios que se usaron y las **calificaciones por empleado**, con el puntaje (de 1 a 5 estrellas), el comentario y quién lo editó y cuándo. Acciones:
+Ves el turno, el coordinador, el estado, el inicio, el fin y la duración, los **Criterios usados** y las **Calificaciones por empleado**, con el puntaje (de 1 a 5 estrellas), el comentario y quién lo editó y cuándo. Acciones:
 
-- **Marcar como no realizada** y **Cancelar supervisión** (**Permiso "Asignar supervisiones"**).
-- **Calificar** o **Editar** una calificación (**Permiso "Editar calificaciones"**). El coordinador solo puede cambiar sus calificaciones mientras dura el turno; Administración puede hacerlo siempre, y queda anotado quién lo hizo.
+- **Cancelar supervisión** (**Permiso "Gestionar supervisiones"**): pide el **Motivo de la cancelación**. Las calificaciones ya cargadas quedan registradas; solo cambia el estado. Es lo que corresponde para una supervisión **Sin cerrar**.
+- **Calificar** o **Editar** una calificación (**Permiso "Editar calificaciones"**). El coordinador solo puede cambiar sus calificaciones mientras su supervisión está abierta; Administración puede hacerlo siempre, y queda anotado quién lo hizo.
 
 ---
 
@@ -524,7 +643,7 @@ En la fila de cada persona, el botón de los tres puntos abre las acciones:
 
 **Solo dueño: nuevo administrador.** Con **Nuevo administrador** completás nombre, apellido, **Email de login** y una **Contraseña inicial**, igual que para un empleado.
 
-**Solo dueño: dar permisos a un administrador.** En el menú de la persona, **Editar roles y capacidades**. Ahí se tildan los siete permisos (**Gestionar usuarios**, **Cancelar turnos**, **Editar calificaciones**, **Editar plantillas de tareas**, **Registrar asistencia por otros**, **Generar turnos del mes**, **Asignar supervisiones**). Los permisos **se guardan solos** al activarlos. Los roles se guardan con **Guardar roles**; si al guardar le sacás un rol a alguien, se le cierran las sesiones.
+**Solo dueño: dar permisos a un administrador.** En el menú de la persona, **Editar roles y capacidades**. Ahí se tildan los siete permisos (**Gestionar usuarios**, **Cancelar turnos**, **Editar calificaciones**, **Editar plantillas de tareas**, **Registrar asistencia por otros**, **Generar turnos del mes**, **Gestionar supervisiones**). Los permisos **se guardan solos** al activarlos. Los roles se guardan con **Guardar roles**; si al guardar le sacás un rol a alguien, se le cierran las sesiones.
 
 ### Empresa
 
@@ -558,7 +677,7 @@ La administración se adapta a tablet y celular. En el celular, el menú pasa a 
 
 ![Resumen en el celular](guias/img/adm-celular-resumen.png)
 
-Las tablas se ven como tarjetas, y los paneles ocupan toda la pantalla. Desde el celular podés hacer lo mismo que en la computadora; lo más útil: ver el **Resumen**, **asignar un empleado** a un turno, **registrar en nombre** de otra persona y **asignar una supervisión**.
+Las tablas se ven como tarjetas, y los paneles ocupan toda la pantalla. Desde el celular podés hacer lo mismo que en la computadora; lo más útil: ver el **Resumen** y el mapa, **asignar un empleado** a un turno y **registrar en nombre** de otra persona.
 
 ---
 
@@ -571,7 +690,7 @@ Para evitar malentendidos: las siguientes funciones **no existen** en esta versi
 - Provisión y control de **insumos**.
 - Cálculo de **horas, puntualidad y reportes** por empleado o cliente, y **exportaciones**.
 - Funcionamiento **sin conexión** con sincronización posterior.
-- **Mapa de presencia en tiempo real** de los empleados.
+- **Seguimiento continuo de la ubicación** de empleados y coordinadores: la posición se toma solo en cada evento (inicio, pausa, reanudación y fin), nunca de forma permanente.
 
 ---
 

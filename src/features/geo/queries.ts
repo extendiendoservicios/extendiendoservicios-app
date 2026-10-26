@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as geoApi from '@/api/geo'
 import type { GeoRecordType } from '@/api/geo'
+import { fetchSupervisorStatus } from '@/api/supervisorStatus'
 import { attendanceKeys } from '@/features/attendance/queries'
 import { planningKeys } from '@/features/planning/queries'
 import { shiftsKeys } from '@/features/shifts/queries'
@@ -20,8 +21,12 @@ import { sitesKeys } from '@/features/sites/queries'
 /** B-39: el mapa de presencia se actualiza solo cada 45 s. */
 export const PRESENCE_POLLING_MS = 45_000
 
+/** ADR-012: el estado de los coordinadores se refresca cada 60 s. */
+export const SUPERVISOR_STATUS_POLLING_MS = 60_000
+
 export const geoKeys = {
   all: ['geo'] as const,
+  supervisorStatus: () => [...geoKeys.all, 'supervisorStatus'] as const,
   presence: () => [...geoKeys.all, 'presence'] as const,
   location: (recordType: GeoRecordType, recordId: string) =>
     [...geoKeys.all, 'location', recordType, recordId] as const,
@@ -36,6 +41,22 @@ export function usePresenceTodayQuery() {
     queryFn: geoApi.fetchPresenceToday,
     staleTime: PRESENCE_POLLING_MS,
     refetchInterval: PRESENCE_POLLING_MS,
+    refetchOnWindowFocus: true,
+  })
+}
+
+/**
+ * Estado de hoy de los coordinadores (CJ-33): el mapa del Resumen, el bloque
+ * de jornadas y «Asistencia de hoy» comparten esta consulta (misma clave).
+ * Solo dueño y administradores: `enabled` evita pedirla a otros roles.
+ */
+export function useSupervisorStatusQuery(enabled = true) {
+  return useQuery({
+    queryKey: geoKeys.supervisorStatus(),
+    queryFn: fetchSupervisorStatus,
+    enabled,
+    staleTime: SUPERVISOR_STATUS_POLLING_MS,
+    refetchInterval: SUPERVISOR_STATUS_POLLING_MS,
     refetchOnWindowFocus: true,
   })
 }

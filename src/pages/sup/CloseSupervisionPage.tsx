@@ -5,65 +5,72 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { ActionBar } from '@/app/shells/ActionBar'
-import { SegmentedControl } from '@/components/SegmentedControl'
-import { isApiError } from '@/api/errors'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { useOnlineStatus } from '@/features/employee/useOnlineStatus'
+import { useLocationConsent } from '@/features/employee/useLocationConsent'
+import { useGeoFichaje } from '@/features/employee/useGeoFichaje'
+import { GeoFichajePanel } from '@/features/employee/components/GeoFichajePanel'
+import { LocationConsentGate } from '@/features/coordinator/components/LocationConsentGate'
+import { coordinatorErrorMessage } from '@/features/coordinator/errors'
+import { employeesToRate, pendingRatings } from '@/features/coordinator/ratings'
 import {
   useCompleteSupervisionMutation,
-  useMarkSupervisionNotDoneMutation,
   useMySupervisionQuery,
+  useSupervisionAssignmentsQuery,
   useSupervisionRatingsQuery,
 } from '@/api/mySupervisions'
 
 /** Estados en los que ya no hay nada para cerrar en esta pantalla. */
 const CLOSED_STATUSES = new Set(['completed', 'not_done', 'cancelled'])
 
-type Tab = 'complete' | 'not_done'
-
 /**
- * SUP-06 · Cerrar supervisión (MOB-SUP-007, `05` fila SUP-06, `06` sección
- * 12, P-082): dos alternativas en un `SegmentedControl` --
+ * SUP-06 · Cerrar supervisión (P24.2, `05` fila SUP-06, CJ-10, CJ-20, CJ-28):
+ * nota general opcional y «Cerrar supervisión» (`complete_supervision`), que
+ * registra el fin con la posición. Solo se puede cerrar si ya calificó a todos
+ * los empleados del turno con inicio registrado: mientras falte alguien, el
+ * botón queda deshabilitado y la pantalla lista a quién falta, con un acceso a
+ * calificar. Los ausentes no se califican y el propio coordinador, si también
+ * está asignado como empleado, queda fuera del requisito.
  *
- * - "Completar" (`complete_supervision`): nota general opcional, con
- *   advertencia si faltan empleados por calificar (se permite completar
- *   igual, la propia RPC no lo bloquea, `0029_rpc_supervisions.sql`: "se
- *   permite completar sin calificar a todos"). Exige el fin registrado
- *   (`CHECK_OUT_REQUIRED`): sin fin, esta pestaña muestra el aviso y un
- *   enlace a SUP-04 en vez del botón de completar.
- * - "No se pudo realizar" (`mark_supervision_not_done`): motivo
- *   obligatorio. A diferencia de completar, no exige el fin registrado
- *   (`06` sección 12: solo pide `assigned`/`in_progress`) -- por eso esta
- *   pantalla es accesible desde SUP-03 tanto antes de registrar el inicio
- *   como después, no solo con los dos registros hechos.
+ * Ya no existe «No se pudo realizar» (`mark_supervision_not_done` está
+ * revocada, CJ-26): si la empezó por error, la descarta desde SUP-04 (CJ-27).
  *
- * La pestaña inicial es "Completar" si ya hay fin registrado y "No se pudo
- * realizar" si no -- la alternativa más simple de completar en cada caso,
- * sin impedir cambiar de pestaña.
+ * La posición del fin sigue el flujo de B1: consentimiento primero, panel en
+ * vivo con la sede y, si no hay consentimiento o señal, el cierre se registra
+ * igual sin coordenadas.
  */
 export default function CloseSupervisionPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const auth = useAuth()
   const online = useOnlineStatus()
+  const consent = useLocationConsent()
   const {
     data: supervision,
     isLoading,
     isError,
   } = useMySupervisionQuery(id ?? '')
+  const { data: assignments } = useSupervisionAssignmentsQuery(
+    supervision?.shiftId ?? '',
+  )
   const { data: ratings } = useSupervisionRatingsQuery(id ?? '')
   const complete = useCompleteSupervisionMutation()
-  const markNotDone = useMarkSupervisionNotDoneMutation()
-  const [tab, setTab] = useState<Tab | null>(null)
   const [generalNotes, setGeneralNotes] = useState('')
-  const [reason, setReason] = useState('')
-  const [fieldError, setFieldError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [consentOpen, setConsentOpen] = useState(false)
   // Al cerrar desde acá, la consulta se revalida con el estado nuevo antes
   // de `navigate('/sup')`: la guarda de abajo no debe mandarla al detalle.
   const [closing, setClosing] = useState(false)
 
-  if (isLoading) {
+  const fichaje = useGeoFichaje({
+    enabled: consent.status === 'granted' && supervision != null,
+    siteLatitude: supervision?.siteLatitude ?? null,
+    siteLongitude: supervision?.siteLongitude ?? null,
+    radiusM: supervision?.siteGeofenceRadiusM ?? null,
+    maxAccuracyM: supervision?.geofenceMaxAccuracyM ?? null,
+  })
+
+  if (isLoading || consent.loading) {
     return (
       <p className="p-4 text-center text-[12.5px] text-text-3">Cargando…</p>
     )
@@ -81,131 +88,105 @@ export default function CloseSupervisionPage() {
     return <Navigate to={`/sup/supervisiones/${supervision.id}`} replace />
   }
 
-  const hasCheckOut = supervision.checkOutAt != null
-  const activeTab: Tab = tab ?? (hasCheckOut ? 'complete' : 'not_done')
-
-  const totalToRate = supervision.assignedEmployees.filter(
-    (e) => e.employeeId !== auth.userId,
-  ).length
-  const ratedCount = ratings?.length ?? 0
-  const missing = Math.max(0, totalToRate - ratedCount)
-
-  const busy = complete.isPending || markNotDone.isPending
+  const backLink = `/sup/supervisiones/${supervision.id}`
+  const total = employeesToRate(supervision, auth.userId).length
+  const pending =
+    assignments && ratings
+      ? pendingRatings(supervision, assignments, ratings, auth.userId)
+      : null
+  const missing = pending?.length ?? 0
+  const blocked = pending == null || missing > 0
+  const site =
+    supervision.siteLatitude != null && supervision.siteLongitude != null
+      ? {
+          lat: supervision.siteLatitude,
+          lng: supervision.siteLongitude,
+          name: supervision.siteName,
+        }
+      : null
 
   async function handleComplete() {
     setSubmitError(null)
+    if (consent.status === 'needs-consent') {
+      setConsentOpen(true)
+      return
+    }
     setClosing(true)
     try {
       await complete.mutateAsync({
         supervisionId: supervision!.id,
         generalNotes: generalNotes || undefined,
+        coords: fichaje.payload.coords,
+        outsideReason: fichaje.payload.outsideReason,
       })
       void navigate('/sup', { replace: true })
     } catch (mutationError) {
       setClosing(false)
       setSubmitError(
-        isApiError(mutationError)
-          ? mutationError.message
-          : 'No pudimos completar la supervisión. Probá de nuevo.',
-      )
-    }
-  }
-
-  async function handleMarkNotDone() {
-    setFieldError(null)
-    setSubmitError(null)
-    if (reason.trim() === '') {
-      setFieldError('Indicá el motivo.')
-      return
-    }
-    setClosing(true)
-    try {
-      await markNotDone.mutateAsync({
-        supervisionId: supervision!.id,
-        reason,
-      })
-      void navigate('/sup', { replace: true })
-    } catch (mutationError) {
-      setClosing(false)
-      setSubmitError(
-        isApiError(mutationError)
-          ? mutationError.message
-          : 'No pudimos guardar. Probá de nuevo.',
+        coordinatorErrorMessage(
+          mutationError,
+          'No pudimos cerrar la supervisión. Probá de nuevo.',
+        ),
       )
     }
   }
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      <SegmentedControl
+      <Card>
+        <CardContent className="flex flex-col gap-1">
+          <p className="text-[14px] font-semibold text-text">
+            {supervision.clientName}
+          </p>
+          <p className="text-[12px] text-text-3">{supervision.siteName}</p>
+          <p className="pt-1 text-[13px] text-text-2">
+            Calificaste a {total - missing} de {total}{' '}
+            {total === 1 ? 'empleado' : 'empleados'}.
+          </p>
+        </CardContent>
+      </Card>
+
+      {pending && missing > 0 && (
+        <Alert variant="warn">
+          <AlertDescription>
+            <span className="block">
+              Para cerrar tenés que calificar a todos los empleados del turno
+              que iniciaron. Falta:
+            </span>
+            <ul className="mt-1 flex flex-col">
+              {pending.map((person) => (
+                <li key={person.employeeId}>
+                  {person.assignmentId ? (
+                    <Link
+                      to={`/sup/supervisiones/${supervision.id}/calificar/${person.assignmentId}`}
+                      className="flex min-h-11 items-center font-semibold underline underline-offset-2"
+                    >
+                      {person.name}
+                    </Link>
+                  ) : (
+                    person.name
+                  )}
+                </li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Textarea
         mobile
-        aria-label="Cómo cerrar la supervisión"
-        value={activeTab}
-        onValueChange={setTab}
-        options={[
-          { value: 'complete', label: 'Completar' },
-          { value: 'not_done', label: 'No se pudo realizar', critical: true },
-        ]}
+        rows={3}
+        value={generalNotes}
+        onChange={(event) => setGeneralNotes(event.target.value)}
+        placeholder="Nota general (opcional)…"
       />
 
-      {activeTab === 'complete' ? (
-        !hasCheckOut ? (
-          <div className="flex flex-col gap-4">
-            <Alert variant="warn">
-              <AlertDescription>
-                Todavía no registraste el fin de la supervisión. Registralo para
-                poder completarla.
-              </AlertDescription>
-            </Alert>
-            <Button asChild size="mobile">
-              <Link to={`/sup/supervisiones/${supervision.id}/registro`}>
-                Registrar fin de supervisión
-              </Link>
-            </Button>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-4">
-            <Card>
-              <CardContent className="flex flex-col gap-1">
-                <p className="text-[13px] text-text-2">
-                  Calificaste a {ratedCount} de {totalToRate}{' '}
-                  {totalToRate === 1 ? 'empleado' : 'empleados'}.
-                </p>
-              </CardContent>
-            </Card>
-            {missing > 0 && (
-              <Alert variant="warn">
-                <AlertDescription>
-                  {missing === 1
-                    ? 'Falta 1 empleado por calificar'
-                    : `Faltan ${missing} empleados por calificar`}
-                  . Podés completar igual.
-                </AlertDescription>
-              </Alert>
-            )}
-            <Textarea
-              mobile
-              rows={3}
-              value={generalNotes}
-              onChange={(event) => setGeneralNotes(event.target.value)}
-              placeholder="Nota general (opcional)…"
-            />
-          </div>
-        )
-      ) : (
-        <div className="flex flex-col gap-4">
-          <p className="text-[12.5px] text-text-3">
-            Contá por qué no se pudo realizar la supervisión.
-          </p>
-          <Textarea
-            mobile
-            rows={3}
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder="Motivo…"
-            error={fieldError ?? undefined}
-          />
-        </div>
+      {consent.status === 'granted' && (
+        <GeoFichajePanel
+          fichaje={fichaje}
+          site={site}
+          busy={complete.isPending}
+        />
       )}
 
       {submitError && (
@@ -222,30 +203,29 @@ export default function CloseSupervisionPage() {
       )}
 
       <ActionBar>
-        {activeTab === 'complete' ? (
-          <Button
-            size="mobile"
-            onClick={() => void handleComplete()}
-            loading={complete.isPending}
-            disabled={!hasCheckOut || !online || busy}
-          >
-            Completar supervisión
-          </Button>
-        ) : (
-          <Button
-            size="mobile"
-            variant="destructive"
-            onClick={() => void handleMarkNotDone()}
-            loading={markNotDone.isPending}
-            disabled={!online || busy}
-          >
-            Marcar como no realizada
-          </Button>
-        )}
-        <Button asChild size="mobile" variant="ghost" disabled={busy}>
-          <Link to={`/sup/supervisiones/${supervision.id}`}>Volver</Link>
+        <Button
+          size="mobile"
+          onClick={() => void handleComplete()}
+          loading={complete.isPending}
+          disabled={blocked || !online || complete.isPending}
+        >
+          {fichaje.view.poorSignal ? 'Cerrar igual' : 'Cerrar supervisión'}
+        </Button>
+        <Button
+          asChild
+          size="mobile"
+          variant="ghost"
+          disabled={complete.isPending}
+        >
+          <Link to={backLink}>Volver</Link>
         </Button>
       </ActionBar>
+
+      <LocationConsentGate
+        open={consentOpen}
+        onCancel={() => setConsentOpen(false)}
+        onResolved={() => setConsentOpen(false)}
+      />
     </div>
   )
 }

@@ -97,8 +97,23 @@ interface SafeAreaMetrics {
 }
 
 async function measureSafeArea(page: Page): Promise<SafeAreaMetrics> {
+  // La cabecera grande de «Hoy» no es fija (MobileShell): con la lista larga de turnos del
+  // coordinador (P24.2) se desplaza fuera de la vista al bajar. Su margen contra el área segura se
+  // mide arriba de todo, antes de bajar.
+  await page.evaluate(() => window.scrollTo(0, 0))
+  const headerContentTopAtTop = await page.evaluate(() => {
+    const first = document
+      .querySelector('header')
+      ?.querySelector('p, div, button')
+    return first ? Math.round(first.getBoundingClientRect().top) : null
+  })
   // Se baja hasta el final para medir el pie con el contenido más abajo posible.
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+  const metrics = await measureBottom(page)
+  return { ...metrics, headerContentTop: headerContentTopAtTop }
+}
+
+async function measureBottom(page: Page): Promise<SafeAreaMetrics> {
   return page.evaluate(() => {
     const header = document.querySelector('header')
     const headerRect = header?.getBoundingClientRect() ?? null

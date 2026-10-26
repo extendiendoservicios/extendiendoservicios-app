@@ -48,6 +48,7 @@ import {
 import { UpdatedAgo } from './UpdatedAgo'
 import { WorkedHoursCell } from './WorkedHoursCell'
 import { RecordAttendanceSheet } from './RecordAttendanceSheet'
+import { CoordinatorsDaySection } from './CoordinatorsDaySection'
 
 /** `"YYYY-MM-DD"` → `Date` para `DatePicker` (mismo criterio que `ShiftsDayList`). */
 function isoDateToDate(isoDate: string): Date {
@@ -450,6 +451,8 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
           }}
         />
       </PhonesContext.Provider>
+
+      <CoordinatorsDaySection date={date} isToday={isToday} />
 
       {recordTarget && (
         <RecordAttendanceSheet

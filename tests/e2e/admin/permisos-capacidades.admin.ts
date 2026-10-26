@@ -43,7 +43,7 @@ test.describe('permisos por capacidad (03 sección 6)', () => {
           FRANJAS.noche,
         )
         const assignmentId = await sc.assign(shiftId, 'empleado1')
-        const supervisionId = await sc.assignSupervision(shiftId, 'supervisor1')
+        const supervisionId = await sc.tomarSupervision(shiftId, 'supervisor1')
 
         await test.step('interfaz: ADM-06 no ofrece registrar en nombre, recargar tareas ni asignar supervisión', async () => {
           await page.goto(`/admin/turnos/${shiftId}`)
@@ -113,11 +113,13 @@ test.describe('permisos por capacidad (03 sección 6)', () => {
           const supervision = page.getByRole('dialog', {
             name: 'Detalle de la supervisión',
           })
+          await expect(supervision).toContainText('En curso')
+          // «No se pudo realizar» ya no existe (CJ-26) y «Quitar» pide `manage_supervisions`.
           await expect(
             supervision.getByRole('button', {
               name: 'Marcar como no realizada',
             }),
-          ).toBeVisible()
+          ).toHaveCount(0)
           await expect(
             supervision.getByRole('button', { name: 'Cancelar supervisión' }),
           ).toHaveCount(0)
@@ -167,10 +169,50 @@ test.describe('permisos por capacidad (03 sección 6)', () => {
             }),
             'FORBIDDEN',
           )
+          // P24.1 (CJ-01): `assign_supervision` quedó revocada para todos (42501, no FORBIDDEN).
+          const asignar = await api.rpc('assign_supervision', {
+            p_shift_id: shiftId,
+            p_supervisor_id: other,
+          })
+          expect(asignar.error?.code, asignar.error?.message).toBe('42501')
+          // Coordinación libre: las preferencias piden `manage_supervisions` y las correcciones de
+          // jornada `manage_attendance` (ninguna la tiene este administrador).
           expectHint(
-            await api.rpc('assign_supervision', {
-              p_shift_id: shiftId,
+            await api.rpc('set_supervisor_priority', {
               p_supervisor_id: other,
+              p_client_id: client.id,
+            }),
+            'FORBIDDEN',
+          )
+          expectHint(
+            await api.rpc('remove_supervisor_priority', {
+              p_priority_id: supervisionId,
+            }),
+            'FORBIDDEN',
+          )
+          expectHint(
+            await api.rpc('admin_correct_workday_event', {
+              p_event_id: supervisionId,
+              p_reason: 'e2e',
+              p_remove: true,
+            }),
+            'FORBIDDEN',
+          )
+          expectHint(
+            await api.rpc('admin_add_workday_pause', {
+              p_workday_id: supervisionId,
+              p_starts_at: new Date().toISOString(),
+              p_ends_at: new Date().toISOString(),
+              p_reason: 'e2e',
+            }),
+            'FORBIDDEN',
+          )
+          expectHint(
+            await api.rpc('admin_record_workday', {
+              p_supervisor_id: other,
+              p_work_date: sc.today,
+              p_started_at: new Date().toISOString(),
+              p_reason: 'e2e',
             }),
             'FORBIDDEN',
           )
@@ -239,9 +281,10 @@ test.describe('permisos por capacidad (03 sección 6)', () => {
             await expect(
               detalle.getByRole('button', { name: 'Recargar tareas' }),
             ).toBeVisible()
+            // La asignación manual de coordinadores ya no existe para nadie (CJ-01).
             await expect(
               detalle.getByRole('link', { name: 'Asignar supervisión' }),
-            ).toBeVisible()
+            ).toHaveCount(0)
             await adminPage.goto(
               `/admin/planificacion?vista=dia&fecha=${sc.today}`,
             )

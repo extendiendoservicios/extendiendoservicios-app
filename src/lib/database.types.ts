@@ -77,6 +77,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "admin_capabilities_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "admin_capabilities_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -89,6 +96,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "admin_capabilities_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -151,6 +165,13 @@ export type Database = {
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
           },
+          {
+            foreignKeyName: "announcement_reads_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
         ]
       }
       announcement_recipients: {
@@ -211,6 +232,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "announcement_recipients_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -273,6 +301,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "announcements_archived_by_fkey"
+            columns: ["archived_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "announcements_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
@@ -287,6 +322,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "announcements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "announcements_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -299,6 +341,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "announcements_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -373,6 +422,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "assignments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "assignments_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
@@ -408,6 +464,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "assignments_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "assignments_shift_id_fkey"
             columns: ["shift_id"]
             isOneToOne: false
@@ -434,6 +497,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "assignments_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -503,6 +573,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_corrections_corrected_by_fkey"
+            columns: ["corrected_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -605,6 +682,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "attendance_notices_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "attendance_notices_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -619,6 +703,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "attendance_notices_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "attendance_notices_voided_by_fkey"
             columns: ["voided_by"]
             isOneToOne: false
@@ -631,6 +722,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_notices_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -751,6 +849,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "attendance_records_geo_override_by_fkey"
+            columns: ["geo_override_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["recorded_by"]
             isOneToOne: false
@@ -763,6 +868,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -822,6 +934,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "checklist_template_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "checklist_template_items_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
@@ -841,6 +960,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "checklist_template_items_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -911,6 +1037,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "checklist_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "checklist_templates_site_id_client_id_fkey"
             columns: ["site_id", "client_id"]
             isOneToOne: false
@@ -930,6 +1063,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "checklist_templates_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -994,6 +1134,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "client_bank_details_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "client_bank_details_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -1006,6 +1153,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "client_bank_details_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -1082,6 +1236,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "client_contacts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "client_contacts_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -1094,6 +1255,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "client_contacts_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -1165,6 +1333,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "clients_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "clients_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -1177,6 +1352,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "clients_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -1238,6 +1420,13 @@ export type Database = {
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
           },
+          {
+            foreignKeyName: "company_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
         ]
       }
       employee_availability: {
@@ -1290,6 +1479,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "employee_availability_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "employee_availability_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
@@ -1323,6 +1519,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employee_availability_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -1373,6 +1576,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "employee_bank_details_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "employee_bank_details_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: true
@@ -1406,6 +1616,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employee_bank_details_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -1456,6 +1673,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employee_client_permissions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "employee_client_permissions_employee_id_fkey"
@@ -1533,6 +1757,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "employee_leaves_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "employee_leaves_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
@@ -1566,6 +1797,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employee_leaves_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -1646,6 +1884,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "employees_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "employees_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: true
@@ -1660,6 +1905,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "employees_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "employees_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -1672,6 +1924,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employees_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -1722,6 +1981,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "holidays_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "holidays_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -1734,6 +2000,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "holidays_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -1805,6 +2078,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "profiles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "profiles_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -1817,6 +2097,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "profiles_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -1873,6 +2160,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "rating_criteria_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "rating_criteria_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -1885,6 +2179,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "rating_criteria_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -1966,6 +2267,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "ratings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "ratings_supervision_id_fkey"
             columns: ["supervision_id"]
             isOneToOne: false
@@ -1987,6 +2295,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ratings_supervision_id_fkey"
+            columns: ["supervision_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervision_id"]
+          },
+          {
             foreignKeyName: "ratings_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -1999,6 +2314,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "ratings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -2046,6 +2368,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "security_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "security_events_target_id_fkey"
             columns: ["target_id"]
             isOneToOne: false
@@ -2058,6 +2387,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "security_events_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -2094,6 +2430,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "service_fixed_employees_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "service_fixed_employees_employee_id_fkey"
@@ -2231,6 +2574,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "services_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "services_site_id_client_id_fkey"
             columns: ["site_id", "client_id"]
             isOneToOne: false
@@ -2250,6 +2600,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "services_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -2382,6 +2739,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "shift_media_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "shift_media_deleted_by_fkey"
             columns: ["deleted_by"]
             isOneToOne: false
@@ -2394,6 +2758,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "shift_media_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "shift_media_kept_by_fkey"
@@ -2410,6 +2781,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "shift_media_kept_by_fkey"
+            columns: ["kept_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "shift_media_removed_by_fkey"
             columns: ["removed_by"]
             isOneToOne: false
@@ -2422,6 +2800,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "shift_media_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "shift_media_shift_id_fkey"
@@ -2459,6 +2844,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "shift_media_supervision_id_fkey"
+            columns: ["supervision_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervision_id"]
+          },
+          {
             foreignKeyName: "shift_media_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -2473,6 +2865,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "shift_media_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "shift_media_uploaded_by_fkey"
             columns: ["uploaded_by"]
             isOneToOne: false
@@ -2485,6 +2884,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "shift_media_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -2532,6 +2938,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "shift_observations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "shift_observations_shift_id_fkey"
             columns: ["shift_id"]
             isOneToOne: true
@@ -2558,6 +2971,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "shift_observations_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -2626,6 +3046,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "shift_tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "shift_tasks_shift_id_fkey"
             columns: ["shift_id"]
             isOneToOne: false
@@ -2654,6 +3081,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "shift_tasks_status_changed_by_fkey"
+            columns: ["status_changed_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "shift_tasks_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -2666,6 +3100,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "shift_tasks_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -2767,6 +3208,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "shifts_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "shifts_checklist_template_id_fkey"
             columns: ["checklist_template_id"]
             isOneToOne: false
@@ -2802,6 +3250,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "shifts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "shifts_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
@@ -2828,6 +3283,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "shifts_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -2931,6 +3393,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "sites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "sites_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -2943,6 +3412,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "sites_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -3023,6 +3499,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "supervision_attendance_geo_override_by_fkey"
+            columns: ["geo_override_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "supervision_attendance_supervision_id_fkey"
             columns: ["supervision_id"]
             isOneToOne: false
@@ -3043,6 +3526,13 @@ export type Database = {
             referencedRelation: "v_supervisions_admin"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "supervision_attendance_supervision_id_fkey"
+            columns: ["supervision_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervision_id"]
+          },
         ]
       }
       supervisions: {
@@ -3061,6 +3551,7 @@ export type Database = {
           supervisor_id: string
           updated_at: string | null
           updated_by: string | null
+          workday_id: string | null
         }
         Insert: {
           assigned_at?: string
@@ -3077,6 +3568,7 @@ export type Database = {
           supervisor_id: string
           updated_at?: string | null
           updated_by?: string | null
+          workday_id?: string | null
         }
         Update: {
           assigned_at?: string
@@ -3093,6 +3585,7 @@ export type Database = {
           supervisor_id?: string
           updated_at?: string | null
           updated_by?: string | null
+          workday_id?: string | null
         }
         Relationships: [
           {
@@ -3110,6 +3603,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "supervisions_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "supervisions_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
@@ -3122,6 +3622,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supervisions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "supervisions_shift_id_fkey"
@@ -3172,6 +3679,451 @@ export type Database = {
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
           },
+          {
+            foreignKeyName: "supervisions_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "supervisions_workday_id_fkey"
+            columns: ["workday_id"]
+            isOneToOne: false
+            referencedRelation: "supervisor_workdays"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisions_workday_id_fkey"
+            columns: ["workday_id"]
+            isOneToOne: false
+            referencedRelation: "v_my_workdays"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisions_workday_id_fkey"
+            columns: ["workday_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["workday_id"]
+          },
+          {
+            foreignKeyName: "supervisions_workday_id_fkey"
+            columns: ["workday_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_workdays_admin"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supervisor_priorities: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          removed_at: string | null
+          removed_by: string | null
+          site_id: string | null
+          supervisor_id: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          removed_at?: string | null
+          removed_by?: string | null
+          site_id?: string | null
+          supervisor_id: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          removed_at?: string | null
+          removed_by?: string | null
+          site_id?: string | null
+          supervisor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supervisor_priorities_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisor_priorities_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisor_priorities_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisor_priorities_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supervisor_priorities_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "supervisor_priorities_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisor_priorities_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supervisor_priorities_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "supervisor_priorities_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisor_priorities_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supervisor_priorities_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "v_employee_ratings"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "supervisor_priorities_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "v_employees"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      supervisor_workday_events: {
+        Row: {
+          accuracy_m: number | null
+          corrected_at: string | null
+          corrected_by: string | null
+          corrected_from: string | null
+          correction_reason: string | null
+          created_at: string
+          created_by: string | null
+          has_position: boolean | null
+          id: string
+          kind: Database["public"]["Enums"]["workday_event_kind"]
+          latitude: number | null
+          longitude: number | null
+          reason: string | null
+          recorded_at: string
+          removed_at: string | null
+          removed_by: string | null
+          seq: number
+          supervision_id: string | null
+          workday_id: string
+        }
+        Insert: {
+          accuracy_m?: number | null
+          corrected_at?: string | null
+          corrected_by?: string | null
+          corrected_from?: string | null
+          correction_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          has_position?: boolean | null
+          id?: string
+          kind: Database["public"]["Enums"]["workday_event_kind"]
+          latitude?: number | null
+          longitude?: number | null
+          reason?: string | null
+          recorded_at: string
+          removed_at?: string | null
+          removed_by?: string | null
+          seq?: never
+          supervision_id?: string | null
+          workday_id: string
+        }
+        Update: {
+          accuracy_m?: number | null
+          corrected_at?: string | null
+          corrected_by?: string | null
+          corrected_from?: string | null
+          correction_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          has_position?: boolean | null
+          id?: string
+          kind?: Database["public"]["Enums"]["workday_event_kind"]
+          latitude?: number | null
+          longitude?: number | null
+          reason?: string | null
+          recorded_at?: string
+          removed_at?: string | null
+          removed_by?: string | null
+          seq?: never
+          supervision_id?: string | null
+          workday_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supervisor_workday_events_corrected_by_fkey"
+            columns: ["corrected_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisor_workday_events_corrected_by_fkey"
+            columns: ["corrected_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supervisor_workday_events_corrected_by_fkey"
+            columns: ["corrected_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "supervisor_workday_events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisor_workday_events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supervisor_workday_events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "supervisor_workday_events_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisor_workday_events_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supervisor_workday_events_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "supervisor_workday_events_supervision_id_fkey"
+            columns: ["supervision_id"]
+            isOneToOne: false
+            referencedRelation: "supervisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisor_workday_events_supervision_id_fkey"
+            columns: ["supervision_id"]
+            isOneToOne: false
+            referencedRelation: "v_my_supervisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisor_workday_events_supervision_id_fkey"
+            columns: ["supervision_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisions_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisor_workday_events_supervision_id_fkey"
+            columns: ["supervision_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervision_id"]
+          },
+          {
+            foreignKeyName: "supervisor_workday_events_workday_id_fkey"
+            columns: ["workday_id"]
+            isOneToOne: false
+            referencedRelation: "supervisor_workdays"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisor_workday_events_workday_id_fkey"
+            columns: ["workday_id"]
+            isOneToOne: false
+            referencedRelation: "v_my_workdays"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisor_workday_events_workday_id_fkey"
+            columns: ["workday_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["workday_id"]
+          },
+          {
+            foreignKeyName: "supervisor_workday_events_workday_id_fkey"
+            columns: ["workday_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_workdays_admin"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supervisor_workdays: {
+        Row: {
+          auto_closed: boolean
+          corrected: boolean
+          created_at: string
+          created_by: string | null
+          ended_at: string | null
+          id: string
+          started_at: string
+          supervisor_id: string
+          updated_at: string | null
+          updated_by: string | null
+          work_date: string
+        }
+        Insert: {
+          auto_closed?: boolean
+          corrected?: boolean
+          created_at?: string
+          created_by?: string | null
+          ended_at?: string | null
+          id?: string
+          started_at: string
+          supervisor_id: string
+          updated_at?: string | null
+          updated_by?: string | null
+          work_date: string
+        }
+        Update: {
+          auto_closed?: boolean
+          corrected?: boolean
+          created_at?: string
+          created_by?: string | null
+          ended_at?: string | null
+          id?: string
+          started_at?: string
+          supervisor_id?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supervisor_workdays_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisor_workdays_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supervisor_workdays_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "supervisor_workdays_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supervisor_workdays_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "v_employee_ratings"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "supervisor_workdays_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "v_employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supervisor_workdays_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisor_workdays_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supervisor_workdays_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
         ]
       }
       user_roles: {
@@ -3209,6 +4161,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "user_roles_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "user_roles_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
@@ -3221,6 +4180,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "user_roles_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -3268,6 +4234,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "announcements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -3368,6 +4341,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "assignments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "assignments_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
@@ -3403,6 +4383,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "assignments_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "assignments_shift_id_fkey"
             columns: ["shift_id"]
             isOneToOne: false
@@ -3431,6 +4418,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "assignments_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "attendance_notices_reported_by_fkey"
             columns: ["last_notice_reported_by"]
             isOneToOne: false
@@ -3443,6 +4437,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_notices_reported_by_fkey"
+            columns: ["last_notice_reported_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
@@ -3471,6 +4472,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_out_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_in_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "shifts_client_id_fkey"
@@ -3531,6 +4546,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "clients_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "clients_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -3543,6 +4565,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "clients_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -3574,6 +4603,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employees_profile_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -3622,6 +4658,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "employees_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "employees_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: true
@@ -3636,6 +4679,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "employees_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "employees_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -3648,6 +4698,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employees_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -3775,6 +4832,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "attendance_notices_reported_by_fkey"
+            columns: ["last_notice_reported_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_in_recorded_by"]
             isOneToOne: false
@@ -3801,6 +4865,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_in_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_out_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "shifts_client_id_fkey"
@@ -3935,11 +5013,11 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
-            foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_in_recorded_by"]
+            foreignKeyName: "attendance_notices_reported_by_fkey"
+            columns: ["last_notice_reported_by"]
             isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
@@ -3952,8 +5030,8 @@ export type Database = {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_in_recorded_by"]
             isOneToOne: false
-            referencedRelation: "v_announcement_recipients"
-            referencedColumns: ["profile_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
@@ -3961,6 +5039,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_in_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_out_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_in_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "shifts_client_id_fkey"
@@ -4074,6 +5173,52 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_shifts_board"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_my_workdays: {
+        Row: {
+          auto_close_warning: boolean | null
+          auto_closed: boolean | null
+          corrected: boolean | null
+          created_at: string | null
+          ended_at: string | null
+          events: Json | null
+          id: string | null
+          pause_minutes: number | null
+          pauses: Json | null
+          started_at: string | null
+          state: string | null
+          supervisions: Json | null
+          supervisions_count: number | null
+          supervisor_first_name: string | null
+          supervisor_id: string | null
+          supervisor_last_name: string | null
+          updated_at: string | null
+          work_date: string | null
+          worked_minutes: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supervisor_workdays_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supervisor_workdays_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "v_employee_ratings"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "supervisor_workdays_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "v_employees"
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -4229,6 +5374,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "shift_media_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "shift_media_kept_by_fkey"
             columns: ["kept_by"]
             isOneToOne: false
@@ -4241,6 +5393,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "shift_media_kept_by_fkey"
+            columns: ["kept_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "shift_media_shift_id_fkey"
@@ -4278,6 +5437,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "shift_media_supervision_id_fkey"
+            columns: ["supervision_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervision_id"]
+          },
+          {
             foreignKeyName: "shift_media_uploaded_by_fkey"
             columns: ["uploaded_by"]
             isOneToOne: false
@@ -4290,6 +5456,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "shift_media_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "shifts_client_id_fkey"
@@ -4379,6 +5552,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "shifts_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "shifts_checklist_template_id_fkey"
             columns: ["checklist_template_id"]
             isOneToOne: false
@@ -4414,6 +5594,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "shifts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "shifts_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
@@ -4440,6 +5627,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_announcement_recipients"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "shifts_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
         ]
       }
@@ -4475,6 +5669,7 @@ export type Database = {
           client_legal_name: string | null
           created_at: string | null
           criteria_snapshot: Json | null
+          duration_minutes: number | null
           end_time: string | null
           ends_at: string | null
           general_notes: string | null
@@ -4494,7 +5689,10 @@ export type Database = {
           supervisor_first_name: string | null
           supervisor_id: string | null
           supervisor_last_name: string | null
+          unclosed: boolean | null
           updated_at: string | null
+          workday_auto_closed: boolean | null
+          workday_id: string | null
           worked_minutes: number | null
         }
         Relationships: [
@@ -4534,6 +5732,13 @@ export type Database = {
             referencedColumns: ["profile_id"]
           },
           {
+            foreignKeyName: "supervisions_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
             foreignKeyName: "supervisions_shift_id_fkey"
             columns: ["shift_id"]
             isOneToOne: false
@@ -4568,6 +5773,168 @@ export type Database = {
             referencedRelation: "v_employees"
             referencedColumns: ["profile_id"]
           },
+          {
+            foreignKeyName: "supervisions_workday_id_fkey"
+            columns: ["workday_id"]
+            isOneToOne: false
+            referencedRelation: "supervisor_workdays"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisions_workday_id_fkey"
+            columns: ["workday_id"]
+            isOneToOne: false
+            referencedRelation: "v_my_workdays"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisions_workday_id_fkey"
+            columns: ["workday_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["workday_id"]
+          },
+          {
+            foreignKeyName: "supervisions_workday_id_fkey"
+            columns: ["workday_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_workdays_admin"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_supervisor_status: {
+        Row: {
+          accuracy_m: number | null
+          auto_closed: boolean | null
+          avatar_path: string | null
+          client_id: string | null
+          client_legal_name: string | null
+          corrected: boolean | null
+          ended_at: string | null
+          first_name: string | null
+          last_event_at: string | null
+          last_event_id: string | null
+          last_event_kind:
+            | Database["public"]["Enums"]["workday_event_kind"]
+            | null
+          last_name: string | null
+          latitude: number | null
+          longitude: number | null
+          on_leave: boolean | null
+          pause_reason: string | null
+          site_id: string | null
+          site_name: string | null
+          started_at: string | null
+          status: string | null
+          supervision_id: string | null
+          supervisor_id: string | null
+          work_date: string | null
+          workday_id: string | null
+          worked_minutes: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shifts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id", "client_id"]
+          },
+        ]
+      }
+      v_supervisor_today: {
+        Row: {
+          assigned_employees: Json | null
+          client_id: string | null
+          client_legal_name: string | null
+          client_trade_name: string | null
+          display_state: string | null
+          end_time: string | null
+          ends_at: string | null
+          is_priority: boolean | null
+          max_accuracy_m: number | null
+          my_supervision_id: string | null
+          my_supervision_status:
+            | Database["public"]["Enums"]["supervision_status"]
+            | null
+          open_ended: boolean | null
+          priority_kind: string | null
+          required_staff: number | null
+          shift_date: string | null
+          shift_id: string | null
+          shift_status: Database["public"]["Enums"]["shift_status"] | null
+          site_address: string | null
+          site_city: string | null
+          site_id: string | null
+          site_latitude: number | null
+          site_longitude: number | null
+          site_name: string | null
+          site_radius_m: number | null
+          start_time: string | null
+          starts_at: string | null
+          supervisors: Json | null
+        }
+        Relationships: []
+      }
+      v_supervisor_workdays_admin: {
+        Row: {
+          auto_close_warning: boolean | null
+          auto_closed: boolean | null
+          corrected: boolean | null
+          created_at: string | null
+          ended_at: string | null
+          events: Json | null
+          id: string | null
+          pause_minutes: number | null
+          pauses: Json | null
+          started_at: string | null
+          state: string | null
+          supervisions: Json | null
+          supervisions_count: number | null
+          supervisor_first_name: string | null
+          supervisor_id: string | null
+          supervisor_last_name: string | null
+          updated_at: string | null
+          work_date: string | null
+          worked_minutes: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supervisor_workdays_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supervisor_workdays_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "v_employee_ratings"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "supervisor_workdays_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "v_employees"
+            referencedColumns: ["profile_id"]
+          },
         ]
       }
     }
@@ -4586,6 +5953,25 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      admin_add_workday_pause: {
+        Args: {
+          p_ends_at: string
+          p_pause_reason?: string
+          p_reason: string
+          p_starts_at: string
+          p_workday_id: string
+        }
+        Returns: Json
+      }
+      admin_correct_workday_event: {
+        Args: {
+          p_event_id: string
+          p_new_time?: string
+          p_reason: string
+          p_remove?: boolean
+        }
+        Returns: Json
       }
       admin_create_user_records: {
         Args: {
@@ -4637,6 +6023,16 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      admin_record_workday: {
+        Args: {
+          p_ended_at?: string
+          p_reason: string
+          p_started_at: string
+          p_supervisor_id: string
+          p_work_date: string
+        }
+        Returns: Json
       }
       admin_revoke_user_sessions: {
         Args: { p_profile_id: string }
@@ -4745,6 +6141,7 @@ export type Database = {
           supervisor_id: string
           updated_at: string | null
           updated_by: string | null
+          workday_id: string | null
         }
         SetofOptions: {
           from: "*"
@@ -4819,7 +6216,14 @@ export type Database = {
         }
       }
       complete_supervision: {
-        Args: { p_general_notes?: string; p_supervision_id: string }
+        Args: {
+          p_accuracy?: number
+          p_general_notes?: string
+          p_lat?: number
+          p_lng?: number
+          p_outside_reason?: string
+          p_supervision_id: string
+        }
         Returns: {
           assigned_at: string
           assigned_by: string | null
@@ -4835,6 +6239,7 @@ export type Database = {
           supervisor_id: string
           updated_at: string | null
           updated_by: string | null
+          workday_id: string | null
         }
         SetofOptions: {
           from: "*"
@@ -4981,6 +6386,36 @@ export type Database = {
       }
       delete_service: { Args: { p_service_id: string }; Returns: Json }
       delete_shift_media: { Args: { p_ids: string[] }; Returns: Json }
+      discard_supervision: {
+        Args: { p_supervision_id: string }
+        Returns: {
+          assigned_at: string
+          assigned_by: string | null
+          cancel_reason: string | null
+          created_at: string
+          created_by: string | null
+          criteria_snapshot: Json | null
+          general_notes: string | null
+          id: string
+          not_done_reason: string | null
+          shift_id: string
+          status: Database["public"]["Enums"]["supervision_status"]
+          supervisor_id: string
+          updated_at: string | null
+          updated_by: string | null
+          workday_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "supervisions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      end_workday: {
+        Args: { p_accuracy?: number; p_lat?: number; p_lng?: number }
+        Returns: Json
+      }
       evidence_cleanup_candidates: {
         Args: { p_limit?: number }
         Returns: {
@@ -5087,6 +6522,7 @@ export type Database = {
           supervisor_id: string
           updated_at: string | null
           updated_by: string | null
+          workday_id: string | null
         }
         SetofOptions: {
           from: "*"
@@ -5187,6 +6623,15 @@ export type Database = {
       }
       override_geo_validation: {
         Args: { p_reason: string; p_record_id: string; p_record_type: string }
+        Returns: Json
+      }
+      pause_workday: {
+        Args: {
+          p_accuracy?: number
+          p_lat?: number
+          p_lng?: number
+          p_reason?: string
+        }
         Returns: Json
       }
       preview_shift_series: {
@@ -5390,6 +6835,33 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      remove_supervisor_priority: {
+        Args: { p_priority_id: string }
+        Returns: {
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          removed_at: string | null
+          removed_by: string | null
+          site_id: string | null
+          supervisor_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "supervisor_priorities"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      reopen_workday: {
+        Args: { p_accuracy?: number; p_lat?: number; p_lng?: number }
+        Returns: Json
+      }
+      resume_workday: {
+        Args: { p_accuracy?: number; p_lat?: number; p_lng?: number }
+        Returns: Json
       }
       revoke_location_consent: { Args: never; Returns: undefined }
       service_delete_preview: { Args: { p_service_id: string }; Returns: Json }
@@ -5607,12 +7079,39 @@ export type Database = {
         Args: { p_ids: string[]; p_keep: boolean }
         Returns: number
       }
+      set_supervisor_priority: {
+        Args: {
+          p_client_id?: string
+          p_site_id?: string
+          p_supervisor_id: string
+        }
+        Returns: {
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          removed_at: string | null
+          removed_by: string | null
+          site_id: string | null
+          supervisor_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "supervisor_priorities"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       set_user_roles: {
         Args: {
           p_profile_id: string
           p_roles: Database["public"]["Enums"]["app_role"][]
         }
         Returns: Database["public"]["Enums"]["app_role"][]
+      }
+      start_workday: {
+        Args: { p_accuracy?: number; p_lat?: number; p_lng?: number }
+        Returns: Json
       }
       storage_usage: { Args: never; Returns: Json }
       supervision_check_in: {
@@ -5684,6 +7183,16 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      take_supervision: {
+        Args: {
+          p_accuracy?: number
+          p_lat?: number
+          p_lng?: number
+          p_outside_reason?: string
+          p_shift_id: string
+        }
+        Returns: Json
       }
       update_announcement: {
         Args: {
@@ -5940,6 +7449,8 @@ export type Database = {
         | "geo_validation_overridden"
         | "geofence_radius_changed"
         | "media_deleted"
+        | "workday_corrected"
+        | "workday_auto_closed"
       service_status: "active" | "paused" | "ended"
       shift_status:
         | "scheduled"
@@ -5955,6 +7466,14 @@ export type Database = {
         | "not_done"
         | "cancelled"
       task_status: "pending" | "in_progress" | "done" | "not_done"
+      workday_event_kind:
+        | "start"
+        | "pause"
+        | "resume"
+        | "end"
+        | "reopen"
+        | "supervision_start"
+        | "supervision_end"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -6142,6 +7661,8 @@ export const Constants = {
         "geo_validation_overridden",
         "geofence_radius_changed",
         "media_deleted",
+        "workday_corrected",
+        "workday_auto_closed",
       ],
       service_status: ["active", "paused", "ended"],
       shift_status: [
@@ -6160,6 +7681,15 @@ export const Constants = {
         "cancelled",
       ],
       task_status: ["pending", "in_progress", "done", "not_done"],
+      workday_event_kind: [
+        "start",
+        "pause",
+        "resume",
+        "end",
+        "reopen",
+        "supervision_start",
+        "supervision_end",
+      ],
     },
   },
 } as const

@@ -31,7 +31,7 @@ Esta sección no la lee la referente. La completa **quien organiza la sesión** 
 | Dueño                                   | 1                 | Escenarios UAT-DUE                                                                                                   |
 | Administrador con los 7 permisos        | 1                 | Casi todos los escenarios de administración (**Administrador 1**)                                                    |
 | Administrador con los 7 permisos        | 1                 | Para quitarle un permiso y probar que no puede (UAT-DUE-02 y UAT-ADM-02) (**Administrador 2**)                       |
-| Coordinador o coordinadora              | 1 (2 si se puede) | Escenarios UAT-SUP. Una segunda sirve para comprobar que cada una ve solo lo suyo                                    |
+| Coordinador o coordinadora              | 1 (2 si se puede) | Escenarios UAT-SUP. Una segunda sirve para que dos coordinadoras supervisen el mismo turno (UAT-SUP-10)              |
 | Empleado o empleada                     | 2                 | **Empleado A** hace toda la jornada de prueba; **Empleado B** prueba el inicio sin ubicación y "registrar en nombre" |
 | Empleado B (opcional) y una persona más | 1                 | Para dar de baja y resetear contraseña (UAT-ADM-22 y UAT-ADM-23): puede ser una cuenta creada en la propia sesión    |
 
@@ -53,7 +53,7 @@ Cada persona tiene que poder **recibir correo** en ese email (para probar la rec
 La empresa devolvió la planilla con **clientes**, **empleados** y **coordinadores**, pero **sin sedes ni servicios**. Por eso:
 
 - **Antes de la sesión (importación):** los clientes, con su CUIT y, si los mandó, sus contactos. Los empleados y coordinadores solo si ya hay un email para cada uno; si no, se crean en la sesión (UAT-ADM-07 y UAT-ADM-08).
-- **Durante la sesión (por pantalla):** las sedes, los servicios, las tareas, los turnos y las asignaciones. Los escenarios del bloque B (UAT-ADM-04 a UAT-ADM-10) los cargan **a mano**, con los datos de la tabla siguiente.
+- **Durante la sesión (por pantalla):** las sedes, los servicios, las tareas, los turnos, las asignaciones de empleados y los clientes y sedes preferenciales de la coordinadora. Los escenarios del bloque B (UAT-ADM-04 a UAT-ADM-10) los cargan **a mano**, con los datos de la tabla siguiente.
 - Los **criterios de calificación definitivos** de la empresa, el **teléfono de soporte** y el **texto de consentimiento de ubicación**: si la empresa ya los mandó, tenerlos escritos aparte para cargarlos en UAT-DUE-03 y UAT-DUE-04.
 
 ### 1.5. Datos de la sesión (completar a mano antes de empezar)
@@ -147,21 +147,21 @@ Los escenarios están agrupados en bloques. **Conviene respetar el orden**, porq
 | ------ | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------- | --------------- |
 | A      | Ingreso y permisos                                                 | UAT-DUE-01, UAT-DUE-02, UAT-ADM-01, UAT-ADM-02                                      | 20 minutos      |
 | B      | Carga por pantalla: clientes, sedes, tareas, servicios y personas  | UAT-ADM-03 a UAT-ADM-09, UAT-DUE-03, UAT-DUE-04                                     | 60 minutos      |
-| C      | Calendario: turnos y asignaciones                                  | UAT-ADM-10 a UAT-ADM-16                                                             | 45 minutos      |
+| C      | Calendario: turnos, asignaciones y preferencias de la coordinadora | UAT-ADM-10 a UAT-ADM-16                                                             | 45 minutos      |
 | D      | La jornada de hoy: empleado en el celular y administración mirando | UAT-EMP-01 a UAT-EMP-11, UAT-ADM-17 a UAT-ADM-19, UAT-ADM-20                        | 60 minutos      |
-| E      | La supervisión                                                     | UAT-SUP-01 a UAT-SUP-07, UAT-ADM-21                                                 | 40 minutos      |
+| E      | La jornada y la supervisión del coordinador                        | UAT-SUP-01 a UAT-SUP-07, UAT-SUP-09, UAT-SUP-10, UAT-ADM-21, UAT-ADM-24, UAT-ADM-25 | 70 minutos      |
 | F      | Cierre: contraseñas, bajas, sesión y seguridad                     | UAT-ADM-22, UAT-ADM-23, UAT-TRA-01 a UAT-TRA-04, UAT-DUE-05, UAT-EMP-12, UAT-SUP-08 | 30 minutos      |
 
-Total: unas **4 horas y media**, con una pausa entre bloques. Si hay menos tiempo, se hacen primero los escenarios **Imprescindibles** y se dejan para otra sesión los **Opcionales**.
+Total: unas **5 horas**, con una pausa entre bloques. Si hay menos tiempo, se hacen primero los escenarios **Imprescindibles** y se dejan para otra sesión los **Opcionales**.
 
 Resumen por rol (para ubicarse):
 
 | Rol                      | Escenarios | Cantidad |
 | ------------------------ | ---------- | -------- |
 | Dueño (UAT-DUE)          | 01 a 05    | 5        |
-| Administración (UAT-ADM) | 01 a 23    | 23       |
+| Administración (UAT-ADM) | 01 a 25    | 25       |
 | Empleado (UAT-EMP)       | 01 a 12    | 12       |
-| Coordinador (UAT-SUP)    | 01 a 08    | 8        |
+| Coordinador (UAT-SUP)    | 01 a 10    | 10       |
 | Transversales (UAT-TRA)  | 01 a 04    | 4        |
 
 ---
@@ -445,7 +445,7 @@ En este bloque se cargan a mano las **sedes, los servicios, las tareas y las per
 **Resultado esperado**
 
 - La persona aparece en **Empleados** con el rol **Coordinador**.
-- Más adelante (UAT-SUP-01) va a poder ingresar desde su celular y ver su pantalla de coordinadora.
+- Más adelante (UAT-SUP-01) va a poder ingresar desde su celular, iniciar su jornada y ver los turnos del día.
 
 | Resultado           | Observación | Clasificación                             |
 | ------------------- | ----------- | ----------------------------------------- |
@@ -714,30 +714,30 @@ Este escenario no prueba nada nuevo: **deja listo lo que usan los escenarios de 
 | ------------------- | ----------- | ----------------------------------------- |
 | ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
 
-#### UAT-ADM-16 · Asignar una supervisión a un turno
+#### UAT-ADM-16 · Cargar los clientes y sedes preferenciales de la coordinadora
 
-|                  |                                                                           |
-| ---------------- | ------------------------------------------------------------------------- |
-| **Rol**          | Administrador (Administrador 1, con el permiso **Asignar supervisiones**) |
-| **Dónde**        | Computadora                                                               |
-| **Tipo**         | Imprescindible                                                            |
-| **Cubre**        | RB-S02 (las supervisiones las asigna la administración)                   |
-| **Precondición** | UAT-ADM-15 hecho. La coordinadora existe (UAT-ADM-08).                    |
+|                  |                                                                                                                    |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **Rol**          | Administrador (Administrador 1, con el permiso **Gestionar supervisiones**)                                        |
+| **Dónde**        | Computadora                                                                                                        |
+| **Tipo**         | Imprescindible                                                                                                     |
+| **Cubre**        | CJ-01 a CJ-04 (los coordinadores no se asignan a los turnos; sus clientes y sedes preferenciales ordenan su lista) |
+| **Precondición** | UAT-ADM-15 hecho. La coordinadora existe (UAT-ADM-08).                                                             |
 
 **Pasos**
 
-1. Entrá a **Supervisiones** y tocá **Asignar supervisión**.
-2. Elegí la **Fecha** de hoy.
-3. En **Turno**, elegí el **Turno 2** (el de 12:00 a 15:00 del ejemplo).
-4. En **Coordinador**, elegí a la coordinadora y confirmá.
-5. Volvé a la lista de **Supervisiones**.
-6. Abrí el **Turno 2** y mirá la sección **Supervisiones**.
+1. Entrá a **Empleados** y abrí la ficha de la coordinadora.
+2. Abrí la pestaña **Clientes y sedes preferenciales**.
+3. Elegí **Una sede**, buscá la **sede de prueba** (aparece como cliente · sede) y tocá **Agregar**. No pide confirmación: aparece abajo con un aviso.
+4. Abrí la ficha del **cliente de prueba** (y la de la sede) y mirá el bloque **Coordinadores preferenciales**.
+5. Abrí el **Turno 2** desde el **Calendario** y revisá sus acciones y la sección **Supervisiones**.
 
 **Resultado esperado**
 
-- La supervisión aparece en la lista, con estado **Asignada** y la coordinadora elegida.
-- El detalle del turno muestra a la coordinadora.
-- Más adelante (UAT-SUP-01) aparece en la pantalla **Hoy** de la coordinadora, y **de nadie más**.
+- La sede de prueba aparece en la lista de la coordinadora, y la coordinadora figura en **Coordinadores preferenciales** de la sede y del cliente.
+- **No existe** ninguna acción para asignar un coordinador a un turno: ni **Asignar supervisión** en el detalle del turno, ni en **Supervisiones**, ni la columna **Coord.** con un coordinador asignado.
+- El **Turno 2** todavía no tiene supervisiones. Más adelante (UAT-SUP-03) la coordinadora lo va a tomar sola desde su celular.
+- Se puede quitar la preferencia con la **X** y volver a agregarla (probalo y dejala cargada).
 
 | Resultado           | Observación | Clasificación                             |
 | ------------------- | ----------- | ----------------------------------------- |
@@ -1140,13 +1140,13 @@ Se hace **a la vez** que UAT-EMP-05.
 
 #### UAT-ADM-20 · La administración desde el celular
 
-|                  |                                                                                                                      |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------- |
-| **Rol**          | Administrador                                                                                                        |
-| **Dónde**        | Celular                                                                                                              |
-| **Tipo**         | Imprescindible                                                                                                       |
-| **Cubre**        | RB-X01 (desde un celular: ver el tablero, asignar un empleado, registrar en nombre de otro, asignar una supervisión) |
-| **Precondición** | Hay turnos con lugar libre y un turno sin inicio registrado. El Administrador 1 tiene su email en el celular.        |
+|                  |                                                                                                               |
+| ---------------- | ------------------------------------------------------------------------------------------------------------- |
+| **Rol**          | Administrador                                                                                                 |
+| **Dónde**        | Celular                                                                                                       |
+| **Tipo**         | Imprescindible                                                                                                |
+| **Cubre**        | RB-X01 (desde un celular: ver el tablero, asignar un empleado, registrar en nombre de otro)                   |
+| **Precondición** | Hay turnos con lugar libre y un turno sin inicio registrado. El Administrador 1 tiene su email en el celular. |
 
 **Pasos**
 
@@ -1154,48 +1154,51 @@ Se hace **a la vez** que UAT-EMP-05.
 2. Mirá **Hoy** (el tablero): los números del día y **Servicios de hoy**.
 3. Tocá **Calendario**, elegí un turno con lugar libre y tocá **Asignar empleado**. Asigná a una persona.
 4. Tocá **Asistencia** y, en una fila sin registro, tocá **Registrar en nombre** (con motivo) y confirmá.
-5. Tocá **Supervisiones**, **Asignar supervisión**, y asigná una supervisión a un turno.
 
 **Resultado esperado**
 
-- Las cuatro cosas se pueden hacer desde el celular, igual que en la computadora.
+- Las tres cosas se pueden hacer desde el celular, igual que en la computadora.
 - Las tablas se ven como tarjetas y los paneles ocupan toda la pantalla, sin que se corte nada.
 
 | Resultado           | Observación | Clasificación                             |
 | ------------------- | ----------- | ----------------------------------------- |
 | ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
 
-### Bloque E · La supervisión
+### Bloque E · La jornada y la supervisión del coordinador
 
-#### UAT-SUP-01 · La coordinadora ingresa y ve solo sus supervisiones
+#### UAT-SUP-01 · La coordinadora ingresa, inicia su jornada y ve la lista del día
 
-|                  |                                                                                                             |
-| ---------------- | ----------------------------------------------------------------------------------------------------------- |
-| **Rol**          | Coordinador (la coordinadora)                                                                               |
-| **Dónde**        | Celular                                                                                                     |
-| **Tipo**         | Imprescindible                                                                                              |
-| **Cubre**        | RB-S01 (ingreso con su propio usuario) y RB-S02 (aparece en Hoy de la coordinadora correcta y de nadie más) |
-| **Precondición** | UAT-ADM-08 y UAT-ADM-16 hechos.                                                                             |
+|                  |                                                                                                                                          |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| **Rol**          | Coordinador (la coordinadora)                                                                                                            |
+| **Dónde**        | Celular                                                                                                                                  |
+| **Tipo**         | Imprescindible                                                                                                                           |
+| **Cubre**        | RB-S01 (ingreso con su propio usuario), CJ-02, CJ-04, CJ-12 y CJ-25 (ve todos los turnos del día, sus sedes primero, y lleva su jornada) |
+| **Precondición** | UAT-ADM-08, UAT-ADM-15 y UAT-ADM-16 hechos. La coordinadora no tiene licencia hoy.                                                       |
 
 **Pasos**
 
 1. En el celular de la coordinadora, abrí la dirección de la plataforma e ingresá con su email y contraseña.
-2. Mirá la pantalla **Hoy**.
-3. Tocá **Supervisiones**, abajo, y mirá la lista.
-4. Si hay una segunda coordinadora (o el Empleado A, que no es coordinador), pedile que mire que **esa supervisión no aparece** en su pantalla.
+2. Mirá la pantalla **Hoy**: la barra de jornada de arriba y la lista de turnos.
+3. Tocá **Iniciar jornada**. Si aparece el texto de ubicación, elegí **Aceptar y continuar** o **Continuar sin ubicación**.
+4. Mirá la lista: los bloques **Mis sedes** y **Otras sedes**, y en cuál está cada turno de hoy.
+5. Escribí el nombre de un cliente en el buscador de **Otras sedes**.
+6. Tocá **Supervisiones**, abajo, y mirá la lista.
 
 **Resultado esperado**
 
-- Se abre **Hoy** con el saludo de la coordinadora y la supervisión del **Turno 2** con estado **Asignada**: cliente, sede, horario y los empleados a supervisar.
-- La pestaña **Supervisiones** también la muestra.
-- **Nadie más** la ve.
-- Abajo hay cuatro botones: **Hoy**, **Supervisiones**, **Historial** y **Más**.
+- Se abre **Hoy** con el saludo de la coordinadora. Antes de iniciar, la barra dice que la jornada no empezó y ofrece **Iniciar jornada**.
+- Después de iniciar, el contador de horas corre y el estado pasa a "En actividad".
+- Los turnos de la **sede de prueba** (UAT-ADM-16) aparecen en **Mis sedes**. Los turnos de los demás clientes y sedes aparecen en **Otras sedes**: la coordinadora ve **todos** los turnos de hoy, no solo los suyos.
+- En cada bloque van primero los turnos **en curso**, después los que faltan y al final los terminados.
+- El buscador filtra **Otras sedes** por cliente o sede.
+- Abajo hay cuatro botones: **Hoy**, **Supervisiones**, **Historial** y **Más**. **Supervisiones** todavía está vacía.
 
 | Resultado           | Observación | Clasificación                             |
 | ------------------- | ----------- | ----------------------------------------- |
 | ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
 
-#### UAT-SUP-02 · El detalle de la supervisión
+#### UAT-SUP-02 · El detalle del turno
 
 |                  |                                                                                   |
 | ---------------- | --------------------------------------------------------------------------------- |
@@ -1207,41 +1210,45 @@ Se hace **a la vez** que UAT-EMP-05.
 
 **Pasos**
 
-1. En **Hoy**, tocá la supervisión del Turno 2.
-2. Mirá la sección **Sede**, **Empleados a supervisar**, **Tareas del turno** y **Criterios de calificación**.
+1. En **Hoy**, tocá el **Turno 2**.
+2. Mirá la sección **Sede**, **Empleados del turno** y **Quién más lo supervisa**.
 
 **Resultado esperado**
 
-- Se ven la sede, el horario, las instrucciones, las restricciones y el contacto.
-- **Empleados a supervisar** muestra a los empleados del turno con su estado (**Presente**, con la hora de inicio, o **Finalizado**).
-- Las **tareas del turno** se ven con su estado, solo para mirar.
-- La coordinadora ve **solo** las supervisiones que le asignaron a ella.
+- Se ven el cliente, la sede con su dirección (y **Abrir en el mapa**) y el horario.
+- Los empleados del turno aparecen con su estado (**Presente**, con la hora de inicio, o **Finalizado**).
+- Si otro coordinador ya tomó el turno, se ve quién lo supervisa; si nadie, dice "Ningún otro coordinador lo supervisa por ahora."
+- Las instrucciones de acceso, las restricciones, el contacto, las **tareas del turno** y los **criterios de calificación** todavía no están: se ven en la supervisión, después de **Supervisar** (UAT-SUP-03).
 
 | Resultado           | Observación | Clasificación                             |
 | ------------------- | ----------- | ----------------------------------------- |
 | ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
 
-#### UAT-SUP-03 · Registrar el inicio de la supervisión
+#### UAT-SUP-03 · Supervisar un turno: el botón depende de la jornada
 
-|                  |                                                         |
-| ---------------- | ------------------------------------------------------- |
-| **Rol**          | Coordinador                                             |
-| **Dónde**        | Celular                                                 |
-| **Tipo**         | Imprescindible                                          |
-| **Cubre**        | RB-S01 (registra inicio y fin en cada sede supervisada) |
-| **Precondición** | UAT-SUP-02 hecho.                                       |
+|                  |                                                                                                                             |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **Rol**          | Coordinador                                                                                                                 |
+| **Dónde**        | Celular                                                                                                                     |
+| **Tipo**         | Imprescindible                                                                                                              |
+| **Cubre**        | CJ-06, CJ-07, CJ-20 y CJ-26 (tomar un turno en curso es empezar la supervisión; hace falta la jornada iniciada y sin pausa) |
+| **Precondición** | UAT-SUP-02 hecho.                                                                                                           |
 
 **Pasos**
 
-1. En el detalle de la supervisión, tocá **Registrar inicio de supervisión**.
-2. Si aparece el texto de ubicación, elegí **Aceptar y continuar** o **Continuar sin ubicación**.
-3. Tocá **Registrar inicio**.
-4. Volvé al detalle de la supervisión.
+1. **Primero con la jornada en pausa:** tocá **Pausar**, confirmá con **Pausar** en el cartel (sin motivo), volvé al **Turno 2** y mirá el botón **Supervisar**.
+2. Tocá **Reanudar** en la barra de jornada y volvé al **Turno 2**.
+3. Tocá **Supervisar**.
+4. Si aparece el texto de ubicación, elegí **Aceptar y continuar** o **Continuar sin ubicación**.
+5. Aparece **Supervisión iniciada**: tocá **Seguir con la supervisión** y mirá la pantalla. Después volvé a **Hoy** y mirá el estado de la barra de jornada y del turno.
 
 **Resultado esperado**
 
-- La supervisión pasa a **En curso**, con "Iniciada a las HH:MM".
-- Aparecen los botones **Calificar** al lado de cada empleado y **Registrar fin de supervisión**.
+- Con la jornada en pausa, **Supervisar** está apagado y la pantalla explica por qué ("Estás en pausa: reanudá tu jornada para poder supervisar.").
+- Con la jornada en marcha, **Supervisar** funciona en un solo paso: la supervisión empieza en ese momento. No hay un paso "Registrar inicio" aparte.
+- Se puede tomar un turno **en curso** (el Turno 2 empezó y todavía no terminó).
+- La barra de jornada pasa a "Supervisando" y el turno muestra "Supervisando" con el nombre de la coordinadora.
+- La pantalla de la supervisión muestra la sede completa (instrucciones, restricciones y contacto), **Empleados a supervisar** con el botón **Calificar** al lado de cada uno, las **Tareas del turno**, los **Criterios de calificación**, **Cerrar supervisión** y **Descartar**.
 - Administración ve la supervisión **En curso**, con el inicio.
 
 | Resultado           | Observación | Clasificación                             |
@@ -1250,13 +1257,13 @@ Se hace **a la vez** que UAT-EMP-05.
 
 #### UAT-SUP-04 · Calificar a cada empleado con puntaje y comentario
 
-|                  |                                                                                                                              |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| **Rol**          | Coordinador                                                                                                                  |
-| **Dónde**        | Celular                                                                                                                      |
-| **Tipo**         | Imprescindible                                                                                                               |
-| **Cubre**        | RB-S04 (cada empleado recibe un puntaje de 1 a 5 y un comentario opcional) y RB-X04 (los criterios se muestran al calificar) |
-| **Precondición** | UAT-SUP-03 hecho. Los criterios definitivos están cargados (UAT-DUE-03).                                                     |
+|                  |                                                                                                                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Rol**          | Coordinador                                                                                                                                                                     |
+| **Dónde**        | Celular                                                                                                                                                                         |
+| **Tipo**         | Imprescindible                                                                                                                                                                  |
+| **Cubre**        | RB-S04 (cada empleado recibe un puntaje de 1 a 5 y un comentario opcional), RB-X04 (los criterios se muestran al calificar) y CJ-09 (cada coordinador califica con su criterio) |
+| **Precondición** | UAT-SUP-03 hecho. Los criterios definitivos están cargados (UAT-DUE-03).                                                                                                        |
 
 **Pasos**
 
@@ -1264,7 +1271,7 @@ Se hace **a la vez** que UAT-EMP-05.
 2. Elegí **4 estrellas**. Escribí un **Comentario**. Mirá los **Criterios de calificación** que aparecen abajo.
 3. Tocá **Guardar calificación**.
 4. Volvé al detalle. Mirá el botón al lado del Empleado A.
-5. Calificá de la misma manera a los demás empleados del turno, **sin comentario** en uno de ellos.
+5. Calificá de la misma manera a los demás empleados del turno que ya registraron su inicio, **sin comentario** en uno de ellos. **No califiques todavía al último.**
 6. Volvé a calificar al Empleado A con **5 estrellas**.
 
 **Resultado esperado**
@@ -1272,60 +1279,66 @@ Se hace **a la vez** que UAT-EMP-05.
 - Cada empleado se califica de **1 a 5 estrellas**. El comentario es opcional.
 - Los **criterios** que se ven son los definitivos de la empresa.
 - Después de guardar, el botón del empleado pasa a decir **Editar**.
-- Al volver a calificar, **se reemplaza** la calificación anterior (queda una sola).
+- Al volver a calificar, **se reemplaza** la calificación anterior de esta coordinadora (queda una sola de ella).
+- Si el turno tiene un empleado que **no registró inicio** o avisó ausencia, **no** hace falta calificarlo.
 
 | Resultado           | Observación | Clasificación                             |
 | ------------------- | ----------- | ----------------------------------------- |
 | ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
 
-#### UAT-SUP-05 · Registrar el fin y completar la supervisión
+#### UAT-SUP-05 · Calificar a todos y cerrar la supervisión
 
-|                  |                                                                              |
-| ---------------- | ---------------------------------------------------------------------------- |
-| **Rol**          | Coordinador                                                                  |
-| **Dónde**        | Celular                                                                      |
-| **Tipo**         | Imprescindible                                                               |
-| **Cubre**        | RB-S01 (registra inicio y fin) y RB-S04 (la supervisión se completa)         |
-| **Precondición** | UAT-SUP-04 hecho (calificó a todos menos, si querés probar el aviso, a uno). |
+|                  |                                                                                                                            |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **Rol**          | Coordinador                                                                                                                |
+| **Dónde**        | Celular                                                                                                                    |
+| **Tipo**         | Imprescindible                                                                                                             |
+| **Cubre**        | RB-S01 (registra inicio y fin), RB-S04 (la supervisión se completa), CJ-10 y CJ-28 (hay que calificar a todos para cerrar) |
+| **Precondición** | UAT-SUP-04 hecho, con **un empleado sin calificar**.                                                                       |
 
 **Pasos**
 
-1. En el detalle, tocá **Registrar fin de supervisión**.
-2. Tocá **Cerrar supervisión**.
-3. Elegí **Completar**. Leé a cuántos empleados calificaste y si aparece un aviso.
+1. En el detalle de la supervisión, mirá el botón **Cerrar supervisión** y el aviso de arriba.
+2. Calificá al empleado que falta.
+3. Tocá **Cerrar supervisión**.
 4. Escribí una **Nota general** si querés.
-5. Tocá **Completar supervisión**.
+5. Si aparece el texto de ubicación, elegí una opción. Tocá **Cerrar supervisión** para confirmar.
 
 **Resultado esperado**
 
-- Aparece "Calificaste a n de m empleados". Si falta alguno, hay un aviso, pero **se puede completar igual**.
-- La supervisión pasa a **Completada**.
-- Administración la ve **Completada**, con los puntajes y los comentarios.
+- Mientras falte calificar a alguien, **Cerrar supervisión** está apagado y un aviso dice **a quién falta** ("Para cerrar la supervisión falta calificar a: …").
+- Cuando no falta nadie, el botón se enciende.
+- Al cerrar se registra el **fin** de la supervisión, con su hora. La supervisión pasa a **Completada**.
+- Administración la ve **Completada**, con los puntajes, los comentarios y la **duración** (que es solo informativa).
 
 | Resultado           | Observación | Clasificación                             |
 | ------------------- | ----------- | ----------------------------------------- |
 | ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
 
-#### UAT-SUP-06 · Marcar una supervisión como "No se pudo realizar"
+#### UAT-SUP-06 · Descartar una supervisión empezada por error
 
-|                  |                                                                                                   |
-| ---------------- | ------------------------------------------------------------------------------------------------- |
-| **Rol**          | Coordinador                                                                                       |
-| **Dónde**        | Celular                                                                                           |
-| **Tipo**         | Opcional                                                                                          |
-| **Cubre**        | RB-S04 (cierre de la supervisión)                                                                 |
-| **Precondición** | Otra supervisión asignada a la coordinadora (asignala desde **Supervisiones**, sobre el Turno 3). |
+|                  |                                                                                                                  |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **Rol**          | Coordinador                                                                                                      |
+| **Dónde**        | Celular                                                                                                          |
+| **Tipo**         | Opcional                                                                                                         |
+| **Cubre**        | CJ-08 y CJ-27 (una supervisión por vez; se puede descartar si todavía no se calificó a nadie)                    |
+| **Precondición** | UAT-SUP-05 hecho. Hay otro turno de hoy (por ejemplo el Turno 3) y la jornada de la coordinadora está en marcha. |
 
 **Pasos**
 
-1. Abrí esa supervisión y tocá **Cerrar supervisión**.
-2. Elegí **No se pudo realizar**.
-3. Escribí el **Motivo** y tocá **Marcar como no realizada**.
+1. Tomá el **Turno 3** con **Supervisar**.
+2. Sin cerrarla, volvé a **Hoy**, abrí otro turno y mirá el botón **Supervisar**.
+3. Volvé a la supervisión del Turno 3 y tocá **Descartar**.
+4. En "¿Descartar la supervisión?", tocá **Descartar supervisión**.
+5. Abrí otra vez el **Turno 3** y mirá el botón **Supervisar**.
 
 **Resultado esperado**
 
-- Sin escribir el motivo no deja continuar.
-- La supervisión queda **No realizada**, con el motivo, y se ve en el **Historial** de la coordinadora y en la administración.
+- Con una supervisión abierta, **Supervisar** de otro turno está apagado ("Cerrá o descartá tu supervisión abierta antes de empezar otra.").
+- La supervisión descartada queda **Cancelada**, con el motivo "Descartada por el coordinador".
+- La coordinadora **puede volver a tomar** el Turno 3.
+- Si ya hubiera calificado a alguien, **Descartar** no estaría disponible.
 
 | Resultado           | Observación | Clasificación                             |
 | ------------------- | ----------- | ----------------------------------------- |
@@ -1333,25 +1346,87 @@ Se hace **a la vez** que UAT-EMP-05.
 
 #### UAT-SUP-07 · El historial muestra solo lo propio
 
-|                  |                                                                                     |
-| ---------------- | ----------------------------------------------------------------------------------- |
-| **Rol**          | Coordinador                                                                         |
-| **Dónde**        | Celular                                                                             |
-| **Tipo**         | Imprescindible                                                                      |
-| **Cubre**        | RB-S05 (el historial muestra solo las supervisiones propias con sus calificaciones) |
-| **Precondición** | UAT-SUP-05 hecho.                                                                   |
+|                  |                                                                              |
+| ---------------- | ---------------------------------------------------------------------------- |
+| **Rol**          | Coordinador                                                                  |
+| **Dónde**        | Celular                                                                      |
+| **Tipo**         | Imprescindible                                                               |
+| **Cubre**        | RB-S05 (el historial muestra solo lo propio, con sus calificaciones) y CJ-14 |
+| **Precondición** | UAT-SUP-05 hecho.                                                            |
 
 **Pasos**
 
 1. Tocá **Historial**.
-2. Mirá las supervisiones que aparecen.
-3. Tocá la del Turno 2 y mirá lo que muestra.
+2. Mirá la jornada de hoy: sus horas, sus pausas y sus supervisiones.
+3. Tocá la supervisión del Turno 2 y mirá lo que muestra.
 
 **Resultado esperado**
 
-- El historial muestra las supervisiones **completadas** (y **no realizadas**) de esta coordinadora, con las estrellas.
-- El detalle se ve **solo para leer**, con cada calificación y su comentario.
-- No hay supervisiones de otras personas.
+- El historial muestra las **jornadas por día**, con las horas, las pausas y las supervisiones de cada una.
+- La duración de cada supervisión se ve como dato **informativo**: no se suma a las horas de la jornada.
+- El detalle de la supervisión se ve **solo para leer**, con cada calificación y su comentario.
+- No hay jornadas ni supervisiones de otras personas.
+
+| Resultado           | Observación | Clasificación                             |
+| ------------------- | ----------- | ----------------------------------------- |
+| ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
+
+#### UAT-SUP-09 · Pausar, reanudar, finalizar y reabrir la jornada
+
+|                  |                                                                                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Rol**          | Coordinador                                                                                                                                 |
+| **Dónde**        | Celular                                                                                                                                     |
+| **Tipo**         | Imprescindible                                                                                                                              |
+| **Cubre**        | CJ-12 a CJ-16, CJ-29 y CJ-30 (contador, pausas con motivo opcional, bloqueos con una supervisión abierta, una jornada por día y reapertura) |
+| **Precondición** | UAT-SUP-05 y UAT-SUP-06 hechos. La jornada está en marcha y no hay supervisiones abiertas.                                                  |
+
+**Pasos**
+
+1. Tomá un turno con **Supervisar** y, con la supervisión abierta, mirá los botones **Pausar** y **Finalizar jornada**.
+2. Cerrá o descartá esa supervisión.
+3. Tocá **Pausar**, escribí el motivo "Almuerzo" y confirmá. Esperá un minuto y mirá el contador.
+4. Tocá **Reanudar**. Después tocá **Pausar** otra vez, esta vez **sin motivo**, y volvé a **Reanudar**.
+5. Tocá **Finalizar jornada** y confirmá.
+6. Tocá **Reabrir jornada**.
+7. Volvé a **Finalizar jornada** y andá a **Historial** para mirar la jornada del día.
+
+**Resultado esperado**
+
+- Con una supervisión abierta, **Pausar** y **Finalizar jornada** están apagados, con el motivo a la vista.
+- Durante la pausa el contador **se detiene**; al reanudar, sigue. El motivo de la pausa es **opcional**: se puede pausar sin escribirlo.
+- Al finalizar, el estado pasa a "Finalizada" y el contador queda fijo. **Reabrir jornada** vuelve a ponerla en marcha: es **la misma jornada del día**, no una nueva.
+- El tiempo entre finalizar y reabrir figura como una pausa con el motivo "Jornada reabierta".
+- En **Historial**, la jornada muestra las pausas y las horas netas (de inicio a fin, menos las pausas).
+- **El cierre automático de las 23:55 no se prueba en la sesión.** Si querés verlo, dejá una jornada abierta y mirala al día siguiente: tiene que figurar como **Cerrada automáticamente**, con una advertencia.
+
+| Resultado           | Observación | Clasificación                             |
+| ------------------- | ----------- | ----------------------------------------- |
+| ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
+
+#### UAT-SUP-10 · Dos coordinadoras supervisan el mismo turno
+
+|                  |                                                                                                                        |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **Rol**          | Dos coordinadores                                                                                                      |
+| **Dónde**        | Celular (dos)                                                                                                          |
+| **Tipo**         | Opcional (hace falta una segunda coordinadora)                                                                         |
+| **Cubre**        | CJ-05, CJ-09, CJ-11 y CJ-25 (varios coordinadores por turno; cada uno califica con su criterio; se ve quién supervisa) |
+| **Precondición** | UAT-SUP-05 hecho. La segunda coordinadora tiene su jornada iniciada.                                                   |
+
+**Pasos**
+
+1. Con el celular de la **segunda coordinadora**, abrí **Hoy** y buscá el **Turno 2** (ya terminado o en curso).
+2. Mirá qué dice el turno sobre quién lo supervisa. Tocá **Supervisar**.
+3. Calificá a los empleados con puntajes distintos a los de la primera coordinadora.
+4. Cerrá la supervisión.
+5. En la computadora, abrí la ficha del **Empleado A**, pestaña **Calificaciones**.
+
+**Resultado esperado**
+
+- El turno muestra "Supervisando: …" o quién lo supervisó, así no se pisan.
+- La segunda coordinadora puede tomar el turno aunque ya esté **terminado** o ya lo haya supervisado otra persona.
+- El Empleado A tiene **dos calificaciones** en el mismo turno, cada una **por separado** y con el nombre de quien la cargó. No se promedian ni se agrupan.
 
 | Resultado           | Observación | Clasificación                             |
 | ------------------- | ----------- | ----------------------------------------- |
@@ -1370,16 +1445,80 @@ Se hace **a la vez** que UAT-EMP-05.
 **Pasos**
 
 1. Entrá a **Supervisiones**. Mirá la lista.
-2. Filtrá por **coordinador**, por **cliente**, por **estado** y por **fecha**. Sacá los filtros.
+2. Filtrá por **coordinador**, por **cliente** y por **fecha** (**Desde** y **Hasta**). Sacá los filtros.
 3. Entrá a la pestaña **Calificaciones**. Mirá una fila por empleado calificado.
 4. Abrí la supervisión del Turno 2. Mirá los **criterios usados** y las calificaciones por empleado.
 5. En un empleado, tocá **Editar** y cambiá el puntaje. Guardá.
 
 **Resultado esperado**
 
-- Los filtros por empleado, coordinador, cliente, sede, fecha y estado funcionan.
+- Los filtros por empleado, coordinador, cliente, sede y fecha funcionan. No hay filtro por estado ni estados de asignación.
+- Un mismo turno puede tener **varias supervisiones** (una por coordinador). Cada fila muestra la **duración**, que es informativa.
 - La pestaña **Calificaciones** muestra puntaje y comentario de cada empleado, con fecha, sede y coordinador.
 - El administrador con el permiso puede **editar** una calificación, y el detalle muestra **quién la editó y cuándo**.
+
+| Resultado           | Observación | Clasificación                             |
+| ------------------- | ----------- | ----------------------------------------- |
+| ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
+
+#### UAT-ADM-24 · El mapa de coordinadores y la jornada en el Resumen
+
+|                  |                                                                                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **Rol**          | Administrador (o dueño)                                                                                                               |
+| **Dónde**        | Computadora                                                                                                                           |
+| **Tipo**         | Imprescindible                                                                                                                        |
+| **Cubre**        | CJ-20 a CJ-22, CJ-31 y CJ-33 (estados y última posición de cada coordinador en el mapa; jornadas abiertas y cerradas automáticamente) |
+| **Precondición** | UAT-SUP-01 hecho. La coordinadora tiene la jornada en marcha o supervisando.                                                          |
+
+**Pasos**
+
+1. Entrá a **Resumen** y mirá el mapa de presencia («Dónde está el equipo»).
+2. Mirá el interruptor **Coordinadores** (arriba a la derecha del mapa): activalo si está apagado.
+3. Tocá el punto de la coordinadora.
+4. Pedile a la coordinadora que pase a **Pausar** (con motivo) y esperá un minuto. Volvé a mirar el mapa.
+5. Entrá a **Asistencia** y mirá la sección **Coordinadores**.
+6. Si hay una coordinadora que usó **Continuar sin ubicación**, buscala en la lista de debajo del mapa.
+
+**Resultado esperado**
+
+- La coordinadora aparece con su **estado** (En actividad, Supervisando, En pausa, Finalizada o Sin iniciar), su última posición y la hora del registro.
+- Si está supervisando, el cuadro muestra el cliente y la sede. Si está en pausa, el motivo.
+- El cuadro tiene las horas de hoy y **Ver jornada**.
+- El mapa se actualiza solo (cada 60 segundos).
+- Quien registró un evento sin ubicación figura debajo del mapa, en **Coordinadores sin ubicación**, con su estado.
+- La sección **Coordinadores** de **Asistencia** muestra el estado de la jornada de cada uno.
+
+| Resultado           | Observación | Clasificación                             |
+| ------------------- | ----------- | ----------------------------------------- |
+| ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
+
+#### UAT-ADM-25 · Corregir una jornada y la ficha imprimible
+
+|                  |                                                                                                                       |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **Rol**          | Administrador (Administrador 1, con el permiso **Registrar asistencia por otros**)                                    |
+| **Dónde**        | Computadora                                                                                                           |
+| **Tipo**         | Imprescindible                                                                                                        |
+| **Cubre**        | CJ-17, CJ-19, CJ-32 y CJ-34 (corrección de horarios con motivo, jornada en nombre del coordinador y ficha imprimible) |
+| **Precondición** | UAT-SUP-09 hecho (la coordinadora tiene una jornada finalizada).                                                      |
+
+**Pasos**
+
+1. En la ficha de la coordinadora, abrí la pestaña **Jornadas** y elegí el día de hoy.
+2. En el **Registro de la jornada**, tocá **Corregir hora** al lado de la hora de fin. Escribí una hora distinta (del mismo día) **sin motivo** y probá confirmar.
+3. Completá el **Motivo** y confirmá.
+4. Tocá **Agregar pausa**, elegí un tramo dentro de la jornada, escribí un motivo y confirmá. Después **Quitar pausa** en esa pausa.
+5. Abrí la pestaña **Asistencia** de la ficha, elegí un período con **Desde** y **Hasta** que incluya hoy y tocá **Descargar detalle**.
+6. Mirá la hoja: el detalle de la jornada, el acumulado y el pie de firmas.
+
+**Resultado esperado**
+
+- Sin motivo, la corrección **no se acepta**.
+- Con motivo, la jornada pasa a mostrar la marca **Corregida**, y queda registrado quién hizo el cambio, cuándo y por qué.
+- La ficha imprimible lleva el **detalle de cada jornada con sus supervisiones**, el **acumulado de horas del período** y el **pie de firmas** de consentimiento.
+- Si la persona también es empleada, la hoja tiene dos secciones (turnos como empleado y jornadas como coordinador), cada una con su total, y al final la suma.
+- Para probar **Registrar jornada** (botón de arriba a la derecha de la pestaña **Jornadas**), usá un día en que la coordinadora no tenga jornada (por ejemplo, ayer).
 
 | Resultado           | Observación | Clasificación                             |
 | ------------------- | ----------- | ----------------------------------------- |
@@ -1570,25 +1709,27 @@ Se hace **a la vez** que UAT-EMP-05.
 | ------------------- | ----------- | ----------------------------------------- |
 | ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
 
-#### UAT-SUP-08 · Editar una calificación: dentro y fuera de plazo
+#### UAT-SUP-08 · Editar una calificación: con la supervisión abierta y ya cerrada
 
-|                  |                                                                                    |
-| ---------------- | ---------------------------------------------------------------------------------- |
-| **Rol**          | Coordinador y administración                                                       |
-| **Dónde**        | Celular y computadora                                                              |
-| **Tipo**         | Opcional (parte se prueba al día siguiente)                                        |
-| **Cubre**        | RB-S04 (fuera del plazo no se edita)                                               |
-| **Precondición** | UAT-SUP-05 hecho. Una supervisión con calificaciones de un turno **ya terminado**. |
+|                  |                                                                                                 |
+| ---------------- | ----------------------------------------------------------------------------------------------- |
+| **Rol**          | Coordinador y administración                                                                    |
+| **Dónde**        | Celular y computadora                                                                           |
+| **Tipo**         | Opcional (parte se prueba al día siguiente)                                                     |
+| **Cubre**        | RB-S04 (la coordinadora edita hasta el fin del turno o de su supervisión, lo que ocurra último) |
+| **Precondición** | UAT-SUP-05 hecho. Una supervisión cerrada con calificaciones.                                   |
 
 **Pasos**
 
-1. **Dentro del plazo:** mientras el turno no terminó, la coordinadora abre la supervisión y cambia una calificación. (Ya se probó en UAT-SUP-04.)
-2. **Fuera del plazo:** al día siguiente, la coordinadora entra a **Historial**, abre la supervisión y trata de cambiar una calificación.
-3. La administración (con el permiso **Editar calificaciones**) intenta cambiar esa misma calificación.
+1. **Con la supervisión abierta:** la coordinadora puede cambiar una calificación. (Ya se probó en UAT-SUP-04.)
+2. **Recién cerrada, dentro del plazo:** la coordinadora cierra la supervisión y, antes de que termine el turno (o de que pase el fin de su supervisión, lo que ocurra último), entra a **Historial**, abre la supervisión y cambia una calificación.
+3. **Fuera del plazo:** al día siguiente, la coordinadora vuelve a abrir esa supervisión y trata de cambiar una calificación.
+4. La administración (con el permiso **Editar calificaciones**) intenta cambiar esa misma calificación.
 
 **Resultado esperado**
 
-- La coordinadora **no puede** cambiarla: aparece "El plazo para editar esta calificación terminó."
+- En el paso 2, la coordinadora **sí puede** cambiarla aunque la supervisión esté cerrada.
+- En el paso 3, la coordinadora **no puede** cambiarla: aparece "El plazo para editar esta calificación terminó."
 - La administración **sí puede** y queda anotado quién la editó y cuándo.
 
 | Resultado           | Observación | Clasificación                             |
@@ -1650,7 +1791,7 @@ Se completa **al final de la sesión**, con la referente. Es el documento que qu
 
 | Dato                                                 | Cantidad |
 | ---------------------------------------------------- | -------- |
-| Escenarios del guion                                 | 52       |
+| Escenarios del guion                                 | 56       |
 | Escenarios ejecutados                                |          |
 | Con resultado **OK**                                 |          |
 | Con resultado **Falla**                              |          |

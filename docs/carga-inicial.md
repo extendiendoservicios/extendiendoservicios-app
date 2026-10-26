@@ -5,7 +5,7 @@ personal, servicios, feriados y criterios) desde la planilla
 [`plantilla-carga-inicial.xlsx`](plantilla-carga-inicial.xlsx), con el importador
 `scripts/import-initial.ts` (DATA-003, DATA-004, DATA-005, DATA-010; F19) y, después, entregar las
 contraseñas iniciales con `scripts/entregar-credenciales.ts` (DATA-008). Lo usan el orquestador y
-Mike. La empresa solo completa la planilla. La plantilla vigente es la **versión 2 (octubre 2026)**; el importador también acepta la de septiembre (sección 7).
+Mike. La empresa solo completa la planilla. La plantilla vigente es la **versión 3 (octubre 2026)**, que suma a la hoja Supervisores la columna «Clientes y sedes preferenciales» (sección 6). El importador también acepta la versión 2 y la de septiembre (sección 7): sin esa columna, avisa y sigue.
 
 Contenido: [1. Qué hace el importador](#1-qué-hace-el-importador) ·
 [2. Antes de empezar](#2-antes-de-empezar) · [3. Paso a paso](#3-paso-a-paso) ·
@@ -23,7 +23,8 @@ Contenido: [1. Qué hace el importador](#1-qué-hace-el-importador) ·
    problema: hoja, fila de Excel, columna y qué pasa, en español.
 3. Si hay **al menos un error**, no escribe nada. Las advertencias no frenan la carga.
 4. Si no hay errores, carga en este orden: clientes, contactos, sedes, empleados y
-   supervisores (con su usuario), habilitaciones, servicios, feriados y criterios.
+   supervisores (con su usuario), habilitaciones, clientes y sedes preferenciales de los
+   coordinadores, servicios, feriados y criterios.
 
 Fuera de alcance: la hoja de disponibilidad no existe en la planilla (cada persona la declara
 desde la aplicación) y las licencias tampoco se cargan.
@@ -154,6 +155,7 @@ un id) y carga solo lo que falta. Se puede repetir sin riesgo de duplicar.
 | Sede                       | Cliente + nombre                                                   |
 | Persona (empleado/superv.) | DNI. Si ya existe, solo se agregan los roles que falten            |
 | Habilitación               | Persona + cliente                                                  |
+| Preferencia de coordinador | Coordinador + cliente, o coordinador + sede (solo las vigentes)    |
 | Servicio                   | Sede + nombre                                                      |
 | Feriado                    | Fecha                                                              |
 | Criterio                   | Título                                                             |
@@ -169,27 +171,32 @@ Detalles:
   reintento retoma esa cuenta (no la duplica). Si el email ya pertenece a otro empleado, esa
   persona queda como falla en el informe.
 - La sede `Principal` automática solo se crea si el cliente no tiene ninguna sede en la base.
+- Una preferencia que ya está vigente se cuenta como «ya existía» y no se duplica (la base tiene
+  una unicidad parcial entre las vigentes; si responde que ya existe, el importador lo toma como
+  ya cargado). Una preferencia dada de baja desde la aplicación se vuelve a cargar si sigue en la
+  planilla.
 
 ## 6. Reglas que aplica el importador
 
-| Tema                              | Regla                                                                                                                                                                                                                                                                                  |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Email de empleados y supervisores | **Obligatorio.** La fila sin email (o con uno mal escrito) es un error. Tiene que ser propio de cada persona: un email usado por dos DNI distintos es error.                                                                                                                           |
-| CUIT del cliente                  | Opcional. Si está, tiene que tener 11 dígitos (error si no) y no repetirse (error). Dígito verificador incorrecto: advertencia. Se aceptan guiones y puntos (se quitan, con aviso). Si el cliente no tiene CUIT, la celda va **vacía** (no sirve escribir "sin CUIT" ni "en trámite"). |
-| DNI                               | Solo dígitos (error si no); repetido en la misma hoja es error; de largo fuera de 6 a 9 es advertencia. El mismo DNI en Empleados y Supervisores es una sola persona con los dos roles (el email tiene que coincidir).                                                                 |
-| CUIL                              | Opcional. 11 dígitos (error si no); verificador incorrecto: advertencia.                                                                                                                                                                                                               |
-| Sede automática                   | Un cliente sin filas en Sedes y **con** dirección administrativa recibe una sede `Principal` con esa dirección (activa, sin coordenadas). Sin dirección no se crea sede y queda una advertencia.                                                                                       |
-| Razón social repetida             | Dos clientes sin CUIT con la misma razón social: error. Si alguno tiene CUIT: advertencia (en las otras hojas se los vincula por CUIT).                                                                                                                                                |
-| Sedes                             | Nombre único dentro del cliente (error si se repite).                                                                                                                                                                                                                                  |
-| Contactos                         | A lo sumo un contacto principal por cliente (error si hay más de uno).                                                                                                                                                                                                                 |
-| Servicios                         | Al menos un día en "Sí"; hora de fin posterior a la de inicio (no cruza la medianoche); dotación de 1 a 10; la sede tiene que figurar para ese cliente (la `Principal` automática sirve).                                                                                              |
-| Estados                           | Vacío = Activo/Activa. Cualquier valor fuera de la lista es error.                                                                                                                                                                                                                     |
-| Personas de Baja                  | **No se cargan** (decisión del 6 oct 2026): la fila de Empleados o Supervisores con estado Baja se ignora, sin error ni aviso, y no se le crea usuario. Queda en el informe como fila ignorada. No se le exige email. Sus habilitaciones también se ignoran.                           |
-| Coordenadas                       | Fuera de rango (latitud ±90, longitud ±180) o incompletas: advertencia; la fila se carga sin coordenadas.                                                                                                                                                                              |
-| Habilitaciones                    | El DNI tiene que estar en Empleados o Supervisores y el cliente en Clientes. Filas repetidas: advertencia, se carga una.                                                                                                                                                               |
-| Feriados                          | Una fila por fecha (error si se repite).                                                                                                                                                                                                                                               |
-| Criterios                         | Orden de 1 a 99; título único (error si se repite); orden repetido: advertencia. Sin fecha de inicio, rige desde hoy.                                                                                                                                                                  |
-| Legajo                            | Opcional; si está, es único (error si se repite). En blanco, lo asigna el sistema.                                                                                                                                                                                                     |
+| Tema                              | Regla                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Email de empleados y supervisores | **Obligatorio.** La fila sin email (o con uno mal escrito) es un error. Tiene que ser propio de cada persona: un email usado por dos DNI distintos es error.                                                                                                                                                                                                                                                                                                                                                                                          |
+| CUIT del cliente                  | Opcional. Si está, tiene que tener 11 dígitos (error si no) y no repetirse (error). Dígito verificador incorrecto: advertencia. Se aceptan guiones y puntos (se quitan, con aviso). Si el cliente no tiene CUIT, la celda va **vacía** (no sirve escribir "sin CUIT" ni "en trámite").                                                                                                                                                                                                                                                                |
+| DNI                               | Solo dígitos (error si no); repetido en la misma hoja es error; de largo fuera de 6 a 9 es advertencia. El mismo DNI en Empleados y Supervisores es una sola persona con los dos roles (el email tiene que coincidir).                                                                                                                                                                                                                                                                                                                                |
+| CUIL                              | Opcional. 11 dígitos (error si no); verificador incorrecto: advertencia.                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Sede automática                   | Un cliente sin filas en Sedes y **con** dirección administrativa recibe una sede `Principal` con esa dirección (activa, sin coordenadas). Sin dirección no se crea sede y queda una advertencia.                                                                                                                                                                                                                                                                                                                                                      |
+| Razón social repetida             | Dos clientes sin CUIT con la misma razón social: error. Si alguno tiene CUIT: advertencia (en las otras hojas se los vincula por CUIT).                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Sedes                             | Nombre único dentro del cliente (error si se repite).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Contactos                         | A lo sumo un contacto principal por cliente (error si hay más de uno).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Servicios                         | Al menos un día en "Sí"; hora de fin posterior a la de inicio (no cruza la medianoche); dotación de 1 a 10; la sede tiene que figurar para ese cliente (la `Principal` automática sirve).                                                                                                                                                                                                                                                                                                                                                             |
+| Estados                           | Vacío = Activo/Activa. Cualquier valor fuera de la lista es error.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Personas de Baja                  | **No se cargan** (decisión del 6 oct 2026): la fila de Empleados o Supervisores con estado Baja se ignora, sin error ni aviso, y no se le crea usuario. Queda en el informe como fila ignorada. No se le exige email. Sus habilitaciones también se ignoran.                                                                                                                                                                                                                                                                                          |
+| Coordenadas                       | Fuera de rango (latitud ±90, longitud ±180) o incompletas: advertencia; la fila se carga sin coordenadas.                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Clientes y sedes preferenciales   | Opcional, solo en la hoja Supervisores. Lista separada por `;` (o por saltos de línea). Cada elemento es un cliente (razón social o CUIT: cubre todas sus sedes) o `Cliente / Sede` (solo esa sede). El cliente y la sede tienen que figurar en las hojas Clientes y Sedes (la `Principal` automática sirve): si no, es un error con el número de fila. Un elemento repetido o una sede cuyo cliente ya está en la lista: advertencia. Un coordinador de Baja se ignora. Solo ordenan la lista del coordinador: no restringen qué turnos puede tomar. |
+| Habilitaciones                    | El DNI tiene que estar en Empleados o Supervisores y el cliente en Clientes. Filas repetidas: advertencia, se carga una.                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Feriados                          | Una fila por fecha (error si se repite).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Criterios                         | Orden de 1 a 99; título único (error si se repite); orden repetido: advertencia. Sin fecha de inicio, rige desde hoy.                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Legajo                            | Opcional; si está, es único (error si se repite). En blanco, lo asigna el sistema.                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 
 ## 7. Cómo se vincula cada hoja con el cliente
 
@@ -237,6 +244,15 @@ Sedes: el importador crea la sede `Principal` (en Servicios se la nombra `Princi
   legajo automático **no avanza sola**: después de cargar legajos manuales hay que ajustarla para
   que un empleado nuevo creado desde la aplicación no choque con uno cargado. Hoy el importador no
   puede hacerlo (necesita una función en la base): se consulta antes de la carga en producción.
+- **Preferencias de los coordinadores.** El importador las escribe **directo** en la tabla
+  `supervisor_priorities` con la clave de servicio, igual que el resto de lo que carga, y no
+  llamando a `set_supervisor_priority`: esa función exige el rol de dueño o administrador en la
+  sesión de quien llama y la clave de servicio no lo tiene (respondería «No tenés permiso»). El
+  resultado en la base es el mismo (`created_by` queda vacío, como en las demás cargas).
+  Verificar en la aplicación: ficha de cada coordinador, pestaña **Clientes y sedes preferenciales**.
+- **Los coordinadores no se asignan a turnos.** Desde la coordinación libre (P24) la planilla no
+  tiene, ni debe tener, ninguna columna para asignar coordinadores a servicios o turnos: cada
+  coordinador elige qué turno supervisar desde su celular.
 - **Datos de prueba ficticios** que se hayan cargado en `App_dev` para ensayar se barren aparte
   (lo que carga la prueba automática, con el prefijo `imp-test-`, se barre solo). No hay un
   script de barrido de datos reales: no se borra nada sin indicación expresa de Mike.
@@ -251,8 +267,9 @@ el ref del proyecto antes de escribir.
 ## 10. Tests
 
 - **Unitarios** (corren en `pnpm test`, sin base ni credenciales): `scripts/import-initial/*.test.ts` y `scripts/entregar-credenciales/*.test.ts`.
-  Leen planillas ficticias armadas en el propio test y cubren cada regla de la sección 6, las
-  dos versiones de la plantilla (títulos de septiembre y de la versión 2), la lectura de la
+  Leen planillas ficticias armadas en el propio test y cubren cada regla de la sección 6 (incluidas las preferencias de los coordinadores), la carga de esas
+  preferencias contra una base falsa en memoria (`cargar.test.ts`: orden, segunda corrida sin
+  duplicar, «ya existe» como ya cargada), las dos versiones de la plantilla (títulos de septiembre y de la versión 2), la lectura de la
   plantilla oficial, la elección del entorno, el generador de contraseñas y las guardas del paso
   de credenciales.
 - **Integración contra `App_dev`** (`pnpm test:import`, a mano; no corre en CI): carga datos
@@ -278,6 +295,7 @@ Archivos del importador:
 | `scripts/import-initial/esquema.ts`         | Hojas y columnas de la plantilla.                                  |
 | `scripts/import-initial/validar.ts`         | Todas las reglas; arma el plan y las incidencias.                  |
 | `scripts/import-initial/cargar.ts`          | Escribe en la base; reintento por clave natural.                   |
+| `scripts/import-initial/cargar.test.ts`     | Prueba la carga con una base falsa en memoria (sin red).           |
 | `scripts/import-initial/entorno.ts`         | Elección y verificación del destino.                               |
 | `scripts/import-initial/informe.ts`         | Informes (texto, Excel, JSON).                                     |
 | `scripts/import-initial/compat-openpyxl.ts` | Permite abrir la plantilla original (generada con openpyxl).       |
@@ -290,41 +308,43 @@ Archivos del importador:
 
 Aparecen en el JSON del informe y en las pruebas. **E** = error, **A** = advertencia.
 
-| Código                                                        | Nivel | Qué significa y qué hacer                                                                       |
-| ------------------------------------------------------------- | ----- | ----------------------------------------------------------------------------------------------- |
-| `ARCHIVO_ILEGIBLE`, `SIN_HOJAS`                               | E     | El archivo no se abre como Excel o no tiene las hojas de la plantilla.                          |
-| `HOJA_FALTA`                                                  | A     | No está la hoja: se toma como vacía.                                                            |
-| `ENCABEZADOS_NO_ENCONTRADOS`, `COLUMNA_FALTA`                 | E / A | Cambiaron los títulos de las columnas. Usar la plantilla original (falta una opcional = aviso). |
-| `FILA_DE_EJEMPLO`                                             | -     | Fila de ejemplo ignorada.                                                                       |
-| `FALTA_DATO`                                                  | E     | Falta un dato obligatorio.                                                                      |
-| `FECHA_INVALIDA`, `HORA_INVALIDA`                             | E     | Escribir DD/MM/AAAA y HH:MM.                                                                    |
-| `SI_NO_INVALIDO`, `OPCION_INVALIDA`                           | E     | Elegir un valor de la lista desplegable.                                                        |
-| `NUMERO_INVALIDO`, `NUMERO_FUERA_DE_RANGO`                    | E     | Número mal escrito o fuera de rango (dotación 1 a 10, orden 1 a 99...).                         |
-| `NUMERO_NEGATIVO`, `HORAS_INVERTIDAS`, `VIGENCIA_INVERTIDA`   | A     | Dato raro; se carga igual (o sin ese dato).                                                     |
-| `COORDENADA_FUERA_DE_RANGO`, `COORDENADA_INCOMPLETA`          | A     | Se carga sin coordenadas.                                                                       |
-| `CUIT_FORMATO`, `CUIT_LARGO`, `CUIL_FORMATO`, `CUIL_LARGO`    | E     | No tiene 11 dígitos numéricos. Si no lo tiene, dejar la celda vacía.                            |
-| `CUIT_LIMPIADO`, `CUIL_LIMPIADO`, `DNI_LIMPIADO`              | A     | Se quitaron puntos, guiones o espacios.                                                         |
-| `CUIT_VERIFICADOR`, `CUIL_VERIFICADOR`                        | A     | Dígito verificador incorrecto: posible error de tipeo. Revisar con la empresa.                  |
-| `CUIT_REPETIDO`, `DNI_REPETIDO`, `LEGAJO_REPETIDO`            | E     | Repetido: la base no lo admite.                                                                 |
-| `CLIENTE_SIN_CUIT_REPETIDO`                                   | E     | Dos clientes sin CUIT con la misma razón social.                                                |
-| `RAZON_SOCIAL_REPETIDA`                                       | A     | Misma razón social con CUIT distinto o ausente.                                                 |
-| `CLIENTE_NO_ENCONTRADO`, `CLIENTE_AMBIGUO`                    | E     | La referencia al cliente no existe en Clientes o corresponde a más de uno.                      |
-| `CLIENTE_SIN_SEDE`                                            | A     | Sin sedes ni dirección: se carga sin sede.                                                      |
-| `SEDE_REPETIDA`, `SEDE_NO_ENCONTRADA`                         | E     | Sede duplicada en el cliente, o un servicio apunta a una sede que no existe.                    |
-| `CONTACTO_PRINCIPAL_REPETIDO`, `CONTACTO_REPETIDO`            | E     | Más de un principal, o dos contactos con el mismo nombre en el cliente.                         |
-| `EMAIL_CONTACTO`                                              | A     | El email del contacto no parece válido.                                                         |
-| `SERVICIO_SIN_DIAS`, `HORA_FIN_ANTERIOR`, `SERVICIO_REPETIDO` | E     | Ningún día marcado; fin no posterior al inicio; servicio duplicado en la sede.                  |
-| `EMAIL_FALTA`, `EMAIL_INVALIDO`, `EMAIL_REPETIDO`             | E     | Falta, está mal escrito o lo usan dos personas distintas.                                       |
-| `EMAIL_DISTINTO_ENTRE_HOJAS`                                  | E     | La misma persona (mismo DNI) tiene emails distintos en Empleados y Supervisores.                |
-| `NOMBRE_DISTINTO_ENTRE_HOJAS`                                 | A     | Distinto nombre para el mismo DNI: se usa el de la primera hoja.                                |
-| `DNI_FORMATO`                                                 | E     | El DNI tiene letras u otros caracteres.                                                         |
-| `DNI_LARGO`                                                   | A     | DNI de largo poco habitual.                                                                     |
-| `DNI_NO_ENCONTRADO`                                           | E     | La habilitación apunta a un DNI que no está en el personal.                                     |
-| `PERSONA_DE_BAJA`                                             | -     | Persona de Baja: no se carga ni se le crea usuario (fila ignorada).                             |
-| `HABILITACION_DE_PERSONA_DE_BAJA`                             | -     | Habilitación de una persona de Baja: se ignora (fila ignorada).                                 |
-| `HABILITACION_REPETIDA`                                       | A     | Fila repetida: se carga una sola.                                                               |
-| `FERIADO_REPETIDO`, `CRITERIO_REPETIDO`                       | E     | Fecha o título repetido.                                                                        |
-| `ORDEN_REPETIDO`                                              | A     | Dos criterios con el mismo orden.                                                               |
+| Código                                                        | Nivel | Qué significa y qué hacer                                                                                        |
+| ------------------------------------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------- |
+| `ARCHIVO_ILEGIBLE`, `SIN_HOJAS`                               | E     | El archivo no se abre como Excel o no tiene las hojas de la plantilla.                                           |
+| `HOJA_FALTA`                                                  | A     | No está la hoja: se toma como vacía.                                                                             |
+| `ENCABEZADOS_NO_ENCONTRADOS`, `COLUMNA_FALTA`                 | E / A | Cambiaron los títulos de las columnas. Usar la plantilla original (falta una opcional = aviso).                  |
+| `FILA_DE_EJEMPLO`                                             | -     | Fila de ejemplo ignorada.                                                                                        |
+| `FALTA_DATO`                                                  | E     | Falta un dato obligatorio.                                                                                       |
+| `FECHA_INVALIDA`, `HORA_INVALIDA`                             | E     | Escribir DD/MM/AAAA y HH:MM.                                                                                     |
+| `SI_NO_INVALIDO`, `OPCION_INVALIDA`                           | E     | Elegir un valor de la lista desplegable.                                                                         |
+| `NUMERO_INVALIDO`, `NUMERO_FUERA_DE_RANGO`                    | E     | Número mal escrito o fuera de rango (dotación 1 a 10, orden 1 a 99...).                                          |
+| `NUMERO_NEGATIVO`, `HORAS_INVERTIDAS`, `VIGENCIA_INVERTIDA`   | A     | Dato raro; se carga igual (o sin ese dato).                                                                      |
+| `COORDENADA_FUERA_DE_RANGO`, `COORDENADA_INCOMPLETA`          | A     | Se carga sin coordenadas.                                                                                        |
+| `CUIT_FORMATO`, `CUIT_LARGO`, `CUIL_FORMATO`, `CUIL_LARGO`    | E     | No tiene 11 dígitos numéricos. Si no lo tiene, dejar la celda vacía.                                             |
+| `CUIT_LIMPIADO`, `CUIL_LIMPIADO`, `DNI_LIMPIADO`              | A     | Se quitaron puntos, guiones o espacios.                                                                          |
+| `CUIT_VERIFICADOR`, `CUIL_VERIFICADOR`                        | A     | Dígito verificador incorrecto: posible error de tipeo. Revisar con la empresa.                                   |
+| `CUIT_REPETIDO`, `DNI_REPETIDO`, `LEGAJO_REPETIDO`            | E     | Repetido: la base no lo admite.                                                                                  |
+| `CLIENTE_SIN_CUIT_REPETIDO`                                   | E     | Dos clientes sin CUIT con la misma razón social.                                                                 |
+| `RAZON_SOCIAL_REPETIDA`                                       | A     | Misma razón social con CUIT distinto o ausente.                                                                  |
+| `CLIENTE_NO_ENCONTRADO`, `CLIENTE_AMBIGUO`                    | E     | La referencia al cliente (también en la lista de preferencias) no existe en Clientes o corresponde a más de uno. |
+| `CLIENTE_SIN_SEDE`                                            | A     | Sin sedes ni dirección: se carga sin sede.                                                                       |
+| `SEDE_REPETIDA`, `SEDE_NO_ENCONTRADA`                         | E     | Sede duplicada en el cliente, o un servicio o una preferencia de coordinador apunta a una sede que no existe.    |
+| `CONTACTO_PRINCIPAL_REPETIDO`, `CONTACTO_REPETIDO`            | E     | Más de un principal, o dos contactos con el mismo nombre en el cliente.                                          |
+| `EMAIL_CONTACTO`                                              | A     | El email del contacto no parece válido.                                                                          |
+| `SERVICIO_SIN_DIAS`, `HORA_FIN_ANTERIOR`, `SERVICIO_REPETIDO` | E     | Ningún día marcado; fin no posterior al inicio; servicio duplicado en la sede.                                   |
+| `EMAIL_FALTA`, `EMAIL_INVALIDO`, `EMAIL_REPETIDO`             | E     | Falta, está mal escrito o lo usan dos personas distintas.                                                        |
+| `EMAIL_DISTINTO_ENTRE_HOJAS`                                  | E     | La misma persona (mismo DNI) tiene emails distintos en Empleados y Supervisores.                                 |
+| `NOMBRE_DISTINTO_ENTRE_HOJAS`                                 | A     | Distinto nombre para el mismo DNI: se usa el de la primera hoja.                                                 |
+| `DNI_FORMATO`                                                 | E     | El DNI tiene letras u otros caracteres.                                                                          |
+| `DNI_LARGO`                                                   | A     | DNI de largo poco habitual.                                                                                      |
+| `DNI_NO_ENCONTRADO`                                           | E     | La habilitación apunta a un DNI que no está en el personal.                                                      |
+| `PERSONA_DE_BAJA`                                             | -     | Persona de Baja: no se carga ni se le crea usuario (fila ignorada).                                              |
+| `HABILITACION_DE_PERSONA_DE_BAJA`                             | -     | Habilitación de una persona de Baja: se ignora (fila ignorada).                                                  |
+| `HABILITACION_REPETIDA`                                       | A     | Fila repetida: se carga una sola.                                                                                |
+| `PREFERENCIA_REPETIDA`                                        | A     | Un cliente o sede preferencial figura dos veces en la lista de un coordinador: se carga una.                     |
+| `PREFERENCIA_REDUNDANTE`                                      | A     | Una sede preferencial cuyo cliente también está en la lista (ya la cubre): se carga igual.                       |
+| `FERIADO_REPETIDO`, `CRITERIO_REPETIDO`                       | E     | Fecha o título repetido.                                                                                         |
+| `ORDEN_REPETIDO`                                              | A     | Dos criterios con el mismo orden.                                                                                |
 
 ## 12. Entrega de contraseñas iniciales (DATA-008)
 

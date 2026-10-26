@@ -5,23 +5,27 @@ import type { Role } from '@/api/users'
 import * as authModule from '@/features/auth/AuthProvider'
 import type { AuthContextValue } from '@/features/auth/AuthProvider'
 import { at, makeAssignment } from '@/features/dashboard/fixtures'
+import {
+  makeWorkday,
+  makeWorkdaySupervision,
+} from '@/features/geo/coordinatorFixtures'
 import { EmployeeAttendanceHistoryTab } from './EmployeeAttendanceHistoryTab'
 
-const { historyMock, supervisionsMock } = vi.hoisted(() => ({
+const { historyMock, workdaysMock } = vi.hoisted(() => ({
   historyMock: vi.fn(),
-  supervisionsMock: vi.fn(),
+  workdaysMock: vi.fn(),
 }))
 
 vi.mock('@/features/attendance/queries', () => ({
   useEmployeeAttendanceHistoryQuery: historyMock,
 }))
 
-vi.mock('@/features/employees/queries', () => ({
-  useEmployeeLeavesQuery: () => ({ data: [], isLoading: false }),
+vi.mock('@/features/workdays/queries', () => ({
+  useSupervisorWorkdaysQuery: workdaysMock,
 }))
 
-vi.mock('@/features/supervisions/queries', () => ({
-  useSupervisionsAdminQuery: supervisionsMock,
+vi.mock('@/features/employees/queries', () => ({
+  useEmployeeLeavesQuery: () => ({ data: [], isLoading: false }),
 }))
 
 vi.mock('@/features/employees/employeeLeaveStatus', () => ({
@@ -79,7 +83,7 @@ function renderTab(roles: Role[], personRoles: Role[] = ['employee']) {
 
 beforeEach(() => {
   historyMock.mockReset().mockReturnValue({ data: rows, isLoading: false })
-  supervisionsMock.mockReset().mockReturnValue({ data: [], isLoading: false })
+  workdaysMock.mockReset().mockReturnValue({ data: [], isLoading: false })
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
     matches: true,
     media: query,
@@ -120,39 +124,43 @@ describe('EmployeeAttendanceHistoryTab (AJ-06)', () => {
     ).toBeEnabled()
   })
 
-  it('un supervisor suma sus supervisiones y muestra la columna «Tipo»', () => {
-    supervisionsMock.mockReturnValue({
+  it('las horas del coordinador son las de su jornada: las supervisiones no suman (CJ-14)', () => {
+    workdaysMock.mockReturnValue({
       data: [
-        {
-          id: 'sup1',
-          shiftId: 's9',
-          shiftDate: '2026-10-04',
-          clientName: 'Cliente Uno',
-          siteName: 'Sede Uno',
-          startTime: '09:00:00',
-          endTime: '10:00:00',
-          status: 'completed',
-          checkInAt: at('09:00'),
-          checkOutAt: at('10:00'),
-          generalNotes: null,
-          plannedMinutes: 60,
-          workedMinutes: 60,
-        },
+        makeWorkday({
+          workedMinutes: 480,
+          supervisions: [makeWorkdaySupervision({ durationMinutes: 300 })],
+        }),
       ],
       isLoading: false,
     })
     renderTab(['owner'], ['employee', 'supervisor'])
 
+    // 7 h 30 min de turnos como empleado + 8 h de jornada.
     expect(
       screen.getByLabelText('Total de horas del período'),
-    ).toHaveTextContent('8 h 30 min')
+    ).toHaveTextContent('15 h 30 min')
     expect(
-      screen.getByRole('columnheader', { name: 'Tipo' }),
-    ).toBeInTheDocument()
-    expect(supervisionsMock).toHaveBeenCalledWith(
+      screen.getByLabelText('Total de horas del período'),
+    ).toHaveTextContent('Como empleado 7 h 30 min')
+    expect(
+      screen.getByLabelText('Total de horas del período'),
+    ).toHaveTextContent('Como coordinador (jornadas) 8 h')
+    // Ya no hay columna «Tipo»: la tabla lista solo los turnos como empleado.
+    expect(
+      screen.queryByRole('columnheader', { name: 'Tipo' }),
+    ).not.toBeInTheDocument()
+    expect(workdaysMock).toHaveBeenCalledWith(
+      { supervisorId: 'e1', dateFrom: '2026-09-07', dateTo: '2026-10-07' },
+      true,
+    )
+  })
+
+  it('un empleado común no consulta jornadas', () => {
+    renderTab(['admin'])
+    expect(workdaysMock).toHaveBeenCalledWith(
       { supervisorId: 'e1', dateFrom: '2026-09-07', dateTo: '2026-10-07' },
       false,
-      true,
     )
   })
 })

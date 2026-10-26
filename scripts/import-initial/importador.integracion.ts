@@ -120,6 +120,8 @@ function datosFicticios(): DatosPlanilla {
         nombre: `${PREFIJO}Carla`,
         apellido: 'Tres',
         email: `${PREFIJO}carla@prueba.test`,
+        // P24.6: un cliente entero y una sede puntual como preferencias.
+        preferencias: `${PREFIJO}Alfa S.A.; ${PREFIJO}Gamma Sin Cuit / Principal`,
       },
     ],
     Servicios: [
@@ -210,6 +212,21 @@ describe.skipIf(!hayCredenciales)('el importador contra App_dev', () => {
 
     if (idsClientes.length > 0) {
       await admin
+        .from('supervisor_priorities')
+        .delete()
+        .in('client_id', idsClientes)
+      const { data: sedesDePrueba } = await admin
+        .from('sites')
+        .select('id')
+        .in('client_id', idsClientes)
+      const idsSedes = (sedesDePrueba ?? []).map((s) => campo(s, 'id'))
+      if (idsSedes.length > 0) {
+        await admin
+          .from('supervisor_priorities')
+          .delete()
+          .in('site_id', idsSedes)
+      }
+      await admin
         .from('employee_client_permissions')
         .delete()
         .in('client_id', idsClientes)
@@ -221,6 +238,7 @@ describe.skipIf(!hayCredenciales)('el importador contra App_dev', () => {
     await admin.from('holidays').delete().like('name', `${PREFIJO}%`)
     await admin.from('rating_criteria').delete().like('title', `${PREFIJO}%`)
     for (const id of idsPersonas) {
+      await admin.from('supervisor_priorities').delete().eq('supervisor_id', id)
       await admin
         .from('employee_client_permissions')
         .delete()
@@ -380,6 +398,20 @@ describe.skipIf(!hayCredenciales)('el importador contra App_dev', () => {
     expect(await contar('holidays', 'name')).toBe(2)
     expect(await contar('rating_criteria', 'title')).toBe(1)
 
+    // Las preferencias de Carla: el cliente Alfa entero y la sede Principal de Gamma.
+    const carla = cuentas.find((c) => c.email.includes('carla'))
+    const { data: prioridades } = await admin
+      .from('supervisor_priorities')
+      .select('client_id, site_id, removed_at')
+      .eq('supervisor_id', carla?.id ?? '')
+    expect(prioridades).toHaveLength(2)
+    expect(
+      prioridades?.filter((p) => campo(p, 'client_id') !== null),
+    ).toHaveLength(1)
+    expect(
+      prioridades?.filter((p) => campo(p, 'site_id') !== null),
+    ).toHaveLength(1)
+
     // La cuenta se crea sin contraseña (DATA-008 las asigna después) y deja su evento.
     const { count } = await admin
       .from('security_events')
@@ -412,6 +444,15 @@ describe.skipIf(!hayCredenciales)('el importador contra App_dev', () => {
     expect(await contar('holidays', 'name')).toBe(2)
     expect(await contar('rating_criteria', 'title')).toBe(1)
     expect(await cuentasConPrefijo()).toHaveLength(3)
+    // La segunda corrida no duplica las preferencias.
+    const carlaResume = (await cuentasConPrefijo()).find((c) =>
+      c.email.includes('carla'),
+    )
+    const { count: prioridadesResume } = await admin
+      .from('supervisor_priorities')
+      .select('*', { count: 'exact', head: true })
+      .eq('supervisor_id', carlaResume?.id ?? '')
+    expect(prioridadesResume).toBe(2)
     const { count } = await admin
       .from('sites')
       .select('*', { count: 'exact', head: true })

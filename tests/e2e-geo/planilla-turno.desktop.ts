@@ -15,7 +15,7 @@ import {
   desplazar,
   distanciaM,
   ficharComoEmpleado,
-  ficharComoSupervisor,
+  tomarComoSupervisor,
   redondear,
   SEDE_COORDS,
   sedeGeo,
@@ -422,11 +422,12 @@ test.describe('el dueño o un administrador con manage_attendance', () => {
           sc.today,
           FRANJAS_MOVIL.diaCompleto,
         )
-        const supervision = await sc.assignSupervision(turno, 'supervisor1')
-        await ficharComoSupervisor('supervisor1', supervision, 'inicio', {
-          punto: AFUERA,
-          precision: 15,
-        })
+        const supervision = await tomarComoSupervisor(
+          sc,
+          'supervisor1',
+          turno,
+          { punto: AFUERA, precision: 15 },
+        )
 
         await page.goto(`/admin/supervisiones/${supervision}`)
         await expect(page.getByText('Fuera de zona').first()).toBeVisible()

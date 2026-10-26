@@ -187,3 +187,34 @@ pantalla.
 
 - **Sin e2e**: quedan para qa-pruebas (P14.4), con la misma capacidad
   `manage_attendance` y los mismos seeds de F14.1.
+
+## P24.4: coordinadores en «Asistencia de hoy» y en el historial
+
+Especificación: `Docs/Plan_Maestro/modulos/P24_coordinacion_libre_y_jornada.md`
+(CJ-13, CJ-14, CJ-17, CJ-31).
+
+- **Sección «Coordinadores» de ADM-10** (`CoordinatorsDaySection`), debajo de
+  la tabla de empleados: el estado de la jornada de cada coordinador, inicio,
+  fin, **horas netas** y la novedad. Si la jornada se cerró sola (23:55) y
+  nadie la corrigió, muestra la advertencia «Se cerró sola: revisá el horario
+  de fin». Hoy sale de `v_supervisor_status` (incluye a quien todavía no
+  inició, y a quien tiene licencia); en otras fechas, de
+  `v_supervisor_workdays_admin` por fecha (solo quien tuvo jornada).
+- **Las horas del coordinador son las de su jornada**: inicio a fin menos las
+  pausas (CJ-13). El tiempo de cada supervisión es informativo y no suma
+  (CJ-14). Antes, el historial sumaba las supervisiones como si fueran horas;
+  eso se quitó (`buildAttendanceEntries` ya no recibe supervisiones y
+  desaparece la columna «Tipo» de la pestaña «Asistencia»).
+- **Pestaña «Asistencia» de la ficha** (`EmployeeAttendanceHistoryTab`): la
+  tabla lista solo los turnos como empleado. Si la persona es coordinadora, el
+  total del período suma además las horas netas de sus jornadas y debajo
+  muestra el desglose («Como empleado … · Como coordinador (jornadas) …»).
+- **Jornadas**: la ficha imprimible y «Coordinadores» leen de
+  `src/api/workdaysAdmin.ts` (`fetchSupervisorWorkdays`, `fetchWorkdaysByDate`,
+  tipo `AdminWorkday`), con los hooks de `src/features/workdays/queries.ts`
+  (una sola caché, clave `['workdaysAdmin', ...]`).
+- **Lista «Sin ubicación» del Resumen**: solo los coordinadores con la jornada
+  abierta (en actividad, en pausa o supervisando) y sin posición; «Sin iniciar»
+  y «Finalizada» no se listan.
+- Tests: `coordinatorDay.test.ts` (filas),
+  `EmployeeAttendanceHistoryTab.test.tsx`.

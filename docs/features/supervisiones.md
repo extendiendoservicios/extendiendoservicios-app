@@ -1,4 +1,17 @@
-# Supervisiones (F15 · P15.3 a P15.5)
+# Supervisiones (F15 · P15.3 a P15.5 · P24.3)
+
+> **Coordinación libre (P24, 23 oct 2026).** Desde P24.3 la administración ya no
+> asigna coordinadores a los turnos (CJ-01): ADM-14 «Asignar supervisión», la
+> acción «Asignar coordinador» del detalle del turno y «Marcar como no
+> realizada» (CJ-26) se quitaron. Las RPC `assign_supervision`,
+> `mark_supervision_not_done`, `supervision_check_in` y `supervision_check_out`
+> están revocadas (dan `42501`). Las secciones de P15.3 de más abajo que las
+> mencionan quedan como historia; lo vigente está en la última sección,
+> «P24.3 · Coordinación libre (administración)».
+
+> **P24.2 (coordinación libre y jornada):** la vía móvil del coordinador cambió. Ya no hay supervisiones asignadas ni
+> `supervision_check_in/out`; ver `docs/features/coordinador-celular.md`. Lo que sigue describe el diseño de F15 y queda como
+> historial donde difiera.
 
 `08_Fases_y_Backlog.md` F15 "Supervisiones". Dos vías sobre la misma base:
 
@@ -287,3 +300,92 @@ empleado (EMP-06/EMP-05) tal cual, sin acoplarse a ningún dominio.
   más estricta. Si Mike prefiere que completar cierre la edición al toque
   (sin esperar al plazo), es un cambio menor en `canRateNow`
   (`src/api/mySupervisions.ts`) y en el test que lo cubre.
+
+## P24.3 · Coordinación libre (administración)
+
+Especificación: `Docs/Plan_Maestro/modulos/P24_coordinacion_libre_y_jornada.md`
+(CJ-01 a CJ-34). Base: migraciones `0062` y `0063` (ver `docs/database.md`,
+«Coordinación libre y jornada del coordinador»). El celular del coordinador
+(SUP-02 a SUP-08, jornada, «Supervisar») es de P24.2; el mapa del Resumen, la
+Asistencia de hoy y la ficha imprimible, de P24.4.
+
+### Qué se quitó
+
+- `AssignSupervisionPage`, `AssignSupervisionForm` (y su test),
+  `MarkSupervisionNotDoneDialog`, la ruta `/admin/supervisiones/nueva` (ADM-14),
+  `assignSupervision`, `markSupervisionNotDone`, sus mutaciones, el esquema
+  `assignSupervisionSchema` y `canMarkSupervisionNotDone`. En
+  `src/api/supervisions.ts` y en `src/features/` de administración no queda
+  ninguna llamada a las RPC revocadas.
+- El botón «Asignar supervisión» de ADM-13 y de la sección «Supervisiones» de
+  ADM-06 (`ShiftDetail`), y el filtro por estado de ADM-13 (los estados
+  `assigned` y `not_done` ya no se generan; quedan en el historial).
+- La columna «Coord.» de la vista día de Planificación no se quitó: ahora
+  muestra a los coordinadores que supervisan o supervisaron el turno (todas
+  las supervisiones no canceladas, CJ-05), o «—» si nadie lo tomó
+  (`groupShiftPeople`).
+
+### ADM-13 / ADM-15 · Supervisiones
+
+- Un turno puede tener varias filas, una por coordinador (CJ-05).
+- Columna «Duración» (`duration_minutes`): informativa, no suma horas (CJ-14);
+  cuenta hasta ahora si la supervisión sigue abierta.
+- Marca **«Sin cerrar»** (`unclosed`, CJ-31) con `SupervisionStateBadges`: el
+  cierre automático de las 23:55 registró su fin pero nadie la cerró. ADM-15
+  explica la situación y ofrece **«Cancelar supervisión»** (`cancel_supervision`,
+  motivo obligatorio, O; A + `manage_supervisions`), solo para las que están en
+  curso.
+- Los filtros que quedan: empleado, coordinador, cliente, sede y fechas.
+
+### Clientes y sedes preferenciales (CJ-03, CJ-24)
+
+- `src/api/supervisorPriorities.ts`: `fetchSupervisorPriorities` (vigentes,
+  `removed_at is null`), `fetchSiteOptions`, `setSupervisorPriority` y
+  `removeSupervisorPriority` (RPC `set_supervisor_priority` /
+  `remove_supervisor_priority`, O; A + `manage_supervisions`).
+- `priorities.ts`: filtros puros (`prioritiesOfSupervisor`,
+  `preferredSupervisorsOfClient`, `preferredSupervisorsOfSite`). Una sola
+  consulta (`prioritiesKeys.list()`, 60 s de `staleTime`, sin polling) alimenta
+  las tres fichas.
+- ADM-16 (`EmployeeDetailPage`): pestaña **«Clientes y sedes preferenciales»**
+  (`SupervisorPrioritiesTab`), solo para quien tiene el rol coordinador. Se
+  agrega un «Cliente entero» o «Una sede» con un buscador y se quita con la X.
+  Sin `manage_supervisions` la lista es de solo lectura.
+- ADM-21 y ADM-22: bloque **«Coordinadores preferenciales»**
+  (`PreferredSupervisorsBlock`). En la sede, los que llegan por el cliente
+  entero se listan como «Por el cliente entero» y se quitan desde la ficha del
+  cliente. Sirven para ordenar la lista del coordinador, no para restringir.
+
+### Jornadas del coordinador (CJ-13, CJ-17, CJ-32)
+
+- `src/api/workdaysAdmin.ts` (no `workdays.ts`: ese nombre es de la app del
+  coordinador): `fetchSupervisorWorkdays` sobre `v_supervisor_workdays_admin`,
+  `correctWorkdayEvent`, `addWorkdayPause` y `recordWorkday`.
+- `src/features/workdays/`: `queries.ts` (sin polling), `schemas.ts` (zod),
+  `permissions.ts` (`canCorrectWorkdays` = `manage_attendance`) y `time.ts`
+  (rango válido de las horas: dentro del día de la jornada y no futuras).
+- ADM-16, pestaña **«Jornadas»** (`SupervisorWorkdaysTab`), solo para
+  coordinadores: selector de mes y una tarjeta por día (`WorkdayCard`) con
+  inicio, fin, horas netas, pausas, supervisiones (con su duración informativa
+  y «Sin cerrar»), el registro de eventos y el historial de correcciones.
+- Advertencia **«Cerrada automáticamente»** (`auto_close_warning`): se ve
+  mientras la jornada no se corrija. Una corrección la quita y deja la marca
+  «Corregida».
+- Correcciones, todas con motivo obligatorio y con traza (hora anterior, quién,
+  cuándo), siguiendo el patrón de `CorrectTimeDialog` de B1:
+  - «Corregir hora» de un inicio, pausa, reanudación, fin o reapertura
+    (`CorrectWorkdayEventDialog`). Los eventos de supervisión no se corrigen.
+  - «Quitar pausa» (`RemoveWorkdayPauseDialog`, `admin_correct_workday_event`
+    con `p_remove`).
+  - «Agregar pausa» (`AddWorkdayPauseDialog`, `admin_add_workday_pause`).
+  - «Registrar jornada» en nombre del coordinador (`RecordWorkdayDialog`,
+    `admin_record_workday`; una jornada de un día anterior necesita fin).
+- Los errores del servidor se muestran con su `message` tal cual.
+
+### Calificaciones (CJ-09, CJ-11)
+
+`EmployeeRatingsTab` (ADM-17) y la pestaña «Calificaciones» de ADM-13 listan
+una fila por calificación (`ratings.id`), así que dos coordinadores que
+califican al mismo empleado en el mismo turno aparecen como dos registros.
+Ningún resumen agrupa por turno: el promedio de la ficha
+(`v_employee_ratings`) es sobre todas las calificaciones.

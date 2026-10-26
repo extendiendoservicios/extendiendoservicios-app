@@ -3,7 +3,8 @@
 // Jornadas y supervisiones con horas FIJAS en una fecha cualquiera (hoy o pasada), para las
 // pruebas de horas, promedios y resúmenes que no dependen del reloj de la corrida: el turno, la
 // asignación y la supervisión se arman con las RPC reales (`assign_employee`,
-// `assign_supervision`) y la asistencia se carga directo con la clave de servicio, fechada en la
+// `assign_supervision` ya no existe, P24.5: las supervisiones se arman directo) y la asistencia se
+// carga directo con la clave de servicio, fechada en la
 // hora de pared que pide el caso. Los estados se dejan coherentes con lo que quedaría tras fichar.
 
 import type { FixedAccountKey } from '../../fixtures/accounts.ts'
@@ -128,7 +129,7 @@ export interface PedidoSupervision {
   salida: string
 }
 
-/** Turno + supervisión (RPC real) con inicio y fin fijos y la supervisión completada. */
+/** Turno + supervisión completada (armada directo, sin jornada) con inicio y fin fijos. */
 export async function cargarSupervision(
   sc: Scenario,
   pedido: PedidoSupervision,
@@ -139,33 +140,11 @@ export async function cargarSupervision(
     pedido.fecha,
     pedido.franja,
   )
-  const supervisionId = await sc.assignSupervision(shiftId, pedido.quien)
-  ok(
-    'asistencia de la supervisión',
-    (
-      await sc.db.from('supervision_attendance').insert([
-        {
-          supervision_id: supervisionId,
-          kind: 'check_in' as const,
-          recorded_at: `${pedido.fecha}T${pedido.entrada}:00-03:00`,
-        },
-        {
-          supervision_id: supervisionId,
-          kind: 'check_out' as const,
-          recorded_at: `${pedido.fecha}T${pedido.salida}:00-03:00`,
-        },
-      ])
-    ).error,
-  )
-  ok(
-    'estado de la supervisión',
-    (
-      await sc.db
-        .from('supervisions')
-        .update({ status: 'completed' })
-        .eq('id', supervisionId)
-    ).error,
-  )
+  const supervisionId = await sc.supervisionDirecta(shiftId, pedido.quien, {
+    estado: 'completada',
+    inicio: `${pedido.fecha}T${pedido.entrada}:00-03:00`,
+    fin: `${pedido.fecha}T${pedido.salida}:00-03:00`,
+  })
   return { shiftId, supervisionId }
 }
 

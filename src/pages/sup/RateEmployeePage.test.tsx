@@ -232,7 +232,10 @@ describe('RateEmployeePage (SUP-05)', () => {
   it('MOB-SUP-011: no ofrece el formulario cuando el plazo de P-083 ya cerró', () => {
     mockCommon()
     vi.spyOn(mySupervisionsModule, 'useMySupervisionQuery').mockReturnValue({
-      data: supervision({ endsAt: '2020-01-01T12:00:00Z' }),
+      data: supervision({
+        endsAt: '2020-01-01T12:00:00Z',
+        checkOutAt: '2020-01-01T12:30:00Z',
+      }),
       isLoading: false,
       isError: false,
     } as never)

@@ -148,8 +148,8 @@ const DEF_CONJUNTOS: Record<Conjunto, DefConjunto> = {
   },
   perm: { tag: 'pe', keys: TODAS },
   // Auditoría de accesibilidad de administración (`accesibilidad.admin.ts`): solo mira con `admin`
-  // y escribe con `empleado5`; va en su propio job para no alargar el de administración.
-  a11y: { tag: 'ay', keys: ['admin', 'empleado5'] },
+  // y escribe con `empleado5` y `supervisor1` (su ficha de coordinador, P24.5); va en su propio job para no alargar el de administración.
+  a11y: { tag: 'ay', keys: ['admin', 'empleado5', 'supervisor1'] },
   // Ajustes de la reunión del 6 oct 2026 (P19.5d, `tests/e2e-ajustes-reunion/`): administración,
   // cuatro empleados (cada archivo usa los suyos), un supervisor y el doble rol. Corre al final de
   // la corrida nocturna, después de `dueno`, porque cambia (y repone) el nombre del dueño del seed.

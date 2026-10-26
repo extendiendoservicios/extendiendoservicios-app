@@ -1,6 +1,6 @@
 # Problemas frecuentes y qué hacer
 
-DOC-021 (`08_Fases_y_Backlog.md` F19; `03_Plan_Maestro_Tecnico.md` sección 17). Para empleados, supervisores, administradores y para quien da soporte técnico.
+DOC-021 (`08_Fases_y_Backlog.md` F19; `03_Plan_Maestro_Tecnico.md` sección 17). Para empleados, coordinadores, administradores y para quien da soporte técnico.
 
 Cada problema tiene tres partes: **qué ves** (el síntoma), **por qué pasa** (la causa) y **qué hacer**. Lo que resuelve cada persona está separado en tres niveles:
 
@@ -17,7 +17,7 @@ Los textos entre comillas son los que muestra la app, tal cual.
 3. [Instalación y actualización de la app](#3-instalación-y-actualización-de-la-app)
 4. [Sin conexión y servicio caído](#4-sin-conexión-y-servicio-caído)
 5. [Registro de jornada, avisos y tareas (empleados)](#5-registro-de-jornada-avisos-y-tareas-empleados)
-6. [Supervisiones (supervisores)](#6-supervisiones-supervisores)
+6. [Jornada y supervisiones (coordinadores)](#6-jornada-y-supervisiones-coordinadores)
 7. [Administración](#7-administración)
 8. [Antes de pedir ayuda al soporte técnico](#8-antes-de-pedir-ayuda-al-soporte-técnico)
 
@@ -78,7 +78,7 @@ Los textos entre comillas son los que muestra la app, tal cual.
 
 ## 2. Ubicación
 
-La ubicación es **opcional**. Registrar el inicio y el fin funciona igual sin ella: solo queda sin la ubicación adjunta. La plataforma nunca muestra las coordenadas en pantalla.
+La ubicación es **opcional**. Registrar el inicio y el fin funciona igual sin ella: solo queda sin la ubicación adjunta. La plataforma nunca muestra las coordenadas en pantalla. Para los coordinadores vale lo mismo en cada evento de la jornada (iniciar, pausar, reanudar y finalizar) y de las supervisiones (empezar y cerrar): se registran igual sin ubicación, y no hay seguimiento continuo.
 
 ### 2.1. La app no me pide permiso de ubicación
 
@@ -233,29 +233,79 @@ Este problema **solo afecta al entorno de pruebas** (`dev.extendiendoservicios.c
 
 ---
 
-## 6. Supervisiones (supervisores)
+## 6. Jornada y supervisiones (coordinadores)
 
-### 6.1. No veo mi supervisión en **Hoy**
+Desde la coordinación libre (P24) **nadie asigna supervisiones**: el coordinador inicia su jornada, elige un turno de la lista y toca **Supervisar**. Los problemas de esta sección se explican con esa lógica; la guía completa está en [`guia-supervisor.md`](guia-supervisor.md).
 
-- **Por qué pasa:** Administración todavía no te la asignó, o es de una fecha que no es hoy (en **Hoy** ves las de hoy y los próximos siete días; en **Supervisiones** ves todas las pendientes).
-- **Lo resolvés vos:** revisá la pestaña **Supervisiones**. Si no está, avisá a Administración.
-- **Lo resuelve Administración:** **Supervisiones**, **Asignar supervisión**, elegir fecha, turno y supervisor. Necesita el permiso "Asignar supervisiones".
+### 6.1. No veo el turno que quiero supervisar en **Hoy**
 
-### 6.2. No me deja calificar: "El plazo para editar esta calificación terminó."
+- **Por qué pasa:** la lista muestra los turnos **de hoy** que no estén cancelados, de todos los clientes. Si no tenés ese cliente o sede como preferencial, el turno está en **Otras sedes**, no en **Mis sedes**.
+- **Lo resolvés vos:** usá el buscador de **Otras sedes** (cliente o sede). Un turno de otro día o cancelado no aparece.
+- **Lo resuelve Administración:** revisar que el turno exista y no esté cancelado en el **Calendario**. Si querés que ese cliente o sede te aparezca siempre en **Mis sedes**, que lo agreguen en tu ficha, pestaña **Clientes y sedes preferenciales**.
 
-- **Por qué pasa:** podés crear y editar las calificaciones mientras dure el turno (o hasta que registres el fin de tu supervisión, lo que ocurra último).
-- **Lo resolvés vos:** avisá a Administración.
+### 6.2. El botón **Supervisar** está apagado
+
+- **Por qué pasa:** la pantalla te dice el motivo debajo del botón. Los más comunes:
+  - "Iniciá tu jornada para poder supervisar." Todavía no iniciaste la jornada.
+  - "Estás en pausa: reanudá tu jornada para poder supervisar."
+  - "Tu jornada está finalizada: reabrila para poder supervisar."
+  - "Cerrá o descartá tu supervisión abierta antes de empezar otra." Se cierra una supervisión antes de abrir la siguiente.
+  - "Ya estás supervisando este turno." / "Ya supervisaste este turno." Hay una sola supervisión por coordinador y por turno.
+- **Lo resolvés vos:** tocá **Iniciar jornada**, **Reanudar** o **Reabrir jornada** según el caso, o cerrá o descartá la supervisión abierta.
+- **Si descartaste una supervisión sin calificar a nadie:** podés volver a tomar ese turno.
+
+### 6.3. No me deja iniciar la jornada
+
+- **Por qué pasa:** tenés una **licencia** cargada para hoy, o ya iniciaste la jornada de hoy (hay una sola por día).
+- **Lo resolvés vos:** si ya la habías iniciado y la finalizaste, tocá **Reabrir jornada**.
+- **Lo resuelve Administración:** si la licencia está de más, quitarla en la ficha de la persona, pestaña **Licencias**.
+
+### 6.4. No me deja pausar ni finalizar la jornada
+
+- **Por qué pasa:** tenés una supervisión abierta.
+- **Lo resolvés vos:** cerrala (**Cerrar supervisión**) o descartala (**Descartar**) y volvé a intentar.
+
+### 6.5. Mi jornada se cerró sola y tiene más horas de las que trabajé
+
+- **Por qué pasa:** si no finalizás la jornada, la app la cierra automáticamente a las **23:55** (hora de Argentina) y la marca "Cerrada automáticamente". Cuenta las horas hasta ese momento, aunque hayas terminado antes. Si tenías una supervisión abierta, queda marcada "Sin cerrar".
+- **Lo resolvés vos:** avisá a Administración. La próxima vez, tocá **Finalizar jornada** al terminar.
+- **Lo resuelve Administración:** **Empleados**, ficha del coordinador, pestaña **Jornadas**: corregir la hora de fin con un motivo (o agregar o quitar pausas). Al corregir, se quita la advertencia y queda la constancia de la corrección. Las supervisiones "Sin cerrar" se revisan en **Supervisiones**: si no se terminó de calificar, se usa **Cancelar supervisión**.
+
+### 6.6. Me olvidé de iniciar la jornada
+
+- **Lo resuelve Administración:** en la ficha del coordinador, pestaña **Jornadas**, **Registrar jornada** (**Inicio**, **Fin** y **Motivo**, que es obligatorio). Solo se puede si ese día no hay una jornada.
+
+### 6.7. No puedo cerrar la supervisión: "Para cerrar la supervisión falta calificar a: …"
+
+- **Por qué pasa:** para cerrar hay que calificar a **todos** los empleados del turno que registraron su inicio. Los que avisaron ausencia o no registraron inicio no se califican. Si vos también estás asignado como empleado en ese turno, no te calificás y quedás fuera del requisito.
+- **Lo resolvés vos:** tocá **Calificar** al lado de cada nombre que figura en el aviso. Cuando no falte nadie, **Cerrar supervisión** se enciende.
+- **Si empezaste la supervisión por error:** si todavía no calificaste a nadie, usá **Descartar**.
+
+### 6.8. No me deja calificar o editar una calificación
+
+- **Por qué pasa:** podés crear y cambiar tus calificaciones mientras tu supervisión está abierta y también después de cerrarla, hasta el fin del turno o el fin de tu supervisión, lo que ocurra último. Pasado ese momento, ya no.
+- **Lo resolvés vos:** si todavía estás dentro de ese plazo, entrá a la supervisión y tocá **Editar**. Si el plazo ya terminó, avisá a Administración.
 - **Lo resuelve Administración:** el dueño, o un administrador con el permiso "Editar calificaciones", edita la calificación desde **Supervisiones**, la supervisión, **Calificar** (o **Editar**) sin límite de plazo.
 
-### 6.3. No puedo completar la supervisión
+### 6.9. "No podés calificarte a vos mismo."
 
-- **Por qué pasa:** hay que registrar el **fin de la supervisión** antes de **Completar supervisión**. Si faltan empleados por calificar, la app te avisa pero te deja completar igual ("Faltan 3 empleados por calificar. Podés completar igual.").
-- **Lo resolvés vos:** en la supervisión, tocá **Registrar fin de supervisión** y después **Cerrar supervisión**, **Completar supervisión**. Si no pudiste hacerla, usá **No se pudo realizar** y escribí el motivo.
+- **Por qué pasa:** si sos coordinadora y también empleada en el mismo turno, no podés calificarte. En la lista de empleados de la supervisión figurás como **Vos**, sin botón para calificar, y no se te exige calificarte para cerrar. Si intentás entrar a calificarte, la app dice "No podés calificarte a vos mismo."
+- **Qué hacer:** nada. Si querés que te supervise otra persona, que tome el turno otro coordinador.
 
-### 6.4. "No podés calificarte a vos mismo."
+### 6.10. Otro coordinador y yo supervisamos el mismo turno y las calificaciones se ven repetidas
 
-- **Por qué pasa:** si sos supervisora y también empleada en el mismo turno, no podés calificarte.
-- **Lo resuelve Administración:** al asignar la supervisión, la pantalla avisa si la persona está asignada como empleada en ese turno: conviene elegir otra supervisora.
+- **Por qué pasa:** es lo esperado. Dos o más coordinadores pueden supervisar el mismo turno y **cada uno califica con su criterio**. En el perfil del empleado, Administración ve cada calificación por separado, con el nombre de quien la cargó.
+- **Qué hacer:** nada.
+
+### 6.11. En el mapa de Administración aparezco "Sin ubicación"
+
+- **Por qué pasa:** la posición se toma solo en cada evento (iniciar, pausar, reanudar o finalizar la jornada, y empezar o cerrar una supervisión). Si ese evento se hizo sin ubicación (sin consentimiento, permiso bloqueado o sin señal), no hay punto para mostrar.
+- **Lo resolvés vos:** revisá el permiso de ubicación (ver la [sección 2](#2-ubicación)) y dá tu consentimiento en **Más**, **Mi perfil**. El próximo evento ya queda con ubicación.
+
+### 6.12. El coordinador figura con 0 horas en un mes anterior
+
+- **Por qué pasa:** en los períodos anteriores a la versión 0.23.0, antes de que existieran las jornadas, el coordinador figura con **0 horas** en la asistencia, en el **Resumen** y en la ficha imprimible. Las supervisiones viejas ya no suman horas: ahora solo cuentan las jornadas (de inicio a fin, menos las pausas). No se perdió ningún dato.
+- **Qué hacer:** nada. Desde que existen las jornadas, las horas aparecen bien. Si hace falta el registro de un período viejo, usá el tiempo de cada supervisión, que sigue visible como dato informativo.
 
 ---
 
@@ -266,15 +316,15 @@ Este problema **solo afecta al entorno de pruebas** (`dev.extendiendoservicios.c
 - **Por qué pasa:** algunas acciones necesitan un permiso especial que el dueño le da a cada administrador. Sin el permiso, el botón no aparece (y aunque se lo intente por otro camino, el servidor lo rechaza).
 - **Lo resuelve el dueño:** **Configuración**, **Usuarios**, menú del administrador, **Editar roles y capacidades**, y activar el permiso. Los permisos se guardan solos al activarlos. Son siete:
 
-  | Permiso en la pantalla         | Qué habilita                                                |
-  | ------------------------------ | ----------------------------------------------------------- |
-  | Gestionar usuarios             | Crear, desactivar y resetear usuarios empleado o supervisor |
-  | Cancelar turnos                | **Cancelar turno**                                          |
-  | Editar calificaciones          | Editar las calificaciones de los supervisores               |
-  | Editar plantillas de tareas    | Crear y cambiar las listas de tareas                        |
-  | Registrar asistencia por otros | Registrar inicio, fin y avisos en nombre de un empleado     |
-  | Generar turnos del mes         | **Generar turnos del mes**                                  |
-  | Asignar supervisiones          | **Asignar supervisión** y cancelar supervisiones            |
+  | Permiso en la pantalla         | Qué habilita                                                                             |
+  | ------------------------------ | ---------------------------------------------------------------------------------------- |
+  | Gestionar usuarios             | Crear, desactivar y resetear usuarios empleado o coordinador                             |
+  | Cancelar turnos                | **Cancelar turno**                                                                       |
+  | Editar calificaciones          | Editar las calificaciones de los coordinadores                                           |
+  | Editar plantillas de tareas    | Crear y cambiar las listas de tareas                                                     |
+  | Registrar asistencia por otros | Registrar inicio, fin y avisos en nombre de un empleado                                  |
+  | Generar turnos del mes         | **Generar turnos del mes**                                                               |
+  | Gestionar supervisiones        | Cargar los clientes y sedes preferenciales de los coordinadores y cancelar supervisiones |
 
 ### 7.2. "El turno ya empezó: para asignar o quitar personal hace falta el permiso de asistencia."
 
@@ -321,7 +371,7 @@ Este problema **solo afecta al entorno de pruebas** (`dev.extendiendoservicios.c
 
 Juntá estos datos: el mensaje de ayuda sale mucho más rápido.
 
-1. **Quién sos** y con qué rol entrás (empleado, supervisor, administrador, dueño).
+1. **Quién sos** y con qué rol entrás (empleado, coordinador, administrador, dueño).
 2. **Qué estabas haciendo** y qué esperabas que pasara.
 3. **Qué pasó**, con el texto exacto del mensaje y, si podés, una captura de pantalla.
 4. **Cuándo** pasó (día y hora).

@@ -25,6 +25,8 @@ export const SECURITY_EVENT_TYPE_LABELS: Record<SecurityEventType, string> = {
   geo_validation_overridden: 'Validación por ubicación corregida',
   geofence_radius_changed: 'Radio de validación modificado',
   media_deleted: 'Fotos o videos eliminados',
+  workday_corrected: 'Jornada de coordinador corregida',
+  workday_auto_closed: 'Jornada de coordinador cerrada automáticamente',
 }
 
 export const SECURITY_EVENT_TYPES: SecurityEventType[] = [
@@ -45,4 +47,6 @@ export const SECURITY_EVENT_TYPES: SecurityEventType[] = [
   'geo_validation_overridden',
   'geofence_radius_changed',
   'media_deleted',
+  'workday_corrected',
+  'workday_auto_closed',
 ]

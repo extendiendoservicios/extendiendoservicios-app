@@ -10,10 +10,9 @@ import { formatSupervisionRange } from '@/features/employee/shiftRange'
 
 /**
  * SUP-07 · Supervisiones (tab) (MOB-SUP-003, `06` sección 12, `05` fila
- * SUP-07): todas las supervisiones asignadas y en curso, futuras incluidas,
- * ordenadas por fecha (`useMySupervisionsPendingQuery`, sin acotar a los
- * próximos 7 días como SUP-02 -- una supervisión asignada de hace varios
- * días que nadie canceló también tiene que verse acá).
+ * SUP-07): desde P24.2 no hay supervisiones asignadas (CJ-01, CJ-26), así que
+ * acá quedan las que el coordinador tiene abiertas (`in_progress`): la que está
+ * haciendo y las que quedaron sin cerrar. Tomar un turno se hace desde Hoy.
  */
 export default function SupervisionsPage() {
   const { data, isLoading, isError } = useMySupervisionsPendingQuery()
@@ -37,7 +36,8 @@ export default function SupervisionsPage() {
     return (
       <EmptyState
         icon={ClipboardList}
-        title="No tenés supervisiones asignadas"
+        title="No tenés supervisiones abiertas"
+        description="Tomá un turno desde Hoy para empezar una."
         className="mt-4"
       />
     )

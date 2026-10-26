@@ -1,8 +1,17 @@
-import { Link, useParams } from 'react-router'
-import { CheckCircle2, Lock, PlayCircle, Star, StopCircle } from 'lucide-react'
+import { useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router'
+import { CheckCircle2, Lock, Star, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { PersonCell } from '@/components/PersonCell'
 import { StarRating } from '@/components/StarRating'
 import { TaskList } from '@/components/TaskList'
@@ -12,6 +21,7 @@ import { useAuth } from '@/features/auth/AuthProvider'
 import {
   canRateNow,
   isRatingWindowClosed,
+  useDiscardSupervisionMutation,
   useMySupervisionQuery,
   useSupervisionAssignmentsQuery,
   useSupervisionRatingsQuery,
@@ -28,31 +38,33 @@ import { RatingCriteriaGuide } from '@/features/supervisions/components/RatingCr
 import { formatSupervisionRange } from '@/features/employee/shiftRange'
 import { LazyShiftMediaSection } from '@/features/employee/components/LazyShiftMediaSection'
 import { AttendanceMarkRow } from '@/features/employee/components/AttendanceMarkRow'
+import { useOnlineStatus } from '@/features/employee/useOnlineStatus'
+import { coordinatorErrorMessage } from '@/features/coordinator/errors'
+import { pendingRatings } from '@/features/coordinator/ratings'
 
 /**
- * SUP-03 · Detalle de la supervisión (MOB-SUP-004, `05` fila SUP-03, `06`
- * sección 12): cliente, sede (reusa `SiteInfo`, SITE-010, mismo componente
- * que EMP-04), franja, empleados asignados con su estado de asistencia e
- * inicio real, tareas del turno en solo lectura y la guía de criterios de
- * calificación. El botón lleva a SUP-04 y dice lo que falta: "Registrar
- * inicio" sin inicio, "Registrar fin" con inicio y sin fin, y no aparece con
- * los dos registrados (cerrar es SUP-06, P15.5) ni con la supervisión cerrada
- * o cancelada. La cabecera muestra las horas ya registradas.
+ * SUP-04 · Supervisión (P24.2; antes «Detalle de la supervisión», MOB-SUP-004,
+ * `05` fila SUP-03): cliente, sede (reusa `SiteInfo`, SITE-010, mismo
+ * componente que EMP-04), franja, empleados del turno con su estado de
+ * asistencia e inicio real, tareas del turno en solo lectura y la guía de
+ * criterios de calificación.
+ *
+ * El inicio ya no se registra acá: «Supervisar» (SUP-03) lo hace al tomar el
+ * turno (CJ-26) y el fin lo registra «Cerrar» (SUP-06, `complete_supervision`).
+ * Esta pantalla ofrece:
+ * - «Descartar» (CJ-27) mientras no haya calificado a nadie: queda cancelada y
+ *   puede volver a tomar el turno.
+ * - «Cerrar supervisión», deshabilitado mientras falte calificar a alguien
+ *   (CJ-10, CJ-28), con la lista de los que faltan.
  *
  * Los criterios que se muestran son los guardados al iniciar
- * (`criteriaSnapshot`, P-087) si la supervisión ya empezó, o los vigentes
- * ahora si todavía no (`useVigentRatingCriteriaQuery`) -- una guía de texto,
- * sin puntaje propio (P-080).
+ * (`criteriaSnapshot`, P-087) o, si todavía no hay, los vigentes ahora -- una
+ * guía de texto, sin puntaje propio (P-080).
  *
- * P15.5 (MOB-SUP-006/007): cada empleado de la lista lleva su acceso a
- * calificar (SUP-05, con la calificación ya cargada si existe) salvo que
- * sea el propio supervisor trabajando también como empleado del turno
- * (CB-13, "Vos") o que el plazo de P-083 ya haya cerrado (MOB-SUP-011, no
- * se ofrece el acceso en vez de dejar que falle contra el servidor). El pie
- * ahora también ofrece "Cerrar supervisión" (SUP-06) mientras la
- * supervisión esté asignada o en curso, además de "Registrar inicio/fin"
- * cuando corresponda -- antes esta pantalla no ofrecía nada con los dos
- * registros hechos.
+ * Cada empleado con inicio registrado lleva su acceso a calificar (SUP-05)
+ * salvo que sea el propio coordinador trabajando también como empleado del
+ * turno (CB-13, «Vos») o que el plazo de P-083 ya haya cerrado
+ * (MOB-SUP-011). Los ausentes no se califican (CJ-28).
  */
 export default function SupervisionDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -70,6 +82,11 @@ export default function SupervisionDetailPage() {
     supervision?.shiftId ?? '',
   )
   const { data: ratings } = useSupervisionRatingsQuery(id ?? '')
+  const navigate = useNavigate()
+  const online = useOnlineStatus()
+  const discard = useDiscardSupervisionMutation()
+  const [discardOpen, setDiscardOpen] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   if (isLoading) {
     return (
@@ -101,14 +118,34 @@ export default function SupervisionDetailPage() {
   }
 
   const criteria = supervision.criteriaSnapshot ?? vigentCriteria ?? []
-  const isOpen = ['assigned', 'in_progress'].includes(supervision.status)
-  const nextStep = !isOpen
-    ? null
-    : supervision.checkInAt == null
-      ? 'start'
-      : supervision.checkOutAt == null
-        ? 'finish'
-        : null
+  const isOpen = supervision.status === 'in_progress'
+  // «Sin cerrar» (CJ-31): la jornada se cerró sola con esta supervisión abierta.
+  const unclosed = isOpen && supervision.checkOutAt != null
+  const pending =
+    assignments && ratings
+      ? pendingRatings(supervision, assignments, ratings, auth.userId)
+      : null
+  const canDiscard =
+    isOpen && !unclosed && ratings != null && ratings.length === 0
+  const closeBlocked = pending == null || pending.length > 0
+
+  async function handleDiscard() {
+    setActionError(null)
+    try {
+      await discard.mutateAsync({ supervisionId: supervision!.id })
+      setDiscardOpen(false)
+      void navigate('/sup', { replace: true })
+    } catch (mutationError) {
+      setDiscardOpen(false)
+      setActionError(
+        coordinatorErrorMessage(
+          mutationError,
+          'No pudimos descartar la supervisión. Probá de nuevo.',
+        ),
+      )
+    }
+  }
+
   // MOB-SUP-011: se anticipa el cierre de la ventana de P-083 acá para no
   // ofrecer el acceso a calificar cuando la RPC lo va a rechazar de todos
   // modos (RATING_WINDOW_CLOSED).
@@ -209,8 +246,7 @@ export default function SupervisionDetailPage() {
           supervisión puede estar asignada, en curso o completada; cancelada o
           no realizada no (`begin_shift_media` de 0047 rechaza con
           NOT_SHIFT_PARTICIPANT). */}
-      {(supervision.status === 'assigned' ||
-        supervision.status === 'in_progress' ||
+      {(supervision.status === 'in_progress' ||
         supervision.status === 'completed') && (
         <LazyShiftMediaSection
           shiftId={supervision.shiftId}
@@ -257,39 +293,88 @@ export default function SupervisionDetailPage() {
         </Card>
       )}
 
-      {nextStep && (
-        <Button asChild size="mobile" className="mt-2">
-          <Link to={`/sup/supervisiones/${supervision.id}/registro`}>
-            {nextStep === 'start' ? (
-              <>
-                <PlayCircle aria-hidden="true" />
-                Registrar inicio de supervisión
-              </>
-            ) : (
-              <>
-                <StopCircle aria-hidden="true" />
-                Registrar fin de supervisión
-              </>
-            )}
-          </Link>
-        </Button>
+      {unclosed && (
+        <Alert variant="warn">
+          <AlertDescription>
+            Esta supervisión quedó sin cerrar cuando se cerró tu jornada. La
+            administración la va a revisar.
+          </AlertDescription>
+        </Alert>
       )}
 
-      {/* MOB-SUP-007: antes esta pantalla no ofrecía nada con inicio y fin
-          ya registrados; ahora "Cerrar supervisión" (SUP-06) queda
-          disponible mientras la supervisión esté asignada o en curso -- no
-          solo con los dos registros hechos, porque "marcar no realizada"
-          (`mark_supervision_not_done`) no exige fin registrado, a
-          diferencia de "completar" (`complete_supervision`,
-          `CHECK_OUT_REQUIRED`); SUP-06 resuelve cuál de las dos ofrecer. */}
-      {isOpen && (
-        <Button asChild size="mobile" className={nextStep ? undefined : 'mt-2'}>
-          <Link to={`/sup/supervisiones/${supervision.id}/cerrar`}>
-            <CheckCircle2 aria-hidden="true" />
-            Cerrar supervisión
-          </Link>
-        </Button>
+      {isOpen && !unclosed && pending && pending.length > 0 && (
+        <Alert variant="warn">
+          <AlertDescription>
+            Para cerrar la supervisión falta calificar a:{' '}
+            {pending.map((p) => p.name).join(', ')}.
+          </AlertDescription>
+        </Alert>
       )}
+      {actionError && (
+        <Alert variant="crit">
+          <AlertDescription>{actionError}</AlertDescription>
+        </Alert>
+      )}
+
+      {isOpen && !unclosed && (
+        <div className="mt-2 flex flex-col gap-[9px]">
+          {closeBlocked ? (
+            <Button size="mobile" disabled>
+              <CheckCircle2 aria-hidden="true" />
+              Cerrar supervisión
+            </Button>
+          ) : (
+            <Button asChild size="mobile">
+              <Link to={`/sup/supervisiones/${supervision.id}/cerrar`}>
+                <CheckCircle2 aria-hidden="true" />
+                Cerrar supervisión
+              </Link>
+            </Button>
+          )}
+          {canDiscard && (
+            <Button
+              size="mobile"
+              variant="ghost"
+              onClick={() => setDiscardOpen(true)}
+              disabled={!online}
+            >
+              <Trash2 aria-hidden="true" />
+              Descartar
+            </Button>
+          )}
+        </div>
+      )}
+
+      <Dialog open={discardOpen} onOpenChange={setDiscardOpen}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>¿Descartar la supervisión?</DialogTitle>
+            <DialogDescription>
+              Usalo si la empezaste por error. Queda cancelada y podés volver a
+              tomar este turno. Solo se puede si todavía no calificaste a nadie.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-col">
+            <Button
+              size="mobile"
+              variant="destructive"
+              onClick={() => void handleDiscard()}
+              loading={discard.isPending}
+              disabled={!online || discard.isPending}
+            >
+              Descartar supervisión
+            </Button>
+            <Button
+              size="mobile"
+              variant="ghost"
+              onClick={() => setDiscardOpen(false)}
+              disabled={discard.isPending}
+            >
+              Volver
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -321,7 +406,9 @@ function EmployeeRow({
         <StatusBadge domain="assignment" status={employee.status} />
         {isSelf ? (
           <span className="text-[11px] text-text-3">Vos</span>
-        ) : canRate && assignmentId ? (
+        ) : canRate &&
+          assignmentId &&
+          (employee.checkInAt != null || rating) ? (
           <Link
             to={`/sup/supervisiones/${supervisionId}/calificar/${assignmentId}`}
             className="flex min-h-11 items-center gap-1 rounded-md px-1.5 text-[12px] font-semibold text-primary outline-none focus-visible:ring-3 focus-visible:ring-ring"

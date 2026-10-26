@@ -7,16 +7,18 @@ import {
 } from '../../fixtures/dates.ts'
 import { MISSING_ENV_MESSAGE, readE2eEnv } from '../../fixtures/env.ts'
 import { Scenario } from '../../fixtures/scenario.ts'
-import { storageStatePath } from '../../fixtures/sessions.ts'
+import { readId, storageStatePath } from '../../fixtures/sessions.ts'
 import { cubre } from '../../fixtures/trace.ts'
 import { expectNoHorizontalScroll } from '../../fixtures/ui.ts'
 
 // TEST-016 (P18.1): criterio de aceptación de RB-X01 (`09_Trazabilidad.md`): "un administrador
 // completa desde un celular: ver tablero, asignar un empleado, registrar en nombre de otro,
 // asignar una supervisión". Proyecto `mobile` (390 px, táctil): sin scroll horizontal en
-// ninguna de las pantallas del recorrido.
+// ninguna de las pantallas del recorrido. P24.5: «asignar una supervisión» ya no existe (CJ-01);
+// el último paso pasa a ser cargar una preferencia del coordinador y mirar sus jornadas.
 // Cuentas y franjas de este archivo: empleado3 (14:00–18:00) para asignar; empleado4
-// (00:02–00:03, ya terminó a cualquier hora) para registrar en su nombre; supervisor1.
+// (00:02–00:03, ya terminó a cualquier hora) para registrar en su nombre; supervisor1
+// (preferencias y jornadas).
 
 test.skip(!readE2eEnv(), MISSING_ENV_MESSAGE)
 test.skip(isTooCloseToMidnight(), NEAR_MIDNIGHT_MESSAGE)
@@ -24,8 +26,8 @@ test.skip(isTooCloseToMidnight(), NEAR_MIDNIGHT_MESSAGE)
 test.use({ storageState: storageStatePath('admin') })
 
 test(
-  'el administrador, desde el celular, ve el tablero, asigna un empleado, registra en nombre de otro y asigna una supervisión',
-  cubre('RB-X01', 'RB-A04', 'RB-A07', 'RB-A08', 'RB-S02'),
+  'el administrador, desde el celular, ve el tablero, asigna un empleado, registra en nombre de otro y carga las preferencias y mira las jornadas de un coordinador',
+  cubre('RB-X01', 'RB-A04', 'RB-A07', 'RB-A08', 'RB-S02', 'CJ-03', 'CJ-24'),
   async ({ page }) => {
     test.setTimeout(240_000)
     const sc = new Scenario()
@@ -111,27 +113,28 @@ test(
         expect(data?.status).toBe('present')
       })
 
-      await test.step('ADM-14: asigna una supervisión', async () => {
-        await page.goto('/admin/supervisiones/nueva')
+      await test.step('ADM-16 → preferencias: agrega el cliente como preferencial del coordinador', async () => {
+        await page.goto(
+          `/admin/empleados/${readId('supervisor1')}?pestana=preferenciales`,
+        )
         await expectNoHorizontalScroll(page)
-        await page.getByRole('combobox', { name: 'Turno' }).click()
         await page
-          .getByRole('option', {
-            name: new RegExp(`${cliente.name}.*${sede.name}.*14:00–18:00`),
-          })
+          .getByRole('combobox', { name: 'Elegir cliente preferencial' })
           .click()
-        await page.getByRole('combobox', { name: 'Coordinador' }).click()
-        await page
-          .getByRole('option', { name: nombreDe('supervisor1') })
-          .click()
-        await page.getByRole('button', { name: 'Asignar supervisión' }).click()
-        await expect(page.getByText('Asignamos al coordinador.')).toBeVisible()
-        const { data } = await sc.db
-          .from('supervisions')
-          .select('status')
-          .eq('shift_id', turnoAsignar)
-          .single()
-        expect(data?.status).toBe('assigned')
+        await page.getByRole('option', { name: cliente.name }).click()
+        await page.getByRole('button', { name: 'Agregar' }).click()
+        await expect(
+          page.getByText('Agregamos el cliente como preferencial.'),
+        ).toBeVisible()
+        await expectNoHorizontalScroll(page)
+      })
+
+      await test.step('ADM-16 → Jornadas: sin jornadas todavía y sin scroll horizontal', async () => {
+        await page.getByRole('tab', { name: 'Jornadas' }).click()
+        await expect(
+          page.getByText('No hay jornadas en este mes'),
+        ).toBeVisible()
+        await expectNoHorizontalScroll(page)
       })
     } finally {
       expect(await sc.cleanup(), 'limpieza').toEqual([])

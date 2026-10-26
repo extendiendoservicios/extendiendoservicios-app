@@ -21,6 +21,7 @@ describe('getParentPath (P17.8)', () => {
     ['/app/en-curso/5', '/app', '/app'],
     ['/app/en-curso/5/tareas', '/app', '/app/en-curso/5'],
     ['/sup/supervisiones/3/calificar/8', '/sup', '/sup/supervisiones/3'],
+    ['/sup/turnos/5', '/sup', '/sup'],
     ['/perfil', '/app', '/app'],
   ])('%s (%s) -> %s', (pathname, root, expected) => {
     expect(getParentPath(pathname, root)).toBe(expected)

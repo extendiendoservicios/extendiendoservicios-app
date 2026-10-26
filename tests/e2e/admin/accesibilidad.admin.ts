@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { daysFromToday } from '../../fixtures/dates.ts'
 import { readId, storageStatePath } from '../../fixtures/sessions.ts'
 import {
   auditarEnAmbosTamanos,
@@ -66,6 +67,12 @@ test.describe('axe: administrador', () => {
           end: '05:40',
         })
         await sc.assign(turno, 'empleado5')
+        // Una jornada de ayer del coordinador, para que la pestaña «Jornadas» tenga una tarjeta.
+        await sc.jornadaDirecta('supervisor1', daysFromToday(-1), {
+          desde: '08:00',
+          hasta: '16:00',
+          pausas: [{ desde: '12:00', hasta: '12:30', motivo: 'almuerzo' }],
+        })
 
         const pantallas: Array<[nombre: string, ruta: string]> = [
           ['ADM-02 Resumen', '/admin'],
@@ -81,7 +88,14 @@ test.describe('axe: administrador', () => {
           ['ADM-09 Generar turnos', '/admin/turnos/generar'],
           ['ADM-10 Asistencia de hoy', '/admin/asistencia'],
           ['ADM-13 Supervisiones', '/admin/supervisiones'],
-          ['ADM-14 Nueva supervisión', '/admin/supervisiones/nueva'],
+          [
+            'ADM-16 Ficha del coordinador: preferencias',
+            `/admin/empleados/${readId('supervisor1')}?pestana=preferenciales`,
+          ],
+          [
+            'ADM-16 Ficha del coordinador: jornadas',
+            `/admin/empleados/${readId('supervisor1')}?pestana=jornadas`,
+          ],
           ['ADM-16 Empleados', '/admin/empleados'],
           [
             'ADM-17 Ficha del empleado',

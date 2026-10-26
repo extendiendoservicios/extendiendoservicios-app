@@ -50,11 +50,12 @@ const {
   fetchMySupervisionsHistory,
   fetchMySupervisionById,
   fetchVigentRatingCriteria,
-  supervisionCheckIn,
-  supervisionCheckOut,
+  takeSupervision,
+  discardSupervision,
   rateEmployee,
   completeSupervision,
-  markSupervisionNotDone,
+  isRatingWindowClosed,
+  canRateNow,
 } = await import('./mySupervisions')
 
 beforeEach(() => {
@@ -144,7 +145,7 @@ describe('fetchMySupervisionsUpcoming', () => {
 })
 
 describe('fetchMySupervisionsPending', () => {
-  it('consulta v_my_supervisions filtrando assigned/in_progress', async () => {
+  it('consulta v_my_supervisions filtrando las abiertas (in_progress)', async () => {
     fromMock.mockReturnValue(makeChainable({ data: [], error: null }))
 
     await fetchMySupervisionsPending()
@@ -218,131 +219,115 @@ describe('fetchVigentRatingCriteria', () => {
   })
 })
 
-describe('supervisionCheckIn', () => {
-  it('llama a la RPC con las coordenadas cuando hay consentimiento', async () => {
-    rpcMock.mockResolvedValue({
-      data: {
-        id: 'sa1',
-        supervision_id: 'sv1',
-        kind: 'check_in',
-        recorded_at: '2026-09-27T11:00:00Z',
-      },
-      error: null,
-    })
+describe('takeSupervision (CJ-26)', () => {
+  const TAKE_RESPONSE = {
+    supervision: { id: 'sv9', status: 'in_progress' },
+    check_in: {
+      id: 'sa1',
+      supervision_id: 'sv9',
+      kind: 'check_in',
+      recorded_at: '2026-09-27T11:00:00Z',
+      geo_status: 'valid',
+      geo_unvalidated_reason: null,
+      site_distance_m: 40,
+      geofence_radius_m: 200,
+      geo_override_at: null,
+    },
+    warnings: ['SUPERVISES_OWN_SHIFT'],
+  }
 
-    const result = await supervisionCheckIn('sv1', {
+  it('llama a take_supervision con el turno y la posición, y devuelve la hora del servidor y la validación', async () => {
+    rpcMock.mockResolvedValue({ data: TAKE_RESPONSE, error: null })
+
+    const result = await takeSupervision('sh1', {
       lat: -34.47,
       lng: -58.5,
       accuracyM: 12,
     })
 
-    expect(rpcMock).toHaveBeenCalledWith('supervision_check_in', {
-      p_supervision_id: 'sv1',
+    expect(rpcMock).toHaveBeenCalledWith('take_supervision', {
+      p_shift_id: 'sh1',
       p_lat: -34.47,
       p_lng: -58.5,
       p_accuracy: 12,
+      p_outside_reason: undefined,
     })
-    expect(result).toEqual({
-      id: 'sa1',
-      supervisionId: 'sv1',
-      kind: 'check_in',
-      recordedAt: '2026-09-27T11:00:00Z',
-      geo: null,
-    })
+    expect(result.supervisionId).toBe('sv9')
+    expect(result.checkIn.recordedAt).toBe('2026-09-27T11:00:00Z')
+    expect(result.checkIn.geo?.status).toBe('valid')
+    expect(result.warnings).toEqual(['SUPERVISES_OWN_SHIFT'])
   })
 
-  it('manda el motivo y devuelve la validación contra la sede supervisada (B-07)', async () => {
-    rpcMock.mockResolvedValue({
-      data: {
-        id: 'sa1',
-        supervision_id: 'sv1',
-        kind: 'check_in',
-        recorded_at: '2026-09-27T11:00:00Z',
-        geo_status: 'valid',
-        geo_unvalidated_reason: null,
-        site_distance_m: 40,
-        geofence_radius_m: 200,
-        geo_override_at: null,
-      },
-      error: null,
-    })
+  it('manda el motivo recortado cuando está fuera de la zona', async () => {
+    rpcMock.mockResolvedValue({ data: TAKE_RESPONSE, error: null })
 
-    const result = await supervisionCheckIn(
-      'sv1',
+    await takeSupervision(
+      'sh1',
       { lat: -34.47, lng: -58.5, accuracyM: 12 },
       ' Estoy en la puerta ',
     )
 
-    expect(rpcMock).toHaveBeenCalledWith('supervision_check_in', {
-      p_supervision_id: 'sv1',
-      p_lat: -34.47,
-      p_lng: -58.5,
-      p_accuracy: 12,
-      p_outside_reason: 'Estoy en la puerta',
-    })
-    expect(result.geo).toEqual({
-      status: 'valid',
-      reason: null,
-      distanceM: 40,
-      radiusM: 200,
-      overridden: false,
-    })
+    expect(rpcMock).toHaveBeenCalledWith(
+      'take_supervision',
+      expect.objectContaining({ p_outside_reason: 'Estoy en la puerta' }),
+    )
   })
 
-  it('registra igual sin coordenadas (ADR-009: nunca bloquea)', async () => {
-    rpcMock.mockResolvedValue({
-      data: {
-        id: 'sa1',
-        supervision_id: 'sv1',
-        kind: 'check_in',
-        recorded_at: '2026-09-27T11:00:00Z',
-      },
-      error: null,
-    })
+  it('registra igual sin coordenadas (ADR-009, CJ-21: nunca bloquea)', async () => {
+    rpcMock.mockResolvedValue({ data: TAKE_RESPONSE, error: null })
 
-    await supervisionCheckIn('sv1', null)
+    await takeSupervision('sh1', null)
 
-    expect(rpcMock).toHaveBeenCalledWith('supervision_check_in', {
-      p_supervision_id: 'sv1',
-      p_lat: undefined,
-      p_lng: undefined,
-      p_accuracy: undefined,
-    })
+    const args = rpcMock.mock.calls[0]?.[1] as Record<string, unknown>
+    expect(args.p_lat).toBeUndefined()
+    expect(args.p_lng).toBeUndefined()
+    expect(args.p_accuracy).toBeUndefined()
   })
 
-  it('propaga el error traducido de la RPC (por ejemplo NOT_TODAY)', async () => {
+  it('propaga el error traducido (por ejemplo WORKDAY_PAUSED)', async () => {
     rpcMock.mockResolvedValue({
       data: null,
-      error: { message: 'Este turno no es de hoy.', hint: 'NOT_TODAY' },
+      error: {
+        message: 'Estás en pausa: reanudá tu jornada para supervisar.',
+        hint: 'WORKDAY_PAUSED',
+      },
     })
 
-    await expect(supervisionCheckIn('sv1', null)).rejects.toThrow(
-      'Este turno no es de hoy.',
-    )
+    await expect(takeSupervision('sh1', null)).rejects.toMatchObject({
+      hint: 'WORKDAY_PAUSED',
+    })
   })
 })
 
-describe('supervisionCheckOut', () => {
-  it('llama a la RPC de fin con las coordenadas', async () => {
+describe('discardSupervision (CJ-27)', () => {
+  it('llama a discard_supervision y devuelve la supervisión cancelada', async () => {
     rpcMock.mockResolvedValue({
       data: {
-        id: 'sa2',
-        supervision_id: 'sv1',
-        kind: 'check_out',
-        recorded_at: '2026-09-27T15:00:00Z',
+        id: 'sv1',
+        status: 'cancelled',
+        not_done_reason: null,
+        general_notes: null,
       },
       error: null,
     })
 
-    const result = await supervisionCheckOut('sv1', null)
+    const result = await discardSupervision('sv1')
 
-    expect(rpcMock).toHaveBeenCalledWith('supervision_check_out', {
+    expect(rpcMock).toHaveBeenCalledWith('discard_supervision', {
       p_supervision_id: 'sv1',
-      p_lat: undefined,
-      p_lng: undefined,
-      p_accuracy: undefined,
     })
-    expect(result.kind).toBe('check_out')
+    expect(result.status).toBe('cancelled')
+  })
+
+  it('propaga SUPERVISION_HAS_RATINGS si ya calificó a alguien', async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: { message: 'Ya calificaste.', hint: 'SUPERVISION_HAS_RATINGS' },
+    })
+
+    await expect(discardSupervision('sv1')).rejects.toMatchObject({
+      hint: 'SUPERVISION_HAS_RATINGS',
+    })
   })
 })
 
@@ -374,46 +359,79 @@ describe('rateEmployee', () => {
   })
 })
 
-describe('completeSupervision', () => {
-  it('llama a complete_supervision con la nota general', async () => {
-    rpcMock.mockResolvedValue({
-      data: {
-        id: 'sv1',
-        status: 'completed',
-        not_done_reason: null,
-        general_notes: 'Todo bien',
-      },
-      error: null,
-    })
+describe('completeSupervision (CJ-10)', () => {
+  const COMPLETED = {
+    id: 'sv1',
+    status: 'completed',
+    not_done_reason: null,
+    general_notes: 'Todo bien',
+  }
 
-    const result = await completeSupervision('sv1', 'Todo bien')
+  it('llama a complete_supervision con la nota general y la posición del fin', async () => {
+    rpcMock.mockResolvedValue({ data: COMPLETED, error: null })
+
+    const result = await completeSupervision('sv1', ' Todo bien ', {
+      lat: -34.47,
+      lng: -58.5,
+      accuracyM: 12,
+    })
 
     expect(rpcMock).toHaveBeenCalledWith('complete_supervision', {
       p_supervision_id: 'sv1',
       p_general_notes: 'Todo bien',
+      p_lat: -34.47,
+      p_lng: -58.5,
+      p_accuracy: 12,
+      p_outside_reason: undefined,
     })
     expect(result?.status).toBe('completed')
   })
+
+  it('cierra igual sin coordenadas', async () => {
+    rpcMock.mockResolvedValue({ data: COMPLETED, error: null })
+
+    await completeSupervision('sv1', undefined, null)
+
+    const args = rpcMock.mock.calls[0]?.[1] as Record<string, unknown>
+    expect(args.p_lat).toBeUndefined()
+    expect(args.p_general_notes).toBeUndefined()
+  })
+
+  it('propaga RATINGS_PENDING con el mensaje del servidor (trae los nombres)', async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: {
+        message: 'Falta calificar a: Ana Pérez.',
+        hint: 'RATINGS_PENDING',
+      },
+    })
+
+    await expect(completeSupervision('sv1', undefined, null)).rejects.toThrow(
+      'Falta calificar a: Ana Pérez.',
+    )
+  })
 })
 
-describe('markSupervisionNotDone', () => {
-  it('llama a mark_supervision_not_done con el motivo', async () => {
-    rpcMock.mockResolvedValue({
-      data: {
-        id: 'sv1',
-        status: 'not_done',
-        not_done_reason: 'Sede cerrada',
-        general_notes: null,
-      },
-      error: null,
-    })
+describe('ventana de edición de la calificación (P-083, ajustada en P24.1)', () => {
+  const base = {
+    status: 'in_progress',
+    endsAt: '2026-09-27T12:00:00Z',
+    checkOutAt: null,
+  } as unknown as Parameters<typeof isRatingWindowClosed>[0]
 
-    const result = await markSupervisionNotDone('sv1', 'Sede cerrada')
+  it('no corre mientras la supervisión sigue abierta, aunque el turno ya haya terminado (CJ-06)', () => {
+    const now = new Date('2026-09-27T20:00:00Z')
+    expect(isRatingWindowClosed(base, now)).toBe(false)
+    expect(canRateNow(base, now)).toBe(true)
+  })
 
-    expect(rpcMock).toHaveBeenCalledWith('mark_supervision_not_done', {
-      p_supervision_id: 'sv1',
-      p_reason: 'Sede cerrada',
-    })
-    expect(result?.notDoneReason).toBe('Sede cerrada')
+  it('corre desde que se registra el fin: cierra pasado el mayor entre el fin del turno y el fin registrado', () => {
+    const closed = { ...base, checkOutAt: '2026-09-27T13:00:00Z' }
+    expect(isRatingWindowClosed(closed, new Date('2026-09-27T12:59:00Z'))).toBe(
+      false,
+    )
+    expect(isRatingWindowClosed(closed, new Date('2026-09-27T13:01:00Z'))).toBe(
+      true,
+    )
   })
 })

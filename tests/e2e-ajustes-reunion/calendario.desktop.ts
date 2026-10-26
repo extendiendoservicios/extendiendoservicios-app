@@ -129,7 +129,7 @@ test(
       const sede = await sc.site(cliente.id, 'p1911-dia')
       const turno = await sc.shift(cliente.id, sede.id, sc.today, FRANJAS.tarde)
       await sc.assign(turno, 'empleado1')
-      await sc.assignSupervision(turno, 'supervisor1')
+      await sc.supervisionDirecta(turno, 'supervisor1')
 
       await page.goto(`/admin/planificacion?vista=dia&fecha=${sc.today}`)
       await menuAbierto(page)

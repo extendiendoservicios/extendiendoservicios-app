@@ -4,7 +4,7 @@
 // (`05_Pantallas_y_Navegacion.md` sección 7, `07_Design_System.md` "Drawer / Sheet"), con la cuenta
 // del dueño y datos descartables `E2E-P172`:
 //  - RESP-005: las listas son tarjetas (RowCard) y no tablas; desde 1024 px, tabla.
-//  - RESP-006: ADM-06, ADM-14 y ADM-15 son páginas (no paneles) por debajo de 1024 y panel desde
+//  - RESP-006: ADM-06 y ADM-15 son páginas (no paneles) por debajo de 1024 y panel desde
 //    1024; ADM-08, ADM-11 y los paneles de configuración ocupan toda la pantalla en 390 px.
 //  - RESP-007: calendario mensual -> lista de días; grilla semanal -> un empleado por vez.
 //  - RESP-004: el botón "Más" de la tabbar abre el resto de las secciones y navega.
@@ -128,11 +128,6 @@ test.describe('RESP-006: drawers pasan a página completa en móvil', () => {
       id: 'ADM-15',
       route: () => `/admin/supervisiones/${data.supervisionId}`,
       marker: () => data.clientName,
-    },
-    {
-      id: 'ADM-14',
-      route: () => '/admin/supervisiones/nueva',
-      marker: () => 'Asignar supervisión',
     },
   ]
   for (const drawer of routeDrawers) {

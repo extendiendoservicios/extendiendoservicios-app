@@ -9,7 +9,6 @@ import {
   type DataTablePagination,
 } from '@/components/DataTable'
 import { StatusBadge } from '@/components/status'
-import { Badge } from '@/components/ui/badge'
 import { certificateLabel } from '@/lib/absenceReasons'
 import { formatMinutes, formatTime } from '@/lib/format'
 import type { AttendanceBoardRow } from '@/api/attendance'
@@ -18,23 +17,23 @@ import { useAuth } from '@/features/auth/AuthProvider'
 import { getAttendanceRowBadge } from '@/features/attendance/derive'
 import {
   buildAttendanceEntries,
-  ENTRY_KIND_LABELS,
   entryCheckIn,
   entryCheckOut,
   entryFranja,
   personSignerLabel,
   printRoleLabels,
+  sumWorkdayMinutes,
   sumWorkedMinutes,
   type AttendanceDetailEntry,
   type AttendanceSheetPerson,
 } from '@/features/attendance/detailSheet'
 import { useEmployeeAttendanceHistoryQuery } from '@/features/attendance/queries'
 import { useEmployeeLeavesQuery } from '@/features/employees/queries'
+import { useSupervisorWorkdaysQuery } from '@/features/workdays/queries'
 import {
   ABSENCE_REASON_LABELS,
   NOTICE_KIND_LABELS,
 } from '@/features/attendance/reasonLabels'
-import { useSupervisionsAdminQuery } from '@/features/supervisions/queries'
 import {
   addDaysToIsoDate,
   formatDateOnly,
@@ -99,9 +98,13 @@ interface EmployeeAttendanceHistoryTabProps {
  *
  * AJ-06: arriba del detalle, en la misma fila que los selectores de fecha,
  * va el total de horas del período y el botón «Descargar detalle» (hoja
- * membretada imprimible; solo dueño y administradores). Si la persona es
- * supervisora, se suman sus supervisiones (`v_supervisions_admin`) al mismo
- * listado, distinguidas por la columna «Tipo» (Servicio / Supervisión).
+ * membretada imprimible; solo dueño y administradores).
+ *
+ * P24.4 (CJ-14, CJ-34): las horas de un coordinador son las de su jornada,
+ * no la suma de sus supervisiones. La tabla lista solo los servicios como
+ * empleado; si la persona es coordinadora, el total del período suma además
+ * las horas netas de sus jornadas (`v_supervisor_workdays_admin`) y la hoja
+ * imprimible lleva una sección por rol, con la suma al final.
  */
 function EmployeeAttendanceHistoryTab({
   profileId,
@@ -112,6 +115,8 @@ function EmployeeAttendanceHistoryTab({
     (role) => role === 'owner' || role === 'admin',
   )
   const isSupervisor = person.roles.includes('supervisor')
+  // Un coordinador que no es empleado no tiene turnos como empleado en la hoja.
+  const includeServices = person.roles.includes('employee') || !isSupervisor
 
   const today = todayInBuenosAires()
   const [from, setFrom] = useState(addDaysToIsoDate(today, -DEFAULT_RANGE_DAYS))
@@ -124,25 +129,30 @@ function EmployeeAttendanceHistoryTab({
 
   const historyQuery = useEmployeeAttendanceHistoryQuery(profileId, from, to)
   const leavesQuery = useEmployeeLeavesQuery(profileId)
-  const supervisionsQuery = useSupervisionsAdminQuery(
+  const workdaysQuery = useSupervisorWorkdaysQuery(
     { supervisorId: profileId, dateFrom: from, dateTo: to },
-    false,
-    isSupervisor,
+    isSupervisor && canDownload && from <= to,
+  )
+  // La capa de datos las trae de la más nueva a la más vieja; la ficha las lleva en orden cronológico.
+  const workdays = useMemo(
+    () =>
+      [...(workdaysQuery.data ?? [])].sort((a, b) =>
+        a.workDate.localeCompare(b.workDate),
+      ),
+    [workdaysQuery.data],
   )
 
   const entries = useMemo(
-    () =>
-      buildAttendanceEntries(
-        historyQuery.data ?? [],
-        isSupervisor ? (supervisionsQuery.data ?? []) : [],
-      ),
-    [historyQuery.data, supervisionsQuery.data, isSupervisor],
+    () => buildAttendanceEntries(historyQuery.data ?? []),
+    [historyQuery.data],
   )
-  const totalMinutes = sumWorkedMinutes(entries)
+  const servicesMinutes = sumWorkedMinutes(entries)
+  const workdaysMinutes = sumWorkdayMinutes(workdays)
+  const totalMinutes = servicesMinutes + workdaysMinutes
   const isLoading =
     historyQuery.isLoading ||
     (canDownload && leavesQuery.isLoading) ||
-    (isSupervisor && supervisionsQuery.isLoading)
+    (isSupervisor && canDownload && workdaysQuery.isLoading)
 
   const pageRows = entries.slice(
     pagination.pageIndex * pagination.pageSize,
@@ -167,35 +177,13 @@ function EmployeeAttendanceHistoryTab({
       meta: { card: 'title' },
       cell: ({ row }) => (
         <Link
-          to={
-            row.original.kind === 'service'
-              ? `/admin/turnos/${row.original.row.shiftId}`
-              : `/admin/supervisiones/${row.original.row.id}`
-          }
+          to={`/admin/turnos/${row.original.row.shiftId}`}
           className="font-semibold text-text capitalize hover:text-primary-800"
         >
           {formatDateOnly(row.original.date)}
         </Link>
       ),
     },
-    ...(isSupervisor
-      ? [
-          {
-            id: 'kind',
-            header: 'Tipo',
-            meta: { card: 'trailing' },
-            cell: ({ row }) => (
-              <Badge
-                variant={
-                  row.original.kind === 'service' ? 'neutral' : 'primary'
-                }
-              >
-                {ENTRY_KIND_LABELS[row.original.kind]}
-              </Badge>
-            ),
-          } satisfies DataTableColumnDef<AttendanceDetailEntry>,
-        ]
-      : []),
     {
       id: 'client',
       header: 'Cliente · sede',
@@ -253,18 +241,10 @@ function EmployeeAttendanceHistoryTab({
         <WorkedHoursCell
           workedMinutes={row.original.row.workedMinutes}
           plannedMinutes={row.original.row.plannedMinutes}
-          minutesEarlyLeave={
-            row.original.kind === 'service'
-              ? row.original.row.minutesEarlyLeave
-              : null
-          }
+          minutesEarlyLeave={row.original.row.minutesEarlyLeave}
           checkInAt={row.original.row.checkInAt}
           checkOutAt={row.original.row.checkOutAt}
-          displayStatus={
-            row.original.kind === 'service'
-              ? row.original.row.displayStatus
-              : undefined
-          }
+          displayStatus={row.original.row.displayStatus}
         />
       ),
     },
@@ -272,28 +252,21 @@ function EmployeeAttendanceHistoryTab({
       id: 'status',
       header: 'Estado',
       meta: { card: 'meta', cardLabel: 'Estado' },
-      cell: ({ row }) =>
-        row.original.kind === 'service' ? (
-          <StatusBadge {...getAttendanceRowBadge(row.original.row)} />
-        ) : (
-          <StatusBadge domain="supervision" status={row.original.row.status} />
-        ),
+      cell: ({ row }) => (
+        <StatusBadge {...getAttendanceRowBadge(row.original.row)} />
+      ),
     },
     {
       id: 'notice',
       header: 'Aviso',
       meta: { card: 'meta', cardLabel: 'Aviso' },
-      cell: ({ row }) =>
-        row.original.kind === 'service' ? noticeLabel(row.original.row) : '—',
+      cell: ({ row }) => noticeLabel(row.original.row),
     },
     {
       id: 'notes',
       header: 'Observación',
       meta: { card: 'meta', cardLabel: 'Observación' },
-      cell: ({ row }) =>
-        (row.original.kind === 'service'
-          ? row.original.row.notes
-          : row.original.row.generalNotes) ?? '—',
+      cell: ({ row }) => row.original.row.notes ?? '—',
     },
   ]
 
@@ -329,12 +302,19 @@ function EmployeeAttendanceHistoryTab({
             <span className="text-[15px] font-bold text-text tabular-nums">
               {isLoading ? '…' : formatMinutes(totalMinutes)}
             </span>
+            {isSupervisor && canDownload && !isLoading && (
+              <span className="block text-[11px] text-text-3">
+                {includeServices &&
+                  `Como empleado ${formatMinutes(servicesMinutes)} · `}
+                Como coordinador (jornadas) {formatMinutes(workdaysMinutes)}
+              </span>
+            )}
           </div>
           {canDownload && (
             <Button
               variant="ghost"
               icon={FileText}
-              disabled={isLoading}
+              disabled={isLoading || workdaysQuery.isError}
               onClick={() => setSheetOpen(true)}
             >
               Descargar detalle
@@ -366,6 +346,8 @@ function EmployeeAttendanceHistoryTab({
           to={to}
           entries={entries}
           leaves={leavesQuery.data}
+          workdays={isSupervisor ? workdays : undefined}
+          includeServices={includeServices}
           onClose={() => setSheetOpen(false)}
         />
       )}

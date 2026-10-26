@@ -45,6 +45,15 @@ export const TEXTO = {
   salidaAnticipada: 'Vas a registrar la salida antes del horario previsto.',
 } as const
 
+/**
+ * Tarjeta de un turno en «Hoy» del coordinador (enlace a `/sup/turnos/:id`) con el nombre de la
+ * sede. No se usa `getByRole('link')` a secas: la barra de jornada también lleva un enlace con el
+ * nombre de la sede mientras se supervisa.
+ */
+export function tarjetaDeTurno(page: Page, nombreSede: string) {
+  return page.locator('a[href^="/sup/turnos/"]').filter({ hasText: nombreSede })
+}
+
 /** `HH:MM` a partir de minutos desde las 0:00. */
 export function hhmm(totalMinutes: number): string {
   const h = Math.floor(totalMinutes / 60)
@@ -111,24 +120,6 @@ export async function fichar(
       ? await client.rpc('record_check_in', { p_assignment_id: assignmentId })
       : await client.rpc('record_check_out', { p_assignment_id: assignmentId })
   if (error) throw new Error(`fichar ${kind}: ${error.message}`)
-}
-
-/** Inicio o fin de una supervisión con la sesión del supervisor (preparación del escenario). */
-export async function supervisionFichar(
-  who: FixedAccountKey,
-  supervisionId: string,
-  kind: 'inicio' | 'fin',
-): Promise<void> {
-  const client = await sessionClient(who)
-  const { error } =
-    kind === 'inicio'
-      ? await client.rpc('supervision_check_in', {
-          p_supervision_id: supervisionId,
-        })
-      : await client.rpc('supervision_check_out', {
-          p_supervision_id: supervisionId,
-        })
-  if (error) throw new Error(`supervisión ${kind}: ${error.message}`)
 }
 
 /** Califica con la RPC real y la sesión del supervisor (preparación del escenario). */
@@ -257,22 +248,20 @@ export function pngSolido(lado = 64): Buffer {
   ])
 }
 
-/** Cierra una supervisión con la RPC real y la sesión del supervisor (preparación del escenario). */
+/**
+ * Cierra una supervisión con `complete_supervision` y la sesión del coordinador (preparación del
+ * escenario). Exige haber calificado antes a todos los empleados con inicio registrado (CJ-10).
+ */
 export async function cerrarSupervision(
   who: FixedAccountKey,
   supervisionId: string,
-  como: { completar: true } | { noRealizada: string },
+  notas?: string,
 ): Promise<void> {
   const client = await sessionClient(who)
-  const { error } =
-    'completar' in como
-      ? await client.rpc('complete_supervision', {
-          p_supervision_id: supervisionId,
-        })
-      : await client.rpc('mark_supervision_not_done', {
-          p_supervision_id: supervisionId,
-          p_reason: como.noRealizada,
-        })
+  const { error } = await client.rpc('complete_supervision', {
+    p_supervision_id: supervisionId,
+    ...(notas ? { p_general_notes: notas } : {}),
+  })
   if (error) throw new Error(`cerrar supervisión: ${error.message}`)
 }
 

@@ -1,16 +1,21 @@
 import type { BadgeVariant } from '@/components/status'
 import type { MapViewMarker } from '@/components/map'
 import type { PresenceRow } from '@/api/geo'
+import type { SupervisorStatusRow } from '@/api/supervisorStatus'
+import { buildCoordinatorMarkers } from './coordinators'
 
 /**
  * Armado de los marcadores del mapa de presencia (ADM-02, B-11 a B-15): lógica
  * pura sobre las filas de `v_presence_today`, sin React ni Supabase.
  *
- * - Empleados (`kind = employee`) y supervisores (`kind = supervisor`) en curso:
- *   un punto en la posición del fichaje de inicio, coloreado por la validación
- *   (B-03): verde válido o marcado como válido por la administración, rojo
- *   fuera de zona, gris sin validar. Los supervisores llevan forma de rombo.
+ * - Empleados (`kind = employee`) en curso: un punto en la posición del fichaje
+ *   de inicio, coloreado por la validación (B-03): verde válido o marcado como
+ *   válido por la administración, rojo fuera de zona, gris sin validar.
  * - Con «Mostrar finalizados de hoy», se suman los que ya fichó el fin.
+ * - Coordinadores (P24.4, CJ-33): salen de `v_supervisor_status` (ver
+ *   `coordinators.ts`), con un rombo por estado. Las filas `kind = supervisor`
+ *   de `v_presence_today` (la supervisión en curso) se ignoran acá para no
+ *   dibujar dos puntos de la misma persona.
  * - Sedes (`kind = site`): su pin y su círculo con el radio vigente, sin color
  *   de alarma (B-14). Se dibujan las que tienen un turno en la franja de la
  *   hora actual (`siteIdsInWindow`), hayan fichado o no: sin ningún punto al
@@ -24,10 +29,14 @@ import type { PresenceRow } from '@/api/geo'
 export interface PresenceMapModel {
   /** Sedes primero y personas después, para que los puntos queden arriba de los círculos. */
   markers: MapViewMarker[]
-  /** En curso y sin ubicación (B-13). */
+  /** Empleados en curso y sin ubicación (B-13). */
   withoutLocation: PresenceRow[]
-  /** Cuántos puntos de personas se dibujan (empleados + supervisores). */
+  /** Coordinadores sin posición en su último evento (CJ-33), con su estado. */
+  coordinatorsWithoutLocation: SupervisorStatusRow[]
+  /** Cuántos puntos de empleados se dibujan. */
   peopleOnMap: number
+  /** Cuántos puntos de coordinadores se dibujan. */
+  coordinatorsOnMap: number
   /** Cuántas sedes se dibujan. */
   sitesOnMap: number
 }
@@ -37,6 +46,10 @@ export interface PresenceOptions {
   showFinished: boolean
   /** Sedes con un turno cuya franja incluye la hora actual. */
   siteIdsInWindow?: ReadonlySet<string>
+  /** Estado de hoy de los coordinadores (`v_supervisor_status`). */
+  coordinators?: SupervisorStatusRow[]
+  /** Filtro «Coordinadores» (por omisión, encendido). */
+  showCoordinators?: boolean
 }
 
 /** Color del punto (B-03, B-09): con corrección de la administración va en verde. */
@@ -79,7 +92,7 @@ export function buildPresenceMarkers(
   // ahora (P22.6b), aunque ya haya pasado su franja.
   const activeSiteIds = new Set<string>(options.siteIdsInWindow)
   for (const row of rows) {
-    if (row.kind === 'site' || !row.siteId) continue
+    if (row.kind !== 'employee' || !row.siteId) continue
     if (row.inProgress || options.showFinished) {
       activeSiteIds.add(row.siteId)
     }
@@ -106,6 +119,11 @@ export function buildPresenceMarkers(
       continue
     }
 
+    // Los coordinadores salen de `v_supervisor_status`, no de este listado.
+    if (row.kind === 'supervisor') {
+      continue
+    }
+
     if (!row.inProgress && !options.showFinished) {
       continue
     }
@@ -117,21 +135,27 @@ export function buildPresenceMarkers(
       continue
     }
 
-    const isSupervisor = row.kind === 'supervisor'
     personMarkers.push({
       id: `${row.kind}-${row.recordId}`,
       position: { lat: row.latitude as number, lng: row.longitude as number },
       variant: presenceVariant(row),
-      shape: isSupervisor ? 'supervisor' : 'dot',
-      label: `${isSupervisor ? 'Coordinador' : 'Empleado'} ${presencePersonName(row)}${row.inProgress ? '' : ' (finalizó)'}`,
+      shape: 'dot',
+      label: `Empleado ${presencePersonName(row)}${row.inProgress ? '' : ' (finalizó)'}`,
       data: row,
     })
   }
 
+  const coordinators = buildCoordinatorMarkers(
+    options.coordinators ?? [],
+    options.showCoordinators ?? true,
+  )
+
   return {
-    markers: [...siteMarkers, ...personMarkers],
+    markers: [...siteMarkers, ...personMarkers, ...coordinators.markers],
     withoutLocation,
+    coordinatorsWithoutLocation: coordinators.withoutLocation,
     peopleOnMap: personMarkers.length,
+    coordinatorsOnMap: coordinators.markers.length,
     sitesOnMap: siteMarkers.length,
   }
 }

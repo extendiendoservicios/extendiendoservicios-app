@@ -82,7 +82,7 @@ $$;
 
 grant execute on function tests.err_message(text) to authenticated, anon;
 
-select plan(61);
+select plan(57);
 
 -- Estructura -----------------------------------------------------------------------------------
 
@@ -501,25 +501,9 @@ select is(
 
 -- 4. Mensajes con «coordinador» ----------------------------------------------------------------
 
-select is(
-  tests.err_message($$select public.assign_supervision('f6000000-0000-0000-0000-000000000043', 'f6000000-0000-0000-0000-000000000085')$$),
-  'Ese coordinador no tiene el rol vigente o no está activo.',
-  'assign_supervision: el mensaje dice coordinador'
-);
-select is(
-  tests.err_hint($$select public.assign_supervision('f6000000-0000-0000-0000-000000000043', 'f6000000-0000-0000-0000-000000000085')$$),
-  'SUPERVISOR_ROLE_REQUIRED',
-  'assign_supervision: el código estable no cambia'
-);
-select lives_ok(
-  $$select public.assign_supervision('f6000000-0000-0000-0000-000000000043', 'f6000000-0000-0000-0000-000000000084')$$,
-  'assign_supervision: la coordinadora con rol se asigna bien'
-);
-select is(
-  tests.err_message($$select public.assign_supervision('f6000000-0000-0000-0000-000000000043', 'f6000000-0000-0000-0000-000000000084')$$),
-  'Ese coordinador ya tiene una supervisión asignada a este turno.',
-  'assign_supervision: el mensaje de duplicado dice coordinador'
-);
+-- Las cuatro aserciones sobre assign_supervision (mensajes «Ese coordinador...») se quitaron en
+-- P24.1 (0063): la asignación manual desaparece (CJ-01) y la función ya no se puede ejecutar.
+-- Que no se puede ejecutar lo cubre 0063_p24_1_jornada_coordinador.test.sql.
 
 select * from finish();
 

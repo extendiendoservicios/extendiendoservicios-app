@@ -21,7 +21,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { isTooCloseToMidnight, todayAR } from '../../fixtures/dates.ts'
-import { deleteClientDeep } from '../../fixtures/scenario.ts'
+import { borrarJornadasDe, deleteClientDeep } from '../../fixtures/scenario.ts'
 import { describir, filas, tabla } from './ayudas.ts'
 import { clienteDe, contexto, servicio } from './contexto.ts'
 import { PREFIJO } from './escenario.ts'
@@ -192,14 +192,6 @@ beforeAll(async () => {
   }
   const asigEmp = await asignar(c.ids.empleado1)
   const asigDual = await asignar(c.ids.dual)
-  const sup = await owner.rpc('assign_supervision', {
-    p_shift_id: turno.id,
-    p_supervisor_id: c.ids.supervisor1,
-  })
-  if (sup.error) throw new Error(`assign_supervision: ${sup.error.message}`)
-  const supervisionId = (sup.data as unknown as { supervision: { id: string } })
-    .supervision.id
-
   // Fichajes reales: cada uno con su propia sesión (la base calcula la validación).
   const ficharEmp = await clienteDe('empleado').rpc('record_check_in', {
     p_assignment_id: asigEmp,
@@ -215,14 +207,19 @@ beforeAll(async () => {
   })
   if (ficharDual.error)
     throw new Error(`record_check_in dual: ${ficharDual.error.message}`)
-  const ficharSup = await clienteDe('supervisor').rpc('supervision_check_in', {
-    p_supervision_id: supervisionId,
+  // P24.5: el coordinador inicia su jornada y toma el turno (`take_supervision` registra el inicio
+  // con la validación de sede; ya no hay asignación manual ni `supervision_check_in`).
+  const jornada = await clienteDe('supervisor').rpc('start_workday')
+  if (jornada.error) throw new Error(`start_workday: ${jornada.error.message}`)
+  const sup = await clienteDe('supervisor').rpc('take_supervision', {
+    p_shift_id: turno.id,
     p_lat: AFUERA.lat,
     p_lng: AFUERA.lng,
     p_accuracy: 15,
   })
-  if (ficharSup.error)
-    throw new Error(`supervision_check_in: ${ficharSup.error.message}`)
+  if (sup.error) throw new Error(`take_supervision: ${sup.error.message}`)
+  const supervisionId = (sup.data as unknown as { supervision: { id: string } })
+    .supervision.id
 
   const idDe = async (
     tablaNombre: 'attendance_records' | 'supervision_attendance',
@@ -264,6 +261,10 @@ afterAll(async () => {
   if (!d) return
   const db = servicio()
   const notas = await deleteClientDeep(db, d.clienteId)
+  // La jornada del coordinador de esta suite (P24.5) es dato de la prueba.
+  notas.push(
+    ...(await borrarJornadasDe(db, [contexto().ids.supervisor1], todayAR())),
+  )
   // El rastro de los cambios de radio de esta suite (eventos propios, con el id de la sede).
   await db
     .from('security_events')

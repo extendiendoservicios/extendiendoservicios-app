@@ -3,13 +3,13 @@ import { nombreDe, reNombreDe } from '../fixtures/accounts.ts'
 import { expectHint } from '../fixtures/api.ts'
 import { daysFromToday, FRANJAS } from '../fixtures/dates.ts'
 import { MISSING_ENV_MESSAGE, readE2eEnv } from '../fixtures/env.ts'
+import { fijarConsentimiento } from '../fixtures/movil.ts'
 import { Scenario, sessionClient } from '../fixtures/scenario.ts'
 import { readId, storageStatePath } from '../fixtures/sessions.ts'
 import { cubre } from '../fixtures/trace.ts'
 import {
   crearLicencia,
   darDeBajaLicencias,
-  elegirDia,
   fechaDelAnio,
   PREFIJO,
 } from './helpers/dia.ts'
@@ -26,7 +26,8 @@ import {
 //     desasigna nada.
 //   - En «Nuevo turno» y en «Asignar empleado» la persona de licencia sale deshabilitada con «De
 //     licencia»; el servidor la rechaza con ON_LEAVE.
-//   - En «Asignar supervisión» el coordinador de licencia sale deshabilitado (0061).
+//   - El coordinador de licencia hoy no puede iniciar su jornada (0061 y CJ-29, P24.5: ya no hay
+//     «Asignar supervisión»).
 //   - El imprimible muestra la licencia y la ausencia con su certificado.
 // Fechas futuras recortadas al día; las licencias de la prueba llevan el motivo «E2E-P1911 …» y se
 // dan de baja al final (baja lógica, nada se borra). Cuentas: admin, owner, empleado1 a empleado4,
@@ -36,7 +37,7 @@ test.skip(!readE2eEnv(), MISSING_ENV_MESSAGE)
 
 test.use({ storageState: storageStatePath('admin') })
 
-test.describe('licencias que bloquean (ADM-17, ADM-07, ADM-08, ADM-14)', () => {
+test.describe('licencias que bloquean (ADM-17, ADM-07, ADM-08, SUP-02)', () => {
   test(
     'al guardar una licencia sobre un turno asignado aparece el aviso con «Abrir turno» y no se desasigna a nadie',
     cubre('RB-A04', 'RB-A03', 'CB-25', 'P-033'),
@@ -201,50 +202,44 @@ test.describe('licencias que bloquean (ADM-17, ADM-07, ADM-08, ADM-14)', () => {
   )
 
   test(
-    'en «Asignar supervisión» el coordinador de licencia sale deshabilitado y el servidor lo rechaza (ON_LEAVE)',
-    cubre('RB-S02', 'RB-A04', 'CB-25', 'P-033'),
-    async ({ page }) => {
+    'CJ-29: el coordinador con licencia hoy no puede iniciar la jornada (ON_LEAVE), por pantalla y por API, y no se crea ninguna',
+    cubre('RB-S02', 'RB-A04', 'CB-25', 'P-033', 'CJ-29'),
+    async ({ browser }) => {
       const sc = new Scenario()
+      const contexto = await browser.newContext({
+        storageState: storageStatePath('supervisor1'),
+      })
       try {
-        const dia = daysFromToday(11)
-        const cliente = await sc.client('p1911-coord')
-        const sede = await sc.site(cliente.id, 'p1911-coord')
-        const turno = await sc.shift(cliente.id, sede.id, dia, FRANJAS.manana)
-        await crearLicencia('supervisor1', dia, dia)
+        await sc.tomarCoordinador('supervisor1')
+        await crearLicencia('supervisor1', sc.today, sc.today)
+        await fijarConsentimiento('supervisor1', true)
 
-        await page.goto('/admin/supervisiones')
-        await page.getByRole('link', { name: 'Asignar supervisión' }).click()
-        const hoja = page.getByRole('dialog', { name: 'Asignar supervisión' })
-        await elegirDia(page, 'Fecha del turno', dia)
-        await hoja.getByRole('combobox', { name: 'Turno' }).click()
-        await page
-          .getByRole('option', {
-            name: new RegExp(`${cliente.name}.*${sede.name}.*08:00–12:00`),
-          })
-          .click()
-        await hoja.getByRole('combobox', { name: 'Coordinador' }).click()
-        const coordinador = page.getByRole('option', {
-          name: new RegExp(`${nombreDe('supervisor1')}.*De licencia`),
-        })
-        await expect(coordinador).toBeVisible()
-        await expect(coordinador).toHaveAttribute('aria-disabled', 'true')
-        await page.keyboard.press('Escape')
-
-        await test.step('por API directa el servidor lo rechaza con ON_LEAVE y no queda supervisión', async () => {
-          const owner = await sessionClient('owner')
-          const respuesta = await owner.rpc('assign_supervision', {
-            p_shift_id: turno,
-            p_supervisor_id: readId('supervisor1'),
-          })
+        await test.step('por API directa el servidor lo rechaza con ON_LEAVE', async () => {
+          const api = await sessionClient('supervisor1')
+          const respuesta = await api.rpc('start_workday')
           expectHint(respuesta, 'ON_LEAVE')
-          expect(respuesta.error?.message).toContain('coordinador')
-          const { data } = await sc.db
-            .from('supervisions')
-            .select('id')
-            .eq('shift_id', turno)
-          expect(data).toHaveLength(0)
         })
+
+        await test.step('por pantalla: «Iniciar jornada» muestra el motivo y la jornada sigue sin iniciar', async () => {
+          const page = await contexto.newPage()
+          await page.goto('/sup')
+          await page.getByRole('button', { name: 'Iniciar jornada' }).click()
+          await expect(
+            page.getByText('Tenés licencia hoy: no podés iniciar la jornada.'),
+          ).toBeVisible()
+          await expect(page.getByTestId('workday-bar')).toContainText(
+            'Sin iniciar',
+          )
+        })
+
+        const { data } = await sc.db
+          .from('supervisor_workdays')
+          .select('id')
+          .eq('supervisor_id', readId('supervisor1'))
+          .eq('work_date', sc.today)
+        expect(data).toHaveLength(0)
       } finally {
+        await contexto.close()
         expect(await darDeBajaLicencias('supervisor1'), 'bajas').toEqual([])
         expect(await sc.cleanup(), 'limpieza').toEqual([])
       }

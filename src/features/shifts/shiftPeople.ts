@@ -3,7 +3,7 @@ import type { SupervisionListRow } from '@/api/supervisions'
 
 /**
  * AJ2-18: quiénes están asignados a cada turno (empleados vigentes y
- * supervisor designado), para la vista por día de la planificación. Lógica
+ * coordinadores que lo supervisaron o supervisan), para la vista por día de la planificación. Lógica
  * sin React. Se arma con dos consultas por día (no una por turno):
  * `v_assignments_board` del día y `v_supervisions_admin` del día.
  */
@@ -11,7 +11,7 @@ import type { SupervisionListRow } from '@/api/supervisions'
 export interface ShiftPeople {
   /** «Nombre Apellido» de cada empleado vigente, ordenados por apellido. */
   employees: string[]
-  /** Supervisor designado (supervisión no cancelada), si existe. */
+  /** Coordinadores que supervisan o supervisaron el turno (supervisiones no canceladas, CJ-05); vacío si nadie lo tomó. */
   supervisors: string[]
 }
 

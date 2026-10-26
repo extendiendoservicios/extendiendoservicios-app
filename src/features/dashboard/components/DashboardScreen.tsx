@@ -18,7 +18,7 @@ import {
 } from '@/features/planning/permissions'
 import { useShiftsByDateQuery } from '@/features/shifts/queries'
 import { StorageAlert } from '@/features/media/components/StorageAlert'
-import { useSupervisionsAdminQuery } from '@/features/supervisions/queries'
+import { useSupervisorStatusQuery } from '@/features/geo/queries'
 import { formatDateOnly } from '@/features/settings/dateOnly'
 import { computeAttention, type AttentionItem } from '../attention'
 import { computeKpis, shiftStartInstant, siteIdsInCurrentWindow } from '../kpis'
@@ -42,12 +42,12 @@ function useClock(): Date {
 
 /**
  * ADM-02 "Resumen" (DASH-001 a DASH-007, `05` línea 36): KPIs, "Requiere
- * atención", "Servicios de hoy", mapa de presencia (B1, P22.4) y
- * supervisiones del día. El mapa va después de "Servicios de hoy" para no
+ * atención", "Servicios de hoy", mapa de presencia (B1, P22.4, con los
+ * coordinadores de P24.4) y las jornadas de los coordinadores del día. El mapa va después de "Servicios de hoy" para no
  * enterrar la tabla en celular. Tres consultas del
  * día, todas filtradas por fecha y con polling de 30 s (las de turnos y
  * asignaciones se comparten con ADM-05 y ADM-10 por clave de caché), más la
- * de supervisiones (60 s, solo lectura). Sin consultas por fila.
+ * del estado de los coordinadores (60 s, solo lectura, compartida con el mapa). Sin consultas por fila.
  */
 function DashboardScreen() {
   const auth = useAuth()
@@ -61,10 +61,7 @@ function DashboardScreen() {
 
   const shiftsQuery = useShiftsByDateQuery(today, true)
   const boardQuery = useAttendanceBoardByDateQuery(today, {}, true)
-  const supervisionsQuery = useSupervisionsAdminQuery({
-    dateFrom: today,
-    dateTo: today,
-  })
+  const supervisorStatusQuery = useSupervisorStatusQuery()
 
   const shifts = useMemo(() => shiftsQuery.data ?? [], [shiftsQuery.data])
   // `v_assignments_board` solo trae la razón social; el resto del tablero
@@ -194,8 +191,8 @@ function DashboardScreen() {
       <PresenceMap siteIdsInWindow={siteIdsInWindow} />
 
       <SupervisionsTodayBlock
-        rows={supervisionsQuery.data ?? []}
-        isLoading={supervisionsQuery.isLoading}
+        rows={supervisorStatusQuery.data ?? []}
+        isLoading={supervisorStatusQuery.isLoading}
       />
 
       {recordTarget && (

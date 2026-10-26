@@ -340,19 +340,52 @@ tenga un solo punto de importación, sin duplicar la RPC.
 
 ### `supervisions` (`src/api/supervisions.ts`, P15.3 — SUP-008 a SUP-011)
 
-Vía de administración de supervisiones (ADM-13, ADM-14, ADM-15), sobre
-`0029_rpc_supervisions.sql`. `supervision_check_in`/`supervision_check_out`/
-`complete_supervision` son "S (propia)": las usa la app del supervisor
-(`src/api/mySupervisions.ts`, de front-movil), no este módulo.
+Vía de administración de supervisiones (ADM-13, ADM-15), sobre
+`0029_rpc_supervisions.sql` y, desde P24.3, `0063` (coordinación libre).
+`assignSupervision` y `markSupervisionNotDone` se quitaron: `assign_supervision`
+y `mark_supervision_not_done` están revocadas (CJ-01, CJ-26). Cada fila de
+`fetchSupervisionsAdmin` es una supervisión (un turno puede tener varias,
+CJ-05) y trae `durationMinutes` (informativa, CJ-14), `unclosed` («Sin cerrar»,
+CJ-31), `workdayId` y `workdayAutoClosed`. El filtro por estado se quitó. Las
+RPC del coordinador (`take_supervision`, `complete_supervision`, ...) las usa
+la app del supervisor (`src/api/mySupervisions.ts`, de front-movil), no este
+módulo.
 
-| Función                                         | Canal                                            | Notas                                                                                                                                                                                                                                              |
-| ----------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `fetchSupervisionsAdmin(filters?)`              | `from('v_supervisions_admin')`                   | ADM-13, pestaña "Supervisiones". Filtros empleado (resuelto antes vía `ratings`), supervisor, cliente, sede, rango de fechas, estado. O, A.                                                                                                        |
-| `fetchSupervisionDetail(id)`                    | `v_supervisions_admin` + `assignments`/`ratings` | ADM-15: cabecera con franja, criterios y contadores, más una fila por cada asignación vigente del turno (calificación si existe, con quién y cuándo la editó por última vez).                                                                      |
-| `fetchSupervisorCandidates()`                   | `from('v_employees')`                            | ADM-14: personas con rol `supervisor`, activas (perfil y `employees.status`), mismos tres chequeos que hace `assign_supervision` del lado del servidor.                                                                                            |
-| `assignSupervision(shiftId, supervisorId)`      | RPC `assign_supervision`                         | ADM-14. O; A + `manage_supervisions`. `SHIFT_NOT_FOUND`, `SHIFT_NOT_SUPERVISABLE` (turno cancelado o completado), `SUPERVISOR_ROLE_REQUIRED`, `ALREADY_ASSIGNED`. Devuelve `{ supervision, warnings }`: `SUPERVISES_OWN_SHIFT` no bloquea (P15.0). |
-| `cancelSupervision(supervisionId, reason)`      | RPC `cancel_supervision`                         | ADM-15. O; A + `manage_supervisions`. Motivo obligatorio → `CANCEL_REASON_REQUIRED`. Solo `assigned`/`in_progress` → `SUPERVISION_NOT_EDITABLE`.                                                                                                   |
-| `markSupervisionNotDone(supervisionId, reason)` | RPC `mark_supervision_not_done`                  | ADM-15. S (propia, `NOT_YOUR_SUPERVISION` si es de otro supervisor); O, A sin capacidad adicional. Motivo obligatorio → `REASON_REQUIRED`.                                                                                                         |
+| Función                                    | Canal                                            | Notas                                                                                                                                                                             |
+| ------------------------------------------ | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fetchSupervisionsAdmin(filters?)`         | `from('v_supervisions_admin')`                   | ADM-13, pestaña "Supervisiones". Filtros empleado (resuelto antes vía `ratings`), supervisor, cliente, sede, rango de fechas, estado. O, A.                                       |
+| `fetchSupervisionDetail(id)`               | `v_supervisions_admin` + `assignments`/`ratings` | ADM-15: cabecera con franja, criterios y contadores, más una fila por cada asignación vigente del turno (calificación si existe, con quién y cuándo la editó por última vez).     |
+| `fetchSupervisorCandidates()`              | `from('v_employees')`                            | Selector de «Coordinadores preferenciales» (ADM-21, ADM-22): personas con rol `supervisor`, activas (perfil y `employees.status`), mismos chequeos que `set_supervisor_priority`. |
+| `cancelSupervision(supervisionId, reason)` | RPC `cancel_supervision`                         | ADM-15. O; A + `manage_supervisions`. Motivo obligatorio → `CANCEL_REASON_REQUIRED`. Solo `in_progress` (también la «Sin cerrar») → `SUPERVISION_NOT_EDITABLE`.                   |
+
+### `supervisorPriorities` (`src/api/supervisorPriorities.ts`, P24.3 — CJ-03, CJ-24)
+
+Clientes y sedes preferenciales de los coordinadores (ordenan su lista, no
+restringen). Detalle en `docs/features/supervisiones.md`.
+
+| Función                                                       | Canal                            | Notas                                                                                                                                                                                           |
+| ------------------------------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fetchSupervisorPriorities()`                                 | `from('supervisor_priorities')`  | Todas las vigentes (`removed_at is null`) con nombres de coordinador, cliente y sede. O, A. Las fichas filtran en el cliente.                                                                   |
+| `fetchSiteOptions()`                                          | `from('sites')`                  | Sedes con el nombre de su cliente, para elegir una sede preferencial.                                                                                                                           |
+| `setSupervisorPriority({ supervisorId, clientId?, siteId? })` | RPC `set_supervisor_priority`    | O; A + `manage_supervisions`. Exactamente uno de `clientId` y `siteId`. `INVALID_PRIORITY_TARGET`, `SUPERVISOR_ROLE_REQUIRED`, `CLIENT_NOT_FOUND`, `SITE_NOT_FOUND`, `PRIORITY_ALREADY_EXISTS`. |
+| `removeSupervisorPriority(priorityId)`                        | RPC `remove_supervisor_priority` | O; A + `manage_supervisions`. Baja lógica. `PRIORITY_NOT_FOUND`, `PRIORITY_ALREADY_REMOVED`.                                                                                                    |
+
+### `workdaysAdmin` (`src/api/workdaysAdmin.ts`, P24.3 — CJ-13, CJ-17, CJ-32)
+
+Jornadas de los coordinadores para la administración. Es la única lectura de
+`v_supervisor_workdays_admin` (`AdminWorkday`): la usan la pestaña «Jornadas»,
+Asistencia «Coordinadores» y la ficha imprimible. Los hooks están en
+`src/features/workdays/queries.ts` (`useSupervisorWorkdaysQuery`,
+`useWorkdaysByDateQuery`; claves `['workdaysAdmin', 'list' | 'byDate', ...]`). Las RPC de jornada del
+coordinador (`start_workday`, ...) son de la app del supervisor (P24.2).
+
+| Función                                                                  | Canal                                 | Notas                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------------------------------------------------------------------------ | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fetchSupervisorWorkdays({ supervisorId, dateFrom?, dateTo? })`          | `from('v_supervisor_workdays_admin')` | Jornadas con horas netas, pausas, supervisiones, eventos (sin coordenadas) y `autoCloseWarning`. O, A.                                                                                                                                                                                                                                                                                                                                                          |
+| `fetchWorkdaysByDate(date)`                                              | `from('v_supervisor_workdays_admin')` | Jornadas de todos los coordinadores de una fecha (`YYYY-MM-DD`), por hora de inicio. Las usa «Asistencia de hoy» en días pasados (P24.4). O, A.                                                                                                                                                                                                                                                                                                                 |
+| `correctWorkdayEvent({ eventId, reason, newTime?, remove? })`            | RPC `admin_correct_workday_event`     | O; A + `manage_attendance`. Corrige la hora de un evento o, con `remove`, da de baja una pausa. `REASON_REQUIRED`, `EVENT_NOT_CORRECTABLE`, `EVENT_NOT_REMOVABLE`, `AT_OUT_OF_RANGE`, `SAME_TIME`, `INVALID_EVENT_ORDER`, `END_BEFORE_SUPERVISION_START` (0064: el fin de una jornada cerrada sola queda antes del inicio de una supervisión «Sin cerrar»). Al corregir el fin de un cierre automático, el fin automático de esas supervisiones se ajusta solo. |
+| `addWorkdayPause({ workdayId, startsAt, endsAt, reason, pauseReason? })` | RPC `admin_add_workday_pause`         | O; A + `manage_attendance`. `INVALID_TIME_RANGE`, `AT_OUT_OF_RANGE`, `INVALID_EVENT_ORDER`.                                                                                                                                                                                                                                                                                                                                                                     |
+| `recordWorkday({ supervisorId, workDate, startedAt, endedAt?, reason })` | RPC `admin_record_workday`            | O; A + `manage_attendance`. `ENDED_AT_REQUIRED` (día anterior sin fin), `WORKDAY_ALREADY_EXISTS`, `DATE_IN_FUTURE`.                                                                                                                                                                                                                                                                                                                                             |
 
 ### `ratings` (`src/api/ratings.ts`, P15.3 — SUP-008, SUP-011)
 
@@ -499,6 +532,19 @@ a `SupervisionListRow`; `sites` suma `geofenceRadiusM` a `SiteDetail`,
 `SiteFormInput` y `SiteMapRow` (el radio propio se guarda con el `update` de
 `sites`, `null` usa el general); `settings` suma `locationConsentUpdatedAt`.
 Los mensajes de error de las RPC nuevas están en `src/features/geo/errors.ts`.
+
+### `supervisorStatus` (`src/api/supervisorStatus.ts`, P24.4 — monitoreo de coordinadores)
+
+Solo lectura de la vista `v_supervisor_status` (dueño y administradores; una fila por
+coordinador activo, CJ-22 y CJ-33).
+
+| Función                   | Tabla / vista         | Devuelve                                                                                                                                                                                                                                                            |
+| ------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fetchSupervisorStatus()` | `v_supervisor_status` | `SupervisorStatusRow[]`: estado (`in_activity`, `supervising`, `paused`, `finished`, `not_started`), posición del último evento (nula = «Sin ubicación»), horas netas de hoy, cliente y sede si supervisa, motivo de la pausa, `autoClosed`, `corrected`, `onLeave` |
+
+Las coordenadas llegan por la vista (criterio de `0054`): no se pide
+`supervisor_workday_events`. `mapSupervisorStatusRow` descarta las filas con un
+estado desconocido. Las jornadas de la vista `v_supervisor_workdays_admin` se leen en `workdaysAdmin`.
 
 ## Próximos dominios
 

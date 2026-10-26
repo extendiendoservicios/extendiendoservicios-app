@@ -11,7 +11,7 @@ const supervision = (
     shiftId: 's1',
     supervisorFirstName: 'Sofía',
     supervisorLastName: 'Ruiz',
-    status: 'assigned',
+    status: 'in_progress',
     ...overrides,
   }) as SupervisionListRow
 
@@ -48,6 +48,26 @@ describe('groupShiftPeople (AJ2-18)', () => {
       employees: ['Carlos Medina'],
       supervisors: [],
     })
+  })
+
+  it('suma a los dos coordinadores que supervisan el mismo turno (CJ-05)', () => {
+    const people = groupShiftPeople(
+      [],
+      [
+        supervision({ id: 'a', shiftId: 's1', status: 'in_progress' }),
+        supervision({
+          id: 'b',
+          shiftId: 's1',
+          supervisorFirstName: 'Bruno',
+          supervisorLastName: 'Gómez',
+          status: 'completed',
+        }),
+      ],
+    )
+    expect(peopleOfShift(people, 's1').supervisors).toEqual([
+      'Sofía Ruiz',
+      'Bruno Gómez',
+    ])
   })
 
   it('ignora asignaciones quitadas y supervisiones canceladas', () => {
