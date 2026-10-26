@@ -1,8 +1,8 @@
 # Guía del coordinador
 
-DOC-020, actualizada con P24.6 (coordinación libre y jornada). Cómo usar la aplicación de Extendiendo Servicios desde tu celular si sos coordinador o coordinadora: iniciar tu jornada, elegir qué turno supervisar, calificar a cada empleado, cerrar la supervisión y finalizar el día.
+DOC-020, actualizada con P24.6 y P24.6b (coordinación libre y jornada). Cómo usar la aplicación de Extendiendo Servicios desde tu celular si sos coordinador o coordinadora: iniciar tu jornada, elegir qué turno supervisar, calificar a cada empleado, cerrar la supervisión y finalizar el día.
 
-Las imágenes son de ejemplo, con datos inventados. Los nombres de los botones son los mismos que vas a ver en tu celular. Donde dice **(captura pendiente)** todavía falta la imagen de la pantalla nueva.
+Las imágenes son de ejemplo, con datos inventados. Los nombres de los botones son los mismos que vas a ver en tu celular.
 
 ## Cómo funciona, en pocas palabras
 
@@ -78,7 +78,17 @@ Si además sos empleada o empleado, en **Más** vas a encontrar **Mis servicios*
 
 Arriba de la pantalla **Hoy** está la **barra de jornada**. Muestra el **contador de horas** de tu día, el estado (por ejemplo "En actividad", "Supervisando", "En pausa" o "Finalizada") y los botones que corresponden en ese momento.
 
-(captura pendiente: barra de jornada en cada estado)
+Así se ve la barra en cada momento:
+
+![Sin iniciar](guias/img/sup-jornada-sin-iniciar.png)
+
+![En actividad](guias/img/sup-jornada-en-actividad.png)
+
+![Supervisando: Pausar y Finalizar jornada quedan apagados](guias/img/sup-jornada-supervisando.png)
+
+![En pausa](guias/img/sup-jornada-en-pausa.png)
+
+![Finalizada](guias/img/sup-jornada-finalizada.png)
 
 ### Iniciar la jornada
 
@@ -97,7 +107,9 @@ Usalo cuando dejás de trabajar un rato: el almuerzo, un trámite, un descanso. 
 
 1. En la barra de jornada, tocá **Pausar**.
 2. Si querés, escribí el **motivo** (por ejemplo "Almuerzo"). Es opcional.
-3. Confirmá. El contador se detiene y el estado pasa a "En pausa".
+3. Tocá **Pausar** en el cartel para confirmar (o **Cancelar** para volver). El contador se detiene y el estado pasa a "En pausa".
+
+![Cartel para pausar la jornada](guias/img/sup-jornada-pausar.png)
 
 Mientras estás en pausa **no podés empezar una supervisión**. Y si tenés una supervisión abierta, el botón **Pausar** aparece apagado: primero cerrala o descartala.
 
@@ -154,7 +166,7 @@ Debajo de la barra de jornada ves **todos los turnos de hoy**, de todos los clie
 - **Mis sedes:** los clientes y sedes que Administración marcó como preferenciales para vos. Van primero.
 - **Otras sedes:** todo lo demás. Tiene un **buscador**: escribí el nombre de un cliente o de una sede para encontrarla rápido.
 
-(captura pendiente: pantalla Hoy con los dos bloques)
+![Hoy: la barra de jornada y los dos bloques de turnos](guias/img/sup-hoy.png)
 
 En cada bloque, el orden es:
 
@@ -175,25 +187,28 @@ Las sedes preferenciales **solo ordenan la lista**: no te limitan. Podés tomar 
 
 ### El detalle del turno
 
-Tocá un turno para ver todo sobre el servicio.
+Tocá un turno para abrir el **Detalle del turno**.
 
-(captura pendiente: detalle del turno)
+![Detalle del turno](guias/img/sup-turno.png)
 
-- **Sede:** la dirección (tocá **Abrir en el mapa** para que te lleve el teléfono), el horario del edificio, las instrucciones de acceso, las restricciones (por ejemplo "No se permiten fotos") y el contacto de la sede.
+- **Sede:** la dirección (tocá **Abrir en el mapa** para que te lleve el teléfono).
 - **Empleados del turno:** quiénes trabajan y su estado: **Esperado**, **Presente** (con la hora a la que empezó), **Finalizado** o **Ausencia avisada**.
 - **Quién más lo supervisa:** los otros coordinadores que ya tomaron este turno.
-- **Tareas del turno:** qué tiene que hacer el equipo y cómo van. Solo se miran.
-- **Criterios de calificación:** la guía que definió la empresa para calificar. Son una ayuda para que todos califiquen con el mismo criterio. No se les pone puntaje uno por uno: el puntaje es uno solo por empleado.
+- Si ya tomaste este turno, aparece **Ir a mi supervisión**.
+
+El horario del edificio, las instrucciones de acceso, las restricciones y el contacto de la sede, junto con las **tareas del turno** y los **criterios de calificación**, los ves **después de tocar Supervisar**, en la pantalla de la supervisión (ver más abajo).
 
 ### Empezar la supervisión
 
 1. En el detalle del turno, tocá **Supervisar**.
 2. Si la app te pide la ubicación, aceptá o seguí sin ella (ver [Tu ubicación y tu consentimiento](#tu-ubicación-y-tu-consentimiento)). Si la señal es mala, la app te lo dice y el botón pasa a **Supervisar igual**.
-3. Listo: la supervisión empieza en ese momento. La hora que vale es la del servidor, no la del celular.
+3. Listo: la supervisión empieza en ese momento y ves la pantalla **Supervisión iniciada** con la hora. Tocá **Seguir con la supervisión** para continuar. La hora que vale es la del servidor, no la del celular.
 
 Tomar el turno **es** empezar la supervisión: no hay un paso aparte. En ese momento la app guarda los criterios de calificación vigentes, así que los que ves son los que valen para esta supervisión aunque la empresa los cambie después.
 
 Si el botón **Supervisar** está apagado, la pantalla te dice por qué:
+
+![Supervisar apagado: la pantalla explica por qué](guias/img/sup-turno-bloqueado.png)
 
 | Mensaje                                                             | Qué hacer                                       |
 | ------------------------------------------------------------------- | ----------------------------------------------- |
@@ -213,7 +228,13 @@ Tenés que **cerrar una supervisión antes de abrir la siguiente**. Si ibas a su
 
 Tocá la supervisión abierta (desde **Hoy** o desde **Supervisiones**) para ver el detalle: los empleados del turno con un botón **Calificar** al lado de cada uno.
 
-(captura pendiente: supervisión en curso)
+![Supervisión en curso](guias/img/sup-en-curso.png)
+
+En esa pantalla ves la **Sede** completa (horario del edificio, instrucciones de acceso, restricciones y contacto), los **Empleados a supervisar**, las **Tareas del turno** (solo para mirar) y los **Criterios de calificación**: la guía que definió la empresa. Son una ayuda para que todos califiquen con el mismo criterio: no se les pone puntaje uno por uno, el puntaje es uno solo por empleado.
+
+En **Supervisiones** (abajo) ves la lista de las supervisiones que tenés abiertas:
+
+![Supervisiones abiertas](guias/img/sup-supervisiones.png)
 
 ### Fotos y videos de la supervisión
 
@@ -260,7 +281,7 @@ Para cerrar la supervisión tenés que **calificar a todos los empleados del tur
 
 Cerrar registra el fin de la supervisión, con su hora. La supervisión queda en tu **Historial**.
 
-(captura pendiente: pantalla de cierre)
+![Pantalla para cerrar la supervisión](guias/img/sup-cerrar.png)
 
 > **Qué cambió respecto de antes:** ya no existe "No se pudo realizar" ni supervisiones "Asignadas". Si empezaste una supervisión por error, usá **Descartar**.
 
@@ -280,7 +301,7 @@ La supervisión queda cancelada con el motivo "Descartada por el coordinador" y 
 
 En **Historial** ves tus **jornadas por día**: las horas, las pausas y las supervisiones de cada una (con su duración, que es solo informativa). Tocá una supervisión para ver el detalle en solo lectura, con cada calificación y su comentario.
 
-(captura pendiente: historial de jornadas)
+![Historial de jornadas](guias/img/sup-historial.png)
 
 Ves solo lo tuyo.
 

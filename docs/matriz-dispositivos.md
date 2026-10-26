@@ -11,7 +11,7 @@ Dirección para probar: **https://dev.extendiendoservicios.com** (entorno de pru
 Pedile esto a Claude **antes** de arrancar (no escribas contraseñas en este archivo: el repositorio es público; anotalas a mano en papel):
 
 - [ ] Un usuario de prueba **empleado** con **un servicio de hoy** sin iniciar, con al menos dos tareas, y **otro servicio** que todavía no haya empezado (para el aviso de demora; puede ser el mismo si empieza más tarde).
-- [ ] Un usuario de prueba **coordinador** con **una supervisión asignada para hoy**, sobre un servicio donde haya al menos un empleado que **ya fichó el inicio**.
+- [ ] Un usuario de prueba **coordinador**, que va a iniciar su jornada y elegir un turno de hoy (nadie se lo asigna), sobre un servicio donde haya al menos un empleado que **ya fichó el inicio**.
 - [ ] Un usuario de prueba **dueño** (o administrador).
 - [ ] Que alguien pueda **publicar una versión nueva en staging** durante la prueba (punto 10).
 
@@ -268,60 +268,65 @@ Usá la cuenta de **empleado** con un servicio de hoy sin iniciar (ver «Antes d
 | Android 2 | OK                     |               |
 | iPhone    | OK                     |               |
 
-## 5. Coordinador: supervisión y calificación
+## 5. Coordinador: jornada, supervisión y calificación
 
-Usá la cuenta de **coordinador**, con una supervisión asignada para hoy sobre un servicio que tenga al menos un empleado que ya fichó (ver «Antes de empezar»).
+Usá la cuenta de **coordinador**. Antes de empezar, que haya un turno de hoy, en curso o ya terminado, con al menos un empleado que ya fichó (ver «Antes de empezar»). El coordinador no necesita que le asignen nada: inicia su jornada y elige el turno.
 
-### 5.1 · Abrir la supervisión
+> Esta sección se reescribió con P24.6b para la coordinación libre. Los resultados cargados antes de ese cambio correspondían al flujo viejo (supervisión asignada, **Registrar inicio de supervisión**), por eso se vaciaron: hay que repetir la prueba en los tres teléfonos.
 
-1. En **Hoy** tocá la supervisión de hoy.
+### 5.1 · Iniciar la jornada y elegir un turno
 
-**Tiene que pasar:** Se ve el detalle: cliente, sede, dirección, horario y la lista de empleados a supervisar con su estado.
+1. En **Hoy** tocá **Iniciar jornada**. Aceptá el permiso de ubicación como en el punto 3.1 si lo pide.
+2. Mirá la lista: **Mis sedes** y **Otras sedes**.
+3. Tocá el turno que tiene al empleado que ya fichó.
 
-| Teléfono  | Resultado (OK / Falla) | Observaciones |
-| --------- | ---------------------- | ------------- |
-| Android 1 | OK                     |               |
-| Android 2 | OK                     |               |
-| iPhone    | OK                     |               |
-
-### 5.2 · Registrar el inicio de la supervisión
-
-1. Tocá **Registrar inicio de supervisión**. Aceptá el permiso de ubicación como en el punto 3.1 si lo pide.
-2. Tocá **Registrar inicio**.
-
-**Tiene que pasar:** Se ve la hora de inicio y aparece el botón **Registrar fin**.
+**Tiene que pasar:** La barra pasa a **En actividad** y el contador de horas corre. Se ve el **Detalle del turno**: cliente, sede, dirección, horario y los empleados con su estado.
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 | OK                     |               |
-| Android 2 | OK                     |               |
-| iPhone    | OK                     |               |
+| Android 1 |                        |               |
+| Android 2 |                        |               |
+| iPhone    |                        |               |
+
+### 5.2 · Supervisar (empezar la supervisión)
+
+1. Tocá **Supervisar**. Aceptá el permiso de ubicación si lo pide.
+2. Tocá **Seguir con la supervisión**.
+
+**Tiene que pasar:** Se ve **Supervisión iniciada** con la hora. Después aparece la pantalla de la supervisión, con **Empleados a supervisar** y el botón **Calificar** en cada uno que ya fichó. La barra de jornada dice **Supervisando**.
+
+| Teléfono  | Resultado (OK / Falla) | Observaciones |
+| --------- | ---------------------- | ------------- |
+| Android 1 |                        |               |
+| Android 2 |                        |               |
+| iPhone    |                        |               |
 
 ### 5.3 · Calificar a un empleado
 
-1. Volvé al detalle de la supervisión y tocá **Calificar** en un empleado.
-2. Tocá 4 estrellas, escribí un comentario corto y guardá.
+1. En la supervisión, tocá **Calificar** en un empleado.
+2. Tocá 4 estrellas, escribí un comentario corto y tocá **Guardar calificación**.
 
-**Tiene que pasar:** Las estrellas se pueden tocar con el dedo sin errar, se guarda la calificación y el empleado figura como calificado.
-
-| Teléfono  | Resultado (OK / Falla) | Observaciones                                      |
-| --------- | ---------------------- | -------------------------------------------------- |
-| Android 1 | OK                     | Fuera de horario no permite calificar. Es correcto |
-| Android 2 | OK                     | Fuera de horario no permite calificar. Es correcto |
-| iPhone    | OK                     | Fuera de horario no permite calificar. Es correcto |
-
-### 5.4 · Registrar el fin y cerrar la supervisión
-
-1. Tocá **Registrar fin de supervisión**.
-2. Tocá **Completar supervisión** (si avisa que faltan empleados por calificar, es solo una advertencia).
-
-**Tiene que pasar:** La supervisión pasa a **completada** y aparece en **Historial** con su puntaje.
+**Tiene que pasar:** Las estrellas se pueden tocar con el dedo sin errar, se guarda la calificación y el botón del empleado pasa a **Editar**.
 
 | Teléfono  | Resultado (OK / Falla) | Observaciones |
 | --------- | ---------------------- | ------------- |
-| Android 1 | ok                     |               |
-| Android 2 | ok                     |               |
-| iPhone    | ok                     |               |
+| Android 1 |                        |               |
+| Android 2 |                        |               |
+| iPhone    |                        |               |
+
+### 5.4 · Cerrar la supervisión y finalizar la jornada
+
+1. Calificá a los demás empleados que fichó el inicio. Mientras falte alguien, **Cerrar supervisión** está apagado y un aviso dice a quién falta.
+2. Tocá **Cerrar supervisión** y, en la pantalla siguiente, **Cerrar supervisión** otra vez.
+3. En **Hoy**, tocá **Finalizar jornada**.
+
+**Tiene que pasar:** La supervisión pasa a **Completada** y la jornada a **Finalizada**. En **Historial** aparece la jornada del día, con sus horas y la supervisión.
+
+| Teléfono  | Resultado (OK / Falla) | Observaciones |
+| --------- | ---------------------- | ------------- |
+| Android 1 |                        |               |
+| Android 2 |                        |               |
+| iPhone    |                        |               |
 
 ## 6. Administración: la barra de abajo y «Más»
 
