@@ -27,6 +27,8 @@ export const SECURITY_EVENT_TYPE_LABELS: Record<SecurityEventType, string> = {
   media_deleted: 'Fotos o videos eliminados',
   workday_corrected: 'Jornada de coordinador corregida',
   workday_auto_closed: 'Jornada de coordinador cerrada automáticamente',
+  stock_movement_voided: 'Movimiento de stock anulado',
+  supply_price_changed: 'Precio de insumo modificado',
 }
 
 export const SECURITY_EVENT_TYPES: SecurityEventType[] = [
@@ -49,4 +51,6 @@ export const SECURITY_EVENT_TYPES: SecurityEventType[] = [
   'media_deleted',
   'workday_corrected',
   'workday_auto_closed',
+  'stock_movement_voided',
+  'supply_price_changed',
 ]

@@ -39,9 +39,11 @@ export type AdminCapability =
   | 'manage_attendance'
   | 'generate_shifts'
   | 'manage_supervisions'
+  | 'manage_stock'
 
-// Las siete capacidades (04 sección 2.1): "Al crear un administrador se insertan las siete en
-// true" -- CONFIRMADO por Mike el 23 sep 2026 (P07.0), ya no es POR CONFIRMAR.
+// Todas las capacidades (04 sección 2.1): "Al crear un administrador se insertan todas en true"
+// -- CONFIRMADO por Mike el 23 sep 2026 (P07.0), ya no es POR CONFIRMAR. Eran siete; desde 0069
+// (P25.1, módulo E) son ocho, con `manage_stock` («Gestionar stock»).
 const ALL_CAPABILITIES: AdminCapability[] = [
   'manage_users',
   'cancel_shifts',
@@ -50,6 +52,7 @@ const ALL_CAPABILITIES: AdminCapability[] = [
   'manage_attendance',
   'generate_shifts',
   'manage_supervisions',
+  'manage_stock',
 ]
 
 // Eventos que esta función puede registrar (subconjunto de `security_event_type`, 04 sección 2.6)

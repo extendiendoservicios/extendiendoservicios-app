@@ -12,6 +12,10 @@
 --   2. `pnpm db:seed:data` (este archivo, `supabase db query --linked -f supabase/seed.sql`):
 --      busca esos perfiles por email y carga roles, capacidades, datos laborales, clientes,
 --      sedes, servicios, turnos, asignaciones, asistencia, checklists y supervisiones.
+--   3. `pnpm db:seed:insumos` (supabase/seed-insumos-dev.sql, P25.1b): catálogo de insumos con su
+--      historia de stock. Es un archivo aparte, que también se puede correr solo sobre una base
+--      con otros datos (por ejemplo App_dev con las cuentas e2e); `pnpm db:seed:data` lo corre
+--      a continuación de este archivo.
 --
 -- Idempotente: el bloque 1 trunca (en cascada) todo lo que este archivo vuelve a poblar, así que
 -- correrlo varias veces sobre `App_dev` no duplica nada -- necesario porque `App_dev` también es
@@ -99,8 +103,17 @@ truncate table
   public.employees,
   public.rating_criteria,
   public.holidays,
-  public.company_settings
+  public.company_settings,
+  public.supply_categories,
+  public.stock_counts
   restart identity cascade;
+
+-- Módulo E (insumos y stock, P25.1): `supply_categories` arrastra por cascada los artículos, el
+-- historial de precios, los movimientos y sus líneas, los controles y los avisos de faltante, que
+-- además dependen de sedes y turnos de este seed. Se vuelven a cargar con
+-- `supabase/seed-insumos-dev.sql`. Los eventos de seguridad que dejó el seed anterior (cambio de
+-- precio y anulación) se quitan para que correr el seed varias veces no los duplique.
+delete from public.security_events where event_type in ('supply_price_changed', 'stock_movement_voided');
 
 -- =================================================================================================
 -- 1. Personas ya creadas en Auth (scripts/seed-dev.ts) -- se buscan por email, nunca se insertan.

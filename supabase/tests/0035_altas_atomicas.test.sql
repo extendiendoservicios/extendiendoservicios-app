@@ -157,7 +157,7 @@ select is(
   'ya completa, la cuenta deja de ser retomable'
 );
 
--- Administrador: siete capacidades -----------------------------------------------------------
+-- Administrador: todas las capacidades (siete hasta 0068, ocho con manage_stock desde 0069) ---
 
 select public.admin_create_user_records(
   'c3500000-0000-0000-0000-000000000004', 'c3500000-0000-0000-0000-000000000001',
@@ -166,8 +166,8 @@ select public.admin_create_user_records(
 select is(
   (select count(*)::int from public.admin_capabilities
    where profile_id = 'c3500000-0000-0000-0000-000000000004' and enabled),
-  7,
-  'un administrador nuevo queda con las siete capacidades activas'
+  cardinality(enum_range(null::public.admin_capability)),
+  'un administrador nuevo queda con todas las capacidades activas (las ocho, con manage_stock de 0069)'
 );
 select is(
   (select count(*)::int from public.employees where profile_id = 'c3500000-0000-0000-0000-000000000004'),

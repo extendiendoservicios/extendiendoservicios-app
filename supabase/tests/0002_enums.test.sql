@@ -33,7 +33,7 @@ select enum_has_labels(
   'public', 'admin_capability',
   array[
     'manage_users', 'cancel_shifts', 'edit_ratings', 'edit_checklists',
-    'manage_attendance', 'generate_shifts', 'manage_supervisions'
+    'manage_attendance', 'generate_shifts', 'manage_supervisions', 'manage_stock'
   ],
   'admin_capability tiene los valores exactos y en orden'
 );
@@ -120,9 +120,11 @@ select enum_has_labels(
     'attendance_time_corrected', 'geo_validation_overridden', 'geofence_radius_changed',
     'media_deleted',
     'workday_corrected',
-    'workday_auto_closed'
+    'workday_auto_closed',
+    'stock_movement_voided',
+    'supply_price_changed'
   ],
-  'security_event_type tiene los valores exactos y en orden (04 sección 2.6; admin_action_rejected agregado en 0030, SEG-03; name_changed en 0032, P19.5a; service_deleted en 0044, AJ3-01; los tres de corrección de fichajes y radio en 0052, P22.1; media_deleted en 0058, P21.8a; workday_corrected y workday_auto_closed en 0062, P24.1)'
+  'security_event_type tiene los valores exactos y en orden (04 sección 2.6; admin_action_rejected agregado en 0030, SEG-03; name_changed en 0032, P19.5a; service_deleted en 0044, AJ3-01; los tres de corrección de fichajes y radio en 0052, P22.1; media_deleted en 0058, P21.8a; workday_corrected y workday_auto_closed en 0062, P24.1; stock_movement_voided y supply_price_changed en 0069, P25.1)'
 );
 
 select * from finish();

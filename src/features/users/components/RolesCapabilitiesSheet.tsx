@@ -52,6 +52,11 @@ const CAPABILITY_INFO: Record<
     description:
       'Cargar los clientes y sedes preferenciales de los coordinadores y cancelar supervisiones.',
   },
+  manage_stock: {
+    label: 'Gestionar stock',
+    description:
+      'Cargar el catálogo de insumos y sus precios, registrar ingresos, ajustes y controles, retirar en nombre de otra persona y anular movimientos.',
+  },
 }
 
 /**

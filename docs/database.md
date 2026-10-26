@@ -2152,23 +2152,26 @@ Las 15 enumeraciones del modelo, en el esquema `public`, migración `0002_enums.
 valor más adelante es `alter type ... add value ...`, sin rehacer nada: así entran los estados de
 los módulos futuros.
 
-| Enum                  | Valores (en orden)                                                                                                                                                                                                                                  |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `app_role`            | `owner`, `admin`, `supervisor`, `employee`                                                                                                                                                                                                          |
-| `admin_capability`    | `manage_users`, `cancel_shifts`, `edit_ratings`, `edit_checklists`, `manage_attendance`, `generate_shifts`, `manage_supervisions`                                                                                                                   |
-| `client_status`       | `active`, `suspended`, `closed`                                                                                                                                                                                                                     |
-| `site_status`         | `active`, `inactive`                                                                                                                                                                                                                                |
-| `employee_status`     | `active`, `terminated`                                                                                                                                                                                                                              |
-| `service_status`      | `active`, `paused`, `ended`                                                                                                                                                                                                                         |
-| `shift_status`        | `scheduled`, `assigned`, `in_progress`, `completed`, `cancelled`                                                                                                                                                                                    |
-| `assignment_status`   | `expected`, `delay_notified`, `absence_notified`, `present`, `finished`                                                                                                                                                                             |
-| `task_status`         | `pending`, `in_progress`, `done`, `not_done`                                                                                                                                                                                                        |
-| `attendance_kind`     | `check_in`, `check_out`                                                                                                                                                                                                                             |
-| `attendance_source`   | `employee_app`, `admin`                                                                                                                                                                                                                             |
-| `notice_kind`         | `delay`, `absence`, `on_the_way` (0032)                                                                                                                                                                                                             |
-| `absence_reason`      | `illness`, `personal`, `procedure`, `transport`, `other`                                                                                                                                                                                            |
-| `supervision_status`  | `assigned`, `in_progress`, `completed`, `not_done`, `cancelled`                                                                                                                                                                                     |
-| `security_event_type` | `sign_in`, `sign_in_failed`, `user_created`, `user_deactivated`, `user_reactivated`, `password_reset_by_admin`, `sessions_revoked`, `roles_changed`, `capabilities_changed`, `email_changed`, `admin_action_rejected` (0030), `name_changed` (0032) |
+| Enum                      | Valores (en orden)                                                                                                                                                                                                                                                                                          |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app_role`                | `owner`, `admin`, `supervisor`, `employee`                                                                                                                                                                                                                                                                  |
+| `admin_capability`        | `manage_users`, `cancel_shifts`, `edit_ratings`, `edit_checklists`, `manage_attendance`, `generate_shifts`, `manage_supervisions`, `manage_stock` (0069)                                                                                                                                                    |
+| `client_status`           | `active`, `suspended`, `closed`                                                                                                                                                                                                                                                                             |
+| `site_status`             | `active`, `inactive`                                                                                                                                                                                                                                                                                        |
+| `employee_status`         | `active`, `terminated`                                                                                                                                                                                                                                                                                      |
+| `service_status`          | `active`, `paused`, `ended`                                                                                                                                                                                                                                                                                 |
+| `shift_status`            | `scheduled`, `assigned`, `in_progress`, `completed`, `cancelled`                                                                                                                                                                                                                                            |
+| `assignment_status`       | `expected`, `delay_notified`, `absence_notified`, `present`, `finished`                                                                                                                                                                                                                                     |
+| `task_status`             | `pending`, `in_progress`, `done`, `not_done`                                                                                                                                                                                                                                                                |
+| `attendance_kind`         | `check_in`, `check_out`                                                                                                                                                                                                                                                                                     |
+| `attendance_source`       | `employee_app`, `admin`                                                                                                                                                                                                                                                                                     |
+| `notice_kind`             | `delay`, `absence`, `on_the_way` (0032)                                                                                                                                                                                                                                                                     |
+| `absence_reason`          | `illness`, `personal`, `procedure`, `transport`, `other`                                                                                                                                                                                                                                                    |
+| `supervision_status`      | `assigned`, `in_progress`, `completed`, `not_done`, `cancelled`                                                                                                                                                                                                                                             |
+| `security_event_type`     | `sign_in`, `sign_in_failed`, `user_created`, `user_deactivated`, `user_reactivated`, `password_reset_by_admin`, `sessions_revoked`, `roles_changed`, `capabilities_changed`, `email_changed`, `admin_action_rejected` (0030), `name_changed` (0032), `stock_movement_voided`, `supply_price_changed` (0069) |
+| `stock_movement_kind`     | `entry`, `return`, `withdrawal`, `adjustment`, `count`, `reversal` (0069, módulo E)                                                                                                                                                                                                                         |
+| `stock_adjustment_reason` | `count`, `breakage`, `expired`, `data_error`, `other` (0069, módulo E)                                                                                                                                                                                                                                      |
+| `supply_shortage_status`  | `open`, `resolved` (0069, módulo E)                                                                                                                                                                                                                                                                         |
 
 Las etiquetas en español para pantalla están en `04_Modelo_de_Datos.md` sección 3; no se
 duplican acá para no desincronizarse.
@@ -2225,6 +2228,7 @@ En F19 (P19.7 paquete R, AJ3-08): `0046_p19_7_turno_repetido.sql` -- ver "Turno 
 En F21 (P21.1, módulo H): `0047_p21_1_evidencia.sql` -- ver "Evidencia fotográfica: fotos y videos del turno".
 En F21 (P21.8a, módulo H): `0058_p21_8_eliminar_evidencia.sql` -- ver "Eliminar evidencia para liberar espacio".
 En F22 (P22.1, módulo B1): `0052_p22_1_geolocalizacion.sql`, `0053_p22_1_correcciones_eventos.sql`, `0054_p22_1b_privacidad_coordenadas.sql`, `0055_p22_1b_execute_service_role.sql` y `0056_p22_4b_resumen_y_consentimiento.sql` -- ver "Módulo B1: geolocalización y corrección de fichajes" y "Privacidad de las coordenadas".
+En F25 (P25.1, módulo E): `0069_p25_1_enums.sql`, `0070_p25_1_insumos_y_stock.sql` y `0071_p25_1_imagenes_insumos.sql` -- ver "Insumos y control de stock".
 
 ## Cómo escribir una migración
 
@@ -2520,6 +2524,145 @@ smallint` (`company_settings.geofence_max_accuracy_m`), los mismos valores que u
 supervisión. Se recreó la función y la vista (cambia el tipo de retorno); grants iguales.
 
 pgTAP: `0064_p24_correcciones.test.sql`.
+
+## Insumos y control de stock (migraciones `0069` a `0071`, P25.1, módulo E)
+
+Especificación: `Docs/Plan_Maestro/modulos/E_insumos_y_stock.md` (decisiones `IS-01` a `IS-34`, todas confirmadas).
+Un catálogo de artículos de limpieza (cada presentación es un artículo, con su código y su stock en unidades enteras),
+ingresos, retiros, ajustes, anulaciones y controles de stock, y avisos de faltante. `0069` solo agrega valores y tipos de
+enumeración (Postgres no deja usar un valor nuevo en la transacción que lo crea); `0070` tiene tablas, RPC, vistas y
+RLS; `0071` el bucket de imágenes. Versión prevista: `0.25.0`.
+
+### Reglas que atraviesan el módulo
+
+- **El stock nunca queda negativo.** `supplies.stock_qty` tiene `check (>= 0)` y todas las RPC mueven el stock por el
+  núcleo `app.stock_post_movement`, que bloquea las filas de `supplies` involucradas en orden de `id`
+  (`select ... order by id for update`) antes de calcular. Dos retiros simultáneos se serializan (el segundo calcula sobre
+  el stock que dejó el primero) y no hay deadlock aunque pidan los artículos en distinto orden. Verificado con dos
+  sesiones reales contra `App_dev`.
+- **Inmutabilidad (IS-27).** Los movimientos, sus líneas, los controles, sus líneas y el historial de precios no se
+  editan ni se borran (trigger `trg_stock_immutable`, `MOVEMENT_IMMUTABLE`, también para `postgres`; solo `truncate`, que
+  usa el seed, lo esquiva). Lo único que se escribe sobre un movimiento es la marca de anulación, una vez. Un error se
+  corrige con un ajuste o, en un ingreso, devolución o retiro, con la **anulación**: un movimiento `reversal` enlazado
+  (`reverses_id`, único) con las cantidades opuestas y el costo y la venta del original; el original queda con
+  `voided_at` / `voided_by` / `void_reason`.
+- **Precios del momento (IS-22).** Cada línea guarda `unit_cost` y `unit_sale` vigentes cuando se movió. Cambiar el precio
+  después no recalcula lo histórico. Cada cambio queda en `supply_price_changes` (quién, cuándo, anterior y nuevo; `source`
+  `create`, `manual` o `entry`) y en `security_events` (`supply_price_changed`).
+- **Hora y fechas.** `recorded_at` lo pone `now()` dentro de la RPC (ADR-009). «Hoy» y «los próximos 7 días» se calculan
+  con `app.today()` (hora de Argentina, ADR-019).
+- **Quién puede qué (IS-21).** `manage_stock` («Gestionar stock», el dueño la tiene implícita) exige: catálogo, categorías,
+  precios, ingresos, ajustes, retiros en nombre de otro, anulaciones y «Cargar control». Sin la capacidad, un
+  administrador **lee** toda la sección y puede **resolver avisos de faltante**, pero no mueve stock. Empleados y
+  coordinadores no leen ninguna tabla del módulo ni ninguna vista de administración (IS-20): ven el catálogo sin precios
+  ni cantidades y lo suyo (retiros y avisos) por vistas de definidor.
+- **Mensaje por stock insuficiente.** Para empleados y coordinadores: «No alcanza el stock de X. Consultá en la oficina.»
+  (sin la cantidad, IS-20); para la administración incluye cuánto hay. En ambos casos el código es `INSUFFICIENT_STOCK`.
+- **Un artículo desactivado** no recibe ingresos, ajustes ni retiros (`SUPPLY_INACTIVE`), y solo se desactiva con stock en
+  cero (`STOCK_NOT_ZERO`, IS-26).
+
+### Tablas (RLS: solo `select` para dueño y administradores; nada se escribe directo)
+
+- **`supply_categories`**: `name` (único sin distinguir mayúsculas), `sort_order`, `active`, auditoría.
+- **`supplies`**: `code` (único sin distinguir mayúsculas ni espacios de los extremos), `name`, `presentation`,
+  `category_id`, `image_path` (`{supply_id}/{uuid}.webp` en `supply-images`), `min_qty` (nulo = sin aviso), `cost_price` y
+  `sale_price` (`numeric(12,2)`, `>= 0`), `stock_qty`, `active`, `notes`, auditoría.
+- **`supply_price_changes`**: historial de precios.
+- **`stock_movements`**: `kind` (`entry`, `return`, `withdrawal`, `adjustment`, `count`, `reversal`), `recorded_at`,
+  `recorded_by`, `person_id` (quien retira), `shift_id`, `site_id` (un retiro siempre tiene sede; con turno es la del
+  turno), `supplier`, `document_number`, `reason` (ajuste), `note`, `count_id`, `reverses_id`, `voided_at`, `voided_by`,
+  `void_reason`.
+- **`stock_movement_lines`**: `movement_id`, `supply_id` (una vez por movimiento), `qty_delta` (con signo), `unit_cost`,
+  `unit_sale`, `stock_after`.
+- **`stock_counts`** y **`stock_count_lines`**: el control (`counted_at`, revisor como `reviewer_id` **o** `reviewer_name`,
+  `notes`, quién lo cargó) y, por artículo, `system_qty` (stock del sistema a esa hora), `counted_qty` y `difference`.
+- **`supply_shortage_reports`**: `reported_by`, `supply_id` **o** `description`, `shift_id`, `site_id`, `comment`,
+  `status` (`open`, `resolved`), `resolved_by`, `resolved_at`, `resolution_note`.
+
+### RPC (todas `security definer`, `search_path = public, app, pg_temp`; errores `P0001` con `hint` = código)
+
+Los códigos que se repiten: `FORBIDDEN` (sin permiso), `INVALID_LINES` (líneas vacías o mal formadas), `INVALID_QTY`
+(no es un entero distinto de cero, o el signo no corresponde al tipo), `INVALID_PRICE` (negativo o con más de dos
+decimales), `DUPLICATE_SUPPLY`, `SUPPLY_NOT_FOUND`, `SUPPLY_INACTIVE`, `INSUFFICIENT_STOCK`.
+
+| RPC                                                                                                                                | Quién                                                    | Qué hace y devuelve                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Errores propios                                                                                                                                                                                                          |
+| ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `upsert_supply(p_code, p_name, p_category_id, p_presentation, p_min_qty, p_cost_price, p_sale_price, p_notes, p_image_path, p_id)` | O; A + `manage_stock`                                    | Alta (sin `p_id`, o con un id nuevo que genera el cliente para subir la imagen antes) o edición (reemplaza **todos** los campos que llegan; `null` vacía los opcionales). Los precios solo cuentan en el alta (por defecto 0); después, `set_supply_prices`. No toca stock ni `active`. `p_image_path` empieza con `{id}/`. Devuelve la fila de `supplies`.                                                                                                                                                                                                                                                                                                                                                | `CODE_REQUIRED`, `NAME_REQUIRED`, `INVALID_MIN_QTY`, `INVALID_IMAGE_PATH`, `CATEGORY_NOT_FOUND`, `CATEGORY_INACTIVE`, `CODE_ALREADY_EXISTS`                                                                              |
+| `set_supply_active(p_supply_id, p_active)`                                                                                         | O; A + `manage_stock`                                    | Desactiva (solo con stock cero) o reactiva. Devuelve la fila.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | `INVALID_ACTIVE`, `SUPPLY_NOT_FOUND`, `STOCK_NOT_ZERO`, `CATEGORY_INACTIVE`                                                                                                                                              |
+| `set_supply_prices(p_supply_id, p_cost_price, p_sale_price)`                                                                       | O; A + `manage_stock`                                    | Cambia costo y venta (si no cambian, no escribe). Historial y evento. Devuelve la fila.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | `INVALID_PRICE`, `SUPPLY_NOT_FOUND`                                                                                                                                                                                      |
+| `upsert_supply_category(p_name, p_sort_order, p_active, p_id)`                                                                     | O; A + `manage_stock`                                    | Alta (sin `p_id`) o edición. Desactivar pide que no queden artículos activos. Devuelve la fila.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | `NAME_REQUIRED`, `INVALID_CATEGORY`, `CATEGORY_NOT_FOUND`, `CATEGORY_IN_USE`, `CATEGORY_NAME_EXISTS`                                                                                                                     |
+| `register_stock_entry(p_lines, p_supplier, p_document_number, p_note, p_kind)`                                                     | O; A + `manage_stock`                                    | Ingreso (`p_kind = 'entry'`, por defecto) o devolución (`'return'`, IS-08). `p_lines`: `[{supply_id, qty (entero > 0), unit_cost? (opcional), update_cost? (true: además actualiza el costo vigente si es distinto, IS-23)}]`. Proveedor, comprobante y nota opcionales. Devuelve `{"movement": <cabecera>, "lines": [{supply_id, code, name, presentation, qty_delta, unit_cost, unit_sale, stock_after}]}`.                                                                                                                                                                                                                                                                                              | `INVALID_KIND`                                                                                                                                                                                                           |
+| `adjust_stock(p_supply_id, p_delta, p_reason, p_note)`                                                                             | O; A + `manage_stock`                                    | Ajuste `+` o `-` con motivo obligatorio (`count`, `breakage`, `expired`, `data_error`, `other`); con `other` la nota es obligatoria. Mismo retorno que el ingreso.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | `REASON_REQUIRED`, `NOTE_REQUIRED`                                                                                                                                                                                       |
+| `register_withdrawal(p_lines, p_shift_id, p_site_id, p_note, p_person_id)`                                                         | E, C (propio); O; A + `manage_stock` (en nombre de otro) | Retiro que **descuenta el stock en el momento**. `p_lines`: `[{supply_id, qty (entero > 0)}]`. Sin `p_person_id` (o el propio) retira la sesión (empleado o coordinador); con el de otra persona carga la administración (`manage_stock`; la persona es empleado o coordinador activo). Hace falta turno **o** sede; sin turno, `p_note` es obligatoria. Empleado: solo sus turnos de hoy a +7 días y las sedes de sus asignaciones; coordinador: todos los turnos de hoy a +7 y todas las sedes; administración en nombre de otro: cualquier turno vigente o sede activa. Devuelve `{"movement": <cabecera>, "lines": [{supply_id, code, name, presentation, qty, qty_delta}]}` **sin precios ni stock**. | `PERSON_REQUIRED`, `PERSON_NOT_FOUND`, `SHIFT_OR_SITE_REQUIRED`, `SHIFT_NOT_FOUND`, `SHIFT_NOT_AVAILABLE` (cancelado), `SHIFT_NOT_ALLOWED`, `SITE_SHIFT_MISMATCH`, `SITE_NOT_FOUND`, `SITE_NOT_ALLOWED`, `NOTE_REQUIRED` |
+| `void_stock_movement(p_movement_id, p_reason)`                                                                                     | O; A + `manage_stock`                                    | Anula un ingreso, devolución o retiro (motivo obligatorio): contramovimiento enlazado y original marcado. Evento `stock_movement_voided`. Devuelve `{"movement": <original anulado>, "reversal": {"movement", "lines"}}`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | `REASON_REQUIRED`, `MOVEMENT_NOT_FOUND`, `MOVEMENT_NOT_VOIDABLE` (ajustes, controles y anulaciones), `MOVEMENT_ALREADY_VOIDED`, `VOID_INSUFFICIENT_STOCK` (el stock del ingreso ya se usó)                               |
+| `register_stock_count(p_counted_at, p_lines, p_reviewer_id, p_reviewer_name, p_notes)`                                             | O; A + `manage_stock`                                    | Carga un control (IS-31). `p_counted_at`: fecha y hora del conteo (no futura). Revisor: `p_reviewer_id` **o** `p_reviewer_name`. `p_lines`: `[{supply_id, counted_qty (entero >= 0)}]`, solo las filas contadas (las en blanco no se mandan y no se tocan). Diferencia = contado − stock del sistema **a `p_counted_at`** (el actual menos los movimientos posteriores). Un solo movimiento `count` con las diferencias distintas de cero. Devuelve `{"count": <fila>, "movement": <cabecera o null>, "lines": [{supply_id, code, name, presentation, system_qty, counted_qty, difference}]}`.                                                                                                             | `COUNT_DATE_REQUIRED`, `COUNT_IN_FUTURE`, `REVIEWER_REQUIRED`, `REVIEWER_NOT_FOUND`, `COUNT_INCONSISTENT` (los movimientos posteriores dejarían el stock negativo)                                                       |
+| `report_supply_shortage(p_supply_id, p_description, p_shift_id, p_site_id, p_comment)`                                             | E, C                                                     | Aviso de faltante: un artículo activo **o** un texto libre. Turno o sede y comentario opcionales (mismas opciones que el retiro). Devuelve la fila (`open`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | `SHORTAGE_TARGET_REQUIRED`, `SUPPLY_NOT_FOUND`, `SHIFT_NOT_FOUND`, `SHIFT_NOT_AVAILABLE`, `SHIFT_NOT_ALLOWED`, `SITE_SHIFT_MISMATCH`, `SITE_NOT_FOUND`, `SITE_NOT_ALLOWED`                                               |
+| `resolve_supply_shortage(p_report_id, p_note)`                                                                                     | O, A (no exige `manage_stock`)                           | Resuelve un aviso con una nota obligatoria. Devuelve la fila.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | `NOTE_REQUIRED`, `SHORTAGE_NOT_FOUND`, `SHORTAGE_ALREADY_RESOLVED`                                                                                                                                                       |
+| `get_stock_summary()`                                                                                                              | O, A (no exige `manage_stock`)                           | Contadores para el Resumen y la barra lateral: `{"open_reports", "open_shortages", "out_of_stock", "below_min"}`. `open_shortages` cuenta por artículo (varios avisos del mismo artículo cuentan uno; los de texto libre, por texto). `out_of_stock`: activos con stock 0. `below_min`: activos con mínimo y stock entre 1 y el mínimo.                                                                                                                                                                                                                                                                                                                                                                    | —                                                                                                                                                                                                                        |
+
+E = empleado, C = coordinador (rol `supervisor`), A = administrador, O = dueño.
+
+### Vistas (todas `security_invoker`)
+
+- **`v_supply_catalog`** (cualquiera con rol activo): artículos activos, **sin precios, stock ni mínimos**. Columnas:
+  `id`, `code`, `name`, `presentation`, `category_id`, `category_name`, `category_sort_order`, `image_path`,
+  `out_of_stock`. Pasa por la función de definidor `app.supply_catalog()`.
+- **`v_stock_admin`** (O, A): una fila por artículo (incluye inactivos) con `min_qty`, `cost_price`, `sale_price`,
+  `stock_qty`, `stock_value` (`stock_qty × cost_price`) y `status`: `empty` (stock cero, rojo, haya o no mínimo), `low`
+  (hay mínimo y el stock es igual o menor, amarillo) u `ok` (IS-05, IS-25).
+- **`v_stock_movements_admin`** (O, A): una fila por **línea**: `movement_id`, `line_id`, `kind`, `recorded_at`,
+  `recorded_by(_name)`, `person_id`/`person_name`, `shift_id`, `shift_date`, `start_time`, `end_time`, `client_id`,
+  `client_name`, `site_id`, `site_name`, `supplier`, `document_number`, `reason`, `note`, `count_id`,
+  `count_counted_at`, `count_reviewer_name`, `reverses_id`, `voided_at`, `voided_by(_name)`, `void_reason`, `supply_id`,
+  `supply_code`, `supply_name`, `supply_presentation`, `category_id`, `qty_delta`, `unit_cost`, `unit_sale`, `line_cost`,
+  `line_sale`, `stock_after`. Alimenta Movimientos, las fichas y Excel; los filtros los pone el cliente.
+- **`v_stock_counts_admin`** (O, A): `count_id`, `counted_at`, `reviewer_id`, `reviewer_name`, `notes`, `created_at`,
+  `created_by(_name)`, `movement_id` (nulo si no hubo diferencias), `lines_count`, `differences_count` y `lines`
+  (jsonb `[{supply_id, code, name, presentation, system_qty, counted_qty, difference}]`).
+- **`v_supply_consumption_by_client`** (O, A): retiros **no anulados** por `day` (fecha de Argentina), cliente, sede y
+  artículo: `qty`, `cost_total`, `sale_total` con los precios guardados en cada línea. El período, el cliente y la sede
+  los filtra el cliente.
+- **`v_my_withdrawals`** (quien retira): sus retiros, también los que cargó la administración a su nombre (`on_behalf`,
+  `registered_by_name`), con turno, cliente, sede, observación, anulación (`voided_at`, `void_reason`), `total_qty` y
+  `lines` (jsonb `[{supply_id, code, name, presentation, qty}]`) **sin precios**. Más recientes primero.
+- **`v_my_shortage_reports`**: mis avisos, abiertos primero: artículo (`supply_name` con presentación) o `description`,
+  turno o sede, `comment`, `status`, y si se resolvió, `resolved_at`, `resolved_by_name` y `resolution_note`.
+- **`v_withdrawal_shift_options`**: los turnos que puedo elegir (IS-28): empleado, los suyos de hoy a +7 días; coordinador,
+  todos de hoy a +7 con `is_priority` («Mis sedes», `priority_kind` `site` o `client`) primero; administración sin rol de
+  empleado ni coordinador (retiro en nombre de otro), todos de -30 a +7 días. Sin turnos cancelados. Columnas:
+  `shift_id`, `shift_date`, `start_time`, `end_time`, `starts_at`, `open_ended`, `shift_status`, `client_id`,
+  `client_name`, `site_id`, `site_name`, `is_assigned`, `priority_kind`, `is_priority`.
+- **`v_withdrawal_site_options`**: las sedes para un retiro sin turno puntual: empleado, las de sus asignaciones;
+  coordinador y administración, todas las activas, con `is_priority` primero. Columnas: `site_id`, `site_name`,
+  `client_id`, `client_name`, `priority_kind`, `is_priority`.
+
+### Storage: bucket `supply-images` (migración `0071`, IS-32)
+
+Privado, 2 MB, `image/webp` e `image/jpeg`. Ruta `{supply_id}/{uuid}.webp`. Lectura: cualquier usuario autenticado y
+activo. Escritura (subir, reemplazar, borrar): solo con `manage_stock` (el dueño la tiene implícita).
+
+### Seed de desarrollo
+
+`supabase/seed-insumos-dev.sql` (P25.1b) carga 4 categorías y 16 artículos de limpieza inventados (más un discontinuado) con
+presentaciones, códigos (`QUI-`, `DES-`, `PRO-`, `UTE-`), precios, mínimos y stock variado: 3 en cero (rojo), 4 igual o
+bajo el mínimo (amarillo) y 3 sin mínimo. La historia que lo explica pasa por `app.stock_post_movement` con la hora
+pasada: dos ingresos (uno actualiza el costo), una suba de precio, siete retiros sobre turnos existentes (uno de una
+coordinadora para una sede, uno cargado por la oficina en nombre de un empleado y después anulado), dos ajustes, un
+control y dos avisos de faltante (uno abierto y uno resuelto). Nada en `seed-prod.sql`.
+
+Cómo cargarlos: `pnpm db:seed:insumos` (`supabase db query --linked -f supabase/seed-insumos-dev.sql`), contra `App_dev`
+(verificá con `supabase projects list` que el proyecto vinculado sea `App_dev`). Se puede correr solo y las veces que haga
+falta: toma de la base personas, turnos y sedes existentes y activos (de forma determinista, sin crear ninguno), borra
+solo lo suyo (los 17 códigos de artículo y lo que cuelga de ellos) y lo vuelve a cargar, sin tocar clientes, empleados,
+turnos ni configuración. Su salvaguarda aborta si hay usuarios que no son del seed ni del dominio `example.com` de las
+cuentas e2e. `pnpm db:seed:data` lo corre a continuación de `seed.sql`, que ya no carga insumos (es la única fuente).
+
+### Tests pgTAP
+
+`0069_p25_1_enums`, `0070_p25_1_insumos_estructura`, `_catalogo`, `_movimientos`, `_control`, `_permisos` y
+`0071_p25_1_imagenes_insumos`: estructura y restricciones, cada RPC y cada código de error, stock nunca negativo,
+precios guardados en la línea, anulación y contramovimiento, diferencia del control contra el stock a la hora indicada,
+permisos por rol y capacidad, y que empleados y coordinadores no lean precios, cantidades ni retiros ajenos.
 
 ## Tipos para el frontend
 
