@@ -718,7 +718,7 @@ Este escenario no prueba nada nuevo: **deja listo lo que usan los escenarios de 
 
 |                  |                                                                                                                    |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------ |
-| **Rol**          | Administrador (Administrador 1, con el permiso **Asignar supervisiones**)                                          |
+| **Rol**          | Administrador (Administrador 1, con el permiso **Gestionar supervisiones**)                                        |
 | **Dónde**        | Computadora                                                                                                        |
 | **Tipo**         | Imprescindible                                                                                                     |
 | **Cubre**        | CJ-01 a CJ-04 (los coordinadores no se asignan a los turnos; sus clientes y sedes preferenciales ordenan su lista) |

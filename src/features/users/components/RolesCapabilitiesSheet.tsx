@@ -48,8 +48,9 @@ const CAPABILITY_INFO: Record<
   },
   generate_shifts: { label: 'Generar turnos del mes' },
   manage_supervisions: {
-    label: 'Asignar supervisiones',
-    description: 'Asignar y cancelar supervisiones.',
+    label: 'Gestionar supervisiones',
+    description:
+      'Cargar los clientes y sedes preferenciales de los coordinadores y cancelar supervisiones.',
   },
 }
 

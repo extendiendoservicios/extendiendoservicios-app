@@ -52,9 +52,7 @@ El dueño los activa por persona (ver [Usuarios y roles](#usuarios-y-roles)). Si
 | Editar plantillas de tareas    | Crear y cambiar las listas de tareas de clientes y sedes                                                                                     |
 | Registrar asistencia por otros | **Registrar en nombre** de un empleado; asignar o quitar personal una vez que el turno ya empezó; corregir las jornadas de los coordinadores |
 | Generar turnos del mes         | **Generar turnos del mes**                                                                                                                   |
-| Asignar supervisiones          | Cargar y quitar los clientes y sedes preferenciales de los coordinadores; cancelar supervisiones                                             |
-
-> **Sobre el nombre «Asignar supervisiones».** Así se llama hoy este permiso en la pantalla de roles y capacidades, por costumbre de antes. Ya no sirve para asignar a nadie: los coordinadores eligen solos qué turno supervisar. Hoy habilita las **preferencias** y **Cancelar supervisión**.
+| Gestionar supervisiones        | Cargar y quitar los clientes y sedes preferenciales de los coordinadores; cancelar supervisiones                                             |
 
 ### Lo que es solo del dueño
 
@@ -410,7 +408,7 @@ Lo que hacés vos desde la oficina es cargar las preferencias, mirar las jornada
 
 ### Clientes y sedes preferenciales
 
-**Permiso "Asignar supervisiones".** Una preferencia puede ser de un **cliente entero** (cubre todas sus sedes, también las que se creen después) o de **una sede**. Una sede puede tener varios coordinadores preferenciales. No hay límite ni obligación: un coordinador puede no tener ninguna.
+**Permiso "Gestionar supervisiones".** Una preferencia puede ser de un **cliente entero** (cubre todas sus sedes, también las que se creen después) o de **una sede**. Una sede puede tener varios coordinadores preferenciales. No hay límite ni obligación: un coordinador puede no tener ninguna.
 
 **Desde la ficha del coordinador:**
 
@@ -619,7 +617,7 @@ Tocá una fila para abrir su detalle.
 
 Ves el turno, el coordinador, el estado, el inicio, el fin y la duración, los **Criterios usados** y las **Calificaciones por empleado**, con el puntaje (de 1 a 5 estrellas), el comentario y quién lo editó y cuándo. Acciones:
 
-- **Cancelar supervisión** (**Permiso "Asignar supervisiones"**): pide el **Motivo de la cancelación**. Las calificaciones ya cargadas quedan registradas; solo cambia el estado. Es lo que corresponde para una supervisión **Sin cerrar**.
+- **Cancelar supervisión** (**Permiso "Gestionar supervisiones"**): pide el **Motivo de la cancelación**. Las calificaciones ya cargadas quedan registradas; solo cambia el estado. Es lo que corresponde para una supervisión **Sin cerrar**.
 - **Calificar** o **Editar** una calificación (**Permiso "Editar calificaciones"**). El coordinador solo puede cambiar sus calificaciones mientras su supervisión está abierta; Administración puede hacerlo siempre, y queda anotado quién lo hizo.
 
 ---
@@ -645,7 +643,7 @@ En la fila de cada persona, el botón de los tres puntos abre las acciones:
 
 **Solo dueño: nuevo administrador.** Con **Nuevo administrador** completás nombre, apellido, **Email de login** y una **Contraseña inicial**, igual que para un empleado.
 
-**Solo dueño: dar permisos a un administrador.** En el menú de la persona, **Editar roles y capacidades**. Ahí se tildan los siete permisos (**Gestionar usuarios**, **Cancelar turnos**, **Editar calificaciones**, **Editar plantillas de tareas**, **Registrar asistencia por otros**, **Generar turnos del mes**, **Asignar supervisiones**). Los permisos **se guardan solos** al activarlos. Los roles se guardan con **Guardar roles**; si al guardar le sacás un rol a alguien, se le cierran las sesiones.
+**Solo dueño: dar permisos a un administrador.** En el menú de la persona, **Editar roles y capacidades**. Ahí se tildan los siete permisos (**Gestionar usuarios**, **Cancelar turnos**, **Editar calificaciones**, **Editar plantillas de tareas**, **Registrar asistencia por otros**, **Generar turnos del mes**, **Gestionar supervisiones**). Los permisos **se guardan solos** al activarlos. Los roles se guardan con **Guardar roles**; si al guardar le sacás un rol a alguien, se le cierran las sesiones.
 
 ### Empresa
 

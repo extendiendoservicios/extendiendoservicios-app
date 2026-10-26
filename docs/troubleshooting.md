@@ -324,7 +324,7 @@ Desde la coordinación libre (P24) **nadie asigna supervisiones**: el coordinado
   | Editar plantillas de tareas    | Crear y cambiar las listas de tareas                                                     |
   | Registrar asistencia por otros | Registrar inicio, fin y avisos en nombre de un empleado                                  |
   | Generar turnos del mes         | **Generar turnos del mes**                                                               |
-  | Asignar supervisiones          | Cargar los clientes y sedes preferenciales de los coordinadores y cancelar supervisiones |
+  | Gestionar supervisiones        | Cargar los clientes y sedes preferenciales de los coordinadores y cancelar supervisiones |
 
 ### 7.2. "El turno ya empezó: para asignar o quitar personal hace falta el permiso de asistencia."
 
