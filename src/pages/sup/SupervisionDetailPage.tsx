@@ -354,7 +354,7 @@ export default function SupervisionDetailPage() {
               tomar este turno. Solo se puede si todavía no calificaste a nadie.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-col">
             <Button
               size="mobile"
               variant="destructive"

@@ -104,21 +104,70 @@ export const WORKDAY_ACTION_LABELS: Record<WorkdayAction, string> = {
 }
 
 /**
- * Minutos netos para mostrar ahora. La base calcula `workedMinutes` al momento
- * de la lectura; mientras la jornada está en marcha, se le suma lo que pasó
- * desde esa lectura. Solo se usa la diferencia entre dos relojes del
- * dispositivo (nunca la hora absoluta del teléfono), y cada lectura nueva
- * (cada 30 s) vuelve a anclar el valor a lo que dice el servidor. En pausa o
- * finalizada el valor no avanza.
+ * Ancla del contador: los segundos netos que se mostraban en el instante
+ * `atMs` (reloj del dispositivo, solo para medir diferencias) y si la jornada
+ * estaba en marcha.
  */
-export function liveWorkedMinutes(
-  workday: MyWorkday,
-  fetchedAtMs: number,
+export interface WorkdayCounterAnchor {
+  seconds: number
+  atMs: number
+  running: boolean
+}
+
+/** Retroceso (en segundos) a partir del cual manda el servidor, p. ej. por una corrección. */
+const ANCHOR_BACKWARD_TOLERANCE_SECONDS = 120
+
+/** Segundos netos que muestra el ancla en `nowMs`. En pausa o finalizada no avanza. */
+export function anchorSecondsAt(
+  anchor: WorkdayCounterAnchor,
   nowMs: number,
 ): number {
-  if (workday.state !== 'running') return workday.workedMinutes
-  const elapsedMin = Math.max(0, Math.floor((nowMs - fetchedAtMs) / 60_000))
-  return workday.workedMinutes + elapsedMin
+  if (!anchor.running) return anchor.seconds
+  return anchor.seconds + Math.max(0, Math.floor((nowMs - anchor.atMs) / 1000))
+}
+
+/**
+ * Ancla nueva cuando llega una lectura del servidor (`readAtMs` es el instante
+ * de esa lectura en el reloj del dispositivo). El servidor informa minutos
+ * enteros (hasta 59 s menos que los reales), así que:
+ * - sin ancla previa, o si la jornada cambió entre en marcha y no en marcha,
+ *   se parte de `workedMinutes * 60`;
+ * - si lo que ya se mostraba es menor, se adelanta al valor del servidor;
+ * - si lo que se mostraba es mayor por menos de dos minutos, se conserva (el
+ *   contador nunca retrocede por el redondeo a minutos);
+ * - si lo que se mostraba es mayor por dos minutos o más, manda el servidor
+ *   (una corrección de la administración, por ejemplo).
+ * Nunca se usa la hora absoluta del teléfono, solo diferencias entre lecturas.
+ */
+export function nextCounterAnchor(
+  previous: WorkdayCounterAnchor | null,
+  workday: MyWorkday,
+  readAtMs: number,
+): WorkdayCounterAnchor {
+  const running = workday.state === 'running'
+  const fromServer: WorkdayCounterAnchor = {
+    seconds: workday.workedMinutes * 60,
+    atMs: readAtMs,
+    running,
+  }
+  if (!previous || !previous.running || !running) return fromServer
+  const shown = anchorSecondsAt(previous, readAtMs)
+  if (
+    shown >= fromServer.seconds &&
+    shown - fromServer.seconds < ANCHOR_BACKWARD_TOLERANCE_SECONDS
+  ) {
+    return { seconds: shown, atMs: readAtMs, running }
+  }
+  return fromServer
+}
+
+/** Reloj `H:MM:SS` para el contador de la jornada. */
+export function formatClock(totalSeconds: number): string {
+  const safe = Math.max(0, Math.floor(totalSeconds))
+  const hours = Math.floor(safe / 3600)
+  const minutes = Math.floor((safe % 3600) / 60)
+  const seconds = safe % 60
+  return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
 /** La pausa abierta (en curso) de la jornada, si está en pausa. */
