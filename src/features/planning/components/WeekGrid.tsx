@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { getStatusMeta } from '@/components/status'
+import type { ShiftStatus as BadgeShiftStatus } from '@/components/status'
 import { IconButton } from '@/components/IconButton'
 import { Input } from '@/components/ui/input'
 import { Combobox } from '@/components/Combobox'
@@ -18,7 +20,18 @@ import {
   startOfWeekIso,
   weekDaysIso,
 } from '@/features/planning/planningDates'
-import { groupAssignmentsByEmployeeAndDate } from '@/features/planning/grouping'
+import {
+  groupAssignmentsByEmployeeAndDate,
+  legendClientsOf,
+} from '@/features/planning/grouping'
+import { useColorBy } from '@/features/planning/colorBy'
+import { clientChipColors } from '@/features/planning/clientColors'
+import { ColorByToggle } from '@/features/planning/components/ColorByToggle'
+import {
+  ClientLegend,
+  StatusDotLegend,
+} from '@/features/planning/components/ColorLegends'
+import { StatusDot } from '@/features/planning/components/ShiftChip'
 import { useAssignmentsBoardRangeQuery } from '@/features/planning/queries'
 import { formatDateOnly } from '@/features/settings/dateOnly'
 import { formatShiftRange } from '@/features/shifts/openEnded'
@@ -95,6 +108,7 @@ function WeekGrid() {
   const [text, setText] = useState('')
   const debouncedText = useDebouncedValue(text)
   const [mobileEmployeeId, setMobileEmployeeId] = useState<string>('')
+  const [colorBy, setColorBy] = useColorBy()
 
   const weekDays = useMemo(() => weekDaysIso(weekStart), [weekStart])
 
@@ -123,6 +137,21 @@ function WeekGrid() {
   const assignmentsByEmployee = useMemo(
     () => groupAssignmentsByEmployeeAndDate(assignmentsQuery.data ?? []),
     [assignmentsQuery.data],
+  )
+
+  // Leyenda: todos los clientes de la semana, aunque el filtro deje uno solo.
+  const legendQuery = useAssignmentsBoardRangeQuery(
+    weekDays[0] as string,
+    weekDays[6] as string,
+    {
+      siteId: siteId !== 'all' ? siteId : undefined,
+      onlyActive: true,
+    },
+    colorBy === 'client',
+  )
+  const legendClients = useMemo(
+    () => legendClientsOf(legendQuery.data ?? []),
+    [legendQuery.data],
   )
 
   const clientOptionsQuery = useClientFilterOptionsQuery()
@@ -212,7 +241,20 @@ function WeekGrid() {
             })),
           ]}
         />
+        <ColorByToggle value={colorBy} onValueChange={setColorBy} />
       </div>
+
+      {colorBy === 'client' && (
+        <ClientLegend
+          title="Clientes de la semana"
+          clients={legendClients}
+          selectedId={clientId !== 'all' ? clientId : null}
+          onSelect={(id) => {
+            setClientId(id ?? 'all')
+            setSiteId('all')
+          }}
+        />
+      )}
 
       {isDesktop ? (
         // P19.11d: la grilla se ajusta sola al ancho disponible (la columna de
@@ -290,18 +332,58 @@ function WeekGrid() {
                                     assignment.endTime,
                                     assignment.openEnded,
                                   )
+                                  const colors =
+                                    colorBy === 'client'
+                                      ? clientChipColors(
+                                          assignment.clientCalendarColor,
+                                        )
+                                      : null
+                                  const statusLabel = colors
+                                    ? getStatusMeta({
+                                        domain: 'shift',
+                                        status:
+                                          assignment.shiftStatus as BadgeShiftStatus,
+                                      }).label
+                                    : ''
                                   return (
                                     <Link
                                       key={assignment.id}
                                       to={`/admin/turnos/${assignment.shiftId}`}
                                       title={`${assignment.siteName} · ${range}`}
-                                      className="block min-w-0 rounded bg-primary-100 px-1 py-1 text-left text-[11px] font-medium text-primary-800 outline-none hover:bg-primary-100/80 focus-visible:ring-3 focus-visible:ring-ring"
+                                      style={
+                                        colors
+                                          ? {
+                                              background: colors.background,
+                                              color: colors.color,
+                                            }
+                                          : undefined
+                                      }
+                                      className={`block min-w-0 rounded px-1 py-1 text-left text-[11px] font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring ${
+                                        colors
+                                          ? assignment.shiftStatus ===
+                                            'cancelled'
+                                            ? 'line-through opacity-70'
+                                            : ''
+                                          : 'bg-primary-100 text-primary-800 hover:bg-primary-100/80'
+                                      }`}
                                     >
-                                      <span
-                                        data-testid="week-chip-site"
-                                        className="block truncate"
-                                      >
-                                        {assignment.siteName}
+                                      <span className="flex items-center gap-1">
+                                        {colors && (
+                                          <>
+                                            <StatusDot
+                                              status={assignment.shiftStatus}
+                                            />
+                                            <span className="sr-only">
+                                              {statusLabel}:{' '}
+                                            </span>
+                                          </>
+                                        )}
+                                        <span
+                                          data-testid="week-chip-site"
+                                          className="block min-w-0 truncate"
+                                        >
+                                          {assignment.siteName}
+                                        </span>
                                       </span>
                                       <ShiftRange
                                         startTime={assignment.startTime}
@@ -362,20 +444,55 @@ function WeekGrid() {
                       <p className="text-[13px] text-text-3">Libre</p>
                     ) : (
                       <div className="flex flex-col gap-1 pt-1">
-                        {dayAssignments.map((assignment) => (
-                          <Link
-                            key={assignment.id}
-                            to={`/admin/turnos/${assignment.shiftId}`}
-                            className="flex min-h-11 items-center text-left text-[13px] font-medium text-primary-800"
-                          >
-                            {assignment.siteName} ·{' '}
-                            {formatShiftRange(
-                              assignment.startTime,
-                              assignment.endTime,
-                              assignment.openEnded,
-                            )}
-                          </Link>
-                        ))}
+                        {dayAssignments.map((assignment) => {
+                          const colors =
+                            colorBy === 'client'
+                              ? clientChipColors(assignment.clientCalendarColor)
+                              : null
+                          return (
+                            <Link
+                              key={assignment.id}
+                              to={`/admin/turnos/${assignment.shiftId}`}
+                              style={
+                                colors
+                                  ? {
+                                      background: colors.background,
+                                      color: colors.color,
+                                    }
+                                  : undefined
+                              }
+                              className={`flex min-h-11 items-center gap-2 text-left text-[13px] font-medium ${
+                                colors
+                                  ? `rounded px-2 ${assignment.shiftStatus === 'cancelled' ? 'line-through opacity-70' : ''}`
+                                  : 'text-primary-800'
+                              }`}
+                            >
+                              {colors && (
+                                <>
+                                  <StatusDot status={assignment.shiftStatus} />
+                                  <span className="sr-only">
+                                    {
+                                      getStatusMeta({
+                                        domain: 'shift',
+                                        status:
+                                          assignment.shiftStatus as BadgeShiftStatus,
+                                      }).label
+                                    }
+                                    :{' '}
+                                  </span>
+                                </>
+                              )}
+                              <span>
+                                {assignment.siteName} ·{' '}
+                                {formatShiftRange(
+                                  assignment.startTime,
+                                  assignment.endTime,
+                                  assignment.openEnded,
+                                )}
+                              </span>
+                            </Link>
+                          )
+                        })}
                       </div>
                     )}
                   </li>
@@ -385,6 +502,8 @@ function WeekGrid() {
           )}
         </div>
       )}
+
+      {colorBy === 'client' && <StatusDotLegend />}
     </div>
   )
 }

@@ -55,8 +55,10 @@ export function useShiftsBoardRangeQuery(
   from: string,
   to: string,
   filters: ShiftsBoardRangeFilters = {},
+  enabled = true,
 ) {
   return useQuery({
+    enabled,
     queryKey: planningKeys.shiftsBoard(from, to, filters),
     queryFn: () => assignmentsApi.fetchShiftsBoardByRange(from, to, filters),
     staleTime: LIST_STALE_TIME_MS,
@@ -68,8 +70,10 @@ export function useAssignmentsBoardRangeQuery(
   from: string,
   to: string,
   filters: AssignmentsBoardRangeFilters = {},
+  enabled = true,
 ) {
   return useQuery({
+    enabled,
     queryKey: planningKeys.assignmentsBoard(from, to, filters),
     queryFn: () =>
       assignmentsApi.fetchAssignmentsBoardByRange(from, to, filters),

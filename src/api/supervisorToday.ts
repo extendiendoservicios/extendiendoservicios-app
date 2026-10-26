@@ -56,6 +56,15 @@ export interface TodayShift {
   siteCity: string | null
   siteLatitude: number | null
   siteLongitude: number | null
+  /** Datos útiles de la sede (los mismos de `v_my_day`); `null` si no están cargados. */
+  siteContactName: string | null
+  siteContactPhone: string | null
+  accessInstructions: string | null
+  buildingHours: string | null
+  restrictionsNotes: string | null
+  /** Marcas de la sede («sin celular», «sin fotos»); `false` si la vista no las trae. */
+  phoneRestricted: boolean
+  photosNotAllowed: boolean
   /** Radio efectivo de la sede (el propio o el general), el mismo que aplica `take_supervision`; `null` si la vista no lo trae. */
   siteRadiusM: number | null
   /** Precisión máxima de la empresa (`geofence_max_accuracy_m`); `null` si la vista no la trae. */
@@ -115,6 +124,13 @@ export function mapTodayShiftRow(row: TodayRawRow): TodayShift {
     siteCity: row.site_city,
     siteLatitude: row.site_latitude,
     siteLongitude: row.site_longitude,
+    siteContactName: row.site_contact_name ?? null,
+    siteContactPhone: row.site_contact_phone ?? null,
+    accessInstructions: row.access_instructions ?? null,
+    buildingHours: row.building_hours ?? null,
+    restrictionsNotes: row.restrictions_notes ?? null,
+    phoneRestricted: row.phone_restricted ?? false,
+    photosNotAllowed: row.photos_not_allowed ?? false,
     siteRadiusM: row.site_radius_m ?? null,
     maxAccuracyM: row.max_accuracy_m ?? null,
     isPriority: Boolean(row.is_priority),

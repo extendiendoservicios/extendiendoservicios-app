@@ -191,12 +191,12 @@ Tocá un turno para abrir el **Detalle del turno**.
 
 ![Detalle del turno](guias/img/sup-turno.png)
 
-- **Sede:** la dirección (tocá **Abrir en el mapa** para que te lleve el teléfono).
+- **Sede:** la dirección (tocá **Abrir en el mapa** para que te lleve el teléfono) y, si están cargados, el horario del edificio, las instrucciones de acceso, las restricciones y el contacto de la sede (el teléfono se toca para llamar).
 - **Empleados del turno:** quiénes trabajan y su estado: **Esperado**, **Presente** (con la hora a la que empezó), **Finalizado** o **Ausencia avisada**.
 - **Quién más lo supervisa:** los otros coordinadores que ya tomaron este turno.
 - Si ya tomaste este turno, aparece **Ir a mi supervisión**.
 
-El horario del edificio, las instrucciones de acceso, las restricciones y el contacto de la sede, junto con las **tareas del turno** y los **criterios de calificación**, los ves **después de tocar Supervisar**, en la pantalla de la supervisión (ver más abajo).
+Las **tareas del turno** y los **criterios de calificación**, los ves **después de tocar Supervisar**, en la pantalla de la supervisión (ver más abajo).
 
 ### Empezar la supervisión
 

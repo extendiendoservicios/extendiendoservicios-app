@@ -13,6 +13,7 @@ import {
   useClientDetailQuery,
   useClientSitesQuery,
 } from '@/features/clients/queries'
+import { getClientColor } from '@/features/planning/clientColors'
 import { BankDetailsCard } from '@/features/bank/components/BankDetailsCard'
 import { useClientBankDetailsQuery } from '@/features/bank/queries'
 import { ClientServiceSummaryTab } from '@/features/clients/components/ClientServiceSummaryTab'
@@ -123,6 +124,23 @@ export default function ClientDetailPage() {
                 </dt>
                 <dd className="inline">{client.adminAddress ?? '—'}</dd>
               </div>
+              {getClientColor(client.calendarColor) && (
+                <div>
+                  <dt className="inline font-semibold">
+                    Color en el calendario:{' '}
+                  </dt>
+                  <dd className="inline-flex items-center gap-1.5">
+                    <span
+                      aria-hidden="true"
+                      className="inline-block size-2.5 rounded-full"
+                      style={{
+                        background: getClientColor(client.calendarColor)?.hex,
+                      }}
+                    />
+                    {getClientColor(client.calendarColor)?.name}
+                  </dd>
+                </div>
+              )}
             </dl>
             {client.notes && (
               <p className="mt-2 text-[12px] text-text-3">{client.notes}</p>

@@ -17,7 +17,7 @@ select col_type_is('public', 'v_shifts_board', 'requires_photos', 'boolean', 're
 select is(
   (select attname::text from pg_attribute
     where attrelid = 'public.v_shifts_board'::regclass and attnum > 0 and not attisdropped
-    order by attnum desc limit 1),
+    order by attnum desc limit 1 offset 1),
   'requires_photos',
   'requires_photos es la última columna de la vista'
 );

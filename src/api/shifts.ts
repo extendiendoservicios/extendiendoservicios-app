@@ -54,6 +54,8 @@ export interface ShiftListRow {
   id: string
   clientId: string
   clientName: string
+  /** P24.8: color del cliente en el calendario (0–11), `clients.calendar_color`. */
+  clientCalendarColor?: number | null
   siteId: string
   siteName: string
   siteCity: string | null
@@ -87,6 +89,7 @@ export interface ShiftBoardRow {
   client_id: string
   client_legal_name: string
   client_trade_name: string | null
+  client_calendar_color?: number | null
   site_id: string
   site_name: string
   site_city: string | null
@@ -120,6 +123,7 @@ export function mapShiftBoardRow(row: ShiftBoardRow): ShiftListRow {
     id: row.id,
     clientId: row.client_id,
     clientName: row.client_trade_name ?? row.client_legal_name,
+    clientCalendarColor: row.client_calendar_color ?? null,
     siteId: row.site_id,
     siteName: row.site_name,
     siteCity: row.site_city,
@@ -144,7 +148,7 @@ export function mapShiftBoardRow(row: ShiftBoardRow): ShiftListRow {
 }
 
 export const SHIFT_BOARD_SELECT =
-  'id, client_id, client_legal_name, client_trade_name, site_id, site_name, site_city, shift_date, start_time, end_time, required_staff, status, display_status, assigned_count, present_count, finished_count, absent_count, delayed_count, open_ended, no_checkout_count, generated, notes, show_in_print, requires_photos'
+  'id, client_id, client_legal_name, client_trade_name, site_id, site_name, site_city, shift_date, start_time, end_time, required_staff, status, display_status, assigned_count, present_count, finished_count, absent_count, delayed_count, open_ended, no_checkout_count, generated, notes, show_in_print, requires_photos, client_calendar_color'
 
 /**
  * ADM-05 mínima (SHIFT-010): turnos de una fecha, ordenados por hora

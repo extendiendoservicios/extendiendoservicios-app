@@ -47,6 +47,8 @@ function makeAssignment(
     employeeLastName: 'Gómez',
     siteId: 'si1',
     siteName: 'Sede Centro',
+    clientId: 'c1',
+    clientCalendarColor: 0,
     clientName: 'Limpia Ya',
     startTime: '08:00:00',
     endTime: '12:00:00',

@@ -449,7 +449,7 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
                         size="sm"
                         onClick={() => setRemoveSupervisionId(supervision.id)}
                       >
-                        Quitar
+                        Cancelar supervisión
                       </Button>
                     )}
                 </div>
@@ -466,9 +466,6 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
           onOpenChange={(open) => {
             if (!open) setRemoveSupervisionId(null)
           }}
-          title="Quitar supervisión"
-          confirmLabel="Quitar supervisión"
-          successMessage="Quitamos la supervisión del turno."
         />
       )}
 

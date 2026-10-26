@@ -94,6 +94,7 @@ describe('fetchShiftsByDate', () => {
         id: 'sh1',
         clientId: 'c1',
         clientName: 'Limpia Ya',
+        clientCalendarColor: null,
         siteId: 'si1',
         siteName: 'Sede Centro',
         siteCity: 'CABA',

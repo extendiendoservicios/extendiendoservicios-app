@@ -144,3 +144,39 @@ describe('ClientFormPage — alta con foto', () => {
     expect(savePhotoMock).not.toHaveBeenCalled()
   })
 })
+
+describe('ClientFormPage — color en el calendario', () => {
+  it('sin elegir color no lo manda (lo asigna la base)', async () => {
+    renderPage()
+    fireEvent.change(screen.getByLabelText('Razón social'), {
+      target: { value: 'Limpiolux SA' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Crear cliente' }))
+    await waitFor(() => expect(createClientMock).toHaveBeenCalled())
+    expect(
+      (createClientMock.mock.calls[0]?.[0] as { calendarColor?: number })
+        .calendarColor,
+    ).toBeUndefined()
+  })
+
+  it('el color elegido se guarda como calendarColor', async () => {
+    renderPage()
+    fireEvent.change(screen.getByLabelText('Razón social'), {
+      target: { value: 'Limpiolux SA' },
+    })
+    expect(
+      screen.getByRole('radiogroup', { name: 'Color en el calendario' }),
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('radio', { name: 'Naranja' }))
+    expect(screen.getByRole('radio', { name: 'Naranja' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Crear cliente' }))
+    await waitFor(() => expect(createClientMock).toHaveBeenCalled())
+    expect(
+      (createClientMock.mock.calls[0]?.[0] as { calendarColor?: number })
+        .calendarColor,
+    ).toBe(2)
+  })
+})
