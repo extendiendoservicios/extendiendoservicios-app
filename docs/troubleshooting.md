@@ -269,11 +269,11 @@ Desde la coordinación libre (P24) **nadie asigna supervisiones**: el coordinado
 
 - **Por qué pasa:** si no finalizás la jornada, la app la cierra automáticamente a las **23:55** (hora de Argentina) y la marca "Cerrada automáticamente". Cuenta las horas hasta ese momento, aunque hayas terminado antes. Si tenías una supervisión abierta, queda marcada "Sin cerrar".
 - **Lo resolvés vos:** avisá a Administración. La próxima vez, tocá **Finalizar jornada** al terminar.
-- **Lo resuelve Administración:** **Empleados**, ficha del coordinador, pestaña **Jornadas**: corregir la hora de fin con un motivo (o agregar o quitar pausas). Al corregir, se quita la advertencia y queda la constancia de la corrección. Las supervisiones "Sin cerrar" se revisan en **Supervisiones**.
+- **Lo resuelve Administración:** **Empleados**, ficha del coordinador, pestaña **Jornadas**: corregir la hora de fin con un motivo (o agregar o quitar pausas). Al corregir, se quita la advertencia y queda la constancia de la corrección. Las supervisiones "Sin cerrar" se revisan en **Supervisiones**: si no se terminó de calificar, se usa **Cancelar supervisión**.
 
 ### 6.6. Me olvidé de iniciar la jornada
 
-- **Lo resuelve Administración:** en la ficha del coordinador, pestaña **Jornadas**, **Registrar jornada en nombre** (hora de inicio, hora de fin y motivo obligatorio). Solo se puede si ese día no hay una jornada.
+- **Lo resuelve Administración:** en la ficha del coordinador, pestaña **Jornadas**, **Registrar jornada** (**Inicio**, **Fin** y **Motivo**, que es obligatorio). Solo se puede si ese día no hay una jornada.
 
 ### 6.7. No puedo cerrar la supervisión: "Para cerrar la supervisión falta calificar a: …"
 
@@ -289,7 +289,7 @@ Desde la coordinación libre (P24) **nadie asigna supervisiones**: el coordinado
 
 ### 6.9. "No podés calificarte a vos mismo."
 
-- **Por qué pasa:** si sos coordinadora y también empleada en el mismo turno, no podés calificarte. La app te lo avisa al tomar el turno y no te exige calificarte para cerrar.
+- **Por qué pasa:** si sos coordinadora y también empleada en el mismo turno, no podés calificarte. En la lista de empleados de la supervisión figurás como **Vos**, sin botón para calificar, y no se te exige calificarte para cerrar. Si intentás entrar a calificarte, la app dice "No podés calificarte a vos mismo."
 - **Qué hacer:** nada. Si querés que te supervise otra persona, que tome el turno otro coordinador.
 
 ### 6.10. Otro coordinador y yo supervisamos el mismo turno y las calificaciones se ven repetidas

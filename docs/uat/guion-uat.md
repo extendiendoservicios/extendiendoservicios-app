@@ -728,7 +728,7 @@ Este escenario no prueba nada nuevo: **deja listo lo que usan los escenarios de 
 
 1. Entrá a **Empleados** y abrí la ficha de la coordinadora.
 2. Abrí la pestaña **Clientes y sedes preferenciales**.
-3. Tocá **Agregar** y elegí la **sede de prueba** (cliente y sede). Confirmá.
+3. Elegí **Una sede**, buscá la **sede de prueba** (aparece como cliente · sede) y tocá **Agregar**. No pide confirmación: aparece abajo con un aviso.
 4. Abrí la ficha del **cliente de prueba** (y la de la sede) y mirá el bloque **Coordinadores preferenciales**.
 5. Abrí el **Turno 2** desde el **Calendario** y revisá sus acciones y la sección **Supervisiones**.
 
@@ -737,7 +737,7 @@ Este escenario no prueba nada nuevo: **deja listo lo que usan los escenarios de 
 - La sede de prueba aparece en la lista de la coordinadora, y la coordinadora figura en **Coordinadores preferenciales** de la sede y del cliente.
 - **No existe** ninguna acción para asignar un coordinador a un turno: ni **Asignar supervisión** en el detalle del turno, ni en **Supervisiones**, ni la columna **Coord.** con un coordinador asignado.
 - El **Turno 2** todavía no tiene supervisiones. Más adelante (UAT-SUP-03) la coordinadora lo va a tomar sola desde su celular.
-- Se puede **Quitar** la preferencia y volver a agregarla (probalo y dejala cargada).
+- Se puede quitar la preferencia con la **X** y volver a agregarla (probalo y dejala cargada).
 
 | Resultado           | Observación | Clasificación                             |
 | ------------------- | ----------- | ----------------------------------------- |
@@ -1211,14 +1211,14 @@ Se hace **a la vez** que UAT-EMP-05.
 **Pasos**
 
 1. En **Hoy**, tocá el **Turno 2**.
-2. Mirá la sección **Sede**, los empleados del turno, **Tareas del turno** y **Criterios de calificación**.
+2. Mirá la sección **Sede**, **Empleados del turno** y **Quién más lo supervisa**.
 
 **Resultado esperado**
 
-- Se ven la sede, el horario, las instrucciones, las restricciones y el contacto.
+- Se ven el cliente, la sede con su dirección (y **Abrir en el mapa**) y el horario.
 - Los empleados del turno aparecen con su estado (**Presente**, con la hora de inicio, o **Finalizado**).
-- Las **tareas del turno** se ven con su estado, solo para mirar.
-- Si otro coordinador ya tomó el turno, se ve quién lo supervisa.
+- Si otro coordinador ya tomó el turno, se ve quién lo supervisa; si nadie, dice "Ningún otro coordinador lo supervisa por ahora."
+- Las instrucciones de acceso, las restricciones, el contacto, las **tareas del turno** y los **criterios de calificación** todavía no están: se ven en la supervisión, después de **Supervisar** (UAT-SUP-03).
 
 | Resultado           | Observación | Clasificación                             |
 | ------------------- | ----------- | ----------------------------------------- |
@@ -1236,11 +1236,11 @@ Se hace **a la vez** que UAT-EMP-05.
 
 **Pasos**
 
-1. **Primero con la jornada en pausa:** tocá **Pausar** (sin motivo), volvé al **Turno 2** y mirá el botón **Supervisar**.
+1. **Primero con la jornada en pausa:** tocá **Pausar**, confirmá con **Pausar** en el cartel (sin motivo), volvé al **Turno 2** y mirá el botón **Supervisar**.
 2. Tocá **Reanudar** en la barra de jornada y volvé al **Turno 2**.
 3. Tocá **Supervisar**.
 4. Si aparece el texto de ubicación, elegí **Aceptar y continuar** o **Continuar sin ubicación**.
-5. Volvé a **Hoy** y mirá el estado de la barra de jornada y del turno.
+5. Aparece **Supervisión iniciada**: tocá **Seguir con la supervisión** y mirá la pantalla. Después volvé a **Hoy** y mirá el estado de la barra de jornada y del turno.
 
 **Resultado esperado**
 
@@ -1248,7 +1248,7 @@ Se hace **a la vez** que UAT-EMP-05.
 - Con la jornada en marcha, **Supervisar** funciona en un solo paso: la supervisión empieza en ese momento. No hay un paso "Registrar inicio" aparte.
 - Se puede tomar un turno **en curso** (el Turno 2 empezó y todavía no terminó).
 - La barra de jornada pasa a "Supervisando" y el turno muestra "Supervisando" con el nombre de la coordinadora.
-- Aparecen los botones **Calificar** al lado de cada empleado, **Cerrar supervisión** y **Descartar**.
+- La pantalla de la supervisión muestra la sede completa (instrucciones, restricciones y contacto), **Empleados a supervisar** con el botón **Calificar** al lado de cada uno, las **Tareas del turno**, los **Criterios de calificación**, **Cerrar supervisión** y **Descartar**.
 - Administración ve la supervisión **En curso**, con el inicio.
 
 | Resultado           | Observación | Clasificación                             |
@@ -1445,14 +1445,14 @@ Se hace **a la vez** que UAT-EMP-05.
 **Pasos**
 
 1. Entrá a **Supervisiones**. Mirá la lista.
-2. Filtrá por **coordinador**, por **cliente**, por **estado** y por **fecha**. Sacá los filtros.
+2. Filtrá por **coordinador**, por **cliente** y por **fecha** (**Desde** y **Hasta**). Sacá los filtros.
 3. Entrá a la pestaña **Calificaciones**. Mirá una fila por empleado calificado.
 4. Abrí la supervisión del Turno 2. Mirá los **criterios usados** y las calificaciones por empleado.
 5. En un empleado, tocá **Editar** y cambiá el puntaje. Guardá.
 
 **Resultado esperado**
 
-- Los filtros por empleado, coordinador, cliente, sede, fecha y estado funcionan. No hay filtros ni estados de asignación.
+- Los filtros por empleado, coordinador, cliente, sede y fecha funcionan. No hay filtro por estado ni estados de asignación.
 - Un mismo turno puede tener **varias supervisiones** (una por coordinador). Cada fila muestra la **duración**, que es informativa.
 - La pestaña **Calificaciones** muestra puntaje y comentario de cada empleado, con fecha, sede y coordinador.
 - El administrador con el permiso puede **editar** una calificación, y el detalle muestra **quién la editó y cuándo**.
@@ -1474,11 +1474,11 @@ Se hace **a la vez** que UAT-EMP-05.
 **Pasos**
 
 1. Entrá a **Resumen** y mirá el mapa de presencia («Dónde está el equipo»).
-2. Activá el filtro **Coordinadores**.
+2. Mirá el interruptor **Coordinadores** (arriba a la derecha del mapa): activalo si está apagado.
 3. Tocá el punto de la coordinadora.
 4. Pedile a la coordinadora que pase a **Pausar** (con motivo) y esperá un minuto. Volvé a mirar el mapa.
 5. Entrá a **Asistencia** y mirá la sección **Coordinadores**.
-6. Si hay una coordinadora que usó **Continuar sin ubicación**, buscala en la lista del costado.
+6. Si hay una coordinadora que usó **Continuar sin ubicación**, buscala en la lista de debajo del mapa.
 
 **Resultado esperado**
 
@@ -1486,7 +1486,7 @@ Se hace **a la vez** que UAT-EMP-05.
 - Si está supervisando, el cuadro muestra el cliente y la sede. Si está en pausa, el motivo.
 - El cuadro tiene las horas de hoy y **Ver jornada**.
 - El mapa se actualiza solo (cada 60 segundos).
-- Quien registró un evento sin ubicación figura en la lista **Sin ubicación**, con su estado.
+- Quien registró un evento sin ubicación figura debajo del mapa, en **Coordinadores sin ubicación**, con su estado.
 - La sección **Coordinadores** de **Asistencia** muestra el estado de la jornada de cada uno.
 
 | Resultado           | Observación | Clasificación                             |
@@ -1506,10 +1506,10 @@ Se hace **a la vez** que UAT-EMP-05.
 **Pasos**
 
 1. En la ficha de la coordinadora, abrí la pestaña **Jornadas** y elegí el día de hoy.
-2. Tocá **Corregir** al lado de la hora de fin. Escribí una hora distinta (del mismo día) **sin motivo** y probá confirmar.
+2. En el **Registro de la jornada**, tocá **Corregir hora** al lado de la hora de fin. Escribí una hora distinta (del mismo día) **sin motivo** y probá confirmar.
 3. Completá el **Motivo** y confirmá.
-4. Tocá **Agregar pausa**, elegí un tramo dentro de la jornada, escribí un motivo y confirmá. Después **Quitar** esa pausa.
-5. Elegí un **período** que incluya hoy y tocá **Imprimir**.
+4. Tocá **Agregar pausa**, elegí un tramo dentro de la jornada, escribí un motivo y confirmá. Después **Quitar pausa** en esa pausa.
+5. Abrí la pestaña **Asistencia** de la ficha, elegí un período con **Desde** y **Hasta** que incluya hoy y tocá **Descargar detalle**.
 6. Mirá la hoja: el detalle de la jornada, el acumulado y el pie de firmas.
 
 **Resultado esperado**
@@ -1518,7 +1518,7 @@ Se hace **a la vez** que UAT-EMP-05.
 - Con motivo, la jornada pasa a mostrar la marca **Corregida**, y queda registrado quién hizo el cambio, cuándo y por qué.
 - La ficha imprimible lleva el **detalle de cada jornada con sus supervisiones**, el **acumulado de horas del período** y el **pie de firmas** de consentimiento.
 - Si la persona también es empleada, la hoja tiene dos secciones (turnos como empleado y jornadas como coordinador), cada una con su total, y al final la suma.
-- Para probar **Registrar jornada en nombre**, usá un día en que la coordinadora no tenga jornada (por ejemplo, ayer).
+- Para probar **Registrar jornada** (botón de arriba a la derecha de la pestaña **Jornadas**), usá un día en que la coordinadora no tenga jornada (por ejemplo, ayer).
 
 | Resultado           | Observación | Clasificación                             |
 | ------------------- | ----------- | ----------------------------------------- |

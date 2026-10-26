@@ -1,6 +1,6 @@
 # Guía de administración (dueño y administradores)
 
-DOC-018, actualizada con P24.6 (coordinación libre y jornada). Cómo usar la plataforma de Extendiendo Servicios desde la oficina: cargar clientes, sedes, servicios y personal, armar el cronograma, asignar empleados a los turnos y seguir la operación del día, incluida la jornada de los coordinadores.
+DOC-018, actualizada con P24.6 y P24.6b (coordinación libre y jornada). Cómo usar la plataforma de Extendiendo Servicios desde la oficina: cargar clientes, sedes, servicios y personal, armar el cronograma, asignar empleados a los turnos y seguir la operación del día, incluida la jornada de los coordinadores.
 
 **Novedad:** los coordinadores **ya no se asignan a los turnos**. Cada coordinador ve todos los turnos del día, elige cuál supervisar desde su celular y lleva su propia jornada. Lo que se carga desde la oficina son sus **clientes y sedes preferenciales** (para ordenarles la lista) y, si hace falta, las **correcciones** de su jornada.
 
@@ -53,6 +53,8 @@ El dueño los activa por persona (ver [Usuarios y roles](#usuarios-y-roles)). Si
 | Registrar asistencia por otros | **Registrar en nombre** de un empleado; asignar o quitar personal una vez que el turno ya empezó; corregir las jornadas de los coordinadores |
 | Generar turnos del mes         | **Generar turnos del mes**                                                                                                                   |
 | Asignar supervisiones          | Cargar y quitar los clientes y sedes preferenciales de los coordinadores; cancelar supervisiones                                             |
+
+> **Sobre el nombre «Asignar supervisiones».** Así se llama hoy este permiso en la pantalla de roles y capacidades, por costumbre de antes. Ya no sirve para asignar a nadie: los coordinadores eligen solos qué turno supervisar. Hoy habilita las **preferencias** y **Cancelar supervisión**.
 
 ### Lo que es solo del dueño
 
@@ -413,25 +415,32 @@ Lo que hacés vos desde la oficina es cargar las preferencias, mirar las jornada
 **Desde la ficha del coordinador:**
 
 1. Entrá a **Empleados** y abrí la ficha del coordinador.
-2. Abrí la pestaña **Clientes y sedes preferenciales** (captura pendiente).
-3. Tocá **Agregar** y elegí un **Cliente** (o un cliente y una **Sede**).
-4. Confirmá. Aparece en la lista.
-5. Para sacar una, tocá **Quitar** al lado. No se borra nada: la preferencia queda dada de baja y se conserva el historial.
+2. Abrí la pestaña **Clientes y sedes preferenciales**.
 
-**Desde la ficha del cliente o de la sede:** en el bloque **Coordinadores preferenciales** podés agregar o quitar coordinadores de la misma manera (captura pendiente).
+![Pestaña de clientes y sedes preferenciales](guias/img/adm-coordinador-preferenciales.png)
+
+3. Elegí **Cliente entero** o **Una sede**, buscá el cliente o la sede en la lista y tocá **Agregar**. Aparece abajo, con un aviso de confirmación.
+4. Para sacar una, tocá la **X** al lado. No se borra nada: la preferencia queda dada de baja y se conserva el historial.
+
+**Desde la ficha del cliente o de la sede:** en el bloque **Coordinadores preferenciales** podés agregar o quitar coordinadores de la misma manera: elegí el coordinador en **Elegí un coordinador…** y tocá **Agregar**, o la **X** para quitarlo.
+
+![Bloque Coordinadores preferenciales en la ficha del cliente](guias/img/adm-cliente-preferenciales.png)
 
 Si ya tenés los datos en la planilla de la carga inicial, la columna **Clientes y sedes preferenciales** de la hoja Supervisores los carga de una vez (ver [`carga-inicial.md`](carga-inicial.md)).
 
 ### Las jornadas de un coordinador
 
-En la ficha del coordinador, la pestaña **Jornadas** muestra cada día con su detalle (captura pendiente):
+En la ficha del coordinador, la pestaña **Jornadas** muestra cada día con su detalle:
 
-- La hora de **inicio** y de **fin**, y las **pausas** con su motivo (si lo cargó).
+![Pestaña Jornadas de la ficha del coordinador](guias/img/adm-coordinador-jornadas.png)
+
+- La hora de **Inicio** y de **Fin**, y las **Pausas** con su motivo (si lo cargó).
 - Las **horas netas** de la jornada.
-- Las **supervisiones** que hizo ese día, con su duración (informativa).
-- Las marcas **Cerrada automáticamente** (la jornada se cerró sola, ver más abajo) y **Corregida** (la tocó Administración).
+- Las **Supervisiones** que hizo ese día, con su duración (informativa).
+- El **Registro de la jornada**, evento por evento.
+- Las marcas **Cerrada automáticamente** (la jornada se cerró sola, ver más abajo) y **Corregida** (la tocó Administración), y el **Historial de correcciones**.
 
-Se puede cambiar el período con las fechas de arriba.
+Se cambia de mes con el selector de arriba a la izquierda.
 
 Las **horas mensuales** de los coordinadores se cuentan igual que las de los empleados, **sin topes ni avisos** de rango.
 
@@ -442,7 +451,7 @@ Si un coordinador no finaliza su jornada, la plataforma la **cierra sola a las 2
 Dónde lo ves:
 
 - En **Resumen**, el bloque de supervisiones del día muestra las jornadas abiertas y las cerradas automáticamente.
-- En **Supervisiones**, la marca **Sin cerrar** en la fila (captura pendiente).
+- En **Supervisiones**, la marca **Sin cerrar** en la fila (ver más abajo la captura de la lista).
 - En la pestaña **Jornadas**, la marca **Cerrada automáticamente**.
 
 Conviene que la empresa explique en la capacitación que **hay que finalizar la jornada a mano**: si el coordinador terminó a las 18:00 y no finalizó, el cierre automático le suma horas hasta las 23:55.
@@ -452,13 +461,16 @@ Conviene que la empresa explique en la capacitación que **hay que finalizar la 
 **Permiso "Registrar asistencia por otros".** Podés corregir cualquier horario de la jornada: la hora de inicio o de fin, y agregar o quitar pausas. **El motivo es obligatorio** y queda registrado quién lo hizo, cuándo, por qué y el valor anterior.
 
 1. En la ficha del coordinador, abrí la pestaña **Jornadas** y elegí el día.
-2. Tocá **Corregir** al lado del horario que querés cambiar (captura pendiente).
-3. Escribí la **hora nueva** (tiene que ser del mismo día y no futura) y el **Motivo**.
+2. En el **Registro de la jornada**, tocá **Corregir hora** al lado del horario que querés cambiar.
+
+![Cuadro para corregir la hora](guias/img/adm-jornada-corregir.png)
+
+3. Escribí la **Hora nueva** (tiene que ser del mismo día y no futura) y el **Motivo**.
 4. Confirmá. La jornada pasa a mostrar la marca **Corregida**.
 
-Para las pausas, usá **Agregar pausa** (desde y hasta qué hora, con motivo) o **Quitar** en una pausa que no corresponde.
+Para las pausas, usá **Agregar pausa** (**Desde** y **Hasta** qué hora, con el motivo de la pausa y el motivo de la corrección) o **Quitar pausa** en una pausa que no corresponde.
 
-Si el coordinador **se olvidó de iniciar la jornada** de un día, tocá **Registrar jornada en nombre** (hora de inicio, hora de fin y motivo). Solo se puede si ese día no tiene jornada.
+Si el coordinador **se olvidó de iniciar la jornada** de un día, tocá **Registrar jornada** (arriba a la derecha de la pestaña): **Inicio**, **Fin** y **Motivo**. Solo se puede si ese día no tiene jornada.
 
 Una corrección **quita la advertencia** del cierre automático y deja la constancia de que la hubo. Los horarios de inicio y fin de cada supervisión no se corrigen desde acá.
 
@@ -468,9 +480,12 @@ Igual que la de los empleados, es el **registro en papel de la jornada** del coo
 
 > **Aviso: períodos anteriores a la versión 0.23.0.** Antes de que existieran las jornadas, el coordinador figura con **0 horas** en la asistencia, en el **Resumen** y en esta ficha imprimible. Es a propósito: las supervisiones viejas ya no suman horas, ahora solo cuentan las jornadas (de inicio a fin, menos las pausas). No se perdió ningún dato; el tiempo de cada supervisión sigue visible como dato informativo.
 
-1. En la ficha del coordinador, pestaña **Jornadas**, elegí el **período**.
-2. Tocá **Imprimir** (captura pendiente).
-3. Revisá la hoja. Como las demás hojas imprimibles, podés **Editar texto** antes de imprimir o guardar como PDF.
+1. En la ficha del coordinador, abrí la pestaña **Asistencia** y elegí el período con **Desde** y **Hasta**.
+2. Tocá **Descargar detalle**. Se abre la vista previa.
+
+![Vista previa de la ficha imprimible](guias/img/adm-jornada-imprimir.png)
+
+3. Revisá la hoja. Como las demás hojas imprimibles, podés **Editar texto** y después **Imprimir o guardar como PDF**. **Cerrar** vuelve a la ficha.
 
 Lleva el **detalle de cada jornada con sus supervisiones**, el **acumulado de horas del período** y el **pie de firmas** de consentimiento. Si la persona es **empleado y coordinador** a la vez, la ficha tiene dos secciones (los turnos como empleado y las jornadas como coordinador), cada una con su total, y al final la **suma**.
 
@@ -479,10 +494,16 @@ Lleva el **detalle de cada jornada con sus supervisiones**, el **acumulado de ho
 En **Resumen**, el mapa de presencia («Dónde está el equipo») suma a los coordinadores. Es una herramienta de **dueños y administradores**: los coordinadores no ven el mapa de los demás.
 
 - Un punto por coordinador, en la **última posición conocida**, con un color por estado: **En actividad** (jornada iniciada, entre sedes), **Supervisando** (con cliente y sede), **En pausa** (con el motivo, si lo cargó), **Finalizada** y **Sin iniciar**.
-- Con el filtro **Coordinadores** mostrás u ocultás a los coordinadores en el mapa.
+- Con el interruptor **Coordinadores** (arriba a la derecha del mapa) mostrás u ocultás a los coordinadores.
 - Al tocar un punto ves el estado, el cliente y la sede si está supervisando, la **hora del último registro**, las **horas de hoy** y **Ver jornada** (te lleva a la pestaña **Jornadas**).
-- Si el último evento no trajo posición, el coordinador no tiene punto: figura en una lista al costado, **Sin ubicación**, con su estado.
+- Si el último evento no trajo posición, el coordinador no tiene punto: figura debajo del mapa, en **Coordinadores sin ubicación**, con su estado.
 - Se actualiza cada 60 segundos.
+
+![Mapa de presencia con coordinadores](guias/img/adm-resumen-mapa.png)
+
+Debajo del mapa, el bloque **Supervisiones de hoy** muestra las **Jornadas abiertas** y las **Cerradas automáticamente**:
+
+![Bloque Supervisiones de hoy](guias/img/adm-resumen-jornadas.png)
 
 La posición se toma **solo en cada evento** (iniciar, pausar, reanudar y finalizar la jornada, y empezar y cerrar cada supervisión): no hay seguimiento continuo. Es **opcional y con consentimiento** del coordinador; la empresa decide si la exige.
 
@@ -527,7 +548,9 @@ Los **estados** son: **Esperado**, **Presente**, **Finalizado**, **Demora avisad
 
 Podés filtrar por estado, cliente y sede, buscar por nombre y cambiar de fecha con las flechas o el calendario. Los días anteriores se ven en solo lectura. Acciones de cada fila: **Abrir turno**, **Registrar en nombre** y **Llamar** (si la persona tiene teléfono cargado).
 
-Debajo, la sección **Coordinadores** muestra el estado de la jornada de cada uno: **Sin iniciar**, **En actividad**, **Supervisando**, **En pausa** o **Finalizada**, con la hora del último registro (captura pendiente).
+Debajo, la sección **Coordinadores** muestra el estado de la jornada de cada uno: **Sin iniciar**, **En actividad**, **Supervisando**, **En pausa** o **Finalizada**, con la hora del último registro.
+
+![Sección Coordinadores de Asistencia](guias/img/adm-asistencia-coordinadores.png)
 
 ### Registrar en nombre de un empleado
 
@@ -580,11 +603,11 @@ En **Supervisiones** consultás lo que hicieron los coordinadores. Ya no se asig
 - **Supervisiones:** una fila por supervisión, con la fecha, el turno (cliente, sede, franja), el coordinador, el estado (**En curso**, **Completada** o **Cancelada**), el inicio y el fin, la **duración** (informativa: no suma horas) y cuántas calificaciones se cargaron sobre el total de empleados. **Un mismo turno puede tener varias filas**, una por cada coordinador que lo supervisó.
 - **Calificaciones:** una fila por empleado calificado, con la fecha, la sede, el coordinador, el puntaje y el comentario. Un empleado puede tener varias calificaciones en el mismo turno, una por coordinador.
 
-Los filtros permiten buscar por empleado, coordinador, cliente, sede, rango de fechas y estado.
+Los filtros permiten buscar por empleado, coordinador, cliente, sede y rango de fechas (**Desde** y **Hasta**).
 
 Marcas y estados que conviene conocer:
 
-- **Sin cerrar:** la supervisión quedó abierta cuando se cerró la jornada del coordinador (a mano o por el cierre automático de las 23:55). Revisala: se registró un fin, pero el coordinador no la cerró ni calificó a todos.
+- **Sin cerrar** (marca amarilla junto al estado «En curso», ver la captura de arriba): la supervisión quedó abierta cuando se cerró la jornada del coordinador (a mano o por el cierre automático de las 23:55). Revisala: se registró un fin, pero el coordinador no la cerró ni calificó a todos.
 - **Cancelada** con el motivo "Descartada por el coordinador": la empezó por error y la descartó. Con el motivo "Cambio de lógica de coordinación (23 oct 2026)" figuran las que estaban asignadas y sin empezar cuando cambió el funcionamiento.
 - Las supervisiones anteriores al cambio pueden mostrar los estados viejos (**Asignada**, **No realizada**): son historial y no se modifican.
 
@@ -594,9 +617,9 @@ Tocá una fila para abrir su detalle.
 
 ![Detalle de una supervisión](guias/img/adm-supervision-detalle.png)
 
-Ves el turno, el coordinador, el estado, los criterios que se usaron y las **calificaciones por empleado**, con el puntaje (de 1 a 5 estrellas), el comentario y quién lo editó y cuándo. Acciones:
+Ves el turno, el coordinador, el estado, el inicio, el fin y la duración, los **Criterios usados** y las **Calificaciones por empleado**, con el puntaje (de 1 a 5 estrellas), el comentario y quién lo editó y cuándo. Acciones:
 
-- **Cancelar supervisión** (**Permiso "Asignar supervisiones"**).
+- **Cancelar supervisión** (**Permiso "Asignar supervisiones"**): pide el **Motivo de la cancelación**. Las calificaciones ya cargadas quedan registradas; solo cambia el estado. Es lo que corresponde para una supervisión **Sin cerrar**.
 - **Calificar** o **Editar** una calificación (**Permiso "Editar calificaciones"**). El coordinador solo puede cambiar sus calificaciones mientras su supervisión está abierta; Administración puede hacerlo siempre, y queda anotado quién lo hizo.
 
 ---

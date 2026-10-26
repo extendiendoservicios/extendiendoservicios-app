@@ -1,4 +1,4 @@
-// docs/guias/capturas.ts — DOC-018, DOC-019, DOC-020 (P19.4)
+// docs/guias/capturas.ts — DOC-018, DOC-019, DOC-020 (P19.4), P24.6b
 //
 // Regenera las capturas de pantalla de las guías de uso (`docs/guias/img/`).
 //
@@ -9,11 +9,15 @@
 //
 // - Administración (1280 px): lee los datos ficticios reales de `App_dev` (el seed). Los nombres de
 //   las cuentas de prueba se cambian en pantalla (no en la base) por nombres de ejemplo.
-// - Empleado y supervisor (390 px): las cuentas fijas no tienen turnos, así que las lecturas de
-//   `v_my_day`, `v_my_supervisions` y similares se reemplazan en el navegador por los datos
-//   inventados de `datos-ejemplo.ts`. Cualquier escritura (POST, PATCH, DELETE) contra la base se
-//   bloquea y el script informa cuántas bloqueó: hoy solo `mark_changes_seen`, que la app llama
-//   sola al abrir Hoy.
+// - Empleado y coordinador (390 px): las cuentas fijas no tienen turnos, jornadas ni supervisiones,
+//   así que las lecturas de `v_my_day`, `v_my_supervisions`, `v_supervisor_today`, `v_my_workdays`
+//   y similares se reemplazan en el navegador por los datos inventados de `datos-ejemplo.ts`.
+//   Cualquier escritura (POST, PATCH, DELETE) contra la base se bloquea y el script informa cuántas
+//   bloqueó: hoy solo `mark_changes_seen`, que la app llama sola al abrir Hoy.
+// - Administración con coordinadores (1280 px, `ejemplo.admin`): las pantallas siguen leyendo los
+//   datos reales de `App_dev`, pero las lecturas de jornadas, estado de coordinadores,
+//   preferencias y supervisiones se reemplazan por datos inventados. La ficha que se abre es la de
+//   la cuenta fija `e2e-fijo-supervisor1`, con su nombre cambiado en pantalla por «Sofía Ejemplo».
 //
 // Uso (desde la raíz de `app/`):
 //
@@ -22,7 +26,7 @@
 //   python docs/guias/optimizar-png.py              # opcional: achica los PNG (necesita Pillow)
 //
 // No hace falta el puerto 5173: estas capturas no usan la Edge Function `admin-users` (el CORS de
-// esa función solo admite ese puerto). Con las 52 capturas tarda unos tres minutos.
+// esa función solo admite ese puerto). Con todas las capturas tarda unos cinco minutos.
 //
 // Opciones:
 //   --url=<origen>     origen de la app ya levantada (por omisión http://localhost:5173)
@@ -30,7 +34,7 @@
 //   --salida=<carpeta> carpeta de salida (por omisión docs/guias/img)
 //   --listar           muestra los nombres y termina
 //
-// Las capturas de empleado y supervisor son de 390 px de ancho; las de administración, de 1280 px.
+// Las capturas de empleado y coordinador son de 390 px de ancho; las de administración, de 1280 px.
 // Los datos son siempre ficticios: nunca datos reales del cliente.
 
 import { mkdirSync, readdirSync, statSync } from 'node:fs'
@@ -42,9 +46,11 @@ import { emailOf, signInSession } from '../../tests/fixtures/sessions.ts'
 import type { SessionKey } from '../../tests/fixtures/sessions.ts'
 import {
   ESCRITURAS_BLOQUEADAS,
+  fijarClienteDeEjemplo,
   IDS_DE_EJEMPLO as ID,
   instalarDatosDeEjemplo,
   LECTURAS_REALES,
+  type EscenarioAdmin,
   type EscenarioEmpleado,
   type EscenarioSupervisor,
 } from './datos-ejemplo.ts'
@@ -60,6 +66,7 @@ async function enmascarar(
   await page.evaluate((modoDeFilas) => {
     const reemplazos: Array<[RegExp, string]> = [
       [/E2E-Fijo(?:-[A-Z]{2})? Admin/g, 'Ana Administradora'],
+      [/E2E-Fijo(?:-[A-Z]{2})? Supervisor1/g, 'Sofía Ejemplo'],
     ]
     // Las filas de las cuentas de prueba (`E2E-...`) se sacan de las listas.
     // Con `renombrar` se les pone un nombre inventado en lugar de sacarlas (listas de personas).
@@ -108,6 +115,7 @@ async function enmascarar(
           texto = texto.replace(patron, nuevo)
         }
         if (texto === 'EA') texto = 'AA'
+        if (texto === 'ES') texto = 'SE'
         if (texto !== original) elemento.textContent = texto
       }
       for (const campo of document.querySelectorAll('input')) {
@@ -130,12 +138,17 @@ const RAIZ = fileURLToPath(new URL('../..', import.meta.url))
 type Vista = 'celular' | 'escritorio'
 type Rol = 'sin-sesion' | SessionKey
 
+/** Datos que algunas rutas necesitan (el identificador real de la cuenta de coordinador). */
+interface ContextoDeRuta {
+  coordinadorId: string
+}
+
 interface Captura {
   /** Nombre del archivo, sin extensión. */
   nombre: string
   rol: Rol
   vista: Vista
-  ruta: string
+  ruta: string | ((contexto: ContextoDeRuta) => string)
   /** Texto que tiene que estar visible antes de sacar la foto. */
   espera: string | RegExp
   /** Pasos de solo lectura previos (abrir una pestaña, un panel, etc.). */
@@ -144,10 +157,13 @@ interface Captura {
   personas?: 'quitar' | 'renombrar'
   /** Captura de página completa (por omisión, solo lo visible). */
   completa?: boolean
+  /** Selector CSS de un elemento: se saca la foto solo de ese elemento (en vez de la pantalla). */
+  elemento?: string
   /** Datos de ejemplo que reemplazan las lecturas (ver `datos-ejemplo.ts`). */
   ejemplo?: {
     empleado?: EscenarioEmpleado
     supervisor?: EscenarioSupervisor
+    admin?: EscenarioAdmin
     consentimiento?: boolean
   }
 }
@@ -206,20 +222,69 @@ const plantillaDeUnCliente = async (page: Page) => {
   await page.waitForTimeout(1200)
 }
 
-const primeraSupervision = async (page: Page) => {
-  await page
-    .locator('a[href^="/admin/supervisiones/"]:not([href$="nueva"])')
-    .first()
-    .click()
-  await page.waitForTimeout(1200)
-}
-
 const abrirTurno = async (page: Page) => {
   await page.getByText('Ver', { exact: true }).nth(1).click()
   await page
     .getByText(/Dotación: \d/)
     .first()
     .waitFor()
+}
+
+const BARRA_DE_JORNADA = '[data-testid="workday-bar"]'
+
+/** Abre el primer cliente y le avisa al script cuál es, para mostrar sus coordinadores preferenciales. */
+const clienteConPreferencias = async (page: Page) => {
+  const enlace = page
+    .locator('a[href^="/admin/clientes/"]:not([href$="nuevo"])')
+    .first()
+  const href = await enlace.getAttribute('href')
+  fijarClienteDeEjemplo(href?.split('/').pop() ?? null)
+  await enlace.click()
+  const bloque = page.getByText('Coordinadores preferenciales').first()
+  await bloque.waitFor()
+  await bloque.scrollIntoViewIfNeeded()
+  await page.waitForTimeout(800)
+}
+
+/** Abre la supervisión que quedó «Sin cerrar» (la fila lleva esa marca). */
+const supervisionSinCerrar = async (page: Page) => {
+  await page
+    .getByRole('row')
+    .filter({ hasText: 'Sin cerrar' })
+    .getByRole('link')
+    .first()
+    .click()
+  await page.getByText('Criterios usados').waitFor()
+  await page.waitForTimeout(800)
+}
+
+/** Abre el cuadro para corregir la hora de un evento de la jornada (no confirma nada). */
+const corregirHora = async (page: Page) => {
+  await page
+    .getByRole('button', { name: /Corregir hora/ })
+    .first()
+    .click()
+  await page.getByText('Hora nueva').waitFor()
+}
+
+/** Abre la hoja imprimible de la pestaña «Asistencia» de un coordinador (no imprime nada). */
+const descargarDetalle = async (page: Page) => {
+  const boton = page.getByRole('button', { name: 'Descargar detalle' })
+  await boton.waitFor()
+  await page.waitForFunction(
+    () =>
+      !Array.from(document.querySelectorAll('button')).find(
+        (b) => b.textContent?.includes('Descargar detalle') && b.disabled,
+      ),
+  )
+  await boton.click()
+  await page.getByText('Imprimir o guardar como PDF').waitFor()
+  await page.waitForTimeout(800)
+}
+
+const verElemento = (selector: string) => async (page: Page) => {
+  await page.locator(selector).first().scrollIntoViewIfNeeded()
+  await page.waitForTimeout(2500)
 }
 
 export const CAPTURAS: Captura[] = [
@@ -369,14 +434,91 @@ export const CAPTURAS: Captura[] = [
     ejemplo: { empleado: 'esperado' },
   },
 
-  // ---- Supervisor (celular) ----------------------------------------------------------------
+  // ---- Coordinador (celular) ---------------------------------------------------------------
+  // La barra de jornada en cada estado (solo la tarjeta, no la pantalla entera).
+  {
+    nombre: 'sup-jornada-sin-iniciar',
+    rol: 'supervisor1',
+    vista: 'celular',
+    ruta: '/sup',
+    espera: 'Todavía no iniciaste la jornada.',
+    elemento: BARRA_DE_JORNADA,
+    ejemplo: { supervisor: 'sin-jornada' },
+  },
+  {
+    nombre: 'sup-jornada-en-actividad',
+    rol: 'supervisor1',
+    vista: 'celular',
+    ruta: '/sup',
+    espera: /Iniciada a las/,
+    elemento: BARRA_DE_JORNADA,
+    ejemplo: { supervisor: 'en-actividad' },
+  },
+  {
+    nombre: 'sup-jornada-supervisando',
+    rol: 'supervisor1',
+    vista: 'celular',
+    ruta: '/sup',
+    espera: /Supervisando:/,
+    elemento: BARRA_DE_JORNADA,
+    ejemplo: { supervisor: 'supervisando' },
+  },
+  {
+    nombre: 'sup-jornada-en-pausa',
+    rol: 'supervisor1',
+    vista: 'celular',
+    ruta: '/sup',
+    espera: /En pausa desde/,
+    elemento: BARRA_DE_JORNADA,
+    ejemplo: { supervisor: 'en-pausa' },
+  },
+  {
+    nombre: 'sup-jornada-finalizada',
+    rol: 'supervisor1',
+    vista: 'celular',
+    ruta: '/sup',
+    espera: 'Reabrir jornada',
+    elemento: BARRA_DE_JORNADA,
+    ejemplo: { supervisor: 'finalizada' },
+  },
+  {
+    nombre: 'sup-jornada-pausar',
+    rol: 'supervisor1',
+    vista: 'celular',
+    ruta: '/sup',
+    espera: /Iniciada a las/,
+    ejemplo: { supervisor: 'en-actividad' },
+    preparar: async (p) => {
+      await p.getByRole('button', { name: 'Pausar' }).click()
+      await p.getByText('Pausar la jornada').waitFor()
+      await p.getByLabel('Motivo de la pausa').fill('Almuerzo')
+    },
+  },
   {
     nombre: 'sup-hoy',
     rol: 'supervisor1',
     vista: 'celular',
     ruta: '/sup',
-    espera: 'Hola, Sofía',
-    ejemplo: { supervisor: 'asignada' },
+    espera: 'Otras sedes',
+    ejemplo: { supervisor: 'en-actividad' },
+    completa: true,
+  },
+  {
+    nombre: 'sup-turno',
+    rol: 'supervisor1',
+    vista: 'celular',
+    ruta: `/sup/turnos/${ID.turno1}`,
+    espera: 'Quién más lo supervisa',
+    ejemplo: { supervisor: 'en-actividad', consentimiento: false },
+    completa: true,
+  },
+  {
+    nombre: 'sup-turno-bloqueado',
+    rol: 'supervisor1',
+    vista: 'celular',
+    ruta: `/sup/turnos/${ID.turno1}`,
+    espera: 'Iniciá tu jornada para poder supervisar.',
+    ejemplo: { supervisor: 'sin-jornada', consentimiento: false },
   },
   {
     nombre: 'sup-supervisiones',
@@ -384,41 +526,24 @@ export const CAPTURAS: Captura[] = [
     vista: 'celular',
     ruta: '/sup/supervisiones',
     espera: /Edificio Demo/,
-    ejemplo: { supervisor: 'asignada' },
-  },
-  {
-    nombre: 'sup-detalle',
-    rol: 'supervisor1',
-    vista: 'celular',
-    ruta: `/sup/supervisiones/${ID.supervision1}`,
-    espera: 'Empleados a supervisar',
-    ejemplo: { supervisor: 'asignada' },
-    completa: true,
-  },
-  {
-    nombre: 'sup-registro',
-    rol: 'supervisor1',
-    vista: 'celular',
-    ruta: `/sup/supervisiones/${ID.supervision1}/registro`,
-    espera: 'Registrar inicio',
-    ejemplo: { supervisor: 'asignada' },
+    ejemplo: { supervisor: 'supervisando' },
   },
   {
     nombre: 'sup-en-curso',
     rol: 'supervisor1',
     vista: 'celular',
     ruta: `/sup/supervisiones/${ID.supervision1}`,
-    espera: 'Registrar fin de supervisión',
-    ejemplo: { supervisor: 'en-curso' },
+    espera: 'Empleados a supervisar',
+    ejemplo: { supervisor: 'supervisando' },
     completa: true,
   },
   {
     nombre: 'sup-calificar',
     rol: 'supervisor1',
     vista: 'celular',
-    ruta: `/sup/supervisiones/${ID.supervision1}/calificar/${ID.asignacion1}`,
+    ruta: `/sup/supervisiones/${ID.supervision1}/calificar/${ID.asignacion2}`,
     espera: 'Criterios de calificación',
-    ejemplo: { supervisor: 'en-curso' },
+    ejemplo: { supervisor: 'supervisando' },
     completa: true,
   },
   {
@@ -426,7 +551,7 @@ export const CAPTURAS: Captura[] = [
     rol: 'supervisor1',
     vista: 'celular',
     ruta: `/sup/supervisiones/${ID.supervision1}/cerrar`,
-    espera: 'Completar',
+    espera: 'Calificaste a 2 de 2 empleados.',
     ejemplo: { supervisor: 'por-cerrar' },
     completa: true,
   },
@@ -435,8 +560,9 @@ export const CAPTURAS: Captura[] = [
     rol: 'supervisor1',
     vista: 'celular',
     ruta: '/sup/historial',
-    espera: /Edificio Demo/,
-    ejemplo: { supervisor: 'completada' },
+    espera: /Cerrada automáticamente/,
+    ejemplo: { supervisor: 'historial' },
+    completa: true,
   },
   {
     nombre: 'sup-mas',
@@ -444,7 +570,7 @@ export const CAPTURAS: Captura[] = [
     vista: 'celular',
     ruta: '/sup/mas',
     espera: 'Cerrar sesión',
-    ejemplo: { supervisor: 'asignada' },
+    ejemplo: { supervisor: 'en-actividad' },
   },
 
   // ---- Administración (escritorio) ---------------------------------------------------------
@@ -454,6 +580,26 @@ export const CAPTURAS: Captura[] = [
     vista: 'escritorio',
     ruta: '/admin',
     espera: 'Requiere atención',
+    ejemplo: { admin: 'coordinadores' },
+  },
+  {
+    nombre: 'adm-resumen-mapa',
+    rol: 'admin',
+    vista: 'escritorio',
+    ruta: '/admin',
+    espera: 'Dónde está el equipo',
+    ejemplo: { admin: 'coordinadores' },
+    elemento: 'section[aria-label="Mapa de presencia"]',
+    preparar: verElemento('section[aria-label="Mapa de presencia"]'),
+  },
+  {
+    nombre: 'adm-resumen-jornadas',
+    rol: 'admin',
+    vista: 'escritorio',
+    ruta: '/admin',
+    espera: 'Jornadas abiertas',
+    ejemplo: { admin: 'coordinadores' },
+    elemento: 'section[aria-label="Supervisiones de hoy"]',
   },
   {
     nombre: 'adm-celular-resumen',
@@ -461,6 +607,7 @@ export const CAPTURAS: Captura[] = [
     vista: 'celular',
     ruta: '/admin',
     espera: 'Requiere atención',
+    ejemplo: { admin: 'coordinadores' },
   },
   {
     nombre: 'adm-planificacion-mes',
@@ -513,26 +660,70 @@ export const CAPTURAS: Captura[] = [
     espera: 'Asistencia',
   },
   {
+    nombre: 'adm-asistencia-coordinadores',
+    rol: 'admin',
+    vista: 'escritorio',
+    ruta: '/admin/asistencia',
+    espera: 'Asistencia',
+    ejemplo: { admin: 'coordinadores' },
+    elemento: 'section[aria-label="Coordinadores"]',
+    preparar: verElemento('section[aria-label="Coordinadores"]'),
+  },
+  {
     nombre: 'adm-supervisiones',
     rol: 'admin',
     vista: 'escritorio',
     ruta: '/admin/supervisiones',
-    espera: 'Asignar supervisión',
+    espera: 'Calificaciones cargadas',
+    ejemplo: { admin: 'coordinadores' },
   },
   {
     nombre: 'adm-supervision-detalle',
     rol: 'admin',
     vista: 'escritorio',
     ruta: '/admin/supervisiones',
-    espera: 'Asignar supervisión',
-    preparar: primeraSupervision,
+    espera: 'Calificaciones cargadas',
+    ejemplo: { admin: 'coordinadores' },
+    preparar: supervisionSinCerrar,
   },
   {
-    nombre: 'adm-supervision-asignar',
+    nombre: 'adm-coordinador-preferenciales',
     rol: 'admin',
     vista: 'escritorio',
-    ruta: '/admin/supervisiones/nueva',
-    espera: 'Asignar supervisión',
+    ruta: ({ coordinadorId }) =>
+      `/admin/empleados/${coordinadorId}?pestana=preferenciales`,
+    espera: 'Cliente entero, todas sus sedes',
+    ejemplo: { admin: 'coordinadores' },
+  },
+  {
+    nombre: 'adm-coordinador-jornadas',
+    rol: 'admin',
+    vista: 'escritorio',
+    ruta: ({ coordinadorId }) =>
+      `/admin/empleados/${coordinadorId}?pestana=jornadas`,
+    espera: 'Registro de la jornada',
+    ejemplo: { admin: 'coordinadores' },
+    completa: true,
+  },
+  {
+    nombre: 'adm-jornada-corregir',
+    rol: 'admin',
+    vista: 'escritorio',
+    ruta: ({ coordinadorId }) =>
+      `/admin/empleados/${coordinadorId}?pestana=jornadas`,
+    espera: 'Registro de la jornada',
+    ejemplo: { admin: 'coordinadores' },
+    preparar: corregirHora,
+  },
+  {
+    nombre: 'adm-jornada-imprimir',
+    rol: 'admin',
+    vista: 'escritorio',
+    ruta: ({ coordinadorId }) =>
+      `/admin/empleados/${coordinadorId}?pestana=asistencia`,
+    espera: 'Descargar detalle',
+    ejemplo: { admin: 'coordinadores' },
+    preparar: descargarDetalle,
   },
   {
     nombre: 'adm-empleados',
@@ -580,6 +771,15 @@ export const CAPTURAS: Captura[] = [
     ruta: '/admin/clientes',
     espera: 'Nuevo cliente',
     preparar: primerCliente,
+  },
+  {
+    nombre: 'adm-cliente-preferenciales',
+    rol: 'admin',
+    vista: 'escritorio',
+    ruta: '/admin/clientes',
+    espera: 'Nuevo cliente',
+    ejemplo: { admin: 'coordinadores' },
+    preparar: clienteConPreferencias,
   },
   {
     nombre: 'adm-sede-detalle',
@@ -669,6 +869,15 @@ async function main(): Promise<void> {
 
   const navegador = await chromium.launch()
   const sesiones = new Map<Rol, { json: string; usuarioId: string }>()
+  const sesionDe = async (rol: SessionKey) => {
+    let guardada = sesiones.get(rol)
+    if (!guardada) {
+      const sesion = await signInSession(emailOf(rol))
+      guardada = { json: JSON.stringify(sesion), usuarioId: sesion.user.id }
+      sesiones.set(rol, guardada)
+    }
+    return guardada
+  }
   let hechas = 0
   const fallidas: string[] = []
 
@@ -684,15 +893,7 @@ async function main(): Promise<void> {
       })
       try {
         if (captura.rol !== 'sin-sesion') {
-          let guardada = sesiones.get(captura.rol)
-          if (!guardada) {
-            const sesion = await signInSession(emailOf(captura.rol))
-            guardada = {
-              json: JSON.stringify(sesion),
-              usuarioId: sesion.user.id,
-            }
-            sesiones.set(captura.rol, guardada)
-          }
+          const guardada = await sesionDe(captura.rol)
           const clave = authStorageKey(env.supabaseUrl)
           await contexto.addInitScript(
             ([k, v]) => window.localStorage.setItem(k, v),
@@ -704,6 +905,8 @@ async function main(): Promise<void> {
               consentimiento: captura.ejemplo.consentimiento ?? true,
               empleado: captura.ejemplo.empleado,
               supervisor: captura.ejemplo.supervisor,
+              admin: captura.ejemplo.admin,
+              coordinadorId: (await sesionDe('supervisor1')).usuarioId,
             })
           }
         }
@@ -715,7 +918,13 @@ async function main(): Promise<void> {
           )
         })
         const page = await contexto.newPage()
-        await page.goto(`${origen}${captura.ruta}`)
+        const ruta =
+          typeof captura.ruta === 'function'
+            ? captura.ruta({
+                coordinadorId: (await sesionDe('supervisor1')).usuarioId,
+              })
+            : captura.ruta
+        await page.goto(`${origen}${ruta}`)
         await page
           .getByText(captura.espera)
           .first()
@@ -725,10 +934,29 @@ async function main(): Promise<void> {
         await page.waitForTimeout(1200)
         await enmascarar(page, captura.personas ?? 'quitar')
         await page.waitForTimeout(150)
-        await page.screenshot({
-          path: path.join(salida, `${captura.nombre}.png`),
-          fullPage: captura.completa ?? false,
-        })
+        const archivo = path.join(salida, `${captura.nombre}.png`)
+        if (captura.elemento) {
+          await page.locator(captura.elemento).first().screenshot({
+            path: archivo,
+          })
+        } else if (captura.completa && captura.vista === 'celular') {
+          // En el celular la barra de abajo es fija: en vez de la página completa se agranda la
+          // ventana hasta que entre todo, así la barra queda al pie y no en el medio.
+          const alto = await page.evaluate(
+            () => document.documentElement.scrollHeight,
+          )
+          await page.setViewportSize({
+            width: TAMANOS.celular.width,
+            height: Math.min(Math.max(alto, TAMANOS.celular.height), 3200),
+          })
+          await page.waitForTimeout(600)
+          await page.screenshot({ path: archivo })
+        } else {
+          await page.screenshot({
+            path: archivo,
+            fullPage: captura.completa ?? false,
+          })
+        }
         hechas++
         console.log(`ok     ${captura.nombre}`)
       } catch (error) {
