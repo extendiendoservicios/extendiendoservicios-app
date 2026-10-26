@@ -7,6 +7,20 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.24.0] - 2026-10-26
+
+Ajustes posteriores a P24 que decidió Mike el 26 oct 2026 (P24.8). Migraciones 0065 a 0068.
+
+### Agregado
+
+- Calendario: conmutador «Colorear por: Estado | Cliente» en Mes, Semana y Día. En «Cliente» cada turno toma el color de su cliente y el estado queda en un puntito. La leyenda «Clientes del mes» (o «de la semana») filtra con un clic. Cada persona encuentra el conmutador como lo dejó.
+- Cada cliente tiene un color de una paleta de 12. Al crear uno se asigna solo el menos usado; se cambia en «Color en el calendario», en el formulario del cliente, y se ve en su ficha.
+- Celular del coordinador: el detalle del turno muestra el contacto de la sede (con el teléfono para llamar), las indicaciones de acceso, el horario del edificio y las restricciones, igual que la pantalla de la supervisión.
+
+### Cambiado
+
+- Detalle del turno (administración): «Quitar supervisión» pasa a «Cancelar supervisión», como en el resto de la app.
+
 ## [0.23.0] - 2026-10-26
 
 Módulo P24: coordinación libre y jornada del coordinador, según la reunión del 23 oct 2026 con los dueños (P24.1 a P24.7a). Migraciones 0062 a 0064.
