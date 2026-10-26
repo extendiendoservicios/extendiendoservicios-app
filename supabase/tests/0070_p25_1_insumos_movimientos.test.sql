@@ -234,7 +234,7 @@ select results_eq(
   'sin costo indicado la línea guarda el costo y la venta vigentes'
 );
 select results_eq(
-  $$select supplier, document_number, note, recorded_by from public.stock_movements where kind = 'entry' and supplier is not null$$,
+  $$select supplier, document_number, note, recorded_by from public.stock_movements where kind = 'entry' and recorded_by = tests.uid(2) and supplier is not null$$,
   $$values ('Proveedor Uno'::text, 'R-0001-123'::text, 'Ingreso de prueba'::text, tests.uid(2))$$,
   'proveedor, comprobante y nota se guardan sin espacios de los extremos, y recorded_by es quien lo cargó'
 );

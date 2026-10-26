@@ -2643,17 +2643,19 @@ activo. Escritura (subir, reemplazar, borrar): solo con `manage_stock` (el dueñ
 
 ### Seed de desarrollo
 
-`supabase/seed.sql` (bloque 12) carga 4 categorías y 16 artículos de limpieza inventados (más un discontinuado) con
+`supabase/seed-insumos-dev.sql` (P25.1b) carga 4 categorías y 16 artículos de limpieza inventados (más un discontinuado) con
 presentaciones, códigos (`QUI-`, `DES-`, `PRO-`, `UTE-`), precios, mínimos y stock variado: 3 en cero (rojo), 4 igual o
 bajo el mínimo (amarillo) y 3 sin mínimo. La historia que lo explica pasa por `app.stock_post_movement` con la hora
-pasada: dos ingresos (uno actualiza el costo), una suba de precio, siete retiros sobre turnos del seed (uno de una
+pasada: dos ingresos (uno actualiza el costo), una suba de precio, siete retiros sobre turnos existentes (uno de una
 coordinadora para una sede, uno cargado por la oficina en nombre de un empleado y después anulado), dos ajustes, un
 control y dos avisos de faltante (uno abierto y uno resuelto). Nada en `seed-prod.sql`.
 
-Nota: la salvaguarda del inicio de `seed.sql` rechaza correrlo en una base con usuarios que no son del seed (por ejemplo,
-`App_dev` con las cuentas de las pruebas E2E): el seed trunca clientes, empleados y configuración. Mientras `App_dev`
-tenga esas cuentas, el bloque 12 se verifica con una corrida de prueba dentro de una transacción que termina en
-`rollback` (sin la salvaguarda y ejecutando el cuerpo dos veces para comprobar que es idempotente), sin dejar datos.
+Cómo cargarlos: `pnpm db:seed:insumos` (`supabase db query --linked -f supabase/seed-insumos-dev.sql`), contra `App_dev`
+(verificá con `supabase projects list` que el proyecto vinculado sea `App_dev`). Se puede correr solo y las veces que haga
+falta: toma de la base personas, turnos y sedes existentes y activos (de forma determinista, sin crear ninguno), borra
+solo lo suyo (los 17 códigos de artículo y lo que cuelga de ellos) y lo vuelve a cargar, sin tocar clientes, empleados,
+turnos ni configuración. Su salvaguarda aborta si hay usuarios que no son del seed ni del dominio `example.com` de las
+cuentas e2e. `pnpm db:seed:data` lo corre a continuación de `seed.sql`, que ya no carga insumos (es la única fuente).
 
 ### Tests pgTAP
 
