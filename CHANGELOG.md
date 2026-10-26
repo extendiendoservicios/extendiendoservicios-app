@@ -7,6 +7,38 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.23.0] - 2026-10-26
+
+Módulo P24: coordinación libre y jornada del coordinador, según la reunión del 23 oct 2026 con los dueños (P24.1 a P24.7a). Migraciones 0062 a 0064.
+
+### Agregado
+
+- Jornada del coordinador: «Iniciar jornada», «Pausar» (con motivo opcional), «Reanudar» y «Finalizar jornada». El contador corre segundo a segundo y descuenta las pausas. Las horas del coordinador salen de sus jornadas.
+- Cierre automático a las 23:55 (hora de Argentina): las jornadas abiertas se cierran solas con la marca «Cerrada automáticamente». Una supervisión que quede abierta registra su fin y queda «Sin cerrar», con aviso a la administración.
+- Celular del coordinador: en Hoy, los turnos del día se dividen en «Mis sedes» y «Otras sedes», con buscador. Cada turno muestra quién lo está supervisando o quién ya lo supervisó.
+- Clientes y sedes preferenciales de cada coordinador: se cargan desde la ficha del coordinador o desde la del cliente o la sede. También se cargan desde la planilla de carga inicial, en una columna nueva de la hoja «Supervisores».
+- Posición en cada evento de la jornada y de la supervisión. En el mapa del Resumen, el interruptor «Coordinadores» los muestra con su estado. Debajo va la lista «Coordinadores sin ubicación».
+- Ficha del coordinador: pestaña «Jornadas», con «Corregir hora», «Agregar pausa», «Quitar pausa» y «Registrar jornada», todo con motivo y traza.
+- Asistencia del coordinador: «Descargar detalle» genera el imprimible A4 con las jornadas, las pausas y las supervisiones del período.
+
+### Cambiado
+
+- Se quita la asignación manual de supervisiones: el coordinador elige el turno y toca «Supervisar». Varios coordinadores pueden supervisar el mismo turno y calificar a los mismos empleados. La supervisión es informativa: no suma horas aparte de la jornada.
+- Supervisiones (administración): marca «Sin cerrar» y «Cancelar supervisión» con motivo. Ya no hay filtro por estado.
+- La capacidad «Asignar supervisiones» pasa a llamarse «Gestionar supervisiones»: habilita las preferencias y cancelar supervisiones.
+- Las calificaciones se pueden editar hasta el fin del turno o el fin de la supervisión, lo que ocurra último.
+- Guías de uso, problemas frecuentes, guion de UAT y capturas actualizados para la coordinación libre.
+
+### Corregido
+
+- Corregir la hora de fin de una jornada cerrada sola también mueve el fin automático de su supervisión. Cancelar o descartar una supervisión da de baja sus eventos de la jornada.
+- La validación de la posición del coordinador al supervisar usa el radio de la sede y la precisión máxima de la empresa.
+- Celular: en pantallas más anchas, el cartel «Pausar la jornada» dejaba el botón Pausar fuera de la vista. «¿Descartar la supervisión?» tenía el mismo problema. Ahora los botones van apilados.
+
+### Pruebas y automatización
+
+- Pruebas e2e nuevas del coordinador (jornada, pausas, dos coordinadores en un turno) y de administración, y matriz de permisos de las tablas y RPC nuevas. Se reescribieron las pruebas que asumían la asignación manual.
+
 ## [0.22.1] - 2026-10-21
 
 Ajustes de los imprimibles, de las licencias en asistencia y del celular, y cambios en las pruebas automáticas (P19.12 y P19.13). Sin migraciones: son solo cambios de la aplicación y de la automatización.
