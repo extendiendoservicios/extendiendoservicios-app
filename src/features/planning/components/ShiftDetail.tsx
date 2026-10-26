@@ -447,9 +447,10 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
                       <Button
                         variant="ghost"
                         size="sm"
+                        aria-label="Cancelar supervisión"
                         onClick={() => setRemoveSupervisionId(supervision.id)}
                       >
-                        Quitar
+                        Cancelar
                       </Button>
                     )}
                 </div>
@@ -466,9 +467,6 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
           onOpenChange={(open) => {
             if (!open) setRemoveSupervisionId(null)
           }}
-          title="Quitar supervisión"
-          confirmLabel="Quitar supervisión"
-          successMessage="Quitamos la supervisión del turno."
         />
       )}
 

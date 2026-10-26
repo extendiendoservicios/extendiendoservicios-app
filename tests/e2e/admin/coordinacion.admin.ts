@@ -459,14 +459,14 @@ test.describe('supervisión «Sin cerrar» por el cierre automático', () => {
           await expect(tarjeta).toContainText('informativa')
         })
 
-        await test.step('ADM-15: el detalle lo marca «Sin cerrar» y «Quitar» lo cancela con motivo', async () => {
+        await test.step('ADM-15: el detalle lo marca «Sin cerrar» y «Cancelar supervisión» lo cancela con motivo', async () => {
           await page.goto(`/admin/supervisiones/${supervisionId}`)
           const detalle = page.getByRole('dialog', {
             name: 'Detalle de la supervisión',
           })
           await expect(detalle).toContainText('Sin cerrar')
           await detalle
-            .getByRole('button', { name: /Quitar|Cancelar/ })
+            .getByRole('button', { name: /Cancelar/ })
             .first()
             .click()
           const confirmar = page
@@ -478,7 +478,7 @@ test.describe('supervisión «Sin cerrar» por el cierre automático', () => {
             .fill('e2e-jornada: se cerró sola')
           await confirmar
             .getByRole('button', {
-              name: /Cancelar supervisión|Quitar|Confirmar/,
+              name: /Cancelar supervisión|Confirmar/,
             })
             .last()
             .click()

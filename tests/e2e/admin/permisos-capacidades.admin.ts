@@ -114,7 +114,7 @@ test.describe('permisos por capacidad (03 sección 6)', () => {
             name: 'Detalle de la supervisión',
           })
           await expect(supervision).toContainText('En curso')
-          // «No se pudo realizar» ya no existe (CJ-26) y «Quitar» pide `manage_supervisions`.
+          // «No se pudo realizar» ya no existe (CJ-26) y «Cancelar supervisión» pide `manage_supervisions`.
           await expect(
             supervision.getByRole('button', {
               name: 'Marcar como no realizada',
