@@ -169,6 +169,8 @@ export interface ClientDetail {
   notes: string | null
   /** Ruta de la foto en `client-photos` (AJ2-06), o `null`. */
   photoPath: string | null
+  /** P24.8: color en el calendario (0–11). */
+  calendarColor: number
   createdAt: string
   updatedAt: string | null
 }
@@ -187,6 +189,7 @@ function mapClientRow(
     status: row.status,
     notes: row.notes,
     photoPath: row.photo_path,
+    calendarColor: row.calendar_color,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -216,6 +219,8 @@ export interface ClientFormInput {
   longitude: number | null
   status: ClientStatus
   notes: string | null
+  /** P24.8: 0–11. En el alta, `undefined` deja el valor que asigna la base. */
+  calendarColor?: number
 }
 
 /** Alta de ADM-20 (`06` sección 4: "Crear, editar | insert/update"). */
@@ -234,6 +239,9 @@ export async function createClient(
       longitude: input.longitude,
       status: input.status,
       notes: input.notes,
+      ...(input.calendarColor !== undefined
+        ? { calendar_color: input.calendarColor }
+        : {}),
       created_by: createdBy,
     })
     .select('*')
@@ -262,6 +270,9 @@ export async function updateClient(
       longitude: input.longitude,
       status: input.status,
       notes: input.notes,
+      ...(input.calendarColor !== undefined
+        ? { calendar_color: input.calendarColor }
+        : {}),
       updated_by: updatedBy,
     })
     .eq('id', id)

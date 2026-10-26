@@ -59,3 +59,30 @@ export function groupAssignmentsByEmployeeAndDate(
 export function shiftChipLabel(shift: ShiftListRow): string {
   return `${shift.clientName} · ${shift.siteName} · ${shiftFranjaKey(shift)}`
 }
+
+/**
+ * Clientes con turnos o asignaciones en el rango visible, para la leyenda de
+ * colores (P24.8): únicos por cliente y ordenados por nombre.
+ */
+export function legendClientsOf(
+  rows: {
+    clientId: string
+    clientName: string
+    clientCalendarColor?: number | null
+  }[],
+): { id: string; name: string; calendarColor: number | null }[] {
+  const byId = new Map<
+    string,
+    { id: string; name: string; calendarColor: number | null }
+  >()
+  for (const row of rows) {
+    if (!byId.has(row.clientId)) {
+      byId.set(row.clientId, {
+        id: row.clientId,
+        name: row.clientName,
+        calendarColor: row.clientCalendarColor ?? null,
+      })
+    }
+  }
+  return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, 'es'))
+}

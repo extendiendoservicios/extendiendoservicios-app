@@ -186,6 +186,10 @@ export interface AssignmentBoardRow {
   siteId: string
   siteName: string
   clientName: string
+  /** Para filtrar por cliente desde la leyenda de colores (P24.8). */
+  clientId: string
+  /** P24.8: color del cliente en el calendario (0–11). */
+  clientCalendarColor: number | null
   /** Franja efectiva: la propia de la asignación si tiene, si no la del turno (`effective_*`). */
   startTime: string
   endTime: string
@@ -205,7 +209,9 @@ interface AssignmentBoardRawRow {
   employee_last_name: string
   site_id: string
   site_name: string
+  client_id: string
   client_legal_name: string
+  client_calendar_color: number | null
   effective_start_time: string | null
   effective_end_time: string | null
   effective_open_ended: boolean | null
@@ -214,7 +220,7 @@ interface AssignmentBoardRawRow {
 }
 
 const ASSIGNMENT_BOARD_SELECT =
-  'id, shift_id, shift_date, shift_status, employee_id, employee_first_name, employee_last_name, site_id, site_name, client_legal_name, effective_start_time, effective_end_time, effective_open_ended, status, notes'
+  'id, shift_id, shift_date, shift_status, employee_id, employee_first_name, employee_last_name, site_id, site_name, client_id, client_legal_name, client_calendar_color, effective_start_time, effective_end_time, effective_open_ended, status, notes'
 
 /**
  * A diferencia de `v_shifts_board` (que trae `client_legal_name` y
@@ -235,6 +241,8 @@ function mapAssignmentBoardRow(row: AssignmentBoardRawRow): AssignmentBoardRow {
     siteId: row.site_id,
     siteName: row.site_name,
     clientName: row.client_legal_name,
+    clientId: row.client_id,
+    clientCalendarColor: row.client_calendar_color,
     startTime: row.effective_start_time ?? '',
     endTime: row.effective_end_time ?? '',
     openEnded: row.effective_open_ended ?? false,

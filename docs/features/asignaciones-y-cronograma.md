@@ -360,3 +360,31 @@ cumplir el criterio de rendimiento: sin ese límite, pintar 600 `<Link>` +
 `<Badge>` reales sí podría acercarse o superar el segundo. La medición de
 ASSIGN-016 verifica el comportamiento real de la pantalla tal como quedó
 construida, no un escenario hipotético sin ese límite.
+
+## Color por cliente en el calendario (P24.8)
+
+Planificación (mes, semana y día) tiene un conmutador **«Colorear por:
+Estado | Cliente»** a la derecha de los filtros. La elección se recuerda por
+persona en `localStorage` (clave `es.planning.colorBy`, con `try/catch`); el
+valor por defecto es «Estado», que se ve igual que antes.
+
+- **Modo Cliente:** cada turno toma fondo y texto del color de su cliente
+  (`clients.calendar_color`, 0–11, llega como `client_calendar_color` en
+  `v_shifts_board` y `v_assignments_board`). El estado pasa a un puntito a la
+  izquierda con el color del estado; el cancelado sigue tachado y el nombre del
+  estado queda en `sr-only`. Debajo, la leyenda «Estado (puntito)».
+- **Leyenda «Clientes del mes» / «Clientes de la semana»:** fichas con el
+  color y el nombre de los clientes del rango visible. Un clic filtra por ese
+  cliente (el mismo filtro de cliente de arriba); otro clic lo limpia. Lista
+  todos los clientes del rango aunque haya filtro (consulta aparte, solo en
+  modo Cliente). En la vista Día no hay leyenda de clientes (esa vista no tiene
+  filtro de cliente).
+- **Paleta:** `src/features/planning/clientColors.ts`, 12 tonos fijos con
+  nombre (Azul, Violeta, Naranja, Magenta, Oliva, Celeste, Mostaza, Marrón,
+  Índigo, Pizarra, Turquesa, Rosa). Fondo = 16 % del tono con blanco, texto =
+  62 % con negro; un test verifica contraste AA en los 12. La app no tiene
+  tema oscuro (el de alto contraste también es sobre blanco), así que un solo
+  par alcanza.
+- **Elegir el color:** en ADM-20 (formulario de cliente), «Color en el
+  calendario», un grupo de opciones con las 12 muestras. En el alta, si no se
+  elige, lo asigna la base. La ficha del cliente (ADM-21) lo muestra.
