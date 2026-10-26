@@ -292,7 +292,7 @@ Deno.test(
     )
 
     assertEquals(result, { profile_id: 'nuevo-admin-1', employee_number: null })
-    // Las siete capacidades las inserta la RPC (0035, cubierto por su pgTAP).
+    // Todas las capacidades las inserta la RPC (0035, cubierto por su pgTAP; ocho desde 0069).
     const records = rpcCalls.find((c) => c.fn === 'admin_create_user_records')
     assertEquals(records?.params.p_profile_id, 'nuevo-admin-1')
     assertEquals(records?.params.p_roles, ['admin'])

@@ -277,6 +277,35 @@ const PRUEBAS: Record<AdminCapability, Prueba[]> = {
       conCapacidad: 'SUPERVISION_NOT_FOUND',
     },
   ],
+  // P25.1 (módulo E, IS-21): el catálogo, los precios y los movimientos de stock piden
+  // `manage_stock`. Cada llamada se rechaza después de la puerta, sin tocar nada.
+  manage_stock: [
+    {
+      nombre: 'adjust_stock',
+      ejecutar: (s) =>
+        rpc(s, 'adjust_stock', {
+          p_supply_id: INEXISTENTE,
+          p_delta: 1,
+          p_reason: 'count',
+        }),
+      conCapacidad: 'SUPPLY_NOT_FOUND',
+    },
+    {
+      nombre: 'set_supply_prices',
+      ejecutar: (s) =>
+        rpc(s, 'set_supply_prices', {
+          p_supply_id: INEXISTENTE,
+          p_cost_price: 1,
+          p_sale_price: 1,
+        }),
+      conCapacidad: 'SUPPLY_NOT_FOUND',
+    },
+    {
+      nombre: 'upsert_supply_category',
+      ejecutar: (s) => rpc(s, 'upsert_supply_category', { p_name: '   ' }),
+      conCapacidad: 'NAME_REQUIRED',
+    },
+  ],
 }
 
 describe('capacidades del administrador, una por una', () => {
