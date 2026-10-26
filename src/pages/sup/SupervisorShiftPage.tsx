@@ -120,13 +120,13 @@ export default function SupervisorShiftPage() {
     city: shift.siteCity,
     latitude: shift.siteLatitude,
     longitude: shift.siteLongitude,
-    contactName: null,
-    contactPhone: null,
-    accessInstructions: null,
-    buildingHours: null,
-    phoneRestricted: false,
-    photosNotAllowed: false,
-    restrictionsNotes: null,
+    contactName: shift.siteContactName,
+    contactPhone: shift.siteContactPhone,
+    accessInstructions: shift.accessInstructions,
+    buildingHours: shift.buildingHours,
+    phoneRestricted: shift.phoneRestricted,
+    photosNotAllowed: shift.photosNotAllowed,
+    restrictionsNotes: shift.restrictionsNotes,
   }
   const site =
     shift.siteLatitude != null && shift.siteLongitude != null
