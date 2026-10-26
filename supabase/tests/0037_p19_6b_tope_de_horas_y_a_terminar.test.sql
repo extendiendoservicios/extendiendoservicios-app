@@ -138,14 +138,14 @@ select is(
   (select array_agg(attname::text order by attnum) from pg_attribute
    where attrelid = 'public.v_shifts_board'::regclass and attnum > 0 and not attisdropped
    and attnum >= (select attnum from pg_attribute where attrelid = 'public.v_shifts_board'::regclass and attname = 'deleted_at')),
-  array['deleted_at', 'open_ended', 'no_checkout_count', 'show_in_print', 'requires_photos'],
+  array['deleted_at', 'open_ended', 'no_checkout_count', 'show_in_print', 'requires_photos', 'client_calendar_color'],
   'v_shifts_board: open_ended y no_checkout_count van después de deleted_at (0040 agrega show_in_print y 0048 requires_photos al final)'
 );
 select is(
   (select array_agg(attname::text order by attnum) from pg_attribute
    where attrelid = 'public.v_assignments_board'::regclass and attnum > 0 and not attisdropped
    and attnum >= (select attnum from pg_attribute where attrelid = 'public.v_assignments_board'::regclass and attname = 'planned_minutes')),
-  array['planned_minutes', 'worked_minutes', 'effective_open_ended', 'shift_observation', 'check_in_record_id', 'check_in_geo_status', 'check_in_geo_reason', 'check_in_distance_m', 'check_in_geofence_radius_m', 'check_in_accuracy_m', 'check_in_outside_reason', 'check_in_geo_overridden', 'check_in_time_corrected', 'check_out_record_id', 'check_out_geo_status', 'check_out_geo_reason', 'check_out_distance_m', 'check_out_geofence_radius_m', 'check_out_accuracy_m', 'check_out_outside_reason', 'check_out_geo_overridden', 'check_out_time_corrected', 'has_outside_geo', 'last_notice_has_certificate'],
+  array['planned_minutes', 'worked_minutes', 'effective_open_ended', 'shift_observation', 'check_in_record_id', 'check_in_geo_status', 'check_in_geo_reason', 'check_in_distance_m', 'check_in_geofence_radius_m', 'check_in_accuracy_m', 'check_in_outside_reason', 'check_in_geo_overridden', 'check_in_time_corrected', 'check_out_record_id', 'check_out_geo_status', 'check_out_geo_reason', 'check_out_distance_m', 'check_out_geofence_radius_m', 'check_out_accuracy_m', 'check_out_outside_reason', 'check_out_geo_overridden', 'check_out_time_corrected', 'has_outside_geo', 'last_notice_has_certificate', 'client_calendar_color'],
   'v_assignments_board: effective_open_ended va después de worked_minutes (0040 agrega shift_observation al final)'
 );
 select is(

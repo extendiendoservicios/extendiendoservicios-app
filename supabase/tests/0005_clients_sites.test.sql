@@ -29,7 +29,9 @@ select columns_are(
     'id', 'legal_name', 'trade_name', 'cuit', 'admin_address', 'latitude', 'longitude',
     'status', 'notes', 'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
     -- 0039 (AJ2-06): foto del cliente.
-    'photo_path'
+    'photo_path',
+    -- 0066 (P24.8): índice de color del calendario.
+    'calendar_color'
   ],
   'clients tiene exactamente las columnas de 04 sección 2.2'
 );
