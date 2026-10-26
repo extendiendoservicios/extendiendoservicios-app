@@ -15,7 +15,7 @@ import { supervisorTodayKeys } from './supervisorToday'
  *
  * La hora oficial es la del servidor: los minutos netos y las horas de cada
  * evento salen de la base. El contador de la barra solo los extrapola entre
- * una lectura y la siguiente (ver `liveWorkedMinutes`).
+ * una lectura y la siguiente (ver `nextCounterAnchor`).
  */
 
 export type WorkdayState = 'running' | 'paused' | 'ended'
@@ -307,7 +307,7 @@ export async function reopenWorkday(
 // Hooks de TanStack Query
 // -------------------------------------------------------------------------
 
-/** La barra de jornada se relee cada 30 s (alcanza para el contador, ver `liveWorkedMinutes`). */
+/** La barra de jornada se relee cada 30 s (alcanza para el contador, ver `nextCounterAnchor`). */
 const WORKDAY_POLLING_MS = 30_000
 
 export const workdayKeys = {

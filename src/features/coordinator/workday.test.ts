@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  anchorSecondsAt,
   availableWorkdayActions,
   currentPause,
-  liveWorkedMinutes,
+  formatClock,
+  nextCounterAnchor,
   openSupervisionOf,
   workdayActionBlock,
   workdayBarState,
@@ -82,33 +84,76 @@ describe('availableWorkdayActions', () => {
   })
 })
 
-describe('liveWorkedMinutes', () => {
-  const fetchedAt = Date.parse('2026-10-23T14:00:00Z')
+describe('contador con segundos', () => {
+  const readAt = Date.parse('2026-10-23T14:00:00Z')
 
-  it('en marcha suma los minutos enteros transcurridos desde la lectura', () => {
-    const workday = makeWorkday({ workedMinutes: 125 })
-    expect(liveWorkedMinutes(workday, fetchedAt, fetchedAt)).toBe(125)
-    expect(liveWorkedMinutes(workday, fetchedAt, fetchedAt + 59_000)).toBe(125)
-    expect(liveWorkedMinutes(workday, fetchedAt, fetchedAt + 90_000)).toBe(126)
-    expect(liveWorkedMinutes(workday, fetchedAt, fetchedAt + 30 * 60_000)).toBe(
-      155,
+  it('formatClock arma H:MM:SS', () => {
+    expect(formatClock(0)).toBe('0:00:00')
+    expect(formatClock(59)).toBe('0:00:59')
+    expect(formatClock(125 * 60 + 7)).toBe('2:05:07')
+    expect(formatClock(-5)).toBe('0:00:00')
+  })
+
+  it('en marcha suma los segundos transcurridos desde la lectura', () => {
+    const anchor = nextCounterAnchor(
+      null,
+      makeWorkday({ workedMinutes: 95 }),
+      readAt,
     )
+    expect(anchorSecondsAt(anchor, readAt)).toBe(95 * 60)
+    expect(anchorSecondsAt(anchor, readAt + 7_400)).toBe(95 * 60 + 7)
+    expect(anchorSecondsAt(anchor, readAt + 90_000)).toBe(95 * 60 + 90)
   })
 
   it('en pausa o finalizada no avanza', () => {
-    const later = fetchedAt + 60 * 60_000
-    expect(
-      liveWorkedMinutes(makeWorkday({ state: 'paused' }), fetchedAt, later),
-    ).toBe(125)
-    expect(
-      liveWorkedMinutes(makeWorkday({ state: 'ended' }), fetchedAt, later),
-    ).toBe(125)
+    const later = readAt + 3_600_000
+    for (const state of ['paused', 'ended'] as const) {
+      const anchor = nextCounterAnchor(null, makeWorkday({ state }), readAt)
+      expect(anchorSecondsAt(anchor, later)).toBe(125 * 60)
+    }
   })
 
-  it('un reloj del teléfono atrasado respecto de la lectura no resta horas', () => {
-    expect(
-      liveWorkedMinutes(makeWorkday(), fetchedAt, fetchedAt - 10 * 60_000),
-    ).toBe(125)
+  it('un reloj del teléfono atrasado respecto de la lectura no resta tiempo', () => {
+    const anchor = nextCounterAnchor(null, makeWorkday(), readAt)
+    expect(anchorSecondsAt(anchor, readAt - 600_000)).toBe(125 * 60)
+  })
+
+  it('una lectura nueva que redondea hacia abajo no hace retroceder el contador', () => {
+    // Se mostraba 125 min + 30 s; el servidor sigue diciendo 125 min.
+    const first = nextCounterAnchor(null, makeWorkday(), readAt)
+    const second = nextCounterAnchor(first, makeWorkday(), readAt + 30_000)
+    expect(anchorSecondsAt(second, readAt + 30_000)).toBe(125 * 60 + 30)
+    expect(anchorSecondsAt(second, readAt + 45_000)).toBe(125 * 60 + 45)
+  })
+
+  it('si el servidor va más adelante, el contador se adelanta a su valor', () => {
+    const first = nextCounterAnchor(null, makeWorkday(), readAt)
+    const second = nextCounterAnchor(
+      first,
+      makeWorkday({ workedMinutes: 127 }),
+      readAt + 30_000,
+    )
+    expect(anchorSecondsAt(second, readAt + 30_000)).toBe(127 * 60)
+  })
+
+  it('una corrección grande hacia atrás manda el servidor', () => {
+    const first = nextCounterAnchor(null, makeWorkday(), readAt)
+    const second = nextCounterAnchor(
+      first,
+      makeWorkday({ workedMinutes: 100 }),
+      readAt + 30_000,
+    )
+    expect(anchorSecondsAt(second, readAt + 30_000)).toBe(100 * 60)
+  })
+
+  it('al reanudar desde una pausa se parte del valor del servidor', () => {
+    const paused = nextCounterAnchor(
+      null,
+      makeWorkday({ state: 'paused' }),
+      readAt,
+    )
+    const resumed = nextCounterAnchor(paused, makeWorkday(), readAt + 5_000)
+    expect(anchorSecondsAt(resumed, readAt + 8_000)).toBe(125 * 60 + 3)
   })
 })
 

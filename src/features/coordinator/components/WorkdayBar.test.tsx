@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { WorkdayBar } from './WorkdayBar'
 import * as workdaysModule from '@/api/myWorkdays'
@@ -44,6 +45,62 @@ afterEach(() => {
   window.localStorage.clear()
 })
 
+describe('WorkdayBar: contador con segundos', () => {
+  function mockFixedRead(workday: ReturnType<typeof makeWorkday>) {
+    vi.spyOn(workdaysModule, 'useTodayWorkdayQuery').mockReturnValue({
+      data: workday,
+      isLoading: false,
+      isError: false,
+      dataUpdatedAt: Date.now(),
+    } as never)
+    vi.spyOn(workdaysModule, 'useWorkdayActionMutation').mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as never)
+  }
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('en marcha corre segundo a segundo y rotula por minuto', () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
+    mockCommonHooks()
+    mockFixedRead(makeWorkday({ workedMinutes: 95 }))
+    renderBar()
+
+    const counter = screen.getByTestId('workday-counter')
+    expect(counter).toHaveTextContent('1:35:00')
+    act(() => {
+      vi.advanceTimersByTime(7_000)
+    })
+    expect(counter).toHaveTextContent('1:35:07')
+    expect(counter).toHaveAttribute('aria-hidden', 'true')
+    expect(screen.getByTestId('workday-counter-label')).toHaveTextContent(
+      '1 h 35 min trabajados',
+    )
+    act(() => {
+      vi.advanceTimersByTime(60_000)
+    })
+    expect(counter).toHaveTextContent('1:36:07')
+  })
+
+  it('en pausa queda fijo y no arma el tic de un segundo', () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
+    const spy = vi.spyOn(globalThis, 'setInterval')
+    mockCommonHooks()
+    mockFixedRead(makeWorkday({ state: 'paused', workedMinutes: 95 }))
+    renderBar()
+    const ticks = spy.mock.calls.filter(([, ms]) => ms === 1000)
+    expect(ticks).toHaveLength(0)
+
+    act(() => {
+      vi.advanceTimersByTime(30_000)
+    })
+    expect(screen.getByTestId('workday-counter')).toHaveTextContent('1:35:00')
+  })
+})
+
 describe('WorkdayBar: estados', () => {
   it('sin iniciar: ofrece solo «Iniciar jornada»', () => {
     mockCommonHooks()
@@ -66,7 +123,7 @@ describe('WorkdayBar: estados', () => {
     renderBar()
 
     expect(screen.getByText('En actividad')).toBeInTheDocument()
-    expect(screen.getByTestId('workday-counter')).toHaveTextContent('2 h 5 min')
+    expect(screen.getByTestId('workday-counter')).toHaveTextContent('2:05:00')
     expect(screen.getByRole('button', { name: 'Pausar' })).toBeEnabled()
     expect(
       screen.getByRole('button', { name: 'Finalizar jornada' }),
@@ -254,6 +311,19 @@ describe('WorkdayBar: posición y consentimiento (CJ-20, CJ-21)', () => {
 })
 
 describe('WorkdayBar: pausa y errores', () => {
+  it('el cartel de pausa apila los botones a lo ancho, con Pausar arriba (P24.7a)', () => {
+    mockCommonHooks()
+    mockWorkday(makeWorkday())
+    renderBar()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pausar' }))
+    const footer = document.querySelector('[data-slot="dialog-footer"]')
+    expect(footer).toHaveClass('flex-col', 'sm:flex-col')
+    const buttons = footer?.querySelectorAll('button') ?? []
+    expect(buttons[0]).toHaveTextContent('Pausar')
+    expect(buttons[1]).toHaveTextContent('Cancelar')
+  })
+
   it('Pausar abre el motivo (opcional) y lo manda con la acción', async () => {
     mockCommonHooks()
     const mutateAsync = mockWorkday(makeWorkday())

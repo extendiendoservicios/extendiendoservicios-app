@@ -22,7 +22,6 @@ import {
   type MyWorkday,
   type WorkdayAction,
 } from '@/api/myWorkdays'
-import { useNow } from '@/features/employee/useNow'
 import { useOnlineStatus } from '@/features/employee/useOnlineStatus'
 import { useLocationConsent } from '@/features/employee/useLocationConsent'
 import { coordinatorErrorMessage } from '../errors'
@@ -33,16 +32,13 @@ import {
   WORKDAY_BAR_VARIANTS,
   availableWorkdayActions,
   currentPause,
-  liveWorkedMinutes,
   openSupervisionOf,
   workdayActionBlock,
   workdayBarState,
   type WorkdayBarState,
 } from '../workday'
 import { LocationConsentGate } from './LocationConsentGate'
-
-/** El contador se refresca solo cada 30 s (alcanza para minutos). */
-const COUNTER_TICK_MS = 30_000
+import { WorkdayCounter } from './WorkdayCounter'
 
 const ACTION_ICONS: Record<WorkdayAction, typeof Play> = {
   start: Play,
@@ -72,8 +68,9 @@ interface PendingAction {
  * coordenadas no se muestran.
  *
  * La hora de cada evento y los minutos netos son los del servidor. El contador
- * solo suma lo transcurrido desde la última lectura mientras la jornada está
- * en marcha y se vuelve a anclar con cada lectura (cada 30 s).
+ * (`WorkdayCounter`, con segundos) solo suma lo transcurrido desde la última
+ * lectura mientras la jornada está en marcha y se vuelve a anclar con cada
+ * lectura (cada 30 s).
  */
 export function WorkdayBar() {
   const {
@@ -85,7 +82,6 @@ export function WorkdayBar() {
   const mutation = useWorkdayActionMutation()
   const consent = useLocationConsent()
   const online = useOnlineStatus()
-  const now = useNow(COUNTER_TICK_MS)
   const [busyAction, setBusyAction] = useState<WorkdayAction | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [consentFor, setConsentFor] = useState<PendingAction | null>(null)
@@ -176,14 +172,7 @@ export function WorkdayBar() {
               Tu jornada de hoy
             </p>
             {current ? (
-              <p
-                className="text-[26px] leading-tight font-bold text-text tabular-nums"
-                data-testid="workday-counter"
-              >
-                {formatMinutes(
-                  liveWorkedMinutes(current, dataUpdatedAt, now.getTime()),
-                )}
-              </p>
+              <WorkdayCounter workday={current} readAtMs={dataUpdatedAt} />
             ) : (
               <p className="text-[13px] text-text-2">
                 Todavía no iniciaste la jornada.
@@ -297,7 +286,7 @@ export function WorkdayBar() {
             error={pauseError ?? undefined}
             aria-label="Motivo de la pausa"
           />
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-col">
             <Button
               size="mobile"
               onClick={handlePauseSubmit}
