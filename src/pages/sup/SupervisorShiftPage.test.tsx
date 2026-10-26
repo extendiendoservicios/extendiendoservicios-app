@@ -128,6 +128,35 @@ describe('SupervisorShiftPage (SUP-03)', () => {
     expect(screen.getByText('Supervisando: Ana Ruiz')).toBeInTheDocument()
   })
 
+  it('muestra los datos útiles de la sede, con el teléfono como enlace', () => {
+    setup({
+      shift: makeTodayShift({
+        ...SHIFT,
+        siteContactName: 'Rosa Pérez',
+        siteContactPhone: '11 5555-1234',
+        accessInstructions: 'Timbre 3B, pedir la llave en recepción',
+        buildingHours: 'Lunes a viernes de 7 a 20',
+        restrictionsNotes: 'No mover los equipos',
+      }),
+    })
+    expect(screen.getByText(/Timbre 3B/)).toBeInTheDocument()
+    expect(screen.getByText(/Lunes a viernes de 7 a 20/)).toBeInTheDocument()
+    expect(screen.getByText('No mover los equipos')).toBeInTheDocument()
+    expect(screen.getByText('Rosa Pérez')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /11 5555-1234/ })).toHaveAttribute(
+      'href',
+      'tel:11 5555-1234',
+    )
+  })
+
+  it('sin datos de la sede no muestra indicaciones, restricciones ni contacto', () => {
+    setup()
+    expect(screen.queryByText(/Instrucciones de acceso/)).toBeNull()
+    expect(screen.queryByText(/Horario del edificio/)).toBeNull()
+    expect(screen.queryByText('Restricciones de la sede')).toBeNull()
+    expect(screen.queryByText('Contacto en la sede')).toBeNull()
+  })
+
   it('«Supervisar» registra el inicio sin ubicación y muestra la hora que devolvió el servidor', async () => {
     const mutateAsync = setup()
 

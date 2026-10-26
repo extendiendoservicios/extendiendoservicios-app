@@ -120,13 +120,14 @@ export default function SupervisorShiftPage() {
     city: shift.siteCity,
     latitude: shift.siteLatitude,
     longitude: shift.siteLongitude,
-    contactName: null,
-    contactPhone: null,
-    accessInstructions: null,
-    buildingHours: null,
+    contactName: shift.siteContactName,
+    contactPhone: shift.siteContactPhone,
+    accessInstructions: shift.accessInstructions,
+    buildingHours: shift.buildingHours,
+    // La vista del coordinador no trae estas dos marcas: solo el texto libre.
     phoneRestricted: false,
     photosNotAllowed: false,
-    restrictionsNotes: null,
+    restrictionsNotes: shift.restrictionsNotes,
   }
   const site =
     shift.siteLatitude != null && shift.siteLongitude != null

@@ -121,6 +121,40 @@ describe('fetchSupervisorToday', () => {
     expect(shifts[1]).toMatchObject({ siteRadiusM: null, maxAccuracyM: null })
   })
 
+  it('mapea los datos útiles de la sede y deja null los que no vienen', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: [
+          {
+            ...ROW,
+            site_contact_name: 'Rosa Pérez',
+            site_contact_phone: '11 5555-1234',
+            access_instructions: 'Timbre 3B',
+            building_hours: 'Lunes a viernes de 7 a 20',
+            restrictions_notes: 'No mover los equipos',
+          },
+          { ...ROW, shift_id: 'sh2' },
+        ],
+        error: null,
+      }),
+    )
+    const shifts = await fetchSupervisorToday()
+    expect(shifts[0]).toMatchObject({
+      siteContactName: 'Rosa Pérez',
+      siteContactPhone: '11 5555-1234',
+      accessInstructions: 'Timbre 3B',
+      buildingHours: 'Lunes a viernes de 7 a 20',
+      restrictionsNotes: 'No mover los equipos',
+    })
+    expect(shifts[1]).toMatchObject({
+      siteContactName: null,
+      siteContactPhone: null,
+      accessInstructions: null,
+      buildingHours: null,
+      restrictionsNotes: null,
+    })
+  })
+
   it('tolera campos JSON vacíos', async () => {
     fromMock.mockReturnValue(
       makeChainable({
