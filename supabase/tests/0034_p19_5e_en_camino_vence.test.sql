@@ -134,7 +134,7 @@ select is(
   'v_my_day: on_the_way_expires_at conserva su lugar (0037 agrega effective_open_ended y no_checkout, 0047 requires_photos y los contadores de medios, 0052 la validación al final)'
 );
 select is(
-  (select a.attname::text from pg_attribute a where a.attrelid = 'public.v_assignments_board'::regclass and a.attnum > 0 and not a.attisdropped order by a.attnum desc limit 1),
+  (select a.attname::text from pg_attribute a where a.attrelid = 'public.v_assignments_board'::regclass and a.attnum > 0 and not a.attisdropped order by a.attnum desc limit 1 offset 1),
   'last_notice_has_certificate',
   'v_assignments_board conserva sus columnas (0037 agrega effective_open_ended, 0040 shift_observation y 0052 la validación al final)'
 );

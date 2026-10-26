@@ -45,6 +45,7 @@ import {
   clientFormValuesToInput,
   type ClientFormValues,
 } from '@/features/clients/schemas'
+import { ClientColorPicker } from '@/features/clients/components/ClientColorPicker'
 import { useLeaveForm } from '@/app/shells/backNavigation'
 
 /**
@@ -91,6 +92,7 @@ export default function ClientFormPage() {
       coordinates: null,
       status: 'active',
       notes: '',
+      calendarColor: null,
       bankName: '',
       cbu: '',
       alias: '',
@@ -112,6 +114,7 @@ export default function ClientFormPage() {
                 : null,
             status: clientQuery.data.status,
             notes: clientQuery.data.notes ?? '',
+            calendarColor: clientQuery.data.calendarColor,
             ...bankDetailsToFormValues(bankQuery.data),
           }
         : undefined,
@@ -123,9 +126,17 @@ export default function ClientFormPage() {
     watchedBankName,
     watchedCbu,
     watchedAlias,
+    watchedCalendarColor,
   ] = useWatch({
     control,
-    name: ['tradeName', 'legalName', 'bankName', 'cbu', 'alias'],
+    name: [
+      'tradeName',
+      'legalName',
+      'bankName',
+      'cbu',
+      'alias',
+      'calendarColor',
+    ],
   })
 
   // AJ2-04: se guardan por RPC aparte, después del cliente. Si la lectura de lo
@@ -331,6 +342,24 @@ export default function ClientFormPage() {
           <Input id="client-admin-address" {...register('adminAddress')} />
           {errors.adminAddress && (
             <FieldError>{errors.adminAddress.message}</FieldError>
+          )}
+        </Field>
+
+        <Field className="sm:col-span-2">
+          <FieldLabel id="client-calendar-color-label">
+            Color en el calendario
+          </FieldLabel>
+          <ClientColorPicker
+            id="client-calendar-color"
+            value={watchedCalendarColor ?? null}
+            onChange={(next) =>
+              setValue('calendarColor', next, { shouldDirty: true })
+            }
+          />
+          {!isEditMode && (
+            <p className="text-[11.5px] text-text-3">
+              Si no elegís uno, se asigna solo.
+            </p>
           )}
         </Field>
 

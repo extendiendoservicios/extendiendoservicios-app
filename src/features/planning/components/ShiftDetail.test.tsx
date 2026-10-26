@@ -3,7 +3,7 @@ import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ShiftDetail } from './ShiftDetail'
 
-// P19.10 y P24.3: «Quitar» en las supervisiones del turno. Solo lo ve el dueño
+// P19.10 y P24.3: «Cancelar» en las supervisiones del turno. Solo lo ve el dueño
 // o el administrador con manage_supervisions, y solo con la supervisión en
 // curso. Ya no existe «Asignar supervisión» (CJ-01): el coordinador toma el
 // turno desde su celular y un turno puede tener varias supervisiones.
@@ -53,14 +53,9 @@ vi.mock('@/features/shifts/components/CancelShiftAction', () => ({
   CancelShiftAction: () => null,
 }))
 vi.mock('@/features/supervisions/components/CancelSupervisionDialog', () => ({
-  CancelSupervisionDialog: (props: {
-    supervisionId: string
-    title?: string
-    confirmLabel?: string
-    successMessage?: string
-  }) => (
-    <div role="dialog" aria-label={props.title}>
-      {props.supervisionId}|{props.confirmLabel}|{props.successMessage}
+  CancelSupervisionDialog: (props: { supervisionId: string }) => (
+    <div role="dialog" aria-label="Cancelar supervisión">
+      {props.supervisionId}
     </div>
   ),
 }))
@@ -131,8 +126,8 @@ beforeEach(() => {
   auth.capabilities = []
 })
 
-describe('ShiftDetail: Quitar supervisión (P19.10)', () => {
-  it('muestra «Quitar» solo en la supervisión en curso, no en completada ni no realizada', () => {
+describe('ShiftDetail: Cancelar supervisión (P19.10)', () => {
+  it('muestra «Cancelar» solo en la supervisión en curso, no en completada ni no realizada', () => {
     shiftState.data = makeShift([
       sup('a', 'Asig', 'assigned'),
       sup('b', 'Curso', 'in_progress'),
@@ -141,16 +136,24 @@ describe('ShiftDetail: Quitar supervisión (P19.10)', () => {
     ])
     renderDetail()
     expect(
-      within(itemOf('Asig')).queryByRole('button', { name: 'Quitar' }),
+      within(itemOf('Asig')).queryByRole('button', {
+        name: 'Cancelar supervisión',
+      }),
     ).toBeNull()
     expect(
-      within(itemOf('Curso')).getByRole('button', { name: 'Quitar' }),
+      within(itemOf('Curso')).getByRole('button', {
+        name: 'Cancelar supervisión',
+      }),
     ).toBeVisible()
     expect(
-      within(itemOf('Terminada')).queryByRole('button', { name: 'Quitar' }),
+      within(itemOf('Terminada')).queryByRole('button', {
+        name: 'Cancelar supervisión',
+      }),
     ).toBeNull()
     expect(
-      within(itemOf('Omitida')).queryByRole('button', { name: 'Quitar' }),
+      within(itemOf('Omitida')).queryByRole('button', {
+        name: 'Cancelar supervisión',
+      }),
     ).toBeNull()
   })
 
@@ -163,7 +166,9 @@ describe('ShiftDetail: Quitar supervisión (P19.10)', () => {
         'Este turno todavía no tuvo supervisión. Los coordinadores eligen qué turno supervisar desde su celular.',
       ),
     ).toBeVisible()
-    expect(screen.queryByRole('button', { name: 'Quitar' })).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: 'Cancelar supervisión' }),
+    ).toBeNull()
   })
 
   it('lista a los dos coordinadores que supervisan el mismo turno (CJ-05)', () => {
@@ -174,7 +179,9 @@ describe('ShiftDetail: Quitar supervisión (P19.10)', () => {
     renderDetail()
     expect(itemOf('Ana')).toBeVisible()
     expect(itemOf('Bruno')).toBeVisible()
-    expect(screen.getAllByRole('button', { name: 'Quitar' })).toHaveLength(1)
+    expect(
+      screen.getAllByRole('button', { name: 'Cancelar supervisión' }),
+    ).toHaveLength(1)
   })
 
   it('no ofrece «Asignar supervisión» ni siquiera al dueño', () => {
@@ -184,24 +191,28 @@ describe('ShiftDetail: Quitar supervisión (P19.10)', () => {
     expect(screen.queryByRole('link', { name: /Asignar/ })).toBeNull()
   })
 
-  it('el administrador sin manage_supervisions no ve «Quitar»', () => {
+  it('el administrador sin manage_supervisions no ve «Cancelar»', () => {
     auth.roles = ['admin']
     auth.capabilities = []
     shiftState.data = makeShift([sup('a', 'Asig', 'in_progress')])
     renderDetail()
     expect(itemOf('Asig')).toBeVisible()
-    expect(screen.queryByRole('button', { name: 'Quitar' })).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: 'Cancelar supervisión' }),
+    ).toBeNull()
   })
 
-  it('el administrador con manage_supervisions ve «Quitar»', () => {
+  it('el administrador con manage_supervisions ve «Cancelar»', () => {
     auth.roles = ['admin']
     auth.capabilities = ['manage_supervisions']
     shiftState.data = makeShift([sup('a', 'Asig', 'in_progress')])
     renderDetail()
-    expect(screen.getByRole('button', { name: 'Quitar' })).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Cancelar supervisión' }),
+    ).toBeVisible()
   })
 
-  it('«Quitar» abre el diálogo con los textos de quitar y el id de esa supervisión', () => {
+  it('«Cancelar» abre el diálogo y le pasa el id de esa supervisión', () => {
     shiftState.data = makeShift([
       sup('a', 'Asig', 'completed'),
       sup('b', 'Curso', 'in_progress'),
@@ -209,18 +220,20 @@ describe('ShiftDetail: Quitar supervisión (P19.10)', () => {
     renderDetail()
     expect(screen.queryByRole('dialog')).toBeNull()
     fireEvent.click(
-      within(itemOf('Curso')).getByRole('button', { name: 'Quitar' }),
+      within(itemOf('Curso')).getByRole('button', {
+        name: 'Cancelar supervisión',
+      }),
     )
     expect(
-      screen.getByRole('dialog', { name: 'Quitar supervisión' }),
-    ).toHaveTextContent(
-      'b|Quitar supervisión|Quitamos la supervisión del turno.',
-    )
+      screen.getByRole('dialog', { name: 'Cancelar supervisión' }),
+    ).toHaveTextContent('b')
   })
 
-  it('en un turno completado igual ofrece «Quitar» (el servidor no lo restringe por el turno)', () => {
+  it('en un turno completado igual ofrece «Cancelar» (el servidor no lo restringe por el turno)', () => {
     shiftState.data = makeShift([sup('a', 'Asig', 'in_progress')], 'completed')
     renderDetail()
-    expect(screen.getByRole('button', { name: 'Quitar' })).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Cancelar supervisión' }),
+    ).toBeVisible()
   })
 })

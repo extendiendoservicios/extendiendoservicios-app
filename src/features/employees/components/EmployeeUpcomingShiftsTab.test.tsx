@@ -26,6 +26,8 @@ function row(over: Partial<AssignmentBoardRow>): AssignmentBoardRow {
     employeeLastName: 'Prueba',
     siteId: 'si1',
     siteName: 'Sede Central',
+    clientId: 'c1',
+    clientCalendarColor: 0,
     clientName: 'Cliente Demo',
     startTime: '08:00:00',
     endTime: '12:00:00',

@@ -50,6 +50,8 @@ export const clientFormSchema = z.object({
   coordinates: z.custom<Coordinates | null>(),
   status: z.enum(['active', 'suspended', 'closed']),
   notes: z.string().trim().optional(),
+  // P24.8: color en el calendario; `null` en el alta = que la base asigne uno.
+  calendarColor: z.number().int().min(0).max(11).nullable().optional(),
   // AJ2-04: datos bancarios (solo dueño y administrador); se guardan por RPC aparte.
   ...bankFieldsShape,
 })
@@ -67,6 +69,7 @@ export function clientFormValuesToInput(values: ClientFormValues) {
     longitude: values.coordinates?.lng ?? null,
     status: values.status,
     notes: emptyToNull(values.notes),
+    calendarColor: values.calendarColor ?? undefined,
   }
 }
 

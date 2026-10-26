@@ -13,7 +13,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { getStatusMeta } from '@/components/status'
-import { Badge } from '@/components/ui/badge'
 import type { ShiftStatus as BadgeShiftStatus } from '@/components/status'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { useAuth } from '@/features/auth/AuthProvider'
@@ -33,7 +32,18 @@ import {
   buildMonthGridDays,
   monthRange,
 } from '@/features/planning/planningDates'
-import { groupShiftsByDate, shiftChipLabel } from '@/features/planning/grouping'
+import {
+  groupShiftsByDate,
+  legendClientsOf,
+  shiftChipLabel,
+} from '@/features/planning/grouping'
+import { useColorBy } from '@/features/planning/colorBy'
+import { ColorByToggle } from '@/features/planning/components/ColorByToggle'
+import { ShiftChip } from '@/features/planning/components/ShiftChip'
+import {
+  ClientLegend,
+  StatusDotLegend,
+} from '@/features/planning/components/ColorLegends'
 import { useShiftsBoardRangeQuery } from '@/features/planning/queries'
 
 /**
@@ -82,6 +92,7 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
   const [siteId, setSiteId] = useState<string>('all')
   const [employeeId, setEmployeeId] = useState<string>('all')
   const [status, setStatus] = useState<string>('all')
+  const [colorBy, setColorBy] = useColorBy()
 
   const { from, to } = useMemo(() => monthRange(year, month), [year, month])
 
@@ -91,6 +102,23 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
     employeeId: employeeId !== 'all' ? employeeId : undefined,
     status: status !== 'all' ? status : undefined,
   })
+  // La leyenda lista todos los clientes del rango aunque el calendario esté
+  // filtrado por uno: sin cliente en la clave es la misma consulta de arriba
+  // cuando no hay filtro (react-query la comparte) y una aparte si lo hay.
+  const legendQuery = useShiftsBoardRangeQuery(
+    from,
+    to,
+    {
+      siteId: siteId !== 'all' ? siteId : undefined,
+      employeeId: employeeId !== 'all' ? employeeId : undefined,
+      status: status !== 'all' ? status : undefined,
+    },
+    colorBy === 'client',
+  )
+  const legendClients = useMemo(
+    () => legendClientsOf(legendQuery.data ?? []),
+    [legendQuery.data],
+  )
   const holidaysQuery = useHolidaysQuery(year)
   const clientOptionsQuery = useClientFilterOptionsQuery()
   const sitesQuery = useSitesMapQuery({})
@@ -225,7 +253,20 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
             ))}
           </SelectContent>
         </Select>
+        <ColorByToggle value={colorBy} onValueChange={setColorBy} />
       </div>
+
+      {colorBy === 'client' && (
+        <ClientLegend
+          title="Clientes del mes"
+          clients={legendClients}
+          selectedId={clientId !== 'all' ? clientId : null}
+          onSelect={(id) => {
+            setClientId(id ?? 'all')
+            setSiteId('all')
+          }}
+        />
+      )}
 
       {isDesktop ? (
         <div className="overflow-hidden rounded-lg border border-border">
@@ -292,13 +333,12 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
                           title={`${meta.label} · ${label}`}
                           className="block w-full min-w-0 truncate rounded outline-none focus-visible:ring-3 focus-visible:ring-ring"
                         >
-                          <Badge
-                            variant={meta.variant}
-                            className="block w-full min-w-0 truncate rounded px-1.5 py-0.5 text-[10.5px] font-medium"
-                          >
-                            <span className="sr-only">{meta.label}: </span>
-                            {label}
-                          </Badge>
+                          <ShiftChip
+                            label={label}
+                            displayStatus={shift.displayStatus}
+                            clientCalendarColor={shift.clientCalendarColor}
+                            colorBy={colorBy}
+                          />
                         </Link>
                       )
                     })}
@@ -346,6 +386,8 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
             })}
         </ul>
       )}
+
+      {colorBy === 'client' && <StatusDotLegend />}
     </div>
   )
 }

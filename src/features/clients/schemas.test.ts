@@ -84,6 +84,7 @@ describe('clientFormValuesToInput', () => {
       coordinates: null,
       status: 'active',
       notes: undefined,
+      calendarColor: null,
     })
     expect(input).toEqual({
       legalName: 'Limpiadora SRL',
@@ -106,6 +107,7 @@ describe('clientFormValuesToInput', () => {
       coordinates: { lat: -34.6, lng: -58.4 },
       status: 'active',
       notes: undefined,
+      calendarColor: null,
     })
     expect(input.latitude).toBe(-34.6)
     expect(input.longitude).toBe(-58.4)

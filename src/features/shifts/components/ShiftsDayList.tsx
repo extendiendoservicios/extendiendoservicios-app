@@ -37,6 +37,11 @@ import { peopleOfShift, summarizeNames } from '@/features/shifts/shiftPeople'
 import { groupShiftsByFranja, shiftFranjaKey } from '@/features/shifts/grouping'
 import { RequiresPhotosMark } from '@/features/shifts/components/RequiresPhotosMark'
 import { NO_CHECKOUT_LABEL } from '@/features/shifts/openEnded'
+import { useColorBy } from '@/features/planning/colorBy'
+import { clientChipColors } from '@/features/planning/clientColors'
+import { ColorByToggle } from '@/features/planning/components/ColorByToggle'
+import { StatusDotLegend } from '@/features/planning/components/ColorLegends'
+import { StatusDot } from '@/features/planning/components/ShiftChip'
 import { UpdatedAgo } from './UpdatedAgo'
 import { CancelShiftDialog } from './CancelShiftDialog'
 
@@ -86,6 +91,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
   // "Cancelar" exige además `cancel_shifts` (06 sección 7), igual que el servidor.
   const canCancel = canCancelShift(actor)
   const [cancelTarget, setCancelTarget] = useState<ShiftListRow | null>(null)
+  const [colorBy, setColorBy] = useColorBy()
 
   const isToday = date === todayInBuenosAires()
   const shiftsQuery = useShiftsByDateQuery(date, isToday)
@@ -119,10 +125,29 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
       meta: { card: 'subtitle', width: '19%' },
       cell: ({ row }) => {
         const label = `${row.original.clientName} · ${row.original.siteName}`
+        const colors =
+          colorBy === 'client'
+            ? clientChipColors(row.original.clientCalendarColor)
+            : null
         return (
           <span className="flex items-center gap-1">
-            <span className="min-w-0 truncate" title={label}>
-              {label}
+            <span
+              className={
+                colors
+                  ? `flex min-w-0 items-center gap-[5px] rounded px-1.5 py-0.5 ${row.original.displayStatus === 'cancelled' ? 'line-through opacity-70' : ''}`
+                  : 'min-w-0 truncate'
+              }
+              style={
+                colors
+                  ? { background: colors.background, color: colors.color }
+                  : undefined
+              }
+              title={label}
+            >
+              {colors && <StatusDot status={row.original.displayStatus} />}
+              <span className={colors ? 'min-w-0 truncate' : undefined}>
+                {label}
+              </span>
             </span>
             {row.original.requiresPhotos && <RequiresPhotosMark />}
           </span>
@@ -317,6 +342,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
             <UpdatedAgo dataUpdatedAt={shiftsQuery.dataUpdatedAt} />
           )}
         </div>
+        <ColorByToggle value={colorBy} onValueChange={setColorBy} />
         {canManage && (
           <Button asChild icon={Plus}>
             <Link to={`/admin/turnos/nuevo?fecha=${date}`}>Nuevo turno</Link>
@@ -372,6 +398,8 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
           </div>
         </div>
       )}
+
+      {colorBy === 'client' && <StatusDotLegend />}
 
       {cancelTarget && (
         <CancelShiftDialog
