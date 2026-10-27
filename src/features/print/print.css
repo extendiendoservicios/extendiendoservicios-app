@@ -55,6 +55,11 @@
     margin-top: 2.5rem !important;
   }
 
+  /* Bloque que arranca con filas de tabla (planilla de control): sin margen extra. */
+  .print-sheet [data-print-signatures][data-print-flush] {
+    margin-top: 0 !important;
+  }
+
   /* Ancho útil de la página: 210 mm menos los 15 mm de `@page` a cada lado. */
   .print-sheet {
     box-sizing: border-box;

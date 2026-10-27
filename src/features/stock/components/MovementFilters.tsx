@@ -68,7 +68,7 @@ function MovementFilters({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="w-40">
+      <div className="w-full sm:w-60">
         <DatePicker
           aria-label="Movimientos desde"
           placeholder="Desde"
@@ -82,7 +82,7 @@ function MovementFilters({
           maxDate={value.dateTo ? isoDateToDate(value.dateTo) : undefined}
         />
       </div>
-      <div className="w-40">
+      <div className="w-full sm:w-60">
         <DatePicker
           aria-label="Movimientos hasta"
           placeholder="Hasta"

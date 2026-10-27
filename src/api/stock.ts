@@ -75,6 +75,15 @@ export const STOCK_ERROR_MESSAGES: Record<string, string> = {
   INVALID_KIND: 'El tipo tiene que ser ingreso o devolución.',
   REASON_REQUIRED: 'Elegí el motivo del ajuste.',
   NOTE_REQUIRED: 'Con el motivo «Otro» tenés que escribir una observación.',
+  PERSON_NOT_FOUND: 'No encontramos a la persona que retira.',
+  SHIFT_NOT_FOUND: 'No encontramos ese turno. Actualizá la lista.',
+  SHIFT_NOT_AVAILABLE: 'Ese turno está cancelado. Elegí otro.',
+  SHIFT_NOT_ALLOWED:
+    'Ese turno queda fuera del período permitido (30 días atrás a 7 adelante). Elegí otro.',
+  SITE_NOT_FOUND: 'No encontramos esa sede. Actualizá la lista.',
+  SITE_NOT_ALLOWED: 'Esa sede no se puede elegir para un retiro.',
+  SHIFT_OR_SITE_REQUIRED: 'Elegí un turno o una sede para el retiro.',
+  SITE_SHIFT_MISMATCH: 'La sede no corresponde a ese turno.',
   MOVEMENT_IMMUTABLE:
     'Los movimientos no se editan ni se borran. Corregí con un ajuste.',
 }
@@ -89,6 +98,14 @@ const DYNAMIC_HINTS: ReadonlySet<string> = new Set([
   'NOTE_REQUIRED',
   'REASON_REQUIRED',
   'INVALID_QTY',
+  // Retiro en nombre de otra persona (IS-35): el servidor explica cuál es la
+  // regla que falló; el mapa queda de respaldo.
+  'PERSON_NOT_FOUND',
+  'SHIFT_NOT_FOUND',
+  'SHIFT_NOT_AVAILABLE',
+  'SHIFT_NOT_ALLOWED',
+  'SITE_NOT_FOUND',
+  'SITE_NOT_ALLOWED',
 ])
 
 /** Pasa el error de las RPC de stock a `ApiError` con el mensaje en español de cada `hint`. */
@@ -1016,7 +1033,7 @@ export async function registerWithdrawalOnBehalf(
   return parseWithdrawalResult(data)
 }
 
-/** Un turno que se puede elegir para el retiro (`v_withdrawal_shift_options`). */
+/** Un turno que se puede elegir para el retiro (`v_withdrawal_shift_options_admin`). */
 export interface WithdrawalShiftOption {
   shiftId: string
   /** `YYYY-MM-DD`. */
@@ -1028,20 +1045,27 @@ export interface WithdrawalShiftOption {
   clientName: string
   siteId: string
   siteName: string
+  /** Estado del turno (la vista de administración incluye todos). */
+  shiftStatus: string
+  /** Empleados asignados al turno (para resaltar los de quien retira). */
+  assignedEmployeeIds: string[]
+  /** Coordinadores del turno. */
+  supervisorIds: string[]
 }
 
 /**
- * Turnos elegibles (`v_withdrawal_shift_options`): para la administración sin
- * rol de empleado ni coordinador, de -30 a +7 días, sin cancelados. Más
- * recientes primero.
+ * Turnos elegibles para la administración (`v_withdrawal_shift_options_admin`,
+ * IS-35): de -30 a +7 días, todos los estados; sin filas si no tiene
+ * `manage_stock`. Más recientes primero. El celular usa sus propias funciones
+ * (`src/api/myStock.ts`).
  */
 export async function fetchWithdrawalShiftOptions(): Promise<
   WithdrawalShiftOption[]
 > {
   const { data, error } = await supabase
-    .from('v_withdrawal_shift_options')
+    .from('v_withdrawal_shift_options_admin')
     .select(
-      'shift_id, shift_date, start_time, end_time, open_ended, client_id, client_name, site_id, site_name, starts_at',
+      'shift_id, shift_date, start_time, end_time, open_ended, client_id, client_name, site_id, site_name, starts_at, shift_status, assigned_employee_ids, supervisor_ids',
     )
     .order('starts_at', { ascending: false })
   if (error) throw mapStockError(error)
@@ -1055,10 +1079,13 @@ export async function fetchWithdrawalShiftOptions(): Promise<
     clientName: row.client_name ?? '',
     siteId: row.site_id ?? '',
     siteName: row.site_name ?? '',
+    shiftStatus: row.shift_status ?? '',
+    assignedEmployeeIds: row.assigned_employee_ids ?? [],
+    supervisorIds: row.supervisor_ids ?? [],
   }))
 }
 
-/** Una sede elegible para un retiro sin turno (`v_withdrawal_site_options`). */
+/** Una sede elegible para un retiro sin turno (`v_withdrawal_site_options_admin`). */
 export interface WithdrawalSiteOption {
   siteId: string
   siteName: string
@@ -1066,12 +1093,12 @@ export interface WithdrawalSiteOption {
   clientName: string
 }
 
-/** Sedes activas (para la administración, todas), por cliente y nombre. */
+/** Sedes activas de clientes activos (todas), por cliente y nombre. */
 export async function fetchWithdrawalSiteOptions(): Promise<
   WithdrawalSiteOption[]
 > {
   const { data, error } = await supabase
-    .from('v_withdrawal_site_options')
+    .from('v_withdrawal_site_options_admin')
     .select('site_id, site_name, client_id, client_name')
     .order('client_name', { ascending: true })
     .order('site_name', { ascending: true })

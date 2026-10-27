@@ -151,6 +151,24 @@ describe('mapStockError', () => {
     expect(error.message).toBe('Ya existe un registro con esos datos.')
   })
 
+  it('en los errores del retiro en nombre de otro deja el texto del servidor', () => {
+    for (const hint of [
+      'SHIFT_NOT_ALLOWED',
+      'SITE_NOT_ALLOWED',
+      'SHIFT_NOT_AVAILABLE',
+      'SHIFT_NOT_FOUND',
+      'SITE_NOT_FOUND',
+      'PERSON_NOT_FOUND',
+    ]) {
+      const error = mapStockError({ message: 'Texto del servidor.', hint })
+      expect(error.message, hint).toBe('Texto del servidor.')
+      expect(error.hint).toBe(hint)
+      expect(mapStockError({ message: '', hint }).message, hint).toBe(
+        STOCK_ERROR_MESSAGES[hint],
+      )
+    }
+  })
+
   it('tiene mensaje en español para todos los códigos del contrato', () => {
     const contract = [
       'FORBIDDEN',
@@ -176,6 +194,12 @@ describe('mapStockError', () => {
       'INVALID_KIND',
       'REASON_REQUIRED',
       'NOTE_REQUIRED',
+      'PERSON_NOT_FOUND',
+      'SHIFT_NOT_FOUND',
+      'SHIFT_NOT_AVAILABLE',
+      'SHIFT_NOT_ALLOWED',
+      'SITE_NOT_FOUND',
+      'SITE_NOT_ALLOWED',
     ]
     for (const hint of contract) {
       expect(STOCK_ERROR_MESSAGES[hint], hint).toBeTruthy()

@@ -13,6 +13,7 @@ import { Combobox } from '@/components/Combobox'
 import { EmptyState } from '@/components/EmptyState'
 import { SegmentedControl } from '@/components/SegmentedControl'
 import { isApiError } from '@/api/errors'
+import type { WithdrawalShiftOption } from '@/api/stock'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { ROLE_LABELS } from '@/features/auth/session'
 import {
@@ -31,7 +32,10 @@ import { canManageStock } from '@/features/stock/permissions'
 import { supplyLabel } from '@/features/stock/filters'
 import { formatQty } from '@/features/stock/money'
 import { formatShiftDay } from '@/features/stock/labels'
-import { findInsufficientLines } from '@/features/stock/withdrawal'
+import {
+  findInsufficientLines,
+  orderShiftsForPerson,
+} from '@/features/stock/withdrawal'
 import {
   WithdrawalResultSummary,
   type WithdrawalSummaryData,
@@ -51,13 +55,20 @@ const PLACE_OPTIONS = [
   { value: 'site', label: 'Una sede' },
 ] as const
 
+/** «jue 13 ago 08:00 · Cliente · Sede». */
+function shiftSummaryLabel(shift: WithdrawalShiftOption | undefined): string {
+  if (!shift) return ''
+  return `${formatShiftDay(shift.shiftDate)} ${shift.startTime.slice(0, 5)} · ${shift.clientName} · ${shift.siteName}`
+}
+
 /**
  * Retiro en nombre de otra persona (`/admin/insumos/retiro`, IS-11, IS-12):
  * el mismo formulario del celular, con selector de persona (empleados y
  * coordinadores activos). Se elige un turno o una sede (con observación
  * obligatoria si es sede), los artículos y las cantidades. Descuenta el stock
  * en el momento (IS-13); al terminar muestra un resumen. Solo con
- * `manage_stock`.
+ * `manage_stock`. Turnos y sedes salen de las vistas `_admin` (IS-35): los
+ * turnos de la persona elegida van primero, sin ocultar los demás.
  */
 function WithdrawalOnBehalfScreen() {
   const auth = useAuth()
@@ -84,6 +95,7 @@ function WithdrawalOnBehalfScreen() {
   const { fields, append, remove } = useFieldArray({ control, name: 'lines' })
   const lines = useWatch({ control, name: 'lines' })
   const place = useWatch({ control, name: 'place' })
+  const personId = useWatch({ control, name: 'personId' })
 
   const items = useMemo(() => itemsQuery.data ?? [], [itemsQuery.data])
   const itemsById = useMemo(
@@ -108,9 +120,18 @@ function WithdrawalOnBehalfScreen() {
         : ROLE_LABELS.employee
     }`,
   }))
-  const shiftOptions = (shiftsQuery.data ?? []).map((shift) => ({
+  // Los turnos de la persona elegida van primero y marcados; el resto sigue
+  // disponible (la administración puede cargar un retiro de cualquier turno).
+  const pickedPerson = people.find((person) => person.profileId === personId)
+  const shiftOptions = orderShiftsForPerson(
+    shiftsQuery.data ?? [],
+    personId,
+    pickedPerson?.roles.includes('supervisor') ?? false,
+  ).map(({ shift, ofPerson }) => ({
     value: shift.shiftId,
-    label: `${formatShiftDay(shift.shiftDate)} ${shift.startTime.slice(0, 5)} · ${shift.clientName} · ${shift.siteName}`,
+    label: `${shiftSummaryLabel(shift)}${
+      shift.shiftStatus === 'cancelled' ? ' · cancelado' : ''
+    }${ofPerson ? ' · es su turno' : ''}`,
   }))
   const siteOptions = (sitesQuery.data ?? []).map((site) => ({
     value: site.siteId,
@@ -138,8 +159,11 @@ function WithdrawalOnBehalfScreen() {
             ?.label.split(' · ')[0] ?? '',
         place:
           values.place === 'shift'
-            ? (shiftOptions.find((option) => option.value === values.shiftId)
-                ?.label ?? '')
+            ? shiftSummaryLabel(
+                (shiftsQuery.data ?? []).find(
+                  (shift) => shift.shiftId === values.shiftId,
+                ),
+              )
             : (siteOptions.find((option) => option.value === values.siteId)
                 ?.label ?? ''),
         note: values.note.trim() || null,
@@ -244,6 +268,11 @@ function WithdrawalOnBehalfScreen() {
         {place === 'shift' ? (
           <Field data-invalid={Boolean(errors.shiftId) || undefined}>
             <FieldLabel>Turno</FieldLabel>
+            {pickedPerson && (
+              <p className="text-[11.5px] text-text-3">
+                Los turnos de {pickedPerson.firstName} salen primero.
+              </p>
+            )}
             <Controller
               control={control}
               name="shiftId"

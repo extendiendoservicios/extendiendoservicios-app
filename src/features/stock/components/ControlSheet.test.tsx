@@ -143,4 +143,21 @@ describe('ControlSheet: planilla imprimible de control (IS-15)', () => {
     expect(table.querySelector('thead')).not.toBeNull()
     expect(table.querySelectorAll('col')).toHaveLength(8)
   })
+
+  it('con muchos artículos, las últimas filas viajan en el mismo bloque que el pie', () => {
+    const many = Array.from({ length: 10 }, (_, index) =>
+      testItem({ id: `m${index}`, code: `QUI-${index}`, name: `Art ${index}` }),
+    )
+    renderSheet({ items: many, categoryName: 'Químicos' })
+    expect(screen.getAllByTestId('control-sheet-row')).toHaveLength(10)
+    const footer = document.querySelector('[data-print-signatures]')!
+    expect(footer).toHaveClass('print-keep-together')
+    // Tres filas pegadas al pie; las otras siete, en la tabla principal.
+    expect(
+      within(footer as HTMLElement).getAllByTestId('control-sheet-row'),
+    ).toHaveLength(3)
+    expect(within(footer as HTMLElement).getByText('Firma')).toBeInTheDocument()
+    expect(screen.getAllByRole('table')).toHaveLength(2)
+    expect(document.querySelectorAll('thead')).toHaveLength(1)
+  })
 })

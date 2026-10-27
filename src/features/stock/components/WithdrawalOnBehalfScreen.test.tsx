@@ -65,6 +65,37 @@ vi.mock('@/features/stock/queries', () => ({
         clientName: 'Banco Sur',
         siteId: 'si1',
         siteName: 'Casa Central',
+        shiftStatus: 'scheduled',
+        assignedEmployeeIds: [],
+        supervisorIds: [],
+      },
+      {
+        shiftId: 't2',
+        shiftDate: '2026-10-25',
+        startTime: '14:00:00',
+        endTime: '18:00:00',
+        openEnded: false,
+        clientId: 'c2',
+        clientName: 'Colegio Mayor',
+        siteId: 'si3',
+        siteName: 'Sede única',
+        shiftStatus: 'assigned',
+        assignedEmployeeIds: ['p1'],
+        supervisorIds: [],
+      },
+      {
+        shiftId: 't3',
+        shiftDate: '2026-10-24',
+        startTime: '06:00:00',
+        endTime: '10:00:00',
+        openEnded: false,
+        clientId: 'c3',
+        clientName: 'Hotel Sol',
+        siteId: 'si4',
+        siteName: 'Torre',
+        shiftStatus: 'cancelled',
+        assignedEmployeeIds: ['p1'],
+        supervisorIds: ['p2'],
       },
     ],
   }),
@@ -249,5 +280,56 @@ describe('WithdrawalOnBehalfScreen: retiro en nombre de (IS-11, IS-12)', () => {
         'No alcanza el stock de Lavandina: hay 1.',
       ),
     )
+  })
+
+  it('sin persona elegida los turnos salen en el orden de la vista y ninguno está marcado', async () => {
+    renderScreen()
+    fireEvent.click(screen.getByRole('combobox', { name: 'Turno' }))
+    const options = await screen.findAllByRole('option')
+    expect(options.map((option) => option.textContent)).toEqual([
+      expect.stringContaining('Banco Sur'),
+      expect.stringContaining('Colegio Mayor'),
+      expect.stringContaining('Hotel Sol'),
+    ])
+    expect(screen.queryByText(/es su turno/)).toBeNull()
+  })
+
+  it('con un empleado elegido, sus turnos van primero y marcados, y el resto sigue ahí', async () => {
+    renderScreen()
+    await pick('Quién retira', 'Lucía Pérez · Empleado')
+    fireEvent.click(screen.getByRole('combobox', { name: 'Turno' }))
+    const options = await screen.findAllByRole('option')
+    expect(options).toHaveLength(3)
+    expect(options[0]).toHaveTextContent('Colegio Mayor')
+    expect(options[0]).toHaveTextContent('es su turno')
+    expect(options[1]).toHaveTextContent('Hotel Sol')
+    expect(options[1]).toHaveTextContent('cancelado')
+    expect(options[2]).toHaveTextContent('Banco Sur')
+    expect(options[2]).not.toHaveTextContent('es su turno')
+  })
+
+  it('con un coordinador elegido, marca los turnos que coordina y no los que tiene asignados', async () => {
+    renderScreen()
+    await pick('Quién retira', 'Marta Ruiz · Coordinador')
+    fireEvent.click(screen.getByRole('combobox', { name: 'Turno' }))
+    const options = await screen.findAllByRole('option')
+    expect(options[0]).toHaveTextContent('Hotel Sol')
+    expect(options[0]).toHaveTextContent('es su turno')
+    expect(screen.getAllByText(/es su turno/)).toHaveLength(1)
+  })
+
+  it('el resumen muestra el turno sin los rótulos del selector', async () => {
+    renderScreen()
+    await pick('Quién retira', 'Lucía Pérez · Empleado')
+    await pick('Turno', /Colegio Mayor/)
+    await pick('Agregar un artículo', /QUI-001/)
+    fireEvent.change(screen.getByLabelText('Cantidad'), {
+      target: { value: '2' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Registrar retiro' }))
+    const summary = within(await screen.findByTestId('withdrawal-summary'))
+    expect(
+      summary.getByText(/Colegio Mayor · Sede única/),
+    ).not.toHaveTextContent('es su turno')
   })
 })

@@ -16,8 +16,77 @@ const COLUMNS = [
   { key: 'note', header: 'Observación', width: 32 },
 ] as const
 
+/** Cantidad de artículos que van pegados al pie para que no quede huérfano. */
+const TAIL_ROWS = 3
+
 const cellClass = 'border border-neutral-500 px-1.5 align-middle'
 const headerCellClass = `${cellClass} bg-neutral-200 py-1 text-left font-semibold`
+
+function ControlColgroup() {
+  return (
+    <colgroup>
+      {COLUMNS.map((column) => (
+        <col key={column.key} style={{ width: `${column.width}mm` }} />
+      ))}
+    </colgroup>
+  )
+}
+
+/** Filas de `items[from..to)`; el encabezado de categoría sale donde cambia respecto del artículo anterior. */
+function ItemRows({
+  items,
+  from,
+  to,
+  showCategories,
+}: {
+  items: readonly StockItem[]
+  from: number
+  to: number
+  showCategories: boolean
+}) {
+  return items.slice(from, to).map((item, offset) => {
+    const previous = items[from + offset - 1]
+    const startsCategory =
+      showCategories &&
+      (previous === undefined || previous.categoryId !== item.categoryId)
+    return (
+      <Fragment key={item.id}>
+        {startsCategory && (
+          <tr data-testid="control-sheet-category">
+            <th
+              scope="colgroup"
+              colSpan={COLUMNS.length}
+              className={`${cellClass} bg-neutral-100 py-0.5 text-left font-semibold`}
+            >
+              {item.categoryName}
+            </th>
+          </tr>
+        )}
+        <tr data-testid="control-sheet-row" className="h-[9mm]">
+          <td className={`${cellClass} font-mono text-[10px]`}>{item.code}</td>
+          <td className={`${cellClass} [overflow-wrap:break-word]`}>
+            {item.name}
+          </td>
+          <td className={`${cellClass} [overflow-wrap:break-word]`}>
+            {item.presentation ?? ''}
+          </td>
+          <td className={`${cellClass} text-right tabular-nums`}>
+            {formatQty(item.stockQty)}
+          </td>
+          <td className={cellClass} />
+          <td className={`${cellClass} text-center`}>
+            <span
+              aria-hidden="true"
+              className="inline-block size-[4mm] border border-black align-middle"
+            />
+          </td>
+          <td className={cellClass} />
+          <td className={cellClass} />
+        </tr>
+      </Fragment>
+    )
+  })
+}
 
 interface ControlSheetProps {
   items: readonly StockItem[]
@@ -34,7 +103,8 @@ interface ControlSheetProps {
  * categoría si se filtró. Una fila por artículo con código, artículo,
  * presentación, stock del sistema y espacio para escribir a mano: la cantidad
  * contada, un casillero para tildar, «+ / −» y la observación. Pie con
- * observaciones generales, firma, aclaración y fecha. La tabla repite su
+ * observaciones generales, firma, aclaración y fecha; las últimas filas van
+ * en el mismo bloque que el pie, que no se corta entre hojas. La tabla repite su
  * encabezado en cada hoja (`print.css`) y cada fila mide 9 mm para escribir.
  */
 function ControlSheet({
@@ -43,6 +113,10 @@ function ControlSheet({
   issuedAt,
   issuedDateLabel,
 }: ControlSheetProps) {
+  // Cuántas filas acompañan al pie en la última hoja.
+  // Con pocos artículos no se parte la tabla: todo queda junto bajo el encabezado.
+  const tailStart =
+    items.length > TAIL_ROWS ? items.length - TAIL_ROWS : items.length
   const facts = [
     { label: 'Fecha', value: issuedDateLabel },
     { label: 'Revisó', value: '______________________________' },
@@ -58,11 +132,7 @@ function ControlSheet({
       <PrintFacts facts={facts} />
 
       <table className="w-full table-fixed border-collapse text-[11px]">
-        <colgroup>
-          {COLUMNS.map((column) => (
-            <col key={column.key} style={{ width: `${column.width}mm` }} />
-          ))}
-        </colgroup>
+        <ControlColgroup />
         <thead>
           <tr>
             {COLUMNS.map((column) => (
@@ -87,82 +157,63 @@ function ControlSheet({
               </td>
             </tr>
           ) : (
-            items.map((item, index) => {
-              const previous = items[index - 1]
-              const startsCategory =
-                categoryName === null &&
-                (previous === undefined ||
-                  previous.categoryId !== item.categoryId)
-              return (
-                <Fragment key={item.id}>
-                  {startsCategory && (
-                    <tr data-testid="control-sheet-category">
-                      <th
-                        scope="colgroup"
-                        colSpan={COLUMNS.length}
-                        className={`${cellClass} bg-neutral-100 py-0.5 text-left font-semibold`}
-                      >
-                        {item.categoryName}
-                      </th>
-                    </tr>
-                  )}
-                  <tr data-testid="control-sheet-row" className="h-[9mm]">
-                    <td className={`${cellClass} font-mono text-[10px]`}>
-                      {item.code}
-                    </td>
-                    <td className={`${cellClass} [overflow-wrap:break-word]`}>
-                      {item.name}
-                    </td>
-                    <td className={`${cellClass} [overflow-wrap:break-word]`}>
-                      {item.presentation ?? ''}
-                    </td>
-                    <td className={`${cellClass} text-right tabular-nums`}>
-                      {formatQty(item.stockQty)}
-                    </td>
-                    <td className={cellClass} />
-                    <td className={`${cellClass} text-center`}>
-                      <span
-                        aria-hidden="true"
-                        className="inline-block size-[4mm] border border-black align-middle"
-                      />
-                    </td>
-                    <td className={cellClass} />
-                    <td className={cellClass} />
-                  </tr>
-                </Fragment>
-              )
-            })
+            <ItemRows
+              items={items}
+              from={0}
+              to={tailStart}
+              showCategories={categoryName === null}
+            />
           )}
         </tbody>
       </table>
 
-      <section
+      {/*
+        Las últimas filas viajan junto con el pie en un solo bloque que no se
+        corta: así el pie nunca queda solo en la última hoja (IS-17).
+      */}
+      <div
         data-print-signatures
-        className="print-keep-together mt-[calc(1.5rem+var(--sig-push,0px))]"
+        data-print-flush
+        className="print-keep-together mt-[var(--sig-push,0px)]"
       >
-        <p className="mb-1 text-[11.5px] font-semibold">
-          Observaciones generales
-        </p>
-        <div className="flex flex-col">
-          {[0, 1, 2, 3].map((line) => (
-            <div key={line} className="h-[8mm] border-b border-neutral-500" />
-          ))}
-        </div>
-        <div className="mt-6 grid grid-cols-3 gap-8 text-[11.5px]">
-          <div>
-            <div className="h-12 border-b border-black" />
-            <p className="mt-1 font-semibold">Firma</p>
+        {tailStart < items.length && (
+          <table className="-mt-px w-full table-fixed border-collapse text-[11px]">
+            <ControlColgroup />
+            <tbody>
+              <ItemRows
+                items={items}
+                from={tailStart}
+                to={items.length}
+                showCategories={categoryName === null}
+              />
+            </tbody>
+          </table>
+        )}
+        <section className="mt-6">
+          <p className="mb-1 text-[11.5px] font-semibold">
+            Observaciones generales
+          </p>
+          <div className="flex flex-col">
+            {[0, 1, 2, 3].map((line) => (
+              <div key={line} className="h-[8mm] border-b border-neutral-500" />
+            ))}
           </div>
-          <div>
-            <div className="h-12 border-b border-black" />
-            <p className="mt-1 font-semibold">Aclaración</p>
+          <div className="mt-6 grid grid-cols-3 gap-8 text-[11.5px]">
+            <div>
+              <div className="h-12 border-b border-black" />
+              <p className="mt-1 font-semibold">Firma</p>
+            </div>
+            <div>
+              <div className="h-12 border-b border-black" />
+              <p className="mt-1 font-semibold">Aclaración</p>
+            </div>
+            <div>
+              <div className="h-12 border-b border-black" />
+              <p className="mt-1 font-semibold">Fecha</p>
+            </div>
           </div>
-          <div>
-            <div className="h-12 border-b border-black" />
-            <p className="mt-1 font-semibold">Fecha</p>
-          </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   )
 }
