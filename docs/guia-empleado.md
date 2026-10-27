@@ -61,10 +61,11 @@ Si no te llega el correo, o el enlace no funciona, llamá a Administración: te 
 
 ## Conocé la app
 
-Abajo tenés tres botones:
+Abajo tenés cuatro botones:
 
 - **Hoy:** tus servicios de hoy y de los próximos días.
-- **El botón redondo del medio (la huella):** **Fichar**, para registrar que empezás o seguir el servicio que ya empezaste.
+- **Insumos:** el catálogo de insumos, retirar y avisar un faltante (ver [Pedir insumos](#pedir-insumos)).
+- **El botón redondo (la huella):** **Fichar**, para registrar que empezás o seguir el servicio que ya empezaste.
 - **Más:** tu perfil, avisar demora o ausencia, y cerrar sesión.
 
 Si además sos coordinador o coordinadora, en **Más** vas a encontrar **Supervisión**, que te lleva a tus supervisiones (ver la [guía del coordinador](guia-supervisor.md)).
@@ -219,10 +220,45 @@ Si ya avisaste una demora, podés después avisar la ausencia. No podés repetir
 
 ## Pedir insumos
 
-En la barra de abajo, tocá **Insumos**. Ahí ves el catálogo (los que no hay figuran como **Sin stock**), tus retiros y tus avisos.
+Cuando necesitás productos o materiales para un servicio (lavandina, bolsas, guantes…), los retirás del depósito y **lo registrás en la app**. Así la oficina sabe qué hay y qué falta. Tocá **Insumos** en la barra de abajo.
 
-- **Retirar insumos:** elegí el turno, sumá los artículos con sus cantidades, revisá y tocá **Confirmar**. También podés retirar para una sede sin turno puntual; en ese caso la observación es obligatoria. Desde el detalle de un servicio, **Retirar insumos** ya trae ese turno elegido. Necesitás conexión.
-- **Avisar faltante:** elegí el artículo del catálogo o escribí cuál es el que falta. Después ves si Administración lo resolvió.
+Necesitás **conexión**: sin señal, **Retirar insumos** y **Avisar faltante** quedan apagados y no se guarda nada para después. Si no podés registrar un retiro, avisale a Administración: lo pueden cargar en tu nombre.
+
+Arriba ves dos botones, **Retirar insumos** y **Avisar faltante**, y debajo tres vistas: **Catálogo**, **Mis retiros** y **Mis avisos**.
+
+### El catálogo
+
+Es la lista de insumos que hay, con su foto, su código, el nombre y la presentación (por ejemplo, «Lavandina · 5 L»). Podés buscar por código o nombre, y filtrar por categoría. **No ves cuántas unidades hay ni los precios.** Si de un insumo no queda nada, aparece con la etiqueta **Sin stock** y no se puede elegir para retirar.
+
+### Retirar insumos
+
+1. Tocá **Retirar insumos**.
+2. **¿Para qué turno es el retiro?** Elegí **Un turno** y tocá el tuyo: ves tus turnos de **hoy y de los próximos 7 días**. Si el retiro no es para un turno puntual (por ejemplo, una reposición para la semana), elegí **Una sede**, buscá la sede y escribí una **observación**, que en este caso es obligatoria. Tocá **Continuar**.
+3. Buscá cada insumo y tocá **Agregar**. Con **+** y **−** elegís la cantidad (números enteros). Los que dicen **Sin stock** no tienen botón.
+4. Tocá **Revisar retiro**. Ahí podés cambiar las cantidades, **Quitar** un artículo y, si querés, escribir una **Observación (opcional)**.
+5. Tocá **Confirmar retiro**.
+
+Vas a ver el resumen con la fecha y la hora del retiro y lo que retiraste. Tocá **Volver a Insumos**.
+
+**El stock se descuenta en el momento**, sin que nadie lo apruebe. Si pedís más de lo que hay, la app dice «No alcanza el stock de X. Consultá en la oficina.» y no registra nada. Si te equivocaste de cantidad o de artículo, avisá en la oficina: Administración puede anular el retiro (queda como **Anulado**).
+
+**Atajo:** en el detalle de un servicio (ver [El detalle de un servicio](#el-detalle-de-un-servicio)) hay un botón **Retirar insumos**. Te lleva directo a elegir los artículos, con ese turno ya elegido. No aparece si el servicio está cancelado o si ese turno no está entre los que podés elegir.
+
+### Avisar que falta un insumo
+
+Si algo se terminó o no hay en el depósito, avisalo para que la oficina lo reponga.
+
+1. En **Insumos**, tocá **Avisar faltante**.
+2. Elegí cómo indicarlo: **Del catálogo** (buscá el insumo y tocalo) u **Otro insumo** (escribí cuál es, si no está en la lista).
+3. Si querés, en **¿Dónde falta? (opcional)** elegí un turno o una sede, y escribí un **Comentario (opcional)**.
+4. Tocá **Enviar aviso**.
+
+El aviso queda **Abierto** hasta que Administración lo resuelve. No es un pedido: es solo para que la oficina se entere.
+
+### Mis retiros y Mis avisos
+
+- **Mis retiros** (últimos 30): cuándo retiraste, para qué turno o sede, qué artículos y cuántos, y tu observación. Si Administración anuló uno, dice **Anulado** y el motivo. Si lo cargó la oficina en tu nombre, dice «Lo cargó la oficina».
+- **Mis avisos** (últimos 30): lo que avisaste, con su estado: **Abierto** o **Resuelto**. Cuando Administración lo resuelve, ves su **Respuesta** (por ejemplo, «Se compró» o «Hay en el depósito»).
 
 ## Tu perfil
 
@@ -248,6 +284,7 @@ Al pie de **Más** también aparece la versión de la aplicación ("Versión x.y
 ## Cuando algo no anda
 
 - **No tenés internet:** la app abre, pero no muestra tus servicios y los botones para registrar quedan apagados. **Nada se guarda para después**: conectate y volvé a intentar.
+- **No podés retirar insumos:** necesitás conexión, y el insumo no puede figurar como **Sin stock**. Si aparece «No alcanza el stock de X. Consultá en la oficina.», avisá en la oficina (ver [Pedir insumos](#pedir-insumos)).
 - **Se cerró tu sesión o no podés entrar:** mirá [Ingreso y sesión](troubleshooting.md#1-ingreso-y-sesión).
 - **El teléfono no te deja dar la ubicación:** registrá el inicio sin ubicación. Más en [Ubicación](troubleshooting.md#2-ubicación).
 - **No ves la versión nueva de la app:** cuando haya una, aparece el cartel "Hay una versión nueva de la aplicación". Tocá **Actualizar ahora**. Más en [Instalación y actualización](troubleshooting.md#3-instalación-y-actualización-de-la-app).
