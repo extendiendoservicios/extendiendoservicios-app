@@ -1,5 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 import { FIXED_ACCOUNTS, nombreDe } from '../../fixtures/accounts.ts'
+import {
+  auditarEnAmbosTamanos,
+  esperarPantallaLista,
+} from '../../fixtures/axe.ts'
 import { MISSING_ENV_MESSAGE, readE2eEnv } from '../../fixtures/env.ts'
 import { daysFromToday, todayAR } from '../../fixtures/dates.ts'
 import { jpegDecodificable } from '../../fixtures/media.ts'
@@ -1210,6 +1214,47 @@ test.describe('administración con «Gestionar stock»', () => {
         ).toContainText('6')
         await expect(planilla).toContainText(/Observaciones generales/i)
         await expect(planilla).toContainText(/Firma/i)
+      } finally {
+        await limpiar(null)
+      }
+    },
+  )
+
+  test(
+    'accesibilidad (axe) de las pantallas de administración de Insumos, en escritorio y en celular (RB-X01)',
+    cubre('RB-X01', 'IS-33'),
+    async ({ page }, testInfo) => {
+      test.setTimeout(300_000)
+      try {
+        const articulo = await ins.insumo({ slug: 'axe', stock: 3, minQty: 5 })
+        const empleado = await sessionClient('empleado1')
+        const aviso = await empleado.rpc('report_supply_shortage', {
+          p_supply_id: articulo.id,
+          p_comment: ins.texto('axe'),
+        })
+        expect(aviso.error?.message).toBeUndefined()
+        const pantallas: Array<[string, string]> = [
+          ['INS-A01 Stock', '/admin/insumos'],
+          ['INS-A02 Ficha del artículo', `/admin/insumos/${articulo.id}`],
+          ['INS-A03 Nuevo artículo', '/admin/insumos/nuevo'],
+          ['INS-A04 Ingreso', '/admin/insumos/ingreso'],
+          ['INS-A05 Retiro en nombre de', '/admin/insumos/retiro'],
+          ['INS-A06 Cargar control', '/admin/insumos/control'],
+          ['INS-A07 Movimientos', '/admin/insumos?pestana=movimientos'],
+          ['INS-A08 Faltantes', '/admin/insumos?pestana=faltantes'],
+          ['INS-A09 Consumo por cliente', '/admin/insumos?pestana=consumo'],
+          ['INS-A10 Controles', '/admin/insumos?pestana=controles'],
+          ['INS-A11 Categorías', '/admin/insumos?pestana=categorias'],
+        ]
+        for (const [nombre, ruta] of pantallas) {
+          await test.step(nombre, async () => {
+            await page.goto(ruta)
+            await auditarEnAmbosTamanos(page, testInfo, nombre, async () => {
+              await esperarPantallaLista(page)
+              await expect(page.getByText('Cargando…')).toHaveCount(0)
+            })
+          })
+        }
       } finally {
         await limpiar(null)
       }
