@@ -29,3 +29,45 @@ export function findInsufficientLines(
   })
   return problems
 }
+
+/** Lo que hace falta de un turno para ordenarlo y rotularlo en el selector. */
+export interface ShiftChoice {
+  shiftId: string
+  shiftDate: string
+  startTime: string
+  shiftStatus: string
+  assignedEmployeeIds: readonly string[]
+  supervisorIds: readonly string[]
+}
+
+/** ¿La persona trabaja en el turno? Empleado: asignado; coordinador: coordina el turno. */
+export function isPersonOnShift(
+  shift: Pick<ShiftChoice, 'assignedEmployeeIds' | 'supervisorIds'>,
+  personId: string,
+  isSupervisor: boolean,
+): boolean {
+  if (personId === '') return false
+  const ids = isSupervisor ? shift.supervisorIds : shift.assignedEmployeeIds
+  return ids.includes(personId)
+}
+
+/**
+ * Turnos para el selector del retiro en nombre de otra persona (IS-35): sin
+ * ocultar ninguno, primero los de la persona elegida (marcados) y después el
+ * resto. En cada grupo se respeta el orden de entrada (más recientes primero).
+ * Sin persona elegida, queda el orden original y nada marcado.
+ */
+export function orderShiftsForPerson<T extends ShiftChoice>(
+  shifts: readonly T[],
+  personId: string,
+  isSupervisor: boolean,
+): Array<{ shift: T; ofPerson: boolean }> {
+  const marked = shifts.map((shift) => ({
+    shift,
+    ofPerson: isPersonOnShift(shift, personId, isSupervisor),
+  }))
+  return [
+    ...marked.filter((entry) => entry.ofPerson),
+    ...marked.filter((entry) => !entry.ofPerson),
+  ]
+}

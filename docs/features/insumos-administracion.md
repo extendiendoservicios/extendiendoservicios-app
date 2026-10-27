@@ -111,7 +111,10 @@ Pestaña «Movimientos». Lee `v_stock_movements_admin` (una fila por línea) y 
 `/admin/insumos/retiro`, con «Gestionar stock». El formulario del celular con selector de persona:
 
 - **Quién retira:** empleados y coordinadores activos (con su rol al lado).
-- **Para qué:** «Un turno» (de los que ofrece `v_withdrawal_shift_options`: de -30 a +7 días, sin cancelados) o «Una sede» (`v_withdrawal_site_options`). Con sede la **observación es obligatoria** («por ejemplo, reposición de la semana»).
+- **Para qué:** «Un turno» o «Una sede». Con sede la **observación es obligatoria** («por ejemplo, reposición de la semana»).
+- **Opciones (IS-35, P25.5):** esta pantalla lee las vistas de administración, que no dependen de los roles de quien carga: `v_withdrawal_shift_options_admin` (todos los turnos de -30 a +7 días, con su estado, los empleados asignados y los coordinadores) y `v_withdrawal_site_options_admin` (sedes activas de clientes activos). Sin «Gestionar stock» las vistas devuelven cero filas.
+- **Turnos de la persona primero:** al elegir quién retira, los turnos donde está asignada (empleado) o que coordina (coordinador) pasan arriba, con «es su turno» al final del rótulo, y el resto sigue disponible: no se oculta ninguno. Los cancelados se rotulan «cancelado» (el servidor los rechaza con `SHIFT_NOT_AVAILABLE`). La lógica está en `orderShiftsForPerson` (`withdrawal.ts`).
+- **Errores del servidor:** un turno fuera de la ventana (`SHIFT_NOT_ALLOWED`), una sede no elegible (`SITE_NOT_ALLOWED`) y los demás códigos del retiro se muestran con el texto del servidor; si llegara vacío, con el mensaje de `STOCK_ERROR_MESSAGES`.
 - **Artículos y cantidades:** solo artículos activos con stock. Antes de mandar avisa si una cantidad supera el stock («No alcanza el stock: hay N»); el servidor igual lo corta con `INSUFFICIENT_STOCK` y bloquea las filas, así dos retiros simultáneos no dejan stock negativo.
 - Llama a `register_withdrawal` con `p_person_id`. El retiro queda a nombre de la persona, con quien lo cargó como «registró». El stock se descuenta en el momento (no hay aprobación).
 - **Resumen** al terminar: quién retiró, cuándo, para qué y los artículos con sus cantidades (el servidor no devuelve precios ni stock resultante en un retiro).
@@ -122,7 +125,7 @@ Pestaña «Faltantes». Lee `supply_shortage_reports` (con quién avisó, el art
 
 ## Consumo por cliente (IS-24)
 
-Pestaña «Consumo por cliente». Período (por defecto el mes en curso, del 1 hasta hoy; atajos «Este mes» y «Mes anterior»), cliente y sede. Lee `v_supply_consumption_by_client`, que ya descuenta los retiros anulados y usa los precios guardados en cada línea. Muestra el total del período y, por cliente y por sede, las unidades y los totales **a costo y a venta**; tocar una sede despliega el **detalle por artículo** (`buildConsumptionReport`, suma en centavos). «Exportar a Excel» baja las filas del período (una por día, sede y artículo).
+Pestaña «Consumo por cliente». Período (por defecto el mes en curso, del 1 hasta hoy; atajos «Este mes» y «Mes anterior»), cliente y sede. Lee `v_supply_consumption_by_client`, que ya descuenta los retiros anulados y usa los precios guardados en cada línea. Muestra el total del período y, por cliente y por sede, las unidades y los totales **a costo y a venta**; cada sede lleva un chevron (que gira al abrirse, con `aria-expanded`) y tocarla despliega el **detalle por artículo** (`buildConsumptionReport`, suma en centavos). «Exportar a Excel» baja las filas del período (una por día, sede y artículo). Las fechas «Desde» y «Hasta» miden lo necesario para mostrar «26 de octubre de 2026» entero (a todo el ancho en el celular).
 
 ## Planilla imprimible de control (IS-15, IS-17)
 
@@ -130,7 +133,7 @@ Pestaña «Consumo por cliente». Período (por defecto el mes en curso, del 1 h
 
 - **Encabezado:** membrete (`PrintableLetterhead`) con el título «Planilla de control de stock», la fecha, «Revisó: ____» y la categoría si se filtró.
 - **Filas:** solo artículos activos, con el mismo orden que la tabla de Stock (`controlSheetItems`). Columnas: código, artículo, presentación, **stock del sistema**, «Contado» (en blanco), casillero para tildar, «+ / −» (en blanco) y «Observación» (en blanco). Cada fila mide 9 mm para escribir a mano. Con todas las categorías, una fila separadora por categoría.
-- **Pie:** observaciones generales (cuatro renglones), firma, aclaración y fecha. El pie no se parte entre hojas.
+- **Pie:** observaciones generales (cuatro renglones), firma, aclaración y fecha. El pie no se parte entre hojas y **no queda solo**: las últimas tres filas de la tabla van en el mismo bloque (`data-print-signatures`, sin cortes) y pasan juntas a la hoja siguiente. Con tres artículos o menos no se parte la tabla.
 - **A4 vertical:** las columnas suman 180 mm (el ancho útil con márgenes de 15 mm) y `print.css` repite el encabezado de la tabla en cada hoja.
 
 ## Cargar control y Controles (IS-16, IS-31)
@@ -182,4 +185,4 @@ Pesos con dos decimales y separadores argentinos (`$ 1.234,50`, `src/features/st
 - El número junto a «Insumos» cuenta **avisos** (`open_reports`); la tarjeta «Faltantes avisados» cuenta **artículos** (`open_shortages`, IS-29) y muestra los avisos en el detalle.
 - «Retiro en nombre de» y «Cargar control» tienen pantalla propia (páginas, no drawers, P-094). «Cargar control» no pide una confirmación aparte: el botón «Confirmar control» es la confirmación y el resultado se muestra enseguida.
 - El revisor «persona de la app» se elige entre los usuarios activos (dueño, administradores, coordinadores y empleados) y no tiene valor por defecto, para no atribuir un control a quien lo carga sin querer.
-- Para la administración que además tiene rol de empleado o coordinador, `v_withdrawal_shift_options` devuelve las opciones de ese rol (de hoy a +7 días) y no las de -30 a +7: lo decide la vista, no la pantalla.
+- «Retiro en nombre de» usa las vistas `_admin` (IS-35, P25.5): ofrecen siempre los turnos de -30 a +7 días y todas las sedes activas, sin importar si quien carga además es empleado o coordinador. Las vistas sin `_admin` quedan para el celular.

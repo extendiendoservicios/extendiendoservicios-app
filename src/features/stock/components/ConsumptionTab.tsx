@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { Download, PackageSearch } from 'lucide-react'
+import { ChevronRight, Download, PackageSearch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -98,7 +98,7 @@ function ConsumptionTab() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="w-40">
+          <div className="w-full sm:w-60">
             <DatePicker
               aria-label="Consumo desde"
               placeholder="Desde"
@@ -111,7 +111,7 @@ function ConsumptionTab() {
               maxDate={isoDateToDate(period.dateTo)}
             />
           </div>
-          <div className="w-40">
+          <div className="w-full sm:w-60">
             <DatePicker
               aria-label="Consumo hasta"
               placeholder="Hasta"
@@ -279,11 +279,25 @@ function ClientBlock({ client }: { client: ConsumptionClient }) {
 }
 
 function SiteBlock({ site }: { site: ConsumptionSite }) {
+  const [open, setOpen] = useState(false)
   return (
     <li className="rounded-md border border-border">
-      <details>
-        <summary className="flex min-h-11 cursor-pointer flex-wrap items-center justify-between gap-2 px-3 py-2 text-[13px] font-semibold text-text">
-          {site.siteName}
+      <details
+        className="group"
+        onToggle={(event) => setOpen(event.currentTarget.open)}
+      >
+        <summary
+          aria-expanded={open}
+          className="flex min-h-11 cursor-pointer flex-wrap items-center justify-between gap-2 px-3 py-2 text-[13px] font-semibold text-text"
+        >
+          <span className="flex min-w-0 items-center gap-1.5">
+            <ChevronRight
+              aria-hidden="true"
+              data-testid="site-chevron"
+              className="size-4 shrink-0 text-text-3 transition-transform group-open:rotate-90"
+            />
+            {site.siteName}
+          </span>
           <Totals qty={site.qty} cost={site.cost} sale={site.sale} />
         </summary>
         <ul className="flex flex-col divide-y divide-border border-t border-border">

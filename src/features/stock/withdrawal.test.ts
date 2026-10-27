@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { withdrawalSchema, withdrawalValuesToInput } from './schemas'
-import { findInsufficientLines } from './withdrawal'
+import {
+  findInsufficientLines,
+  isPersonOnShift,
+  orderShiftsForPerson,
+} from './withdrawal'
 
 const valid = {
   personId: 'p1',
@@ -114,5 +118,68 @@ describe('findInsufficientLines (IS-13)', () => {
     expect(
       findInsufficientLines([{ supplyId: 's1', qty: 'x' }], items),
     ).toEqual([])
+  })
+})
+
+describe('orderShiftsForPerson: turnos de la persona primero (IS-35)', () => {
+  const shift = (
+    shiftId: string,
+    assignedEmployeeIds: string[],
+    supervisorIds: string[],
+  ) => ({
+    shiftId,
+    shiftDate: '2026-10-26',
+    startTime: '08:00:00',
+    shiftStatus: 'scheduled',
+    assignedEmployeeIds,
+    supervisorIds,
+  })
+  const shifts = [
+    shift('a', ['e2'], []),
+    shift('b', ['e1'], ['s1']),
+    shift('c', [], ['s1']),
+    shift('d', ['e1', 'e2'], []),
+  ]
+
+  it('sin persona elegida deja el orden y no marca nada', () => {
+    const ordered = orderShiftsForPerson(shifts, '', false)
+    expect(ordered.map((entry) => entry.shift.shiftId)).toEqual([
+      'a',
+      'b',
+      'c',
+      'd',
+    ])
+    expect(ordered.some((entry) => entry.ofPerson)).toBe(false)
+  })
+
+  it('un empleado ve primero los turnos en los que está asignado, sin perder el resto', () => {
+    const ordered = orderShiftsForPerson(shifts, 'e1', false)
+    expect(ordered.map((entry) => entry.shift.shiftId)).toEqual([
+      'b',
+      'd',
+      'a',
+      'c',
+    ])
+    expect(ordered.map((entry) => entry.ofPerson)).toEqual([
+      true,
+      true,
+      false,
+      false,
+    ])
+  })
+
+  it('un coordinador ve primero los turnos que coordina', () => {
+    const ordered = orderShiftsForPerson(shifts, 's1', true)
+    expect(ordered.map((entry) => entry.shift.shiftId)).toEqual([
+      'b',
+      'c',
+      'a',
+      'd',
+    ])
+  })
+
+  it('el id de un empleado no cuenta como coordinador ni al revés', () => {
+    expect(isPersonOnShift(shifts[1]!, 'e1', true)).toBe(false)
+    expect(isPersonOnShift(shifts[1]!, 's1', false)).toBe(false)
   })
 })

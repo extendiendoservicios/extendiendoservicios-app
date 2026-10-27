@@ -224,13 +224,16 @@ describe('opciones de turno y sede del retiro (IS-28)', () => {
             site_id: 'si1',
             site_name: 'Casa Central',
             starts_at: '2026-10-26T11:00:00Z',
+            shift_status: 'scheduled',
+            assigned_employee_ids: ['e1', 'e2'],
+            supervisor_ids: ['u1'],
           },
         ],
         error: null,
       }),
     )
     const [option] = await fetchWithdrawalShiftOptions()
-    expect(fromMock).toHaveBeenCalledWith('v_withdrawal_shift_options')
+    expect(fromMock).toHaveBeenCalledWith('v_withdrawal_shift_options_admin')
     expect(calls).toContainEqual(['order', 'starts_at', { ascending: false }])
     expect(option).toEqual({
       shiftId: 't1',
@@ -242,6 +245,9 @@ describe('opciones de turno y sede del retiro (IS-28)', () => {
       clientName: 'Banco Sur',
       siteId: 'si1',
       siteName: 'Casa Central',
+      shiftStatus: 'scheduled',
+      assignedEmployeeIds: ['e1', 'e2'],
+      supervisorIds: ['u1'],
     })
   })
 
@@ -267,7 +273,7 @@ describe('opciones de turno y sede del retiro (IS-28)', () => {
         clientName: 'Banco Sur',
       },
     ])
-    expect(fromMock).toHaveBeenCalledWith('v_withdrawal_site_options')
+    expect(fromMock).toHaveBeenCalledWith('v_withdrawal_site_options_admin')
   })
 })
 

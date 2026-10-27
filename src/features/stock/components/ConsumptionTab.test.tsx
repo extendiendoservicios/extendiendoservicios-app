@@ -148,6 +148,23 @@ describe('ConsumptionTab: consumo por cliente (IS-24)', () => {
     ).toBeInTheDocument()
   })
 
+  it('cada sede muestra un chevron y avisa con aria-expanded si está abierta', async () => {
+    consumptionState.data = [row()]
+    render(<ConsumptionTab />)
+
+    const summary = screen.getByText('Casa Central').closest('summary')!
+    expect(within(summary).getByTestId('site-chevron')).toBeInTheDocument()
+    expect(summary).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(summary)
+    await waitFor(() =>
+      expect(summary).toHaveAttribute('aria-expanded', 'true'),
+    )
+    fireEvent.click(summary)
+    await waitFor(() =>
+      expect(summary).toHaveAttribute('aria-expanded', 'false'),
+    )
+  })
+
   it('sin retiros en el período muestra un mensaje en español', () => {
     render(<ConsumptionTab />)
     expect(
