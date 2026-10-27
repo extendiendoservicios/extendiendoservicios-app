@@ -3,7 +3,7 @@
 Especificación: `Docs/Plan_Maestro/modulos/E_insumos_y_stock.md` (IS-11 a IS-14, IS-20, IS-28, IS-29, IS-33). Contrato de la
 base: `docs/database.md`, sección «Insumos y control de stock» (migraciones `0069` a `0071`, P25.1).
 
-Las mismas pantallas las usan el empleado y el coordinador. Nunca muestran cantidades de stock ni precios (IS-20).
+Las mismas pantallas las usan el empleado y el coordinador. La guía de uso está en [`guia-empleado.md`](../guia-empleado.md#pedir-insumos) y [`guia-supervisor.md`](../guia-supervisor.md#insumos) (P25.6). Nunca muestran cantidades de stock ni precios (IS-20).
 
 ## Pantallas
 
