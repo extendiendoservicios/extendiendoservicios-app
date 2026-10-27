@@ -8,9 +8,11 @@ import { ApiError, fromPostgrestError } from './errors'
  * devoluciones, ajustes y lectura de `v_stock_admin`,
  * `v_stock_movements_admin` y del historial de precios.
  *
- * Lo del celular (`register_withdrawal` propio, `report_supply_shortage`,
- * `v_supply_catalog`, `v_my_*` y `v_withdrawal_*_options`) vive en
- * `src/api/myStock.ts` (P25.4); no se mezclan.
+ * P25.3 suma la anulación, el retiro en nombre de otra persona, el control de
+ * stock, los avisos de faltante y el consumo por cliente. El retiro propio y
+ * el aviso de faltante del celular (`v_supply_catalog`, `v_my_*`) viven en
+ * `src/api/myStock.ts` (P25.4); no se mezclan. Los turnos y sedes elegibles
+ * (`v_withdrawal_*_options`) se leen acá solo para la administración.
  *
  * - Escritura solo por RPC (`security definer`): `upsert_supply`,
  *   `set_supply_active`, `set_supply_prices`, `upsert_supply_category`,
@@ -81,6 +83,12 @@ export const STOCK_ERROR_MESSAGES: Record<string, string> = {
 const DYNAMIC_HINTS: ReadonlySet<string> = new Set([
   'INSUFFICIENT_STOCK',
   'SUPPLY_INACTIVE',
+  // El texto de la observación o del motivo obligatorio cambia según la
+  // operación (ajuste con «Otro», retiro a una sede, resolver un aviso,
+  // anular un movimiento): manda el del servidor.
+  'NOTE_REQUIRED',
+  'REASON_REQUIRED',
+  'INVALID_QTY',
 ])
 
 /** Pasa el error de las RPC de stock a `ApiError` con el mensaje en español de cada `hint`. */
@@ -490,21 +498,9 @@ function mapMovementRow(row: MovementRawRow): StockMovementLine {
   }
 }
 
-/**
- * Líneas de movimiento, de la más reciente a la más antigua. Los filtros los
- * pone el cliente (la vista no los resuelve); las fechas son días de Argentina.
- */
-export async function fetchStockMovements(
-  filters: StockMovementFilters = {},
-): Promise<StockMovementLine[]> {
-  let query = supabase
-    .from('v_stock_movements_admin')
-    .select(MOVEMENTS_SELECT)
-    .order('recorded_at', { ascending: false })
-    .order('movement_id', { ascending: false })
-    .order('line_id', { ascending: true })
-    .limit(filters.limit ?? STOCK_MOVEMENTS_LIMIT)
-
+/** Consulta base de movimientos con los filtros del cliente (la vista no los resuelve); las fechas son días de Argentina. */
+function movementsBase(filters: StockMovementFilters) {
+  let query = supabase.from('v_stock_movements_admin').select(MOVEMENTS_SELECT)
   if (filters.supplyId) query = query.eq('supply_id', filters.supplyId)
   if (filters.dateFrom) {
     query = query.gte('recorded_at', argentinaDayStart(filters.dateFrom))
@@ -516,10 +512,53 @@ export async function fetchStockMovements(
   if (filters.personId) query = query.eq('person_id', filters.personId)
   if (filters.clientId) query = query.eq('client_id', filters.clientId)
   if (filters.siteId) query = query.eq('site_id', filters.siteId)
+  return query
+}
 
-  const { data, error } = await query
+/**
+ * Líneas de movimiento, de la más reciente a la más antigua. Los filtros los
+ * pone el cliente (la vista no los resuelve); las fechas son días de Argentina.
+ */
+export async function fetchStockMovements(
+  filters: StockMovementFilters = {},
+): Promise<StockMovementLine[]> {
+  const { data, error } = await movementsBase(filters)
+    .order('recorded_at', { ascending: false })
+    .order('movement_id', { ascending: false })
+    .order('line_id', { ascending: true })
+    .limit(filters.limit ?? STOCK_MOVEMENTS_LIMIT)
   if (error) throw mapStockError(error)
   return ((data ?? []) as unknown as MovementRawRow[]).map(mapMovementRow)
+}
+
+/** Tamaño de página y tope de páginas de las lecturas completas (Excel, consumo). */
+export const STOCK_PAGE_SIZE = 1000
+const STOCK_MAX_PAGES = 20
+
+/**
+ * Todas las líneas que cumplen los filtros (sin el tope de 500 de la
+ * pantalla), de a páginas de 1000 porque PostgREST corta ahí. Alimenta
+ * «Exportar a Excel»: exporta lo filtrado completo, no solo lo que se ve.
+ */
+export async function fetchAllStockMovements(
+  filters: StockMovementFilters = {},
+): Promise<StockMovementLine[]> {
+  const rows: StockMovementLine[] = []
+  for (let page = 0; page < STOCK_MAX_PAGES; page += 1) {
+    const from = page * STOCK_PAGE_SIZE
+    const { data, error } = await movementsBase(filters)
+      .order('recorded_at', { ascending: false })
+      .order('movement_id', { ascending: false })
+      .order('line_id', { ascending: true })
+      .range(from, from + STOCK_PAGE_SIZE - 1)
+    if (error) throw mapStockError(error)
+    const batch = ((data ?? []) as unknown as MovementRawRow[]).map(
+      mapMovementRow,
+    )
+    rows.push(...batch)
+    if (batch.length < STOCK_PAGE_SIZE) break
+  }
+  return rows
 }
 
 // -------------------------------------------------------------------------
@@ -861,4 +900,552 @@ export async function createSupplyImageUrls(
     }
   }
   return urls
+}
+
+// -------------------------------------------------------------------------
+// Anulación (void_stock_movement, IS-27)
+// -------------------------------------------------------------------------
+
+/** Tipos de movimiento que se pueden anular (ajustes, controles y anulaciones, no). */
+export const VOIDABLE_KINDS: readonly StockMovementKind[] = [
+  'entry',
+  'return',
+  'withdrawal',
+]
+
+/**
+ * Anula un ingreso, una devolución o un retiro con motivo obligatorio: el
+ * servidor genera el contramovimiento enlazado y marca el original. Errores:
+ * `REASON_REQUIRED`, `MOVEMENT_NOT_FOUND`, `MOVEMENT_NOT_VOIDABLE`,
+ * `MOVEMENT_ALREADY_VOIDED`, `VOID_INSUFFICIENT_STOCK`, `FORBIDDEN`.
+ */
+export async function voidStockMovement(
+  movementId: string,
+  reason: string,
+): Promise<void> {
+  const { error } = await supabase.rpc('void_stock_movement', {
+    p_movement_id: movementId,
+    p_reason: reason,
+  })
+  if (error) throw mapStockError(error)
+}
+
+// -------------------------------------------------------------------------
+// Retiro en nombre de otra persona (register_withdrawal con p_person_id, IS-11)
+// -------------------------------------------------------------------------
+
+export interface WithdrawalLineInput {
+  supplyId: string
+  /** Entero mayor a cero. */
+  qty: number
+}
+
+export interface WithdrawalInput {
+  lines: WithdrawalLineInput[]
+  /** Con turno, la sede es la del turno. */
+  shiftId?: string | null
+  /** Sin turno, la sede es obligatoria y la observación también. */
+  siteId?: string | null
+  note?: string | null
+  /** Quien retira: empleado o coordinador activo. */
+  personId: string
+}
+
+export interface WithdrawalResultLine {
+  supplyId: string
+  code: string
+  name: string
+  presentation: string | null
+  qty: number
+}
+
+export interface WithdrawalResult {
+  movementId: string
+  recordedAt: string
+  lines: WithdrawalResultLine[]
+}
+
+/** Normaliza lo que devuelve `register_withdrawal` (sin precios ni stock). */
+export function parseWithdrawalResult(payload: unknown): WithdrawalResult {
+  const raw = (payload ?? {}) as {
+    movement?: { id?: string; recorded_at?: string }
+    lines?: Array<{
+      supply_id: string
+      code?: string
+      name?: string
+      presentation?: string | null
+      qty?: number | string
+      qty_delta?: number | string
+    }>
+  }
+  return {
+    movementId: raw.movement?.id ?? '',
+    recordedAt: raw.movement?.recorded_at ?? '',
+    lines: (raw.lines ?? []).map((line) => ({
+      supplyId: line.supply_id,
+      code: line.code ?? '',
+      name: line.name ?? '',
+      presentation: line.presentation ?? null,
+      qty: Number(line.qty ?? Math.abs(Number(line.qty_delta ?? 0))),
+    })),
+  }
+}
+
+/**
+ * Retiro que carga la administración en nombre de otra persona
+ * (`register_withdrawal` con `p_person_id`, exige `manage_stock`). Descuenta
+ * el stock en el momento. Errores del contrato: `PERSON_REQUIRED`,
+ * `PERSON_NOT_FOUND`, `SHIFT_OR_SITE_REQUIRED`, `SHIFT_NOT_FOUND`,
+ * `SHIFT_NOT_AVAILABLE`, `SITE_SHIFT_MISMATCH`, `SITE_NOT_FOUND`,
+ * `NOTE_REQUIRED`, `INSUFFICIENT_STOCK`, `SUPPLY_INACTIVE`, `FORBIDDEN`.
+ */
+export async function registerWithdrawalOnBehalf(
+  input: WithdrawalInput,
+): Promise<WithdrawalResult> {
+  const { data, error } = await supabase.rpc('register_withdrawal', {
+    p_lines: input.lines.map((line) => ({
+      supply_id: line.supplyId,
+      qty: line.qty,
+    })),
+    p_person_id: input.personId,
+    p_shift_id: input.shiftId ?? undefined,
+    p_site_id: input.siteId ?? undefined,
+    p_note: input.note ?? undefined,
+  })
+  if (error) throw mapStockError(error)
+  return parseWithdrawalResult(data)
+}
+
+/** Un turno que se puede elegir para el retiro (`v_withdrawal_shift_options`). */
+export interface WithdrawalShiftOption {
+  shiftId: string
+  /** `YYYY-MM-DD`. */
+  shiftDate: string
+  startTime: string
+  endTime: string
+  openEnded: boolean
+  clientId: string
+  clientName: string
+  siteId: string
+  siteName: string
+}
+
+/**
+ * Turnos elegibles (`v_withdrawal_shift_options`): para la administración sin
+ * rol de empleado ni coordinador, de -30 a +7 días, sin cancelados. Más
+ * recientes primero.
+ */
+export async function fetchWithdrawalShiftOptions(): Promise<
+  WithdrawalShiftOption[]
+> {
+  const { data, error } = await supabase
+    .from('v_withdrawal_shift_options')
+    .select(
+      'shift_id, shift_date, start_time, end_time, open_ended, client_id, client_name, site_id, site_name, starts_at',
+    )
+    .order('starts_at', { ascending: false })
+  if (error) throw mapStockError(error)
+  return (data ?? []).map((row) => ({
+    shiftId: row.shift_id ?? '',
+    shiftDate: row.shift_date ?? '',
+    startTime: row.start_time ?? '',
+    endTime: row.end_time ?? '',
+    openEnded: row.open_ended ?? false,
+    clientId: row.client_id ?? '',
+    clientName: row.client_name ?? '',
+    siteId: row.site_id ?? '',
+    siteName: row.site_name ?? '',
+  }))
+}
+
+/** Una sede elegible para un retiro sin turno (`v_withdrawal_site_options`). */
+export interface WithdrawalSiteOption {
+  siteId: string
+  siteName: string
+  clientId: string
+  clientName: string
+}
+
+/** Sedes activas (para la administración, todas), por cliente y nombre. */
+export async function fetchWithdrawalSiteOptions(): Promise<
+  WithdrawalSiteOption[]
+> {
+  const { data, error } = await supabase
+    .from('v_withdrawal_site_options')
+    .select('site_id, site_name, client_id, client_name')
+    .order('client_name', { ascending: true })
+    .order('site_name', { ascending: true })
+  if (error) throw mapStockError(error)
+  return (data ?? []).map((row) => ({
+    siteId: row.site_id ?? '',
+    siteName: row.site_name ?? '',
+    clientId: row.client_id ?? '',
+    clientName: row.client_name ?? '',
+  }))
+}
+
+// -------------------------------------------------------------------------
+// Control de stock (register_stock_count y v_stock_counts_admin, IS-16, IS-31)
+// -------------------------------------------------------------------------
+
+/** Una fila contada de un control: lo del sistema a esa hora, lo contado y la diferencia. */
+export interface StockCountLine {
+  supplyId: string
+  code: string
+  name: string
+  presentation: string | null
+  systemQty: number
+  countedQty: number
+  difference: number
+}
+
+export interface StockCountInput {
+  /** Instante del conteo (ISO con zona). No puede ser futuro. */
+  countedAt: string
+  /** Persona de la app **o** nombre escrito: uno solo. */
+  reviewerId?: string | null
+  reviewerName?: string | null
+  notes?: string | null
+  /** Solo las filas contadas: las en blanco no se mandan y no se tocan. */
+  lines: Array<{ supplyId: string; countedQty: number }>
+}
+
+export interface StockCountResult {
+  countId: string
+  countedAt: string
+  /** `null` si ninguna diferencia era distinta de cero. */
+  movementId: string | null
+  lines: StockCountLine[]
+}
+
+interface CountLineRaw {
+  supply_id: string
+  code?: string
+  name?: string
+  presentation?: string | null
+  system_qty?: number | string
+  counted_qty?: number | string
+  difference?: number | string
+}
+
+function mapCountLines(raw: unknown): StockCountLine[] {
+  const lines = Array.isArray(raw) ? (raw as CountLineRaw[]) : []
+  return lines.map((line) => ({
+    supplyId: line.supply_id,
+    code: line.code ?? '',
+    name: line.name ?? '',
+    presentation: line.presentation ?? null,
+    systemQty: Number(line.system_qty ?? 0),
+    countedQty: Number(line.counted_qty ?? 0),
+    difference: Number(line.difference ?? 0),
+  }))
+}
+
+/** Normaliza lo que devuelve `register_stock_count`. */
+export function parseStockCountResult(payload: unknown): StockCountResult {
+  const raw = (payload ?? {}) as {
+    count?: { id?: string; counted_at?: string }
+    movement?: { id?: string } | null
+    lines?: unknown
+  }
+  return {
+    countId: raw.count?.id ?? '',
+    countedAt: raw.count?.counted_at ?? '',
+    movementId: raw.movement?.id ?? null,
+    lines: mapCountLines(raw.lines),
+  }
+}
+
+/**
+ * Carga un control (`register_stock_count`, exige `manage_stock`). Errores:
+ * `COUNT_DATE_REQUIRED`, `COUNT_IN_FUTURE`, `REVIEWER_REQUIRED`,
+ * `REVIEWER_NOT_FOUND`, `INVALID_LINES`, `INVALID_QTY`, `DUPLICATE_SUPPLY`,
+ * `SUPPLY_NOT_FOUND`, `COUNT_INCONSISTENT`, `FORBIDDEN`.
+ */
+export async function registerStockCount(
+  input: StockCountInput,
+): Promise<StockCountResult> {
+  const { data, error } = await supabase.rpc('register_stock_count', {
+    p_counted_at: input.countedAt,
+    p_lines: input.lines.map((line) => ({
+      supply_id: line.supplyId,
+      counted_qty: line.countedQty,
+    })),
+    p_reviewer_id: input.reviewerId ?? undefined,
+    p_reviewer_name: input.reviewerName ?? undefined,
+    p_notes: input.notes ?? undefined,
+  })
+  if (error) throw mapStockError(error)
+  return parseStockCountResult(data)
+}
+
+/** Un control del historial (`v_stock_counts_admin`). */
+export interface StockCountRecord {
+  countId: string
+  countedAt: string
+  reviewerId: string | null
+  /** Nombre de la persona de la app o el nombre escrito. */
+  reviewerName: string | null
+  notes: string | null
+  createdAt: string
+  createdByName: string | null
+  movementId: string | null
+  linesCount: number
+  differencesCount: number
+  lines: StockCountLine[]
+}
+
+/** Historial de controles, del más reciente al más antiguo. */
+export async function fetchStockCounts(): Promise<StockCountRecord[]> {
+  const { data, error } = await supabase
+    .from('v_stock_counts_admin')
+    .select(
+      'count_id, counted_at, reviewer_id, reviewer_name, notes, created_at, created_by_name, movement_id, lines_count, differences_count, lines',
+    )
+    .order('counted_at', { ascending: false })
+    .limit(200)
+  if (error) throw mapStockError(error)
+  return (data ?? []).map((row) => ({
+    countId: row.count_id ?? '',
+    countedAt: row.counted_at ?? '',
+    reviewerId: row.reviewer_id,
+    reviewerName: row.reviewer_name,
+    notes: row.notes,
+    createdAt: row.created_at ?? '',
+    createdByName: row.created_by_name,
+    movementId: row.movement_id,
+    linesCount: Number(row.lines_count ?? 0),
+    differencesCount: Number(row.differences_count ?? 0),
+    lines: mapCountLines(row.lines),
+  }))
+}
+
+// -------------------------------------------------------------------------
+// Avisos de faltante (supply_shortage_reports y resolve_supply_shortage, IS-29)
+// -------------------------------------------------------------------------
+
+export type ShortageStatus =
+  Database['public']['Enums']['supply_shortage_status']
+
+export interface ShortageReport {
+  id: string
+  status: ShortageStatus
+  createdAt: string
+  reportedByName: string | null
+  supplyId: string | null
+  supplyCode: string | null
+  /** Nombre del artículo del catálogo; `null` si el aviso es de texto libre. */
+  supplyName: string | null
+  supplyPresentation: string | null
+  /** Texto libre cuando el artículo no está cargado. */
+  description: string | null
+  shiftId: string | null
+  /** `YYYY-MM-DD`. */
+  shiftDate: string | null
+  startTime: string | null
+  endTime: string | null
+  clientName: string | null
+  siteName: string | null
+  comment: string | null
+  resolvedAt: string | null
+  resolvedByName: string | null
+  resolutionNote: string | null
+}
+
+interface PersonEmbed {
+  first_name: string | null
+  last_name: string | null
+}
+interface ClientEmbed {
+  legal_name: string | null
+  trade_name: string | null
+}
+
+interface ShortageRawRow {
+  id: string
+  status: ShortageStatus
+  created_at: string
+  supply_id: string | null
+  description: string | null
+  shift_id: string | null
+  comment: string | null
+  resolved_at: string | null
+  resolution_note: string | null
+  reporter: PersonEmbed | null
+  resolver: PersonEmbed | null
+  supply: {
+    code: string | null
+    name: string | null
+    presentation: string | null
+  } | null
+  shift: {
+    shift_date: string | null
+    start_time: string | null
+    end_time: string | null
+    site: { name: string | null } | null
+    client: ClientEmbed | null
+  } | null
+  site: { name: string | null; client: ClientEmbed | null } | null
+}
+
+function personName(person: PersonEmbed | null): string | null {
+  const name = `${person?.first_name ?? ''} ${person?.last_name ?? ''}`.trim()
+  return name === '' ? null : name
+}
+
+function clientName(client: ClientEmbed | null | undefined): string | null {
+  return client?.trade_name || client?.legal_name || null
+}
+
+const SHORTAGE_SELECT = [
+  'id, status, created_at, supply_id, description, shift_id, comment, resolved_at, resolution_note',
+  'reporter:profiles!supply_shortage_reports_reported_by_fkey(first_name, last_name)',
+  'resolver:profiles!supply_shortage_reports_resolved_by_fkey(first_name, last_name)',
+  'supply:supplies!supply_shortage_reports_supply_id_fkey(code, name, presentation)',
+  'shift:shifts!supply_shortage_reports_shift_id_fkey(shift_date, start_time, end_time, site:sites(name), client:clients(legal_name, trade_name))',
+  'site:sites!supply_shortage_reports_site_id_fkey(name, client:clients(legal_name, trade_name))',
+].join(', ')
+
+function mapShortage(row: ShortageRawRow): ShortageReport {
+  return {
+    id: row.id,
+    status: row.status,
+    createdAt: row.created_at,
+    reportedByName: personName(row.reporter),
+    supplyId: row.supply_id,
+    supplyCode: row.supply?.code ?? null,
+    supplyName: row.supply?.name ?? null,
+    supplyPresentation: row.supply?.presentation ?? null,
+    description: row.description,
+    shiftId: row.shift_id,
+    shiftDate: row.shift?.shift_date ?? null,
+    startTime: row.shift?.start_time ?? null,
+    endTime: row.shift?.end_time ?? null,
+    clientName: clientName(row.shift?.client) ?? clientName(row.site?.client),
+    siteName: row.shift?.site?.name ?? row.site?.name ?? null,
+    comment: row.comment,
+    resolvedAt: row.resolved_at,
+    resolvedByName: personName(row.resolver),
+    resolutionNote: row.resolution_note,
+  }
+}
+
+/** Abiertos primero; en cada estado, el más reciente arriba (los resueltos, por fecha de resolución). */
+export function sortShortages(
+  rows: readonly ShortageReport[],
+): ShortageReport[] {
+  return [...rows].sort((a, b) => {
+    if (a.status !== b.status) return a.status === 'open' ? -1 : 1
+    const aDate =
+      a.status === 'open' ? a.createdAt : (a.resolvedAt ?? a.createdAt)
+    const bDate =
+      b.status === 'open' ? b.createdAt : (b.resolvedAt ?? b.createdAt)
+    return bDate.localeCompare(aDate)
+  })
+}
+
+/**
+ * Todos los avisos de faltante, abiertos primero (IS-29). Dueño y
+ * administradores leen la tabla directo (sin exigir `manage_stock`).
+ */
+export async function fetchShortageReports(): Promise<ShortageReport[]> {
+  const { data, error } = await supabase
+    .from('supply_shortage_reports')
+    .select(SHORTAGE_SELECT)
+    .order('created_at', { ascending: false })
+    .limit(500)
+  if (error) throw mapStockError(error)
+  return sortShortages(
+    ((data ?? []) as unknown as ShortageRawRow[]).map(mapShortage),
+  )
+}
+
+/**
+ * Resuelve un aviso con una nota obligatoria (`resolve_supply_shortage`):
+ * cualquier dueño o administrador, aunque no tenga `manage_stock`. Errores:
+ * `NOTE_REQUIRED`, `SHORTAGE_NOT_FOUND`, `SHORTAGE_ALREADY_RESOLVED`.
+ */
+export async function resolveSupplyShortage(
+  reportId: string,
+  note: string,
+): Promise<void> {
+  const { error } = await supabase.rpc('resolve_supply_shortage', {
+    p_report_id: reportId,
+    p_note: note,
+  })
+  if (error) throw mapStockError(error)
+}
+
+// -------------------------------------------------------------------------
+// Consumo por cliente (v_supply_consumption_by_client, IS-24)
+// -------------------------------------------------------------------------
+
+/** Una fila de consumo: retiros no anulados de un día, cliente, sede y artículo. */
+export interface ConsumptionRow {
+  /** `YYYY-MM-DD` (fecha de Argentina). */
+  day: string
+  clientId: string
+  clientName: string
+  siteId: string
+  siteName: string
+  supplyId: string
+  supplyCode: string
+  supplyName: string
+  supplyPresentation: string | null
+  qty: number
+  costTotal: number
+  saleTotal: number
+}
+
+export interface ConsumptionFilters {
+  /** `YYYY-MM-DD`, incluido. */
+  dateFrom: string
+  /** `YYYY-MM-DD`, incluido. */
+  dateTo: string
+  clientId?: string
+  siteId?: string
+}
+
+/** Consumo del período a costo y a venta (precios guardados en cada línea). */
+export async function fetchSupplyConsumption(
+  filters: ConsumptionFilters,
+): Promise<ConsumptionRow[]> {
+  const rows: ConsumptionRow[] = []
+  for (let page = 0; page < STOCK_MAX_PAGES; page += 1) {
+    const from = page * STOCK_PAGE_SIZE
+    let query = supabase
+      .from('v_supply_consumption_by_client')
+      .select(
+        'day, client_id, client_name, site_id, site_name, supply_id, supply_code, supply_name, supply_presentation, qty, cost_total, sale_total',
+      )
+      .gte('day', filters.dateFrom)
+      .lte('day', filters.dateTo)
+      .order('day', { ascending: true })
+      .order('client_name', { ascending: true })
+      .order('site_name', { ascending: true })
+      .order('supply_name', { ascending: true })
+      .order('supply_id', { ascending: true })
+      .range(from, from + STOCK_PAGE_SIZE - 1)
+    if (filters.clientId) query = query.eq('client_id', filters.clientId)
+    if (filters.siteId) query = query.eq('site_id', filters.siteId)
+    const { data, error } = await query
+    if (error) throw mapStockError(error)
+    const batch = (data ?? []).map((row) => ({
+      day: row.day ?? '',
+      clientId: row.client_id ?? '',
+      clientName: row.client_name ?? '',
+      siteId: row.site_id ?? '',
+      siteName: row.site_name ?? '',
+      supplyId: row.supply_id ?? '',
+      supplyCode: row.supply_code ?? '',
+      supplyName: row.supply_name ?? '',
+      supplyPresentation: row.supply_presentation,
+      qty: Number(row.qty ?? 0),
+      costTotal: Number(row.cost_total ?? 0),
+      saleTotal: Number(row.sale_total ?? 0),
+    }))
+    rows.push(...batch)
+    if (batch.length < STOCK_PAGE_SIZE) break
+  }
+  return rows
 }

@@ -21,14 +21,22 @@ import {
  * sedes · Tareas · Configuración"). Sin campana ni badges de módulos
  * (`07` sección 4).
  *
+ * «Insumos» lleva el número de avisos de faltante abiertos (IS-33): solo ese
+ * ítem trae `badge`, en las dos listas (barra lateral y menú «Más»).
+ *
  * Íconos del mapeo de `07` sección 1.4 (home, calendar, clock, users,
  * map-pin, check-square, settings); `shield` (también en esa lista) para
  * Supervisiones, que no tiene ícono propio asignado ahí.
  */
+/** Número que acompaña a un ítem: hoy solo los avisos de faltante abiertos junto a «Insumos» (IS-33). */
+export type AdminNavBadge = 'stockOpenReports'
+
 export interface AdminNavItem {
   label: string
   path: string
   icon: LucideIcon
+  /** Número pegado al ítem (lo dibuja `NavBadge`); sin él, el ítem va sin número. */
+  badge?: AdminNavBadge
   /**
    * Prefijos de ruta que marcan este ítem como activo (además de `path`
    * mismo). Por ejemplo, "Clientes y sedes" también se resalta en
@@ -56,7 +64,12 @@ export const ADMIN_NAV_OPERATION: AdminNavItem[] = [
     matchPrefixes: ['/admin/clientes', '/admin/sedes', '/admin/servicios'],
   },
   { label: 'Tareas', path: '/admin/tareas', icon: CheckSquare },
-  { label: 'Insumos', path: '/admin/insumos', icon: Package },
+  {
+    label: 'Insumos',
+    path: '/admin/insumos',
+    icon: Package,
+    badge: 'stockOpenReports',
+  },
   { label: 'Fotos y videos', path: '/admin/fotos', icon: Camera },
   { label: 'Avisos y anuncios', path: '/admin/anuncios', icon: Megaphone },
 ]
@@ -103,7 +116,12 @@ export const ADMIN_MORE_ITEMS: AdminNavItem[] = [
     icon: MapPin,
   },
   { label: 'Tareas', path: '/admin/tareas', icon: CheckSquare },
-  { label: 'Insumos', path: '/admin/insumos', icon: Package },
+  {
+    label: 'Insumos',
+    path: '/admin/insumos',
+    icon: Package,
+    badge: 'stockOpenReports',
+  },
   { label: 'Fotos y videos', path: '/admin/fotos', icon: Camera },
   { label: 'Avisos y anuncios', path: '/admin/anuncios', icon: Megaphone },
   {

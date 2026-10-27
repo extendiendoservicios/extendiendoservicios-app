@@ -687,10 +687,11 @@ Para evitar malentendidos: las siguientes funciones **no existen** en esta versi
 
 - **Fotos** como evidencia de tareas o de supervisiones.
 - **Notificaciones al celular** (avisos al empleado cuando se le asigna un turno, recordatorios). Hoy el empleado ve sus cambios al abrir la app, en **Cambios desde tu última visita**.
-- Provisión y control de **insumos**.
-- Cálculo de **horas, puntualidad y reportes** por empleado o cliente, y **exportaciones**.
+- Cálculo de **horas, puntualidad y reportes** por empleado o cliente, y **exportaciones** (la única excepción es el Excel de Movimientos y de Consumo por cliente de la sección Insumos).
 - Funcionamiento **sin conexión** con sincronización posterior.
 - **Seguimiento continuo de la ubicación** de empleados y coordinadores: la posición se toma solo en cada evento (inicio, pausa, reanudación y fin), nunca de forma permanente.
+
+Los **insumos** (stock, movimientos, avisos de faltante y controles) sí existen desde la versión 0.25.0: se explican en [`features/insumos-administracion.md`](features/insumos-administracion.md) y la guía paso a paso se suma en un paquete aparte.
 
 ---
 

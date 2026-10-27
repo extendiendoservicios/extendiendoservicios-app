@@ -18,33 +18,34 @@ describe('pestañas de Insumos (IS-33)', () => {
     ])
   })
 
-  it('en P25.2 solo se muestran Stock y Categorías', () => {
+  it('con P25.3 se muestran las seis pestañas, en ese orden', () => {
     expect(visibleStockTabs().map((tab) => tab.label)).toEqual([
       'Stock',
+      'Movimientos',
+      'Faltantes',
+      'Consumo por cliente',
+      'Controles',
       'Categorías',
     ])
   })
 
-  it('una pestaña que todavía no tiene pantalla no se puede abrir por la URL', () => {
-    expect(resolveStockTab('movimientos')).toBe('stock')
+  it('cada pestaña se abre con su ?pestana= y una desconocida vuelve a Stock', () => {
+    expect(resolveStockTab('movimientos')).toBe('movimientos')
+    expect(resolveStockTab('faltantes')).toBe('faltantes')
+    expect(resolveStockTab('consumo')).toBe('consumo')
+    expect(resolveStockTab('controles')).toBe('controles')
+    expect(resolveStockTab('categorias')).toBe('categorias')
     expect(resolveStockTab('cualquiera')).toBe('stock')
     expect(resolveStockTab(null)).toBe('stock')
   })
 
-  it('la pestaña de Categorías se abre con ?pestana=categorias', () => {
-    expect(resolveStockTab('categorias')).toBe('categorias')
-  })
-
-  it('al completar el component de una pestaña, se muestra en su lugar', () => {
-    const Dummy = () => null
+  it('una pestaña sin component no se muestra ni se abre por la URL', () => {
     const tabs: StockTabDefinition[] = STOCK_TABS.map((tab) =>
-      tab.value === 'movimientos' ? { ...tab, component: Dummy } : tab,
+      tab.value === 'controles' ? { ...tab, component: undefined } : tab,
     )
-    expect(visibleStockTabs(tabs).map((tab) => tab.value)).toEqual([
-      'stock',
-      'movimientos',
-      'categorias',
-    ])
-    expect(resolveStockTab('movimientos', tabs)).toBe('movimientos')
+    expect(visibleStockTabs(tabs).map((tab) => tab.value)).not.toContain(
+      'controles',
+    )
+    expect(resolveStockTab('controles', tabs)).toBe('stock')
   })
 })
