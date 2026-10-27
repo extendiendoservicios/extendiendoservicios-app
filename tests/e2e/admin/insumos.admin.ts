@@ -1260,9 +1260,16 @@ test.describe('administración con «Gestionar stock»', () => {
         expect(creada?.active).toBe(true)
 
         await test.step('el orden se mueve con «Subir» y «Bajar»', async () => {
-          await page
-            .getByRole('button', { name: `Subir la categoría ${nombre}` })
-            .click()
+          // Según dónde caiga la categoría nueva, una de las dos flechas está deshabilitada.
+          const subir = page.getByRole('button', {
+            name: `Subir la categoría ${nombre}`,
+          })
+          const bajar = page.getByRole('button', {
+            name: `Bajar la categoría ${nombre}`,
+          })
+          await expect(subir.or(bajar).first()).toBeVisible()
+          if (await subir.isEnabled()) await subir.click()
+          else await bajar.click()
           await expect
             .poll(async () => {
               const { data } = await getAdminDb()
@@ -1590,7 +1597,7 @@ test.describe('administración con «Gestionar stock»', () => {
         await page
           .getByRole('combobox', { name: 'Agregar un artículo' })
           .click()
-        await page.locator('[cmdk-input]').fill(articulo.code)
+        await page.locator('[cmdk-input]').last().fill(articulo.code)
         await page
           .getByRole('option', { name: new RegExp(articulo.code) })
           .click()
