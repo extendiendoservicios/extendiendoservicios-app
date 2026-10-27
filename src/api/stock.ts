@@ -83,9 +83,11 @@ export const STOCK_ERROR_MESSAGES: Record<string, string> = {
 const DYNAMIC_HINTS: ReadonlySet<string> = new Set([
   'INSUFFICIENT_STOCK',
   'SUPPLY_INACTIVE',
-  // El texto de la observación obligatoria cambia según la operación (ajuste
-  // con «Otro», retiro a una sede, resolver un aviso): manda el del servidor.
+  // El texto de la observación o del motivo obligatorio cambia según la
+  // operación (ajuste con «Otro», retiro a una sede, resolver un aviso,
+  // anular un movimiento): manda el del servidor.
   'NOTE_REQUIRED',
+  'REASON_REQUIRED',
   'INVALID_QTY',
 ])
 
