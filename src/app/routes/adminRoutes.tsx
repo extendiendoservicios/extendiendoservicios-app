@@ -232,6 +232,51 @@ export const adminRoutes: RouteObject[] = [
     },
   },
   {
+    path: 'insumos',
+    ...lazyPage(() => import('@/pages/admin/StockPage')),
+    handle: {
+      screenId: 'ADM-IS-01',
+      title: 'Insumos',
+      subtitle: 'Ver el stock, los ingresos y las categorías',
+    },
+  },
+  {
+    path: 'insumos/nuevo',
+    ...lazyPage(() => import('@/pages/admin/SupplyFormPage')),
+    handle: {
+      screenId: 'ADM-IS-03',
+      title: 'Nuevo artículo',
+      subtitle: 'Cargar un artículo del catálogo de insumos',
+    },
+  },
+  {
+    path: 'insumos/ingreso',
+    ...lazyPage(() => import('@/pages/admin/StockEntryPage')),
+    handle: {
+      screenId: 'ADM-IS-04',
+      title: 'Ingreso de stock',
+      subtitle: 'Registrar un ingreso o una devolución',
+    },
+  },
+  {
+    path: 'insumos/:id',
+    ...lazyPage(() => import('@/pages/admin/SupplyDetailPage')),
+    handle: {
+      screenId: 'ADM-IS-02',
+      title: 'Ficha del artículo',
+      subtitle: 'Ver datos, precios y movimientos del artículo',
+    },
+  },
+  {
+    path: 'insumos/:id/editar',
+    ...lazyPage(() => import('@/pages/admin/SupplyFormPage')),
+    handle: {
+      screenId: 'ADM-IS-03',
+      title: 'Editar artículo',
+      subtitle: 'Cambiar los datos del artículo',
+    },
+  },
+  {
     path: 'configuracion/usuarios',
     ...lazyPage(() => import('@/pages/admin/UsersPage')),
     handle: {
