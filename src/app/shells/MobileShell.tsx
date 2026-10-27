@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router'
 import { cn } from 'cn'
 import { Avatar } from '@/components/Avatar'
@@ -210,39 +211,31 @@ function MobileTabbar({
   rootPath: '/app' | '/sup'
 }) {
   const navigate = useNavigate()
-  const [first, second] = items
+  // El `Fab` "Fichar" del empleado va antes del último ítem ("Más"): "Hoy ·
+  // Insumos · Fichar · Más".
+  const fabIndex = items.length - 1
 
   return (
     <nav
       className="tabbar-safe sticky bottom-0 z-20 flex shrink-0 items-center border-t border-border bg-surface"
       aria-label="Navegación principal"
     >
-      {variant === 'employee' && first && second ? (
-        <>
+      {items.map((item, index) => (
+        <Fragment key={item.path}>
+          {variant === 'employee' && index === fabIndex && (
+            <div className="flex flex-[0_0_66px] flex-col items-center">
+              <Fab
+                onClick={() => void navigate('/app/fichar')}
+                aria-label="Fichar"
+              />
+            </div>
+          )}
           <TabLink
-            item={first}
-            active={isMobileNavItemActive(pathname, first, rootPath)}
-          />
-          <div className="flex flex-[0_0_66px] flex-col items-center">
-            <Fab
-              onClick={() => void navigate('/app/fichar')}
-              aria-label="Fichar"
-            />
-          </div>
-          <TabLink
-            item={second}
-            active={isMobileNavItemActive(pathname, second, rootPath)}
-          />
-        </>
-      ) : (
-        items.map((item) => (
-          <TabLink
-            key={item.path}
             item={item}
             active={isMobileNavItemActive(pathname, item, rootPath)}
           />
-        ))
-      )}
+        </Fragment>
+      ))}
     </nav>
   )
 }
