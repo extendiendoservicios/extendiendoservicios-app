@@ -231,6 +231,13 @@ Este problema **solo afecta al entorno de pruebas** (`dev.extendiendoservicios.c
 
 - **Qué hacer:** entrá al servicio en curso, **Observaciones**, corregí y tocá **Guardar**. Si el servicio es de una sola persona y ya registraste el fin, la observación ya no se puede cambiar: pedile a Administración que la corrija.
 
+### 5.8. No puedo retirar insumos: "No alcanza el stock de X. Consultá en la oficina."
+
+- **Por qué pasa:** pediste más unidades de las que hay en el depósito según el sistema. Por eso la app no te dice cuántas hay. Si el insumo figura como **Sin stock**, directamente no se puede elegir.
+- **Qué hacer:** probá con una cantidad menor o avisá en la oficina. Si hay en el depósito pero el sistema dice que no, Administración tiene que corregir el stock. Si falta el insumo, tocá **Avisar faltante** en **Insumos**.
+- **Si los botones están apagados:** no tenés conexión. Retirar insumos necesita señal y no se guarda para después; conectate y probá de nuevo, o pedile a Administración que lo cargue en tu nombre.
+- **Si te equivocaste en un retiro ya confirmado:** avisá en la oficina, Administración lo puede anular.
+
 ---
 
 ## 6. Jornada y supervisiones (coordinadores)
@@ -364,6 +371,13 @@ Desde la coordinación libre (P24) **nadie asigna supervisiones**: el coordinado
 ### 7.9. Un empleado dejó de trabajar
 
 - **Qué hacer:** ficha de la persona, **Dar de baja**. No puede iniciar sesión y queda marcada como baja; el historial se conserva. No se borra nada. Para que vuelva, el dueño la reactiva (ver 1.5).
+
+### 7.10. Insumos: no me aparecen los botones o no me deja desactivar o anular
+
+- **No aparecen "Ingreso", "Ajustar", "Nuevo artículo" y otros:** falta el permiso **Gestionar stock**. El dueño lo activa en **Configuración**, **Usuarios**, **Editar roles y capacidades**. Sin el permiso podés mirar todo y resolver avisos de faltante.
+- **No deja desactivar un artículo:** tiene stock. Primero hacé un **Ajustar** hasta llegar a cero.
+- **No deja anular un ingreso:** parte de esas unidades ya se retiraron y el stock no puede quedar en negativo. Anulá antes esos retiros.
+- **Más ayuda:** [`guia-insumos.md`](guia-insumos.md#cuando-algo-no-anda).
 
 ---
 

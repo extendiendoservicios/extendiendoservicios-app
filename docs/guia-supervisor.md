@@ -63,10 +63,11 @@ Si no te llega el correo, llamá a Administración: te pueden dar una contraseñ
 
 ## Conocé la app
 
-Abajo tenés cuatro botones:
+Abajo tenés cinco botones:
 
 - **Hoy:** tu jornada y los turnos del día.
 - **Supervisiones:** las supervisiones que tenés abiertas.
+- **Insumos:** el catálogo, retirar insumos y avisar un faltante (ver [Insumos](#insumos)).
 - **Historial:** tus jornadas y tus supervisiones ya cerradas.
 - **Más:** tu perfil y cerrar sesión.
 
@@ -274,7 +275,43 @@ Para cerrar la supervisión tenés que **calificar a todos los empleados del tur
 
 ## Insumos
 
-En la barra de abajo, tocá **Insumos** para retirar o avisar un faltante. En **Retirar insumos** ves primero **Mis sedes** y después las demás, con buscador. Desde el detalle de un turno, **Retirar insumos** ya trae ese turno elegido. Necesitás conexión.
+Cuando retirás productos o materiales del depósito, **lo registrás en la app**. Así la oficina sabe qué hay y qué falta. Tocá **Insumos** en la barra de abajo. Es lo mismo que hace el empleado, con una diferencia: **vos ves todos los turnos**, no solo los tuyos.
+
+Necesitás **conexión**: sin señal, **Retirar insumos** y **Avisar faltante** quedan apagados y no se guarda nada para después. Si no podés registrar un retiro, avisale a Administración: lo pueden cargar en tu nombre.
+
+Arriba ves **Retirar insumos** y **Avisar faltante**, y debajo tres vistas: **Catálogo**, **Mis retiros** y **Mis avisos**.
+
+### El catálogo
+
+La lista de insumos con su foto, código, nombre y presentación (por ejemplo, «Lavandina · 5 L»). Podés buscar por código o nombre y filtrar por categoría. **No ves cuántas unidades hay ni los precios.** Los que no tienen stock aparecen con la etiqueta **Sin stock** y no se pueden elegir para retirar.
+
+### Retirar insumos
+
+1. Tocá **Retirar insumos**.
+2. **¿Para qué turno es el retiro?** Elegí **Un turno**. Ves los turnos de **todos los clientes, de hoy y de los próximos 7 días**, con **Mis sedes** (las que Administración marcó como tuyas) primero y **Otras sedes** después; si son muchos, podés buscar por cliente o sede. Si el retiro no es para un turno puntual (por ejemplo, una reposición de la semana), elegí **Una sede**, buscá la sede y escribí una **observación**, que en este caso es obligatoria. Tocá **Continuar**.
+3. Buscá cada insumo y tocá **Agregar**. Con **+** y **−** elegís la cantidad (números enteros).
+4. Tocá **Revisar retiro**. Ahí podés cambiar las cantidades, **Quitar** un artículo y escribir una **Observación (opcional)**.
+5. Tocá **Confirmar retiro**.
+
+Vas a ver el resumen con la fecha y la hora, y lo que retiraste. Tocá **Volver a Insumos**.
+
+**El stock se descuenta en el momento**, sin aprobación. Si pedís más de lo que hay, la app dice «No alcanza el stock de X. Consultá en la oficina.» y no registra nada. Si te equivocaste, avisá en la oficina: Administración puede anular el retiro (queda como **Anulado**).
+
+**Atajo:** en el **Detalle del turno** (ver [El detalle del turno](#el-detalle-del-turno)) hay un botón **Retirar insumos** que te lleva directo a elegir los artículos, con ese turno ya elegido.
+
+### Avisar que falta un insumo
+
+1. En **Insumos**, tocá **Avisar faltante**.
+2. Elegí **Del catálogo** (buscá el insumo y tocalo) u **Otro insumo** (escribí cuál es, si no está en la lista).
+3. Si querés, en **¿Dónde falta? (opcional)** elegí un turno o una sede, y escribí un **Comentario (opcional)**.
+4. Tocá **Enviar aviso**.
+
+El aviso queda **Abierto** hasta que Administración lo resuelve. No es un pedido de compra: es para que la oficina se entere.
+
+### Mis retiros y Mis avisos
+
+- **Mis retiros** (últimos 30): cuándo retiraste, para qué turno o sede, qué artículos y cuántos. Si Administración anuló uno, dice **Anulado** y el motivo; si lo cargó la oficina en tu nombre, dice «Lo cargó la oficina».
+- **Mis avisos** (últimos 30): tus faltantes con su estado, **Abierto** o **Resuelto**. Al resolverlo, Administración deja una **Respuesta** (por ejemplo, «Se compró»).
 
 ## Cerrar la supervisión
 
@@ -347,6 +384,7 @@ En **Más**, tocá **Cerrar sesión**. Usalo si prestás o cambiás el celular. 
 - **No podés pausar ni finalizar la jornada:** tenés una supervisión abierta. Cerrala o descartala.
 - **No podés cerrar la supervisión:** falta calificar a alguien. El aviso dice a quién.
 - **Se cerró tu jornada sola:** pasó el horario de cierre automático (23:55). Avisale a Administración para que corrija las horas.
+- **No podés retirar insumos:** necesitás conexión, y el insumo no puede figurar como **Sin stock**. Más en [Insumos](#insumos).
 - **No tenés internet:** la app abre pero no muestra datos, y los botones para guardar quedan apagados. Nada se guarda para después: conectate y volvé a intentar.
 - **Se cerró tu sesión o no podés entrar**, **la ubicación no funciona**, **no se actualiza la app**: mirá [`troubleshooting.md`](troubleshooting.md).
 

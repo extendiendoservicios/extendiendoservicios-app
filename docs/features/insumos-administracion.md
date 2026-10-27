@@ -1,6 +1,6 @@
 # Insumos y control de stock en administración (módulo E, P25.2 y P25.3)
 
-Sección «Insumos» (`/admin/insumos`). P25.2 trajo Stock, ficha, ingreso, ajuste y categorías; P25.3 suma Movimientos, Faltantes, Consumo por cliente, Controles, la anulación, el retiro en nombre de, «Cargar control», la planilla imprimible, la pestaña «Retiros» de las fichas y las tarjetas del Resumen. Especificación: `Docs/Plan_Maestro/modulos/E_insumos_y_stock.md` (IS-01 a IS-34). Contrato de la base: [`database.md`](../database.md), «Insumos y control de stock». Lo del celular (P25.4) no está acá.
+Sección «Insumos» (`/admin/insumos`). P25.2 trajo Stock, ficha, ingreso, ajuste y categorías; P25.3 suma Movimientos, Faltantes, Consumo por cliente, Controles, la anulación, el retiro en nombre de, «Cargar control», la planilla imprimible, la pestaña «Retiros» de las fichas y las tarjetas del Resumen. Especificación: `Docs/Plan_Maestro/modulos/E_insumos_y_stock.md` (IS-01 a IS-34). Contrato de la base: [`database.md`](../database.md), «Insumos y control de stock». Lo del celular (P25.4) no está acá. La guía de uso paso a paso, para la oficina, es [`guia-insumos.md`](../guia-insumos.md) (P25.6).
 
 ## Quién ve qué (IS-19, IS-21)
 
