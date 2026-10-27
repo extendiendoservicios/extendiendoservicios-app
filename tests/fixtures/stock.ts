@@ -24,6 +24,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getAdminDb } from './accounts.ts'
+import { minutesSinceMidnightAR } from './dates.ts'
 import { requireE2eEnv } from './env.ts'
 import { sessionClient } from './scenario.ts'
 
@@ -136,6 +137,23 @@ alter table public.stock_count_lines enable trigger trg_stock_immutable;
 alter table public.supply_price_changes enable trigger trg_stock_immutable;
 commit;
 `
+}
+
+/**
+ * Espera, sin `sleep`, a que empiece un minuto nuevo (hora de Argentina). «Cargar control» arma la
+ * hora del conteo con `HH:mm` (segundos en cero): un movimiento hecho dentro de ese mismo minuto
+ * queda como POSTERIOR al conteo y la diferencia se calcularía contra un stock sin él (IS-31). El
+ * test que carga el control con la hora por omisión espera a que pase el minuto de sus datos.
+ */
+export async function esperarMinutoNuevo(
+  desde: number = minutesSinceMidnightAR(),
+  timeoutMs = 90_000,
+): Promise<void> {
+  const limite = Date.now() + timeoutMs
+  while (minutesSinceMidnightAR() === desde) {
+    if (Date.now() > limite) throw new Error('El minuto no cambió a tiempo.')
+    await new Promise((resolve) => setTimeout(resolve, 500))
+  }
 }
 
 /** Marcas de las suites que crean datos de Insumos (para el barrido previo de residuos). */
