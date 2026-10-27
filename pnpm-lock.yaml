@@ -196,6 +196,9 @@ importers:
       date-fns:
         specifier: 4.4.0
         version: 4.4.0
+      exceljs:
+        specifier: ^4.4.0
+        version: 4.4.0
       fflate:
         specifier: 0.8.3
         version: 0.8.3
@@ -290,9 +293,6 @@ importers:
       eslint-plugin-react-hooks:
         specifier: 7.1.1
         version: 7.1.1(eslint@9.39.5(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)
-      exceljs:
-        specifier: ^4.4.0
-        version: 4.4.0
       globals:
         specifier: 17.12.0
         version: 17.12.0

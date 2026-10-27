@@ -1,4 +1,8 @@
-import type { StockMovementKind, StockMovementLine } from '@/api/stock'
+import type {
+  ShortageReport,
+  StockMovementKind,
+  StockMovementLine,
+} from '@/api/stock'
 import { formatShortDate, formatTime } from '@/lib/format'
 import { adjustmentReasonLabel } from '@/features/stock/schemas'
 
@@ -54,18 +58,25 @@ function formatShiftRange(line: StockMovementLine): string {
   return start ?? ''
 }
 
+/** Día y franja del turno de un movimiento: «jue 13 ago 08:00 a 12:00»; `null` si no es de un turno. */
+export function describeMovementShift(line: StockMovementLine): string | null {
+  if (!line.shiftId) return null
+  const text = [
+    line.shiftDate ? formatShiftDay(line.shiftDate) : '',
+    formatShiftRange(line),
+  ]
+    .filter(Boolean)
+    .join(' ')
+  return text === '' ? null : text
+}
+
 /** Turno o sede de un movimiento: «Cliente · Sede · jue 13 ago 08:00 a 12:00»; `null` si no tiene. */
 export function describeMovementPlace(line: StockMovementLine): string | null {
   if (line.shiftId) {
     const parts = [
       line.clientName,
       line.siteName,
-      [
-        line.shiftDate ? formatShiftDay(line.shiftDate) : '',
-        formatShiftRange(line),
-      ]
-        .filter(Boolean)
-        .join(' '),
+      describeMovementShift(line),
     ].filter((part): part is string => Boolean(part))
     return parts.join(' · ')
   }
@@ -95,4 +106,18 @@ export function describeMovementPerson(line: StockMovementLine): string | null {
       : line.personName
   }
   return line.recordedByName
+}
+
+/** Turno o sede de un aviso de faltante: «Cliente · Sede · jue 13 ago 08:00 a 12:00»; `null` si no tiene. */
+export function describeShortagePlace(report: ShortageReport): string | null {
+  const start = report.startTime?.slice(0, 5)
+  const end = report.endTime?.slice(0, 5)
+  const when = [
+    report.shiftDate ? formatShiftDay(report.shiftDate) : '',
+    start && end ? `${start} a ${end}` : (start ?? ''),
+  ]
+    .filter(Boolean)
+    .join(' ')
+  const parts = [report.clientName, report.siteName, when].filter(Boolean)
+  return parts.length === 0 ? null : parts.join(' · ')
 }

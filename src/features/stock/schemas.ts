@@ -4,6 +4,7 @@ import type {
   StockEntryInput,
   StockItem,
   SupplyInput,
+  WithdrawalInput,
 } from '@/api/stock'
 import { parseMoney, parseWholeNumber } from './money'
 
@@ -340,3 +341,106 @@ export const categorySchema = z.object({
 })
 
 export type CategoryFormValues = z.infer<typeof categorySchema>
+
+// -------------------------------------------------------------------------
+// Retiro en nombre de otra persona (`register_withdrawal` con `p_person_id`, IS-11, IS-12)
+// -------------------------------------------------------------------------
+
+export const WITHDRAWAL_NOTE_MAX = 500
+
+export const withdrawalLineSchema = z.object({
+  supplyId: z.string().min(1),
+  qty: positiveQtyField,
+})
+
+/**
+ * Retiro: quién retira, turno **o** sede (con observación obligatoria si es
+ * sede, IS-12), artículos y cantidades. El servidor vuelve a validar todo
+ * (`PERSON_NOT_FOUND`, `SHIFT_NOT_FOUND`, `NOTE_REQUIRED`, `INSUFFICIENT_STOCK`…).
+ */
+export const withdrawalSchema = z
+  .object({
+    personId: z.string().min(1, 'Elegí quién retira.'),
+    place: z.enum(['shift', 'site']),
+    shiftId: z.string(),
+    siteId: z.string(),
+    note: optionalText.max(
+      WITHDRAWAL_NOTE_MAX,
+      `Hasta ${WITHDRAWAL_NOTE_MAX} caracteres.`,
+    ),
+    lines: z.array(withdrawalLineSchema).min(1, 'Agregá al menos un artículo.'),
+  })
+  .superRefine((values, ctx) => {
+    if (values.place === 'shift' && values.shiftId === '') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['shiftId'],
+        message: 'Elegí el turno para el que retira.',
+      })
+    }
+    if (values.place === 'site') {
+      if (values.siteId === '') {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['siteId'],
+          message: 'Elegí la sede para la que retira.',
+        })
+      }
+      if (values.note === '') {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['note'],
+          message:
+            'Si no es de un turno, escribí una observación (por ejemplo «reposición de la semana»).',
+        })
+      }
+    }
+    const seen = new Set<string>()
+    values.lines.forEach((line, index) => {
+      if (seen.has(line.supplyId)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['lines', index, 'supplyId'],
+          message: 'Un artículo no puede repetirse en el mismo retiro.',
+        })
+      }
+      seen.add(line.supplyId)
+    })
+  })
+
+export type WithdrawalFormValues = z.infer<typeof withdrawalSchema>
+
+/** Arma el `WithdrawalInput` del API: con turno va el turno; sin turno, la sede. */
+export function withdrawalValuesToInput(
+  values: WithdrawalFormValues,
+): WithdrawalInput {
+  return {
+    personId: values.personId,
+    shiftId: values.place === 'shift' ? values.shiftId : null,
+    siteId: values.place === 'site' ? values.siteId : null,
+    note: values.note.trim() || null,
+    lines: values.lines.map((line) => ({
+      supplyId: line.supplyId,
+      qty: Number(line.qty),
+    })),
+  }
+}
+
+// -------------------------------------------------------------------------
+// Resolver un aviso de faltante y anular un movimiento: la nota es obligatoria
+// -------------------------------------------------------------------------
+
+export const RESOLUTION_NOTE_MAX = 500
+
+export const resolveShortageSchema = z.object({
+  note: z
+    .string()
+    .trim()
+    .min(
+      1,
+      'Escribí una nota (por ejemplo «Se compró» o «Hay en el depósito»).',
+    )
+    .max(RESOLUTION_NOTE_MAX, `Hasta ${RESOLUTION_NOTE_MAX} caracteres.`),
+})
+
+export type ResolveShortageFormValues = z.infer<typeof resolveShortageSchema>
