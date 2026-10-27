@@ -729,4 +729,87 @@ test.describe('Insumos del empleado en el celular', () => {
       }
     },
   )
+
+  test(
+    'ventana de turnos: ofrece los suyos de hoy a +7 días y no el de ayer ni el de +8; las sedes son las de sus asignaciones (IS-28)',
+    cubre('IS-12', 'IS-28'),
+    async ({ page }) => {
+      const sc = new Scenario()
+      try {
+        const cliente = await sc.client('ventana')
+        const sedeDentro = await sc.site(cliente.id, 'dentro')
+        const sedeSinAsignar = await sc.site(cliente.id, 'sin-asignar')
+        const turno = async (dias: number, sede: { id: string }) => {
+          const id = await sc.shift(
+            cliente.id,
+            sede.id,
+            daysFromToday(dias),
+            FRANJAS_MOVIL.diaCompleto,
+          )
+          await sc.assign(id, 'empleado1')
+          return id
+        }
+        await turno(0, sedeDentro)
+        await turno(7, sedeDentro)
+        const sedeAyer = await sc.site(cliente.id, 'ayer')
+        const sedeLejos = await sc.site(cliente.id, 'lejos')
+        await turno(-1, sedeAyer)
+        await turno(8, sedeLejos)
+
+        await page.goto('/app/insumos/retirar')
+        await expect(
+          page.getByRole('radio', { name: new RegExp(sedeDentro.name) }),
+        ).toHaveCount(2)
+        await expect(
+          page.getByRole('radio', { name: new RegExp(sedeAyer.name) }),
+        ).toHaveCount(0)
+        await expect(
+          page.getByRole('radio', { name: new RegExp(sedeLejos.name) }),
+        ).toHaveCount(0)
+
+        await page.getByRole('radio', { name: 'Una sede' }).click()
+        // Sedes: las de sus asignaciones (también las de turnos pasados o lejanos), no las demás.
+        await expect(
+          page.getByRole('radio', { name: new RegExp(sedeDentro.name) }),
+        ).toBeVisible()
+        await expect(
+          page.getByRole('radio', { name: new RegExp(sedeAyer.name) }),
+        ).toBeVisible()
+        await expect(
+          page.getByRole('radio', { name: new RegExp(sedeSinAsignar.name) }),
+        ).toHaveCount(0)
+      } finally {
+        await limpiar(sc)
+      }
+    },
+  )
+
+  test(
+    'sin conexión se puede mirar el catálogo pero no retirar ni avisar: los botones quedan deshabilitados y hay un aviso (IS-28)',
+    cubre('IS-28'),
+    async ({ page, context }) => {
+      await page.goto('/app/insumos')
+      await expect(
+        page.getByRole('link', { name: 'Retirar insumos' }),
+      ).toBeVisible()
+      await context.setOffline(true)
+      try {
+        await expect(page.getByText(/Estás sin conexión/)).toBeVisible()
+        await expect(
+          page.getByRole('link', { name: 'Retirar insumos' }),
+        ).toHaveCount(0)
+        await expect(
+          page.getByRole('button', { name: 'Retirar insumos' }),
+        ).toBeDisabled()
+        await expect(
+          page.getByRole('button', { name: 'Avisar faltante' }),
+        ).toBeDisabled()
+      } finally {
+        await context.setOffline(false)
+      }
+      await expect(
+        page.getByRole('link', { name: 'Retirar insumos' }),
+      ).toBeVisible()
+    },
+  )
 })

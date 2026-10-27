@@ -41,6 +41,7 @@ import {
   tokenVigente,
   type Db,
 } from './contexto.ts'
+import { caso, claveCaso } from './defectos.ts'
 import { cuitUnico, PREFIJO } from './escenario.ts'
 import { ETIQUETA, PERFILES, type Perfil } from './perfiles.ts'
 import { idPerfil, type Ve } from './tablas.ts'
@@ -1419,6 +1420,105 @@ describe('Insumos (0069 a 0072): permisos por rol', () => {
         'out_of_stock',
       ])
     })
+  })
+
+  // -------------------------------------------------------------------------------------------
+  // 4b. Contrato de errores (database.md: «errores P0001 con hint = código y mensaje en español»)
+  // -------------------------------------------------------------------------------------------
+
+  describe('contrato de errores: un valor fuera de rango da un error de negocio, no el del motor (06 §15)', () => {
+    const casosContrato: Array<[string, string, () => object]> = [
+      [
+        'register_stock_entry · costo unitario fuera de rango',
+        'register_stock_entry',
+        () => ({
+          p_lines: [{ supply_id: id.sA, qty: 1, unit_cost: 1e15 }],
+        }),
+      ],
+      [
+        'upsert_supply · precio fuera de rango',
+        'upsert_supply',
+        () => ({
+          p_code: `${ins.prefijo}rango-1`,
+          p_name: `${ins.prefijo}rango-1`,
+          p_category_id: id.categoria,
+          p_cost_price: 1e12,
+        }),
+      ],
+      [
+        'upsert_supply · mínimo fuera de rango',
+        'upsert_supply',
+        () => ({
+          p_code: `${ins.prefijo}rango-2`,
+          p_name: `${ins.prefijo}rango-2`,
+          p_category_id: id.categoria,
+          p_min_qty: 3_000_000_000,
+        }),
+      ],
+      [
+        'adjust_stock · cantidad fuera de rango',
+        'adjust_stock',
+        () => ({
+          p_supply_id: id.sA,
+          p_delta: 3_000_000_000,
+          p_reason: 'count',
+        }),
+      ],
+      [
+        'adjust_stock · motivo inexistente',
+        'adjust_stock',
+        () => ({
+          p_supply_id: id.sA,
+          p_delta: 1,
+          p_reason: 'motivo-que-no-existe',
+        }),
+      ],
+      [
+        'report_supply_shortage · descripción sin tope de largo',
+        'report_supply_shortage',
+        () => ({ p_description: ins.texto('d'.repeat(100_000)) }),
+      ],
+      [
+        'report_supply_shortage · comentario sin tope de largo',
+        'report_supply_shortage',
+        () => ({
+          p_description: ins.texto('corta'),
+          p_comment: ins.texto('c'.repeat(100_000)),
+        }),
+      ],
+      [
+        'register_stock_count · fecha inválida',
+        'register_stock_count',
+        () => ({
+          p_counted_at: 'ayer',
+          p_lines: [{ supply_id: id.sA, counted_qty: 1 }],
+          p_reviewer_name: ins.texto('revisor'),
+        }),
+      ],
+    ]
+    for (const [nombre, rpcNombre, args] of casosContrato) {
+      caso(
+        claveCaso('insumos', 'contrato', nombre),
+        `${nombre}: P0001 con hint y mensaje en español, sin tocar el stock (RB-X02, 06 §15)`,
+        async () => {
+          const antes = await stockDe(id.sA)
+          const res = await rpc(
+            clienteDe(
+              rpcNombre === 'report_supply_shortage' ? 'empleado' : 'owner',
+            ),
+            rpcNombre,
+            args(),
+          )
+          expect(res.error, 'aceptó el valor').not.toBeNull()
+          expect(
+            res.error?.code,
+            `error crudo del motor: ${describir(res)}`,
+          ).toBe('P0001')
+          expect(res.error?.hint ?? '', 'sin código de error').not.toBe('')
+          expect(await stockDe(id.sA)).toBe(antes)
+        },
+      )
+    }
   })
 
   describe('RPC: reglas de negocio con errores en español y código (06 §15)', () => {

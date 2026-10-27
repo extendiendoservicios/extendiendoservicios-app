@@ -1212,6 +1212,27 @@ test.describe('administración con «Gestionar stock»', () => {
             .getByTestId('control-sheet-row')
             .filter({ hasText: articulo.code }),
         ).toContainText('6')
+        for (const columna of [
+          'Código',
+          'Artículo',
+          'Presentación',
+          'Stock del sistema',
+          'Contado',
+          '✓',
+          '+ / −',
+          'Observación',
+        ]) {
+          await expect(
+            planilla.getByRole('columnheader', { name: columna, exact: true }),
+          ).toBeVisible()
+        }
+        await expect(
+          planilla
+            .getByTestId('control-sheet-row')
+            .filter({ hasText: articulo.code })
+            .getByRole('cell'),
+        ).toHaveCount(8)
+        await expect(planilla).toContainText('Aclaración')
         await expect(planilla).toContainText(/Observaciones generales/i)
         await expect(planilla).toContainText(/Firma/i)
       } finally {
@@ -1581,6 +1602,84 @@ test.describe('administración con «Gestionar stock»', () => {
         expect(await ins.stock(articulo.id)).toBe(2)
       } finally {
         await limpiar(sc)
+      }
+    },
+  )
+
+  test(
+    'orden del stock por categoría y nombre, y filtro por categoría (IS-25)',
+    cubre('IS-03', 'IS-25'),
+    async ({ page }) => {
+      try {
+        const primera = await ins.categoria('orden-a')
+        const segunda = await ins.categoria('orden-b')
+        const mk = (slug: string, categoryId: string) =>
+          ins.insumo({ slug, stock: 1, categoryId })
+        // Se cargan desordenados a propósito.
+        const b2 = await mk('b-segunda', segunda.id)
+        const z1 = await mk('z-primera', primera.id)
+        const a2 = await mk('a-segunda', segunda.id)
+        const a1 = await mk('a-primera', primera.id)
+
+        await irAStock(page)
+        await buscarEnStock(page, ins.prefijo)
+        await expect(filaDeStock(page, a1.name)).toBeVisible()
+        const nombres = await page
+          .getByRole('row')
+          .filter({ hasText: ins.prefijo })
+          .evaluateAll((filas) => filas.map((fila) => fila.textContent ?? ''))
+        const posicion = (a: { name: string }) =>
+          nombres.findIndex((texto) => texto.includes(a.name))
+        // Dentro de cada categoría, por nombre; las categorías, en el orden en que se crearon
+        // (mismo orden de lista: 900 y empate por nombre).
+        expect(posicion(a1)).toBeLessThan(posicion(z1))
+        expect(posicion(a2)).toBeLessThan(posicion(b2))
+        expect(
+          Math.max(posicion(a1), posicion(z1)) <
+            Math.min(posicion(a2), posicion(b2)) ||
+            Math.max(posicion(a2), posicion(b2)) <
+              Math.min(posicion(a1), posicion(z1)),
+          'cada categoría va junta',
+        ).toBe(true)
+
+        await elegirSelect(page, 'Filtrar por categoría', segunda.name)
+        await expect(filaDeStock(page, a2.name)).toBeVisible()
+        await expect(filaDeStock(page, b2.name)).toBeVisible()
+        await expect(filaDeStock(page, a1.name)).toHaveCount(0)
+      } finally {
+        await limpiar(null)
+      }
+    },
+  )
+
+  test(
+    'el Resumen pinta «Stock bajo» en rojo si hay artículos sin stock y «Faltantes avisados» en amarillo si hay avisos abiertos (IS-30)',
+    cubre('IS-30'),
+    async ({ page }) => {
+      try {
+        const articulo = await ins.insumo({ slug: 'color-resumen', minQty: 1 })
+        const empleado = await sessionClient('empleado1')
+        const r = await empleado.rpc('report_supply_shortage', {
+          p_supply_id: articulo.id,
+          p_comment: ins.texto('color'),
+        })
+        expect(r.error?.message).toBeUndefined()
+        await page.goto('/admin')
+        const seccion = page.getByRole('region', { name: 'Insumos' })
+        await expect(
+          seccion
+            .getByRole('link', { name: /Stock bajo/ })
+            .locator('.text-danger')
+            .first(),
+        ).toBeVisible()
+        await expect(
+          seccion
+            .getByRole('link', { name: /Faltantes avisados/ })
+            .locator('.text-warning')
+            .first(),
+        ).toBeVisible()
+      } finally {
+        await limpiar(null)
       }
     },
   )
