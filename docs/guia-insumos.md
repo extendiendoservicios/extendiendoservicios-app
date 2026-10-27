@@ -31,12 +31,12 @@ Esta guía es para el **dueño** y los **administradores**. Lo que hace cada emp
 
 ## Quién puede qué
 
-| Quién                                     | Qué puede hacer en Insumos                                                                                                                                                                                                  |
-| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Dueño**                                 | Todo. Tiene el permiso «Gestionar stock» sin que nadie se lo dé.                                                                                                                                                            |
-| **Administrador con «Gestionar stock»**   | Todo.                                                                                                                                                                                                                       |
-| **Administrador sin «Gestionar stock»**   | **Mirar** toda la sección (stock, precios, movimientos, consumo, controles, faltantes) y **resolver avisos de faltante**. No puede mover stock ni cambiar el catálogo: los botones de abajo directamente no le aparecen. |
-| **Empleado y coordinador**                | No ven esta sección. Tienen su propia pestaña **Insumos** en el celular, sin cantidades ni precios.                                                                                                                         |
+| Quién                                   | Qué puede hacer en Insumos                                                                                                                                                                                               |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Dueño**                               | Todo. Tiene el permiso «Gestionar stock» sin que nadie se lo dé.                                                                                                                                                         |
+| **Administrador con «Gestionar stock»** | Todo.                                                                                                                                                                                                                    |
+| **Administrador sin «Gestionar stock»** | **Mirar** toda la sección (stock, precios, movimientos, consumo, controles, faltantes) y **resolver avisos de faltante**. No puede mover stock ni cambiar el catálogo: los botones de abajo directamente no le aparecen. |
+| **Empleado y coordinador**              | No ven esta sección. Tienen su propia pestaña **Insumos** en el celular, sin cantidades ni precios.                                                                                                                      |
 
 El permiso «Gestionar stock» habilita: **Nuevo artículo**, **Editar**, **Cambiar precios**, **Desactivar**, **Ajustar**, **Ingreso**, **Retiro en nombre de**, **Anular**, **Imprimir planilla**, **Cargar control** y los cambios de categorías.
 
@@ -50,14 +50,14 @@ En el menú de la izquierda, **Insumos** está después de **Tareas**. Junto al 
 
 Arriba hay seis pestañas:
 
-| Pestaña               | Para qué sirve                                                                          |
-| --------------------- | --------------------------------------------------------------------------------------- |
-| **Stock**             | La lista de artículos con su cantidad, y los botones para operar (es la que abre primero) |
-| **Movimientos**       | Todo lo que entró, salió o se ajustó; anular y exportar a Excel                         |
-| **Faltantes**         | Los avisos de faltante que mandó el personal, para resolverlos                          |
-| **Consumo por cliente** | Cuánto se retiró en un período, por cliente y sede, a costo y a venta                 |
-| **Controles**         | El historial de los controles de stock que se cargaron                                  |
-| **Categorías**        | Las categorías para ordenar el catálogo                                                 |
+| Pestaña                 | Para qué sirve                                                                            |
+| ----------------------- | ----------------------------------------------------------------------------------------- |
+| **Stock**               | La lista de artículos con su cantidad, y los botones para operar (es la que abre primero) |
+| **Movimientos**         | Todo lo que entró, salió o se ajustó; anular y exportar a Excel                           |
+| **Faltantes**           | Los avisos de faltante que mandó el personal, para resolverlos                            |
+| **Consumo por cliente** | Cuánto se retiró en un período, por cliente y sede, a costo y a venta                     |
+| **Controles**           | El historial de los controles de stock que se cargaron                                    |
+| **Categorías**          | Las categorías para ordenar el catálogo                                                   |
 
 Las listas se actualizan solas cada minuto y dicen «Actualizado hace n s».
 
@@ -115,11 +115,11 @@ En la pestaña **Stock** ves, por artículo: imagen chica, código, nombre y pre
 
 **Colores de las filas:**
 
-| Color        | Cuándo                                                                          | Etiqueta        |
-| ------------ | ------------------------------------------------------------------------------- | --------------- |
-| **Amarillo** | El artículo tiene mínimo y el stock es **igual o menor** a ese mínimo           | «Bajo mínimo»   |
-| **Rojo**     | El stock es **cero** (aunque el artículo no tenga mínimo)                       | «Sin stock»     |
-| Sin color    | Todo en orden, o el artículo no tiene mínimo y todavía hay stock                | —               |
+| Color        | Cuándo                                                                | Etiqueta      |
+| ------------ | --------------------------------------------------------------------- | ------------- |
+| **Amarillo** | El artículo tiene mínimo y el stock es **igual o menor** a ese mínimo | «Bajo mínimo» |
+| **Rojo**     | El stock es **cero** (aunque el artículo no tenga mínimo)             | «Sin stock»   |
+| Sin color    | Todo en orden, o el artículo no tiene mínimo y todavía hay stock      | —             |
 
 Siempre hay una etiqueta de texto además del color. Un artículo **Inactivo** se ve con esa etiqueta y sin color: no cuenta como aviso.
 

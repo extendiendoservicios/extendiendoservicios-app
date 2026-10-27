@@ -45,15 +45,15 @@ Hay dos roles de administración:
 
 El dueño los activa por persona (ver [Usuarios y roles](#usuarios-y-roles)). Sin el permiso, el botón directamente no aparece.
 
-| Permiso                        | Qué habilita                                                                                                                                 |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gestionar usuarios             | Dar de alta empleados y coordinadores; resetear contraseñas, cambiar emails, cerrar sesiones y desactivar a empleados y coordinadores        |
-| Cancelar turnos                | **Cancelar turno**                                                                                                                           |
-| Editar calificaciones          | Corregir las calificaciones que cargaron los coordinadores                                                                                   |
-| Editar plantillas de tareas    | Crear y cambiar las listas de tareas de clientes y sedes                                                                                     |
-| Registrar asistencia por otros | **Registrar en nombre** de un empleado; asignar o quitar personal una vez que el turno ya empezó; corregir las jornadas de los coordinadores |
-| Generar turnos del mes         | **Generar turnos del mes**                                                                                                                   |
-| Gestionar supervisiones        | Cargar y quitar los clientes y sedes preferenciales de los coordinadores; cancelar supervisiones                                             |
+| Permiso                        | Qué habilita                                                                                                                                                                             |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gestionar usuarios             | Dar de alta empleados y coordinadores; resetear contraseñas, cambiar emails, cerrar sesiones y desactivar a empleados y coordinadores                                                    |
+| Cancelar turnos                | **Cancelar turno**                                                                                                                                                                       |
+| Editar calificaciones          | Corregir las calificaciones que cargaron los coordinadores                                                                                                                               |
+| Editar plantillas de tareas    | Crear y cambiar las listas de tareas de clientes y sedes                                                                                                                                 |
+| Registrar asistencia por otros | **Registrar en nombre** de un empleado; asignar o quitar personal una vez que el turno ya empezó; corregir las jornadas de los coordinadores                                             |
+| Generar turnos del mes         | **Generar turnos del mes**                                                                                                                                                               |
+| Gestionar supervisiones        | Cargar y quitar los clientes y sedes preferenciales de los coordinadores; cancelar supervisiones                                                                                         |
 | Gestionar stock                | Cargar el catálogo de insumos y sus precios; registrar ingresos, ajustes, retiros en nombre de otra persona y controles; anular movimientos (ver [Insumos](#insumos-y-control-de-stock)) |
 
 ### Lo que es solo del dueño
