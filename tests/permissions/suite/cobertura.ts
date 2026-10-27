@@ -31,6 +31,8 @@ export type SuiteExterna =
   | '90-evidencia.permissions.ts'
   | '91-modulos-p19.permissions.ts'
   | '61-edge-evidence-cleanup.permissions.ts'
+  | '95-insumos.permissions.ts'
+  | '96-client-photos.permissions.ts'
 
 export const COBERTURA_EXTERNA: {
   tablas: Record<string, SuiteExterna>
@@ -49,12 +51,33 @@ export const COBERTURA_EXTERNA: {
     employee_bank_details: '91-modulos-p19.permissions.ts',
     shift_observations: '91-modulos-p19.permissions.ts',
     service_fixed_employees: '91-modulos-p19.permissions.ts',
+    // Insumos y control de stock (0070, P25.5c)
+    supply_categories: '95-insumos.permissions.ts',
+    supplies: '95-insumos.permissions.ts',
+    supply_price_changes: '95-insumos.permissions.ts',
+    stock_movements: '95-insumos.permissions.ts',
+    stock_movement_lines: '95-insumos.permissions.ts',
+    stock_counts: '95-insumos.permissions.ts',
+    stock_count_lines: '95-insumos.permissions.ts',
+    supply_shortage_reports: '95-insumos.permissions.ts',
   },
   vistas: {
     v_shift_media: '90-evidencia.permissions.ts',
     v_announcements_admin: '91-modulos-p19.permissions.ts',
     v_announcement_recipients: '91-modulos-p19.permissions.ts',
     v_my_announcements: '91-modulos-p19.permissions.ts',
+    // Insumos y control de stock (0070 y 0072, P25.5c)
+    v_supply_catalog: '95-insumos.permissions.ts',
+    v_stock_admin: '95-insumos.permissions.ts',
+    v_stock_movements_admin: '95-insumos.permissions.ts',
+    v_stock_counts_admin: '95-insumos.permissions.ts',
+    v_supply_consumption_by_client: '95-insumos.permissions.ts',
+    v_my_withdrawals: '95-insumos.permissions.ts',
+    v_my_shortage_reports: '95-insumos.permissions.ts',
+    v_withdrawal_shift_options: '95-insumos.permissions.ts',
+    v_withdrawal_site_options: '95-insumos.permissions.ts',
+    v_withdrawal_shift_options_admin: '95-insumos.permissions.ts',
+    v_withdrawal_site_options_admin: '95-insumos.permissions.ts',
   },
   rpc: {
     begin_shift_media: '90-evidencia.permissions.ts',
@@ -65,8 +88,24 @@ export const COBERTURA_EXTERNA: {
     delete_shift_media: '90-evidencia.permissions.ts',
     storage_usage: '90-evidencia.permissions.ts',
     set_media_retention: '90-evidencia.permissions.ts',
+    // Insumos y control de stock (0070, P25.5c)
+    upsert_supply: '95-insumos.permissions.ts',
+    set_supply_active: '95-insumos.permissions.ts',
+    set_supply_prices: '95-insumos.permissions.ts',
+    upsert_supply_category: '95-insumos.permissions.ts',
+    register_stock_entry: '95-insumos.permissions.ts',
+    adjust_stock: '95-insumos.permissions.ts',
+    register_withdrawal: '95-insumos.permissions.ts',
+    void_stock_movement: '95-insumos.permissions.ts',
+    register_stock_count: '95-insumos.permissions.ts',
+    report_supply_shortage: '95-insumos.permissions.ts',
+    resolve_supply_shortage: '95-insumos.permissions.ts',
+    get_stock_summary: '95-insumos.permissions.ts',
   },
   buckets: {
     evidence: '90-evidencia.permissions.ts',
+    'supply-images': '95-insumos.permissions.ts',
+    // Lo agregó P19.6c (0039); la matriz no lo veía por el guion del nombre (P25.5c).
+    'client-photos': '96-client-photos.permissions.ts',
   },
 }

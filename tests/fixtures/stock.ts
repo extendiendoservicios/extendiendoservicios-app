@@ -80,12 +80,14 @@ function verificarProyecto(): void {
   }
 }
 
-function sqlPurga(prefijo: string): string {
-  // El prefijo es `e2e-<marca>-` con la marca en minúsculas y sin comodines: se valida acá.
-  if (!/^e2e-[a-z0-9]+-$/.test(prefijo)) {
-    throw new Error(`Prefijo de purga inválido: ${prefijo}`)
+function sqlPurga(prefijos: readonly string[]): string {
+  // Cada prefijo es `e2e-<marca>-` con la marca en minúsculas y sin comodines: se valida acá.
+  for (const prefijo of prefijos) {
+    if (!/^e2e-[a-z0-9]+-$/.test(prefijo)) {
+      throw new Error(`Prefijo de purga inválido: ${prefijo}`)
+    }
   }
-  const p = `'${prefijo}%'`
+  const p = `array[${prefijos.map((x) => `'${x}%'`).join(', ')}]`
   return `
 begin;
 alter table public.stock_movements disable trigger trg_stock_immutable;
@@ -95,14 +97,14 @@ alter table public.stock_count_lines disable trigger trg_stock_immutable;
 alter table public.supply_price_changes disable trigger trg_stock_immutable;
 
 create temp table _p_s on commit drop as
-  select id from public.supplies where lower(code) like ${p};
+  select id from public.supplies where lower(code) like any (${p});
 create temp table _p_c on commit drop as
-  select id from public.supply_categories where lower(name) like ${p};
+  select id from public.supply_categories where lower(name) like any (${p});
 create temp table _p_m on commit drop as
   select distinct l.movement_id as id from public.stock_movement_lines l
    where l.supply_id in (select id from _p_s)
   union
-  select m.id from public.stock_movements m where lower(coalesce(m.note, '')) like ${p};
+  select m.id from public.stock_movements m where lower(coalesce(m.note, '')) like any (${p});
 insert into _p_m
   select m.id from public.stock_movements m
    where (m.reverses_id in (select id from _p_m)
@@ -113,12 +115,12 @@ create temp table _p_k on commit drop as
    where m.id in (select id from _p_m) and m.count_id is not null
   union
   select k.id from public.stock_counts k
-   where lower(coalesce(k.reviewer_name, '')) like ${p} or lower(coalesce(k.notes, '')) like ${p};
+   where lower(coalesce(k.reviewer_name, '')) like any (${p}) or lower(coalesce(k.notes, '')) like any (${p});
 
 delete from public.supply_shortage_reports
  where supply_id in (select id from _p_s)
-    or lower(coalesce(description, '')) like ${p}
-    or lower(coalesce(comment, '')) like ${p};
+    or lower(coalesce(description, '')) like any (${p})
+    or lower(coalesce(comment, '')) like any (${p});
 delete from public.stock_movement_lines where movement_id in (select id from _p_m);
 delete from public.stock_movements where id in (select id from _p_m);
 delete from public.stock_count_lines where count_id in (select id from _p_k);
@@ -134,6 +136,85 @@ alter table public.stock_count_lines enable trigger trg_stock_immutable;
 alter table public.supply_price_changes enable trigger trg_stock_immutable;
 commit;
 `
+}
+
+/** Marcas de las suites que crean datos de Insumos (para el barrido previo de residuos). */
+export const MARCAS_INSUMOS = ['adm', 'emp', 'sup', 'permstock'] as const
+
+/** `true` si quedó algo de Insumos con prefijo `e2e-` (una corrida cortada a la mitad). */
+export async function hayResiduosDeInsumos(
+  db: ReturnType<typeof getAdminDb> = getAdminDb(),
+): Promise<boolean> {
+  const pedidos = await Promise.all([
+    db
+      .from('supplies')
+      .select('id', { count: 'exact', head: true })
+      .ilike('code', 'e2e-%'),
+    db
+      .from('supply_categories')
+      .select('id', { count: 'exact', head: true })
+      .ilike('name', 'e2e-%'),
+    db
+      .from('supply_shortage_reports')
+      .select('id', { count: 'exact', head: true })
+      .or('description.ilike.e2e-%,comment.ilike.e2e-%'),
+    db
+      .from('stock_movements')
+      .select('id', { count: 'exact', head: true })
+      .ilike('note', 'e2e-%'),
+  ])
+  return pedidos.some((p) => (p.count ?? 0) > 0)
+}
+
+/**
+ * Borra todo lo que lleve alguno de los prefijos `e2e-<marca>-` (movimientos, controles, avisos,
+ * historial de precios, artículos, categorías e imágenes). Devuelve notas si algo no se pudo.
+ */
+export async function purgarInsumosE2e(
+  marcas: readonly string[],
+): Promise<string[]> {
+  const notas: string[] = []
+  const prefijos = marcas.map((m) => `e2e-${m}-`)
+  const db = getAdminDb()
+  try {
+    for (const prefijo of prefijos) {
+      const { data: conImagen } = await db
+        .from('supplies')
+        .select('image_path')
+        .ilike('code', `${prefijo}%`)
+        .not('image_path', 'is', null)
+      const rutas = (conImagen ?? [])
+        .map((s) => s.image_path)
+        .filter((r): r is string => r !== null)
+      if (rutas.length > 0) {
+        const { error } = await db.storage.from('supply-images').remove(rutas)
+        if (error) notas.push(`imágenes: ${error.message}`)
+      }
+    }
+    verificarProyecto()
+    const archivo = path.join(os.tmpdir(), `purga-insumos-${azar()}.sql`)
+    writeFileSync(archivo, sqlPurga(prefijos), 'utf8')
+    try {
+      const cli = path.join(
+        RAIZ,
+        'node_modules',
+        '.bin',
+        process.platform === 'win32' ? 'supabase.cmd' : 'supabase',
+      )
+      execSync(`"${cli}" db query --linked -f "${archivo}"`, {
+        cwd: RAIZ,
+        stdio: 'pipe',
+        timeout: 120_000,
+      })
+    } finally {
+      unlinkSync(archivo)
+    }
+  } catch (error) {
+    notas.push(
+      `purga de insumos ${prefijos.join(', ')}: ${error instanceof Error ? error.message : String(error)}`,
+    )
+  }
+  return notas
 }
 
 /**
@@ -223,45 +304,6 @@ export class InsumosE2e {
    * (no rompe el test). Hay que llamarla ANTES de borrar los clientes del escenario.
    */
   async purgar(): Promise<string[]> {
-    const notas: string[] = []
-    const db = getAdminDb()
-    try {
-      const { data: conImagen } = await db
-        .from('supplies')
-        .select('image_path')
-        .ilike('code', `${this.prefijo}%`)
-        .not('image_path', 'is', null)
-      const rutas = (conImagen ?? [])
-        .map((s) => s.image_path)
-        .filter((r): r is string => r !== null)
-      if (rutas.length > 0) {
-        const { error } = await db.storage.from('supply-images').remove(rutas)
-        if (error) notas.push(`imágenes: ${error.message}`)
-      }
-      verificarProyecto()
-      const archivo = path.join(
-        os.tmpdir(),
-        `purga-insumos-${this.marca}-${azar()}.sql`,
-      )
-      writeFileSync(archivo, sqlPurga(this.prefijo), 'utf8')
-      try {
-        const cli =
-          process.platform === 'win32'
-            ? path.join(RAIZ, 'node_modules', '.bin', 'supabase.cmd')
-            : path.join(RAIZ, 'node_modules', '.bin', 'supabase')
-        execSync(`"${cli}" db query --linked -f "${archivo}"`, {
-          cwd: RAIZ,
-          stdio: 'pipe',
-          timeout: 120_000,
-        })
-      } finally {
-        unlinkSync(archivo)
-      }
-    } catch (error) {
-      notas.push(
-        `purga de insumos ${this.prefijo}: ${error instanceof Error ? error.message : String(error)}`,
-      )
-    }
-    return notas
+    return purgarInsumosE2e([this.marca])
   }
 }

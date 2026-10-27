@@ -67,33 +67,60 @@ export function leerInventario(): InventarioMigraciones {
 
   for (const archivo of archivos) {
     const sql = sqlSinComentarios(archivo)
-    for (const m of sql.matchAll(/^create\s+table\s+public\.(\w+)/gim)) {
-      tablas.add(m[1])
+    // Altas y bajas EN EL ORDEN EN QUE APARECEN en el archivo: una migración que hace
+    // `drop view` y después `create view` del mismo objeto (0064, 0065 y 0068 con
+    // `v_supervisor_today`) lo deja existiendo. Procesar primero todas las altas y después todas
+    // las bajas lo daba por borrado (P25.5c).
+    const eventos: Array<{
+      indice: number
+      alta: boolean
+      tipo: 'tabla' | 'vista' | 'funcion'
+      nombre: string
+    }> = []
+    const juntar = (
+      re: RegExp,
+      alta: boolean,
+      tipo: 'tabla' | 'vista' | 'funcion',
+    ) => {
+      for (const m of sql.matchAll(re)) {
+        eventos.push({ indice: m.index, alta, tipo, nombre: m[1] })
+      }
     }
-    for (const m of sql.matchAll(
+    juntar(/^create\s+table\s+public\.(\w+)/gim, true, 'tabla')
+    juntar(
       /^drop\s+table\s+(?:if\s+exists\s+)?public\.(\w+)/gim,
-    )) {
-      tablas.delete(m[1])
-    }
-    for (const m of sql.matchAll(
+      false,
+      'tabla',
+    )
+    juntar(
       /^create\s+(?:or\s+replace\s+)?view\s+public\.(\w+)/gim,
-    )) {
-      vistas.add(m[1])
-    }
-    for (const m of sql.matchAll(
-      /^drop\s+view\s+(?:if\s+exists\s+)?public\.(\w+)/gim,
-    )) {
-      vistas.delete(m[1])
-    }
-    for (const m of sql.matchAll(
+      true,
+      'vista',
+    )
+    juntar(/^drop\s+view\s+(?:if\s+exists\s+)?public\.(\w+)/gim, false, 'vista')
+    juntar(
       /^create\s+(?:or\s+replace\s+)?function\s+public\.(\w+)\s*\(/gim,
-    )) {
-      funcion(m[1])
-    }
-    for (const m of sql.matchAll(
+      true,
+      'funcion',
+    )
+    juntar(
       /^drop\s+function\s+(?:if\s+exists\s+)?public\.(\w+)/gim,
-    )) {
-      funciones.delete(m[1])
+      false,
+      'funcion',
+    )
+    eventos.sort((a, b) => a.indice - b.indice)
+    for (const ev of eventos) {
+      if (ev.tipo === 'tabla') {
+        if (ev.alta) tablas.add(ev.nombre)
+        else tablas.delete(ev.nombre)
+      } else if (ev.tipo === 'vista') {
+        if (ev.alta) vistas.add(ev.nombre)
+        else vistas.delete(ev.nombre)
+      } else if (ev.alta) {
+        funcion(ev.nombre)
+      } else {
+        funciones.delete(ev.nombre)
+      }
     }
     for (const m of sql.matchAll(
       /^grant\s+execute\s+on\s+function\s+public\.(\w+)\([^;]*?\)\s+to\s+([^;]+);/gim,
@@ -111,7 +138,7 @@ export function leerInventario(): InventarioMigraciones {
         f.revocadaAAnon = true
     }
     for (const m of sql.matchAll(
-      /storage\.buckets[^;]*?values\s*\(\s*'(\w+)'/gim,
+      /storage\.buckets[^;]*?values\s*\(\s*'([\w-]+)'/gim,
     )) {
       buckets.add(m[1])
     }
