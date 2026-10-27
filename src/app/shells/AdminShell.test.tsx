@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Branding } from '@/features/auth/useBranding'
@@ -55,6 +55,17 @@ vi.mock('@/app/PwaUpdateProvider', () => ({
     applyUpdate: vi.fn(),
     postpone: vi.fn(),
   }),
+}))
+
+// P25.3: junto a «Insumos» va el número de avisos de faltante abiertos
+// (`NavBadge` lee `useStockSummaryQuery`). Estos tests no montan un
+// `QueryClientProvider`, así que se mockea el hook; el contador se pisa en el
+// describe del número, más abajo. Por omisión no hay avisos abiertos.
+const stockSummaryState = vi.hoisted(() => ({
+  data: undefined as { openReports: number } | undefined,
+}))
+vi.mock('@/features/stock/queries', () => ({
+  useStockSummaryQuery: () => ({ data: stockSummaryState.data }),
 }))
 
 /**
@@ -544,5 +555,52 @@ describe('AdminShell — barra de marca y Más en celular (P17.8)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cerrar sesión' }))
 
     expect(signOutMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('AdminShell: número de avisos de faltante junto a «Insumos» (IS-33)', () => {
+  afterEach(() => {
+    stockSummaryState.data = undefined
+  })
+
+  it('muestra los avisos abiertos junto a «Insumos» en la barra lateral', () => {
+    mockViewportWidth(1440)
+    stockSummaryState.data = { openReports: 3 }
+    renderAdminShell()
+
+    const link = screen.getByRole('link', { name: /Insumos/ })
+    expect(link).toHaveTextContent('3')
+    expect(link).toHaveTextContent('3 avisos de faltante abiertos')
+  })
+
+  it('también lo muestra en el menú «Más» del celular', () => {
+    mockViewportWidth(390)
+    stockSummaryState.data = { openReports: 1 }
+    renderAdminShell()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Más' }))
+    const menu = screen.getByRole('navigation', { name: 'Más secciones' })
+    expect(
+      within(menu).getByRole('link', { name: /Insumos/ }),
+    ).toHaveTextContent('1 aviso de faltante abierto')
+  })
+
+  it('no muestra ningún número cuando no hay avisos abiertos o todavía carga', () => {
+    mockViewportWidth(1440)
+    stockSummaryState.data = { openReports: 0 }
+    const { unmount } = renderAdminShell()
+    expect(screen.queryByTestId('nav-badge')).not.toBeInTheDocument()
+    unmount()
+
+    stockSummaryState.data = undefined
+    renderAdminShell()
+    expect(screen.queryByTestId('nav-badge')).not.toBeInTheDocument()
+  })
+
+  it('solo «Insumos» lleva número', () => {
+    mockViewportWidth(1440)
+    stockSummaryState.data = { openReports: 5 }
+    renderAdminShell()
+    expect(screen.getAllByTestId('nav-badge')).toHaveLength(1)
   })
 })

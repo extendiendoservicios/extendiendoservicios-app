@@ -26,3 +26,12 @@ export function canManageStock(actor: StockActor): boolean {
       actor.capabilities.includes('manage_stock'))
   )
 }
+
+/**
+ * Pestaña «Retiros» de la ficha del empleado y del coordinador (IS-18): solo
+ * dueño y administradores, sin pedir `manage_stock` (es una consulta, IS-21).
+ * Empleados y coordinadores nunca ven precios ni retiros ajenos (IS-20).
+ */
+export function canViewPersonWithdrawals(actor: StockActor): boolean {
+  return actor.roles.includes('owner') || actor.roles.includes('admin')
+}

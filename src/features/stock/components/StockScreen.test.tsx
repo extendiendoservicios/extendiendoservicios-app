@@ -7,6 +7,18 @@ vi.mock('./StockTab', () => ({ StockTab: () => <p>Contenido de Stock</p> }))
 vi.mock('./CategoriesTab', () => ({
   CategoriesTab: () => <p>Contenido de Categorías</p>,
 }))
+vi.mock('./MovementsTab', () => ({
+  MovementsTab: () => <p>Contenido de Movimientos</p>,
+}))
+vi.mock('./ShortagesTab', () => ({
+  ShortagesTab: () => <p>Contenido de Faltantes</p>,
+}))
+vi.mock('./ConsumptionTab', () => ({
+  ConsumptionTab: () => <p>Contenido de Consumo</p>,
+}))
+vi.mock('./CountsTab', () => ({
+  CountsTab: () => <p>Contenido de Controles</p>,
+}))
 
 function Location() {
   const location = useLocation()
@@ -23,10 +35,14 @@ function renderScreen(entry = '/admin/insumos') {
 }
 
 describe('StockScreen (IS-33)', () => {
-  it('muestra solo las pestañas Stock y Categorías, y entra por Stock', () => {
+  it('muestra las seis pestañas en el orden de la especificación, y entra por Stock', () => {
     renderScreen()
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
       'Stock',
+      'Movimientos',
+      'Faltantes',
+      'Consumo por cliente',
+      'Controles',
       'Categorías',
     ])
     expect(screen.getByText('Contenido de Stock')).toBeInTheDocument()
@@ -37,8 +53,18 @@ describe('StockScreen (IS-33)', () => {
     expect(screen.getByText('Contenido de Categorías')).toBeInTheDocument()
   })
 
-  it('una pestaña que todavía no existe (Movimientos) cae en Stock', () => {
-    renderScreen('/admin/insumos?pestana=movimientos')
+  it.each([
+    ['movimientos', 'Contenido de Movimientos'],
+    ['faltantes', 'Contenido de Faltantes'],
+    ['consumo', 'Contenido de Consumo'],
+    ['controles', 'Contenido de Controles'],
+  ])('?pestana=%s abre su pestaña', (value, content) => {
+    renderScreen(`/admin/insumos?pestana=${value}`)
+    expect(screen.getByText(content)).toBeInTheDocument()
+  })
+
+  it('una pestaña que no existe cae en Stock', () => {
+    renderScreen('/admin/insumos?pestana=inexistente')
     expect(screen.getByText('Contenido de Stock')).toBeInTheDocument()
   })
 

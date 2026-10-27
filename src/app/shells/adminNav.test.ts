@@ -25,6 +25,14 @@ describe('adminNav: sección «Insumos» (IS-33)', () => {
     }
   })
 
+  it('lleva el número de avisos abiertos en las dos listas, y ningún otro ítem', () => {
+    for (const list of [ADMIN_NAV_OPERATION, ADMIN_MORE_ITEMS]) {
+      const withBadge = list.filter((item) => item.badge)
+      expect(withBadge.map((item) => item.label)).toEqual(['Insumos'])
+      expect(withBadge[0]?.badge).toBe('stockOpenReports')
+    }
+  })
+
   it('queda activa también en la ficha, el alta y el ingreso', () => {
     const item = ADMIN_NAV_ITEMS.find((entry) => entry.label === 'Insumos')
     expect(item).toBeDefined()

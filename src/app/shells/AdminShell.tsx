@@ -42,6 +42,7 @@ import { useRouteHandle } from '@/app/routes/placeholder'
 import { BackButton } from './BackButton'
 import { isAdminRootPath, useGoBack } from './backNavigation'
 import { MobileBrandBar } from './MobileBrandBar'
+import { NavBadge } from './NavBadge'
 import {
   readSidebarPreference,
   writeSidebarPreference,
@@ -251,6 +252,9 @@ export function AdminShell({
               >
                 <item.icon aria-hidden="true" className="size-4 text-text-3" />
                 {item.label}
+                {item.badge && (
+                  <NavBadge kind={item.badge} className="ml-auto" />
+                )}
               </Link>
             ))}
           </nav>
@@ -466,11 +470,19 @@ function NavSection({
                   active && 'bg-white/20 font-semibold text-white',
                   // Cuadrado de 44 px: con la sidebar en `items-center`, sin
                   // un ancho propio el link medía lo que el ícono, 16 px (P05.6).
-                  collapsed && 'size-11 justify-center p-0',
+                  collapsed && 'relative size-11 justify-center p-0',
                 )}
               >
                 <item.icon aria-hidden="true" className="size-4 shrink-0" />
                 {!collapsed && <span className="truncate">{item.label}</span>}
+                {item.badge && (
+                  <NavBadge
+                    kind={item.badge}
+                    className={
+                      collapsed ? 'absolute top-0.5 right-0.5' : 'ml-auto'
+                    }
+                  />
+                )}
               </Link>
             )
 
