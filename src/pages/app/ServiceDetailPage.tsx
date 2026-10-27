@@ -13,6 +13,7 @@ import { OnTheWayAction } from '@/features/employee/components/OnTheWayAction'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { getNoticeMessage } from '@/features/employee/notice'
 import { useNow } from '@/features/employee/useNow'
+import { WithdrawShortcut } from '@/features/myStock/components/WithdrawShortcut'
 import { isNotifiable } from '@/features/employee/notifyCandidates'
 import {
   SiteInfo,
@@ -137,6 +138,10 @@ export default function ServiceDetailPage() {
             </Alert>
           )}
           <OnTheWayAction assignment={assignment} />
+          {/* P25.4 (IS-28): retiro de insumos con este turno ya elegido. */}
+          {!cancelled && (
+            <WithdrawShortcut shiftId={assignment.shiftId} base="/app" />
+          )}
           {isNotifiable(assignment) && (
             <Button asChild size="md" variant="ghost">
               <Link to={`/app/avisar?asignacion=${assignment.assignmentId}`}>

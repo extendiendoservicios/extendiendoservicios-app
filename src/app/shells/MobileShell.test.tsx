@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 import { MobileShell } from './MobileShell'
@@ -32,13 +32,27 @@ vi.mock('@/app/PwaUpdateProvider', () => ({
   }),
 }))
 
-function renderShell(initialEntries: string[]) {
+function renderShell(
+  initialEntries: string[],
+  variant: 'employee' | 'supervisor' = 'employee',
+) {
   const router = createMemoryRouter(
     [
       {
-        element: <MobileShell variant="employee" />,
+        element: <MobileShell variant={variant} />,
         children: [
           { path: '/app', element: <p>Inicio</p> },
+          {
+            path: '/app/insumos',
+            element: <p>Pantalla Insumos</p>,
+            handle: { screenId: 'INS-01', title: 'Insumos' },
+          },
+          { path: '/sup', element: <p>Inicio sup</p> },
+          {
+            path: '/sup/insumos',
+            element: <p>Insumos sup</p>,
+            handle: { screenId: 'INS-01', title: 'Insumos' },
+          },
           {
             path: '/app/mas',
             element: <p>Pantalla Más</p>,
@@ -89,5 +103,36 @@ describe('MobileShell (P17.8)', () => {
     renderShell(['/app/fichar/consentimiento'])
     fireEvent.click(screen.getByRole('button', { name: 'Volver' }))
     expect(screen.getByText('Pantalla Fichar')).toBeInTheDocument()
+  })
+
+  it('barra del empleado (IS-33): Hoy, Insumos, el botón Fichar y Más, en ese orden', () => {
+    renderShell(['/app/insumos'])
+    const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
+    expect(
+      within(nav)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['Hoy', 'Insumos', 'Más'])
+    const order = Array.from(nav.querySelectorAll('a, button')).map(
+      (element) => element.getAttribute('aria-label') ?? element.textContent,
+    )
+    expect(order).toEqual(['Hoy', 'Insumos', 'Fichar', 'Más'])
+    expect(within(nav).getByRole('link', { name: 'Insumos' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+  })
+
+  it('barra del coordinador (IS-33): Hoy, Supervisiones, Insumos, Historial y Más, sin Fichar', () => {
+    renderShell(['/sup/insumos'], 'supervisor')
+    const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
+    expect(
+      within(nav)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['Hoy', 'Supervisiones', 'Insumos', 'Historial', 'Más'])
+    expect(
+      within(nav).queryByRole('button', { name: 'Fichar' }),
+    ).not.toBeInTheDocument()
   })
 })

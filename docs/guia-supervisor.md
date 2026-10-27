@@ -272,6 +272,10 @@ Para cerrar la supervisión tenés que **calificar a todos los empleados del tur
 
 ---
 
+## Insumos
+
+En la barra de abajo, tocá **Insumos** para retirar o avisar un faltante. En **Retirar insumos** ves primero **Mis sedes** y después las demás, con buscador. Desde el detalle de un turno, **Retirar insumos** ya trae ese turno elegido. Necesitás conexión.
+
 ## Cerrar la supervisión
 
 1. Cuando terminás en la sede, en el detalle de la supervisión tocá **Cerrar supervisión**. (Si está apagado, mirá a quién falta calificar.)

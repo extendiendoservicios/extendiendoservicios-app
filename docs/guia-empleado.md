@@ -217,6 +217,13 @@ El aviso le llega a Administración enseguida: lo ve en su tablero. En tu pantal
 
 Si ya avisaste una demora, podés después avisar la ausencia. No podés repetir el mismo aviso.
 
+## Pedir insumos
+
+En la barra de abajo, tocá **Insumos**. Ahí ves el catálogo (los que no hay figuran como **Sin stock**), tus retiros y tus avisos.
+
+- **Retirar insumos:** elegí el turno, sumá los artículos con sus cantidades, revisá y tocá **Confirmar**. También podés retirar para una sede sin turno puntual; en ese caso la observación es obligatoria. Desde el detalle de un servicio, **Retirar insumos** ya trae ese turno elegido. Necesitás conexión.
+- **Avisar faltante:** elegí el artículo del catálogo o escribí cuál es el que falta. Después ves si Administración lo resolvió.
+
 ## Tu perfil
 
 En **Más**, tocá **Mi perfil**.

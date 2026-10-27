@@ -568,6 +568,25 @@ Parte de administración de Insumos y control de stock. Lo del celular (`registe
 
 `mapStockError` traduce cada `hint` del contrato a un mensaje en español (`STOCK_ERROR_MESSAGES`). `INSUFFICIENT_STOCK` y `SUPPLY_INACTIVE` conservan el texto del servidor, que trae el nombre del artículo y las cantidades (la administración ve cuánto hay).
 
+### `myStock` (`src/api/myStock.ts`, P25.4 — módulo E, insumos en el celular)
+
+Para empleados y coordinadores. Nada devuelve precios ni cantidades de stock (IS-20). Hooks en
+`src/features/myStock/queries.ts`.
+
+| Función                         | Canal                                 | Devuelve                                                                            |
+| ------------------------------- | ------------------------------------- | ----------------------------------------------------------------------------------- |
+| `fetchSupplyCatalog()`          | vista `v_supply_catalog`              | `SupplyCatalogItem[]` con `outOfStock` (sin cantidades)                             |
+| `fetchWithdrawalShiftOptions()` | vista `v_withdrawal_shift_options`    | `WithdrawalShiftOption[]` (`isAssigned`, `isPriority`)                              |
+| `fetchWithdrawalSiteOptions()`  | vista `v_withdrawal_site_options`     | `WithdrawalSiteOption[]`, «Mis sedes» primero                                       |
+| `fetchMyWithdrawals(limit)`     | vista `v_my_withdrawals`              | `MyWithdrawal[]` con líneas y anulación                                             |
+| `fetchMyShortageReports(limit)` | vista `v_my_shortage_reports`         | `MyShortageReport[]` con estado y nota de resolución                                |
+| `signSupplyImages(paths)`       | Storage `supply-images` (URL firmada) | `Map<ruta, URL>`                                                                    |
+| `registerWithdrawal(input)`     | RPC `register_withdrawal`             | `WithdrawalResult` (hora del servidor); siempre el retiro propio, sin `p_person_id` |
+| `reportSupplyShortage(input)`   | RPC `report_supply_shortage`          | `ShortageResult`                                                                    |
+
+Los errores de las RPC se traducen con `toStockError`: mensaje en español por código, salvo `INSUFFICIENT_STOCK` (se deja el
+del servidor).
+
 ## Próximos dominios
 
 Cada paquete de F10 en adelante agrega su sección acá (`myDay`) siguiendo
