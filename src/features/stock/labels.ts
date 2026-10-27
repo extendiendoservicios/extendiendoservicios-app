@@ -5,6 +5,7 @@ import type {
 } from '@/api/stock'
 import { formatShortDate, formatTime } from '@/lib/format'
 import { adjustmentReasonLabel } from '@/features/stock/schemas'
+import { formatMoney } from '@/features/stock/money'
 
 /**
  * Etiquetas en español de las enumeraciones de Insumos (`04_Modelo_de_Datos`
@@ -120,4 +121,20 @@ export function describeShortagePlace(report: ShortageReport): string | null {
     .join(' ')
   const parts = [report.clientName, report.siteName, when].filter(Boolean)
   return parts.length === 0 ? null : parts.join(' · ')
+}
+
+/**
+ * Un valor del historial de precios (IS-22): «de $ 800,00 a $ 950,00»; si no
+ * cambió, solo el valor y «sin cambio» («$ 850,00 · sin cambio»); en el alta
+ * (sin valor anterior), solo el valor inicial.
+ */
+export function describePriceChange(
+  oldValue: number | null,
+  newValue: number,
+): string {
+  if (oldValue == null) return formatMoney(newValue)
+  if (Math.round(oldValue * 100) === Math.round(newValue * 100)) {
+    return `${formatMoney(newValue)} · sin cambio`
+  }
+  return `de ${formatMoney(oldValue)} a ${formatMoney(newValue)}`
 }

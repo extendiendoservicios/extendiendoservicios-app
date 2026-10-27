@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import {
+  ClipboardCheck,
+  PackageMinus,
   PackagePlus,
   PackageSearch,
   Plus,
@@ -38,6 +40,7 @@ import {
 import { canManageStock } from '@/features/stock/permissions'
 import { formatMoney, formatQty } from '@/features/stock/money'
 import { AdjustStockDialog } from './AdjustStockDialog'
+import { ControlSheetAction } from './ControlSheetAction'
 import { StockAlertBadge } from './StockAlertBadge'
 import { SupplyImage } from './SupplyImage'
 
@@ -48,8 +51,9 @@ import { SupplyImage } from './SupplyImage'
  * total del valor del stock. Por fila: «Ajustar» y la ficha. En el celular
  * la tabla pasa a tarjetas (`DataTable` con `RowCard`).
  *
- * Sin `manage_stock` se ve todo, pero sin «Ingreso», «Nuevo artículo» ni
- * «Ajustar» (IS-21).
+ * Sin `manage_stock` se ve todo, pero sin «Ingreso», «Retiro en nombre de»,
+ * «Imprimir planilla», «Cargar control», «Nuevo artículo» ni «Ajustar»
+ * (IS-21).
  */
 function StockTab() {
   const auth = useAuth()
@@ -304,6 +308,17 @@ function StockTab() {
           <div className="flex flex-wrap items-center gap-2">
             <Button asChild variant="ghost" icon={PackagePlus}>
               <Link to="/admin/insumos/ingreso">Ingreso</Link>
+            </Button>
+            <Button asChild variant="ghost" icon={PackageMinus}>
+              <Link to="/admin/insumos/retiro">Retiro en nombre de</Link>
+            </Button>
+            <ControlSheetAction
+              items={itemsQuery.data ?? []}
+              categories={categoriesQuery.data ?? []}
+              defaultCategoryId={filters.categoryId}
+            />
+            <Button asChild variant="ghost" icon={ClipboardCheck}>
+              <Link to="/admin/insumos/control">Cargar control</Link>
             </Button>
             <Button asChild icon={Plus}>
               <Link to="/admin/insumos/nuevo">Nuevo artículo</Link>

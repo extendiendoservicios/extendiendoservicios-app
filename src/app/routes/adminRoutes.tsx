@@ -237,7 +237,8 @@ export const adminRoutes: RouteObject[] = [
     handle: {
       screenId: 'ADM-IS-01',
       title: 'Insumos',
-      subtitle: 'Ver el stock, los ingresos y las categorías',
+      subtitle:
+        'Stock, movimientos, faltantes, consumo, controles y categorías',
     },
   },
   {
@@ -256,6 +257,24 @@ export const adminRoutes: RouteObject[] = [
       screenId: 'ADM-IS-04',
       title: 'Ingreso de stock',
       subtitle: 'Registrar un ingreso o una devolución',
+    },
+  },
+  {
+    path: 'insumos/retiro',
+    ...lazyPage(() => import('@/pages/admin/StockWithdrawalPage')),
+    handle: {
+      screenId: 'ADM-IS-05',
+      title: 'Retiro en nombre de',
+      subtitle: 'Registrar un retiro de insumos a nombre de otra persona',
+    },
+  },
+  {
+    path: 'insumos/control',
+    ...lazyPage(() => import('@/pages/admin/StockCountPage')),
+    handle: {
+      screenId: 'ADM-IS-06',
+      title: 'Cargar control',
+      subtitle: 'Pasar al sistema lo contado en la planilla',
     },
   },
   {

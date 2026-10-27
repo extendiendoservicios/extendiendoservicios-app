@@ -2,18 +2,11 @@ import { Tag } from 'lucide-react'
 import { DataTable, type DataTableColumnDef } from '@/components/DataTable'
 import type { SupplyPriceChange } from '@/api/stock'
 import { useSupplyPriceChangesQuery } from '@/features/stock/queries'
-import { formatDateTime, priceSourceLabel } from '@/features/stock/labels'
-import { formatMoney } from '@/features/stock/money'
-
-/** «de $ 800,00 a $ 950,00»; en el alta (sin valor anterior), solo el valor inicial. */
-function describePriceChange(
-  oldValue: number | null,
-  newValue: number,
-): string {
-  return oldValue == null
-    ? formatMoney(newValue)
-    : `de ${formatMoney(oldValue)} a ${formatMoney(newValue)}`
-}
+import {
+  describePriceChange,
+  formatDateTime,
+  priceSourceLabel,
+} from '@/features/stock/labels'
 
 const columns: DataTableColumnDef<SupplyPriceChange>[] = [
   {
