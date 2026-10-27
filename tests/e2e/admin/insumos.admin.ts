@@ -1221,6 +1221,371 @@ test.describe('administración con «Gestionar stock»', () => {
   )
 
   test(
+    'categorías: alta, orden y baja; no se desactiva una con artículos activos (IS-03)',
+    cubre('IS-03', 'IS-26'),
+    async ({ page }) => {
+      try {
+        const nombre = `${ins.prefijo}cat-ui-${Date.now().toString(36)}`
+        await page.goto('/admin/insumos?pestana=categorias')
+        await page.getByRole('button', { name: 'Nueva categoría' }).click()
+        await page.getByLabel('Nombre').fill(nombre)
+        await page.getByRole('button', { name: 'Guardar' }).click()
+        await expect(page.getByText(nombre).first()).toBeVisible()
+        const { data: creada } = await getAdminDb()
+          .from('supply_categories')
+          .select('id, sort_order, active')
+          .eq('name', nombre)
+          .single()
+        expect(creada?.active).toBe(true)
+
+        await test.step('el orden se mueve con «Subir» y «Bajar»', async () => {
+          await page
+            .getByRole('button', { name: `Subir la categoría ${nombre}` })
+            .click()
+          await expect
+            .poll(async () => {
+              const { data } = await getAdminDb()
+                .from('supply_categories')
+                .select('sort_order')
+                .eq('id', creada?.id ?? '')
+                .single()
+              return data?.sort_order
+            })
+            .not.toBe(creada?.sort_order)
+        })
+
+        const articulo = await ins.insumo({
+          slug: 'en-categoria',
+          categoryId: creada?.id,
+        })
+
+        await test.step('con un artículo activo, la baja se rechaza con el mensaje del servidor', async () => {
+          await page
+            .getByRole('button', { name: `Desactivar la categoría ${nombre}` })
+            .click()
+          await expect(
+            page.getByText(
+              'La categoría tiene artículos activos. Pasalos a otra categoría o desactivalos antes.',
+            ),
+          ).toBeVisible()
+          const { data } = await getAdminDb()
+            .from('supply_categories')
+            .select('active')
+            .eq('id', creada?.id ?? '')
+            .single()
+          expect(data?.active).toBe(true)
+        })
+
+        await test.step('desactivado el artículo, la categoría se puede dar de baja', async () => {
+          const dueno = await sessionClient('owner')
+          const baja = await dueno.rpc('set_supply_active', {
+            p_supply_id: articulo.id,
+            p_active: false,
+          })
+          expect(baja.error?.message).toBeUndefined()
+          await page.reload()
+          await page
+            .getByRole('button', { name: `Desactivar la categoría ${nombre}` })
+            .click()
+          await expect(
+            page.getByRole('button', {
+              name: `Activar la categoría ${nombre}`,
+            }),
+          ).toBeVisible()
+        })
+      } finally {
+        await limpiar(null)
+      }
+    },
+  )
+
+  test(
+    'ficha del artículo: cambiar precios deja el historial sin recalcular lo ya movido; desactivar exige stock en cero y el artículo sale del catálogo del celular; reactivarlo lo devuelve (IS-22, IS-26)',
+    cubre('IS-06', 'IS-22', 'IS-26'),
+    async ({ page }) => {
+      try {
+        const articulo = await ins.insumo({
+          slug: 'ficha',
+          stock: 5,
+          cost: 10,
+          sale: 15,
+        })
+        const empleado = await sessionClient('empleado1')
+        const enCatalogo = async () => {
+          const { data } = await empleado
+            .from('v_supply_catalog')
+            .select('id')
+            .eq('id', articulo.id)
+          return (data ?? []).length
+        }
+        expect(await enCatalogo()).toBe(1)
+
+        await page.goto(`/admin/insumos/${articulo.id}`)
+        await page.getByRole('button', { name: 'Cambiar precios' }).click()
+        const precios = page.getByRole('dialog', { name: 'Cambiar precios' })
+        await precios.getByLabel('Precio de costo ($)').fill('20')
+        await precios.getByLabel('Precio de venta ($)').fill('30')
+        await precios.getByRole('button', { name: 'Guardar precios' }).click()
+        await expect(precios).toHaveCount(0)
+        await expect(page.getByText('$ 20,00').first()).toBeVisible()
+
+        await test.step('lo ya movido conserva el precio de su momento; el cambio queda en el historial', async () => {
+          const db = getAdminDb()
+          const { data: lineas } = await db
+            .from('stock_movement_lines')
+            .select('unit_cost, unit_sale')
+            .eq('supply_id', articulo.id)
+          expect(lineas).toEqual([{ unit_cost: 10, unit_sale: 15 }])
+          const { data: cambios } = await db
+            .from('supply_price_changes')
+            .select('source, old_cost_price, new_cost_price, changed_by')
+            .eq('supply_id', articulo.id)
+            .order('changed_at')
+          expect(cambios?.map((c) => c.source)).toEqual(['create', 'manual'])
+          expect(cambios?.[1]).toMatchObject({
+            old_cost_price: 10,
+            new_cost_price: 20,
+            changed_by: readId('admin'),
+          })
+        })
+
+        await test.step('con stock no se desactiva: el diálogo manda a ajustar primero', async () => {
+          await page.getByRole('button', { name: 'Desactivar' }).click()
+          await expect(
+            page.getByRole('dialog', {
+              name: 'Primero ajustá el stock a cero',
+            }),
+          ).toBeVisible()
+          await page
+            .getByRole('dialog')
+            .getByRole('button', { name: 'Cancelar' })
+            .click()
+          expect(await enCatalogo()).toBe(1)
+        })
+
+        await test.step('con el stock en cero se desactiva y sale del catálogo del celular y del ingreso', async () => {
+          const dueno = await sessionClient('owner')
+          const ajuste = await dueno.rpc('adjust_stock', {
+            p_supply_id: articulo.id,
+            p_delta: -5,
+            p_reason: 'expired',
+          })
+          expect(ajuste.error?.message).toBeUndefined()
+          await page.reload()
+          await page.getByRole('button', { name: 'Desactivar' }).click()
+          await page
+            .getByRole('dialog', { name: 'Desactivar el artículo' })
+            .getByRole('button', { name: 'Desactivar' })
+            .click()
+          await expect(page.getByText('Inactivo').first()).toBeVisible()
+          await expect.poll(enCatalogo).toBe(0)
+          await page.goto('/admin/insumos/ingreso')
+          await page
+            .getByRole('combobox', { name: 'Agregar un artículo' })
+            .click()
+          await page.locator('[cmdk-input]').fill(articulo.code)
+          await expect(page.getByRole('option')).toHaveCount(0)
+        })
+
+        await test.step('reactivarlo lo devuelve al catálogo', async () => {
+          await page.goto(`/admin/insumos/${articulo.id}`)
+          await page.getByRole('button', { name: 'Activar' }).click()
+          await expect.poll(enCatalogo).toBe(1)
+        })
+      } finally {
+        await limpiar(null)
+      }
+    },
+  )
+
+  test(
+    'Movimientos: filtro por tipo y «Exportar a Excel» baja un archivo con las líneas filtradas (IS-18, IS-24)',
+    cubre('IS-18', 'IS-24'),
+    async ({ page }) => {
+      const sc = new Scenario()
+      try {
+        const articulo = await ins.insumo({
+          slug: 'excel',
+          stock: 9,
+          cost: 12,
+          sale: 18,
+        })
+        const cliente = await sc.client('excel')
+        const sede = await sc.site(cliente.id, 'excel')
+        const dueno = await sessionClient('owner')
+        const r = await dueno.rpc('register_withdrawal', {
+          p_lines: [{ supply_id: articulo.id, qty: 2 }],
+          p_site_id: sede.id,
+          p_person_id: readId('empleado1'),
+          p_note: ins.texto('para el excel'),
+        })
+        expect(r.error?.message).toBeUndefined()
+
+        await page.goto('/admin/insumos?pestana=movimientos')
+        await elegirDeLista(
+          page,
+          'Filtrar por artículo',
+          articulo.code,
+          new RegExp(articulo.code),
+        )
+        await expect(page.getByTestId('movement-card')).toHaveCount(2)
+        await elegirSelect(page, 'Filtrar por tipo', 'Retiro')
+        await expect(page.getByTestId('movement-card')).toHaveCount(1)
+        await expect(page.getByTestId('movement-card')).toContainText(sede.name)
+
+        const descarga = page.waitForEvent('download')
+        await page.getByRole('button', { name: 'Exportar a Excel' }).click()
+        const archivo = await descarga
+        expect(archivo.suggestedFilename()).toMatch(/\.xlsx$/)
+        const ruta = await archivo.path()
+        const ExcelJS = (await import('exceljs')).default
+        const libro = new ExcelJS.Workbook()
+        await libro.xlsx.readFile(ruta)
+        const hoja = libro.getWorksheet('Movimientos')
+        expect(hoja, 'falta la hoja «Movimientos»').toBeTruthy()
+        const filas: string[][] = []
+        hoja?.eachRow((fila) => {
+          filas.push(
+            (fila.values as unknown[])
+              .slice(1)
+              .map((v) =>
+                v == null
+                  ? ''
+                  : typeof v === 'object'
+                    ? JSON.stringify(v)
+                    : String(v as string | number | boolean),
+              ),
+          )
+        })
+        const delArticulo = filas.filter((f) =>
+          f.join('|').includes(articulo.code),
+        )
+        expect(
+          delArticulo,
+          'solo la línea del retiro (el filtro de tipo manda)',
+        ).toHaveLength(1)
+        expect(delArticulo[0].join('|')).toContain(sede.name)
+        expect(filas[0].length, 'encabezados').toBeGreaterThan(5)
+      } finally {
+        await limpiar(sc)
+      }
+    },
+  )
+
+  test(
+    'pestaña «Retiros» de la ficha del empleado y del coordinador: lista sus retiros, con lo anulado marcado (IS-18)',
+    cubre('IS-18', 'IS-13'),
+    async ({ page }) => {
+      const sc = new Scenario()
+      try {
+        const articulo = await ins.insumo({ slug: 'pestana', stock: 9 })
+        const cliente = await sc.client('pestana')
+        const sede = await sc.site(cliente.id, 'pestana')
+        const dueno = await sessionClient('owner')
+        const retirar = async (
+          quien: 'empleado1' | 'supervisor1',
+          qty: number,
+        ) => {
+          const r = await dueno.rpc('register_withdrawal', {
+            p_lines: [{ supply_id: articulo.id, qty }],
+            p_site_id: sede.id,
+            p_person_id: readId(quien),
+            p_note: ins.texto(`retiro-${quien}`),
+          })
+          expect(r.error?.message).toBeUndefined()
+          return (r.data as unknown as { movement: { id: string } }).movement.id
+        }
+        const delEmpleado = await retirar('empleado1', 2)
+        await retirar('supervisor1', 3)
+        const anulado = await dueno.rpc('void_stock_movement', {
+          p_movement_id: delEmpleado,
+          p_reason: ins.texto('error'),
+        })
+        expect(anulado.error?.message).toBeUndefined()
+
+        await page.goto(
+          `/admin/empleados/${readId('empleado1')}?pestana=retiros`,
+        )
+        const retiroEmpleado = page
+          .getByTestId('person-withdrawal')
+          .filter({ hasText: articulo.name })
+        await expect(retiroEmpleado).toHaveCount(1)
+        await expect(retiroEmpleado).toContainText('Anulado')
+        await page.goto(
+          `/admin/empleados/${readId('supervisor1')}?pestana=retiros`,
+        )
+        const retiroCoordinador = page
+          .getByTestId('person-withdrawal')
+          .filter({ hasText: articulo.name })
+        await expect(retiroCoordinador).toHaveCount(1)
+        await expect(retiroCoordinador).not.toContainText('Anulado')
+        await expect(retiroCoordinador).toContainText('3')
+      } finally {
+        await limpiar(sc)
+      }
+    },
+  )
+
+  test(
+    'retiro en nombre de un coordinador: los turnos que supervisa salen primero y marcados (IS-35)',
+    cubre('IS-11', 'IS-35'),
+    async ({ page }) => {
+      const sc = new Scenario()
+      try {
+        const articulo = await ins.insumo({ slug: 'coordinador', stock: 3 })
+        const suyo = await sc.client('coord-suyo')
+        const sedeSuya = await sc.site(suyo.id, 'suya')
+        const turnoSuyo = await sc.shift(
+          suyo.id,
+          sedeSuya.id,
+          daysFromToday(3),
+          FRANJAS_MOVIL.diaCompleto,
+        )
+        await sc.supervisionDirecta(turnoSuyo, 'supervisor1', {
+          estado: 'en_curso',
+        })
+        const otro = await sc.client('coord-otro')
+        const sedeOtra = await sc.site(otro.id, 'otra')
+        await sc.shift(
+          otro.id,
+          sedeOtra.id,
+          daysFromToday(1),
+          FRANJAS_MOVIL.diaCompleto,
+        )
+
+        await page.goto('/admin/insumos/retiro')
+        await elegirDeLista(
+          page,
+          'Quién retira',
+          nombreDe('supervisor1'),
+          new RegExp(`${nombreDe('supervisor1')} · Coordinador`),
+        )
+        await page.getByRole('combobox', { name: 'Turno' }).click()
+        const primera = page.getByRole('option').first()
+        await expect(primera).toContainText(suyo.name)
+        await expect(primera).toContainText('es su turno')
+        await page.locator('[cmdk-input]').fill(suyo.name)
+        await page.getByRole('option', { name: /es su turno/ }).click()
+        await page
+          .getByRole('combobox', { name: 'Agregar un artículo' })
+          .click()
+        await page.locator('[cmdk-input]').fill(articulo.code)
+        await page
+          .getByRole('option', { name: new RegExp(articulo.code) })
+          .click()
+        await page.getByLabel('Cantidad').fill('1')
+        await page.getByRole('button', { name: 'Registrar retiro' }).click()
+        await expect(page.getByTestId('withdrawal-summary')).toContainText(
+          nombreDe('supervisor1'),
+        )
+        expect(await ins.stock(articulo.id)).toBe(2)
+      } finally {
+        await limpiar(sc)
+      }
+    },
+  )
+
+  test(
     'accesibilidad (axe) de las pantallas de administración de Insumos, en escritorio y en celular (RB-X01)',
     cubre('RB-X01', 'IS-33'),
     async ({ page }, testInfo) => {

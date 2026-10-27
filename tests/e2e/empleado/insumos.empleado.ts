@@ -13,6 +13,8 @@ import { readId, storageStatePath } from '../../fixtures/sessions.ts'
 import { InsumosE2e } from '../../fixtures/stock.ts'
 import { cubre } from '../../fixtures/trace.ts'
 import { expectNoHorizontalScroll } from '../../fixtures/ui.ts'
+import { jpegDecodificable } from '../../fixtures/media.ts'
+import { randomUUID } from 'node:crypto'
 
 // P25.5c (módulo E, Insumos y control de stock): el empleado en el celular (390 px). Retiro por
 // turno, por sede con observación obligatoria, stock insuficiente sin cifras, artículos «Sin stock»
@@ -681,6 +683,49 @@ test.describe('Insumos del empleado en el celular', () => {
         await auditar('INS-03 Avisar faltante', '/app/insumos/faltante')
       } finally {
         await limpiar(sc)
+      }
+    },
+  )
+
+  test(
+    'el catálogo muestra la imagen del artículo (URL firmada por el celular) y el que no tiene imagen no lleva ninguna (IS-04, IS-20, IS-32)',
+    cubre('IS-04', 'IS-20', 'IS-32'),
+    async ({ page }) => {
+      try {
+        const conImagen = await ins.insumo({ slug: 'con-foto', stock: 2 })
+        const sinImagen = await ins.insumo({ slug: 'sin-foto', stock: 2 })
+        await page.goto('/app/insumos')
+        const bytes = await jpegDecodificable(page, { ancho: 300, alto: 200 })
+        const ruta = `${conImagen.id}/${randomUUID()}.jpg`
+        const subida = await getAdminDb()
+          .storage.from('supply-images')
+          .upload(ruta, bytes, { contentType: 'image/jpeg' })
+        expect(subida.error?.message).toBeUndefined()
+        const dueno = await sessionClient('owner')
+        const guardado = await dueno.rpc('upsert_supply', {
+          p_id: conImagen.id,
+          p_code: conImagen.code,
+          p_name: conImagen.name,
+          p_category_id: conImagen.categoryId,
+          p_image_path: ruta,
+        })
+        expect(guardado.error?.message).toBeUndefined()
+
+        await page.goto('/app/insumos')
+        await page.getByLabel('Buscar insumos').fill(ins.prefijo)
+        const fila = page.locator('li').filter({ hasText: conImagen.name })
+        const foto = fila.locator('img')
+        await expect(foto).toBeVisible()
+        await expect
+          .poll(() =>
+            foto.evaluate((el) => (el as HTMLImageElement).naturalWidth),
+          )
+          .toBeGreaterThan(0)
+        await expect(
+          page.locator('li').filter({ hasText: sinImagen.name }).locator('img'),
+        ).toHaveCount(0)
+      } finally {
+        await limpiar(null)
       }
     },
   )
