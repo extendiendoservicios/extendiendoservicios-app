@@ -311,7 +311,9 @@ export default function WithdrawPage() {
                   </p>
                   <div className="flex items-center justify-between gap-2">
                     <Stepper
-                      aria-label={`Cantidad de ${item?.name ?? 'artículo'}`}
+                      aria-label={`Cantidad de ${item ? supplyLabel(item) : 'artículo'}`}
+                      decrementLabel={`Restar una unidad de ${item ? supplyLabel(item) : 'artículo'}`}
+                      incrementLabel={`Sumar una unidad de ${item ? supplyLabel(item) : 'artículo'}`}
                       value={line.qty}
                       onValueChange={(qty) =>
                         setCart((current) =>
@@ -324,6 +326,7 @@ export default function WithdrawPage() {
                     <Button
                       size="md"
                       variant="ghost"
+                      aria-label={`Quitar ${item ? supplyLabel(item) : 'artículo'}`}
                       onClick={() =>
                         setCart((current) => cartRemove(current, line.supplyId))
                       }
@@ -447,7 +450,7 @@ function AddControl({
       <Button
         size="md"
         variant="ghost"
-        aria-label={`Agregar ${item.name}`}
+        aria-label={`Agregar ${supplyLabel(item)}`}
         onClick={onAdd}
       >
         Agregar
@@ -456,7 +459,9 @@ function AddControl({
   }
   return (
     <Stepper
-      aria-label={`Cantidad de ${item.name}`}
+      aria-label={`Cantidad de ${supplyLabel(item)}`}
+      decrementLabel={`Restar una unidad de ${supplyLabel(item)}`}
+      incrementLabel={`Sumar una unidad de ${supplyLabel(item)}`}
       value={qty}
       onValueChange={onChange}
       min={0}

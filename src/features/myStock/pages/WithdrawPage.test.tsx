@@ -32,6 +32,12 @@ const CATALOG = [
     categorySortOrder: 2,
     outOfStock: true,
   }),
+  makeSupply({
+    id: 's3',
+    code: 'QUI-002',
+    name: 'Lavandina',
+    presentation: '5 L',
+  }),
 ]
 
 const RESULT = {
@@ -89,6 +95,32 @@ function goToArticles() {
 afterEach(() => vi.restoreAllMocks())
 
 describe('WithdrawPage', () => {
+  it('los controles por artículo distinguen la presentación en su nombre accesible', () => {
+    setup()
+    goToArticles()
+    expect(
+      screen.getByRole('button', { name: 'Agregar Lavandina · 1 L' }),
+    ).toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Agregar Lavandina · 5 L' }),
+    )
+    expect(
+      screen.getByRole('button', {
+        name: 'Restar una unidad de Lavandina · 5 L',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'Sumar una unidad de Lavandina · 5 L',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: /Restar una unidad de Lavandina · 1 L/,
+      }),
+    ).not.toBeInTheDocument()
+  })
+
   it('con turno: lo elige, agrega artículos, revisa y confirma; muestra la hora del servidor', async () => {
     const register = setup()
 
@@ -101,8 +133,14 @@ describe('WithdrawPage', () => {
       screen.getByRole('button', { name: 'Elegí al menos un artículo' }),
     ).toBeDisabled()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Agregar Lavandina' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Sumar' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Agregar Lavandina · 1 L' }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Sumar una unidad de Lavandina · 1 L',
+      }),
+    )
     fireEvent.click(
       screen.getByRole('button', { name: 'Revisar retiro (2 u.)' }),
     )
@@ -173,7 +211,9 @@ describe('WithdrawPage', () => {
       target: { value: 'Reposición de la semana' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'Continuar' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Agregar Lavandina' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Agregar Lavandina · 1 L' }),
+    )
     fireEvent.click(
       screen.getByRole('button', { name: 'Revisar retiro (1 u.)' }),
     )
@@ -193,7 +233,7 @@ describe('WithdrawPage', () => {
   it('con ?turno= entra con el turno ya elegido, directo a los artículos', () => {
     setup({ entry: '/app/insumos/retirar?turno=sh1' })
 
-    expect(screen.getByText('Lavandina')).toBeInTheDocument()
+    expect(screen.getAllByText('Lavandina').length).toBeGreaterThan(0)
     expect(
       screen.getByText(/Turno: Limpiadora SRL · Sede Centro/),
     ).toBeInTheDocument()
@@ -245,11 +285,15 @@ describe('WithdrawPage', () => {
   it('en la revisión, la cantidad se ajusta y un artículo se puede quitar', () => {
     setup({ entry: '/app/insumos/retirar?turno=sh1' })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Agregar Lavandina' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Agregar Lavandina · 1 L' }),
+    )
     fireEvent.click(
       screen.getByRole('button', { name: 'Revisar retiro (1 u.)' }),
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Quitar' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Quitar Lavandina · 1 L' }),
+    )
 
     expect(
       screen.getByRole('button', { name: 'Confirmar retiro' }),
@@ -262,7 +306,9 @@ describe('WithdrawPage', () => {
     expect(
       screen.getByText(/Estás sin conexión: no podés registrar el retiro/),
     ).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Agregar Lavandina' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Agregar Lavandina · 1 L' }),
+    )
     fireEvent.click(
       screen.getByRole('button', { name: 'Revisar retiro (1 u.)' }),
     )
@@ -282,7 +328,9 @@ describe('WithdrawPage', () => {
       )
     setup({ entry: '/app/insumos/retirar?turno=sh1', register })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Agregar Lavandina' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Agregar Lavandina · 1 L' }),
+    )
     fireEvent.click(
       screen.getByRole('button', { name: 'Revisar retiro (1 u.)' }),
     )
