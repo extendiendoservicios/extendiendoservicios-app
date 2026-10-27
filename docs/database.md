@@ -2636,6 +2636,27 @@ E = empleado, C = coordinador (rol `supervisor`), A = administrador, O = dueño.
   coordinador y administración, todas las activas, con `is_priority` primero. Columnas: `site_id`, `site_name`,
   `client_id`, `client_name`, `priority_kind`, `is_priority`.
 
+### Retiro en nombre de otra persona (migración `0072`, IS-35)
+
+Hay dueños y administradores que también trabajan turnos como empleados o coordinadores. Para ellos
+`v_withdrawal_shift_options` y `v_withdrawal_site_options` devuelven las opciones de su rol operativo, así que la carga
+**en nombre de otra persona** usa vistas propias de administración. El contrato del celular no cambia.
+
+- **`v_withdrawal_shift_options_admin`**: todos los turnos de -30 a +7 días (sin cancelados ni dados de baja), sin
+  importar los roles operativos de quien consulta. Solo con `manage_stock` (el dueño siempre); sin la capacidad devuelve
+  cero filas. Columnas: `shift_id`, `shift_date`, `start_time`, `end_time`, `starts_at`, `open_ended`, `shift_status`,
+  `client_id`, `client_name`, `site_id`, `site_name`, `assigned_employee_ids uuid[]`, `supervisor_ids uuid[]` (para
+  resaltar los turnos de la persona elegida). Orden: fecha, hora, cliente, sede.
+- **`v_withdrawal_site_options_admin`**: todas las sedes activas de clientes activos. Mismo requisito. Columnas:
+  `site_id`, `site_name`, `client_id`, `client_name`.
+- **`register_withdrawal`** (misma firma): con `p_person_id` de otra persona exige `manage_stock` y valida el turno
+  contra `v_withdrawal_shift_options_admin` (`SHIFT_NOT_ALLOWED` fuera de -30 a +7 días) y la sede contra
+  `v_withdrawal_site_options_admin` (`SITE_NOT_ALLOWED`). El turno **no** tiene que ser de la persona elegida (como antes).
+  Sin `p_person_id`, o con el propio, rigen las reglas del rol de quien retira (IS-28), también para dueños y
+  administradores con rol operativo.
+- Internas: `app.withdrawal_shift_options_admin()`, `app.withdrawal_site_options_admin()`; `app.resolve_stock_place`
+  con `p_restricted = false` usa estas opciones.
+
 ### Storage: bucket `supply-images` (migración `0071`, IS-32)
 
 Privado, 2 MB, `image/webp` e `image/jpeg`. Ruta `{supply_id}/{uuid}.webp`. Lectura: cualquier usuario autenticado y
