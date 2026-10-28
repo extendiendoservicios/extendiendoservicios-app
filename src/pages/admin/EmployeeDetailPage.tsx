@@ -10,6 +10,8 @@ import { EmptyState } from '@/components/EmptyState'
 import { StatusBadge } from '@/components/status'
 import { avatarUrl } from '@/lib/avatarUrl'
 import { formatCalendarDate } from '@/lib/format'
+import { AccessBlock } from '@/features/users/components/AccessBlock'
+import { canViewCredentials } from '@/features/users/permissions'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { BankDetailsCard } from '@/features/bank/components/BankDetailsCard'
 import { useEmployeeBankDetailsQuery } from '@/features/bank/queries'
@@ -238,7 +240,10 @@ export default function EmployeeDetailPage() {
           )}
         </TabsList>
 
-        <TabsContent value="datos" className="pt-3">
+        <TabsContent value="datos" className="flex flex-col gap-4 pt-3">
+          {canViewCredentials(actor, employee.roles) && (
+            <AccessBlock key={employee.profileId} person={employee} />
+          )}
           <EmployeeDataTab
             employee={employee}
             canEditRoles={canManageAccount}

@@ -32,7 +32,13 @@ import {
  * contraseña" de `features/users/schemas.ts` (misma regla del servidor: al
  * menos 8 caracteres) en vez de declarar uno igual acá.
  */
-function fullNameOf(employee: EmployeeDetail): string {
+/** Lo mínimo que necesita el diálogo de reseteo: sirve también para ADM-27 (P26.2). */
+type AccountTarget = Pick<
+  EmployeeDetail,
+  'profileId' | 'firstName' | 'lastName'
+>
+
+function fullNameOf(employee: AccountTarget): string {
   return `${employee.firstName} ${employee.lastName}`
 }
 
@@ -45,10 +51,13 @@ function ResetEmployeePasswordDialog({
   employee,
   open,
   onOpenChange,
+  onReset,
 }: {
-  employee: EmployeeDetail
+  employee: AccountTarget
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** P26.2: avisa que la contraseña cambió, para que el bloque "Acceso a la app" borre lo que tenía. */
+  onReset?: () => void
 }) {
   const resetPassword = useResetEmployeePasswordMutation()
   const {
@@ -74,6 +83,7 @@ function ResetEmployeePasswordDialog({
       toast.success(
         `Restablecimos la contraseña de ${fullNameOf(employee)} y cerramos sus sesiones.`,
       )
+      onReset?.()
       handleOpenChange(false)
     } catch (error) {
       toast.error(apiErrorMessage(error, 'No pudimos resetear la contraseña.'))

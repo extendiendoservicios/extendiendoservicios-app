@@ -72,6 +72,20 @@ export function canActOnUser(
   return !isPrivilegedRoleSet(targetRoles)
 }
 
+/**
+ * P26.2 (CR-02, CR-07, CR-08): quién ve el acceso (usuario y contraseña) de
+ * `targetRoles`. Es la misma regla que `canActOnUser`: el dueño ve a todos,
+ * incluido a sí mismo; el administrador con `manage_users` ve solo a quien no
+ * tiene rol `owner` ni `admin` (tampoco a sí mismo); sin `manage_users`, a
+ * nadie.
+ */
+export function canViewCredentials(
+  actor: UsersScreenActor,
+  targetRoles: Role[],
+): boolean {
+  return canActOnUser(actor, targetRoles)
+}
+
 /** Solo el dueño reactiva (`06` sección 2.1). */
 export function canReactivateUser(actor: UsersScreenActor): boolean {
   return isOwner(actor)
@@ -99,6 +113,7 @@ export function canEditPersonName(actor: UsersScreenActor): boolean {
 export type UserActionKind =
   | 'edit-roles'
   | 'edit-name'
+  | 'view-access'
   | 'reset-password'
   | 'update-email'
   | 'sign-out'
@@ -126,6 +141,9 @@ export function getVisibleUserActions(
     actions.push('edit-name')
   }
   if (!isDeactivated && canActOnUser(actor, user.roles)) {
+    if (canViewCredentials(actor, user.roles)) {
+      actions.push('view-access')
+    }
     actions.push('reset-password', 'update-email', 'sign-out', 'deactivate')
   }
   if (isDeactivated && canReactivateUser(actor)) {

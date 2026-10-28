@@ -225,3 +225,24 @@ de fechas.
 `AdminShell.tsx` (sidebar) ya usa `useBranding`/`brandingLogoUrl` para
 mostrar el logo propio de la empresa cuando existe. `LoginPage.tsx` ya lo
 hacía desde P06.3, no necesitó cambios en este paquete.
+
+## Acceso a la app: usuario y contraseña visibles (P26.2)
+
+Bloque «Acceso a la app» (`src/features/users/components/AccessBlock.tsx`), reutilizado en dos lugares:
+
+- **ADM-17 (ficha del empleado)**: arriba de «Datos personales», en la pestaña «Datos».
+- **ADM-27 (Usuarios)**: opción «Ver acceso» del menú «…» de cada fila; abre el mismo bloque en un panel lateral.
+
+**Quién lo ve** (`canViewCredentials` en `src/features/users/permissions.ts`, misma regla que `canActOnUser`): el dueño ve a todos, incluido a sí mismo y a otros dueños; el administrador con `manage_users` ve a empleados y supervisores, pero no a dueños, a otros administradores ni a sí mismo; sin `manage_users` no hay bloque. El servidor vuelve a verificar (`get_credentials`).
+
+**Cómo funciona**
+
+- El bloque nace tapado (`••••••••`) y **no pide nada al abrir la ficha**: `get_credentials` devuelve usuario, contraseña y estado juntos y deja un evento `credentials_viewed` en Eventos de seguridad cada vez que se llama.
+- «Mostrar» pide el acceso, deja la contraseña visible 30 segundos (fuente monoespaciada) y la vuelve a tapar. También se tapa al cerrar el bloque o cambiar de persona. «Ocultar» la tapa antes.
+- «Copiar» (contraseña) la pide y la copia sin mostrarla; «Copiar» (usuario) copia el email. El aviso «… copiado.» va en una región `aria-live`.
+- Debajo se muestra el origen y la fecha (hora de Argentina): Alta, Puesta por la administración, Cambiada por la persona, Recuperada por email, Entrega inicial.
+- `status = none` o `unreadable`: «No disponible…» y el botón «Poner una nueva», que abre el diálogo de reseteo existente.
+- «Cambiar» (contraseña) usa el diálogo de reseteo; «Cambiar» (usuario) usa `update_email`. Al terminar, el bloque se tapa y borra lo que tenía: para ver el valor nuevo hay que pedir «Mostrar» otra vez.
+- `CREDENTIALS_NOT_CONFIGURED` y los demás errores se muestran inline con el mensaje del servidor, sin afectar al resto de la ficha.
+
+**Datos**: `src/api/credentials.ts` (`getCredentials`) sobre la acción `get_credentials` de `admin-users`. El hook es una mutación (`useGetCredentialsMutation`, `gcTime: 0`) y no una consulta: cada pedido deja un evento y trae la contraseña, así que no debe repetirse sola (foco, reconexión) ni quedar en el caché. La contraseña vive solo en el estado del componente.

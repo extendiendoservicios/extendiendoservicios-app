@@ -6,6 +6,7 @@ import {
   canEditRolesAndCapabilities,
   canManageUsers,
   canReactivateUser,
+  canViewCredentials,
   getVisibleUserActions,
   isOwner,
   type UsersScreenActor,
@@ -110,6 +111,7 @@ describe('getVisibleUserActions', () => {
     expect(getVisibleUserActions(owner, activeEmployee)).toEqual([
       'edit-roles',
       'edit-name',
+      'view-access',
       'reset-password',
       'update-email',
       'sign-out',
@@ -119,7 +121,13 @@ describe('getVisibleUserActions', () => {
 
   it('un administrador con manage_users ve las cuatro acciones de cuenta, sin "edit-roles" (USERS-010)', () => {
     expect(getVisibleUserActions(adminWithManageUsers, activeEmployee)).toEqual(
-      ['reset-password', 'update-email', 'sign-out', 'deactivate'],
+      [
+        'view-access',
+        'reset-password',
+        'update-email',
+        'sign-out',
+        'deactivate',
+      ],
     )
   })
 
@@ -155,5 +163,63 @@ describe('canEditPersonName (AJ-01)', () => {
   it('solo el dueño edita nombres desde ADM-27', () => {
     expect(canEditPersonName(owner)).toBe(true)
     expect(canEditPersonName(adminWithManageUsers)).toBe(false)
+  })
+})
+
+describe('canViewCredentials (CR-02, CR-07, CR-08)', () => {
+  it('el dueño ve a todos, incluidos otro dueño, un admin y a sí mismo', () => {
+    expect(canViewCredentials(owner, ['employee'])).toBe(true)
+    expect(canViewCredentials(owner, ['supervisor'])).toBe(true)
+    expect(canViewCredentials(owner, ['admin'])).toBe(true)
+    expect(canViewCredentials(owner, ['owner'])).toBe(true)
+  })
+
+  it('un administrador con manage_users ve a empleados y supervisores', () => {
+    expect(canViewCredentials(adminWithManageUsers, ['employee'])).toBe(true)
+    expect(canViewCredentials(adminWithManageUsers, ['supervisor'])).toBe(true)
+    expect(
+      canViewCredentials(adminWithManageUsers, ['employee', 'supervisor']),
+    ).toBe(true)
+  })
+
+  it('un administrador no ve a un dueño, a otro admin, ni a quien es empleado y admin', () => {
+    expect(canViewCredentials(adminWithManageUsers, ['owner'])).toBe(false)
+    expect(canViewCredentials(adminWithManageUsers, ['admin'])).toBe(false)
+    expect(
+      canViewCredentials(adminWithManageUsers, ['employee', 'admin']),
+    ).toBe(false)
+    expect(
+      canViewCredentials(adminWithManageUsers, ['employee', 'owner']),
+    ).toBe(false)
+  })
+
+  it('un administrador no se ve a sí mismo (su propio rol incluye admin)', () => {
+    expect(canViewCredentials(adminWithManageUsers, ['admin'])).toBe(false)
+  })
+
+  it('un administrador sin manage_users no ve a nadie', () => {
+    expect(canViewCredentials(adminWithoutManageUsers, ['employee'])).toBe(
+      false,
+    )
+  })
+
+  it('un empleado o supervisor no ve a nadie', () => {
+    const employee: UsersScreenActor = { roles: ['employee'], capabilities: [] }
+    expect(canViewCredentials(employee, ['employee'])).toBe(false)
+  })
+
+  it('"Ver acceso" no aparece en una cuenta desactivada ni para el admin sobre otro admin', () => {
+    expect(
+      getVisibleUserActions(owner, {
+        roles: ['employee'],
+        deletedAt: '2026-09-01T00:00:00Z',
+      }),
+    ).not.toContain('view-access')
+    expect(
+      getVisibleUserActions(adminWithManageUsers, {
+        roles: ['admin'],
+        deletedAt: null,
+      }),
+    ).not.toContain('view-access')
   })
 })

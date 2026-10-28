@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as usersApi from '@/api/users'
+import { getCredentials } from '@/api/credentials'
 import type { AdminCapability, Role } from '@/api/users'
 
 /**
@@ -195,5 +196,21 @@ export function useUpdatePersonNameMutation() {
     onSuccess: () => {
       void queryClient.invalidateQueries()
     },
+  })
+}
+
+/**
+ * P26.2 (CR-10): pide el acceso de una persona (`get_credentials`). Es una
+ * mutación y no una consulta a propósito: cada pedido deja un evento
+ * `credentials_viewed` y trae la contraseña, así que no tiene que
+ * repetirse sola (al volver a la pestaña, al reconectar) ni quedar en el
+ * caché de consultas. Sin `gcTime` propio: el resultado vive solo en el
+ * estado del bloque `AccessBlock`, que lo borra a los 30 segundos, al
+ * desmontarse o al cambiar de persona.
+ */
+export function useGetCredentialsMutation() {
+  return useMutation({
+    mutationFn: (profileId: string) => getCredentials(profileId),
+    gcTime: 0,
   })
 }
