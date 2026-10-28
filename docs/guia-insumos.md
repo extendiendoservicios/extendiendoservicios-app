@@ -215,7 +215,7 @@ Un artículo desactivado con stock cero **no** cuenta como «Sin stock» ni como
 1. En **Stock**, tocá **Retiro en nombre de**.
 2. En **Quién retira**, elegí a la persona (empleados y coordinadores activos).
 3. En **Para qué retira** elegí:
-   - **Un turno:** y elegí el **Turno**. Ves los turnos de **30 días atrás a 7 días adelante**, de **todos** los clientes (sin los cancelados), porque la carga suele hacerse después del hecho.
+   - **Un turno:** y elegí el **Turno**. Ves los turnos de **30 días atrás a 7 días adelante**, de **todos** los clientes, porque la carga suele hacerse después del hecho. Los turnos de la persona que elegiste (los que tiene asignados o, si es coordinador, los que coordina) salen **primero** y llevan al final «· es su turno»; el resto sigue disponible por si el retiro fue en otro turno. Un turno **cancelado** no se puede usar: la lista no lo ofrece y, si alguno apareciera marcado «cancelado», el sistema lo rechaza con «Ese turno está cancelado. Elegí otro.».
    - **Una sede:** y elegí la **Sede**. Es para un retiro que no corresponde a un turno puntual (por ejemplo, «reposición de la semana»). En ese caso la **observación es obligatoria**.
 4. En **Artículos**, agregá cada artículo con su cantidad. Solo ofrece artículos activos con stock. Si ponés más de lo que hay, te avisa «No alcanza el stock: hay N».
 5. Escribí una observación si querés (obligatoria con sede) y tocá **Registrar retiro**.
@@ -290,7 +290,7 @@ Con la hoja en la mano, contá lo que hay en el depósito y anotá la cantidad e
 ### 3. Cargar control
 
 1. En **Stock**, tocá **Cargar control**.
-2. Indicá cuándo se hizo el conteo: **Día del control** y **Hora del control** (por omisión, ahora; no puede ser en el futuro).
+2. Indicá cuándo se hizo el conteo: **Día del control** y **Hora del control** (por omisión, ahora). Se puede cargar un control de **hasta 30 días atrás**; no puede ser de una fecha futura ni más vieja que eso. Si te pasás, la pantalla avisa «El control no puede ser de hace más de 30 días. Elegí una fecha más reciente.» o «La fecha y la hora del control no pueden ser futuras.».
 3. En **Quién revisó** elegí **Una persona de la app** (y elegila en la lista **Persona**) o **Un nombre escrito**. Es una cosa o la otra. No viene ninguna elegida para que el control no quede a nombre de quien lo carga sin querer.
 4. Escribí las **Observaciones** si hay.
 5. En la tabla de artículos, escribí la cantidad en **Contado**. Podés buscar un artículo o filtrar por categoría.
