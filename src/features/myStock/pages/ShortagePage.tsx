@@ -22,7 +22,11 @@ import {
   useSupplyCatalogQuery,
   useSupplyImageUrls,
 } from '../queries'
-import { shortageSchema } from '../schemas'
+import {
+  SHORTAGE_COMMENT_MAX,
+  SHORTAGE_DESCRIPTION_MAX,
+  shortageSchema,
+} from '../schemas'
 
 type Kind = 'catalogo' | 'libre'
 
@@ -187,7 +191,7 @@ export default function ShortagePage() {
           onChange={(event) => setDescription(event.target.value)}
           placeholder="Por ejemplo: bolsas de residuos de 120 L"
           aria-label="Qué insumo falta"
-          maxLength={200}
+          maxLength={SHORTAGE_DESCRIPTION_MAX}
         />
       )}
 
@@ -213,6 +217,7 @@ export default function ShortagePage() {
         onChange={(event) => setComment(event.target.value)}
         placeholder="Comentario (opcional)"
         aria-label="Comentario"
+        maxLength={SHORTAGE_COMMENT_MAX}
       />
 
       {error && (

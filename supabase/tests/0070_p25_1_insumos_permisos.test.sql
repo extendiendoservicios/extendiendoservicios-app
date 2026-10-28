@@ -270,15 +270,15 @@ select ok(
   not exists (
     select 1
     from unnest(array[
-      'upsert_supply(text, text, uuid, text, numeric, numeric, numeric, text, text, uuid)',
+      'upsert_supply(text, text, uuid, text, integer, numeric, numeric, text, text, uuid)',
       'set_supply_active(uuid, boolean)',
       'set_supply_prices(uuid, numeric, numeric)',
-      'upsert_supply_category(text, numeric, boolean, uuid)',
-      'register_stock_entry(jsonb, text, text, text, text)',
-      'adjust_stock(uuid, numeric, text, text)',
+      'upsert_supply_category(text, integer, boolean, uuid)',
+      'register_stock_entry(jsonb, text, text, text, public.stock_movement_kind)',
+      'adjust_stock(uuid, integer, public.stock_adjustment_reason, text)',
       'register_withdrawal(jsonb, uuid, uuid, text, uuid)',
       'void_stock_movement(uuid, text)',
-      'register_stock_count(text, jsonb, uuid, text, text)',
+      'register_stock_count(timestamptz, jsonb, uuid, text, text)',
       'report_supply_shortage(uuid, text, uuid, uuid, text)',
       'resolve_supply_shortage(uuid, text)',
       'get_stock_summary()'

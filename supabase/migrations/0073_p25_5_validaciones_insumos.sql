@@ -12,24 +12,19 @@
 --   5. RPC del control: register_stock_count con la ventana de fechas de IS-36.
 --   6. RPC de faltantes: report_supply_shortage y resolve_supply_shortage.
 --
--- Por qué cambian los TIPOS de algunos parámetros (no los nombres, ni el orden, ni lo que
--- devuelven): PostgREST convierte cada parámetro a su tipo ANTES de llamar a la función. Con
--- `integer`, un 3000000000 falla ahí mismo con 22003; con un enumerado, un valor inexistente
--- falla con 22P02; con `timestamptz`, un texto como «ayer» falla con 22007. La función nunca
--- llega a ejecutarse, así que no hay forma de devolver un P0001 con código si el tipo del
--- parámetro es el estricto. Por eso estos parámetros pasan a `numeric` o `text` y se validan
--- adentro:
---     upsert_supply.p_min_qty                   integer      -> numeric
---     upsert_supply_category.p_sort_order       integer      -> numeric
---     adjust_stock.p_delta                      integer      -> numeric
---     adjust_stock.p_reason                     stock_adjustment_reason -> text
---     register_stock_entry.p_kind               stock_movement_kind     -> text
---     register_stock_count.p_counted_at         timestamptz  -> text
--- Para quien llama por JSON no cambia nada (números y textos ISO 8601 como hasta ahora). Un uuid
--- mal formado en un parámetro uuid sigue dando 22P02 del motor, como en el resto de las RPC de la
--- plataforma.
+-- Límite conocido: PostgREST convierte cada parámetro a su tipo ANTES de llamar a la función. Un
+-- entero fuera de rango en un parámetro integer (22003), un valor inexistente en un parámetro
+-- enumerado (22P02) o una fecha mal formada en un parámetro timestamptz (22007) fallan ahí mismo
+-- y la función no llega a ejecutarse. Esos casos (p_delta, p_min_qty y p_sort_order enormes,
+-- p_reason o p_kind inexistentes y p_counted_at mal formado) quedan como comportamiento
+-- aceptado del motor: no se pueden cubrir sin cambiar el tipo del parámetro, y se decidió
+-- mantener los tipos originales. Las firmas no cambian.
 --
--- Topes (documentados también en docs/database.md, «Insumos y control de stock»):
+-- Esta migración se puede aplicar sobre una base limpia o sobre una que ya tenga una versión
+-- previa de sí misma con otras firmas (App_dev): antes de cada create hace drop if exists de la
+-- firma original y de la que tuvo esa versión previa.
+--
+-- Topes (documentados también en docs/database.md, «Validación de valores y topes»):
 --   Textos (largo después de recortar espacios): código 40; nombre del artículo 120;
 --   presentación 80; notas del artículo 500; nombre de la categoría 60; proveedor 120;
 --   comprobante 60; nota del ingreso, del ajuste y observación del retiro 500; motivo de la
@@ -45,7 +40,7 @@
 -- 1. Tope de largo de los textos libres
 -- ---------------------------------------------------------------------------------------------
 
-create function app.check_text_max(p_value text, p_max integer, p_label text)
+create or replace function app.check_text_max(p_value text, p_max integer, p_label text)
 returns void
 language plpgsql
 immutable
@@ -257,14 +252,15 @@ comment on function app.stock_post_movement(public.stock_movement_kind, uuid, js
 -- 3. RPC de catálogo
 -- ---------------------------------------------------------------------------------------------
 
-drop function public.upsert_supply(text, text, uuid, text, integer, numeric, numeric, text, text, uuid);
+drop function if exists public.upsert_supply(text, text, uuid, text, numeric, numeric, numeric, text, text, uuid);
+drop function if exists public.upsert_supply(text, text, uuid, text, integer, numeric, numeric, text, text, uuid);
 
 create function public.upsert_supply(
   p_code text,
   p_name text,
   p_category_id uuid,
   p_presentation text default null,
-  p_min_qty numeric default null,
+  p_min_qty integer default null,
   p_cost_price numeric default null,
   p_sale_price numeric default null,
   p_notes text default null,
@@ -298,7 +294,7 @@ begin
   perform app.check_text_max(p_notes, 500, 'Notas del artículo');
 
   -- NaN e infinito caen en el `>` (en Postgres, NaN es mayor que todo).
-  if p_min_qty is not null and (p_min_qty < 0 or p_min_qty > 1000000 or p_min_qty <> trunc(p_min_qty)) then
+  if p_min_qty is not null and (p_min_qty < 0 or p_min_qty > 1000000) then
     raise exception using errcode = 'P0001', message = 'El stock mínimo tiene que ser un entero entre 0 y 1.000.000.', hint = 'INVALID_MIN_QTY';
   end if;
   if (p_cost_price is not null and (p_cost_price < 0 or p_cost_price > 9999999999.99 or p_cost_price <> round(p_cost_price, 2)))
@@ -329,7 +325,7 @@ begin
         id, code, name, presentation, category_id, image_path, min_qty, cost_price, sale_price, notes, created_by
       )
       values (
-        v_id, v_code, v_name, nullif(btrim(p_presentation), ''), p_category_id, p_image_path, p_min_qty::integer,
+        v_id, v_code, v_name, nullif(btrim(p_presentation), ''), p_category_id, p_image_path, p_min_qty,
         coalesce(p_cost_price, 0), coalesce(p_sale_price, 0), nullif(btrim(p_notes), ''), auth.uid()
       )
       returning * into v_row;
@@ -342,7 +338,7 @@ begin
           presentation = nullif(btrim(p_presentation), ''),
           category_id = p_category_id,
           image_path = p_image_path,
-          min_qty = p_min_qty::integer,
+          min_qty = p_min_qty,
           notes = nullif(btrim(p_notes), ''),
           updated_by = auth.uid()
       where id = v_id
@@ -356,11 +352,11 @@ begin
 end;
 $$;
 
-comment on function public.upsert_supply(text, text, uuid, text, numeric, numeric, numeric, text, text, uuid) is
-  'Alta o edición de un artículo (0070, IS-01, IS-02, IS-26; validaciones en 0073). Exige manage_stock (O; A + manage_stock). Sin p_id (o con un id nuevo) crea; con el id de uno existente lo edita con TODOS los campos que llegan (p_presentation, p_min_qty, p_notes y p_image_path en null los vacían). Los precios (p_cost_price, p_sale_price) solo cuentan en el alta; después se cambian con set_supply_prices. No toca stock ni active. p_image_path, si viene, empieza con «{id}/». Topes (IS-37): código 40, nombre 120, presentación 80, notas 500 caracteres; precios de 0 a 9.999.999.999,99 con dos decimales; p_min_qty entero de 0 a 1.000.000 (es numeric para poder avisar con INVALID_MIN_QTY en vez del error del motor). Devuelve la fila de supplies. Errores: FORBIDDEN, CODE_REQUIRED, NAME_REQUIRED, TEXT_TOO_LONG, INVALID_MIN_QTY, INVALID_PRICE, INVALID_IMAGE_PATH, CATEGORY_NOT_FOUND, CATEGORY_INACTIVE, CODE_ALREADY_EXISTS (sin distinguir mayúsculas).';
+comment on function public.upsert_supply(text, text, uuid, text, integer, numeric, numeric, text, text, uuid) is
+  'Alta o edición de un artículo (0070, IS-01, IS-02, IS-26; validaciones en 0073). Exige manage_stock (O; A + manage_stock). Sin p_id (o con un id nuevo) crea; con el id de uno existente lo edita con TODOS los campos que llegan (p_presentation, p_min_qty, p_notes y p_image_path en null los vacían). Los precios (p_cost_price, p_sale_price) solo cuentan en el alta; después se cambian con set_supply_prices. No toca stock ni active. p_image_path, si viene, empieza con «{id}/». Topes (IS-37): código 40, nombre 120, presentación 80, notas 500 caracteres; precios de 0 a 9.999.999.999,99 con dos decimales; p_min_qty entero de 0 a 1.000.000. Devuelve la fila de supplies. Errores: FORBIDDEN, CODE_REQUIRED, NAME_REQUIRED, TEXT_TOO_LONG, INVALID_MIN_QTY, INVALID_PRICE, INVALID_IMAGE_PATH, CATEGORY_NOT_FOUND, CATEGORY_INACTIVE, CODE_ALREADY_EXISTS (sin distinguir mayúsculas).';
 
-revoke execute on function public.upsert_supply(text, text, uuid, text, numeric, numeric, numeric, text, text, uuid) from public, anon;
-grant execute on function public.upsert_supply(text, text, uuid, text, numeric, numeric, numeric, text, text, uuid) to authenticated, service_role;
+revoke execute on function public.upsert_supply(text, text, uuid, text, integer, numeric, numeric, text, text, uuid) from public, anon;
+grant execute on function public.upsert_supply(text, text, uuid, text, integer, numeric, numeric, text, text, uuid) to authenticated, service_role;
 
 create or replace function public.set_supply_prices(p_supply_id uuid, p_cost_price numeric, p_sale_price numeric)
 returns public.supplies
@@ -406,11 +402,12 @@ $$;
 comment on function public.set_supply_prices(uuid, numeric, numeric) is
   'Cambia el costo y la venta de un artículo (0070, IS-06, IS-22, IS-34; tope en 0073). Exige manage_stock. Precios de 0 a 9.999.999.999,99 con dos decimales. Si no cambia ninguno no escribe nada. Cada cambio queda en supply_price_changes y en security_events (supply_price_changed). Lo ya movido no se recalcula: cada línea guardó el precio del momento. Devuelve la fila. Errores: FORBIDDEN, INVALID_PRICE, SUPPLY_NOT_FOUND.';
 
-drop function public.upsert_supply_category(text, integer, boolean, uuid);
+drop function if exists public.upsert_supply_category(text, numeric, boolean, uuid);
+drop function if exists public.upsert_supply_category(text, integer, boolean, uuid);
 
 create function public.upsert_supply_category(
   p_name text,
-  p_sort_order numeric default 0,
+  p_sort_order integer default 0,
   p_active boolean default true,
   p_id uuid default null
 )
@@ -433,7 +430,7 @@ begin
   if p_active is null or p_sort_order is null then
     raise exception using errcode = 'P0001', message = 'Faltan datos de la categoría.', hint = 'INVALID_CATEGORY';
   end if;
-  if p_sort_order < -1000000 or p_sort_order > 1000000 or p_sort_order <> trunc(p_sort_order) then
+  if p_sort_order < -1000000 or p_sort_order > 1000000 then
     raise exception using errcode = 'P0001', message = 'El orden de la categoría tiene que ser un entero entre -1.000.000 y 1.000.000.', hint = 'INVALID_SORT_ORDER';
   end if;
 
@@ -455,11 +452,11 @@ begin
   begin
     if v_old.id is null then
       insert into public.supply_categories (name, sort_order, active, created_by)
-      values (v_name, p_sort_order::integer, p_active, auth.uid())
+      values (v_name, p_sort_order, p_active, auth.uid())
       returning * into v_row;
     else
       update public.supply_categories
-      set name = v_name, sort_order = p_sort_order::integer, active = p_active, updated_by = auth.uid()
+      set name = v_name, sort_order = p_sort_order, active = p_active, updated_by = auth.uid()
       where id = p_id
       returning * into v_row;
     end if;
@@ -471,24 +468,25 @@ begin
 end;
 $$;
 
-comment on function public.upsert_supply_category(text, numeric, boolean, uuid) is
-  'Alta (sin p_id) o edición de una categoría (0070, IS-03; validaciones en 0073). Exige manage_stock. Nombre hasta 60 caracteres; p_sort_order entero de -1.000.000 a 1.000.000 (es numeric para poder avisar con INVALID_SORT_ORDER en vez del error del motor). Desactivar pide que no queden artículos activos en la categoría. Devuelve la fila. Errores: FORBIDDEN, NAME_REQUIRED, TEXT_TOO_LONG, INVALID_CATEGORY, INVALID_SORT_ORDER, CATEGORY_NOT_FOUND, CATEGORY_IN_USE, CATEGORY_NAME_EXISTS.';
+comment on function public.upsert_supply_category(text, integer, boolean, uuid) is
+  'Alta (sin p_id) o edición de una categoría (0070, IS-03; validaciones en 0073). Exige manage_stock. Nombre hasta 60 caracteres; p_sort_order entero de -1.000.000 a 1.000.000. Desactivar pide que no queden artículos activos en la categoría. Devuelve la fila. Errores: FORBIDDEN, NAME_REQUIRED, TEXT_TOO_LONG, INVALID_CATEGORY, INVALID_SORT_ORDER, CATEGORY_NOT_FOUND, CATEGORY_IN_USE, CATEGORY_NAME_EXISTS.';
 
-revoke execute on function public.upsert_supply_category(text, numeric, boolean, uuid) from public, anon;
-grant execute on function public.upsert_supply_category(text, numeric, boolean, uuid) to authenticated, service_role;
+revoke execute on function public.upsert_supply_category(text, integer, boolean, uuid) from public, anon;
+grant execute on function public.upsert_supply_category(text, integer, boolean, uuid) to authenticated, service_role;
 
 -- ---------------------------------------------------------------------------------------------
 -- 4. RPC de movimientos
 -- ---------------------------------------------------------------------------------------------
 
-drop function public.register_stock_entry(jsonb, text, text, text, public.stock_movement_kind);
+drop function if exists public.register_stock_entry(jsonb, text, text, text, text);
+drop function if exists public.register_stock_entry(jsonb, text, text, text, public.stock_movement_kind);
 
 create function public.register_stock_entry(
   p_lines jsonb,
   p_supplier text default null,
   p_document_number text default null,
   p_note text default null,
-  p_kind text default 'entry'
+  p_kind public.stock_movement_kind default 'entry'
 )
 returns jsonb
 language plpgsql
@@ -505,7 +503,7 @@ begin
   end if;
 
   v_id := app.stock_post_movement(
-    p_kind::public.stock_movement_kind, auth.uid(), app.stock_lines_normalize(p_lines, 1, true),
+    p_kind, auth.uid(), app.stock_lines_normalize(p_lines, 1, true),
     p_supplier => p_supplier, p_document_number => p_document_number, p_note => p_note
   );
 
@@ -513,18 +511,19 @@ begin
 end;
 $$;
 
-comment on function public.register_stock_entry(jsonb, text, text, text, text) is
-  'Registra un ingreso o una devolución de stock (0070, IS-08, IS-09, IS-22, IS-23; validaciones en 0073). Exige manage_stock. p_lines: [{supply_id, qty (entero de 1 a 1.000.000), unit_cost? (costo unitario de 0 a 9.999.999.999,99 con dos decimales, opcional), update_cost? (true actualiza el costo vigente del artículo si es distinto)}]. p_kind: «entry» (por defecto) o «return»; es text para poder avisar con INVALID_KIND. Proveedor (hasta 120), comprobante (60) y nota (500) opcionales. Cada línea guarda el costo (el indicado o el vigente) y la venta del momento. Devuelve {"movement": <cabecera>, "lines": [{supply_id, code, name, presentation, qty_delta, unit_cost, unit_sale, stock_after}]}. Errores: FORBIDDEN, INVALID_KIND, TEXT_TOO_LONG, INVALID_LINES, INVALID_QTY, INVALID_PRICE, DUPLICATE_SUPPLY, SUPPLY_NOT_FOUND, SUPPLY_INACTIVE, STOCK_LIMIT.';
+comment on function public.register_stock_entry(jsonb, text, text, text, public.stock_movement_kind) is
+  'Registra un ingreso o una devolución de stock (0070, IS-08, IS-09, IS-22, IS-23; validaciones en 0073). Exige manage_stock. p_lines: [{supply_id, qty (entero de 1 a 1.000.000), unit_cost? (costo unitario de 0 a 9.999.999.999,99 con dos decimales, opcional), update_cost? (true actualiza el costo vigente del artículo si es distinto)}]. p_kind: «entry» (por defecto) o «return». Proveedor (hasta 120), comprobante (60) y nota (500) opcionales. Cada línea guarda el costo (el indicado o el vigente) y la venta del momento. Devuelve {"movement": <cabecera>, "lines": [{supply_id, code, name, presentation, qty_delta, unit_cost, unit_sale, stock_after}]}. Errores: FORBIDDEN, INVALID_KIND, TEXT_TOO_LONG, INVALID_LINES, INVALID_QTY, INVALID_PRICE, DUPLICATE_SUPPLY, SUPPLY_NOT_FOUND, SUPPLY_INACTIVE, STOCK_LIMIT.';
 
-revoke execute on function public.register_stock_entry(jsonb, text, text, text, text) from public, anon;
-grant execute on function public.register_stock_entry(jsonb, text, text, text, text) to authenticated, service_role;
+revoke execute on function public.register_stock_entry(jsonb, text, text, text, public.stock_movement_kind) from public, anon;
+grant execute on function public.register_stock_entry(jsonb, text, text, text, public.stock_movement_kind) to authenticated, service_role;
 
-drop function public.adjust_stock(uuid, integer, public.stock_adjustment_reason, text);
+drop function if exists public.adjust_stock(uuid, numeric, text, text);
+drop function if exists public.adjust_stock(uuid, integer, public.stock_adjustment_reason, text);
 
 create function public.adjust_stock(
   p_supply_id uuid,
-  p_delta numeric,
-  p_reason text,
+  p_delta integer,
+  p_reason public.stock_adjustment_reason,
   p_note text default null
 )
 returns jsonb
@@ -534,7 +533,6 @@ set search_path = public, app, pg_temp
 as $$
 declare
   v_id uuid;
-  v_reason text := nullif(btrim(p_reason), '');
 begin
   perform app.require_capability('manage_stock');
 
@@ -542,34 +540,31 @@ begin
     raise exception using errcode = 'P0001', message = 'Elegí el artículo.', hint = 'SUPPLY_NOT_FOUND';
   end if;
   -- NaN e infinito caen en el `>` (en Postgres, NaN es mayor que todo).
-  if p_delta is null or p_delta = 0 or p_delta <> trunc(p_delta) or abs(p_delta) > 1000000 then
+  if p_delta is null or p_delta = 0 or abs(p_delta::bigint) > 1000000 then
     raise exception using errcode = 'P0001', message = 'La cantidad del ajuste tiene que ser un entero distinto de cero, de hasta 1.000.000 en valor absoluto.', hint = 'INVALID_QTY';
   end if;
-  if v_reason is null then
+  if p_reason is null then
     raise exception using errcode = 'P0001', message = 'Elegí el motivo del ajuste.', hint = 'REASON_REQUIRED';
   end if;
-  if v_reason not in (select e::text from unnest(enum_range(null::public.stock_adjustment_reason)) as e) then
-    raise exception using errcode = 'P0001', message = 'El motivo del ajuste no es válido.', hint = 'INVALID_REASON';
-  end if;
-  if v_reason = 'other' and nullif(btrim(p_note), '') is null then
+  if p_reason = 'other' and nullif(btrim(p_note), '') is null then
     raise exception using errcode = 'P0001', message = 'Con el motivo «Otro» tenés que escribir una observación.', hint = 'NOTE_REQUIRED';
   end if;
 
   v_id := app.stock_post_movement(
     'adjustment', auth.uid(),
     jsonb_build_array(jsonb_build_object('supply_id', p_supply_id, 'qty_delta', p_delta)),
-    p_reason => v_reason::public.stock_adjustment_reason, p_note => p_note
+    p_reason => p_reason, p_note => p_note
   );
 
   return app.stock_movement_json(v_id, true);
 end;
 $$;
 
-comment on function public.adjust_stock(uuid, numeric, text, text) is
-  'Ajusta el stock de un artículo con un movimiento «adjustment» (+ o −), motivo obligatorio (0070, IS-10; validaciones en 0073). Exige manage_stock. p_delta: entero distinto de cero, hasta 1.000.000 en valor absoluto (es numeric para poder avisar con INVALID_QTY). p_reason: count, breakage, expired, data_error u other (es text para poder avisar con INVALID_REASON). Con el motivo other la nota es obligatoria; la nota tiene hasta 500 caracteres. Devuelve {"movement", "lines"} como register_stock_entry. Errores: FORBIDDEN, SUPPLY_NOT_FOUND, INVALID_QTY, REASON_REQUIRED, INVALID_REASON, NOTE_REQUIRED, TEXT_TOO_LONG, SUPPLY_INACTIVE, INSUFFICIENT_STOCK (el ajuste negativo no puede dejar el stock bajo cero), STOCK_LIMIT.';
+comment on function public.adjust_stock(uuid, integer, public.stock_adjustment_reason, text) is
+  'Ajusta el stock de un artículo con un movimiento «adjustment» (+ o −), motivo obligatorio (0070, IS-10; validaciones en 0073). Exige manage_stock. p_delta: entero distinto de cero, hasta 1.000.000 en valor absoluto. p_reason: count, breakage, expired, data_error u other. Con el motivo other la nota es obligatoria; la nota tiene hasta 500 caracteres. Devuelve {"movement", "lines"} como register_stock_entry. Errores: FORBIDDEN, SUPPLY_NOT_FOUND, INVALID_QTY, REASON_REQUIRED, NOTE_REQUIRED, TEXT_TOO_LONG, SUPPLY_INACTIVE, INSUFFICIENT_STOCK (el ajuste negativo no puede dejar el stock bajo cero), STOCK_LIMIT.';
 
-revoke execute on function public.adjust_stock(uuid, numeric, text, text) from public, anon;
-grant execute on function public.adjust_stock(uuid, numeric, text, text) to authenticated, service_role;
+revoke execute on function public.adjust_stock(uuid, integer, public.stock_adjustment_reason, text) from public, anon;
+grant execute on function public.adjust_stock(uuid, integer, public.stock_adjustment_reason, text) to authenticated, service_role;
 
 create or replace function public.void_stock_movement(p_movement_id uuid, p_reason text)
 returns jsonb
@@ -639,10 +634,11 @@ comment on function public.void_stock_movement(uuid, text) is
 -- 5. Control de stock: ventana de fechas (IS-36) y topes
 -- ---------------------------------------------------------------------------------------------
 
-drop function public.register_stock_count(timestamptz, jsonb, uuid, text, text);
+drop function if exists public.register_stock_count(text, jsonb, uuid, text, text);
+drop function if exists public.register_stock_count(timestamptz, jsonb, uuid, text, text);
 
 create function public.register_stock_count(
-  p_counted_at text,
+  p_counted_at timestamptz,
   p_lines jsonb,
   p_reviewer_id uuid default null,
   p_reviewer_name text default null,
@@ -655,7 +651,7 @@ set search_path = public, app, pg_temp
 as $$
 declare
   v_uid uuid := auth.uid();
-  v_at timestamptz;
+  v_at timestamptz := p_counted_at;
   v_count public.stock_counts;
   v_elem jsonb;
   v_sid uuid;
@@ -671,16 +667,9 @@ declare
 begin
   perform app.require_capability('manage_stock');
 
-  if nullif(btrim(p_counted_at), '') is null then
+  if p_counted_at is null then
     raise exception using errcode = 'P0001', message = 'Indicá la fecha y la hora del control.', hint = 'COUNT_DATE_REQUIRED';
   end if;
-  begin
-    v_at := btrim(p_counted_at)::timestamptz;
-  exception when others then
-    raise exception using errcode = 'P0001',
-      message = 'La fecha y la hora del control no son válidas.',
-      hint = 'COUNT_DATE_INVALID';
-  end;
   -- IS-36: desde 30 días atrás hasta ahora, con 5 minutos de tolerancia en los dos extremos por
   -- el reloj del cliente. «infinity» y «-infinity» también caen acá.
   if v_at > now() + interval '5 minutes' then
@@ -781,11 +770,11 @@ begin
 end;
 $$;
 
-comment on function public.register_stock_count(text, jsonb, uuid, text, text) is
-  'Carga un control de stock (0070, IS-16, IS-31; ventana y topes en 0073, IS-36 e IS-37). Exige manage_stock. p_counted_at: fecha y hora del conteo como texto ISO 8601 (es text para poder avisar con COUNT_DATE_INVALID en vez del error del motor); tiene que estar entre 30 días atrás y ahora, con 5 minutos de tolerancia en los dos extremos. La hora se toma tal cual llega, al minuto que mande la interfaz (IS-31): un movimiento registrado en ese mismo minuto cuenta como posterior al control. Revisor: p_reviewer_id (persona de la app) o p_reviewer_name (nombre escrito, hasta 120 caracteres), uno solo; p_notes hasta 500 caracteres. p_lines: [{supply_id, counted_qty (entero de 0 a 1.000.000)}], solo las filas contadas: las en blanco no se mandan y no se tocan. La diferencia de cada artículo es lo contado menos el stock del sistema a p_counted_at (el actual menos los movimientos posteriores), así un retiro hecho entre el conteo y la carga no cuenta como faltante. Guarda el control con todas sus líneas y UN movimiento kind count con las diferencias distintas de cero (null si no hay ninguna). Devuelve {"count": <fila>, "movement": <cabecera o null>, "lines": [{supply_id, code, name, presentation, system_qty, counted_qty, difference}]}. Errores: FORBIDDEN, COUNT_DATE_REQUIRED, COUNT_DATE_INVALID, COUNT_IN_FUTURE, COUNTED_AT_OUT_OF_RANGE, REVIEWER_REQUIRED, REVIEWER_NOT_FOUND, TEXT_TOO_LONG, INVALID_LINES, INVALID_QTY, DUPLICATE_SUPPLY, SUPPLY_NOT_FOUND, COUNT_INCONSISTENT (los movimientos posteriores dejarían el stock negativo), STOCK_LIMIT.';
+comment on function public.register_stock_count(timestamptz, jsonb, uuid, text, text) is
+  'Carga un control de stock (0070, IS-16, IS-31; ventana y topes en 0073, IS-36 e IS-37). Exige manage_stock. p_counted_at: fecha y hora del conteo; tiene que estar entre 30 días atrás y ahora, con 5 minutos de tolerancia en los dos extremos. La hora se toma tal cual llega, al minuto que mande la interfaz (IS-31): un movimiento registrado en ese mismo minuto cuenta como posterior al control. Revisor: p_reviewer_id (persona de la app) o p_reviewer_name (nombre escrito, hasta 120 caracteres), uno solo; p_notes hasta 500 caracteres. p_lines: [{supply_id, counted_qty (entero de 0 a 1.000.000)}], solo las filas contadas: las en blanco no se mandan y no se tocan. La diferencia de cada artículo es lo contado menos el stock del sistema a p_counted_at (el actual menos los movimientos posteriores), así un retiro hecho entre el conteo y la carga no cuenta como faltante. Guarda el control con todas sus líneas y UN movimiento kind count con las diferencias distintas de cero (null si no hay ninguna). Devuelve {"count": <fila>, "movement": <cabecera o null>, "lines": [{supply_id, code, name, presentation, system_qty, counted_qty, difference}]}. Errores: FORBIDDEN, COUNT_DATE_REQUIRED, COUNT_IN_FUTURE, COUNTED_AT_OUT_OF_RANGE, REVIEWER_REQUIRED, REVIEWER_NOT_FOUND, TEXT_TOO_LONG, INVALID_LINES, INVALID_QTY, DUPLICATE_SUPPLY, SUPPLY_NOT_FOUND, COUNT_INCONSISTENT (los movimientos posteriores dejarían el stock negativo), STOCK_LIMIT.';
 
-revoke execute on function public.register_stock_count(text, jsonb, uuid, text, text) from public, anon;
-grant execute on function public.register_stock_count(text, jsonb, uuid, text, text) to authenticated, service_role;
+revoke execute on function public.register_stock_count(timestamptz, jsonb, uuid, text, text) from public, anon;
+grant execute on function public.register_stock_count(timestamptz, jsonb, uuid, text, text) to authenticated, service_role;
 
 -- ---------------------------------------------------------------------------------------------
 -- 6. Faltantes

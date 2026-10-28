@@ -2664,23 +2664,24 @@ Corrige DEF-P25-01 (valores fuera de rango que llegaban al motor y volvían como
 inglés) y DEF-P25-02 (sin tope de largo en los textos libres). Ahora todo valor inválido da `P0001` con `hint` = código y
 mensaje en español con voseo. El contrato de éxito de las RPC no cambia.
 
-**Cambio de tipos de parámetros (mismo nombre y orden; el JSON que se manda es el mismo).** PostgREST convierte cada
-parámetro a su tipo _antes_ de entrar a la función: con `integer`, un `3000000000` falla ahí con 22003; con un
-enumerado, un valor inexistente falla con 22P02; con `timestamptz`, «ayer» falla con 22007. No hay forma de devolver un
-`P0001` con código si el parámetro tiene el tipo estricto, así que pasan a `numeric` o `text` y se validan adentro:
+**Las firmas no cambian.** PostgREST convierte cada parámetro a su tipo _antes_ de entrar a la función: un entero que
+no cabe en `integer` falla ahí con 22003, un valor inexistente de un enumerado con 22P02 y una fecha mal formada en un
+parámetro `timestamptz` con 22007, y la función nunca llega a ejecutarse. Se evaluó pasar esos parámetros a `numeric` o
+`text` para validarlos adentro y se descartó (decisión de Mike, 28 oct 2026): quedan como **comportamiento aceptado**
+cuatro casos que solo se ven llamando a la API a mano (la interfaz nunca los manda) y que no tocan el stock:
 
-| RPC                      | Parámetro      | Antes                     | Ahora     | Código si es inválido                                |
-| ------------------------ | -------------- | ------------------------- | --------- | ---------------------------------------------------- |
-| `upsert_supply`          | `p_min_qty`    | `integer`                 | `numeric` | `INVALID_MIN_QTY`                                    |
-| `upsert_supply_category` | `p_sort_order` | `integer`                 | `numeric` | `INVALID_SORT_ORDER` (nuevo)                         |
-| `adjust_stock`           | `p_delta`      | `integer`                 | `numeric` | `INVALID_QTY`                                        |
-| `adjust_stock`           | `p_reason`     | `stock_adjustment_reason` | `text`    | `REASON_REQUIRED` (vacío) o `INVALID_REASON` (nuevo) |
-| `register_stock_entry`   | `p_kind`       | `stock_movement_kind`     | `text`    | `INVALID_KIND`                                       |
-| `register_stock_count`   | `p_counted_at` | `timestamptz`             | `text`    | `COUNT_DATE_REQUIRED`, `COUNT_DATE_INVALID` (nuevo)  |
+| Llamada                                                                                                         | Error del motor (sin `hint`) |
+| --------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| `adjust_stock` con `p_delta` mayor que `integer`                                                                | 22003                        |
+| `upsert_supply` con `p_min_qty` mayor que `integer`                                                             | 22003                        |
+| `adjust_stock` con un `p_reason` que no es del enumerado (o `register_stock_entry` con un `p_kind` inexistente) | 22P02                        |
+| `register_stock_count` con `p_counted_at` mal formado                                                           | 22007                        |
 
-En `database.types.ts` solo cambian `p_reason` y `p_kind` (de la unión de textos a `string`); lo demás sigue siendo
-`number` o `string`. Los `uuid` mal formados en un parámetro `uuid` siguen dando 22P02 del motor, como en el resto de
-las RPC de la plataforma (la interfaz nunca los manda así).
+Lo que sí cabe en el tipo se valida adentro y da `P0001` con código (por ejemplo `p_delta = 1000001` da `INVALID_QTY` y
+`p_min_qty = 1000001` da `INVALID_MIN_QTY`). Los `uuid` mal formados en un parámetro `uuid` dan 22P02, como en el resto
+de las RPC de la plataforma. La migración `0073` se puede aplicar sobre una base limpia o sobre una que ya tenga una
+versión previa de sí misma (App_dev tuvo una con `numeric` y `text`): antes de cada `create` hace `drop function if exists`
+de la firma original y de la que tuvo esa versión.
 
 **Topes de largo** (después de recortar los espacios de los extremos; error `TEXT_TOO_LONG`, mensaje
 «<Campo>: hasta N caracteres.»). Coinciden con los esquemas zod de `src/features/stock/`; los marcados con asterisco no
@@ -2721,14 +2722,16 @@ NaN e infinito caen en `INVALID_PRICE`, `INVALID_MIN_QTY` e `INVALID_QTY` según
 con 5 minutos de tolerancia en los dos extremos por el reloj del cliente. Más allá: `COUNTED_AT_OUT_OF_RANGE` (nuevo; hace
 más de 30 días, incluido 1900 y `-infinity`) o `COUNT_IN_FUTURE` (como antes; incluido `infinity`). La hora se toma al
 minuto que manda la interfaz (IS-31): un movimiento registrado en ese mismo minuto cuenta como posterior al control.
-`p_counted_at` es un texto ISO 8601 (con `Z` o con `-03:00`); sin huso se interpreta en UTC, igual que antes.
 
-**Códigos nuevos:** `TEXT_TOO_LONG`, `INVALID_SORT_ORDER`, `INVALID_REASON`, `COUNT_DATE_INVALID`,
-`COUNTED_AT_OUT_OF_RANGE`, `STOCK_LIMIT`. Internas: `app.check_text_max(text, integer, text)`; `app.stock_post_movement`
+**Códigos nuevos:** `TEXT_TOO_LONG`, `INVALID_SORT_ORDER`, `COUNTED_AT_OUT_OF_RANGE`, `STOCK_LIMIT`. Internas: `app.check_text_max(text, integer, text)`; `app.stock_post_movement`
 recreada con los topes de proveedor, comprobante, nota, costo, venta y stock resultante.
 
 **Interfaz.** «Cargar control» (`StockCountScreen`) limita el selector de día a los últimos 30 días y el esquema zod
-rechaza una fecha anterior (`COUNT_MAX_DAYS_BACK` en `count.ts`).
+rechaza una fecha anterior (`COUNT_MAX_DAYS_BACK` en `count.ts`). Los textos libres del celular y de la anulación
+llevan `maxLength` y esquema zod con los mismos topes: comentario del aviso 500 y descripción 200
+(`SHORTAGE_COMMENT_MAX`, `SHORTAGE_DESCRIPTION_MAX`), observación del retiro 500 (`WITHDRAWAL_NOTE_MAX`) y motivo de la
+anulación 500 (`VOID_REASON_MAX`, `ConfirmDialog.reasonMaxLength`). `mapStockError` deja el texto del servidor en
+`TEXT_TOO_LONG` y `STOCK_LIMIT` y tiene mensaje propio para `INVALID_SORT_ORDER` y `COUNTED_AT_OUT_OF_RANGE`.
 
 ### Storage: bucket `supply-images` (migración `0071`, IS-32)
 
@@ -2758,7 +2761,7 @@ cuentas e2e. `pnpm db:seed:data` lo corre a continuación de `seed.sql`, que ya 
 precios guardados en la línea, anulación y contramovimiento, diferencia del control contra el stock a la hora indicada,
 permisos por rol y capacidad, y que empleados y coordinadores no lean precios, cantidades ni retiros ajenos.
 
-`0073_p25_5_validaciones_insumos` (P25.5d): los tipos nuevos de los parámetros, cada tope (justo en el borde y un paso
+`0073_p25_5_validaciones_insumos` (P25.5d): las firmas originales y sus grants, cada tope (justo en el borde y un paso
 más) con su código y su mensaje, la ventana de fechas del control con la tolerancia de 5 minutos, `STOCK_LIMIT` y que
 ningún caso rechazado toque el stock.
 

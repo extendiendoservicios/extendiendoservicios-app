@@ -7216,7 +7216,7 @@ export type Database = {
         Args: {
           p_delta: number
           p_note?: string
-          p_reason: string
+          p_reason: Database["public"]["Enums"]["stock_adjustment_reason"]
           p_supply_id: string
         }
         Returns: Json
@@ -8028,7 +8028,7 @@ export type Database = {
       register_stock_entry: {
         Args: {
           p_document_number?: string
-          p_kind?: string
+          p_kind?: Database["public"]["Enums"]["stock_movement_kind"]
           p_lines: Json
           p_note?: string
           p_supplier?: string

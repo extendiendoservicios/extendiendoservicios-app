@@ -19,6 +19,59 @@ describe('qtySchema', () => {
   })
 })
 
+describe('topes de largo de los textos libres (0073, IS-37)', () => {
+  it('la observación del retiro admite 500 y rechaza 501, con turno o con sede', () => {
+    const ok = 'x'.repeat(500)
+    const largo = 'x'.repeat(501)
+    expect(
+      withdrawalTargetSchema.safeParse({
+        kind: 'shift',
+        shiftId: 'sh1',
+        note: ok,
+      }).success,
+    ).toBe(true)
+    expect(
+      withdrawalTargetSchema.safeParse({
+        kind: 'shift',
+        shiftId: 'sh1',
+        note: largo,
+      }).success,
+    ).toBe(false)
+    expect(
+      withdrawalTargetSchema.safeParse({
+        kind: 'site',
+        siteId: 'si1',
+        note: ok,
+      }).success,
+    ).toBe(true)
+    const rechazo = withdrawalTargetSchema.safeParse({
+      kind: 'site',
+      siteId: 'si1',
+      note: largo,
+    })
+    expect(rechazo.success).toBe(false)
+    expect(rechazo.error?.issues[0]?.message).toBe('Hasta 500 caracteres.')
+  })
+
+  it('el aviso admite descripción de 200 y comentario de 500', () => {
+    expect(
+      shortageSchema.safeParse({
+        description: 'd'.repeat(200),
+        comment: 'c'.repeat(500),
+      }).success,
+    ).toBe(true)
+    expect(
+      shortageSchema.safeParse({ description: 'd'.repeat(201) }).success,
+    ).toBe(false)
+    expect(
+      shortageSchema.safeParse({
+        description: 'corta',
+        comment: 'c'.repeat(501),
+      }).success,
+    ).toBe(false)
+  })
+})
+
 describe('withdrawalTargetSchema (turno o sede y observación)', () => {
   it('con turno, la observación es opcional', () => {
     expect(

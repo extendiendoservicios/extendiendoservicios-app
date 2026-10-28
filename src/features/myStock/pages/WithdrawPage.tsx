@@ -36,6 +36,7 @@ import {
 } from '../queries'
 import {
   MAX_WITHDRAWAL_QTY,
+  WITHDRAWAL_NOTE_MAX,
   withdrawalSchema,
   withdrawalTargetSchema,
 } from '../schemas'
@@ -206,6 +207,7 @@ export default function WithdrawPage() {
               onChange={(event) => setSiteNote(event.target.value)}
               placeholder="Observación obligatoria: por ejemplo, reposición de la semana"
               aria-label="Observación del retiro"
+              maxLength={WITHDRAWAL_NOTE_MAX}
             />
           )}
           {fieldError && (
@@ -355,6 +357,7 @@ export default function WithdrawPage() {
               onChange={(event) => setShiftNote(event.target.value)}
               placeholder="Observación (opcional)"
               aria-label="Observación del retiro"
+              maxLength={WITHDRAWAL_NOTE_MAX}
             />
           )}
 

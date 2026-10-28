@@ -1452,7 +1452,7 @@ describe('Insumos (0069 a 0072): permisos por rol', () => {
           p_code: `${ins.prefijo}rango-2`,
           p_name: `${ins.prefijo}rango-2`,
           p_category_id: id.categoria,
-          p_min_qty: 3_000_000_000,
+          p_min_qty: 1_000_001,
         }),
       ],
       [
@@ -1460,17 +1460,8 @@ describe('Insumos (0069 a 0072): permisos por rol', () => {
         'adjust_stock',
         () => ({
           p_supply_id: id.sA,
-          p_delta: 3_000_000_000,
+          p_delta: 1_000_001,
           p_reason: 'count',
-        }),
-      ],
-      [
-        'adjust_stock · motivo inexistente',
-        'adjust_stock',
-        () => ({
-          p_supply_id: id.sA,
-          p_delta: 1,
-          p_reason: 'motivo-que-no-existe',
         }),
       ],
       [
@@ -1484,15 +1475,6 @@ describe('Insumos (0069 a 0072): permisos por rol', () => {
         () => ({
           p_description: ins.texto('corta'),
           p_comment: ins.texto('c'.repeat(100_000)),
-        }),
-      ],
-      [
-        'register_stock_count · fecha inválida',
-        'register_stock_count',
-        () => ({
-          p_counted_at: 'ayer',
-          p_lines: [{ supply_id: id.sA, counted_qty: 1 }],
-          p_reviewer_name: ins.texto('revisor'),
         }),
       ],
       [
@@ -1547,8 +1529,6 @@ describe('Insumos (0069 a 0072): permisos por rol', () => {
       'upsert_supply · precio fuera de rango': 'INVALID_PRICE',
       'upsert_supply · mínimo fuera de rango': 'INVALID_MIN_QTY',
       'adjust_stock · cantidad fuera de rango': 'INVALID_QTY',
-      'adjust_stock · motivo inexistente': 'INVALID_REASON',
-      'register_stock_count · fecha inválida': 'COUNT_DATE_INVALID',
       'register_stock_count · fecha de hace más de 30 días (IS-36)':
         'COUNTED_AT_OUT_OF_RANGE',
       'register_stock_count · fecha de 1900 (IS-36)': 'COUNTED_AT_OUT_OF_RANGE',
@@ -1586,6 +1566,67 @@ describe('Insumos (0069 a 0072): permisos por rol', () => {
           expect(await stockDe(id.sA)).toBe(antes)
         },
       )
+    }
+  })
+
+  // Límite conocido y aceptado (Mike, 28 oct 2026): PostgREST convierte cada parámetro a su
+  // tipo antes de llamar a la función, así que un entero que no cabe en `integer`, un valor de
+  // enumerado inexistente o una fecha mal formada fallan con el error del motor (sin `hint`)
+  // y la función no llega a ejecutarse. Cambiar el tipo del parámetro para evitarlo se evaluó y
+  // se descartó (migración 0073, encabezado). Estos casos documentan el comportamiento y que no
+  // se toca el stock; no son defectos pendientes. La interfaz nunca manda estos valores.
+  describe('comportamiento aceptado de PostgREST: parámetros que no caben en su tipo (0073)', () => {
+    const casosMotor: Array<[string, string, () => object, string]> = [
+      [
+        'adjust_stock · delta que no cabe en integer',
+        'adjust_stock',
+        () => ({
+          p_supply_id: id.sA,
+          p_delta: 3_000_000_000,
+          p_reason: 'count',
+        }),
+        '22003',
+      ],
+      [
+        'upsert_supply · mínimo que no cabe en integer',
+        'upsert_supply',
+        () => ({
+          p_code: `${ins.prefijo}motor-1`,
+          p_name: `${ins.prefijo}motor-1`,
+          p_category_id: id.categoria,
+          p_min_qty: 3_000_000_000,
+        }),
+        '22003',
+      ],
+      [
+        'adjust_stock · motivo que no es del enumerado',
+        'adjust_stock',
+        () => ({
+          p_supply_id: id.sA,
+          p_delta: 1,
+          p_reason: 'motivo-que-no-existe',
+        }),
+        '22P02',
+      ],
+      [
+        'register_stock_count · fecha mal formada',
+        'register_stock_count',
+        () => ({
+          p_counted_at: 'ayer',
+          p_lines: [{ supply_id: id.sA, counted_qty: 1 }],
+          p_reviewer_name: ins.texto('revisor'),
+        }),
+        '22007',
+      ],
+    ]
+    for (const [nombre, rpcNombre, args, codigoMotor] of casosMotor) {
+      it(`${nombre}: lo rechaza el motor (${codigoMotor}) sin tocar el stock`, async () => {
+        const antes = await stockDe(id.sA)
+        const res = await rpc(clienteDe('owner'), rpcNombre, args())
+        expect(res.error, 'aceptó el valor').not.toBeNull()
+        expect(res.error?.code).toBe(codigoMotor)
+        expect(await stockDe(id.sA)).toBe(antes)
+      })
     }
   })
 
