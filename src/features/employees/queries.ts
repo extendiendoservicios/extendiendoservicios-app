@@ -9,6 +9,7 @@ import type {
   EmployeeUpdateInput,
 } from '@/api/employees'
 import { setUserRoles, signOutUser, type Role } from '@/api/users'
+import { useInvalidateAccessStatus } from '@/features/users/queries'
 
 /**
  * Hooks de TanStack Query de ADM-16, ADM-17 y ADM-18 (EMP-001). Patrón de
@@ -167,6 +168,7 @@ export function useUpdateEmployeeMutation() {
 // -------------------------------------------------------------------------
 
 export function useResetEmployeePasswordMutation() {
+  const invalidateAccessStatus = useInvalidateAccessStatus()
   return useMutation({
     mutationFn: ({
       profileId,
@@ -175,6 +177,7 @@ export function useResetEmployeePasswordMutation() {
       profileId: string
       newPassword: string
     }) => employeesApi.resetEmployeePassword(profileId, newPassword),
+    onSuccess: invalidateAccessStatus,
   })
 }
 

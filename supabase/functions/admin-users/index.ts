@@ -32,6 +32,7 @@ import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders, getAllowedOrigins } from '../_shared/cors.ts'
 import {
   CredentialsError,
+  CURRENT_KEY_VERSION,
   decrypt,
   encrypt,
   type SealedPassword,
@@ -1236,6 +1237,53 @@ export async function actionGetCredentials(
   }
 }
 
+// P26.1b · CR-01, CR-02, CR-07, CR-08: estado de la copia de la contraseña SIN descifrarla, para
+// que la ficha lo muestre apenas se abre sin dejar un `credentials_viewed` falso en cada visita.
+// Mismo permiso que `get_credentials` (`assertCanActOnTarget`). No usa `CREDENTIALS_KEY` (no
+// descifra, así que no corta si falta), nunca devuelve la contraseña ni el cifrado, y no
+// registra ningún evento de éxito (por lo tanto tampoco cuenta para el límite de 10 por minuto);
+// un rechazo sí queda como `admin_action_rejected`, como en el resto.
+//
+// `status` usa el mismo vocabulario que `get_credentials`: `none` (sin copia), `ok` (la copia
+// existe y su `key_version` es la vigente) o `unreadable` (la `key_version` ya no es la vigente).
+// Limitación: sin descifrar no se detecta una clave equivocada con la misma versión; en ese caso
+// `get_credentials` es el que termina diciendo `unreadable`.
+export async function actionGetAccessStatus(
+  admin: SupabaseClient,
+  actor: Actor,
+  body: Record<string, unknown>,
+  _ip: string | null,
+): Promise<Record<string, unknown>> {
+  const { profile_id } = body
+  if (typeof profile_id !== 'string') {
+    throw errors.validation('Falta profile_id.')
+  }
+
+  requireOwnerOrManageUsers(actor)
+  await assertCanActOnTarget(admin, actor, profile_id)
+
+  const { data: userData, error: userError } =
+    await admin.auth.admin.getUserById(profile_id)
+  if (userError || !userData?.user) {
+    if (userError && userError.code !== 'user_not_found') {
+      throw errors.internal(userError.message)
+    }
+    throw errors.profileNotFound()
+  }
+
+  const row = await readCredentialsRow(admin, profile_id)
+  const readable = row ? row.key_version === CURRENT_KEY_VERSION : null
+
+  return {
+    email: userData.user.email ?? null,
+    has_copy: row !== null,
+    readable,
+    status: row === null ? 'none' : readable ? 'ok' : 'unreadable',
+    source: row?.source ?? null,
+    set_at: row?.set_at ?? null,
+  }
+}
+
 // P26.1 · CR-04, CR-13: cambio de la contraseña PROPIA. Lo puede pedir cualquier persona con
 // sesión y perfil activo (la sesión que abre el enlace de recuperación del email también: es un
 // JWT común de Auth y `resolveActor` lo valida igual); no hace falta `manage_users`. Cambia Auth y
@@ -1318,6 +1366,7 @@ const ACTIONS: Record<
   deactivate_user: actionDeactivateUser,
   reactivate_user: actionReactivateUser,
   get_credentials: actionGetCredentials,
+  get_access_status: actionGetAccessStatus,
   change_own_password: actionChangeOwnPassword,
 }
 

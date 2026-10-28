@@ -90,6 +90,12 @@ falta o es inválido el secreto `CREDENTIALS_KEY`; se corta antes de tocar Auth)
   `unreadable`, `password` es `null` y la pantalla dice «No disponible». Mismo permiso que `reset_password`
   (dueño; o administrador con `manage_users` sobre quien no sea dueño ni administrador). Registra
   `credentials_viewed` y **no** cuenta para el límite de 10 acciones por minuto.
+- `get_access_status { profile_id }` (P26.1b) devuelve `{ email, has_copy, readable, status, source, set_at }`
+  sin descifrar nada: `status` es `none` (sin copia; `has_copy` y `readable` en `false` / `null`), `ok` o
+  `unreadable` (la `key_version` de la copia ya no es la vigente), con el mismo sentido que en `get_credentials`.
+  Nunca trae la contraseña ni el cifrado. Mismo permiso que `get_credentials`; **no** registra
+  `credentials_viewed` ni cuenta para el límite (un rechazo sí queda como `admin_action_rejected`) y no
+  necesita `CREDENTIALS_KEY`. Es la que usa la ficha al abrirse; `get_credentials` es solo para «Ver».
 - `change_own_password { new_password, origin }` (`origin`: `profile` o `recovery`): cualquier persona con
   sesión y perfil activo, sin `manage_users`; cambia Auth y la copia, registra `password_changed_by_user`
   y no cierra las otras sesiones. La sesión del enlace de recuperación es un JWT común y sirve.
