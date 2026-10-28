@@ -2030,7 +2030,7 @@ Este bloque prueba el módulo de **Insumos y control de stock**: el catálogo, e
 
 - La lista muestra turnos de **30 días atrás a 7 días adelante**, de todos los clientes.
 - Los turnos del Empleado B salen **primero** y llevan al final **· es su turno**. El resto sigue ofrecido, sin la marca.
-- Un turno cancelado **no se puede usar**: o no aparece en la lista, o aparece rotulado **cancelado** y el sistema lo rechaza ("Ese turno está cancelado. Elegí otro.").
+- El turno **cancelado** no aparece en la lista.
 - Pedir más de lo que hay avisa "No alcanza el stock: hay N." y no registra nada.
 - Un turno que no es del Empleado B **se acepta** igual. Con **Una sede**, sin observación **no se acepta**.
 - En **Movimientos** el retiro figura **a nombre del Empleado B**, con el nombre del Administrador 1 como quien lo registró.

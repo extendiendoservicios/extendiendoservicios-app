@@ -221,7 +221,7 @@ Un artículo desactivado con stock cero **no** cuenta como «Sin stock» ni como
 1. En **Stock**, tocá **Retiro en nombre de**.
 2. En **Quién retira**, elegí a la persona (empleados y coordinadores activos).
 3. En **Para qué retira** elegí:
-   - **Un turno:** y elegí el **Turno**. Ves los turnos de **30 días atrás a 7 días adelante**, de **todos** los clientes, porque la carga suele hacerse después del hecho. Los turnos de la persona que elegiste (los que tiene asignados o, si es coordinador, los que coordina) salen **primero** y llevan al final «· es su turno»; el resto sigue disponible por si el retiro fue en otro turno. Un turno **cancelado** no se puede usar: la lista no lo ofrece y, si alguno apareciera marcado «cancelado», el sistema lo rechaza con «Ese turno está cancelado. Elegí otro.».
+   - **Un turno:** y elegí el **Turno**. Ves los turnos de **30 días atrás a 7 días adelante**, de **todos** los clientes, porque la carga suele hacerse después del hecho. Los turnos de la persona que elegiste (los que tiene asignados o, si es coordinador, los que coordina) salen **primero** y llevan al final «· es su turno»; el resto sigue disponible por si el retiro fue en otro turno. Los turnos **cancelados** no aparecen.
    - **Una sede:** y elegí la **Sede**. Es para un retiro que no corresponde a un turno puntual (por ejemplo, «reposición de la semana»). En ese caso la **observación es obligatoria**.
 4. En **Artículos**, agregá cada artículo con su cantidad. Solo ofrece artículos activos con stock. Si ponés más de lo que hay, te avisa «No alcanza el stock: hay N».
 5. Escribí una observación si querés (obligatoria con sede) y tocá **Registrar retiro**.
