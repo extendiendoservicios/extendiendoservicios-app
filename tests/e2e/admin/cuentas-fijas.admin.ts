@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import {
+  ADMIN_CAPABILITIES,
   ensureFixedAccounts,
   esDelConjuntoActivo,
   FIXED_ACCOUNT_LIST,
@@ -88,7 +89,9 @@ test.describe('cuentas fijas de prueba (RB-A01, RB-E01, RB-S01)', () => {
           .from('admin_capabilities')
           .select('capability')
           .eq('profile_id', id)
-        expect(caps, `${spec.email} capacidades`).toHaveLength(7)
+        expect(caps, `${spec.email} capacidades`).toHaveLength(
+          ADMIN_CAPABILITIES.length,
+        )
       }
     }
   })

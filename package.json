@@ -1,6 +1,6 @@
 {
   "name": "extendiendoservicios-app",
-  "version": "0.24.0",
+  "version": "0.25.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -48,7 +48,8 @@
     "db:types": "supabase gen types --linked > src/lib/database.types.ts",
     "db:test": "bash scripts/db-test.sh",
     "db:seed:users": "node --env-file=.env.local scripts/seed-dev.ts",
-    "db:seed:data": "supabase db query --linked -f supabase/seed.sql",
+    "db:seed:data": "supabase db query --linked -f supabase/seed.sql && pnpm db:seed:insumos",
+    "db:seed:insumos": "supabase db query --linked -f supabase/seed-insumos-dev.sql",
     "db:seed": "pnpm db:seed:users && pnpm db:seed:data",
     "db:recuperar-dev": "node --env-file=.env.local scripts/recuperar-app-dev.ts",
     "import:initial": "node --env-file-if-exists=.env.local scripts/import-initial.ts",
@@ -75,6 +76,7 @@
     "cmdk": "1.1.1",
     "cn": "0.3.0",
     "date-fns": "4.4.0",
+    "exceljs": "^4.4.0",
     "fflate": "0.8.3",
     "leaflet": "1.9.4",
     "lucide-react": "1.34.0",
@@ -108,7 +110,6 @@
     "eslint": "9.39.5",
     "eslint-plugin-jsx-a11y": "6.10.2",
     "eslint-plugin-react-hooks": "7.1.1",
-    "exceljs": "^4.4.0",
     "globals": "17.12.0",
     "husky": "9.1.7",
     "jsdom": "30.1.0",

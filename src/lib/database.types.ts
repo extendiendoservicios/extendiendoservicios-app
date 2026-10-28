@@ -3425,6 +3425,361 @@ export type Database = {
           },
         ]
       }
+      stock_count_lines: {
+        Row: {
+          count_id: string
+          counted_qty: number
+          difference: number
+          supply_id: string
+          system_qty: number
+        }
+        Insert: {
+          count_id: string
+          counted_qty: number
+          difference: number
+          supply_id: string
+          system_qty: number
+        }
+        Update: {
+          count_id?: string
+          counted_qty?: number
+          difference?: number
+          supply_id?: string
+          system_qty?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_count_lines_count_id_fkey"
+            columns: ["count_id"]
+            isOneToOne: false
+            referencedRelation: "stock_counts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_count_lines_count_id_fkey"
+            columns: ["count_id"]
+            isOneToOne: false
+            referencedRelation: "v_stock_counts_admin"
+            referencedColumns: ["count_id"]
+          },
+          {
+            foreignKeyName: "stock_count_lines_supply_id_fkey"
+            columns: ["supply_id"]
+            isOneToOne: false
+            referencedRelation: "supplies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_count_lines_supply_id_fkey"
+            columns: ["supply_id"]
+            isOneToOne: false
+            referencedRelation: "v_stock_admin"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_counts: {
+        Row: {
+          counted_at: string
+          created_at: string
+          created_by: string
+          id: string
+          notes: string | null
+          reviewer_id: string | null
+          reviewer_name: string | null
+        }
+        Insert: {
+          counted_at: string
+          created_at?: string
+          created_by: string
+          id?: string
+          notes?: string | null
+          reviewer_id?: string | null
+          reviewer_name?: string | null
+        }
+        Update: {
+          counted_at?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          notes?: string | null
+          reviewer_id?: string | null
+          reviewer_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_counts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_counts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "stock_counts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "stock_counts_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_counts_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "stock_counts_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+        ]
+      }
+      stock_movement_lines: {
+        Row: {
+          id: string
+          movement_id: string
+          qty_delta: number
+          stock_after: number
+          supply_id: string
+          unit_cost: number
+          unit_sale: number
+        }
+        Insert: {
+          id?: string
+          movement_id: string
+          qty_delta: number
+          stock_after: number
+          supply_id: string
+          unit_cost: number
+          unit_sale: number
+        }
+        Update: {
+          id?: string
+          movement_id?: string
+          qty_delta?: number
+          stock_after?: number
+          supply_id?: string
+          unit_cost?: number
+          unit_sale?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movement_lines_movement_id_fkey"
+            columns: ["movement_id"]
+            isOneToOne: false
+            referencedRelation: "stock_movements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movement_lines_movement_id_fkey"
+            columns: ["movement_id"]
+            isOneToOne: false
+            referencedRelation: "v_stock_movements_admin"
+            referencedColumns: ["movement_id"]
+          },
+          {
+            foreignKeyName: "stock_movement_lines_supply_id_fkey"
+            columns: ["supply_id"]
+            isOneToOne: false
+            referencedRelation: "supplies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movement_lines_supply_id_fkey"
+            columns: ["supply_id"]
+            isOneToOne: false
+            referencedRelation: "v_stock_admin"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_movements: {
+        Row: {
+          count_id: string | null
+          document_number: string | null
+          id: string
+          kind: Database["public"]["Enums"]["stock_movement_kind"]
+          note: string | null
+          person_id: string | null
+          reason: Database["public"]["Enums"]["stock_adjustment_reason"] | null
+          recorded_at: string
+          recorded_by: string
+          reverses_id: string | null
+          shift_id: string | null
+          site_id: string | null
+          supplier: string | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          count_id?: string | null
+          document_number?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["stock_movement_kind"]
+          note?: string | null
+          person_id?: string | null
+          reason?: Database["public"]["Enums"]["stock_adjustment_reason"] | null
+          recorded_at?: string
+          recorded_by: string
+          reverses_id?: string | null
+          shift_id?: string | null
+          site_id?: string | null
+          supplier?: string | null
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          count_id?: string | null
+          document_number?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["stock_movement_kind"]
+          note?: string | null
+          person_id?: string | null
+          reason?: Database["public"]["Enums"]["stock_adjustment_reason"] | null
+          recorded_at?: string
+          recorded_by?: string
+          reverses_id?: string | null
+          shift_id?: string | null
+          site_id?: string | null
+          supplier?: string | null
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_count_id_fkey"
+            columns: ["count_id"]
+            isOneToOne: false
+            referencedRelation: "stock_counts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_count_id_fkey"
+            columns: ["count_id"]
+            isOneToOne: false
+            referencedRelation: "v_stock_counts_admin"
+            referencedColumns: ["count_id"]
+          },
+          {
+            foreignKeyName: "stock_movements_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "stock_movements_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "stock_movements_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "stock_movements_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "stock_movements_reverses_id_fkey"
+            columns: ["reverses_id"]
+            isOneToOne: false
+            referencedRelation: "stock_movements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_reverses_id_fkey"
+            columns: ["reverses_id"]
+            isOneToOne: false
+            referencedRelation: "v_stock_movements_admin"
+            referencedColumns: ["movement_id"]
+          },
+          {
+            foreignKeyName: "stock_movements_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "v_shifts_board"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "stock_movements_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+        ]
+      }
       supervision_attendance: {
         Row: {
           accuracy_m: number | null
@@ -4122,6 +4477,435 @@ export type Database = {
           },
           {
             foreignKeyName: "supervisor_workdays_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+        ]
+      }
+      supplies: {
+        Row: {
+          active: boolean
+          category_id: string
+          code: string
+          cost_price: number
+          created_at: string
+          created_by: string | null
+          id: string
+          image_path: string | null
+          min_qty: number | null
+          name: string
+          notes: string | null
+          presentation: string | null
+          sale_price: number
+          stock_qty: number
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          active?: boolean
+          category_id: string
+          code: string
+          cost_price?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_path?: string | null
+          min_qty?: number | null
+          name: string
+          notes?: string | null
+          presentation?: string | null
+          sale_price?: number
+          stock_qty?: number
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          active?: boolean
+          category_id?: string
+          code?: string
+          cost_price?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_path?: string | null
+          min_qty?: number | null
+          name?: string
+          notes?: string | null
+          presentation?: string | null
+          sale_price?: number
+          stock_qty?: number
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplies_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "supply_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplies_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplies_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supplies_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "supplies_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplies_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supplies_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+        ]
+      }
+      supply_categories: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_categories_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_categories_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supply_categories_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "supply_categories_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_categories_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supply_categories_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+        ]
+      }
+      supply_price_changes: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          id: string
+          new_cost_price: number
+          new_sale_price: number
+          old_cost_price: number | null
+          old_sale_price: number | null
+          source: string
+          supply_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          new_cost_price: number
+          new_sale_price: number
+          old_cost_price?: number | null
+          old_sale_price?: number | null
+          source?: string
+          supply_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          new_cost_price?: number
+          new_sale_price?: number
+          old_cost_price?: number | null
+          old_sale_price?: number | null
+          source?: string
+          supply_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_price_changes_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_price_changes_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supply_price_changes_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "supply_price_changes_supply_id_fkey"
+            columns: ["supply_id"]
+            isOneToOne: false
+            referencedRelation: "supplies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_price_changes_supply_id_fkey"
+            columns: ["supply_id"]
+            isOneToOne: false
+            referencedRelation: "v_stock_admin"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supply_shortage_reports: {
+        Row: {
+          comment: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          reported_by: string
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          shift_id: string | null
+          site_id: string | null
+          status: Database["public"]["Enums"]["supply_shortage_status"]
+          supply_id: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          reported_by: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          shift_id?: string | null
+          site_id?: string | null
+          status?: Database["public"]["Enums"]["supply_shortage_status"]
+          supply_id?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          reported_by?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          shift_id?: string | null
+          site_id?: string | null
+          status?: Database["public"]["Enums"]["supply_shortage_status"]
+          supply_id?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_shortage_reports_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_shortage_reports_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supply_shortage_reports_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "supply_shortage_reports_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_shortage_reports_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supply_shortage_reports_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "supply_shortage_reports_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_shortage_reports_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supply_shortage_reports_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "supply_shortage_reports_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_shortage_reports_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "v_shifts_board"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_shortage_reports_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_shortage_reports_supply_id_fkey"
+            columns: ["supply_id"]
+            isOneToOne: false
+            referencedRelation: "supplies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_shortage_reports_supply_id_fkey"
+            columns: ["supply_id"]
+            isOneToOne: false
+            referencedRelation: "v_stock_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_shortage_reports_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_shortage_reports_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "supply_shortage_reports_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "v_supervisor_status"
@@ -5089,6 +5873,29 @@ export type Database = {
           },
         ]
       }
+      v_my_shortage_reports: {
+        Row: {
+          client_name: string | null
+          comment: string | null
+          created_at: string | null
+          description: string | null
+          end_time: string | null
+          id: string | null
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by_name: string | null
+          shift_date: string | null
+          shift_id: string | null
+          site_id: string | null
+          site_name: string | null
+          start_time: string | null
+          status: Database["public"]["Enums"]["supply_shortage_status"] | null
+          supply_code: string | null
+          supply_id: string | null
+          supply_name: string | null
+        }
+        Relationships: []
+      }
       v_my_supervisions: {
         Row: {
           assigned_at: string | null
@@ -5180,6 +5987,29 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      v_my_withdrawals: {
+        Row: {
+          client_id: string | null
+          client_name: string | null
+          end_time: string | null
+          lines: Json | null
+          movement_id: string | null
+          note: string | null
+          on_behalf: boolean | null
+          recorded_at: string | null
+          recorded_by: string | null
+          registered_by_name: string | null
+          shift_date: string | null
+          shift_id: string | null
+          site_id: string | null
+          site_name: string | null
+          start_time: string | null
+          total_qty: number | null
+          void_reason: string | null
+          voided_at: string | null
+        }
+        Relationships: []
       }
       v_my_workdays: {
         Row: {
@@ -5643,6 +6473,289 @@ export type Database = {
           },
         ]
       }
+      v_stock_admin: {
+        Row: {
+          active: boolean | null
+          category_id: string | null
+          category_name: string | null
+          category_sort_order: number | null
+          code: string | null
+          cost_price: number | null
+          created_at: string | null
+          id: string | null
+          image_path: string | null
+          min_qty: number | null
+          name: string | null
+          notes: string | null
+          presentation: string | null
+          sale_price: number | null
+          status: string | null
+          stock_qty: number | null
+          stock_value: number | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplies_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "supply_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_stock_counts_admin: {
+        Row: {
+          count_id: string | null
+          counted_at: string | null
+          created_at: string | null
+          created_by: string | null
+          created_by_name: string | null
+          differences_count: number | null
+          lines: Json | null
+          lines_count: number | null
+          movement_id: string | null
+          notes: string | null
+          reviewer_id: string | null
+          reviewer_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_counts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_counts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "stock_counts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "stock_counts_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_counts_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "stock_counts_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+        ]
+      }
+      v_stock_movements_admin: {
+        Row: {
+          category_id: string | null
+          client_id: string | null
+          client_name: string | null
+          count_counted_at: string | null
+          count_id: string | null
+          count_reviewer_name: string | null
+          document_number: string | null
+          end_time: string | null
+          kind: Database["public"]["Enums"]["stock_movement_kind"] | null
+          line_cost: number | null
+          line_id: string | null
+          line_sale: number | null
+          movement_id: string | null
+          note: string | null
+          person_id: string | null
+          person_name: string | null
+          qty_delta: number | null
+          reason: Database["public"]["Enums"]["stock_adjustment_reason"] | null
+          recorded_at: string | null
+          recorded_by: string | null
+          recorded_by_name: string | null
+          reverses_id: string | null
+          shift_date: string | null
+          shift_id: string | null
+          site_id: string | null
+          site_name: string | null
+          start_time: string | null
+          stock_after: number | null
+          supplier: string | null
+          supply_code: string | null
+          supply_id: string | null
+          supply_name: string | null
+          supply_presentation: string | null
+          unit_cost: number | null
+          unit_sale: number | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+          voided_by_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sites_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sites_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movement_lines_supply_id_fkey"
+            columns: ["supply_id"]
+            isOneToOne: false
+            referencedRelation: "supplies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movement_lines_supply_id_fkey"
+            columns: ["supply_id"]
+            isOneToOne: false
+            referencedRelation: "v_stock_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_count_id_fkey"
+            columns: ["count_id"]
+            isOneToOne: false
+            referencedRelation: "stock_counts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_count_id_fkey"
+            columns: ["count_id"]
+            isOneToOne: false
+            referencedRelation: "v_stock_counts_admin"
+            referencedColumns: ["count_id"]
+          },
+          {
+            foreignKeyName: "stock_movements_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "stock_movements_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "stock_movements_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "stock_movements_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "stock_movements_reverses_id_fkey"
+            columns: ["reverses_id"]
+            isOneToOne: false
+            referencedRelation: "stock_movements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_reverses_id_fkey"
+            columns: ["reverses_id"]
+            isOneToOne: false
+            referencedRelation: "v_stock_movements_admin"
+            referencedColumns: ["movement_id"]
+          },
+          {
+            foreignKeyName: "stock_movements_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "v_shifts_board"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "stock_movements_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "supplies_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "supply_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_supervisions_admin: {
         Row: {
           assigned_at: string | null
@@ -5950,6 +7063,138 @@ export type Database = {
           },
         ]
       }
+      v_supply_catalog: {
+        Row: {
+          category_id: string | null
+          category_name: string | null
+          category_sort_order: number | null
+          code: string | null
+          id: string | null
+          image_path: string | null
+          name: string | null
+          out_of_stock: boolean | null
+          presentation: string | null
+        }
+        Relationships: []
+      }
+      v_supply_consumption_by_client: {
+        Row: {
+          category_id: string | null
+          client_id: string | null
+          client_name: string | null
+          cost_total: number | null
+          day: string | null
+          qty: number | null
+          sale_total: number | null
+          site_id: string | null
+          site_name: string | null
+          supply_code: string | null
+          supply_id: string | null
+          supply_name: string | null
+          supply_presentation: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sites_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sites_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movement_lines_supply_id_fkey"
+            columns: ["supply_id"]
+            isOneToOne: false
+            referencedRelation: "supplies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movement_lines_supply_id_fkey"
+            columns: ["supply_id"]
+            isOneToOne: false
+            referencedRelation: "v_stock_admin"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplies_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "supply_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_withdrawal_shift_options: {
+        Row: {
+          client_id: string | null
+          client_name: string | null
+          end_time: string | null
+          is_assigned: boolean | null
+          is_priority: boolean | null
+          open_ended: boolean | null
+          priority_kind: string | null
+          shift_date: string | null
+          shift_id: string | null
+          shift_status: Database["public"]["Enums"]["shift_status"] | null
+          site_id: string | null
+          site_name: string | null
+          start_time: string | null
+          starts_at: string | null
+        }
+        Relationships: []
+      }
+      v_withdrawal_shift_options_admin: {
+        Row: {
+          assigned_employee_ids: string[] | null
+          client_id: string | null
+          client_name: string | null
+          end_time: string | null
+          open_ended: boolean | null
+          shift_date: string | null
+          shift_id: string | null
+          shift_status: Database["public"]["Enums"]["shift_status"] | null
+          site_id: string | null
+          site_name: string | null
+          start_time: string | null
+          starts_at: string | null
+          supervisor_ids: string[] | null
+        }
+        Relationships: []
+      }
+      v_withdrawal_site_options: {
+        Row: {
+          client_id: string | null
+          client_name: string | null
+          is_priority: boolean | null
+          priority_kind: string | null
+          site_id: string | null
+          site_name: string | null
+        }
+        Relationships: []
+      }
+      v_withdrawal_site_options_admin: {
+        Row: {
+          client_id: string | null
+          client_name: string | null
+          site_id: string | null
+          site_name: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       accept_location_consent: { Args: never; Returns: string }
@@ -5966,6 +7211,15 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      adjust_stock: {
+        Args: {
+          p_delta: number
+          p_note?: string
+          p_reason: Database["public"]["Enums"]["stock_adjustment_reason"]
+          p_supply_id: string
+        }
+        Returns: Json
       }
       admin_add_workday_pause: {
         Args: {
@@ -6492,6 +7746,7 @@ export type Database = {
         }
         Returns: Json
       }
+      get_stock_summary: { Args: never; Returns: Json }
       mark_changes_seen: {
         Args: never
         Returns: {
@@ -6760,6 +8015,36 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      register_stock_count: {
+        Args: {
+          p_counted_at: string
+          p_lines: Json
+          p_notes?: string
+          p_reviewer_id?: string
+          p_reviewer_name?: string
+        }
+        Returns: Json
+      }
+      register_stock_entry: {
+        Args: {
+          p_document_number?: string
+          p_kind?: Database["public"]["Enums"]["stock_movement_kind"]
+          p_lines: Json
+          p_note?: string
+          p_supplier?: string
+        }
+        Returns: Json
+      }
+      register_withdrawal: {
+        Args: {
+          p_lines: Json
+          p_note?: string
+          p_person_id?: string
+          p_shift_id?: string
+          p_site_id?: string
+        }
+        Returns: Json
+      }
       reload_shift_tasks: {
         Args: { p_shift_id: string }
         Returns: {
@@ -6871,6 +8156,64 @@ export type Database = {
       reopen_workday: {
         Args: { p_accuracy?: number; p_lat?: number; p_lng?: number }
         Returns: Json
+      }
+      report_supply_shortage: {
+        Args: {
+          p_comment?: string
+          p_description?: string
+          p_shift_id?: string
+          p_site_id?: string
+          p_supply_id?: string
+        }
+        Returns: {
+          comment: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          reported_by: string
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          shift_id: string | null
+          site_id: string | null
+          status: Database["public"]["Enums"]["supply_shortage_status"]
+          supply_id: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "supply_shortage_reports"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      resolve_supply_shortage: {
+        Args: { p_note: string; p_report_id: string }
+        Returns: {
+          comment: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          reported_by: string
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          shift_id: string | null
+          site_id: string | null
+          status: Database["public"]["Enums"]["supply_shortage_status"]
+          supply_id: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "supply_shortage_reports"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       resume_workday: {
         Args: { p_accuracy?: number; p_lat?: number; p_lng?: number }
@@ -7111,6 +8454,64 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "supervisor_priorities"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_supply_active: {
+        Args: { p_active: boolean; p_supply_id: string }
+        Returns: {
+          active: boolean
+          category_id: string
+          code: string
+          cost_price: number
+          created_at: string
+          created_by: string | null
+          id: string
+          image_path: string | null
+          min_qty: number | null
+          name: string
+          notes: string | null
+          presentation: string | null
+          sale_price: number
+          stock_qty: number
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "supplies"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_supply_prices: {
+        Args: {
+          p_cost_price: number
+          p_sale_price: number
+          p_supply_id: string
+        }
+        Returns: {
+          active: boolean
+          category_id: string
+          code: string
+          cost_price: number
+          created_at: string
+          created_by: string | null
+          id: string
+          image_path: string | null
+          min_qty: number | null
+          name: string
+          notes: string | null
+          presentation: string | null
+          sale_price: number
+          stock_qty: number
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "supplies"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -7407,6 +8808,72 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      upsert_supply: {
+        Args: {
+          p_category_id: string
+          p_code: string
+          p_cost_price?: number
+          p_id?: string
+          p_image_path?: string
+          p_min_qty?: number
+          p_name: string
+          p_notes?: string
+          p_presentation?: string
+          p_sale_price?: number
+        }
+        Returns: {
+          active: boolean
+          category_id: string
+          code: string
+          cost_price: number
+          created_at: string
+          created_by: string | null
+          id: string
+          image_path: string | null
+          min_qty: number | null
+          name: string
+          notes: string | null
+          presentation: string | null
+          sale_price: number
+          stock_qty: number
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "supplies"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      upsert_supply_category: {
+        Args: {
+          p_active?: boolean
+          p_id?: string
+          p_name: string
+          p_sort_order?: number
+        }
+        Returns: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "supply_categories"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      void_stock_movement: {
+        Args: { p_movement_id: string; p_reason: string }
+        Returns: Json
+      }
     }
     Enums: {
       absence_reason:
@@ -7423,6 +8890,7 @@ export type Database = {
         | "manage_attendance"
         | "generate_shifts"
         | "manage_supervisions"
+        | "manage_stock"
       announcement_audience: "employees" | "supervisors" | "all" | "custom"
       app_role: "owner" | "admin" | "supervisor" | "employee"
       assignment_status:
@@ -7464,6 +8932,8 @@ export type Database = {
         | "media_deleted"
         | "workday_corrected"
         | "workday_auto_closed"
+        | "stock_movement_voided"
+        | "supply_price_changed"
       service_status: "active" | "paused" | "ended"
       shift_status:
         | "scheduled"
@@ -7472,12 +8942,26 @@ export type Database = {
         | "completed"
         | "cancelled"
       site_status: "active" | "inactive"
+      stock_adjustment_reason:
+        | "count"
+        | "breakage"
+        | "expired"
+        | "data_error"
+        | "other"
+      stock_movement_kind:
+        | "entry"
+        | "return"
+        | "withdrawal"
+        | "adjustment"
+        | "count"
+        | "reversal"
       supervision_status:
         | "assigned"
         | "in_progress"
         | "completed"
         | "not_done"
         | "cancelled"
+      supply_shortage_status: "open" | "resolved"
       task_status: "pending" | "in_progress" | "done" | "not_done"
       workday_event_kind:
         | "start"
@@ -7632,6 +9116,7 @@ export const Constants = {
         "manage_attendance",
         "generate_shifts",
         "manage_supervisions",
+        "manage_stock",
       ],
       announcement_audience: ["employees", "supervisors", "all", "custom"],
       app_role: ["owner", "admin", "supervisor", "employee"],
@@ -7676,6 +9161,8 @@ export const Constants = {
         "media_deleted",
         "workday_corrected",
         "workday_auto_closed",
+        "stock_movement_voided",
+        "supply_price_changed",
       ],
       service_status: ["active", "paused", "ended"],
       shift_status: [
@@ -7686,6 +9173,21 @@ export const Constants = {
         "cancelled",
       ],
       site_status: ["active", "inactive"],
+      stock_adjustment_reason: [
+        "count",
+        "breakage",
+        "expired",
+        "data_error",
+        "other",
+      ],
+      stock_movement_kind: [
+        "entry",
+        "return",
+        "withdrawal",
+        "adjustment",
+        "count",
+        "reversal",
+      ],
       supervision_status: [
         "assigned",
         "in_progress",
@@ -7693,6 +9195,7 @@ export const Constants = {
         "not_done",
         "cancelled",
       ],
+      supply_shortage_status: ["open", "resolved"],
       task_status: ["pending", "in_progress", "done", "not_done"],
       workday_event_kind: [
         "start",

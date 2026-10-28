@@ -7,6 +7,40 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.25.0] - 2026-10-28
+
+Módulo E: inventario y control de stock de insumos (P25.1 a P25.8). Migraciones 0069 a 0074.
+
+### Agregado
+
+- Sección «Insumos» en administración, con las pestañas Stock, Movimientos, Faltantes, Consumo por cliente, Controles y Categorías. El número junto a «Insumos» en el menú cuenta los avisos de faltante abiertos.
+- Catálogo de artículos: cada presentación es un artículo, con código interno, categoría, imagen, stock mínimo, precio de costo y precio de venta. Los precios guardan historial. En la lista de Stock, una fila amarilla marca «Bajo mínimo» y una roja, «Sin stock».
+- Ingresos y devoluciones. Si el costo del ingreso es distinto del vigente, la app pregunta si se actualiza el precio de costo.
+- Ajustes con motivo. Los movimientos no se borran ni se editan: un ingreso, una devolución o un retiro cargados por error se corrigen con «Anular», que pide un motivo.
+- Movimientos con filtros y «Exportar a Excel».
+- Consumo por cliente y por sede, a costo y a venta, con detalle por artículo y Excel.
+- Planilla imprimible para contar el depósito. «Cargar control» compara lo contado contra el stock que el sistema tenía a la hora del control y registra las diferencias. La pestaña Controles guarda el historial.
+- «Retiro en nombre de»: la oficina registra un retiro a nombre de un empleado o de un coordinador. Puede elegir turnos de 30 días atrás a 7 días adelante, de todos los clientes, y los turnos de la persona elegida salen primero.
+- Celular del empleado y del coordinador: pestaña «Insumos» con el catálogo, sin cantidades ni precios. Desde ahí se retira para un turno o para una sede, se avisa un faltante y se ven las respuestas en «Mis avisos».
+- Faltantes avisados: el dueño o cualquier administrador los resuelve con una nota.
+- Resumen: tarjetas «Faltantes avisados» y «Stock bajo».
+- Ficha del empleado y del coordinador: pestaña «Retiros», con el total a venta del período.
+- Permiso nuevo «Gestionar stock», para mover stock y cambiar el catálogo. Un administrador sin este permiso puede mirar la sección y resolver faltantes.
+- Catálogo inicial, a pedido de los dueños: 4 categorías y 16 artículos precargados, con el stock y los precios en cero y sin mínimo. Hay que completar los precios, los mínimos y los códigos reales de la empresa.
+- Guía de Insumos, secciones nuevas en las guías del empleado y del coordinador, bloque G del guion de UAT y capturas.
+
+### Corregido
+
+- Fotos y videos: el visor ya no se vuelve a abrir solo después de «Dejar de conservar» con el filtro «Conservadas».
+
+### Seguridad
+
+- Las funciones de Insumos validan en el servidor el largo de los textos, los rangos de cantidades y precios y la fecha del control, que va desde 30 días atrás hasta ahora.
+
+### Pruebas y automatización
+
+- Pruebas e2e de Insumos por rol, matriz de permisos de las tablas y funciones nuevas, y pruebas pgTAP de las migraciones 0069 a 0074.
+
 ## [0.24.0] - 2026-10-26
 
 Ajustes posteriores a P24 que decidió Mike el 26 oct 2026 (P24.8). Migraciones 0065 a 0068.

@@ -18,6 +18,11 @@ import type { MyDayAssignment } from '@/api/myDay'
  * prueba en `ShiftMediaSection.test.tsx`; acá se lo reemplaza por un
  * marcador con las propiedades que recibe.
  */
+// El atajo «Retirar insumos» (P25.4) consulta turnos permitidos con TanStack
+// Query; acá no interesa, y su comportamiento se prueba en `WithdrawShortcut.test.tsx`.
+vi.mock('@/features/myStock/components/WithdrawShortcut', () => ({
+  WithdrawShortcut: () => null,
+}))
 vi.mock('@/features/employee/components/LazyShiftMediaSection', () => ({
   LazyShiftMediaSection: (props: {
     shiftId: string

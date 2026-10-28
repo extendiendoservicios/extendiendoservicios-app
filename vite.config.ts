@@ -92,7 +92,10 @@ const pwaPlugin = VitePWA({
     // comprimido) y solo lo usa quien elige un video de la galería, siempre con conexión (la
     // subida la necesita). Se queda fuera del precache para que no viaje a todos los
     // teléfonos al instalar o actualizar la app; se baja la primera vez que hace falta.
-    globIgnores: ['**/vendor-media-*.js'],
+    //
+    // P25.3: ExcelJS (exportar a Excel de Insumos, módulo E) pesa ~950 kB y solo lo usa la
+    // administración al tocar «Exportar a Excel». Mismo criterio: fuera del precache.
+    globIgnores: ['**/vendor-media-*.js', '**/vendor-excel-*.js'],
     // SPA: cualquier navegación que no matchee un archivo precacheado (todas las rutas de
     // React Router) sirve `index.html` desde el cache, para que la app abra sin conexión.
     navigateFallback: '/index.html',
@@ -179,6 +182,12 @@ export default defineConfig({
             {
               name: 'vendor-media',
               test: /node_modules\/mediabunny\//,
+              priority: 25,
+            },
+            // P25.3: ExcelJS, chunk propio y estable por el mismo motivo (ver `globIgnores`).
+            {
+              name: 'vendor-excel',
+              test: /node_modules\/exceljs\//,
               priority: 25,
             },
           ],

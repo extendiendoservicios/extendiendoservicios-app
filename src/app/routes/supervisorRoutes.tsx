@@ -1,5 +1,6 @@
 import type { RouteObject } from 'react-router'
 import { lazyPage } from './lazyPage'
+import { stockMobileRoutes } from './stockMobileRoutes'
 
 /**
  * Rutas de `/sup` (DS-015), `05_Pantallas_y_Navegacion.md` sección 5.
@@ -85,6 +86,8 @@ export const supervisorRoutes: RouteObject[] = [
       subtitle: 'Lo que publica administración',
     },
   },
+  // Insumos (P25.4, módulo E): mismas pantallas para los dos roles.
+  ...stockMobileRoutes,
   {
     path: 'mas',
     ...lazyPage(() => import('@/pages/sup/MorePage')),

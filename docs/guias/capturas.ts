@@ -1,4 +1,4 @@
-// docs/guias/capturas.ts — DOC-018, DOC-019, DOC-020 (P19.4), P24.6b
+// docs/guias/capturas.ts — DOC-018, DOC-019, DOC-020 (P19.4), P24.6b, P25.7
 //
 // Regenera las capturas de pantalla de las guías de uso (`docs/guias/img/`).
 //
@@ -13,11 +13,17 @@
 //   así que las lecturas de `v_my_day`, `v_my_supervisions`, `v_supervisor_today`, `v_my_workdays`
 //   y similares se reemplazan en el navegador por los datos inventados de `datos-ejemplo.ts`.
 //   Cualquier escritura (POST, PATCH, DELETE) contra la base se bloquea y el script informa cuántas
-//   bloqueó: hoy solo `mark_changes_seen`, que la app llama sola al abrir Hoy.
+//   bloqueó: hoy `mark_changes_seen`, que la app llama sola al abrir Hoy, y `get_stock_summary`, que la app
+// llama para el número de avisos junto a Insumos en el menú (en las capturas ese número no aparece).
 // - Administración con coordinadores (1280 px, `ejemplo.admin`): las pantallas siguen leyendo los
 //   datos reales de `App_dev`, pero las lecturas de jornadas, estado de coordinadores,
 //   preferencias y supervisiones se reemplazan por datos inventados. La ficha que se abre es la de
 //   la cuenta fija `e2e-fijo-supervisor1`, con su nombre cambiado en pantalla por «Sofía Ejemplo».
+// - Insumos (P25.7): las capturas `adm-insumos-*` usan la cuenta del DUEÑO (que tiene «Gestionar
+//   stock» sin que nadie se lo dé) y reemplazan las lecturas de Insumos por un catálogo inventado
+//   (`datos-ejemplo.ts`), así no dependen de lo que haya cargado en `App_dev`. Las `emp-insumos-*` y
+//   `sup-insumos-*` son del celular. Los pasos previos (agregar un artículo, escribir un nombre)
+//   solo llenan formularios: nunca se toca «Registrar» ni «Confirmar».
 //
 // Uso (desde la raíz de `app/`):
 //
@@ -48,6 +54,7 @@ import {
   ESCRITURAS_BLOQUEADAS,
   fijarClienteDeEjemplo,
   IDS_DE_EJEMPLO as ID,
+  IDS_DE_INSUMOS as SUM,
   instalarDatosDeEjemplo,
   LECTURAS_REALES,
   type EscenarioAdmin,
@@ -165,6 +172,8 @@ interface Captura {
     supervisor?: EscenarioSupervisor
     admin?: EscenarioAdmin
     consentimiento?: boolean
+    /** Celular: suma las lecturas de Insumos (catálogo y turnos para retirar). */
+    insumos?: boolean
   }
 }
 
@@ -285,6 +294,60 @@ const descargarDetalle = async (page: Page) => {
 const verElemento = (selector: string) => async (page: Page) => {
   await page.locator(selector).first().scrollIntoViewIfNeeded()
   await page.waitForTimeout(2500)
+}
+
+/** Agrega un artículo al formulario de ingreso, eligiéndolo del buscador. */
+const agregarAlIngreso = async (page: Page, nombre: RegExp) => {
+  await page.getByRole('combobox', { name: 'Agregar un artículo' }).click()
+  await page.getByRole('option', { name: nombre }).first().click()
+}
+
+/** Ingreso con dos artículos cargados y los datos del comprobante (sin registrar nada). */
+const llenarIngreso = async (page: Page) => {
+  await agregarAlIngreso(page, /Lavandina/)
+  await page.locator('#entry-qty-0').fill('12')
+  await page.locator('#entry-cost-0').fill('1400')
+  await agregarAlIngreso(page, /Bolsa de residuos/)
+  await page.locator('#entry-qty-1').fill('30')
+  await page.locator('#entry-supplier').fill('Droguería Ejemplo')
+  await page.locator('#entry-document').fill('R-0001-00012345')
+}
+
+/** «Cargar control» con quien revisó y dos artículos contados (sin confirmar). */
+const llenarControl = async (page: Page) => {
+  await page.getByText('Un nombre escrito').first().click()
+  await page.locator('#count-reviewer-name').fill('Laura Administradora')
+  await page.getByLabel(/^Contado de Lavandina/).fill('2')
+  await page.getByLabel(/^Contado de Desengrasante/).fill('18')
+  await page.getByLabel(/^Contado de Guantes/).fill('0')
+  // Sin foco en el último campo y con la pantalla arriba de todo (si no, el encabezado fijo queda
+  // en el medio de la captura de página completa).
+  await page.evaluate(() => {
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    for (const elemento of document.querySelectorAll('*')) {
+      if (elemento.scrollTop > 0) elemento.scrollTop = 0
+    }
+    window.scrollTo(0, 0)
+  })
+}
+
+/** Retiro del celular: elige el primer turno y pasa a los artículos, con dos agregados. */
+const elegirTurnoYArticulos = async (page: Page) => {
+  await page.getByText('Edificio Demo · Sede Central').first().click()
+  await page.getByRole('button', { name: 'Continuar' }).click()
+  await page.getByRole('button', { name: /^Agregar Lavandina/ }).click()
+  await page.getByRole('button', { name: /^Agregar Bolsa de residuos/ }).click()
+  await page
+    .getByText(/Revisar retiro/)
+    .first()
+    .waitFor()
+}
+
+/** Aviso de faltante del celular con un insumo escrito y un comentario (sin enviar). */
+const llenarAviso = async (page: Page) => {
+  await page.getByText('Otro insumo').first().click()
+  await page.getByLabel('Qué insumo falta').fill('Esponjas verdes')
+  await page.getByLabel('Comentario').fill('No hay ninguna en el carro.')
 }
 
 export const CAPTURAS: Captura[] = [
@@ -843,6 +906,119 @@ export const CAPTURAS: Captura[] = [
     ruta: '/admin/configuracion/criterios',
     espera: 'Criterios de calificación',
   },
+  // ---- Insumos (módulo E, P25.7): administración con la cuenta del dueño --------------------
+  {
+    nombre: 'adm-insumos-stock',
+    rol: 'owner',
+    vista: 'escritorio',
+    ruta: '/admin/insumos',
+    espera: 'Nuevo artículo',
+    ejemplo: { admin: 'insumos' },
+    completa: true,
+  },
+  {
+    nombre: 'adm-insumos-ficha',
+    rol: 'owner',
+    vista: 'escritorio',
+    ruta: `/admin/insumos/${SUM.lavandina}`,
+    espera: 'Cambiar precios',
+    ejemplo: { admin: 'insumos' },
+    completa: true,
+  },
+  {
+    nombre: 'adm-insumos-ingreso',
+    rol: 'owner',
+    vista: 'escritorio',
+    ruta: '/admin/insumos/ingreso',
+    espera: 'Registrar ingreso',
+    ejemplo: { admin: 'insumos' },
+    preparar: llenarIngreso,
+    completa: true,
+  },
+  {
+    nombre: 'adm-insumos-movimientos',
+    rol: 'owner',
+    vista: 'escritorio',
+    ruta: '/admin/insumos?pestana=movimientos',
+    espera: 'Exportar a Excel',
+    ejemplo: { admin: 'insumos' },
+    completa: true,
+  },
+  {
+    nombre: 'adm-insumos-consumo',
+    rol: 'owner',
+    vista: 'escritorio',
+    ruta: '/admin/insumos?pestana=consumo',
+    espera: /Total del período/,
+    ejemplo: { admin: 'insumos' },
+    completa: true,
+  },
+  {
+    nombre: 'adm-insumos-control',
+    rol: 'owner',
+    vista: 'escritorio',
+    ruta: '/admin/insumos/control',
+    espera: 'Confirmar control',
+    ejemplo: { admin: 'insumos' },
+    preparar: llenarControl,
+    completa: true,
+  },
+  {
+    nombre: 'adm-insumos-faltantes',
+    rol: 'owner',
+    vista: 'escritorio',
+    ruta: '/admin/insumos?pestana=faltantes',
+    espera: 'Esponjas verdes',
+    ejemplo: { admin: 'insumos' },
+    completa: true,
+  },
+
+  // ---- Insumos (celular) -----------------------------------------------------------------
+  {
+    nombre: 'emp-insumos',
+    rol: 'empleado1',
+    vista: 'celular',
+    ruta: '/app/insumos',
+    espera: 'Retirar insumos',
+    ejemplo: { empleado: 'esperado', insumos: true },
+    completa: true,
+  },
+  {
+    nombre: 'emp-insumos-retirar',
+    rol: 'empleado1',
+    vista: 'celular',
+    ruta: '/app/insumos/retirar',
+    espera: 'Continuar',
+    ejemplo: { empleado: 'esperado', insumos: true },
+    preparar: elegirTurnoYArticulos,
+  },
+  {
+    nombre: 'emp-insumos-faltante',
+    rol: 'empleado1',
+    vista: 'celular',
+    ruta: '/app/insumos/faltante',
+    espera: 'Enviar aviso',
+    ejemplo: { empleado: 'esperado', insumos: true },
+    preparar: llenarAviso,
+  },
+  {
+    nombre: 'sup-insumos',
+    rol: 'supervisor1',
+    vista: 'celular',
+    ruta: '/sup/insumos',
+    espera: 'Retirar insumos',
+    ejemplo: { supervisor: 'en-actividad', insumos: true },
+    completa: true,
+  },
+  {
+    nombre: 'sup-insumos-retirar',
+    rol: 'supervisor1',
+    vista: 'celular',
+    ruta: '/sup/insumos/retirar',
+    espera: 'Otras sedes',
+    ejemplo: { supervisor: 'en-actividad', insumos: true },
+    completa: true,
+  },
 ]
 
 function argumento(nombre: string): string | undefined {
@@ -906,6 +1082,7 @@ async function main(): Promise<void> {
               empleado: captura.ejemplo.empleado,
               supervisor: captura.ejemplo.supervisor,
               admin: captura.ejemplo.admin,
+              insumos: captura.ejemplo.insumos,
               coordinadorId: (await sesionDe('supervisor1')).usuarioId,
             })
           }

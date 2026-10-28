@@ -1,6 +1,6 @@
 # Guía de administración (dueño y administradores)
 
-DOC-018, actualizada con P24.6 y P24.6b (coordinación libre y jornada). Cómo usar la plataforma de Extendiendo Servicios desde la oficina: cargar clientes, sedes, servicios y personal, armar el cronograma, asignar empleados a los turnos y seguir la operación del día, incluida la jornada de los coordinadores.
+DOC-018, actualizada con P24.6 y P24.6b (coordinación libre y jornada) y con P25.6 (Insumos). Cómo usar la plataforma de Extendiendo Servicios desde la oficina: cargar clientes, sedes, servicios y personal, armar el cronograma, asignar empleados a los turnos y seguir la operación del día, incluida la jornada de los coordinadores.
 
 **Novedad:** los coordinadores **ya no se asignan a los turnos**. Cada coordinador ve todos los turnos del día, elige cuál supervisar desde su celular y lleva su propia jornada. Lo que se carga desde la oficina son sus **clientes y sedes preferenciales** (para ordenarles la lista) y, si hace falta, las **correcciones** de su jornada.
 
@@ -26,10 +26,11 @@ Las imágenes son de ejemplo, con datos inventados. Esta guía cubre solo la **P
 11. [Seguir el día: Resumen y Asistencia](#seguir-el-día-resumen-y-asistencia)
 12. [Fotos y videos](#fotos-y-videos)
 13. [Supervisiones y calificaciones](#supervisiones-y-calificaciones)
-14. [Configuración](#configuración)
-15. [Usar la administración desde el celular](#usar-la-administración-desde-el-celular)
-16. [Lo que no incluye la Plataforma Base](#lo-que-no-incluye-la-plataforma-base)
-17. [Cuando algo no anda](#cuando-algo-no-anda)
+14. [Insumos y control de stock](#insumos-y-control-de-stock)
+15. [Configuración](#configuración)
+16. [Usar la administración desde el celular](#usar-la-administración-desde-el-celular)
+17. [Lo que no incluye la Plataforma Base](#lo-que-no-incluye-la-plataforma-base)
+18. [Cuando algo no anda](#cuando-algo-no-anda)
 
 ---
 
@@ -40,19 +41,20 @@ Hay dos roles de administración:
 - **Dueño:** puede todo. Es la única persona que da permisos a los administradores.
 - **Administrador:** puede cargar y operar casi todo, pero algunas acciones necesitan un **permiso** que le da el dueño.
 
-### Los siete permisos de un administrador
+### Los ocho permisos de un administrador
 
 El dueño los activa por persona (ver [Usuarios y roles](#usuarios-y-roles)). Sin el permiso, el botón directamente no aparece.
 
-| Permiso                        | Qué habilita                                                                                                                                 |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gestionar usuarios             | Dar de alta empleados y coordinadores; resetear contraseñas, cambiar emails, cerrar sesiones y desactivar a empleados y coordinadores        |
-| Cancelar turnos                | **Cancelar turno**                                                                                                                           |
-| Editar calificaciones          | Corregir las calificaciones que cargaron los coordinadores                                                                                   |
-| Editar plantillas de tareas    | Crear y cambiar las listas de tareas de clientes y sedes                                                                                     |
-| Registrar asistencia por otros | **Registrar en nombre** de un empleado; asignar o quitar personal una vez que el turno ya empezó; corregir las jornadas de los coordinadores |
-| Generar turnos del mes         | **Generar turnos del mes**                                                                                                                   |
-| Gestionar supervisiones        | Cargar y quitar los clientes y sedes preferenciales de los coordinadores; cancelar supervisiones                                             |
+| Permiso                        | Qué habilita                                                                                                                                                                             |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gestionar usuarios             | Dar de alta empleados y coordinadores; resetear contraseñas, cambiar emails, cerrar sesiones y desactivar a empleados y coordinadores                                                    |
+| Cancelar turnos                | **Cancelar turno**                                                                                                                                                                       |
+| Editar calificaciones          | Corregir las calificaciones que cargaron los coordinadores                                                                                                                               |
+| Editar plantillas de tareas    | Crear y cambiar las listas de tareas de clientes y sedes                                                                                                                                 |
+| Registrar asistencia por otros | **Registrar en nombre** de un empleado; asignar o quitar personal una vez que el turno ya empezó; corregir las jornadas de los coordinadores                                             |
+| Generar turnos del mes         | **Generar turnos del mes**                                                                                                                                                               |
+| Gestionar supervisiones        | Cargar y quitar los clientes y sedes preferenciales de los coordinadores; cancelar supervisiones                                                                                         |
+| Gestionar stock                | Cargar el catálogo de insumos y sus precios; registrar ingresos, ajustes, retiros en nombre de otra persona y controles; anular movimientos (ver [Insumos](#insumos-y-control-de-stock)) |
 
 ### Lo que es solo del dueño
 
@@ -109,7 +111,7 @@ Tocá tu foto (arriba a la derecha) y elegí **Cerrar sesión**. En el celular t
 
 ![Resumen de la administración](guias/img/adm-resumen.png)
 
-A la izquierda está el **menú**, con ocho secciones:
+A la izquierda está el **menú**, con nueve secciones:
 
 | Sección              | Para qué sirve                                                                |
 | -------------------- | ----------------------------------------------------------------------------- |
@@ -120,6 +122,7 @@ A la izquierda está el **menú**, con ocho secciones:
 | **Empleados**        | La dotación: empleados y coordinadores                                        |
 | **Clientes y sedes** | Clientes, sus sedes, contactos y servicios                                    |
 | **Tareas**           | Las listas de tareas de cada cliente y de cada sede                           |
+| **Insumos**          | El stock de insumos, los retiros, los avisos de faltante y los controles      |
 | **Configuración**    | Usuarios y roles, datos de la empresa, feriados, criterios, seguridad         |
 
 Arriba hay un **buscador** (también se abre con las teclas `Ctrl` y `K`) y tu foto, que abre el menú con **Mi perfil** y **Cerrar sesión**. Abajo del menú ves tu nombre, tu rol y la versión de la plataforma.
@@ -375,7 +378,7 @@ Tocá a una persona para ver todo sobre ella.
 
 ![Ficha del empleado, pestaña Habilitaciones](guias/img/adm-empleado-ficha.png)
 
-Arriba tenés las acciones: **Resetear contraseña**, **Cerrar sesiones**, **Dar de baja** y **Editar**. Abajo, siete pestañas (los coordinadores tienen además **Clientes y sedes preferenciales** y **Jornadas**, ver [Coordinadores](#coordinadores-sedes-preferenciales-jornadas-y-correcciones)):
+Arriba tenés las acciones: **Resetear contraseña**, **Cerrar sesiones**, **Dar de baja** y **Editar**. Abajo, las pestañas (los coordinadores tienen además **Clientes y sedes preferenciales** y **Jornadas**, ver [Coordinadores](#coordinadores-sedes-preferenciales-jornadas-y-correcciones)). También hay una pestaña **Retiros**, con los insumos que retiró la persona (ver [Los retiros de una persona](guia-insumos.md#los-retiros-de-una-persona)):
 
 - **Datos:** datos personales, laborales, contacto de emergencia, usuario y roles (con **Editar roles**).
 - **Habilitaciones:** a qué clientes puede ir la persona. **Si no habilitás a ningún cliente en particular, queda habilitada para todos.** Habilitá clientes puntuales solo si querés restringirla a algunos: elegí el cliente y tocá **Habilitar**.
@@ -521,6 +524,8 @@ Es la pantalla de inicio. Muestra cómo viene el día de hoy:
 - **Sin registro:** personas cuya hora de inicio ya pasó y todavía no registraron.
 - **Avisos:** ausencias y demoras avisadas.
 
+Debajo de los números hay, además, dos tarjetas de insumos, **Faltantes avisados** y **Stock bajo** (ver [Insumos](guia-insumos.md#las-tarjetas-del-resumen)).
+
 Debajo, **Requiere atención** junta lo que hay que resolver ahora. Si no hay nada, dice "No hay nada pendiente: la operación de hoy está en orden." Lo que aparece:
 
 - Personas **sin registro** pasada la hora de inicio.
@@ -622,6 +627,18 @@ Ves el turno, el coordinador, el estado, el inicio, el fin y la duración, los *
 
 ---
 
+## Insumos y control de stock
+
+La sección **Insumos** lleva el stock de los productos de limpieza: el catálogo con fotos y precios, lo que entra al depósito, lo que retiran los empleados y los coordinadores desde el celular, los avisos de faltante y el control con planilla impresa. Tiene seis pestañas: **Stock**, **Movimientos**, **Faltantes**, **Consumo por cliente**, **Controles** y **Categorías**. Junto a **Insumos**, en el menú, aparece un número con los avisos de faltante abiertos.
+
+Todo se explica paso a paso en su propia guía: **[Guía de Insumos para administración](guia-insumos.md)**. Lo más importante:
+
+- Cargar el catálogo, los ingresos, los ajustes, los retiros en nombre de otra persona, los controles y las anulaciones necesita el **permiso "Gestionar stock"** (el dueño lo tiene siempre). Sin el permiso, el administrador **mira todo** y puede **resolver avisos de faltante**.
+- Los retiros **descuentan el stock en el momento**; no hay aprobación. Si hay un error, se corrige con **Anular** (con motivo) o con un **ajuste**.
+- El **Resumen** suma dos tarjetas: **Faltantes avisados** y **Stock bajo**.
+
+---
+
 ## Configuración
 
 Reúne cinco pantallas, con pestañas arriba: **Usuarios**, **Empresa**, **Feriados**, **Criterios de calificación** y **Eventos de seguridad**. El administrador solo ve **Usuarios** y **Empresa**.
@@ -643,7 +660,7 @@ En la fila de cada persona, el botón de los tres puntos abre las acciones:
 
 **Solo dueño: nuevo administrador.** Con **Nuevo administrador** completás nombre, apellido, **Email de login** y una **Contraseña inicial**, igual que para un empleado.
 
-**Solo dueño: dar permisos a un administrador.** En el menú de la persona, **Editar roles y capacidades**. Ahí se tildan los siete permisos (**Gestionar usuarios**, **Cancelar turnos**, **Editar calificaciones**, **Editar plantillas de tareas**, **Registrar asistencia por otros**, **Generar turnos del mes**, **Gestionar supervisiones**). Los permisos **se guardan solos** al activarlos. Los roles se guardan con **Guardar roles**; si al guardar le sacás un rol a alguien, se le cierran las sesiones.
+**Solo dueño: dar permisos a un administrador.** En el menú de la persona, **Editar roles y capacidades**. Ahí se tildan los ocho permisos (**Gestionar usuarios**, **Cancelar turnos**, **Editar calificaciones**, **Editar plantillas de tareas**, **Registrar asistencia por otros**, **Generar turnos del mes**, **Gestionar supervisiones** y **Gestionar stock**). Los permisos **se guardan solos** al activarlos. Los roles se guardan con **Guardar roles**; si al guardar le sacás un rol a alguien, se le cierran las sesiones.
 
 ### Empresa
 
@@ -673,7 +690,7 @@ Una tabla de consulta con los inicios de sesión y los cambios de acceso (altas,
 
 ## Usar la administración desde el celular
 
-La administración se adapta a tablet y celular. En el celular, el menú pasa a una barra de abajo con cinco botones: **Hoy**, **Calendario**, **Asistencia**, **Supervisiones** y **Más** (donde está el resto: empleados, clientes y sedes, tareas y configuración).
+La administración se adapta a tablet y celular. En el celular, el menú pasa a una barra de abajo con cinco botones: **Hoy**, **Calendario**, **Asistencia**, **Supervisiones** y **Más** (donde está el resto: empleados, clientes y sedes, tareas, insumos y configuración).
 
 ![Resumen en el celular](guias/img/adm-celular-resumen.png)
 
@@ -687,10 +704,11 @@ Para evitar malentendidos: las siguientes funciones **no existen** en esta versi
 
 - **Fotos** como evidencia de tareas o de supervisiones.
 - **Notificaciones al celular** (avisos al empleado cuando se le asigna un turno, recordatorios). Hoy el empleado ve sus cambios al abrir la app, en **Cambios desde tu última visita**.
-- Provisión y control de **insumos**.
-- Cálculo de **horas, puntualidad y reportes** por empleado o cliente, y **exportaciones**.
+- Cálculo de **horas, puntualidad y reportes** por empleado o cliente, y **exportaciones** (la única excepción es el Excel de Movimientos y de Consumo por cliente de la sección Insumos).
 - Funcionamiento **sin conexión** con sincronización posterior.
 - **Seguimiento continuo de la ubicación** de empleados y coordinadores: la posición se toma solo en cada evento (inicio, pausa, reanudación y fin), nunca de forma permanente.
+
+Los **insumos** (stock, movimientos, avisos de faltante y controles) sí existen desde la versión 0.25.0: se explican en la [guía de Insumos](guia-insumos.md). Lo que **no** incluye esa sección: herramientas o equipos que se devuelven (hoy el stock es de consumibles), pedidos de reposición (hay avisos de faltante) y retiros sin conexión.
 
 ---
 

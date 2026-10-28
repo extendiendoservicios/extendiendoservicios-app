@@ -24,6 +24,7 @@ import { computeAttention, type AttentionItem } from '../attention'
 import { computeKpis, shiftStartInstant, siteIdsInCurrentWindow } from '../kpis'
 import { AttentionBlock } from './AttentionBlock'
 import { DashboardKpis } from './DashboardKpis'
+import { StockCards } from './StockCards'
 import { ServicesTodayTable } from './ServicesTodayTable'
 import { SupervisionsTodayBlock } from './SupervisionsTodayBlock'
 import { PresenceMap } from '@/features/geo/components/PresenceMap'
@@ -41,7 +42,8 @@ function useClock(): Date {
 }
 
 /**
- * ADM-02 "Resumen" (DASH-001 a DASH-007, `05` línea 36): KPIs, "Requiere
+ * ADM-02 "Resumen" (DASH-001 a DASH-007, `05` línea 36): KPIs, las dos
+ * tarjetas de Insumos (P25.3, IS-30), "Requiere
  * atención", "Servicios de hoy", mapa de presencia (B1, P22.4, con los
  * coordinadores de P24.4) y las jornadas de los coordinadores del día. El mapa va después de "Servicios de hoy" para no
  * enterrar la tabla en celular. Tres consultas del
@@ -165,6 +167,8 @@ function DashboardScreen() {
       <StorageAlert />
 
       <DashboardKpis kpis={kpis} />
+
+      <StockCards />
 
       <AttentionBlock
         items={attention}

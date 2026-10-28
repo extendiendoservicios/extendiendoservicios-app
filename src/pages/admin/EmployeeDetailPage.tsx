@@ -41,6 +41,8 @@ import {
 import { RatingSummary } from '@/features/employees/components/RatingSummary'
 import { SupervisorPrioritiesTab } from '@/features/supervisions/components/SupervisorPrioritiesTab'
 import { canManageSupervisions } from '@/features/supervisions/permissions'
+import { PersonWithdrawalsTab } from '@/features/stock/components/PersonWithdrawalsTab'
+import { canViewPersonWithdrawals } from '@/features/stock/permissions'
 import { SupervisorWorkdaysTab } from '@/features/workdays/components/SupervisorWorkdaysTab'
 
 const TABS = [
@@ -53,6 +55,7 @@ const TABS = [
   'calificaciones',
   'preferenciales',
   'jornadas',
+  'retiros',
 ] as const
 type EmployeeDetailTab = (typeof TABS)[number]
 
@@ -64,7 +67,7 @@ function isEmployeeDetailTab(value: string | null): value is EmployeeDetailTab {
  * ADM-17 "Empleado · ficha" (`05` línea 66): cabecera (foto, nombre,
  * legajo, roles, estado efectivo) y las siete pestañas (más dos para quien
  * tiene el rol coordinador, P24.3: «Clientes y sedes preferenciales» y
- * «Jornadas»). Datos, Habilitaciones
+ * «Jornadas», y «Retiros» de insumos para dueño y administradores, P25.3). Datos, Habilitaciones
  * (EMP-006), Disponibilidad (EMP-007) y Licencias (EMP-008) están completas;
  * Próximos turnos (EMP-009, conectada en AJ3-04) lista los turnos con
  * asignación vigente de los próximos 30 días (`EmployeeUpcomingShiftsTab`).
@@ -130,12 +133,15 @@ export default function EmployeeDetailPage() {
   const canEdit = canEditEmployee(actor)
   const canManageAccount = canManageEmployeeAccounts(actor)
   const isSupervisor = employee.roles.includes('supervisor')
+  const canViewWithdrawals = canViewPersonWithdrawals(actor)
   // Las pestañas de coordinador no existen para el resto: un enlace viejo vuelve a «Datos».
   const visibleTab: EmployeeDetailTab =
     !isSupervisor &&
     (activeTab === 'preferenciales' || activeTab === 'jornadas')
       ? 'datos'
-      : activeTab
+      : activeTab === 'retiros' && !canViewWithdrawals
+        ? 'datos'
+        : activeTab
 
   return (
     <div className="flex flex-col gap-4">
@@ -219,6 +225,9 @@ export default function EmployeeDetailPage() {
           <TabsTrigger value="proximos-turnos">Próximos turnos</TabsTrigger>
           <TabsTrigger value="asistencia">Asistencia</TabsTrigger>
           <TabsTrigger value="calificaciones">Calificaciones</TabsTrigger>
+          {canViewWithdrawals && (
+            <TabsTrigger value="retiros">Retiros</TabsTrigger>
+          )}
           {isSupervisor && (
             <>
               <TabsTrigger value="preferenciales">
@@ -284,6 +293,15 @@ export default function EmployeeDetailPage() {
         <TabsContent value="calificaciones" className="pt-3">
           <EmployeeRatingsTab profileId={employee.profileId} />
         </TabsContent>
+
+        {canViewWithdrawals && (
+          <TabsContent value="retiros" className="pt-3">
+            <PersonWithdrawalsTab
+              profileId={employee.profileId}
+              name={`${employee.firstName} ${employee.lastName}`}
+            />
+          </TabsContent>
+        )}
 
         {isSupervisor && (
           <>

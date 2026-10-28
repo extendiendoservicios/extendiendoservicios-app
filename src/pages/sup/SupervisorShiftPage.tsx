@@ -23,6 +23,7 @@ import { useLocationConsent } from '@/features/employee/useLocationConsent'
 import { useGeoFichaje } from '@/features/employee/useGeoFichaje'
 import { GeoFichajePanel } from '@/features/employee/components/GeoFichajePanel'
 import { AttendanceResultScreen } from '@/features/employee/components/AttendanceResultScreen'
+import { WithdrawShortcut } from '@/features/myStock/components/WithdrawShortcut'
 import { LocationConsentGate } from '@/features/coordinator/components/LocationConsentGate'
 import { coordinatorErrorMessage } from '@/features/coordinator/errors'
 import {
@@ -203,6 +204,8 @@ export default function SupervisorShiftPage() {
               Ir a mi supervisión
             </Link>
           )}
+          {/* P25.4 (IS-28): retiro de insumos con este turno ya elegido. */}
+          <WithdrawShortcut shiftId={shift.shiftId} base="/sup" />
         </CardContent>
       </Card>
 

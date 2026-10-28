@@ -24,7 +24,12 @@ export function claveCaso(...partes: string[]): string {
   return partes.join(' · ')
 }
 
-/** Defectos conocidos por identificador (DEF-P14 se agregó y se corrigió en P21.6c, 0050). */
+/**
+ * Defectos conocidos por identificador (DEF-P14 se agregó y se corrigió en P21.6c, 0050;
+ * DEF-P25-01 y DEF-P25-02 se agregaron en P25.5c y se corrigieron en P25.5d, 0073: los casos de
+ * contrato de errores de Insumos pasaron a `it` común en 95-insumos; los cuatro casos que dependen de
+ * la conversión de tipos de PostgREST quedaron como comportamiento aceptado, también en 95-insumos).
+ */
 export const DEFECTOS_CONOCIDOS: Record<string, Defecto> = {
   // P22.5 (módulo B1, 0056/0057 y 0052). Misma familia que DEF-P14: la puerta de la RPC mira
   // `auth.uid()` pero no `is_active`, así que una cuenta desactivada con el token vigente entra.
@@ -43,8 +48,8 @@ export const DEFECTOS_CONOCIDOS: Record<string, Defecto> = {
 const PERFILES_DESACTIVADOS = ['empleado', 'supervisor', 'admin'] as const
 
 /** Clave de caso -> defecto que lo hace fallar hoy. */
-export const DEFECTOS: Record<string, Defecto> = Object.fromEntries(
-  PERFILES_DESACTIVADOS.flatMap((perfil) => [
+export const DEFECTOS: Record<string, Defecto> = Object.fromEntries([
+  ...PERFILES_DESACTIVADOS.flatMap((perfil) => [
     ...['accept_location_consent', 'revoke_location_consent'].map(
       (rpc) =>
         [
@@ -60,7 +65,7 @@ export const DEFECTOS: Record<string, Defecto> = Object.fromEntries(
         ] as const,
     ),
   ]),
-)
+])
 
 export function defectoDe(clave: string): Defecto | undefined {
   return DEFECTOS[clave]

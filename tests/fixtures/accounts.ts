@@ -34,6 +34,8 @@ export const ADMIN_CAPABILITIES: readonly AdminCapability[] = [
   'manage_attendance',
   'generate_shifts',
   'manage_supervisions',
+  // P25.5c: «Gestionar stock» (módulo E, IS-19). El administrador fijo con «todas» la tiene.
+  'manage_stock',
 ]
 
 /** Dueño del seed (`supabase/seed.sql`, `scripts/seed-dev.ts`): cuenta estable, no se crea acá. */
@@ -51,6 +53,7 @@ export type FixedAccountKey =
   | 'supervisor1'
   | 'supervisor2'
   | 'dual'
+  | 'adminOperativo'
 
 export interface FixedAccountSpec {
   /** Clave corta con la que las suites piden la cuenta. */
@@ -117,8 +120,15 @@ const TODAS: readonly FixedAccountKey[] = [
 // cuenta puede ser suya sin pisarse con los archivos que corren en paralelo).
 const TODAS_Y_EMPLEADO5: readonly FixedAccountKey[] = [...TODAS, 'empleado5']
 
+// P25.5c (IS-35): administrador con todas las capacidades que además trabaja turnos como empleado.
+// Solo lo usan los conjuntos `base` (e2e de Insumos) y `perm` (retiro en nombre de otro por API).
+const TODAS_Y_OPERATIVO: readonly FixedAccountKey[] = [
+  ...TODAS_Y_EMPLEADO5,
+  'adminOperativo',
+]
+
 const DEF_CONJUNTOS: Record<Conjunto, DefConjunto> = {
-  base: { tag: '', keys: TODAS_Y_EMPLEADO5 },
+  base: { tag: '', keys: TODAS_Y_OPERATIVO },
   edge: { tag: 'eg', keys: TODAS_Y_EMPLEADO5 },
   'emp-movil': {
     tag: 'em',
@@ -146,7 +156,7 @@ const DEF_CONJUNTOS: Record<Conjunto, DefConjunto> = {
     tag: 'su',
     keys: ['empleado1', 'empleado2', 'supervisor1', 'supervisor2', 'dual'],
   },
-  perm: { tag: 'pe', keys: TODAS },
+  perm: { tag: 'pe', keys: [...TODAS, 'adminOperativo'] },
   // Auditoría de accesibilidad de administración (`accesibilidad.admin.ts`): solo mira con `admin`
   // y escribe con `empleado5` y `supervisor1` (su ficha de coordinador, P24.5); va en su propio job para no alargar el de administración.
   a11y: { tag: 'ay', keys: ['admin', 'empleado5', 'supervisor1'] },
@@ -285,6 +295,14 @@ const PLANTILLAS: readonly Plantilla[] = [
     lastName: 'Supervisor2',
     roles: ['supervisor'],
     dni: '000012',
+  },
+  {
+    key: 'adminOperativo',
+    slug: 'admin-operativo',
+    lastName: 'AdminOperativo',
+    roles: ['admin', 'employee'],
+    capabilities: ADMIN_CAPABILITIES,
+    dni: '000031',
   },
   {
     key: 'dual',
@@ -556,7 +574,7 @@ export async function ensureFixedAccounts(
       }
     }
 
-    // Capacidades (solo administradores): las siete filas, con su estado inicial.
+    // Capacidades (solo administradores): una fila por capacidad, con su estado inicial.
     if (spec.roles.includes('admin')) {
       await must(
         'capacidades',
