@@ -229,17 +229,32 @@ export class Scenario {
     status: 'active' | 'suspended' | 'closed' = 'active',
   ): Promise<MadeClient> {
     const name = uniqueName(slug)
-    const { data, error } = await this.db
-      .from('clients')
-      .insert({
-        legal_name: name,
-        trade_name: name,
-        cuit: uniqueCuit(),
-        status,
-      })
-      .select('id')
-      .single()
-    if (error) throw new Error(`No se pudo crear el cliente: ${error.message}`)
+    // P25.5c: con la base de App_dev ocupada por otra corrida (pruebas de la base, migraciones),
+    // el alta puede cortarse por tiempo (`57014`, «statement timeout»). Es transitorio: se
+    // reintenta, y solo ese error; cualquier otro falla de inmediato.
+    let data: { id: string } | null = null
+    let error: { code?: string; message: string } | null = null
+    for (let intento = 1; intento <= 4; intento += 1) {
+      const respuesta = await this.db
+        .from('clients')
+        .insert({
+          legal_name: name,
+          trade_name: name,
+          cuit: uniqueCuit(),
+          status,
+        })
+        .select('id')
+        .single()
+      data = respuesta.data
+      error = respuesta.error
+      if (!error || error.code !== '57014') break
+      await new Promise((resolver) => setTimeout(resolver, 3_000 * intento))
+    }
+    if (error || !data) {
+      throw new Error(
+        `No se pudo crear el cliente: ${error?.message ?? 'sin datos'}`,
+      )
+    }
     this.clientIds.push(data.id)
     return { id: data.id, name }
   }
