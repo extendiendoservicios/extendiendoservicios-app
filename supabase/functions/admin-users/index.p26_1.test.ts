@@ -16,9 +16,9 @@ import {
   actionGetAccessStatus,
   actionGetCredentials,
   actionResetPassword,
+  type Actor,
   DomainError,
   handleRequest,
-  type Actor,
 } from './index.ts'
 import { decrypt, encrypt } from '../_shared/credentials.ts'
 
@@ -31,6 +31,7 @@ function nuevaClave(): string {
 const CLAVE = nuevaClave()
 Deno.env.set('SUPABASE_URL', 'https://example.supabase.co')
 Deno.env.set('SUPABASE_SERVICE_ROLE_KEY', 'clave-falsa-para-tests')
+Deno.env.set('SUPABASE_ANON_KEY', 'anon-falsa-para-tests')
 Deno.env.set('CREDENTIALS_KEY', CLAVE)
 
 // ---------------------------------------------------------------------------------------------
@@ -50,6 +51,57 @@ interface Estado {
   fallaGuardadoCopia: boolean
   fallaAuthUpdate: string | null // código de error de updateUserById
   actualizacionesAuth: Array<{ id: string; attrs: Record<string, unknown> }>
+  // Cambios hechos por el camino de la persona (PUT /auth/v1/user con su JWT).
+  cambiosPropios: Array<{ id: string; password: string }>
+}
+
+// PUT /auth/v1/user simulado: es el camino que usa change_own_password (DEF-P26-01). Lo que no es
+// ese endpoint pasa al fetch real.
+let estadoActual: Estado | null = null
+const fetchReal = globalThis.fetch
+globalThis.fetch = (input: Request | URL | string, init?: RequestInit) => {
+  const url =
+    typeof input === 'string'
+      ? input
+      : input instanceof URL
+        ? input.href
+        : input.url
+  const st = estadoActual
+  if (!url.endsWith('/auth/v1/user') || init?.method !== 'PUT' || !st) {
+    return fetchReal(input, init)
+  }
+  const h = new Headers(init.headers)
+  const id = (h.get('Authorization') ?? '').replace(/^Bearer /, '')
+  const json = (status: number, body: unknown) =>
+    Promise.resolve(
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+  if (h.get('apikey') !== 'anon-falsa-para-tests' || !st.auth[id]) {
+    return json(401, { code: 401, error_code: 'bad_jwt', msg: 'jwt inválido' })
+  }
+  const { password } = JSON.parse(String(init.body))
+  if (st.fallaAuthUpdate === 'weak_password') {
+    return json(422, { code: 422, error_code: 'weak_password', msg: 'débil' })
+  }
+  if (
+    st.fallaAuthUpdate === 'same_password' ||
+    st.auth[id].password === password
+  ) {
+    return json(422, { code: 422, error_code: 'same_password', msg: 'igual' })
+  }
+  if (st.fallaAuthUpdate) {
+    return json(500, {
+      code: 500,
+      error_code: st.fallaAuthUpdate,
+      msg: 'falla simulada de Auth',
+    })
+  }
+  st.auth[id].password = password
+  st.cambiosPropios.push({ id, password })
+  return json(200, { id })
 }
 
 const PERSONAS = [
@@ -64,7 +116,7 @@ const PERSONAS = [
 ]
 
 function nuevoEstado(): Estado {
-  return {
+  return (estadoActual = {
     roles: {
       'dueno-1': ['owner'],
       'dueno-2': ['owner'],
@@ -90,7 +142,8 @@ function nuevoEstado(): Estado {
     fallaGuardadoCopia: false,
     fallaAuthUpdate: null,
     actualizacionesAuth: [],
-  }
+    cambiosPropios: [],
+  })
 }
 
 // deno-lint-ignore no-explicit-any
@@ -202,7 +255,10 @@ function fakeAdmin(st: Estado): any {
         return Promise.resolve({ data: null, error: null })
       }
       if (fn === 'admin_create_user_records') {
-        return Promise.resolve({ data: { employee_number: null }, error: null })
+        return Promise.resolve({
+          data: { employee_number: null },
+          error: null,
+        })
       }
       return Promise.resolve({ data: null, error: null })
     },
@@ -260,6 +316,7 @@ const actor = (id: string, st: Estado): Actor => ({
   id,
   roles: st.roles[id] as Actor['roles'],
   capabilities: (st.capacidades[id] ?? []) as Actor['capabilities'],
+  jwt: id, // el "JWT" de estos tests es el id de la persona
 })
 
 async function guardarCopia(
@@ -616,6 +673,12 @@ Deno.test(
         null,
       )
       assertEquals(st.auth['emp-1'].password, `nueva-${origen}-123`)
+      // Con el JWT de la persona, no con la Admin API (que cierra todas las sesiones).
+      assertEquals(st.cambiosPropios.at(-1), {
+        id: 'emp-1',
+        password: `nueva-${origen}-123`,
+      })
+      assertEquals(st.actualizacionesAuth.length, 0)
       const fila = st.credenciales['emp-1']
       assertEquals(fila.source, fuente)
       assertEquals(fila.set_by, 'emp-1')
@@ -717,6 +780,7 @@ Deno.test(
     })
     assertEquals(st.credenciales['emp-1'], antes)
     assertEquals(st.eventos.length, 0)
+    assertEquals(st.cambiosPropios.length, 0)
 
     // Sin copia previa: la restauración la borra.
     delete st.credenciales['emp-1']
@@ -748,6 +812,48 @@ Deno.test(
       ),
       'VALIDATION_ERROR',
     )
+  },
+)
+
+Deno.test(
+  'change_own_password: contraseña igual a la actual es VALIDATION_ERROR y la copia no cambia',
+  async () => {
+    const st = nuevoEstado()
+    await guardarCopia(st, 'emp-1', 'contraseña-vieja-1')
+    const antes = { ...st.credenciales['emp-1'] }
+    assertEquals(
+      await hint(() =>
+        actionChangeOwnPassword(
+          fakeAdmin(st),
+          actor('emp-1', st),
+          { new_password: 'contraseña-vieja-1', origin: 'profile' },
+          null,
+        ),
+      ),
+      'VALIDATION_ERROR',
+    )
+    assertEquals(st.credenciales['emp-1'], antes)
+  },
+)
+
+Deno.test(
+  'change_own_password: sin JWT del llamador no toca nada (UNAUTHENTICATED)',
+  async () => {
+    const st = nuevoEstado()
+    const sinJwt = { ...actor('emp-1', st), jwt: undefined }
+    assertEquals(
+      await hint(() =>
+        actionChangeOwnPassword(
+          fakeAdmin(st),
+          sinJwt,
+          { new_password: 'nueva-clave-123', origin: 'profile' },
+          null,
+        ),
+      ),
+      'UNAUTHENTICATED',
+    )
+    assertEquals(st.cambiosPropios.length, 0)
+    assertEquals(Object.keys(st.credenciales).length, 0)
   },
 )
 

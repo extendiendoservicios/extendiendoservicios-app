@@ -9,7 +9,7 @@
 //   3. La tabla `account_credentials` no se lee ni se escribe por PostgREST (anon ni ningún rol).
 //   4. `reset_password` del administrador deja la copia con `source = admin_reset`.
 //
-// Cambiar una contraseña por la función cierra TODAS las sesiones de la persona (DEF-P26-01), y
+// Cambiar una contraseña por la función hace que GoTrue cierre las OTRAS sesiones de la persona, y
 // los siete perfiles de la matriz comparten tokens entre archivos. Por eso esta suite NO cambia la
 // contraseña de las cuentas fijas: usa cinco cuentas propias, una por rol (`e2e-p26-<rol>`), que
 // crea la primera vez con `create_user` y reutiliza después (no hay cómo borrarlas, P-014).
@@ -366,40 +366,66 @@ describe('change_own_password (CR-04, CR-13)', () => {
     })
   }
 
-  // DEF-P26-01: tras cambiar la contraseña por la función, Auth cierra TODAS las sesiones de la
-  // persona (también la que hizo el cambio): la función responde 401 con cualquier token anterior.
-  // CR-13 pide que no se cierren las otras sesiones.
-  it.fails(
-    'DEF-P26-01 · el cambio propio no cierra las otras sesiones de la persona (CR-13)',
-    async () => {
-      const env = requireE2eEnv()
-      const email = emailTemp('empleado')
-      const nueva = `P26-4-sesiones-${sufijo}`
-      let cambiada = false
-      try {
-        const a = await iniciarSesion(email, env.seedPassword)
-        const b = await iniciarSesion(email, env.seedPassword)
-        const r = await llamarEdge(a.data.session?.access_token ?? null, {
-          action: 'change_own_password',
-          new_password: nueva,
-          origin: 'profile',
-        })
-        expect(r.hint, JSON.stringify(r.cuerpo)).toBe('OK')
-        cambiada = true
-        // La otra sesión sigue viva: el rechazo del cuerpo (400) llega después de la autenticación.
-        const otra = await llamarEdge(b.data.session?.access_token ?? null, {
-          action: 'change_own_password',
-          new_password: 'x',
-          origin: 'profile',
-        })
-        expect(otra.status, 'la otra sesión de la persona quedó cerrada').toBe(
-          400,
-        )
-      } finally {
-        if (cambiada) await restaurar(email, nueva)
-      }
-    },
-  )
+  // DEF-P26-01 (corregido en P26.1c): la función cambia la contraseña con el JWT de la persona
+  // (PUT /auth/v1/user), así que la sesión que hace el cambio sigue viva. Antes usaba la Admin
+  // API, que cierra todas las sesiones, incluida la propia.
+  it('DEF-P26-01 · la sesión que hizo el cambio sigue viva y puede volver a llamar a la función (CR-13)', async () => {
+    const env = requireE2eEnv()
+    const email = emailTemp('empleado')
+    const nueva = `P26-4-sesion-propia-${sufijo}`
+    let cambiada = false
+    try {
+      const a = await iniciarSesion(email, env.seedPassword)
+      const token = a.data.session?.access_token ?? null
+      const r = await llamarEdge(token, {
+        action: 'change_own_password',
+        new_password: nueva,
+        origin: 'profile',
+      })
+      expect(r.hint, JSON.stringify(r.cuerpo)).toBe('OK')
+      cambiada = true
+      // El rechazo del cuerpo (400) llega después de la autenticación: la sesión está viva.
+      const otra = await llamarEdge(token, {
+        action: 'change_own_password',
+        new_password: 'x',
+        origin: 'profile',
+      })
+      expect(otra.status, 'la sesión que hizo el cambio quedó cerrada').toBe(
+        400,
+      )
+    } finally {
+      if (cambiada) await restaurar(email, nueva)
+    }
+  })
+
+  // Las OTRAS sesiones de la cuenta las cierra GoTrue al cambiar la contraseña, por cualquier
+  // camino (probado contra el Auth hospedado). Es el mismo comportamiento que había antes de
+  // P26.3, cuando el front llamaba a `auth.updateUser`. CR-13 conserva esa regla.
+  it('GoTrue cierra las otras sesiones de la cuenta al cambiar la contraseña (comportamiento de Auth, igual que antes de P26.3)', async () => {
+    const env = requireE2eEnv()
+    const email = emailTemp('empleado')
+    const nueva = `P26-4-otras-sesiones-${sufijo}`
+    let cambiada = false
+    try {
+      const a = await iniciarSesion(email, env.seedPassword)
+      const b = await iniciarSesion(email, env.seedPassword)
+      const r = await llamarEdge(a.data.session?.access_token ?? null, {
+        action: 'change_own_password',
+        new_password: nueva,
+        origin: 'profile',
+      })
+      expect(r.hint, JSON.stringify(r.cuerpo)).toBe('OK')
+      cambiada = true
+      const otra = await llamarEdge(b.data.session?.access_token ?? null, {
+        action: 'change_own_password',
+        new_password: 'x',
+        origin: 'profile',
+      })
+      expect([401, 403]).toContain(otra.status)
+    } finally {
+      if (cambiada) await restaurar(email, nueva)
+    }
+  })
 
   it('[empleado] contraseña de menos de 8 caracteres -> VALIDATION_ERROR y la contraseña no cambia (CR-13)', async () => {
     const env = requireE2eEnv()

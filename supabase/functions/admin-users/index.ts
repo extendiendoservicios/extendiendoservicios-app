@@ -237,6 +237,8 @@ export interface Actor {
   id: string
   roles: AppRole[]
   capabilities: AdminCapability[]
+  // JWT con el que la persona llamó. Lo usa solo `change_own_password` (ver más abajo).
+  jwt?: string
 }
 
 export async function resolveActor(
@@ -290,7 +292,7 @@ export async function resolveActor(
     capabilities = (capRows ?? []).map((c) => c.capability as AdminCapability)
   }
 
-  return { id: actorId, roles, capabilities }
+  return { id: actorId, roles, capabilities, jwt }
 }
 
 export function isOwner(actor: Actor): boolean {
@@ -1284,16 +1286,75 @@ export async function actionGetAccessStatus(
   }
 }
 
+// Cambia la contraseña PROPIA con el JWT de la persona (PUT /auth/v1/user), no con la Admin API.
+// `admin.updateUserById` cierra todas las sesiones de la cuenta, incluida la que hace el cambio
+// (DEF-P26-01); el endpoint de usuario no las cierra, que es lo que pide CR-13 y lo que hacía el
+// front antes de P26.3 con `auth.updateUser`.
+export async function updateOwnPasswordWithUserJwt(
+  jwt: string,
+  password: string,
+): Promise<void> {
+  const url = Deno.env.get('SUPABASE_URL')
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
+  if (!url || !anonKey) {
+    throw errors.internal(
+      'Faltan las variables de entorno de la función (SUPABASE_URL / SUPABASE_ANON_KEY).',
+    )
+  }
+  let res: Response
+  try {
+    res = await fetch(`${url.replace(/\/+$/, '')}/auth/v1/user`, {
+      method: 'PUT',
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${jwt}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ password }),
+    })
+  } catch (e) {
+    throw errors.internal(e instanceof Error ? e.message : 'fallo de red')
+  }
+  if (res.ok) {
+    await res.body?.cancel()
+    return
+  }
+  let code = ''
+  let msg = `Auth respondió ${res.status}`
+  try {
+    const j = await res.json()
+    code = String(j.error_code ?? j.code ?? '')
+    msg = String(j.msg ?? j.message ?? msg)
+  } catch {
+    // cuerpo no JSON: queda el mensaje genérico
+  }
+  if (code === 'weak_password') {
+    throw errors.validation(
+      'Esa contraseña es muy débil. Elegí otra más larga o más difícil de adivinar.',
+    )
+  }
+  if (code === 'same_password') {
+    throw errors.validation(
+      'La contraseña nueva tiene que ser distinta de la actual.',
+    )
+  }
+  throw errors.internal(msg)
+}
+
 // P26.1 · CR-04, CR-13: cambio de la contraseña PROPIA. Lo puede pedir cualquier persona con
 // sesión y perfil activo (la sesión que abre el enlace de recuperación del email también: es un
 // JWT común de Auth y `resolveActor` lo valida igual); no hace falta `manage_users`. Cambia Auth y
-// la copia a la vez (la copia primero, ver `changePasswordKeepingCopy`). No cierra las otras
-// sesiones de la persona.
+// la copia a la vez (la copia primero, ver `changePasswordKeepingCopy`). No cierra ninguna sesión
+// de la persona (ni la que hace el cambio ni las otras): por eso Auth se cambia con su JWT.
 export async function actionChangeOwnPassword(
   admin: SupabaseClient,
   actor: Actor,
   body: Record<string, unknown>,
   ip: string | null,
+  updatePassword: (
+    jwt: string,
+    password: string,
+  ) => Promise<void> = updateOwnPasswordWithUserJwt,
 ): Promise<Record<string, unknown>> {
   const { new_password, origin } = body
   if (typeof new_password !== 'string' || new_password.length < 8) {
@@ -1314,23 +1375,8 @@ export async function actionChangeOwnPassword(
     origin === 'recovery' ? 'recovery' : 'self_change',
     actor.id,
     async () => {
-      const { error: updateError } = await admin.auth.admin.updateUserById(
-        actor.id,
-        { password: new_password },
-      )
-      if (updateError) {
-        if (updateError.code === 'weak_password') {
-          throw errors.validation(
-            'Esa contraseña es muy débil. Elegí otra más larga o más difícil de adivinar.',
-          )
-        }
-        if (updateError.code === 'same_password') {
-          throw errors.validation(
-            'La contraseña nueva tiene que ser distinta de la actual.',
-          )
-        }
-        throw errors.internal(updateError.message)
-      }
+      if (!actor.jwt) throw errors.unauthenticated()
+      await updatePassword(actor.jwt, new_password)
     },
   )
 
