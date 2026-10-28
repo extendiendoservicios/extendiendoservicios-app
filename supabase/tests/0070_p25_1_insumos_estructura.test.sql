@@ -213,15 +213,15 @@ select ok(
   'las nueve vistas son security_invoker'
 );
 
-select has_function('public', 'upsert_supply', array['text', 'text', 'uuid', 'text', 'integer', 'numeric', 'numeric', 'text', 'text', 'uuid'], 'upsert_supply');
+select has_function('public', 'upsert_supply', array['text', 'text', 'uuid', 'text', 'numeric', 'numeric', 'numeric', 'text', 'text', 'uuid'], 'upsert_supply');
 select has_function('public', 'set_supply_active', array['uuid', 'boolean'], 'set_supply_active');
 select has_function('public', 'set_supply_prices', array['uuid', 'numeric', 'numeric'], 'set_supply_prices');
-select has_function('public', 'upsert_supply_category', array['text', 'integer', 'boolean', 'uuid'], 'upsert_supply_category');
-select has_function('public', 'register_stock_entry', array['jsonb', 'text', 'text', 'text', 'stock_movement_kind'], 'register_stock_entry');
-select has_function('public', 'adjust_stock', array['uuid', 'integer', 'stock_adjustment_reason', 'text'], 'adjust_stock');
+select has_function('public', 'upsert_supply_category', array['text', 'numeric', 'boolean', 'uuid'], 'upsert_supply_category');
+select has_function('public', 'register_stock_entry', array['jsonb', 'text', 'text', 'text', 'text'], 'register_stock_entry');
+select has_function('public', 'adjust_stock', array['uuid', 'numeric', 'text', 'text'], 'adjust_stock');
 select has_function('public', 'register_withdrawal', array['jsonb', 'uuid', 'uuid', 'text', 'uuid'], 'register_withdrawal');
 select has_function('public', 'void_stock_movement', array['uuid', 'text'], 'void_stock_movement');
-select has_function('public', 'register_stock_count', array['timestamp with time zone', 'jsonb', 'uuid', 'text', 'text'], 'register_stock_count');
+select has_function('public', 'register_stock_count', array['text', 'jsonb', 'uuid', 'text', 'text'], 'register_stock_count');
 select has_function('public', 'report_supply_shortage', array['uuid', 'text', 'uuid', 'uuid', 'text'], 'report_supply_shortage');
 select has_function('public', 'resolve_supply_shortage', array['uuid', 'text'], 'resolve_supply_shortage');
 select has_function('public', 'get_stock_summary', array[]::text[], 'get_stock_summary');

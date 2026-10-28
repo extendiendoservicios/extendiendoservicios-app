@@ -504,7 +504,7 @@ select ok(
   'el núcleo bloquea los artículos en orden de id (order by s.id for update)'
 );
 select ok(
-  (select prosrc from pg_proc where oid = 'public.register_stock_count(timestamptz, jsonb, uuid, text, text)'::regprocedure) ~ 'order by s\.id\s+for update of s',
+  (select prosrc from pg_proc where oid = 'public.register_stock_count(text, jsonb, uuid, text, text)'::regprocedure) ~ 'order by s\.id\s+for update of s',
   'el control también bloquea los artículos en orden de id'
 );
 

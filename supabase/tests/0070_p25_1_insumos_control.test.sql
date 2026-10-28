@@ -223,30 +223,30 @@ select is(app.supply_stock_at(tests.sid(1), now()), 5, 'a la hora actual es el s
 
 select tests.as_user('test-db0070-admin-sin@example.com');
 select is(
-  tests.err_hint($$select public.register_stock_count(now() - interval '1 hour', jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 7)), null, 'Revisora')$$),
+  tests.err_hint($$select public.register_stock_count((now() - interval '1 hour')::text, jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 7)), null, 'Revisora')$$),
   'FORBIDDEN', 'el administrador sin manage_stock no carga controles (IS-21)');
 select tests.as_user('test-db0070-emp-a@example.com');
 select is(
-  tests.err_hint($$select public.register_stock_count(now() - interval '1 hour', jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 7)), null, 'Revisora')$$),
+  tests.err_hint($$select public.register_stock_count((now() - interval '1 hour')::text, jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 7)), null, 'Revisora')$$),
   'FORBIDDEN', 'un empleado no carga controles (IS-17)');
 select tests.as_user('test-db0070-coord@example.com');
 select is(
-  tests.err_hint($$select public.register_stock_count(now() - interval '1 hour', jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 7)), null, 'Revisora')$$),
+  tests.err_hint($$select public.register_stock_count((now() - interval '1 hour')::text, jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 7)), null, 'Revisora')$$),
   'FORBIDDEN', 'un coordinador no carga controles (IS-17)');
 
 select tests.as_user('test-db0070-admin@example.com');
 
 select is(tests.err_hint($$select public.register_stock_count(null, jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 7)), null, 'R')$$), 'COUNT_DATE_REQUIRED', 'sin fecha y hora: COUNT_DATE_REQUIRED');
-select is(tests.err_hint($$select public.register_stock_count(now() + interval '1 hour', jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 7)), null, 'R')$$), 'COUNT_IN_FUTURE', 'una hora futura: COUNT_IN_FUTURE');
-select is(tests.err_hint($$select public.register_stock_count(now() - interval '1 hour', jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 7)))$$), 'REVIEWER_REQUIRED', 'sin revisor: REVIEWER_REQUIRED');
-select is(tests.err_hint($$select public.register_stock_count(now() - interval '1 hour', jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 7)), tests.uid(2), 'Revisora')$$), 'REVIEWER_REQUIRED', 'una persona y un nombre a la vez: REVIEWER_REQUIRED');
-select is(tests.err_hint($$select public.register_stock_count(now() - interval '1 hour', jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 7)), null, '   ')$$), 'REVIEWER_REQUIRED', 'un nombre en blanco no cuenta como revisor');
-select is(tests.err_hint($$select public.register_stock_count(now() - interval '1 hour', jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 7)), gen_random_uuid())$$), 'REVIEWER_NOT_FOUND', 'un revisor que no existe: REVIEWER_NOT_FOUND');
-select is(tests.err_hint($$select public.register_stock_count(now() - interval '1 hour', '[]'::jsonb, null, 'R')$$), 'INVALID_LINES', 'sin líneas: INVALID_LINES');
-select is(tests.err_hint($$select public.register_stock_count(now() - interval '1 hour', jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', -1)), null, 'R')$$), 'INVALID_QTY', 'cantidad contada negativa: INVALID_QTY');
-select is(tests.err_hint($$select public.register_stock_count(now() - interval '1 hour', jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 2.5)), null, 'R')$$), 'INVALID_QTY', 'cantidad contada con decimales: INVALID_QTY');
-select is(tests.err_hint($$select public.register_stock_count(now() - interval '1 hour', jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 1), jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 2)), null, 'R')$$), 'DUPLICATE_SUPPLY', 'un artículo repetido: DUPLICATE_SUPPLY');
-select is(tests.err_hint($$select public.register_stock_count(now() - interval '1 hour', jsonb_build_array(jsonb_build_object('supply_id', gen_random_uuid(), 'counted_qty', 1)), null, 'R')$$), 'SUPPLY_NOT_FOUND', 'un artículo inexistente: SUPPLY_NOT_FOUND');
+select is(tests.err_hint($$select public.register_stock_count((now() + interval '1 hour')::text, jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 7)), null, 'R')$$), 'COUNT_IN_FUTURE', 'una hora futura: COUNT_IN_FUTURE');
+select is(tests.err_hint($$select public.register_stock_count((now() - interval '1 hour')::text, jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 7)))$$), 'REVIEWER_REQUIRED', 'sin revisor: REVIEWER_REQUIRED');
+select is(tests.err_hint($$select public.register_stock_count((now() - interval '1 hour')::text, jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 7)), tests.uid(2), 'Revisora')$$), 'REVIEWER_REQUIRED', 'una persona y un nombre a la vez: REVIEWER_REQUIRED');
+select is(tests.err_hint($$select public.register_stock_count((now() - interval '1 hour')::text, jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 7)), null, '   ')$$), 'REVIEWER_REQUIRED', 'un nombre en blanco no cuenta como revisor');
+select is(tests.err_hint($$select public.register_stock_count((now() - interval '1 hour')::text, jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 7)), gen_random_uuid())$$), 'REVIEWER_NOT_FOUND', 'un revisor que no existe: REVIEWER_NOT_FOUND');
+select is(tests.err_hint($$select public.register_stock_count((now() - interval '1 hour')::text, '[]'::jsonb, null, 'R')$$), 'INVALID_LINES', 'sin líneas: INVALID_LINES');
+select is(tests.err_hint($$select public.register_stock_count((now() - interval '1 hour')::text, jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', -1)), null, 'R')$$), 'INVALID_QTY', 'cantidad contada negativa: INVALID_QTY');
+select is(tests.err_hint($$select public.register_stock_count((now() - interval '1 hour')::text, jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 2.5)), null, 'R')$$), 'INVALID_QTY', 'cantidad contada con decimales: INVALID_QTY');
+select is(tests.err_hint($$select public.register_stock_count((now() - interval '1 hour')::text, jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 1), jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 2)), null, 'R')$$), 'DUPLICATE_SUPPLY', 'un artículo repetido: DUPLICATE_SUPPLY');
+select is(tests.err_hint($$select public.register_stock_count((now() - interval '1 hour')::text, jsonb_build_array(jsonb_build_object('supply_id', gen_random_uuid(), 'counted_qty', 1)), null, 'R')$$), 'SUPPLY_NOT_FOUND', 'un artículo inexistente: SUPPLY_NOT_FOUND');
 
 set local role postgres;
 select is((select count(*)::integer from public.stock_counts where created_by = tests.uid(2)), 0, 'ningún control rechazado dejó filas');
@@ -258,7 +258,7 @@ select tests.as_user('test-db0070-admin@example.com');
 
 insert into t_count_result
 select public.register_stock_count(
-  now() - interval '1 hour',
+  (now() - interval '1 hour')::text,
   jsonb_build_array(
     jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 7),
     jsonb_build_object('supply_id', tests.sid(2), 'counted_qty', 6)),
@@ -312,7 +312,7 @@ select tests.as_user('test-db0070-admin@example.com');
 
 insert into t_count_result2
 select public.register_stock_count(
-  now() - interval '1 hour',
+  (now() - interval '1 hour')::text,
   jsonb_build_array(jsonb_build_object('supply_id', tests.sid(1), 'counted_qty', 8)),
   tests.uid(4), null);
 
@@ -331,7 +331,7 @@ select is(
 select tests.as_user('test-db0070-admin@example.com');
 select is(tests.stock(5), 0, 'escasez total: stock actual 0 (se retiraron las 5 después de la hora del control)');
 select is(
-  tests.err_hint($$select public.register_stock_count(now() - interval '1 hour', jsonb_build_array(jsonb_build_object('supply_id', tests.sid(5), 'counted_qty', 0)), null, 'Revisora')$$),
+  tests.err_hint($$select public.register_stock_count((now() - interval '1 hour')::text, jsonb_build_array(jsonb_build_object('supply_id', tests.sid(5), 'counted_qty', 0)), null, 'Revisora')$$),
   'COUNT_INCONSISTENT',
   'contar 0 cuando el sistema decía 5 y después se retiraron las 5 dejaría -5: COUNT_INCONSISTENT'
 );
