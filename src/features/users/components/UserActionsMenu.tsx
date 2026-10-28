@@ -7,6 +7,7 @@ import {
   LogOut,
   Mail,
   MoreHorizontal,
+  Eye,
   Pencil,
   ShieldCheck,
   UserCheck,
@@ -32,6 +33,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { AccessSheet } from '@/features/users/components/AccessBlock'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { isApiError } from '@/api/errors'
 import type { AdminUserRow } from '@/api/users'
@@ -78,6 +80,7 @@ function UserActionsMenu({
 }) {
   type DialogKind =
     | 'edit-name'
+    | 'view-access'
     | 'reset-password'
     | 'update-email'
     | 'sign-out'
@@ -96,6 +99,7 @@ function UserActionsMenu({
   })
   const canEditRoles = visibleActions.includes('edit-roles')
   const canEditName = visibleActions.includes('edit-name')
+  const canViewAccess = visibleActions.includes('view-access')
   const showActiveActions = visibleActions.includes('reset-password')
   const showReactivate = visibleActions.includes('reactivate')
 
@@ -128,6 +132,11 @@ function UserActionsMenu({
           {showActiveActions && (
             <>
               {(canEditRoles || canEditName) && <DropdownMenuSeparator />}
+              {canViewAccess && (
+                <DropdownMenuItem onSelect={() => setOpenDialog('view-access')}>
+                  <Eye /> Ver acceso
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 onSelect={() => setOpenDialog('reset-password')}
               >
@@ -161,6 +170,13 @@ function UserActionsMenu({
         open={openDialog === 'edit-name'}
         onOpenChange={(open) => setOpenDialog(open ? 'edit-name' : null)}
       />
+      {canViewAccess && openDialog === 'view-access' && (
+        <AccessSheet
+          person={user}
+          open
+          onOpenChange={(open) => setOpenDialog(open ? 'view-access' : null)}
+        />
+      )}
       <ResetPasswordDialog
         user={user}
         open={openDialog === 'reset-password'}

@@ -225,3 +225,26 @@ de fechas.
 `AdminShell.tsx` (sidebar) ya usa `useBranding`/`brandingLogoUrl` para
 mostrar el logo propio de la empresa cuando existe. `LoginPage.tsx` ya lo
 hacía desde P06.3, no necesitó cambios en este paquete.
+
+## Acceso a la app: usuario y contraseña visibles (P26.2 y P26.2b)
+
+Filas «Usuario» y «Contraseña» (`src/features/users/components/AccessBlock.tsx`), reutilizadas en dos lugares:
+
+- **ADM-17 (ficha del empleado)**: en el **bloque principal** (la tarjeta de arriba con avatar, nombre, estado y botones), debajo de los botones de la derecha, así que se ve desde todas las pestañas. En celular y tablet (menos de 1024 px) las filas van debajo del nombre y las calificaciones, a todo el ancho; en escritorio, en la columna de la derecha.
+- **ADM-27 (Usuarios)**: opción «Ver acceso» del menú «…» de cada fila; abre las mismas filas en un panel lateral (`AccessSheet`). Ahí la fila de la contraseña trae su propio «Cambiar», porque no está el botón de arriba.
+
+**Quién lo ve** (`canViewCredentials` en `src/features/users/permissions.ts`, misma regla que `canActOnUser`): el dueño ve a todos, incluido a sí mismo y a otros dueños; el administrador con `manage_users` ve a empleados y supervisores, pero no a dueños, a otros administradores ni a sí mismo; sin `manage_users` las filas no aparecen y el bloque queda como siempre. El servidor vuelve a verificar.
+
+**Cómo funciona**
+
+- Al abrir la ficha se pide `get_access_status` (consulta `useAccessStatusQuery`, `staleTime` de 30 s, un solo reintento, sin polling). No trae la contraseña y no deja eventos de seguridad, así que puede repetirse. Con eso se muestran el usuario, el origen y la fecha o el «No disponible».
+- La contraseña nace tapada (`••••••••`). «Mostrar» y «Copiar» (contraseña) llaman a `get_credentials`, que sí deja un evento `credentials_viewed` en Eventos de seguridad cada vez. «Mostrar» deja la contraseña visible 30 segundos (fuente monoespaciada) y la vuelve a tapar; también se tapa al cerrar el bloque, al cambiar de persona y cuando cambia la copia. «Ocultar» la tapa antes.
+- «Copiar» (usuario) copia el email que ya está en pantalla, sin llamar al servidor. El aviso «… copiado.» va en una región `aria-live`.
+- Debajo de la contraseña va el origen y la fecha (hora de Argentina): Alta, Puesta por la administración, Cambiada por la persona, Recuperada por email, Entrega inicial.
+- `status = none` o `unreadable`: en lugar de los puntos, «No disponible» con el botón «Poner una nueva» (abre el diálogo de cambio de contraseña) y una ayuda debajo («La cuenta se creó antes de que la app guardara las contraseñas.» o «No se pudo leer la copia guardada.»). No hay botones de Mostrar ni Copiar en esos casos.
+- El botón de arriba «Resetear contraseña» pasó a llamarse **«Cambiar contraseña»** (mismo diálogo, ahora también con ese título). En las filas de ADM-17 no hay otro «Cambiar» para la contraseña; el «Cambiar» del usuario (email, `update_email`) sigue en su fila.
+- Después de cambiar la contraseña o el email (desde las filas, el botón de arriba o el menú de ADM-27) se invalida la consulta de `get_access_status`, para que se actualicen el origen y la fecha. Si la fecha de la copia cambia, la contraseña que estuviera visible se tapa.
+- Los botones miden 44 px y el email corta con `break-all`.
+- `CREDENTIALS_NOT_CONFIGURED` y los demás errores se muestran inline con el mensaje del servidor, sin afectar al resto de la ficha.
+
+**Datos**: `src/api/credentials.ts` (`getAccessStatus` y `getCredentials`) sobre las acciones `get_access_status` y `get_credentials` de `admin-users`. `get_credentials` se usa con una mutación (`useGetCredentialsMutation`, `gcTime: 0`) y no con una consulta: trae la contraseña y deja un evento, así que no debe repetirse sola (foco, reconexión) ni quedar en el caché. La contraseña vive solo en el estado del componente.

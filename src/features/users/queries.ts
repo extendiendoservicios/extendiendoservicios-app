@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as usersApi from '@/api/users'
+import { getAccessStatus, getCredentials } from '@/api/credentials'
 import type { AdminCapability, Role } from '@/api/users'
 
 /**
@@ -21,6 +22,10 @@ export const usersKeys = {
   all: ['users'] as const,
   list: () => [...usersKeys.all, 'list'] as const,
   lastSignIns: () => [...usersKeys.all, 'lastSignIns'] as const,
+  /** P26.2b: estado del acceso (sin contraseña) de una persona. */
+  accessStatus: (profileId: string) =>
+    [...usersKeys.all, 'accessStatus', profileId] as const,
+  accessStatusAll: () => [...usersKeys.all, 'accessStatus'] as const,
   capabilities: (profileId: string) =>
     [...usersKeys.all, 'capabilities', profileId] as const,
 }
@@ -133,6 +138,7 @@ export function useSetAdminCapabilityMutation() {
 
 /** USERS-011: resetear contraseña (revoca sesiones del lado del servidor). */
 export function useResetPasswordMutation() {
+  const invalidateAccessStatus = useInvalidateAccessStatus()
   return useMutation({
     mutationFn: ({
       profileId,
@@ -141,14 +147,17 @@ export function useResetPasswordMutation() {
       profileId: string
       newPassword: string
     }) => usersApi.resetPassword(profileId, newPassword),
+    onSuccess: invalidateAccessStatus,
   })
 }
 
 /** USERS-011: cambiar el email de login. */
 export function useUpdateEmailMutation() {
+  const invalidateAccessStatus = useInvalidateAccessStatus()
   return useMutation({
     mutationFn: ({ profileId, email }: { profileId: string; email: string }) =>
       usersApi.updateEmail(profileId, email),
+    onSuccess: invalidateAccessStatus,
   })
 }
 
@@ -195,5 +204,48 @@ export function useUpdatePersonNameMutation() {
     onSuccess: () => {
       void queryClient.invalidateQueries()
     },
+  })
+}
+
+/**
+ * P26.2 (CR-10): pide el acceso de una persona (`get_credentials`). Es una
+ * mutación y no una consulta a propósito: cada pedido deja un evento
+ * `credentials_viewed` y trae la contraseña, así que no tiene que
+ * repetirse sola (al volver a la pestaña, al reconectar) ni quedar en el
+ * caché de consultas. Sin `gcTime` propio: el resultado vive solo en el
+ * estado del bloque `AccessBlock`, que lo borra a los 30 segundos, al
+ * desmontarse o al cambiar de persona.
+ */
+export function useGetCredentialsMutation() {
+  return useMutation({
+    mutationFn: (profileId: string) => getCredentials(profileId),
+    gcTime: 0,
+  })
+}
+
+/**
+ * P26.2b: invalida el estado del acceso (origen y fecha) de todas las
+ * personas. Se usa después de cambiar la contraseña o el email.
+ */
+export function useInvalidateAccessStatus() {
+  const queryClient = useQueryClient()
+  return () => {
+    void queryClient.invalidateQueries({
+      queryKey: usersKeys.accessStatusAll(),
+    })
+  }
+}
+
+/**
+ * P26.2b: estado del acceso de una persona (`get_access_status`). No trae la
+ * contraseña ni deja eventos, así que puede pedirse al abrir la ficha y
+ * refrescarse; sin reintentos agresivos y sin polling.
+ */
+export function useAccessStatusQuery(profileId: string) {
+  return useQuery({
+    queryKey: usersKeys.accessStatus(profileId),
+    queryFn: () => getAccessStatus(profileId),
+    staleTime: 30_000,
+    retry: 1,
   })
 }
