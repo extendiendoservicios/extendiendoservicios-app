@@ -2244,6 +2244,7 @@ En F25 (P25.5, módulo E): `0072_p25_5_retiro_en_nombre_de.sql` y `0073_p25_5_va
 En F25 (P25.8, módulo E): `0074_p25_8_catalogo_inicial_insumos.sql` -- carga de datos (no de esquema) pedida por los dueños el 28 oct 2026: 4 categorías y 16 artículos iniciales de Insumos con stock, precios y mínimo en cero y su fila de alta en el historial de precios; idempotente (no pisa categorías ni códigos existentes).
 En F26 (P26.1, credenciales visibles): `0075_p26_1_credenciales.sql` -- ver «Credenciales visibles».
 En F26 (P26.7, personal administrativo): `0076_p26_7_personal_administrativo.sql` -- ver «Personal administrativo».
+En F26 (P26.7b, fichar como empleado): `0077_p26_7b_fichar_como_empleado.sql` -- ver «Fichar como empleado».
 
 ## Personal administrativo (migración `0076`, P26.7, CR-16 a CR-19)
 
@@ -2255,6 +2256,14 @@ Un dueño o administrador que trabaja lleva además el rol `employee` y una fila
 - **Baja de un dueño o admin (CR-19).** La baja laboral es un `update` de `employees.status`/`terminated_at` más la Edge Function `deactivate_user`. La función ya rechazaba a un admin sobre un dueño o admin, pero la RLS de `employees` dejaba el `update` a cualquier admin. El trigger `trg_guard_employee_termination` (`app.guard_employee_termination`) rechaza con `FORBIDDEN` el cambio de `status`, `terminated_at` o `deleted_at` cuando la persona tiene `owner`/`admin` y quien edita no es el dueño. No actúa sin sesión de usuario (`service_role`, migraciones) ni sobre empleados comunes.
 - **Sin cambios.** `employees_update_admin` y las políticas `*_write_admin` de `employee_availability`, `employee_client_permissions` y `employee_leaves` (por rol, no distinguen a quién pertenece la fila: un admin ya edita disponibilidad, habilitaciones, licencias y ficha de un dueño); `set_user_roles` (un admin no toca a dueños ni admins; si a un dueño o admin se le quita `employee`, la fila de `employees` queda, P-014); `v_employees` y las RPC de asignación (leen de `employees`, sin filtrar por rol). La regla de 0030 sobre `profiles` también sigue: un admin no edita el perfil (nombre, teléfono, email de contacto) de un dueño o admin.
 - **Tests**: `supabase/tests/0076_p26_7_personal_administrativo.test.sql` (alta con y sin ficha, `add_employee_record` por dueño, admin, empleado, sobre quien ya es empleado y con DNI/legajo repetidos, edición laboral de un admin sobre un dueño, baja prohibida al admin y permitida al dueño, quitar `employee`) y `deno test` de `create_user` con `admin` y `owner`.
+
+## Fichar como empleado (migración `0077`, P26.7b, CR-16)
+
+Un dueño o administrador que también es empleado actúa **como empleado** sobre su propio turno desde el celular. Regla: si quien llama es el empleado asignado (rol `employee` y `employee_id = auth.uid()`), la RPC sigue el camino del empleado (mismas validaciones, origen `employee_app` y mensajes), aunque además sea `owner` o `admin`; el camino de administración queda para asignaciones de otras personas. La migración no toca datos ni firmas.
+
+- **Cambian** (`create or replace`, mismos grants, mismos códigos): `notify_delay` y `notify_absence` (titular: origen `employee_app`, sin `manage_attendance`, ventana de aviso y motivo obligatorio del empleado), `set_assignment_notes` (titular: `SHIFT_COMPLETED` en turno terminado) y `update_task_status` (titular del turno, es decir con asignación vigente en él: `TASK_LOCKED` fuera de su ventana `present`).
+- **Ya estaban bien**: `record_check_in`/`record_check_out`, `notify_on_the_way` y las RPC de evidencia (`require_role` de empleado y control de titularidad), `register_withdrawal`/`report_supply_shortage` y sus opciones de turno y sede (priorizan al empleado), `mark_supervision_not_done` (el camino admin y el del coordinador hacen lo mismo), las de jornada y supervisión (rol `supervisor`) y `v_my_day`/`v_my_history` (filtran por `auth.uid()`). Son administrativas a propósito: `admin_record_attendance`, `set_absence_certificate`, `close_assignment`, `remove_assignment`.
+- **Tests**: `supabase/tests/0077_p26_7b_fichar_como_empleado.test.sql`.
 
 ## Cómo escribir una migración
 
