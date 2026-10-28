@@ -614,3 +614,23 @@ Resultado de la matriz completa con P24.5: **2.893 casos** (12 expected fail de 
 
 - La matriz de permisos y los e2e comparten cuentas fijas y base (App_dev): **no correrlas a la vez**, ni junto a las pruebas pgTAP o migraciones sobre App_dev. En este cierre, ese cruce produjo cortes por tiempo y datos borrados a mitad de corrida.
 - `usuarios-sesiones.admin.ts`: no se reprodujo el fallo de la primera corrida. Pasó en las seis corridas completas de este cierre (chromium y edge) con la cuenta `adminOperativo` presente; lo más probable es el cruce con otra corrida contra las mismas cuentas.
+
+### 14.4 Resultados de la corrida de cierre (28 oct 2026, App_dev)
+
+| Corrida                                                              | Resultado                                                                                         |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Insumos, administración, chromium, tres corridas seguidas (TEST-029) | 27 de 27, 27 de 27, 27 de 27                                                                      |
+| Insumos, administración, Edge (`msedge`)                             | 27 de 27 (una vez)                                                                                |
+| Insumos, empleado (mobile y webkit), tres corridas seguidas          | 24 de 24 las tres veces                                                                           |
+| Insumos, coordinador, tres corridas seguidas                         | 10 de 10 las tres veces                                                                           |
+| Administración completa: chromium, mobile, a11y                      | 79 de 80 en la última corrida completa; falla intermitente `evidencia.admin.ts` (ver 14.5)        |
+| Administración: Edge y `dueno-config`                                | 84 de 84 (con `--no-deps`, porque la corrida completa se corta si falla una dependencia)          |
+| Coordinador completo                                                 | 54 de 54                                                                                          |
+| Empleado completo                                                    | 87 pasan, 2 saltados, 1 falla intermitente de WebKit (ya ajustada, ver 14.2); pasó 5 de 5 después |
+
+### 14.5 Observaciones y pendientes
+
+- **Intermitente, posible defecto de la app (menor):** `evidencia.admin.ts` (ADM-32), paso «Dejar de conservar». En 2 de 6 corridas completas, tras dejar de conservar desde el visor y cambiar el filtro a «Todas», el visor aparece abierto de nuevo («1 de 17») y la lista no se encuentra. Sospecha: el visor se desmonta solo cuando la foto sale de «Conservadas», pero su estado de abierto queda activo y reaparece al volver a haber fotos. Suelto pasa 4 de 4. Sin corregir en la prueba; hay que revisarlo en la app.
+- **Datos de Insumos de App_dev:** 10 de los 17 artículos del seed no tienen el stock del seed (quedaron movimientos del 27 oct sin nota, hechos fuera de las pruebas con prefijo `e2e-`). Se corrige volviendo a correr `pnpm db:seed:insumos` (idempotente); no se hizo porque el permiso se denegó.
+- **Orquestación:** el alta con `statement timeout` y las corridas lentas se debieron al cruce con otras corridas sobre App_dev. Además, la purga lanza `supabase db query` con un `timeout` de 120 s que mata al envoltorio pero no siempre al proceso hijo: quedaron 7 procesos huérfanos (se cerraron a mano).
+- **Edge y `dueno-config`** de la corrida completa: se corrieron aparte, no encadenados. Edge de Insumos corrió una sola vez (no tres).
