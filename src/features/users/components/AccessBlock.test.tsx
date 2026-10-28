@@ -4,6 +4,7 @@ import { ApiError } from '@/api/errors'
 import type { Credentials } from '@/api/credentials'
 import {
   AccessBlock,
+  AccessSheet,
   PASSWORD_VISIBLE_MS,
   formatCredentialDate,
 } from './AccessBlock'
@@ -226,6 +227,43 @@ describe('AccessBlock', () => {
     expect(
       screen.queryByRole('button', { name: /copiar contraseña/i }),
     ).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Poner una nueva' }))
+    expect(resetDialogProps.current?.open).toBe(true)
+  })
+
+  it('en ADM-17 (showChangePassword en false) la fila no ofrece "Poner una nueva" ni ningún botón con status "none"', () => {
+    setAccess(
+      accessStatus({
+        status: 'none',
+        hasCopy: false,
+        readable: false,
+        source: null,
+        setAt: null,
+      }),
+    )
+    render(<AccessBlock person={person} showChangePassword={false} />)
+
+    expect(screen.getByText('No disponible')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Poner una nueva' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /contraseña/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('AccessSheet (ADM-27) ofrece cambiar la contraseña con status "none"', () => {
+    setAccess(
+      accessStatus({
+        status: 'none',
+        hasCopy: false,
+        readable: false,
+        source: null,
+        setAt: null,
+      }),
+    )
+    render(<AccessSheet person={person} open onOpenChange={() => undefined} />)
+
     fireEvent.click(screen.getByRole('button', { name: 'Poner una nueva' }))
     expect(resetDialogProps.current?.open).toBe(true)
   })

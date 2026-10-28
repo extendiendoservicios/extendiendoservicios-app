@@ -83,8 +83,7 @@ export interface AccessPerson {
   lastName: string
 }
 
-const TOUCH_TARGET = 'min-h-11 min-w-11'
-const LABEL = 'pt-3 text-[11.5px] text-text-muted'
+const LABEL = 'pt-1.5 text-[11.5px] text-text-muted'
 const VALUE = 'min-w-0 break-all font-mono text-[13px] text-text'
 
 function AccessBlock({
@@ -225,46 +224,48 @@ function AccessBlock({
       )}
     >
       <span className={LABEL}>Usuario</span>
-      <div className="flex flex-wrap items-center gap-x-2">
+      <div className="flex min-w-0 flex-col items-start gap-0.5">
         <span className={VALUE} data-testid="access-email">
           {emailText}
         </span>
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className={TOUCH_TARGET}
-          disabled={!access?.email}
-          aria-label={`Copiar usuario de ${personName}`}
-          onClick={() => void handleCopyEmail()}
-        >
-          Copiar
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className={TOUCH_TARGET}
-          aria-label={`Cambiar usuario de ${personName}`}
-          onClick={() => setDialog('email')}
-        >
-          Cambiar
-        </Button>
+        <div className="flex flex-wrap items-center gap-x-1">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            disabled={!access?.email}
+            aria-label={`Copiar usuario de ${personName}`}
+            onClick={() => void handleCopyEmail()}
+          >
+            Copiar
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            aria-label={`Cambiar usuario de ${personName}`}
+            onClick={() => setDialog('email')}
+          >
+            Cambiar
+          </Button>
+        </div>
       </div>
 
       <span className={LABEL}>Contraseña</span>
       {unavailable ? (
         <div className="flex flex-col gap-0.5">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-x-1">
             <span className="text-[13px] text-text-muted">No disponible</span>
-            <Button
-              type="button"
-              size="sm"
-              className={TOUCH_TARGET}
-              onClick={() => setDialog('password')}
-            >
-              Poner una nueva
-            </Button>
+            {showChangePassword && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => setDialog('password')}
+              >
+                Poner una nueva
+              </Button>
+            )}
           </div>
           <p className="text-[11.5px] text-text-muted">
             {status === 'none' ? NONE_HELP : UNREADABLE_HELP}
@@ -272,7 +273,7 @@ function AccessBlock({
         </div>
       ) : (
         <div className="flex flex-col gap-0.5">
-          <div className="flex flex-wrap items-center gap-x-2">
+          <div className="flex flex-wrap items-center gap-x-1">
             <span className={VALUE} data-testid="access-password">
               {password ?? MASK}
             </span>
@@ -280,7 +281,6 @@ function AccessBlock({
               type="button"
               size="sm"
               variant="ghost"
-              className={TOUCH_TARGET}
               loading={getCredentials.isPending}
               aria-label={
                 password === null
@@ -297,7 +297,6 @@ function AccessBlock({
               type="button"
               size="sm"
               variant="ghost"
-              className={TOUCH_TARGET}
               aria-label={`Copiar contraseña de ${personName}`}
               onClick={() => void handleCopyPassword()}
             >
@@ -308,7 +307,6 @@ function AccessBlock({
                 type="button"
                 size="sm"
                 variant="ghost"
-                className={TOUCH_TARGET}
                 aria-label={`Cambiar contraseña de ${personName}`}
                 onClick={() => setDialog('password')}
               >

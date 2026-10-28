@@ -84,7 +84,7 @@ beforeEach(() => {
 })
 
 describe('EmployeeDetailPage · acceso en el bloque principal', () => {
-  it('muestra las filas de acceso en el bloque principal, sin el «Cambiar» de la contraseña, y el botón dice «Cambiar contraseña»', () => {
+  it('muestra las filas de acceso en el bloque principal, sin «Poner una nueva» ni «Cambiar» propios (showChangePassword en false), y el botón de arriba dice «Cambiar contraseña»', () => {
     renderPage()
     expect(screen.getByTestId('access-rows')).toHaveTextContent('sin-cambiar')
     expect(
