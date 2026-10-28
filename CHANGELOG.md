@@ -7,6 +7,32 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.26.0] - 2026-10-28
+
+Credenciales visibles para la administración (P26.1 a P26.4), pedido urgente de la reunión con los dueños del 27 oct. Migración 0075.
+
+### Agregado
+
+- Ficha del empleado: en el bloque principal, visible desde todas las pestañas, aparecen el **usuario** (el email de ingreso, con «Copiar» y «Cambiar») y la **contraseña**. La contraseña está tapada: «Mostrar» la deja visible 30 segundos y «Copiar» la copia sin mostrarla. Debajo se ve de dónde salió y cuándo: «Alta», «Puesta por la administración», «Cambiada por la persona» o «Recuperada por email».
+- Usuarios: el menú «…» suma «Ver acceso», con los mismos datos en un panel lateral.
+- Quién ve qué: el dueño ve el acceso de todas las personas. Un administrador con el permiso «Gestionar usuarios» ve el de empleados y supervisores, pero no el de dueños ni el de otros administradores.
+- Las contraseñas de las cuentas creadas antes de esta versión no se pueden recuperar: la ficha muestra «No disponible» hasta que alguien ponga una nueva con «Cambiar contraseña».
+- Eventos de seguridad: «Contraseña consultada por administración», cada vez que alguien la muestra o la copia, y «Contraseña cambiada por la propia persona».
+
+### Cambiado
+
+- «Resetear contraseña» en la ficha del empleado pasa a llamarse «Cambiar contraseña».
+- Mi perfil y «Olvidé mi contraseña» cambian la contraseña a través del servidor, para que la copia que ve la administración quede siempre al día. Las dos pantallas avisan que la administración puede ver la contraseña.
+
+### Seguridad
+
+- La copia de la contraseña se guarda cifrada (AES-256-GCM) con una clave que solo tiene la función `admin-users`, distinta en desarrollo y en producción. La base, los respaldos y el panel de Supabase guardan solo texto cifrado, y ningún usuario de la app puede leer la tabla directamente.
+- Mostrar el usuario y el estado de la copia no descifra la contraseña ni deja un evento: el evento queda solo cuando alguien pide la contraseña.
+
+### Pruebas y automatización
+
+- Pruebas de la función para cada regla de quién ve a quién, cifrado de ida y vuelta, pgTAP de la migración 0075 y matriz de permisos por API de las acciones nuevas.
+
 ## [0.25.0] - 2026-10-28
 
 Módulo E: inventario y control de stock de insumos (P25.1 a P25.8). Migraciones 0069 a 0074.
