@@ -35,6 +35,12 @@ import { ALLOWED_ORIGINS, corsHeaders } from '../_shared/cors.ts'
 // en "falta Authorization").
 Deno.env.set('SUPABASE_URL', 'https://example.supabase.co')
 Deno.env.set('SUPABASE_SERVICE_ROLE_KEY', 'clave-falsa-para-tests')
+// P26.1: create_user cifra la copia de la contraseña antes de tocar Auth; los tests generan su
+// propia clave (32 bytes aleatorios en base64), nunca una real.
+Deno.env.set(
+  'CREDENTIALS_KEY',
+  btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))),
+)
 
 function postRequest(body: unknown, headers: Record<string, string> = {}) {
   return new Request('https://example.supabase.co/functions/v1/admin-users', {
@@ -151,7 +157,7 @@ Deno.test(
 interface FakeQueryContext {
   table: string
   selectColumns?: string
-  method: 'select' | 'insert' | 'update'
+  method: 'select' | 'insert' | 'update' | 'upsert' | 'delete'
   payload?: unknown
 }
 
@@ -185,6 +191,15 @@ function fakeQueryBuilder(
     update: (payload: unknown) => {
       ctx.method = 'update'
       ctx.payload = payload
+      return builder
+    },
+    upsert: (payload: unknown) => {
+      ctx.method = 'upsert'
+      ctx.payload = payload
+      return Promise.resolve(responder(ctx))
+    },
+    delete: () => {
+      ctx.method = 'delete'
       return builder
     },
     maybeSingle: () => Promise.resolve(responder(ctx)),

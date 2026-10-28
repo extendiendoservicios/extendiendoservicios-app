@@ -239,7 +239,7 @@ interface AdminUsersErrorPayload {
  * trae el cuerpo en `error.context`, una `Response` todavía sin leer -- ver
  * el comentario de `FunctionsClient.invoke` en `@supabase/functions-js`).
  */
-async function invokeAdminUsers<T>(
+export async function invokeAdminUsers<T>(
   action: string,
   body: Record<string, unknown> = {},
 ): Promise<T> {

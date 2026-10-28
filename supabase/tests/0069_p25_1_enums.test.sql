@@ -120,9 +120,9 @@ select ok(
 select is(
   (select array_agg(e.enumlabel::text order by e.enumsortorder)
    from pg_enum e join pg_type t on t.oid = e.enumtypid
-   where t.typname = 'security_event_type')[(select count(*) - 1 from pg_enum e2 join pg_type t2 on t2.oid = e2.enumtypid where t2.typname = 'security_event_type'):],
-  array['stock_movement_voided', 'supply_price_changed'],
-  'los dos eventos nuevos van al final de la enumeración'
+   where t.typname = 'security_event_type')[(select count(*) - 3 from pg_enum e2 join pg_type t2 on t2.oid = e2.enumtypid where t2.typname = 'security_event_type'):],
+  array['stock_movement_voided', 'supply_price_changed', 'credentials_viewed', 'password_changed_by_user'],
+  'los dos eventos nuevos van a continuación de los anteriores (y antes de los de 0075, P26.1)'
 );
 
 select ok(

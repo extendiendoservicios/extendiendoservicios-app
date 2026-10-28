@@ -2146,6 +2146,17 @@ el GPS en vivo al fichar (B-38, B-40) y las RPC de fichaje devuelven la fila pro
   validación que B-20 muestra y, con el radio de la sede, no permite ubicar a la persona con precisión. Si el
   dueño lo considera posición, se protege igual que las demás columnas.
 
+## Credenciales visibles (migración `0075`, P26.1, CR-01 a CR-15)
+
+Cambia una regla de base: la app guarda una **copia cifrada** de la contraseña de cada cuenta, que dueños y administradores ven según el rol (la de Supabase Auth sigue siendo un hash irreversible). Especificación: `Docs/Plan_Maestro/modulos/P26_credenciales_y_personal_administrativo.md`.
+
+- **Enumeración `credential_source`**: `created`, `admin_reset`, `self_change`, `recovery`, `initial_delivery` (CR-11).
+- **Tabla `account_credentials`**: `profile_id` (PK y FK a `profiles`: una fila por persona, cada cambio la reemplaza), `ciphertext` y `iv` (`text` en base64), `key_version` (hoy 1), `source`, `set_at` y `set_by`. **RLS activada sin políticas y `revoke all` a `anon` y `authenticated`**: solo la lee y escribe `service_role` desde la Edge Function. Ninguna vista ni RPC la menciona (lo verifica el pgTAP) y `scripts/lib/verificar-estructura.sql` la trata como excepción cerrada (`account_credentials_cerrada`).
+- **Cifrado (CR-09)**: AES-256-GCM con Web Crypto, IV aleatorio de 12 bytes por cifrado y clave de 32 bytes en base64 en el secreto `CREDENTIALS_KEY` de la función (distinta en `App_dev` y en `App`). Vive en `supabase/functions/_shared/credentials.ts` (`encrypt` / `decrypt`); la base nunca ve la contraseña en claro. Si la clave se pierde o rota, las copias quedan ilegibles y la ficha muestra «No disponible» (las contraseñas reales siguen andando).
+- **`security_event_type`**: valores nuevos `credentials_viewed` (la administración pidió ver una contraseña; `details = {status}`, nunca la contraseña) y `password_changed_by_user` (`details = {origin}`).
+- **Edge Function `admin-users`**: acciones nuevas `get_credentials` y `change_own_password`; `create_user` y `reset_password` guardan la copia. Contrato en `supabase/functions/README.md`.
+- **Tests**: `supabase/tests/0075_p26_1_credenciales.test.sql` (estructura, restricciones, tipos de evento, ningún privilegio para `anon` ni `authenticated` con cada rol, sin vistas ni funciones que la expongan) y `deno test` en `supabase/functions` (quién ve a quién, cifrado de ida y vuelta, clave equivocada, alta, reseteo y cambio propio).
+
 ## Enumeraciones (04 sección 3)
 
 Las 15 enumeraciones del modelo, en el esquema `public`, migración `0002_enums.sql`. Agregar un
@@ -2231,6 +2242,7 @@ En F22 (P22.1, módulo B1): `0052_p22_1_geolocalizacion.sql`, `0053_p22_1_correc
 En F25 (P25.1, módulo E): `0069_p25_1_enums.sql`, `0070_p25_1_insumos_y_stock.sql` y `0071_p25_1_imagenes_insumos.sql` -- ver "Insumos y control de stock".
 En F25 (P25.5, módulo E): `0072_p25_5_retiro_en_nombre_de.sql` y `0073_p25_5_validaciones_insumos.sql` -- ver "Retiro en nombre de otra persona" y "Validación de valores y topes".
 En F25 (P25.8, módulo E): `0074_p25_8_catalogo_inicial_insumos.sql` -- carga de datos (no de esquema) pedida por los dueños el 28 oct 2026: 4 categorías y 16 artículos iniciales de Insumos con stock, precios y mínimo en cero y su fila de alta en el historial de precios; idempotente (no pisa categorías ni códigos existentes).
+En F26 (P26.1, credenciales visibles): `0075_p26_1_credenciales.sql` -- ver «Credenciales visibles».
 
 ## Cómo escribir una migración
 

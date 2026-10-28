@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { supabase } from '@/lib/supabase'
 import { isApiError } from '@/api/errors'
+import { changeOwnPassword } from '@/api/ownPassword'
 import { updatePersonName } from '@/api/users'
 import { setMyHighContrast } from '@/api/profile'
 import {
@@ -34,7 +35,6 @@ import {
 } from '@/features/users/schemas'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { ROLE_LABELS } from '@/features/auth/session'
-import { updatePasswordErrorMessage } from '@/features/auth/authErrors'
 import { formatShortDate, formatTime } from '@/lib/format'
 
 /**
@@ -182,11 +182,16 @@ export default function ProfilePage() {
   async function onChangePassword(values: PasswordFormValues) {
     setPasswordError(null)
     setPasswordSaved(false)
-    const { error } = await supabase.auth.updateUser({
-      password: values.newPassword,
-    })
-    if (error) {
-      setPasswordError(updatePasswordErrorMessage(error))
+    try {
+      // P26.3 (CR-04): por la Edge Function, que cambia Auth y la copia a la
+      // vez. Si falla, la contraseña no cambió (CR-13).
+      await changeOwnPassword(values.newPassword, 'profile')
+    } catch (error) {
+      setPasswordError(
+        isApiError(error)
+          ? error.message
+          : 'No pudimos guardar la contraseña. Probá de nuevo en un momento.',
+      )
       return
     }
     resetPasswordForm()
@@ -390,6 +395,7 @@ export default function ProfilePage() {
                 id="profile-new-password"
                 autoComplete="new-password"
                 aria-invalid={Boolean(passwordErrors.newPassword)}
+                aria-describedby="profile-password-notice"
                 {...registerPassword('newPassword')}
               />
               {passwordErrors.newPassword && (
@@ -416,6 +422,10 @@ export default function ProfilePage() {
                 </FieldError>
               )}
             </Field>
+            <p id="profile-password-notice" className="text-[12px] text-text-2">
+              La administración de la empresa puede ver tu contraseña. No uses
+              una que tengas en otros servicios.
+            </p>
             {passwordSaved && (
               <Alert variant="info">
                 <AlertDescription>Cambiamos tu contraseña.</AlertDescription>

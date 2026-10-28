@@ -21,8 +21,22 @@
 //      2026, P07.0) -- contado sobre `security_events`, ver `checkRateLimit` más abajo.
 //
 // Todas las acciones registran su evento en `security_events` (P-104) al terminar con éxito.
+//
+// P26.1 (credenciales visibles, CR-01 a CR-15): además de las seis acciones originales, la función
+// guarda una copia CIFRADA de la contraseña de cada cuenta (`account_credentials`, migración
+// 0075; AES-256-GCM con la clave `CREDENTIALS_KEY`, ver `_shared/credentials.ts`) y suma dos
+// acciones: `get_credentials` (la administración ve la contraseña según el rol, CR-02/CR-07/CR-08)
+// y `change_own_password` (cualquier persona con sesión cambia la suya pasando por acá, CR-04).
+// Las contraseñas no se escriben jamás en un log ni en `security_events`.
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders, getAllowedOrigins } from '../_shared/cors.ts'
+import {
+  CredentialsError,
+  CURRENT_KEY_VERSION,
+  decrypt,
+  encrypt,
+  type SealedPassword,
+} from '../_shared/credentials.ts'
 
 // ---------------------------------------------------------------------------------------------
 // Tipos y constantes del dominio (calcados de 04_Modelo_de_Datos.md, no se importan desde
@@ -68,7 +82,12 @@ type AdminUsersEventType =
   | 'sessions_revoked'
   | 'email_changed'
   | 'admin_action_rejected'
+  | 'credentials_viewed'
+  | 'password_changed_by_user'
 
+// `credentials_viewed` (CR-10: mostrar la contraseña no cuenta para el límite) y
+// `password_changed_by_user` (es el cambio de la propia persona, no una acción administrativa)
+// quedan afuera a propósito.
 const RATE_LIMITED_EVENT_TYPES: AdminUsersEventType[] = [
   'user_created',
   'user_deactivated',
@@ -98,6 +117,7 @@ type ErrorHint =
   | 'PROFILE_NOT_FOUND'
   | 'VALIDATION_ERROR'
   | 'RATE_LIMITED'
+  | 'CREDENTIALS_NOT_CONFIGURED'
   | 'UNKNOWN_ACTION'
   | 'INTERNAL_ERROR'
 
@@ -164,6 +184,16 @@ const errors = {
       'Hiciste demasiadas acciones en poco tiempo. Esperá un minuto e intentá de nuevo.',
       429,
     ),
+  // La función no tiene (o tiene mal cargada) la clave `CREDENTIALS_KEY`: sin ella no se puede
+  // guardar ni leer la copia de contraseñas. Se corta antes de tocar Auth.
+  credentialsNotConfigured: (detail: string) => {
+    console.error('admin-users: clave de credenciales no disponible:', detail)
+    return new DomainError(
+      'CREDENTIALS_NOT_CONFIGURED',
+      'La función no tiene configurada la clave para guardar contraseñas. Avisá a quien administra el sistema.',
+      500,
+    )
+  },
   unknownAction: (action: string) =>
     new DomainError('UNKNOWN_ACTION', `La acción "${action}" no existe.`, 400),
   // El mensaje QUE VE la persona usuaria siempre es el mismo genérico en español (nunca vacío ni
@@ -207,6 +237,8 @@ export interface Actor {
   id: string
   roles: AppRole[]
   capabilities: AdminCapability[]
+  // JWT con el que la persona llamó. Lo usa solo `change_own_password` (ver más abajo).
+  jwt?: string
 }
 
 export async function resolveActor(
@@ -260,7 +292,7 @@ export async function resolveActor(
     capabilities = (capRows ?? []).map((c) => c.capability as AdminCapability)
   }
 
-  return { id: actorId, roles, capabilities }
+  return { id: actorId, roles, capabilities, jwt }
 }
 
 export function isOwner(actor: Actor): boolean {
@@ -366,6 +398,19 @@ async function revokeAllSessions(
   }
 }
 
+// Defensa en profundidad (P26.1): ningún detalle de evento puede llevar una contraseña, un texto
+// cifrado ni un secreto, aunque un cambio futuro lo intente. Se descarta por el nombre de la clave.
+const SENSITIVE_DETAIL_KEY =
+  /pass(word)?|contrase|secret|ciphertext|^iv$|token|key/i
+
+function scrubDetails(
+  details: Record<string, unknown>,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(details).filter(([k]) => !SENSITIVE_DETAIL_KEY.test(k)),
+  )
+}
+
 async function logEvent(
   admin: SupabaseClient,
   eventType: AdminUsersEventType,
@@ -378,7 +423,7 @@ async function logEvent(
     event_type: eventType,
     actor_id: actorId,
     target_id: targetId,
-    details,
+    details: scrubDetails(details),
     ip,
   })
   if (error) {
@@ -390,6 +435,123 @@ async function logEvent(
       eventType,
       error,
     )
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Copia cifrada de la contraseña (P26.1, CR-09). La tabla `account_credentials` (0075) no tiene
+// permisos para nadie salvo `service_role`: solo esta función la lee y la escribe.
+// ---------------------------------------------------------------------------------------------
+
+type CredentialSource =
+  'created' | 'admin_reset' | 'self_change' | 'recovery' | 'initial_delivery'
+
+interface CredentialsRow {
+  profile_id: string
+  ciphertext: string
+  iv: string
+  key_version: number
+  source: CredentialSource
+  set_at: string
+  set_by: string | null
+}
+
+const CREDENTIALS_COLUMNS =
+  'profile_id, ciphertext, iv, key_version, source, set_at, set_by'
+
+/** Cifra la contraseña. Si la clave falta o no sirve, corta ANTES de tocar Auth. */
+async function sealPassword(password: string): Promise<SealedPassword> {
+  try {
+    return await encrypt(password)
+  } catch (err) {
+    if (err instanceof CredentialsError) {
+      throw errors.credentialsNotConfigured(err.code)
+    }
+    throw errors.internal('No se pudo cifrar la contraseña.')
+  }
+}
+
+async function readCredentialsRow(
+  admin: SupabaseClient,
+  profileId: string,
+): Promise<CredentialsRow | null> {
+  const { data, error } = await admin
+    .from('account_credentials')
+    .select(CREDENTIALS_COLUMNS)
+    .eq('profile_id', profileId)
+    .maybeSingle()
+  if (error) {
+    throw errors.internal(error.message)
+  }
+  return (data as CredentialsRow | null) ?? null
+}
+
+/** Guarda (reemplaza) la copia de la persona: una fila por cuenta. */
+async function storeCredentials(
+  admin: SupabaseClient,
+  profileId: string,
+  sealed: SealedPassword,
+  source: CredentialSource,
+  setBy: string | null,
+): Promise<void> {
+  const { error } = await admin.from('account_credentials').upsert({
+    profile_id: profileId,
+    ciphertext: sealed.ciphertext,
+    iv: sealed.iv,
+    key_version: sealed.keyVersion,
+    source,
+    set_at: new Date().toISOString(),
+    set_by: setBy,
+  })
+  if (error) {
+    throw errors.internal(error.message)
+  }
+}
+
+/** Deja la copia como estaba (o la borra si no había): compensación cuando Auth falla. */
+async function restoreCredentials(
+  admin: SupabaseClient,
+  profileId: string,
+  previous: CredentialsRow | null,
+): Promise<void> {
+  const { error } = previous
+    ? await admin.from('account_credentials').upsert(previous)
+    : await admin
+        .from('account_credentials')
+        .delete()
+        .eq('profile_id', profileId)
+  if (error) {
+    // Caso extremo (Auth falló Y no se pudo deshacer la copia): queda constancia sin datos
+    // sensibles; la próxima vez que se ponga una contraseña la copia se reemplaza.
+    console.error(
+      'admin-users: no se pudo restaurar la copia de credenciales de',
+      profileId,
+      error.message,
+    )
+  }
+}
+
+/**
+ * Cambia la contraseña de una cuenta que YA existe manteniendo la copia y Auth iguales (CR-13):
+ * primero se guarda la copia nueva y recién después se cambia Auth. Si el guardado falla, Auth
+ * queda intacto; si Auth falla, la copia vuelve a como estaba. Así nunca queda una copia que no
+ * corresponde a la contraseña real.
+ */
+async function changePasswordKeepingCopy(
+  admin: SupabaseClient,
+  profileId: string,
+  sealed: SealedPassword,
+  source: CredentialSource,
+  setBy: string,
+  applyAuth: () => Promise<void>,
+): Promise<void> {
+  const previous = await readCredentialsRow(admin, profileId)
+  await storeCredentials(admin, profileId, sealed, source, setBy)
+  try {
+    await applyAuth()
+  } catch (err) {
+    await restoreCredentials(admin, profileId, previous)
+    throw err
   }
 }
 
@@ -561,6 +723,9 @@ export async function actionCreateUser(
     throw errors.employeeDataRequired()
   }
 
+  // P26.1: se cifra la copia antes de tocar Auth. Si falta la clave, el alta no empieza.
+  const sealed = await sealPassword(input.password)
+
   if (input.employee) {
     const { data: existingDni, error: dniError } = await admin
       .from('employees')
@@ -652,6 +817,19 @@ export async function actionCreateUser(
     profileId = created.user.id
   }
 
+  // P26.1: la copia se guarda ANTES de la ficha y los roles. Si falla, la acción entera falla y la
+  // cuenta de Auth queda sin roles ni ficha: el próximo intento con el mismo email la retoma
+  // (mismo criterio de 0035). Si se guardara después, un fallo dejaría el alta completa sin copia.
+  try {
+    await storeCredentials(admin, profileId, sealed, 'created', actor.id)
+  } catch (err) {
+    console.error(
+      'admin-users: create_user no pudo guardar la copia de la contraseña; la cuenta queda para retomar',
+      profileId,
+    )
+    throw err
+  }
+
   const { data: records, error: recordsError } = await admin.rpc(
     'admin_create_user_records',
     {
@@ -730,16 +908,46 @@ export async function actionResetPassword(
   requireOwnerOrManageUsers(actor)
   await assertCanActOnTarget(admin, actor, profile_id)
 
-  const { error: updateError } = await admin.auth.admin.updateUserById(
-    profile_id,
-    { password: new_password },
-  )
-  if (updateError) {
-    if (updateError.code === 'user_not_found') {
-      throw errors.profileNotFound()
-    }
-    throw errors.internal(updateError.message)
+  // P26.1: se cifra y se guarda la copia antes de cambiar Auth (si falla el guardado, Auth queda
+  // como estaba; si falla Auth, la copia vuelve a como estaba). La persona tiene que existir:
+  // la FK de la copia lo exige y, además, se avisa con PROFILE_NOT_FOUND.
+  const sealed = await sealPassword(new_password)
+  const { data: targetProfile, error: targetError } = await admin
+    .from('profiles')
+    .select('id')
+    .eq('id', profile_id)
+    .maybeSingle()
+  if (targetError) {
+    throw errors.internal(targetError.message)
   }
+  if (!targetProfile) {
+    throw errors.profileNotFound()
+  }
+
+  await changePasswordKeepingCopy(
+    admin,
+    profile_id,
+    sealed,
+    'admin_reset',
+    actor.id,
+    async () => {
+      const { error: updateError } = await admin.auth.admin.updateUserById(
+        profile_id,
+        { password: new_password },
+      )
+      if (updateError) {
+        if (updateError.code === 'user_not_found') {
+          throw errors.profileNotFound()
+        }
+        if (updateError.code === 'weak_password') {
+          throw errors.validation(
+            'Esa contraseña es muy débil. Elegí otra más larga o más difícil de adivinar.',
+          )
+        }
+        throw errors.internal(updateError.message)
+      }
+    },
+  )
 
   await revokeAllSessions(admin, profile_id)
 
@@ -951,6 +1159,239 @@ export async function actionReactivateUser(
   return { profile_id }
 }
 
+// P26.1 · CR-01, CR-02, CR-07, CR-08, CR-10, CR-11: la administración ve la contraseña de una
+// cuenta. Misma regla de quién ve a quién que `reset_password` (`assertCanActOnTarget`): el dueño
+// ve todas (incluida la propia); un administrador con `manage_users` ve solo a quien no tenga rol
+// owner ni admin; cualquier otra persona recibe FORBIDDEN. Cada pedido deja `credentials_viewed`.
+//
+// Resultado: `status` es `ok` (hay contraseña), `none` (la cuenta es anterior a la copia: la
+// pantalla dice «No disponible» y ofrece poner una nueva) o `unreadable` (la copia existe pero no
+// se pudo descifrar, por ejemplo con la clave rotada: también «No disponible»). Con `none` y
+// `unreadable`, `password` es `null`.
+export async function actionGetCredentials(
+  admin: SupabaseClient,
+  actor: Actor,
+  body: Record<string, unknown>,
+  ip: string | null,
+): Promise<Record<string, unknown>> {
+  const { profile_id } = body
+  if (typeof profile_id !== 'string') {
+    throw errors.validation('Falta profile_id.')
+  }
+
+  requireOwnerOrManageUsers(actor)
+  await assertCanActOnTarget(admin, actor, profile_id)
+
+  // Igual que sign_out_user: la existencia se comprueba DESPUÉS de los permisos.
+  const { data: userData, error: userError } =
+    await admin.auth.admin.getUserById(profile_id)
+  if (userError || !userData?.user) {
+    if (userError && userError.code !== 'user_not_found') {
+      throw errors.internal(userError.message)
+    }
+    throw errors.profileNotFound()
+  }
+  const email = userData.user.email ?? null
+
+  const row = await readCredentialsRow(admin, profile_id)
+
+  let password: string | null = null
+  let status: 'ok' | 'none' | 'unreadable' = 'none'
+  if (row) {
+    try {
+      password = await decrypt({
+        ciphertext: row.ciphertext,
+        iv: row.iv,
+        keyVersion: row.key_version,
+      })
+      status = 'ok'
+    } catch (err) {
+      if (err instanceof CredentialsError && err.code === 'KEY_MISSING') {
+        // Falta el secreto en la función: es un problema de configuración, no de ese dato.
+        throw errors.credentialsNotConfigured(err.code)
+      }
+      // Clave rotada o dato alterado: la copia no se puede leer. Sin contraseña, sin basura.
+      console.error(
+        'admin-users: no se pudo descifrar la copia de credenciales de',
+        profile_id,
+        err instanceof CredentialsError ? err.code : 'ERROR',
+      )
+      status = 'unreadable'
+    }
+  }
+
+  // Nunca lleva la contraseña: solo el estado del pedido.
+  await logEvent(
+    admin,
+    'credentials_viewed',
+    actor.id,
+    profile_id,
+    { status },
+    ip,
+  )
+
+  return {
+    email,
+    password,
+    source: row?.source ?? null,
+    set_at: row?.set_at ?? null,
+    status,
+  }
+}
+
+// P26.1b · CR-01, CR-02, CR-07, CR-08: estado de la copia de la contraseña SIN descifrarla, para
+// que la ficha lo muestre apenas se abre sin dejar un `credentials_viewed` falso en cada visita.
+// Mismo permiso que `get_credentials` (`assertCanActOnTarget`). No usa `CREDENTIALS_KEY` (no
+// descifra, así que no corta si falta), nunca devuelve la contraseña ni el cifrado, y no
+// registra ningún evento de éxito (por lo tanto tampoco cuenta para el límite de 10 por minuto);
+// un rechazo sí queda como `admin_action_rejected`, como en el resto.
+//
+// `status` usa el mismo vocabulario que `get_credentials`: `none` (sin copia), `ok` (la copia
+// existe y su `key_version` es la vigente) o `unreadable` (la `key_version` ya no es la vigente).
+// Limitación: sin descifrar no se detecta una clave equivocada con la misma versión; en ese caso
+// `get_credentials` es el que termina diciendo `unreadable`.
+export async function actionGetAccessStatus(
+  admin: SupabaseClient,
+  actor: Actor,
+  body: Record<string, unknown>,
+  _ip: string | null,
+): Promise<Record<string, unknown>> {
+  const { profile_id } = body
+  if (typeof profile_id !== 'string') {
+    throw errors.validation('Falta profile_id.')
+  }
+
+  requireOwnerOrManageUsers(actor)
+  await assertCanActOnTarget(admin, actor, profile_id)
+
+  const { data: userData, error: userError } =
+    await admin.auth.admin.getUserById(profile_id)
+  if (userError || !userData?.user) {
+    if (userError && userError.code !== 'user_not_found') {
+      throw errors.internal(userError.message)
+    }
+    throw errors.profileNotFound()
+  }
+
+  const row = await readCredentialsRow(admin, profile_id)
+  const readable = row ? row.key_version === CURRENT_KEY_VERSION : null
+
+  return {
+    email: userData.user.email ?? null,
+    has_copy: row !== null,
+    readable,
+    status: row === null ? 'none' : readable ? 'ok' : 'unreadable',
+    source: row?.source ?? null,
+    set_at: row?.set_at ?? null,
+  }
+}
+
+// Cambia la contraseña PROPIA con el JWT de la persona (PUT /auth/v1/user), no con la Admin API.
+// `admin.updateUserById` cierra todas las sesiones de la cuenta, incluida la que hace el cambio
+// (DEF-P26-01); el endpoint de usuario no las cierra, que es lo que pide CR-13 y lo que hacía el
+// front antes de P26.3 con `auth.updateUser`.
+export async function updateOwnPasswordWithUserJwt(
+  jwt: string,
+  password: string,
+): Promise<void> {
+  const url = Deno.env.get('SUPABASE_URL')
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
+  if (!url || !anonKey) {
+    throw errors.internal(
+      'Faltan las variables de entorno de la función (SUPABASE_URL / SUPABASE_ANON_KEY).',
+    )
+  }
+  let res: Response
+  try {
+    res = await fetch(`${url.replace(/\/+$/, '')}/auth/v1/user`, {
+      method: 'PUT',
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${jwt}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ password }),
+    })
+  } catch (e) {
+    throw errors.internal(e instanceof Error ? e.message : 'fallo de red')
+  }
+  if (res.ok) {
+    await res.body?.cancel()
+    return
+  }
+  let code = ''
+  let msg = `Auth respondió ${res.status}`
+  try {
+    const j = await res.json()
+    code = String(j.error_code ?? j.code ?? '')
+    msg = String(j.msg ?? j.message ?? msg)
+  } catch {
+    // cuerpo no JSON: queda el mensaje genérico
+  }
+  if (code === 'weak_password') {
+    throw errors.validation(
+      'Esa contraseña es muy débil. Elegí otra más larga o más difícil de adivinar.',
+    )
+  }
+  if (code === 'same_password') {
+    throw errors.validation(
+      'La contraseña nueva tiene que ser distinta de la actual.',
+    )
+  }
+  throw errors.internal(msg)
+}
+
+// P26.1 · CR-04, CR-13: cambio de la contraseña PROPIA. Lo puede pedir cualquier persona con
+// sesión y perfil activo (la sesión que abre el enlace de recuperación del email también: es un
+// JWT común de Auth y `resolveActor` lo valida igual); no hace falta `manage_users`. Cambia Auth y
+// la copia a la vez (la copia primero, ver `changePasswordKeepingCopy`). No cierra ninguna sesión
+// de la persona (ni la que hace el cambio ni las otras): por eso Auth se cambia con su JWT.
+export async function actionChangeOwnPassword(
+  admin: SupabaseClient,
+  actor: Actor,
+  body: Record<string, unknown>,
+  ip: string | null,
+  updatePassword: (
+    jwt: string,
+    password: string,
+  ) => Promise<void> = updateOwnPasswordWithUserJwt,
+): Promise<Record<string, unknown>> {
+  const { new_password, origin } = body
+  if (typeof new_password !== 'string' || new_password.length < 8) {
+    throw errors.validation(
+      'La contraseña nueva tiene que tener al menos 8 caracteres.',
+    )
+  }
+  if (origin !== 'profile' && origin !== 'recovery') {
+    throw errors.validation('El origen del cambio no es válido.')
+  }
+
+  const sealed = await sealPassword(new_password)
+
+  await changePasswordKeepingCopy(
+    admin,
+    actor.id,
+    sealed,
+    origin === 'recovery' ? 'recovery' : 'self_change',
+    actor.id,
+    async () => {
+      if (!actor.jwt) throw errors.unauthenticated()
+      await updatePassword(actor.jwt, new_password)
+    },
+  )
+
+  await logEvent(
+    admin,
+    'password_changed_by_user',
+    actor.id,
+    actor.id,
+    { origin },
+    ip,
+  )
+
+  return { profile_id: actor.id }
+}
+
 // ---------------------------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------------------------
@@ -970,6 +1411,9 @@ const ACTIONS: Record<
   sign_out_user: actionSignOutUser,
   deactivate_user: actionDeactivateUser,
   reactivate_user: actionReactivateUser,
+  get_credentials: actionGetCredentials,
+  get_access_status: actionGetAccessStatus,
+  change_own_password: actionChangeOwnPassword,
 }
 
 // Rechazos que se registran y cuentan para el límite (SEG-03): todos los que ocurren una vez que

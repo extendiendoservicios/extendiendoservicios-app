@@ -39,6 +39,79 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_credentials: {
+        Row: {
+          ciphertext: string
+          iv: string
+          key_version: number
+          profile_id: string
+          set_at: string
+          set_by: string | null
+          source: Database["public"]["Enums"]["credential_source"]
+        }
+        Insert: {
+          ciphertext: string
+          iv: string
+          key_version?: number
+          profile_id: string
+          set_at?: string
+          set_by?: string | null
+          source: Database["public"]["Enums"]["credential_source"]
+        }
+        Update: {
+          ciphertext?: string
+          iv?: string
+          key_version?: number
+          profile_id?: string
+          set_at?: string
+          set_by?: string | null
+          source?: Database["public"]["Enums"]["credential_source"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_credentials_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_credentials_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "account_credentials_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "account_credentials_set_by_fkey"
+            columns: ["set_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_credentials_set_by_fkey"
+            columns: ["set_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "account_credentials_set_by_fkey"
+            columns: ["set_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+        ]
+      }
       admin_capabilities: {
         Row: {
           capability: Database["public"]["Enums"]["admin_capability"]
@@ -8903,6 +8976,12 @@ export type Database = {
       attendance_kind: "check_in" | "check_out"
       attendance_source: "employee_app" | "admin"
       client_status: "active" | "suspended" | "closed"
+      credential_source:
+        | "created"
+        | "admin_reset"
+        | "self_change"
+        | "recovery"
+        | "initial_delivery"
       employee_status: "active" | "terminated"
       geo_status: "valid" | "outside" | "unvalidated"
       geo_unvalidated_reason:
@@ -8934,6 +9013,8 @@ export type Database = {
         | "workday_auto_closed"
         | "stock_movement_voided"
         | "supply_price_changed"
+        | "credentials_viewed"
+        | "password_changed_by_user"
       service_status: "active" | "paused" | "ended"
       shift_status:
         | "scheduled"
@@ -9131,6 +9212,13 @@ export const Constants = {
       attendance_kind: ["check_in", "check_out"],
       attendance_source: ["employee_app", "admin"],
       client_status: ["active", "suspended", "closed"],
+      credential_source: [
+        "created",
+        "admin_reset",
+        "self_change",
+        "recovery",
+        "initial_delivery",
+      ],
       employee_status: ["active", "terminated"],
       geo_status: ["valid", "outside", "unvalidated"],
       geo_unvalidated_reason: [
@@ -9163,6 +9251,8 @@ export const Constants = {
         "workday_auto_closed",
         "stock_movement_voided",
         "supply_price_changed",
+        "credentials_viewed",
+        "password_changed_by_user",
       ],
       service_status: ["active", "paused", "ended"],
       shift_status: [

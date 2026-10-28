@@ -8,10 +8,10 @@ import { Button } from '@/components/ui/button'
 import { PasswordInput } from '@/components/ui/password-input'
 import { Field, FieldLabel, FieldError } from '@/components/ui/field'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { supabase } from '@/lib/supabase'
+import { isApiError } from '@/api/errors'
+import { changeOwnPassword } from '@/api/ownPassword'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { homePathForRoles } from '@/features/auth/session'
-import { updatePasswordErrorMessage } from '@/features/auth/authErrors'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { RouteFallback } from '@/app/routes/RouteFallback'
 import { AuthScreenLayout } from './AuthScreenLayout'
@@ -98,8 +98,8 @@ export default function ResetPasswordPage() {
   })
 
   // Se resuelve ANTES que cualquier otro estado: apenas se guardó la
-  // contraseña nueva, `isPasswordRecovery` ya bajó a `false` (evento
-  // `USER_UPDATED`, `AuthProvider`) y, sin este chequeo primero, la rama de
+  // contraseña nueva, `isPasswordRecovery` ya bajó a `false` (llamada a
+  // `finishPasswordRecovery`, `AuthProvider`) y, sin este chequeo primero, la rama de
   // "autenticado pero sin venir del enlace" de más abajo mandaría a
   // `/perfil` en vez de a la vía del rol — que es lo que pide `05` ("Navega
   // a: Según rol").
@@ -146,13 +146,22 @@ export default function ResetPasswordPage() {
 
   async function onSubmit(values: ResetPasswordFormValues) {
     setFormError(null)
-    const { error } = await supabase.auth.updateUser({
-      password: values.password,
-    })
-    if (error) {
-      setFormError(updatePasswordErrorMessage(error))
+    try {
+      // P26.3 (CR-04): la sesión del enlace del correo es un JWT común; la
+      // función cambia Auth y la copia a la vez. Si falla, no cambió nada.
+      await changeOwnPassword(values.password, 'recovery')
+    } catch (error) {
+      setFormError(
+        isApiError(error)
+          ? error.message
+          : 'No pudimos guardar la contraseña. Probá de nuevo en un momento.',
+      )
       return
     }
+    // Ya no hay `USER_UPDATED` (no se llama a `auth.updateUser`): se cierra
+    // el modo recuperación a mano; si no, `RootLayout` mandaría toda ruta a
+    // `/restablecer`.
+    auth.finishPasswordRecovery?.()
     setJustUpdated(true)
   }
 
@@ -177,8 +186,13 @@ export default function ResetPasswordPage() {
             icon={Lock}
             autoComplete="new-password"
             aria-invalid={Boolean(errors.password)}
+            aria-describedby="reset-password-notice"
             {...register('password')}
           />
+          <p id="reset-password-notice" className="text-[12px] text-text-2">
+            La administración de la empresa puede ver tu contraseña. No uses una
+            que tengas en otros servicios.
+          </p>
           {errors.password && (
             <FieldError>{errors.password.message}</FieldError>
           )}
