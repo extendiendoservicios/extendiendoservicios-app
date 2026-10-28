@@ -72,6 +72,16 @@ Detalle completo, incluidos los hallazgos de la verificación en vivo (por qué
 `auth.admin.signOut()` de supabase-js no sirve para revocar por `profile_id`, el recorte de
 `x-forwarded-for`), en `docs/database.md`, sección "Edge Function `admin-users`".
 
+### Copia cifrada de contraseñas (P26.1, CR-09)
+
+Por pedido de la empresa (28 oct 2026), la administración puede ver la contraseña de una cuenta. Hasta entonces nadie podía: la de Supabase Auth es un hash irreversible y sigue siéndolo; lo nuevo es una **copia cifrada** en `account_credentials` (migración `0075`).
+
+- **Cifrado solo en la Edge Function**: AES-256-GCM (Web Crypto), IV aleatorio por cifrado, clave en el secreto `CREDENTIALS_KEY` (distinta en `App_dev` y `App`, nunca en un archivo del proyecto). La base guarda texto cifrado: ni el SQL Editor, ni los respaldos a R2, ni una consulta con `service_role` muestran contraseñas. No se usa Vault ni `pgsodium`, porque descifrarían dentro de la base.
+- **La tabla está cerrada**: RLS sin políticas, sin permisos para `anon` ni `authenticated`; solo `service_role`. Ninguna vista ni RPC la expone (lo prueba el pgTAP `0075`).
+- **Quién ve a quién (CR-02, CR-07, CR-08)**: la misma regla que `reset_password`. El dueño ve todas (incluida la propia); un administrador con `manage_users` ve a quien no tenga rol `owner` ni `admin`; el resto, nada.
+- **Rastro**: cada consulta deja `credentials_viewed` (quién, a quién, cuándo) en `security_events`, que se ve en ADM-31; cada cambio propio deja `password_changed_by_user`. Ningún evento ni log lleva una contraseña: `logEvent` descarta además cualquier detalle cuya clave parezca una contraseña o un secreto.
+- **Riesgo asumido**: quien entre a la cuenta de un dueño puede ver todas las contraseñas. El registro lo deja a la vista pero no lo evita; se recomienda a los dueños contraseñas largas y propias (y un segundo factor a futuro).
+
 ### Evidencia fotográfica (P21.1, módulo H)
 
 - Bucket `evidence` privado: solo URL firmadas de vida corta. Se escribe únicamente en las rutas de una fila `shift_media` pendiente y propia (la crea `begin_shift_media`, que valida rol, relación con el turno, ventana, topes y sede). Lo lee el autor y dueño y administradores; nadie más, ni siquiera el supervisor del mismo turno.

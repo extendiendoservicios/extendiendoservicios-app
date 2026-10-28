@@ -122,9 +122,11 @@ select enum_has_labels(
     'workday_corrected',
     'workday_auto_closed',
     'stock_movement_voided',
-    'supply_price_changed'
+    'supply_price_changed',
+    'credentials_viewed',
+    'password_changed_by_user'
   ],
-  'security_event_type tiene los valores exactos y en orden (04 sección 2.6; admin_action_rejected agregado en 0030, SEG-03; name_changed en 0032, P19.5a; service_deleted en 0044, AJ3-01; los tres de corrección de fichajes y radio en 0052, P22.1; media_deleted en 0058, P21.8a; workday_corrected y workday_auto_closed en 0062, P24.1; stock_movement_voided y supply_price_changed en 0069, P25.1)'
+  'security_event_type tiene los valores exactos y en orden (04 sección 2.6; admin_action_rejected agregado en 0030, SEG-03; name_changed en 0032, P19.5a; service_deleted en 0044, AJ3-01; los tres de corrección de fichajes y radio en 0052, P22.1; media_deleted en 0058, P21.8a; workday_corrected y workday_auto_closed en 0062, P24.1; stock_movement_voided y supply_price_changed en 0069, P25.1; credentials_viewed y password_changed_by_user en 0075, P26.1)'
 );
 
 select * from finish();

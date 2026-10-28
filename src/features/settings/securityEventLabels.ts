@@ -29,6 +29,8 @@ export const SECURITY_EVENT_TYPE_LABELS: Record<SecurityEventType, string> = {
   workday_auto_closed: 'Jornada de coordinador cerrada automáticamente',
   stock_movement_voided: 'Movimiento de stock anulado',
   supply_price_changed: 'Precio de insumo modificado',
+  credentials_viewed: 'Contraseña consultada por administración',
+  password_changed_by_user: 'Contraseña cambiada por la propia persona',
 }
 
 export const SECURITY_EVENT_TYPES: SecurityEventType[] = [
@@ -53,4 +55,6 @@ export const SECURITY_EVENT_TYPES: SecurityEventType[] = [
   'workday_auto_closed',
   'stock_movement_voided',
   'supply_price_changed',
+  'credentials_viewed',
+  'password_changed_by_user',
 ]
