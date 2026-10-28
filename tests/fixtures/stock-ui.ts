@@ -42,4 +42,14 @@ export function filaDeStock(page: Page, nombre: string) {
 /** Busca en la pestaña Stock por código o nombre y espera la fila. */
 export async function buscarEnStock(page: Page, texto: string): Promise<void> {
   await page.getByLabel('Buscar por código o nombre').fill(texto)
+  // La búsqueda tiene un retraso (antirrebote): hasta que no se aplica, la tabla sigue con todos
+  // los artículos y un clic sobre «el único botón» cae en un conflicto de varios. Se espera a que
+  // quede alguna fila con el texto y ninguna otra (la única fila sin el texto es el encabezado).
+  const filas = page.getByRole('row')
+  await expect(filas.filter({ hasText: texto }).first()).toBeVisible()
+  await expect
+    .poll(async () => filas.filter({ hasNotText: texto }).count(), {
+      message: `la tabla de Stock sigue mostrando artículos que no son «${texto}»`,
+    })
+    .toBeLessThanOrEqual(1)
 }
