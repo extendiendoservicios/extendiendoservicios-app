@@ -1101,6 +1101,10 @@ export async function sweepResidues(
   await borrarJornadasDe(db, fijas)
   if (fijas.length > 0) {
     await db.from('supervisor_priorities').delete().in('supervisor_id', fijas)
+    // P25.5c: las cuentas fijas no tienen disponibilidad cargada. La matriz de permisos carga
+    // una franja de los lunes y, si una corrida se corta antes de limpiar, la franja queda y
+    // marca «fuera de su disponibilidad» en cualquier asignación (rompía el recorrido del celular).
+    await db.from('employee_availability').delete().in('employee_id', fijas)
   }
   return swept
 }
