@@ -1,6 +1,7 @@
 // Tests Deno de P26.1 (credenciales visibles) sobre la Edge Function `admin-users`:
 //   - `get_credentials`: quién ve a quién (CR-02, CR-07, CR-08), estados `ok` / `none` /
 //     `unreadable`, evento `credentials_viewed` sin la contraseña y sin contar para el límite.
+//   - `get_access_status` (P26.1b): mismo permiso, estados sin descifrar, sin evento de éxito.
 //   - `create_user` y `reset_password` guardan la copia; si el guardado falla, Auth no cambia.
 //   - `change_own_password`: cualquier persona con sesión (también la de recuperación), copia y Auth
 //     a la vez, sin cerrar sesiones.
@@ -12,6 +13,7 @@ import { assert, assertEquals, assertNotEquals } from 'jsr:@std/assert@1'
 import {
   actionChangeOwnPassword,
   actionCreateUser,
+  actionGetAccessStatus,
   actionGetCredentials,
   actionResetPassword,
   DomainError,
@@ -919,5 +921,169 @@ Deno.test(
       )
     }
     assertEquals(st.actualizacionesAuth.length, 0)
+  },
+)
+
+// ---------------------------------------------------------------------------------------------
+// get_access_status (P26.1b): estado sin descifrar
+// ---------------------------------------------------------------------------------------------
+
+Deno.test(
+  'get_access_status: mismos permisos que get_credentials (dueño, admin con manage_users, resto FORBIDDEN)',
+  async () => {
+    const st = nuevoEstado()
+    const admin = fakeAdmin(st)
+    const intentar = (quien: string, objetivo: string) =>
+      actionGetAccessStatus(
+        admin,
+        actor(quien, st),
+        { profile_id: objetivo },
+        null,
+      )
+    for (const id of [
+      'emp-1',
+      'sup-1',
+      'admin-1',
+      'emp-admin',
+      'dueno-2',
+      'dueno-1',
+    ]) {
+      assertEquals((await intentar('dueno-1', id)).email, `${id}@ejemplo.test`)
+    }
+    for (const id of ['emp-1', 'sup-1']) {
+      assertEquals((await intentar('admin-1', id)).email, `${id}@ejemplo.test`)
+    }
+    for (const id of ['dueno-1', 'admin-2', 'emp-admin', 'admin-1']) {
+      assertEquals(await hint(() => intentar('admin-1', id)), 'FORBIDDEN', id)
+    }
+    assertEquals(
+      await hint(() => intentar('admin-sin-cap', 'emp-1')),
+      'FORBIDDEN',
+    )
+    for (const quien of ['emp-1', 'sup-1', 'emp-admin']) {
+      assertEquals(
+        await hint(() => intentar(quien, 'emp-1')),
+        'FORBIDDEN',
+        quien,
+      )
+    }
+    assertEquals(
+      await hint(() => intentar('dueno-1', 'no-existe')),
+      'PROFILE_NOT_FOUND',
+    )
+    assertEquals(
+      await hint(() =>
+        actionGetAccessStatus(admin, actor('dueno-1', st), {}, null),
+      ),
+      'VALIDATION_ERROR',
+    )
+    // Ni los éxitos ni los rechazos de la acción directa registran nada.
+    assertEquals(st.eventos.length, 0)
+  },
+)
+
+Deno.test(
+  'get_access_status: tres estados (con copia, sin copia, key_version distinta) y nunca trae la contraseña',
+  async () => {
+    const st = nuevoEstado()
+    const admin = fakeAdmin(st)
+    const dueno = actor('dueno-1', st)
+
+    const sin = await actionGetAccessStatus(
+      admin,
+      dueno,
+      { profile_id: 'emp-1' },
+      null,
+    )
+    assertEquals(sin, {
+      email: 'emp-1@ejemplo.test',
+      has_copy: false,
+      readable: null,
+      status: 'none',
+      source: null,
+      set_at: null,
+    })
+
+    await guardarCopia(st, 'emp-1', 'contraseña-secreta-77', 'admin_reset')
+    const con = await actionGetAccessStatus(
+      admin,
+      dueno,
+      { profile_id: 'emp-1' },
+      null,
+    )
+    assertEquals(con, {
+      email: 'emp-1@ejemplo.test',
+      has_copy: true,
+      readable: true,
+      status: 'ok',
+      source: 'admin_reset',
+      set_at: '2026-10-28T12:00:00Z',
+    })
+
+    st.credenciales['emp-1'].key_version = 2
+    const otra = await actionGetAccessStatus(
+      admin,
+      dueno,
+      { profile_id: 'emp-1' },
+      null,
+    )
+    assertEquals(otra.has_copy, true)
+    assertEquals(otra.readable, false)
+    assertEquals(otra.status, 'unreadable')
+    assertEquals(otra.source, 'admin_reset')
+
+    for (const r of [sin, con, otra]) {
+      assert(!('password' in r))
+      assert(!('ciphertext' in r))
+      assert(!('iv' in r))
+      assert(!JSON.stringify(r).includes('contraseña-secreta-77'))
+    }
+  },
+)
+
+Deno.test(
+  'get_access_status: no necesita CREDENTIALS_KEY (no descifra)',
+  async () => {
+    const st = nuevoEstado()
+    await guardarCopia(st, 'emp-1', 'clave-de-emp-1')
+    Deno.env.delete('CREDENTIALS_KEY')
+    try {
+      const r = await actionGetAccessStatus(
+        fakeAdmin(st),
+        actor('dueno-1', st),
+        { profile_id: 'emp-1' },
+        null,
+      )
+      assertEquals(r.status, 'ok')
+    } finally {
+      Deno.env.set('CREDENTIALS_KEY', CLAVE)
+    }
+  },
+)
+
+Deno.test(
+  'router: get_access_status no registra credentials_viewed ni ningún evento, y el rechazo queda como admin_action_rejected',
+  async () => {
+    const st = nuevoEstado()
+    await guardarCopia(st, 'emp-1', 'clave-de-emp-1')
+    const ok = await handleRequest(
+      post({ action: 'get_access_status', profile_id: 'emp-1' }, 'admin-1'),
+      () => fakeAdmin(st),
+    )
+    assertEquals(ok.status, 200)
+    const cuerpo = await ok.json()
+    assertEquals(cuerpo.data.status, 'ok')
+    assert(!JSON.stringify(cuerpo).includes('clave-de-emp-1'))
+    assertEquals(st.eventos.length, 0)
+
+    const no = await handleRequest(
+      post({ action: 'get_access_status', profile_id: 'emp-1' }, 'sup-1'),
+      () => fakeAdmin(st),
+    )
+    assertEquals(no.status, 403)
+    assertEquals((await no.json()).error.hint, 'FORBIDDEN')
+    assertEquals(st.eventos.length, 1)
+    assertEquals(st.eventos[0].event_type, 'admin_action_rejected')
+    assert(!st.eventos.some((e) => e.event_type === 'credentials_viewed'))
   },
 )
