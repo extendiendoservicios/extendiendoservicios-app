@@ -9,30 +9,39 @@ import {
 } from './AccessBlock'
 
 /**
- * P26.2 (CR-10, CR-11): el bloque "Acceso a la app" -- las tres variantes
- * de `status`, el tapado a los 30 segundos, copiar sin mostrar y los
- * errores. Se mockean los hooks (sin red ni `QueryClientProvider`) y el
- * diálogo de reseteo (que ya tiene su propia cobertura).
+ * P26.2 / P26.2b (CR-10, CR-11): las filas de "Acceso a la app" -- el usuario
+ * visible al montar desde `get_access_status` (sin llamar a
+ * `get_credentials`), las tres variantes de `status`, el tapado a los 30
+ * segundos, copiar sin mostrar y los errores. Se mockean los hooks (sin red
+ * ni `QueryClientProvider`) y el diálogo de cambio de contraseña (que ya
+ * tiene su propia cobertura).
  */
-const { getCredentialsMock, resetDialogProps } = vi.hoisted(() => ({
-  getCredentialsMock: vi.fn(),
-  resetDialogProps: { current: null as null | { open: boolean } },
-}))
+const { getCredentialsMock, accessState, invalidateMock, resetDialogProps } =
+  vi.hoisted(() => ({
+    getCredentialsMock: vi.fn(),
+    invalidateMock: vi.fn(),
+    accessState: { current: null as Record<string, unknown> | null },
+    resetDialogProps: { current: null as null | { open: boolean } },
+  }))
 
 vi.mock('@/features/users/queries', () => ({
   useGetCredentialsMutation: () => ({
     mutateAsync: getCredentialsMock,
     isPending: false,
   }),
+  useAccessStatusQuery: () => accessState.current,
+  useInvalidateAccessStatus: () => invalidateMock,
   useUpdateEmailMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
 vi.mock('@/features/employees/components/EmployeeAccountDialogs', () => ({
   ResetEmployeePasswordDialog: (props: { open: boolean }) => {
     resetDialogProps.current = props
-    return props.open ? <div role="dialog">Resetear contraseña</div> : null
+    return props.open ? <div role="dialog">Cambiar contraseña</div> : null
   },
 }))
+
+import type { AccessStatus } from '@/api/credentials'
 
 const person = { profileId: 'p1', firstName: 'Ana', lastName: 'Gómez' }
 
@@ -47,6 +56,22 @@ function credentials(over: Partial<Credentials> = {}): Credentials {
   }
 }
 
+function accessStatus(over: Partial<AccessStatus> = {}): AccessStatus {
+  return {
+    email: 'ana@ejemplo.com',
+    hasCopy: true,
+    readable: true,
+    status: 'ok',
+    source: 'admin_reset',
+    setAt: '2026-10-28T17:05:00Z',
+    ...over,
+  }
+}
+
+function setAccess(data: AccessStatus | undefined, isError = false) {
+  accessState.current = { data, isError, error: null }
+}
+
 async function flush() {
   await act(async () => {
     await Promise.resolve()
@@ -58,6 +83,8 @@ const writeText = vi.fn()
 beforeEach(() => {
   vi.useFakeTimers()
   getCredentialsMock.mockReset()
+  invalidateMock.mockReset()
+  setAccess(accessStatus())
   writeText.mockReset()
   writeText.mockResolvedValue(undefined)
   Object.defineProperty(navigator, 'clipboard', {
@@ -71,13 +98,48 @@ afterEach(() => {
 })
 
 describe('AccessBlock', () => {
-  it('nace tapado y no pide nada al servidor', () => {
+  it('al montar muestra el usuario, el origen y la fecha, la contraseña tapada y no llama a get_credentials', () => {
     render(<AccessBlock person={person} />)
+    expect(screen.getByTestId('access-email')).toHaveTextContent(
+      'ana@ejemplo.com',
+    )
     expect(screen.getByTestId('access-password')).toHaveTextContent('••••••••')
+    expect(
+      screen.getByText(/Puesta por la administración · 28 oct 2026, 14:05/),
+    ).toBeInTheDocument()
     expect(getCredentialsMock).not.toHaveBeenCalled()
   })
 
-  it('"Mostrar" pide el acceso, muestra la contraseña y su origen con fecha de Argentina', async () => {
+  it('mientras carga el estado no muestra datos ni botones de contraseña de más', () => {
+    setAccess(undefined)
+    render(<AccessBlock person={person} />)
+    expect(screen.getByTestId('access-email')).toHaveTextContent('Cargando…')
+    expect(
+      screen.getByRole('button', { name: /copiar usuario/i }),
+    ).toBeDisabled()
+  })
+
+  it('"Copiar" usuario copia el email sin llamar a get_credentials', async () => {
+    render(<AccessBlock person={person} />)
+    fireEvent.click(
+      screen.getByRole('button', { name: /copiar usuario de ana gómez/i }),
+    )
+    await flush()
+    expect(writeText).toHaveBeenCalledWith('ana@ejemplo.com')
+    expect(getCredentialsMock).not.toHaveBeenCalled()
+  })
+
+  it('sin showChangePassword no hay "Cambiar" de la contraseña, pero sí el del usuario', () => {
+    render(<AccessBlock person={person} showChangePassword={false} />)
+    expect(
+      screen.queryByRole('button', { name: /cambiar contraseña de/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /cambiar usuario de/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('"Mostrar" llama a get_credentials y muestra la contraseña en fuente monoespaciada', async () => {
     getCredentialsMock.mockResolvedValue(credentials())
     render(<AccessBlock person={person} />)
 
@@ -91,10 +153,6 @@ describe('AccessBlock', () => {
       'Secreta-123',
     )
     expect(screen.getByTestId('access-password')).toHaveClass('font-mono')
-    expect(screen.getByText('ana@ejemplo.com')).toBeInTheDocument()
-    expect(
-      screen.getByText(/Puesta por la administración · 28 oct 2026, 14:05/),
-    ).toBeInTheDocument()
   })
 
   it('vuelve a tapar la contraseña a los 30 segundos', async () => {
@@ -144,17 +202,59 @@ describe('AccessBlock', () => {
     expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite')
   })
 
-  it('"Copiar" usuario copia el email', async () => {
-    getCredentialsMock.mockResolvedValue(credentials())
-    render(<AccessBlock person={person} />)
-    fireEvent.click(
-      screen.getByRole('button', { name: /copiar usuario de ana gómez/i }),
+  it('con status "none" muestra "No disponible" con su ayuda y "Poner una nueva" abre el diálogo; sin Mostrar ni Copiar', () => {
+    setAccess(
+      accessStatus({
+        status: 'none',
+        hasCopy: false,
+        readable: false,
+        source: null,
+        setAt: null,
+      }),
     )
-    await flush()
-    expect(writeText).toHaveBeenCalledWith('ana@ejemplo.com')
+    render(<AccessBlock person={person} />)
+
+    expect(screen.getByText('No disponible')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'La cuenta se creó antes de que la app guardara las contraseñas.',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /mostrar contraseña/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /copiar contraseña/i }),
+    ).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Poner una nueva' }))
+    expect(resetDialogProps.current?.open).toBe(true)
   })
 
-  it('con status "none" muestra el aviso y "Poner una nueva" abre el diálogo de reseteo', async () => {
+  it('con status "unreadable" muestra "No disponible" con la ayuda de copia ilegible y el mismo botón', () => {
+    setAccess(
+      accessStatus({
+        status: 'unreadable',
+        readable: false,
+        source: 'created',
+        setAt: '2026-10-01T12:00:00Z',
+      }),
+    )
+    render(<AccessBlock person={person} />)
+
+    expect(screen.getByText('No disponible')).toBeInTheDocument()
+    expect(
+      screen.getByText('No se pudo leer la copia guardada.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Poner una nueva' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /mostrar contraseña/i }),
+    ).not.toBeInTheDocument()
+    expect(getCredentialsMock).not.toHaveBeenCalled()
+  })
+
+  it('si get_credentials contradice el estado, refresca get_access_status', async () => {
     getCredentialsMock.mockResolvedValue(
       credentials({
         status: 'none',
@@ -166,36 +266,8 @@ describe('AccessBlock', () => {
     render(<AccessBlock person={person} />)
     fireEvent.click(screen.getByRole('button', { name: /mostrar contraseña/i }))
     await flush()
-
-    expect(
-      screen.getByText(
-        'No disponible. La cuenta se creó antes de que la app guardara las contraseñas.',
-      ),
-    ).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Poner una nueva' }))
-    expect(resetDialogProps.current?.open).toBe(true)
-  })
-
-  it('con status "unreadable" muestra el aviso de copia ilegible', async () => {
-    getCredentialsMock.mockResolvedValue(
-      credentials({
-        status: 'unreadable',
-        password: null,
-        source: 'created',
-        setAt: '2026-10-01T12:00:00Z',
-      }),
-    )
-    render(<AccessBlock person={person} />)
-    fireEvent.click(screen.getByRole('button', { name: /mostrar contraseña/i }))
-    await flush()
-
-    expect(
-      screen.getByText('No disponible. No se pudo leer la copia guardada.'),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'Poner una nueva' }),
-    ).toBeInTheDocument()
-    expect(writeText).not.toHaveBeenCalled()
+    expect(invalidateMock).toHaveBeenCalled()
+    expect(screen.getByTestId('access-password')).toHaveTextContent('••••••••')
   })
 
   it('con CREDENTIALS_NOT_CONFIGURED muestra el mensaje del servidor sin romper el bloque', async () => {

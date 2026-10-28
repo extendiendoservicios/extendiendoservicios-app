@@ -46,7 +46,7 @@ function apiErrorMessage(error: unknown, fallback: string): string {
   return isApiError(error) ? error.message : fallback
 }
 
-/** Resetear contraseña -- revoca las sesiones de la persona (`06` sección 2.1). */
+/** Cambiar la contraseña (P26.2b; antes «Resetear») -- revoca las sesiones de la persona (`06` sección 2.1). */
 function ResetEmployeePasswordDialog({
   employee,
   open,
@@ -94,7 +94,7 @@ function ResetEmployeePasswordDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Resetear contraseña</DialogTitle>
+          <DialogTitle>Cambiar contraseña</DialogTitle>
           <DialogDescription>
             Le vamos a asignar esta contraseña a {fullNameOf(employee)} y a
             cerrar todas sus sesiones activas.
@@ -124,7 +124,7 @@ function ResetEmployeePasswordDialog({
               Cancelar
             </Button>
             <Button type="submit" loading={resetPassword.isPending}>
-              Resetear contraseña
+              Cambiar contraseña
             </Button>
           </DialogFooter>
         </form>

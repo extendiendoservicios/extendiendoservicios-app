@@ -136,6 +136,7 @@ export default function EmployeeDetailPage() {
   const canManageAccount = canManageEmployeeAccounts(actor)
   const isSupervisor = employee.roles.includes('supervisor')
   const canViewWithdrawals = canViewPersonWithdrawals(actor)
+  const showAccess = canViewCredentials(actor, employee.roles)
   // Las pestañas de coordinador no existen para el resto: un enlace viejo vuelve a «Datos».
   const visibleTab: EmployeeDetailTab =
     !isSupervisor &&
@@ -147,7 +148,7 @@ export default function EmployeeDetailPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-border bg-surface p-5">
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 rounded-lg border border-border bg-surface p-5">
         <div className="flex min-w-0 items-center gap-4">
           <Avatar
             id={employee.profileId}
@@ -179,41 +180,52 @@ export default function EmployeeDetailPage() {
             </div>
           </div>
         </div>
-        <div className="flex min-w-0 flex-wrap gap-2">
-          {canManageAccount && !isTerminated && (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={KeyRound}
-                onClick={() => setOpenDialog('reset-password')}
-              >
-                Resetear contraseña
+        {/* P26.2b: a todo el ancho en celular y tablet; en escritorio, en la columna de la derecha. */}
+        <div className="flex w-full min-w-0 flex-col gap-3 lg:w-[30rem]">
+          <div className="flex min-w-0 flex-wrap gap-2 lg:justify-end">
+            {canManageAccount && !isTerminated && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={KeyRound}
+                  onClick={() => setOpenDialog('reset-password')}
+                >
+                  Cambiar contraseña
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={LogOut}
+                  onClick={() => setOpenDialog('sign-out')}
+                >
+                  Cerrar sesiones
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={UserX}
+                  onClick={() => setOpenDialog('terminate')}
+                >
+                  Dar de baja
+                </Button>
+              </>
+            )}
+            {canEdit && (
+              <Button asChild size="sm" icon={Pencil}>
+                <Link to={`/admin/empleados/${employee.profileId}/editar`}>
+                  Editar
+                </Link>
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={LogOut}
-                onClick={() => setOpenDialog('sign-out')}
-              >
-                Cerrar sesiones
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={UserX}
-                onClick={() => setOpenDialog('terminate')}
-              >
-                Dar de baja
-              </Button>
-            </>
-          )}
-          {canEdit && (
-            <Button asChild size="sm" icon={Pencil}>
-              <Link to={`/admin/empleados/${employee.profileId}/editar`}>
-                Editar
-              </Link>
-            </Button>
+            )}
+          </div>
+          {showAccess && (
+            <AccessBlock
+              key={employee.profileId}
+              person={employee}
+              showChangePassword={false}
+              className="border-t border-border pt-2"
+            />
           )}
         </div>
       </div>
@@ -241,9 +253,6 @@ export default function EmployeeDetailPage() {
         </TabsList>
 
         <TabsContent value="datos" className="flex flex-col gap-4 pt-3">
-          {canViewCredentials(actor, employee.roles) && (
-            <AccessBlock key={employee.profileId} person={employee} />
-          )}
           <EmployeeDataTab
             employee={employee}
             canEditRoles={canManageAccount}

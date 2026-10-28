@@ -63,3 +63,43 @@ export async function getCredentials(profileId: string): Promise<Credentials> {
     status: data.status,
   }
 }
+
+/**
+ * P26.2b: estado del acceso sin la contraseña (`get_access_status`). Trae el
+ * usuario, de dónde salió la copia y cuándo, y no deja eventos de seguridad,
+ * por eso la ficha lo pide al abrirse.
+ */
+export interface AccessStatus {
+  email: string | null
+  hasCopy: boolean
+  readable: boolean
+  status: CredentialStatus
+  source: CredentialSource | null
+  setAt: string | null
+}
+
+interface AccessStatusPayload {
+  email: string | null
+  has_copy: boolean
+  readable: boolean
+  status: CredentialStatus
+  source: CredentialSource | null
+  set_at: string | null
+}
+
+export async function getAccessStatus(
+  profileId: string,
+): Promise<AccessStatus> {
+  const data = await invokeAdminUsers<AccessStatusPayload>(
+    'get_access_status',
+    { profile_id: profileId },
+  )
+  return {
+    email: data.email,
+    hasCopy: data.has_copy,
+    readable: data.readable,
+    status: data.status,
+    source: data.source,
+    setAt: data.set_at,
+  }
+}
