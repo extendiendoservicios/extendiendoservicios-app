@@ -617,7 +617,10 @@ test.describe('Insumos del empleado en el celular', () => {
       ]) {
         await page.goto(ruta)
         await expect(
-          page.getByLabel('Buscar insumos').or(page.getByRole('radio').first()),
+          page
+            .getByLabel('Buscar insumos')
+            .or(page.getByRole('radio').first())
+            .first(),
         ).toBeVisible()
         await expectNoHorizontalScroll(page)
       }
