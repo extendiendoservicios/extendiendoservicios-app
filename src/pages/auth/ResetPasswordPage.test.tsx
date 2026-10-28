@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ResetPasswordPage from './ResetPasswordPage'
+import { ApiError } from '@/api/errors'
 import * as authModule from '@/features/auth/AuthProvider'
 import type { AuthContextValue } from '@/features/auth/AuthProvider'
 
@@ -21,9 +22,14 @@ interface UpdateUserResult {
 // `vi.hoisted`: ver el comentario largo de `LoginPage.test.tsx` — sin esto,
 // referenciar `updateUserMock` directo dentro de la factory explota con la
 // suite completa (`pnpm test`), aunque el archivo solo pase.
-const { updateUserMock } = vi.hoisted(() => ({
+const { updateUserMock, changeOwnPasswordMock } = vi.hoisted(() => ({
+  changeOwnPasswordMock:
+    vi.fn<(newPassword: string, origin: string) => Promise<void>>(),
   updateUserMock:
     vi.fn<(attributes: { password: string }) => Promise<UpdateUserResult>>(),
+}))
+vi.mock('@/api/ownPassword', () => ({
+  changeOwnPassword: changeOwnPasswordMock,
 }))
 vi.mock('@/lib/supabase', () => ({
   supabase: { auth: { updateUser: updateUserMock } },
@@ -73,6 +79,7 @@ function renderPage() {
 
 beforeEach(() => {
   updateUserMock.mockReset()
+  changeOwnPasswordMock.mockReset()
   mockViewportWidth(1440)
 })
 
@@ -126,7 +133,7 @@ describe('ResetPasswordPage (COM-03)', () => {
     ).toBeInTheDocument()
   })
 
-  it('avisa si las dos contraseñas no coinciden, sin llamar a updateUser', async () => {
+  it('avisa si las dos contraseñas no coinciden, sin llamar a la función', async () => {
     vi.spyOn(authModule, 'useAuth').mockReturnValue(
       authValue({
         status: 'authenticated',
@@ -147,18 +154,20 @@ describe('ResetPasswordPage (COM-03)', () => {
     expect(
       await screen.findByText('Las contraseñas no coinciden.'),
     ).toBeInTheDocument()
-    expect(updateUserMock).not.toHaveBeenCalled()
+    expect(changeOwnPasswordMock).not.toHaveBeenCalled()
   })
 
-  it('al guardar, llama updateUser y navega a la vía del rol', async () => {
+  it('al guardar, llama change_own_password (recovery), cierra la recuperación y navega a la vía del rol', async () => {
+    const finishPasswordRecovery = vi.fn()
     vi.spyOn(authModule, 'useAuth').mockReturnValue(
       authValue({
         status: 'authenticated',
         roles: ['employee'],
         isPasswordRecovery: true,
+        finishPasswordRecovery,
       }),
     )
-    updateUserMock.mockResolvedValue({ data: { user: {} }, error: null })
+    changeOwnPasswordMock.mockResolvedValue(undefined)
 
     renderPage()
     fireEvent.change(screen.getByLabelText('Contraseña nueva'), {
@@ -170,8 +179,61 @@ describe('ResetPasswordPage (COM-03)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Guardar contraseña' }))
 
     expect(await screen.findByText('Hoy del empleado')).toBeInTheDocument()
-    expect(updateUserMock).toHaveBeenCalledWith({
-      password: 'contraseña-larga-1',
+    expect(changeOwnPasswordMock).toHaveBeenCalledWith(
+      'contraseña-larga-1',
+      'recovery',
+    )
+    expect(finishPasswordRecovery).toHaveBeenCalledTimes(1)
+    expect(updateUserMock).not.toHaveBeenCalled()
+  })
+
+  it('si la función falla, muestra el error y se queda en el formulario (CR-13)', async () => {
+    const finishPasswordRecovery = vi.fn()
+    vi.spyOn(authModule, 'useAuth').mockReturnValue(
+      authValue({
+        status: 'authenticated',
+        roles: ['employee'],
+        isPasswordRecovery: true,
+        finishPasswordRecovery,
+      }),
+    )
+    changeOwnPasswordMock.mockRejectedValue(
+      new ApiError('Por el momento no se puede cambiar la contraseña.'),
+    )
+
+    renderPage()
+    fireEvent.change(screen.getByLabelText('Contraseña nueva'), {
+      target: { value: 'contraseña-larga-1' },
     })
+    fireEvent.change(screen.getByLabelText('Confirmar contraseña'), {
+      target: { value: 'contraseña-larga-1' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar contraseña' }))
+
+    expect(
+      await screen.findByText(
+        'Por el momento no se puede cambiar la contraseña.',
+      ),
+    ).toBeInTheDocument()
+    expect(finishPasswordRecovery).not.toHaveBeenCalled()
+    expect(screen.queryByText('Hoy del empleado')).toBeNull()
+  })
+
+  it('muestra el aviso de que la administración puede ver la contraseña (CR-12)', () => {
+    vi.spyOn(authModule, 'useAuth').mockReturnValue(
+      authValue({
+        status: 'authenticated',
+        roles: ['employee'],
+        isPasswordRecovery: true,
+      }),
+    )
+
+    renderPage()
+
+    expect(
+      screen.getByText(
+        'La administración de la empresa puede ver tu contraseña. No uses una que tengas en otros servicios.',
+      ),
+    ).toBeInTheDocument()
   })
 })
