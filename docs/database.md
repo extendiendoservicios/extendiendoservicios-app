@@ -2230,6 +2230,7 @@ En F21 (P21.8a, módulo H): `0058_p21_8_eliminar_evidencia.sql` -- ver "Eliminar
 En F22 (P22.1, módulo B1): `0052_p22_1_geolocalizacion.sql`, `0053_p22_1_correcciones_eventos.sql`, `0054_p22_1b_privacidad_coordenadas.sql`, `0055_p22_1b_execute_service_role.sql` y `0056_p22_4b_resumen_y_consentimiento.sql` -- ver "Módulo B1: geolocalización y corrección de fichajes" y "Privacidad de las coordenadas".
 En F25 (P25.1, módulo E): `0069_p25_1_enums.sql`, `0070_p25_1_insumos_y_stock.sql` y `0071_p25_1_imagenes_insumos.sql` -- ver "Insumos y control de stock".
 En F25 (P25.5, módulo E): `0072_p25_5_retiro_en_nombre_de.sql` y `0073_p25_5_validaciones_insumos.sql` -- ver "Retiro en nombre de otra persona" y "Validación de valores y topes".
+En F25 (P25.8, módulo E): `0074_p25_8_catalogo_inicial_insumos.sql` -- carga de datos (no de esquema) pedida por los dueños el 28 oct 2026: 4 categorías y 16 artículos iniciales de Insumos con stock, precios y mínimo en cero y su fila de alta en el historial de precios; idempotente (no pisa categorías ni códigos existentes).
 
 ## Cómo escribir una migración
 
