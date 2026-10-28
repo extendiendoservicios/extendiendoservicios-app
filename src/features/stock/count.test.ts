@@ -59,6 +59,28 @@ describe('fecha y hora del control (IS-31)', () => {
     )
   })
 
+  it('rechaza una fecha de hace más de 30 días y acepta el límite (IS-36)', () => {
+    const schema = buildCountHeaderSchema(NOW)
+    // 30 días atrás a la misma hora que NOW (14:30): está en el límite.
+    expect(
+      schema.safeParse({ ...baseHeader, date: '2026-09-26', time: '14:30' })
+        .success,
+    ).toBe(true)
+    const result = schema.safeParse({
+      ...baseHeader,
+      date: '2026-09-26',
+      time: '14:29',
+    })
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toBe(
+      'El control no puede ser de hace más de 30 días. Elegí una fecha más reciente.',
+    )
+    expect(
+      schema.safeParse({ ...baseHeader, date: '1900-01-01', time: '10:00' })
+        .success,
+    ).toBe(false)
+  })
+
   it('pide día y hora', () => {
     const result = buildCountHeaderSchema(NOW).safeParse({
       ...baseHeader,

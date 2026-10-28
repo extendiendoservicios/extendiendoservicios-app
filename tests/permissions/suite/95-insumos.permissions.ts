@@ -1495,7 +1495,69 @@ describe('Insumos (0069 a 0072): permisos por rol', () => {
           p_reviewer_name: ins.texto('revisor'),
         }),
       ],
+      [
+        'register_stock_count · fecha de hace más de 30 días (IS-36)',
+        'register_stock_count',
+        () => ({
+          p_counted_at: new Date(Date.now() - 31 * 86_400_000).toISOString(),
+          p_lines: [{ supply_id: id.sA, counted_qty: 1 }],
+          p_reviewer_name: ins.texto('revisor'),
+        }),
+      ],
+      [
+        'register_stock_count · fecha de 1900 (IS-36)',
+        'register_stock_count',
+        () => ({
+          p_counted_at: '1900-01-01T00:00:00-03:00',
+          p_lines: [{ supply_id: id.sA, counted_qty: 1 }],
+          p_reviewer_name: ins.texto('revisor'),
+        }),
+      ],
+      [
+        'register_stock_count · observaciones sin tope de largo',
+        'register_stock_count',
+        () => ({
+          p_counted_at: new Date(Date.now() - 60_000).toISOString(),
+          p_lines: [{ supply_id: id.sA, counted_qty: 1 }],
+          p_reviewer_name: ins.texto('revisor'),
+          p_notes: ins.texto('n'.repeat(100_000)),
+        }),
+      ],
+      [
+        'register_stock_entry · proveedor sin tope de largo',
+        'register_stock_entry',
+        () => ({
+          p_lines: [{ supply_id: id.sA, qty: 1 }],
+          p_supplier: ins.texto('p'.repeat(100_000)),
+        }),
+      ],
+      [
+        'register_withdrawal · observación sin tope de largo',
+        'register_withdrawal',
+        () => ({
+          p_lines: [{ supply_id: id.sD, qty: 1 }],
+          p_shift_id: id.turnoE1,
+          p_note: ins.texto('o'.repeat(100_000)),
+        }),
+      ],
     ]
+    /** Código estable que tiene que traer cada caso (06 §15). */
+    const hintEsperado: Record<string, string> = {
+      'register_stock_entry · costo unitario fuera de rango': 'INVALID_PRICE',
+      'upsert_supply · precio fuera de rango': 'INVALID_PRICE',
+      'upsert_supply · mínimo fuera de rango': 'INVALID_MIN_QTY',
+      'adjust_stock · cantidad fuera de rango': 'INVALID_QTY',
+      'adjust_stock · motivo inexistente': 'INVALID_REASON',
+      'register_stock_count · fecha inválida': 'COUNT_DATE_INVALID',
+      'register_stock_count · fecha de hace más de 30 días (IS-36)':
+        'COUNTED_AT_OUT_OF_RANGE',
+      'register_stock_count · fecha de 1900 (IS-36)': 'COUNTED_AT_OUT_OF_RANGE',
+      'register_stock_count · observaciones sin tope de largo': 'TEXT_TOO_LONG',
+      'register_stock_entry · proveedor sin tope de largo': 'TEXT_TOO_LONG',
+      'register_withdrawal · observación sin tope de largo': 'TEXT_TOO_LONG',
+      'report_supply_shortage · descripción sin tope de largo': 'TEXT_TOO_LONG',
+      'report_supply_shortage · comentario sin tope de largo': 'TEXT_TOO_LONG',
+    }
     for (const [nombre, rpcNombre, args] of casosContrato) {
       caso(
         claveCaso('insumos', 'contrato', nombre),
@@ -1504,7 +1566,10 @@ describe('Insumos (0069 a 0072): permisos por rol', () => {
           const antes = await stockDe(id.sA)
           const res = await rpc(
             clienteDe(
-              rpcNombre === 'report_supply_shortage' ? 'empleado' : 'owner',
+              rpcNombre === 'report_supply_shortage' ||
+                rpcNombre === 'register_withdrawal'
+                ? 'empleado'
+                : 'owner',
             ),
             rpcNombre,
             args(),
@@ -1515,6 +1580,9 @@ describe('Insumos (0069 a 0072): permisos por rol', () => {
             `error crudo del motor: ${describir(res)}`,
           ).toBe('P0001')
           expect(res.error?.hint ?? '', 'sin código de error').not.toBe('')
+          expect(res.error?.hint, 'código distinto del esperado').toBe(
+            hintEsperado[nombre],
+          )
           expect(await stockDe(id.sA)).toBe(antes)
         },
       )

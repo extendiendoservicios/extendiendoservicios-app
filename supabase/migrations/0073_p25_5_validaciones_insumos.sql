@@ -54,14 +54,14 @@ as $$
 begin
   if p_value is not null and char_length(btrim(p_value)) > p_max then
     raise exception using errcode = 'P0001',
-      message = format('%s no puede tener más de %s caracteres.', p_label, p_max),
+      message = format('%s: hasta %s caracteres.', p_label, p_max),
       hint = 'TEXT_TOO_LONG';
   end if;
 end;
 $$;
 
 comment on function app.check_text_max(text, integer, text) is
-  'Corta con P0001 / TEXT_TOO_LONG si el texto, sin los espacios de los extremos, supera p_max caracteres (0073, IS-37). p_label es el sujeto del mensaje («La descripción»). Interna.';
+  'Corta con P0001 / TEXT_TOO_LONG si el texto, sin los espacios de los extremos, supera p_max caracteres (0073, IS-37). p_label es el nombre del campo sin artículo («Descripción»). Interna.';
 
 revoke execute on function app.check_text_max(text, integer, text) from public, anon, authenticated;
 
@@ -108,15 +108,15 @@ declare
   v_new_cost numeric(12, 2);
 begin
   -- Textos libres (IS-37).
-  perform app.check_text_max(p_supplier, 120, 'El proveedor');
-  perform app.check_text_max(p_document_number, 60, 'El comprobante');
+  perform app.check_text_max(p_supplier, 120, 'Proveedor');
+  perform app.check_text_max(p_document_number, 60, 'Comprobante');
   perform app.check_text_max(
     p_note, 500,
     case p_kind
-      when 'withdrawal' then 'La observación'
-      when 'count' then 'Las observaciones del control'
-      when 'reversal' then 'El motivo de la anulación'
-      else 'La nota'
+      when 'withdrawal' then 'Observación'
+      when 'count' then 'Observaciones del control'
+      when 'reversal' then 'Motivo de la anulación'
+      else 'Nota'
     end
   );
 
@@ -292,10 +292,10 @@ begin
   if v_name is null then
     raise exception using errcode = 'P0001', message = 'Indicá el nombre del artículo.', hint = 'NAME_REQUIRED';
   end if;
-  perform app.check_text_max(v_code, 40, 'El código');
-  perform app.check_text_max(v_name, 120, 'El nombre');
-  perform app.check_text_max(p_presentation, 80, 'La presentación');
-  perform app.check_text_max(p_notes, 500, 'Las notas');
+  perform app.check_text_max(v_code, 40, 'Código');
+  perform app.check_text_max(v_name, 120, 'Nombre del artículo');
+  perform app.check_text_max(p_presentation, 80, 'Presentación');
+  perform app.check_text_max(p_notes, 500, 'Notas del artículo');
 
   -- NaN e infinito caen en el `>` (en Postgres, NaN es mayor que todo).
   if p_min_qty is not null and (p_min_qty < 0 or p_min_qty > 1000000 or p_min_qty <> trunc(p_min_qty)) then
@@ -429,7 +429,7 @@ begin
   if v_name is null then
     raise exception using errcode = 'P0001', message = 'Indicá el nombre de la categoría.', hint = 'NAME_REQUIRED';
   end if;
-  perform app.check_text_max(v_name, 60, 'El nombre de la categoría');
+  perform app.check_text_max(v_name, 60, 'Nombre de la categoría');
   if p_active is null or p_sort_order is null then
     raise exception using errcode = 'P0001', message = 'Faltan datos de la categoría.', hint = 'INVALID_CATEGORY';
   end if;
@@ -588,7 +588,7 @@ begin
   if v_reason is null then
     raise exception using errcode = 'P0001', message = 'Indicá el motivo de la anulación.', hint = 'REASON_REQUIRED';
   end if;
-  perform app.check_text_max(v_reason, 500, 'El motivo de la anulación');
+  perform app.check_text_max(v_reason, 500, 'Motivo de la anulación');
 
   select * into v_m from public.stock_movements where id = p_movement_id for update;
   if v_m.id is null then
@@ -697,8 +697,8 @@ begin
       message = 'Indicá quién revisó: una persona de la app o un nombre escrito, no las dos cosas.',
       hint = 'REVIEWER_REQUIRED';
   end if;
-  perform app.check_text_max(p_reviewer_name, 120, 'El nombre de quien revisó');
-  perform app.check_text_max(p_notes, 500, 'Las observaciones del control');
+  perform app.check_text_max(p_reviewer_name, 120, 'Nombre de quien revisó');
+  perform app.check_text_max(p_notes, 500, 'Observaciones del control');
   if p_reviewer_id is not null and not exists (
     select 1 from public.profiles p where p.id = p_reviewer_id and p.is_active and p.deleted_at is null
   ) then
@@ -815,8 +815,8 @@ begin
       hint = 'SHORTAGE_TARGET_REQUIRED';
   end if;
 
-  perform app.check_text_max(p_description, 200, 'La descripción');
-  perform app.check_text_max(p_comment, 500, 'El comentario');
+  perform app.check_text_max(p_description, 200, 'Descripción');
+  perform app.check_text_max(p_comment, 500, 'Comentario');
 
   if p_supply_id is not null and not exists (
     select 1 from public.supplies s where s.id = p_supply_id and s.active
@@ -858,7 +858,7 @@ begin
       message = 'Escribí una nota de resolución (por ejemplo, «Se compró» o «Hay en el depósito»).',
       hint = 'NOTE_REQUIRED';
   end if;
-  perform app.check_text_max(p_note, 500, 'La nota de resolución');
+  perform app.check_text_max(p_note, 500, 'Nota de resolución');
 
   select * into v_row from public.supply_shortage_reports where id = p_report_id for update;
   if v_row.id is null then

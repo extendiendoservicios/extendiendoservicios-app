@@ -29,6 +29,8 @@ export function argentinaDateTimeToIso(date: string, time: string): string {
 export type ReviewerKind = 'person' | 'name'
 
 export const REVIEWER_NAME_MAX = 120
+/** Hasta cuántos días atrás se puede cargar un control (IS-36, 0073). */
+export const COUNT_MAX_DAYS_BACK = 30
 export const COUNT_NOTES_MAX = 500
 
 /**
@@ -65,6 +67,15 @@ export function buildCountHeaderSchema(now: Date) {
             code: 'custom',
             path: ['date'],
             message: 'La fecha y la hora del control no pueden ser futuras.',
+          })
+        } else if (
+          at.getTime() <
+          now.getTime() - COUNT_MAX_DAYS_BACK * 86_400_000
+        ) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['date'],
+            message: `El control no puede ser de hace más de ${COUNT_MAX_DAYS_BACK} días. Elegí una fecha más reciente.`,
           })
         }
       }

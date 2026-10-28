@@ -24,7 +24,11 @@ export function claveCaso(...partes: string[]): string {
   return partes.join(' · ')
 }
 
-/** Defectos conocidos por identificador (DEF-P14 se agregó y se corrigió en P21.6c, 0050). */
+/**
+ * Defectos conocidos por identificador (DEF-P14 se agregó y se corrigió en P21.6c, 0050;
+ * DEF-P25-01 y DEF-P25-02 se agregaron en P25.5c y se corrigieron en P25.5d, 0073: los casos de
+ * contrato de errores de Insumos pasaron a `it` común en 95-insumos).
+ */
 export const DEFECTOS_CONOCIDOS: Record<string, Defecto> = {
   // P22.5 (módulo B1, 0056/0057 y 0052). Misma familia que DEF-P14: la puerta de la RPC mira
   // `auth.uid()` pero no `is_active`, así que una cuenta desactivada con el token vigente entra.
@@ -32,21 +36,6 @@ export const DEFECTOS_CONOCIDOS: Record<string, Defecto> = {
     id: 'DEF-B1-02',
     resumen:
       '`accept_location_consent` y `revoke_location_consent` (0056/0057) no miran `is_active`: una cuenta desactivada con el token vigente cambia su consentimiento (CB-18). Gravedad menor.',
-  },
-  // P25.5c (módulo E, 0070). Las RPC de Insumos prometen errores `P0001` en español con `hint`
-  // (database.md, «Insumos y control de stock»), pero un número fuera de rango pasa derecho al motor.
-  'DEF-P25-01': {
-    id: 'DEF-P25-01',
-    resumen:
-      'Valores fuera de rango o con formato inválido en `register_stock_entry` (costo unitario), `upsert_supply` (precios y mínimo), `adjust_stock` (delta y motivo) y `register_stock_count` (fecha) devuelven el error crudo del motor (22003, 22P02, 22007, en inglés y sin `hint`) en vez de un `P0001` en español con código. La interfaz los frena antes, así que solo se ve por API directa. Gravedad menor.',
-  },
-  // P25.5c (módulo E, 0070). El celular limita la descripción del aviso a 200 caracteres, pero el
-  // servidor no pone tope a ningún texto libre: un empleado puede guardar cientos de miles de
-  // caracteres por API y la administración los carga en Faltantes y Movimientos.
-  'DEF-P25-02': {
-    id: 'DEF-P25-02',
-    resumen:
-      '`report_supply_shortage` (descripción y comentario) y `register_withdrawal` (observación) aceptan textos de cualquier largo por API directa; solo la interfaz limita (200 caracteres en la descripción). Sin tope del lado servidor un empleado puede cargar textos enormes. Gravedad menor.',
   },
   'DEF-B1-03': {
     id: 'DEF-B1-03',
@@ -57,29 +46,8 @@ export const DEFECTOS_CONOCIDOS: Record<string, Defecto> = {
 
 const PERFILES_DESACTIVADOS = ['empleado', 'supervisor', 'admin'] as const
 
-/** Casos de contrato de errores de Insumos (95) que hoy fallan: DEF-P25-01. */
-export const CASOS_CONTRATO_INSUMOS = [
-  'register_stock_entry · costo unitario fuera de rango',
-  'upsert_supply · precio fuera de rango',
-  'upsert_supply · mínimo fuera de rango',
-  'adjust_stock · cantidad fuera de rango',
-  'adjust_stock · motivo inexistente',
-  'register_stock_count · fecha inválida',
-  'report_supply_shortage · descripción sin tope de largo',
-  'report_supply_shortage · comentario sin tope de largo',
-] as const
-
 /** Clave de caso -> defecto que lo hace fallar hoy. */
 export const DEFECTOS: Record<string, Defecto> = Object.fromEntries([
-  ...CASOS_CONTRATO_INSUMOS.map(
-    (caso) =>
-      [
-        claveCaso('insumos', 'contrato', caso),
-        DEFECTOS_CONOCIDOS[
-          caso.includes('sin tope de largo') ? 'DEF-P25-02' : 'DEF-P25-01'
-        ],
-      ] as const,
-  ),
   ...PERFILES_DESACTIVADOS.flatMap((perfil) => [
     ...['accept_location_consent', 'revoke_location_consent'].map(
       (rpc) =>
