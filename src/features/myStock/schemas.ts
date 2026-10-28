@@ -10,6 +10,11 @@ import { z } from 'zod'
 /** Cantidad máxima por artículo en un retiro (tope de sentido común del formulario). */
 export const MAX_WITHDRAWAL_QTY = 9999
 
+/** Topes de largo de los textos libres: los mismos que valida el servidor (0073, IS-37). */
+export const WITHDRAWAL_NOTE_MAX = 500
+export const SHORTAGE_DESCRIPTION_MAX = 200
+export const SHORTAGE_COMMENT_MAX = 500
+
 /** Cantidad entera mayor que cero. */
 export const qtySchema = z
   .number({ error: 'Indicá la cantidad.' })
@@ -34,7 +39,11 @@ export const withdrawalTargetSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('shift'),
     shiftId: z.string().min(1, 'Elegí un turno.'),
-    note: z.string().trim().optional(),
+    note: z
+      .string()
+      .trim()
+      .max(WITHDRAWAL_NOTE_MAX, `Hasta ${WITHDRAWAL_NOTE_MAX} caracteres.`)
+      .optional(),
   }),
   z.object({
     kind: z.literal('site'),
@@ -42,7 +51,8 @@ export const withdrawalTargetSchema = z.discriminatedUnion('kind', [
     note: z
       .string()
       .trim()
-      .min(1, 'Contanos para qué es: la observación es obligatoria.'),
+      .min(1, 'Contanos para qué es: la observación es obligatoria.')
+      .max(WITHDRAWAL_NOTE_MAX, `Hasta ${WITHDRAWAL_NOTE_MAX} caracteres.`),
   }),
 ])
 
@@ -62,10 +72,21 @@ export type WithdrawalFormValues = z.infer<typeof withdrawalSchema>
 export const shortageSchema = z
   .object({
     supplyId: z.string().trim().optional(),
-    description: z.string().trim().optional(),
+    description: z
+      .string()
+      .trim()
+      .max(
+        SHORTAGE_DESCRIPTION_MAX,
+        `Hasta ${SHORTAGE_DESCRIPTION_MAX} caracteres.`,
+      )
+      .optional(),
     shiftId: z.string().trim().optional(),
     siteId: z.string().trim().optional(),
-    comment: z.string().trim().optional(),
+    comment: z
+      .string()
+      .trim()
+      .max(SHORTAGE_COMMENT_MAX, `Hasta ${SHORTAGE_COMMENT_MAX} caracteres.`)
+      .optional(),
   })
   .superRefine((values, ctx) => {
     const hasSupply = Boolean(values.supplyId)

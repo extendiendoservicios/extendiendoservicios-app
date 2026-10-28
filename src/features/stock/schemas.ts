@@ -431,6 +431,8 @@ export function withdrawalValuesToInput(
 // -------------------------------------------------------------------------
 
 export const RESOLUTION_NOTE_MAX = 500
+/** Motivo de la anulación de un movimiento (0073, IS-37). */
+export const VOID_REASON_MAX = 500
 
 export const resolveShortageSchema = z.object({
   note: z

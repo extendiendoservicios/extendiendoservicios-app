@@ -30,6 +30,8 @@ interface ConfirmDialogProps {
   /** Etiqueta del campo de motivo. Default: "Motivo". */
   reasonLabel?: string
   reasonPlaceholder?: string
+  /** Tope de caracteres del motivo (`maxLength` del campo). Sin tope por defecto. */
+  reasonMaxLength?: number
   /** Default: "Cancelar". */
   cancelLabel?: string
   /** Default: "Confirmar". */
@@ -48,6 +50,7 @@ function ConfirmDialog({
   description,
   reasonLabel = 'Motivo',
   reasonPlaceholder,
+  reasonMaxLength,
   cancelLabel = 'Cancelar',
   confirmLabel = 'Confirmar',
   variant = 'primary',
@@ -99,6 +102,7 @@ function ConfirmDialog({
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             placeholder={reasonPlaceholder}
+            maxLength={reasonMaxLength}
             rows={3}
             disabled={isLoading}
           />

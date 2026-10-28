@@ -194,6 +194,15 @@ describe('WithdrawPage', () => {
     expect(screen.queryByText(/stock:/i)).not.toBeInTheDocument()
   })
 
+  it('la observación del retiro admite hasta 500 caracteres, como el servidor', () => {
+    setup()
+    fireEvent.click(screen.getByRole('radio', { name: 'Una sede' }))
+    expect(screen.getByLabelText('Observación del retiro')).toHaveAttribute(
+      'maxlength',
+      '500',
+    )
+  })
+
   it('con sede, la observación es obligatoria', async () => {
     const register = setup()
 

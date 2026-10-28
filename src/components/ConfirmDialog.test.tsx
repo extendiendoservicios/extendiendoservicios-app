@@ -44,6 +44,24 @@ describe('ConfirmDialog', () => {
     expect(onConfirm).toHaveBeenCalledWith('Cliente pidió cancelar')
   })
 
+  it('con reasonMaxLength limita el largo del motivo', () => {
+    render(
+      <ConfirmDialog
+        open
+        onOpenChange={vi.fn()}
+        title="Anular"
+        reasonMaxLength={500}
+        onConfirm={vi.fn()}
+      />,
+    )
+    expect(screen.getByLabelText('Motivo')).toHaveAttribute('maxlength', '500')
+  })
+
+  it('sin reasonMaxLength el motivo no tiene tope', () => {
+    render(<Wrapper onConfirm={vi.fn()} />)
+    expect(screen.getByLabelText('Motivo')).not.toHaveAttribute('maxlength')
+  })
+
   it('cancelar no llama a onConfirm', () => {
     const onConfirm = vi.fn()
     render(<Wrapper onConfirm={onConfirm} />)

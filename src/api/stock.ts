@@ -58,7 +58,8 @@ export const STOCK_ERROR_MESSAGES: Record<string, string> = {
   INSUFFICIENT_STOCK: 'No alcanza el stock del artículo.',
   CODE_REQUIRED: 'Indicá el código interno.',
   NAME_REQUIRED: 'Indicá el nombre.',
-  INVALID_MIN_QTY: 'El stock mínimo no puede ser negativo.',
+  INVALID_MIN_QTY:
+    'El stock mínimo tiene que ser un entero entre 0 y 1.000.000.',
   INVALID_IMAGE_PATH:
     'No pudimos guardar la imagen del artículo. Probá de nuevo.',
   CATEGORY_NOT_FOUND: 'La categoría no existe.',
@@ -73,6 +74,14 @@ export const STOCK_ERROR_MESSAGES: Record<string, string> = {
     'La categoría tiene artículos activos. Pasalos a otra categoría o desactivalos antes.',
   CATEGORY_NAME_EXISTS: 'Ya existe una categoría con ese nombre.',
   INVALID_KIND: 'El tipo tiene que ser ingreso o devolución.',
+  // 0073 (IS-36, IS-37): el servidor manda el texto exacto de TEXT_TOO_LONG y STOCK_LIMIT.
+  TEXT_TOO_LONG: 'Un texto supera el largo permitido. Acortalo.',
+  STOCK_LIMIT:
+    'El stock del artículo no puede superar las 2.147.483.647 unidades.',
+  INVALID_SORT_ORDER:
+    'El orden de la categoría tiene que ser un entero entre -1.000.000 y 1.000.000.',
+  COUNTED_AT_OUT_OF_RANGE:
+    'El control no puede ser de hace más de 30 días. Elegí una fecha más reciente.',
   REASON_REQUIRED: 'Elegí el motivo del ajuste.',
   NOTE_REQUIRED: 'Con el motivo «Otro» tenés que escribir una observación.',
   PERSON_NOT_FOUND: 'No encontramos a la persona que retira.',
@@ -98,6 +107,9 @@ const DYNAMIC_HINTS: ReadonlySet<string> = new Set([
   'NOTE_REQUIRED',
   'REASON_REQUIRED',
   'INVALID_QTY',
+  // 0073 (IS-37): el mensaje nombra el campo y el tope, o el artículo.
+  'TEXT_TOO_LONG',
+  'STOCK_LIMIT',
   // Retiro en nombre de otra persona (IS-35): el servidor explica cuál es la
   // regla que falló; el mapa queda de respaldo.
   'PERSON_NOT_FOUND',

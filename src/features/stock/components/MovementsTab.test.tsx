@@ -293,6 +293,9 @@ describe('MovementsTab: «Anular» (IS-21, IS-27)', () => {
     ).toBeInTheDocument()
     const confirm = within(dialog).getByRole('button', { name: 'Anular' })
     expect(confirm).toBeDisabled()
+    expect(
+      within(dialog).getByLabelText('Motivo de la anulación'),
+    ).toHaveAttribute('maxlength', '500')
 
     fireEvent.change(within(dialog).getByLabelText('Motivo de la anulación'), {
       target: { value: '  Lo cargaron dos veces  ' },

@@ -47,6 +47,7 @@ import {
   buildCountHeaderSchema,
   buildCountInput,
   buildCountLines,
+  COUNT_MAX_DAYS_BACK,
   describeLaterMovements,
   isRetroactive,
   laterMovementsBySupply,
@@ -211,6 +212,9 @@ function StockCountScreen() {
   }
 
   const today = nowInArgentina(initialNow).date
+  // IS-36: el servidor acepta el control desde 30 días atrás.
+  const minDate = isoDateToDate(today)
+  minDate.setDate(minDate.getDate() - COUNT_MAX_DAYS_BACK)
 
   return (
     <form
@@ -244,6 +248,7 @@ function StockCountScreen() {
                 onValueChange={(next) =>
                   dateField.onChange(next ? localDateToIsoDate(next) : '')
                 }
+                minDate={minDate}
                 maxDate={isoDateToDate(today)}
               />
             )}

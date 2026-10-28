@@ -1452,7 +1452,7 @@ describe('Insumos (0069 a 0072): permisos por rol', () => {
           p_code: `${ins.prefijo}rango-2`,
           p_name: `${ins.prefijo}rango-2`,
           p_category_id: id.categoria,
-          p_min_qty: 3_000_000_000,
+          p_min_qty: 1_000_001,
         }),
       ],
       [
@@ -1460,17 +1460,8 @@ describe('Insumos (0069 a 0072): permisos por rol', () => {
         'adjust_stock',
         () => ({
           p_supply_id: id.sA,
-          p_delta: 3_000_000_000,
+          p_delta: 1_000_001,
           p_reason: 'count',
-        }),
-      ],
-      [
-        'adjust_stock · motivo inexistente',
-        'adjust_stock',
-        () => ({
-          p_supply_id: id.sA,
-          p_delta: 1,
-          p_reason: 'motivo-que-no-existe',
         }),
       ],
       [
@@ -1487,15 +1478,66 @@ describe('Insumos (0069 a 0072): permisos por rol', () => {
         }),
       ],
       [
-        'register_stock_count · fecha inválida',
+        'register_stock_count · fecha de hace más de 30 días (IS-36)',
         'register_stock_count',
         () => ({
-          p_counted_at: 'ayer',
+          p_counted_at: new Date(Date.now() - 31 * 86_400_000).toISOString(),
           p_lines: [{ supply_id: id.sA, counted_qty: 1 }],
           p_reviewer_name: ins.texto('revisor'),
         }),
       ],
+      [
+        'register_stock_count · fecha de 1900 (IS-36)',
+        'register_stock_count',
+        () => ({
+          p_counted_at: '1900-01-01T00:00:00-03:00',
+          p_lines: [{ supply_id: id.sA, counted_qty: 1 }],
+          p_reviewer_name: ins.texto('revisor'),
+        }),
+      ],
+      [
+        'register_stock_count · observaciones sin tope de largo',
+        'register_stock_count',
+        () => ({
+          p_counted_at: new Date(Date.now() - 60_000).toISOString(),
+          p_lines: [{ supply_id: id.sA, counted_qty: 1 }],
+          p_reviewer_name: ins.texto('revisor'),
+          p_notes: ins.texto('n'.repeat(100_000)),
+        }),
+      ],
+      [
+        'register_stock_entry · proveedor sin tope de largo',
+        'register_stock_entry',
+        () => ({
+          p_lines: [{ supply_id: id.sA, qty: 1 }],
+          p_supplier: ins.texto('p'.repeat(100_000)),
+        }),
+      ],
+      [
+        'register_withdrawal · observación sin tope de largo',
+        'register_withdrawal',
+        () => ({
+          p_lines: [{ supply_id: id.sD, qty: 1 }],
+          p_shift_id: id.turnoE1,
+          p_note: ins.texto('o'.repeat(100_000)),
+        }),
+      ],
     ]
+    /** Código estable que tiene que traer cada caso (06 §15). */
+    const hintEsperado: Record<string, string> = {
+      'register_stock_entry · costo unitario fuera de rango': 'INVALID_PRICE',
+      'upsert_supply · precio fuera de rango': 'INVALID_PRICE',
+      'upsert_supply · mínimo fuera de rango': 'INVALID_MIN_QTY',
+      'adjust_stock · cantidad fuera de rango': 'INVALID_QTY',
+      'register_stock_count · fecha de hace más de 30 días (IS-36)':
+        'COUNTED_AT_OUT_OF_RANGE',
+      'register_stock_count · fecha de 1900 (IS-36)': 'COUNTED_AT_OUT_OF_RANGE',
+      'register_stock_count · observaciones sin tope de largo': 'TEXT_TOO_LONG',
+      'register_stock_entry · proveedor sin tope de largo': 'TEXT_TOO_LONG',
+      'register_withdrawal · observación sin tope de largo': 'TEXT_TOO_LONG',
+      'report_supply_shortage · descripción sin tope de largo': 'TEXT_TOO_LONG',
+      'report_supply_shortage · comentario sin tope de largo': 'TEXT_TOO_LONG',
+    }
     for (const [nombre, rpcNombre, args] of casosContrato) {
       caso(
         claveCaso('insumos', 'contrato', nombre),
@@ -1504,7 +1546,10 @@ describe('Insumos (0069 a 0072): permisos por rol', () => {
           const antes = await stockDe(id.sA)
           const res = await rpc(
             clienteDe(
-              rpcNombre === 'report_supply_shortage' ? 'empleado' : 'owner',
+              rpcNombre === 'report_supply_shortage' ||
+                rpcNombre === 'register_withdrawal'
+                ? 'empleado'
+                : 'owner',
             ),
             rpcNombre,
             args(),
@@ -1515,9 +1560,73 @@ describe('Insumos (0069 a 0072): permisos por rol', () => {
             `error crudo del motor: ${describir(res)}`,
           ).toBe('P0001')
           expect(res.error?.hint ?? '', 'sin código de error').not.toBe('')
+          expect(res.error?.hint, 'código distinto del esperado').toBe(
+            hintEsperado[nombre],
+          )
           expect(await stockDe(id.sA)).toBe(antes)
         },
       )
+    }
+  })
+
+  // Límite conocido y aceptado (Mike, 28 oct 2026): PostgREST convierte cada parámetro a su
+  // tipo antes de llamar a la función, así que un entero que no cabe en `integer`, un valor de
+  // enumerado inexistente o una fecha mal formada fallan con el error del motor (sin `hint`)
+  // y la función no llega a ejecutarse. Cambiar el tipo del parámetro para evitarlo se evaluó y
+  // se descartó (migración 0073, encabezado). Estos casos documentan el comportamiento y que no
+  // se toca el stock; no son defectos pendientes. La interfaz nunca manda estos valores.
+  describe('comportamiento aceptado de PostgREST: parámetros que no caben en su tipo (0073)', () => {
+    const casosMotor: Array<[string, string, () => object, string]> = [
+      [
+        'adjust_stock · delta que no cabe en integer',
+        'adjust_stock',
+        () => ({
+          p_supply_id: id.sA,
+          p_delta: 3_000_000_000,
+          p_reason: 'count',
+        }),
+        '22003',
+      ],
+      [
+        'upsert_supply · mínimo que no cabe en integer',
+        'upsert_supply',
+        () => ({
+          p_code: `${ins.prefijo}motor-1`,
+          p_name: `${ins.prefijo}motor-1`,
+          p_category_id: id.categoria,
+          p_min_qty: 3_000_000_000,
+        }),
+        '22003',
+      ],
+      [
+        'adjust_stock · motivo que no es del enumerado',
+        'adjust_stock',
+        () => ({
+          p_supply_id: id.sA,
+          p_delta: 1,
+          p_reason: 'motivo-que-no-existe',
+        }),
+        '22P02',
+      ],
+      [
+        'register_stock_count · fecha mal formada',
+        'register_stock_count',
+        () => ({
+          p_counted_at: 'ayer',
+          p_lines: [{ supply_id: id.sA, counted_qty: 1 }],
+          p_reviewer_name: ins.texto('revisor'),
+        }),
+        '22007',
+      ],
+    ]
+    for (const [nombre, rpcNombre, args, codigoMotor] of casosMotor) {
+      it(`${nombre}: lo rechaza el motor (${codigoMotor}) sin tocar el stock`, async () => {
+        const antes = await stockDe(id.sA)
+        const res = await rpc(clienteDe('owner'), rpcNombre, args())
+        expect(res.error, 'aceptó el valor').not.toBeNull()
+        expect(res.error?.code).toBe(codigoMotor)
+        expect(await stockDe(id.sA)).toBe(antes)
+      })
     }
   })
 

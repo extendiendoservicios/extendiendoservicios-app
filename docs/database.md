@@ -2229,6 +2229,7 @@ En F21 (P21.1, módulo H): `0047_p21_1_evidencia.sql` -- ver "Evidencia fotográ
 En F21 (P21.8a, módulo H): `0058_p21_8_eliminar_evidencia.sql` -- ver "Eliminar evidencia para liberar espacio".
 En F22 (P22.1, módulo B1): `0052_p22_1_geolocalizacion.sql`, `0053_p22_1_correcciones_eventos.sql`, `0054_p22_1b_privacidad_coordenadas.sql`, `0055_p22_1b_execute_service_role.sql` y `0056_p22_4b_resumen_y_consentimiento.sql` -- ver "Módulo B1: geolocalización y corrección de fichajes" y "Privacidad de las coordenadas".
 En F25 (P25.1, módulo E): `0069_p25_1_enums.sql`, `0070_p25_1_insumos_y_stock.sql` y `0071_p25_1_imagenes_insumos.sql` -- ver "Insumos y control de stock".
+En F25 (P25.5, módulo E): `0072_p25_5_retiro_en_nombre_de.sql` y `0073_p25_5_validaciones_insumos.sql` -- ver "Retiro en nombre de otra persona" y "Validación de valores y topes".
 
 ## Cómo escribir una migración
 
@@ -2657,6 +2658,81 @@ Hay dueños y administradores que también trabajan turnos como empleados o coor
 - Internas: `app.withdrawal_shift_options_admin()`, `app.withdrawal_site_options_admin()`; `app.resolve_stock_place`
   con `p_restricted = false` usa estas opciones.
 
+### Validación de valores y topes (migración `0073`, P25.5d, IS-36 e IS-37)
+
+Corrige DEF-P25-01 (valores fuera de rango que llegaban al motor y volvían como 22003, 22P02 o 22007, sin `hint` y en
+inglés) y DEF-P25-02 (sin tope de largo en los textos libres). Ahora todo valor inválido da `P0001` con `hint` = código y
+mensaje en español con voseo. El contrato de éxito de las RPC no cambia.
+
+**Las firmas no cambian.** PostgREST convierte cada parámetro a su tipo _antes_ de entrar a la función: un entero que
+no cabe en `integer` falla ahí con 22003, un valor inexistente de un enumerado con 22P02 y una fecha mal formada en un
+parámetro `timestamptz` con 22007, y la función nunca llega a ejecutarse. Se evaluó pasar esos parámetros a `numeric` o
+`text` para validarlos adentro y se descartó (decisión de Mike, 28 oct 2026): quedan como **comportamiento aceptado**
+cuatro casos que solo se ven llamando a la API a mano (la interfaz nunca los manda) y que no tocan el stock:
+
+| Llamada                                                                                                         | Error del motor (sin `hint`) |
+| --------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| `adjust_stock` con `p_delta` mayor que `integer`                                                                | 22003                        |
+| `upsert_supply` con `p_min_qty` mayor que `integer`                                                             | 22003                        |
+| `adjust_stock` con un `p_reason` que no es del enumerado (o `register_stock_entry` con un `p_kind` inexistente) | 22P02                        |
+| `register_stock_count` con `p_counted_at` mal formado                                                           | 22007                        |
+
+Lo que sí cabe en el tipo se valida adentro y da `P0001` con código (por ejemplo `p_delta = 1000001` da `INVALID_QTY` y
+`p_min_qty = 1000001` da `INVALID_MIN_QTY`). Los `uuid` mal formados en un parámetro `uuid` dan 22P02, como en el resto
+de las RPC de la plataforma. La migración `0073` se puede aplicar sobre una base limpia o sobre una que ya tenga una
+versión previa de sí misma (App_dev tuvo una con `numeric` y `text`): antes de cada `create` hace `drop function if exists`
+de la firma original y de la que tuvo esa versión.
+
+**Topes de largo** (después de recortar los espacios de los extremos; error `TEXT_TOO_LONG`, mensaje
+«<Campo>: hasta N caracteres.»). Coinciden con los esquemas zod de `src/features/stock/`; los marcados con asterisco no
+tenían tope en la interfaz.
+
+| Campo (RPC)                                               | Tope |
+| --------------------------------------------------------- | ---- |
+| Código del artículo (`upsert_supply`)                     | 40   |
+| Nombre del artículo (`upsert_supply`)                     | 120  |
+| Presentación (`upsert_supply`)                            | 80   |
+| Notas del artículo (`upsert_supply`)                      | 500  |
+| Nombre de la categoría (`upsert_supply_category`)         | 60   |
+| Proveedor (`register_stock_entry`)                        | 120  |
+| Comprobante (`register_stock_entry`)                      | 60   |
+| Nota del ingreso o la devolución (`register_stock_entry`) | 500  |
+| Nota del ajuste (`adjust_stock`)                          | 500  |
+| Observación del retiro (`register_withdrawal`) *          | 500  |
+| Motivo de la anulación (`void_stock_movement`) *          | 500  |
+| Observaciones del control (`register_stock_count`)        | 500  |
+| Nombre de quien revisó (`register_stock_count`)           | 120  |
+| Descripción del aviso (`report_supply_shortage`)          | 200  |
+| Comentario del aviso (`report_supply_shortage`) *         | 500  |
+| Nota de resolución (`resolve_supply_shortage`)            | 500  |
+
+**Topes numéricos.**
+
+| Valor                                                                                       | Rango                                                               | Código                |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------- |
+| Costo y venta (`upsert_supply`, `set_supply_prices`, costo y venta de una línea de ingreso) | 0 a 9.999.999.999,99, dos decimales (lo que admite `numeric(12,2)`) | `INVALID_PRICE`       |
+| Stock mínimo                                                                                | entero de 0 a 1.000.000                                             | `INVALID_MIN_QTY`     |
+| Orden de la categoría                                                                       | entero de -1.000.000 a 1.000.000                                    | `INVALID_SORT_ORDER`  |
+| Cantidad de una línea, delta de un ajuste, cantidad contada                                 | entero, hasta 1.000.000 en valor absoluto                           | `INVALID_QTY`         |
+| Stock resultante de un artículo                                                             | hasta 2.147.483.647 (lo que admite `integer`)                       | `STOCK_LIMIT` (nuevo) |
+
+NaN e infinito caen en `INVALID_PRICE`, `INVALID_MIN_QTY` e `INVALID_QTY` según el campo.
+
+**Ventana de fechas del control (IS-36).** `register_stock_count` acepta `p_counted_at` desde 30 días atrás hasta ahora,
+con 5 minutos de tolerancia en los dos extremos por el reloj del cliente. Más allá: `COUNTED_AT_OUT_OF_RANGE` (nuevo; hace
+más de 30 días, incluido 1900 y `-infinity`) o `COUNT_IN_FUTURE` (como antes; incluido `infinity`). La hora se toma al
+minuto que manda la interfaz (IS-31): un movimiento registrado en ese mismo minuto cuenta como posterior al control.
+
+**Códigos nuevos:** `TEXT_TOO_LONG`, `INVALID_SORT_ORDER`, `COUNTED_AT_OUT_OF_RANGE`, `STOCK_LIMIT`. Internas: `app.check_text_max(text, integer, text)`; `app.stock_post_movement`
+recreada con los topes de proveedor, comprobante, nota, costo, venta y stock resultante.
+
+**Interfaz.** «Cargar control» (`StockCountScreen`) limita el selector de día a los últimos 30 días y el esquema zod
+rechaza una fecha anterior (`COUNT_MAX_DAYS_BACK` en `count.ts`). Los textos libres del celular y de la anulación
+llevan `maxLength` y esquema zod con los mismos topes: comentario del aviso 500 y descripción 200
+(`SHORTAGE_COMMENT_MAX`, `SHORTAGE_DESCRIPTION_MAX`), observación del retiro 500 (`WITHDRAWAL_NOTE_MAX`) y motivo de la
+anulación 500 (`VOID_REASON_MAX`, `ConfirmDialog.reasonMaxLength`). `mapStockError` deja el texto del servidor en
+`TEXT_TOO_LONG` y `STOCK_LIMIT` y tiene mensaje propio para `INVALID_SORT_ORDER` y `COUNTED_AT_OUT_OF_RANGE`.
+
 ### Storage: bucket `supply-images` (migración `0071`, IS-32)
 
 Privado, 2 MB, `image/webp` e `image/jpeg`. Ruta `{supply_id}/{uuid}.webp`. Lectura: cualquier usuario autenticado y
@@ -2684,6 +2760,10 @@ cuentas e2e. `pnpm db:seed:data` lo corre a continuación de `seed.sql`, que ya 
 `0071_p25_1_imagenes_insumos`: estructura y restricciones, cada RPC y cada código de error, stock nunca negativo,
 precios guardados en la línea, anulación y contramovimiento, diferencia del control contra el stock a la hora indicada,
 permisos por rol y capacidad, y que empleados y coordinadores no lean precios, cantidades ni retiros ajenos.
+
+`0073_p25_5_validaciones_insumos` (P25.5d): las firmas originales y sus grants, cada tope (justo en el borde y un paso
+más) con su código y su mensaje, la ventana de fechas del control con la tolerancia de 5 minutos, `STOCK_LIMIT` y que
+ningún caso rechazado toque el stock.
 
 ## Tipos para el frontend
 

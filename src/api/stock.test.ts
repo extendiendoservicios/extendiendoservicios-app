@@ -169,6 +169,24 @@ describe('mapStockError', () => {
     }
   })
 
+  it('TEXT_TOO_LONG y STOCK_LIMIT dejan el texto del servidor; los otros códigos nuevos tienen el propio (0073)', () => {
+    for (const hint of ['TEXT_TOO_LONG', 'STOCK_LIMIT']) {
+      const error = mapStockError({
+        message: 'Nota: hasta 500 caracteres.',
+        hint,
+      })
+      expect(error.message, hint).toBe('Nota: hasta 500 caracteres.')
+      expect(error.hint).toBe(hint)
+      expect(mapStockError({ message: '', hint }).message, hint).toBe(
+        STOCK_ERROR_MESSAGES[hint],
+      )
+    }
+    for (const hint of ['INVALID_SORT_ORDER', 'COUNTED_AT_OUT_OF_RANGE']) {
+      expect(STOCK_ERROR_MESSAGES[hint], hint).toBeTruthy()
+      expect(mapStockError({ message: 'x', hint }).hint).toBe(hint)
+    }
+  })
+
   it('tiene mensaje en español para todos los códigos del contrato', () => {
     const contract = [
       'FORBIDDEN',

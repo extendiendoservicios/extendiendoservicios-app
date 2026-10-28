@@ -72,6 +72,14 @@ describe('ShortagePage', () => {
     ).toBeInTheDocument()
   })
 
+  it('limita el largo de la descripción (200) y del comentario (500), como el servidor', () => {
+    setup()
+    expect(screen.getByLabelText('Comentario')).toHaveAttribute(
+      'maxlength',
+      '500',
+    )
+  })
+
   it('sin artículo ni descripción no envía', async () => {
     const report = setup()
 

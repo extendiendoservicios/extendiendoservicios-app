@@ -46,6 +46,7 @@ import {
   type MovementGroup,
 } from '@/features/stock/movements'
 import { canManageStock } from '@/features/stock/permissions'
+import { VOID_REASON_MAX } from '@/features/stock/schemas'
 import { supplyLabel } from '@/features/stock/filters'
 import { MovementFilters } from './MovementFilters'
 
@@ -222,6 +223,7 @@ function MovementsTab() {
             : undefined
         }
         reasonLabel="Motivo de la anulación"
+        reasonMaxLength={VOID_REASON_MAX}
         confirmLabel="Anular"
         variant="destructive"
         isLoading={voidMovement.isPending}
