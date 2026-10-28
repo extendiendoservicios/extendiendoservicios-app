@@ -40,7 +40,7 @@ export type EscenarioSupervisor =
   | 'historial'
 
 /** Pantallas de administración con jornadas, preferencias y supervisiones de ejemplo. */
-export type EscenarioAdmin = 'coordinadores'
+export type EscenarioAdmin = 'coordinadores' | 'insumos'
 
 export interface DatosDeEjemplo {
   /** Identificador de la sesión que se está usando (el `sub` del token). */
@@ -52,6 +52,8 @@ export interface DatosDeEjemplo {
   admin?: EscenarioAdmin
   /** Administración: identificador real del coordinador cuya ficha se muestra (cuenta fija). */
   coordinadorId?: string
+  /** Celular: suma las lecturas de Insumos (catálogo, turnos y sedes para retirar). */
+  insumos?: boolean
 }
 
 const ZONA = 'America/Argentina/Buenos_Aires'
@@ -1702,6 +1704,634 @@ function tablasDeAdministracion(
   }
 }
 
+// ---- Insumos (módulo E, P25.7) ---------------------------------------------------------------
+
+/** Identificadores ficticios de los artículos, categorías y movimientos de Insumos. */
+const SUM = {
+  catQuimicos: 'aaaaaaaa-aaaa-4aaa-8aaa-000000000001',
+  catDescartables: 'aaaaaaaa-aaaa-4aaa-8aaa-000000000002',
+  catUtensilios: 'aaaaaaaa-aaaa-4aaa-8aaa-000000000003',
+  lavandina: 'bbbbbbbb-bbbb-4bbb-8bbb-000000000001',
+  desengrasante: 'bbbbbbbb-bbbb-4bbb-8bbb-000000000002',
+  detergente: 'bbbbbbbb-bbbb-4bbb-8bbb-000000000003',
+  bolsas: 'bbbbbbbb-bbbb-4bbb-8bbb-000000000004',
+  guantes: 'bbbbbbbb-bbbb-4bbb-8bbb-000000000005',
+  trapo: 'bbbbbbbb-bbbb-4bbb-8bbb-000000000006',
+  movIngreso: 'cccccccc-cccc-4ccc-8ccc-000000000001',
+  movAjuste: 'cccccccc-cccc-4ccc-8ccc-000000000002',
+  movRetiro: 'cccccccc-cccc-4ccc-8ccc-000000000003',
+  movRetiroAnulado: 'cccccccc-cccc-4ccc-8ccc-000000000004',
+  movAnulacion: 'cccccccc-cccc-4ccc-8ccc-000000000005',
+  aviso1: 'dddddddd-dddd-4ddd-8ddd-000000000001',
+  aviso2: 'dddddddd-dddd-4ddd-8ddd-000000000002',
+  aviso3: 'dddddddd-dddd-4ddd-8ddd-000000000003',
+}
+
+export const IDS_DE_INSUMOS = SUM
+
+interface ArticuloDeEjemplo {
+  id: string
+  code: string
+  name: string
+  presentation: string
+  categoryId: string
+  categoryName: string
+  categorySortOrder: number
+  minQty: number | null
+  costPrice: number
+  salePrice: number
+  stockQty: number
+}
+
+/**
+ * El catálogo de ejemplo: uno en rojo (Detergente, sin stock), dos en amarillo (Lavandina y
+ * Guantes, en el mínimo o por debajo) y tres sin color.
+ */
+const ARTICULOS_DE_EJEMPLO: ArticuloDeEjemplo[] = [
+  {
+    id: SUM.lavandina,
+    code: 'QUI-001',
+    name: 'Lavandina',
+    presentation: 'Bidón de 5 L',
+    categoryId: SUM.catQuimicos,
+    categoryName: 'Químicos',
+    categorySortOrder: 1,
+    minQty: 5,
+    costPrice: 1400,
+    salePrice: 1800,
+    stockQty: 3,
+  },
+  {
+    id: SUM.desengrasante,
+    code: 'QUI-002',
+    name: 'Desengrasante',
+    presentation: 'Botella de 1 L',
+    categoryId: SUM.catQuimicos,
+    categoryName: 'Químicos',
+    categorySortOrder: 1,
+    minQty: 6,
+    costPrice: 950,
+    salePrice: 1300,
+    stockQty: 18,
+  },
+  {
+    id: SUM.detergente,
+    code: 'QUI-003',
+    name: 'Detergente',
+    presentation: 'Botella de 750 ml',
+    categoryId: SUM.catQuimicos,
+    categoryName: 'Químicos',
+    categorySortOrder: 1,
+    minQty: 4,
+    costPrice: 620,
+    salePrice: 850,
+    stockQty: 0,
+  },
+  {
+    id: SUM.bolsas,
+    code: 'DES-001',
+    name: 'Bolsa de residuos',
+    presentation: 'Rollo x 10',
+    categoryId: SUM.catDescartables,
+    categoryName: 'Descartables',
+    categorySortOrder: 2,
+    minQty: null,
+    costPrice: 800,
+    salePrice: 1100,
+    stockQty: 31,
+  },
+  {
+    id: SUM.guantes,
+    code: 'DES-002',
+    name: 'Guantes de látex',
+    presentation: 'Par',
+    categoryId: SUM.catDescartables,
+    categoryName: 'Descartables',
+    categorySortOrder: 2,
+    minQty: 10,
+    costPrice: 300,
+    salePrice: 450,
+    stockQty: 8,
+  },
+  {
+    id: SUM.trapo,
+    code: 'UTE-001',
+    name: 'Trapo de piso',
+    presentation: 'Unidad',
+    categoryId: SUM.catUtensilios,
+    categoryName: 'Utensilios',
+    categorySortOrder: 3,
+    minQty: null,
+    costPrice: 1500,
+    salePrice: 2100,
+    stockQty: 12,
+  },
+]
+
+function estadoDeStock(articulo: ArticuloDeEjemplo): 'ok' | 'low' | 'empty' {
+  if (articulo.stockQty === 0) return 'empty'
+  if (articulo.minQty !== null && articulo.stockQty <= articulo.minQty) {
+    return 'low'
+  }
+  return 'ok'
+}
+
+function filasDeStock(): Record<string, unknown>[] {
+  return ARTICULOS_DE_EJEMPLO.map((articulo) => ({
+    id: articulo.id,
+    code: articulo.code,
+    name: articulo.name,
+    presentation: articulo.presentation,
+    category_id: articulo.categoryId,
+    category_name: articulo.categoryName,
+    category_sort_order: articulo.categorySortOrder,
+    image_path: null,
+    min_qty: articulo.minQty,
+    cost_price: articulo.costPrice,
+    sale_price: articulo.salePrice,
+    stock_qty: articulo.stockQty,
+    stock_value: articulo.stockQty * articulo.costPrice,
+    status: estadoDeStock(articulo),
+    active: true,
+    notes: null,
+    updated_at: instante(60 * 24),
+  }))
+}
+
+function articuloPorId(id: string): ArticuloDeEjemplo {
+  const articulo = ARTICULOS_DE_EJEMPLO.find((a) => a.id === id)
+  if (!articulo) throw new Error(`Artículo de ejemplo inexistente: ${id}`)
+  return articulo
+}
+
+interface LineaDeMovimiento {
+  articulo: string
+  cantidad: number
+  stockDespues: number
+  /** Costo y venta guardados en la línea (por omisión, los del artículo). */
+  costo?: number
+  venta?: number
+}
+
+interface MovimientoDeEjemplo {
+  id: string
+  tipo: 'entry' | 'return' | 'withdrawal' | 'adjustment' | 'count' | 'reversal'
+  minutosAtras: number
+  registro: string
+  persona?: { id: string; nombre: string }
+  turno?: boolean
+  clienteId?: string
+  cliente?: string
+  sedeId?: string
+  sede?: string
+  proveedor?: string
+  comprobante?: string
+  motivo?: string
+  nota?: string
+  revierte?: string
+  anulado?: { minutosAtras: number; por: string; motivo: string }
+  lineas: LineaDeMovimiento[]
+}
+
+const MOVIMIENTOS_DE_EJEMPLO: MovimientoDeEjemplo[] = [
+  {
+    id: SUM.movRetiro,
+    tipo: 'withdrawal',
+    minutosAtras: 25,
+    registro: 'Ana Ejemplo',
+    persona: { id: ID.empleadoA, nombre: 'Ana Ejemplo' },
+    turno: true,
+    clienteId: ID.cliente1,
+    cliente: 'Edificio Demo',
+    sedeId: ID.sede1,
+    sede: 'Sede Central',
+    lineas: [
+      { articulo: SUM.lavandina, cantidad: -2, stockDespues: 3 },
+      { articulo: SUM.bolsas, cantidad: -4, stockDespues: 31 },
+    ],
+  },
+  {
+    id: SUM.movAnulacion,
+    tipo: 'reversal',
+    minutosAtras: 60 * 20,
+    registro: 'Laura Administradora',
+    revierte: SUM.movRetiroAnulado,
+    nota: 'Se cargó dos veces',
+    lineas: [{ articulo: SUM.guantes, cantidad: 2, stockDespues: 8 }],
+  },
+  {
+    id: SUM.movRetiroAnulado,
+    tipo: 'withdrawal',
+    minutosAtras: 60 * 21,
+    registro: 'Laura Administradora',
+    persona: { id: ID.empleadoB, nombre: 'Beto Muestra' },
+    clienteId: ID.cliente2,
+    cliente: 'Clínica Ejemplo',
+    sedeId: ID.sede2,
+    sede: 'Sede Norte',
+    nota: 'Reposición de la semana',
+    anulado: {
+      minutosAtras: 60 * 20,
+      por: 'Laura Administradora',
+      motivo: 'Se cargó dos veces',
+    },
+    lineas: [{ articulo: SUM.guantes, cantidad: -2, stockDespues: 6 }],
+  },
+  {
+    id: SUM.movAjuste,
+    tipo: 'adjustment',
+    minutosAtras: 60 * 24 * 2,
+    registro: 'Laura Administradora',
+    motivo: 'breakage',
+    nota: 'Se cayó un bidón en el depósito',
+    lineas: [{ articulo: SUM.lavandina, cantidad: -12, stockDespues: 5 }],
+  },
+  {
+    id: SUM.movIngreso,
+    tipo: 'entry',
+    minutosAtras: 60 * 24 * 3,
+    registro: 'Laura Administradora',
+    proveedor: 'Droguería Ejemplo',
+    comprobante: 'R-0001-00012345',
+    lineas: [
+      {
+        articulo: SUM.lavandina,
+        cantidad: 12,
+        stockDespues: 17,
+        costo: 1400,
+      },
+      { articulo: SUM.bolsas, cantidad: 30, stockDespues: 35 },
+    ],
+  },
+]
+
+function filasDeMovimientos(): Record<string, unknown>[] {
+  return MOVIMIENTOS_DE_EJEMPLO.flatMap((movimiento) =>
+    movimiento.lineas.map((linea, indice) => {
+      const articulo = articuloPorId(linea.articulo)
+      const costo = linea.costo ?? articulo.costPrice
+      const venta = linea.venta ?? articulo.salePrice
+      const cantidad = Math.abs(linea.cantidad)
+      return {
+        movement_id: movimiento.id,
+        line_id: `${movimiento.id.slice(0, 24)}${String(indice + 1).padStart(12, '0')}`,
+        kind: movimiento.tipo,
+        recorded_at: instante(movimiento.minutosAtras),
+        recorded_by_name: movimiento.registro,
+        person_id: movimiento.persona?.id ?? null,
+        person_name: movimiento.persona?.nombre ?? null,
+        shift_id: movimiento.turno ? ID.turno1 : null,
+        shift_date: movimiento.turno ? fechaLocal(0) : null,
+        start_time: movimiento.turno ? FRANJA_1.inicio : null,
+        end_time: movimiento.turno ? FRANJA_1.fin : null,
+        client_id: movimiento.clienteId ?? null,
+        client_name: movimiento.cliente ?? null,
+        site_id: movimiento.sedeId ?? null,
+        site_name: movimiento.sede ?? null,
+        supplier: movimiento.proveedor ?? null,
+        document_number: movimiento.comprobante ?? null,
+        reason: movimiento.motivo ?? null,
+        note: movimiento.nota ?? null,
+        count_id: null,
+        reverses_id: movimiento.revierte ?? null,
+        voided_at: movimiento.anulado
+          ? instante(movimiento.anulado.minutosAtras)
+          : null,
+        voided_by_name: movimiento.anulado?.por ?? null,
+        void_reason: movimiento.anulado?.motivo ?? null,
+        supply_id: articulo.id,
+        supply_code: articulo.code,
+        supply_name: articulo.name,
+        supply_presentation: articulo.presentation,
+        category_id: articulo.categoryId,
+        qty_delta: linea.cantidad,
+        unit_cost: costo,
+        unit_sale: venta,
+        line_cost: cantidad * costo * Math.sign(linea.cantidad),
+        line_sale: cantidad * venta * Math.sign(linea.cantidad),
+        stock_after: linea.stockDespues,
+      }
+    }),
+  )
+}
+
+function filasDeConsumo(): Record<string, unknown>[] {
+  const fila = (
+    dia: number,
+    clienteId: string,
+    cliente: string,
+    sedeId: string,
+    sede: string,
+    articulo: string,
+    cantidad: number,
+  ) => {
+    const datos = articuloPorId(articulo)
+    return {
+      day: fechaLocal(dia),
+      client_id: clienteId,
+      client_name: cliente,
+      site_id: sedeId,
+      site_name: sede,
+      supply_id: datos.id,
+      supply_code: datos.code,
+      supply_name: datos.name,
+      supply_presentation: datos.presentation,
+      qty: cantidad,
+      cost_total: cantidad * datos.costPrice,
+      sale_total: cantidad * datos.salePrice,
+    }
+  }
+  return [
+    fila(
+      0,
+      ID.cliente1,
+      'Edificio Demo',
+      ID.sede1,
+      'Sede Central',
+      SUM.lavandina,
+      2,
+    ),
+    fila(
+      0,
+      ID.cliente1,
+      'Edificio Demo',
+      ID.sede1,
+      'Sede Central',
+      SUM.bolsas,
+      4,
+    ),
+    fila(
+      0,
+      ID.cliente1,
+      'Edificio Demo',
+      ID.sede1,
+      'Sede Central',
+      SUM.trapo,
+      1,
+    ),
+    fila(
+      -1,
+      ID.cliente2,
+      'Clínica Ejemplo',
+      ID.sede2,
+      'Sede Norte',
+      SUM.desengrasante,
+      3,
+    ),
+    fila(
+      -1,
+      ID.cliente2,
+      'Clínica Ejemplo',
+      ID.sede2,
+      'Sede Norte',
+      SUM.guantes,
+      6,
+    ),
+    fila(
+      -1,
+      ID.cliente2,
+      'Clínica Ejemplo',
+      ID.sede2,
+      'Sede Norte',
+      SUM.bolsas,
+      5,
+    ),
+    fila(
+      -2,
+      ID.cliente1,
+      'Edificio Demo',
+      ID.sede1,
+      'Sede Central',
+      SUM.desengrasante,
+      2,
+    ),
+    fila(
+      -2,
+      ID.cliente1,
+      'Edificio Demo',
+      ID.sede1,
+      'Sede Central',
+      SUM.bolsas,
+      6,
+    ),
+  ]
+}
+
+function filasDeAvisos(): Record<string, unknown>[] {
+  const cliente1 = {
+    legal_name: 'Edificio Demo S.A.',
+    trade_name: 'Edificio Demo',
+  }
+  const cliente2 = {
+    legal_name: 'Clínica Ejemplo S.R.L.',
+    trade_name: 'Clínica Ejemplo',
+  }
+  return [
+    {
+      id: SUM.aviso1,
+      status: 'open',
+      created_at: instante(90),
+      supply_id: SUM.detergente,
+      description: null,
+      shift_id: ID.turno1,
+      comment: 'Se terminó el último envase.',
+      resolved_at: null,
+      resolution_note: null,
+      reporter: { first_name: 'Ana', last_name: 'Ejemplo' },
+      resolver: null,
+      supply: {
+        code: 'QUI-003',
+        name: 'Detergente',
+        presentation: 'Botella de 750 ml',
+      },
+      shift: {
+        shift_date: fechaLocal(0),
+        start_time: FRANJA_1.inicio,
+        end_time: FRANJA_1.fin,
+        site: { name: 'Sede Central' },
+        client: cliente1,
+      },
+      site: null,
+    },
+    {
+      id: SUM.aviso2,
+      status: 'open',
+      created_at: instante(150),
+      supply_id: null,
+      description: 'Esponjas verdes',
+      shift_id: null,
+      comment: 'No hay ninguna en el carro.',
+      resolved_at: null,
+      resolution_note: null,
+      reporter: { first_name: 'Beto', last_name: 'Muestra' },
+      resolver: null,
+      supply: null,
+      shift: null,
+      site: { name: 'Sede Norte', client: cliente2 },
+    },
+    {
+      id: SUM.aviso3,
+      status: 'resolved',
+      created_at: instante(60 * 30),
+      supply_id: SUM.guantes,
+      description: null,
+      shift_id: null,
+      comment: null,
+      resolved_at: instante(60 * 26),
+      resolution_note: 'Se compró y ya está en el depósito.',
+      reporter: { first_name: 'Carla', last_name: 'Demo' },
+      resolver: { first_name: 'Laura', last_name: 'Administradora' },
+      supply: {
+        code: 'DES-002',
+        name: 'Guantes de látex',
+        presentation: 'Par',
+      },
+      shift: null,
+      site: { name: 'Sede Central', client: cliente1 },
+    },
+  ]
+}
+
+function tablasDeInsumosAdmin(): Record<string, Record<string, unknown>[]> {
+  return {
+    supply_categories: [
+      { id: SUM.catQuimicos, name: 'Químicos', sort_order: 1, active: true },
+      {
+        id: SUM.catDescartables,
+        name: 'Descartables',
+        sort_order: 2,
+        active: true,
+      },
+      {
+        id: SUM.catUtensilios,
+        name: 'Utensilios',
+        sort_order: 3,
+        active: true,
+      },
+    ],
+    v_stock_admin: filasDeStock(),
+    v_stock_movements_admin: filasDeMovimientos(),
+    supply_price_changes: [
+      {
+        id: 'eeeeeeee-eeee-4eee-8eee-000000000001',
+        supply_id: SUM.lavandina,
+        changed_at: instante(60 * 24 * 3),
+        old_cost_price: 1250.5,
+        new_cost_price: 1400,
+        old_sale_price: 1800,
+        new_sale_price: 1800,
+        source: 'entry',
+        profiles: { first_name: 'Laura', last_name: 'Administradora' },
+      },
+      {
+        id: 'eeeeeeee-eeee-4eee-8eee-000000000002',
+        supply_id: SUM.lavandina,
+        changed_at: instante(60 * 24 * 20),
+        old_cost_price: null,
+        new_cost_price: 1250.5,
+        old_sale_price: null,
+        new_sale_price: 1800,
+        source: 'create',
+        profiles: { first_name: 'Laura', last_name: 'Administradora' },
+      },
+    ],
+    v_supply_consumption_by_client: filasDeConsumo(),
+    supply_shortage_reports: filasDeAvisos(),
+  }
+}
+
+/** Lo que ven el empleado y el coordinador en Insumos (nunca cantidades ni precios, IS-20). */
+function tablasDeInsumosCelular(
+  esCoordinador: boolean,
+): Record<string, Record<string, unknown>[]> {
+  const turno = (
+    id: string,
+    clienteNombre: string,
+    sedeId: string,
+    sedeNombre: string,
+    desplazarDias: number,
+    inicio: string,
+    esPrioritario: boolean,
+  ) => ({
+    shift_id: id,
+    shift_date: fechaLocal(desplazarDias),
+    start_time: inicio,
+    end_time: '12:00:00',
+    starts_at: `${fechaLocal(desplazarDias)}T${inicio}-03:00`,
+    open_ended: false,
+    client_name: clienteNombre,
+    site_id: sedeId,
+    site_name: sedeNombre,
+    is_assigned: !esCoordinador || esPrioritario,
+    is_priority: esPrioritario,
+  })
+  return {
+    v_supply_catalog: ARTICULOS_DE_EJEMPLO.map((articulo) => ({
+      id: articulo.id,
+      code: articulo.code,
+      name: articulo.name,
+      presentation: articulo.presentation,
+      category_id: articulo.categoryId,
+      category_name: articulo.categoryName,
+      category_sort_order: articulo.categorySortOrder,
+      image_path: null,
+      out_of_stock: articulo.stockQty === 0,
+    })),
+    // El empleado solo ve sus turnos; el coordinador ve todos, con «Mis sedes» primero.
+    v_withdrawal_shift_options: [
+      turno(
+        ID.turno1,
+        'Edificio Demo',
+        ID.sede1,
+        'Sede Central',
+        0,
+        '08:00:00',
+        esCoordinador,
+      ),
+      ...(esCoordinador
+        ? [
+            turno(
+              ID.turno2,
+              'Clínica Ejemplo',
+              ID.sede2,
+              'Sede Norte',
+              0,
+              '14:00:00',
+              false,
+            ),
+          ]
+        : []),
+      turno(
+        ID.turno3,
+        'Edificio Demo',
+        ID.sede1,
+        'Sede Central',
+        1,
+        '08:00:00',
+        esCoordinador,
+      ),
+    ],
+    v_withdrawal_site_options: [
+      {
+        site_id: ID.sede1,
+        site_name: 'Sede Central',
+        client_id: ID.cliente1,
+        client_name: 'Edificio Demo',
+        is_priority: esCoordinador,
+      },
+      {
+        site_id: ID.sede2,
+        site_name: 'Sede Norte',
+        client_id: ID.cliente2,
+        client_name: 'Clínica Ejemplo',
+        is_priority: false,
+      },
+    ],
+    v_my_withdrawals: [],
+    v_my_shortage_reports: [],
+  }
+}
+
 /** Funciones de la base declaradas `stable` (no escriben nada) que la app llama con POST. */
 const RPC_DE_SOLO_LECTURA = ['storage_usage', 'clients_worked_minutes']
 
@@ -1726,7 +2356,9 @@ export async function instalarDatosDeEjemplo(
   }
   const esSupervisor = datos.supervisor !== undefined
   let tablas: Record<string, Record<string, unknown>[]>
-  if (esAdmin && datos.admin) {
+  if (esAdmin && datos.admin === 'insumos') {
+    tablas = tablasDeInsumosAdmin()
+  } else if (esAdmin && datos.admin) {
     tablas = tablasDeAdministracion(
       datos.admin,
       datos.coordinadorId ?? ID.coordinadorB,
@@ -1752,6 +2384,7 @@ export async function instalarDatosDeEjemplo(
         { id: ID.asignacion3, employee_id: ID.empleadoC, shift_id: ID.turno1 },
         { id: ID.asignacion7, employee_id: ID.empleadoF, shift_id: ID.turno6 },
       ],
+      ...(datos.insumos ? tablasDeInsumosCelular(esSupervisor) : {}),
       v_people_basic: [
         {
           profile_id: ID.empleadoA,
@@ -1816,7 +2449,11 @@ export async function instalarDatosDeEjemplo(
       return
     }
     // Las preferencias dependen del cliente que abrió la captura: se arman en cada pedido.
-    if (esAdmin && tabla === 'supervisor_priorities') {
+    if (
+      esAdmin &&
+      datos.admin === 'coordinadores' &&
+      tabla === 'supervisor_priorities'
+    ) {
       tablas[tabla] = prioridadesDeEjemplo(
         datos.coordinadorId ?? ID.coordinadorB,
       )
