@@ -155,3 +155,46 @@ describe('ShiftMediaSection (ADM-06 y ADM-15)', () => {
     await waitFor(() => expect(toastError).toHaveBeenCalled())
   })
 })
+
+describe('ShiftMediaSection: el visor no reaparece', () => {
+  it('si el archivo abierto desaparece de la lista y vuelve, el visor queda cerrado', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    const conservada = mediaRow({ keep: true })
+    function ui(rows: ReturnType<typeof mediaRow>[]) {
+      return (
+        <QueryClientProvider client={queryClient}>
+          <ShiftMediaSection
+            rows={rows}
+            isLoading={false}
+            emptyMessage="Todavía no hay nada."
+          />
+        </QueryClientProvider>
+      )
+    }
+    const { rerender } = render(ui([conservada]))
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Foto de Ana Pérez, 08:15' }),
+    )
+    expect(
+      await screen.findByRole('button', { name: 'Dejar de conservar' }),
+    ).toBeInTheDocument()
+
+    // El filtro «Conservadas» deja de incluirla y el visor se cierra.
+    rerender(ui([]))
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Dejar de conservar' }),
+      ).not.toBeInTheDocument(),
+    )
+
+    // Vuelve a «Todas»: el visor no debe reabrirse solo.
+    rerender(ui([mediaRow({ keep: false })]))
+    await screen.findByRole('button', { name: 'Foto de Ana Pérez, 08:15' })
+    expect(
+      screen.queryByRole('button', { name: 'Descargar' }),
+    ).not.toBeInTheDocument()
+  })
+})

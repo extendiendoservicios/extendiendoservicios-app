@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
 import { MediaViewer, type MediaItem } from '@/components/media'
 import { isApiError } from '@/api/errors'
@@ -51,6 +51,15 @@ function EvidenceViewerHost({
   }, [rows, thumbUrls, shiftTimes])
 
   const index = openId ? items.findIndex((item) => item.id === openId) : -1
+
+  // Si el archivo abierto ya no está en la lista (por ejemplo, lo dejaron de
+  // conservar con el filtro «Conservadas»), el visor se cierra por derivación
+  // pero `openId` queda colgado y lo reabriría al volver a aparecer. Se limpia.
+  // Con las flechas el id cambia a otro que sí está en la lista, así que no se
+  // dispara.
+  useEffect(() => {
+    if (openId && index < 0) onOpenIdChange(null)
+  }, [openId, index, onOpenIdChange])
 
   async function resolveUrl(item: MediaItem): Promise<string> {
     const row = byId.get(item.id)
