@@ -1091,7 +1091,12 @@ test.describe('administración con «Gestionar stock»', () => {
         )
 
         await page.goto('/admin')
-        await seccion.getByRole('link', { name: /Faltantes avisados/ }).click()
+        // Mientras el resumen carga, la tarjeta lleva a `/admin/insumos` a secas: hay que esperar
+        // a que traiga el contador antes de hacer clic.
+        await expect(faltantes).toContainText(
+          `${despues.open_reports} avisos abiertos`,
+        )
+        await faltantes.click()
         await expect(page).toHaveURL(/\/admin\/insumos\?pestana=faltantes$/)
         await expect(
           page.getByRole('tab', { name: 'Faltantes', selected: true }),
