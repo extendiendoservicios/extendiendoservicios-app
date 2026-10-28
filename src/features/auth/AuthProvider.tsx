@@ -160,8 +160,8 @@ export interface AuthContextValue {
    * `true` desde que `supabase-js` detecta, en la URL, el enlace de
    * recuperación de contraseña que manda el correo de COM-02 (evento
    * `PASSWORD_RECOVERY` de `onAuthStateChange`, ver el comentario grande
-   * más abajo) hasta que la contraseña se cambia de verdad (evento
-   * `USER_UPDATED`, disparado por `auth.updateUser({password})`) o hasta
+   * más abajo) hasta que la contraseña se cambia de verdad (`finishPasswordRecovery`,
+   * que llama COM-03 tras `change_own_password`; el evento `USER_UPDATED` sigue apagándolo) o hasta
    * que la sesión se cierra. Es la señal que usa `ResetPasswordPage`
    * (COM-03) para distinguir "llegué acá con el enlace del email" de
    * "ya tenía sesión y entré a `/restablecer` por mi cuenta" — las dos
@@ -169,6 +169,13 @@ export interface AuthContextValue {
    * cambiar la contraseña desde esta pantalla sin pasar por nada más.
    */
   isPasswordRecovery: boolean
+  /**
+   * Apaga `isPasswordRecovery` a mano. Antes lo hacía el evento
+   * `USER_UPDATED` de `auth.updateUser`; desde P26.3 el cambio va por la
+   * Edge Function y ese evento ya no se dispara. Opcional para no obligar
+   * a los dobles de prueba de otras pantallas a definirlo.
+   */
+  finishPasswordRecovery?: () => void
   /** Cierra la sesión local (`auth.signOut()`, `06_API.md` sección 1: "Cerrar sesión | propio"). */
   signOut: () => Promise<void>
   /** Vuelve a pedir la fila propia de `profiles` (después de editar el perfil o subir un avatar). */
@@ -322,6 +329,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut({ scope: 'local' })
   }, [])
 
+  const finishPasswordRecovery = useCallback(() => {
+    setIsPasswordRecovery(false)
+  }, [])
+
   const refreshProfile = useCallback(async () => {
     if (state.status !== 'authenticated') {
       return
@@ -346,6 +357,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile: null,
         displayName: 'Cuenta',
         isPasswordRecovery,
+        finishPasswordRecovery,
         signOut,
         refreshProfile,
       }
@@ -359,10 +371,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile: state.profile,
       displayName: state.profile?.displayName ?? state.email ?? 'Cuenta',
       isPasswordRecovery,
+      finishPasswordRecovery,
       signOut,
       refreshProfile,
     }
-  }, [state, isPasswordRecovery, signOut, refreshProfile])
+  }, [
+    state,
+    isPasswordRecovery,
+    finishPasswordRecovery,
+    signOut,
+    refreshProfile,
+  ])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

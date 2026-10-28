@@ -30,11 +30,14 @@ type ProfilesUpdateResult = { data: null; error: null }
 // `beforeEach`/los tests sin volver a declarar la variable que ya capturó
 // la factory.
 const {
+  changeOwnPasswordMock,
   updateUserMock,
   profilesUpdateMock,
   companySettings,
   updatePersonNameMock,
 } = vi.hoisted(() => ({
+  changeOwnPasswordMock:
+    vi.fn<(newPassword: string, origin: string) => Promise<void>>(),
   updatePersonNameMock: vi.fn<(input: unknown) => Promise<void>>(),
   updateUserMock:
     vi.fn<(attributes: { password: string }) => Promise<UpdateUserResult>>(),
@@ -56,6 +59,9 @@ const {
   },
 }))
 
+vi.mock('@/api/ownPassword', () => ({
+  changeOwnPassword: changeOwnPasswordMock,
+}))
 vi.mock('@/api/users', () => ({ updatePersonName: updatePersonNameMock }))
 const { acceptConsentMock, revokeConsentMock } = vi.hoisted(() => ({
   acceptConsentMock: vi.fn<() => Promise<string>>(),
@@ -125,6 +131,7 @@ function authValue(overrides: Partial<AuthContextValue>): AuthContextValue {
 
 beforeEach(() => {
   updateUserMock.mockReset()
+  changeOwnPasswordMock.mockReset()
   updatePersonNameMock.mockReset().mockResolvedValue(undefined)
   profilesUpdateMock.mockReset().mockResolvedValue({ data: null, error: null })
   acceptConsentMock.mockReset().mockResolvedValue('2026-10-14T12:00:00Z')
@@ -245,7 +252,7 @@ describe('ProfilePage (COM-04)', () => {
     expect(refreshProfile).toHaveBeenCalledTimes(1)
   })
 
-  it('avisa si las contraseñas nuevas no coinciden, sin llamar a updateUser', async () => {
+  it('avisa si las contraseñas nuevas no coinciden, sin llamar a la función', async () => {
     vi.spyOn(authModule, 'useAuth').mockReturnValue(authValue({}))
 
     render(<ProfilePage />)
@@ -260,11 +267,12 @@ describe('ProfilePage (COM-04)', () => {
     expect(
       await screen.findByText('Las contraseñas no coinciden.'),
     ).toBeInTheDocument()
+    expect(changeOwnPasswordMock).not.toHaveBeenCalled()
     expect(updateUserMock).not.toHaveBeenCalled()
   })
 
-  it('cambia la contraseña con auth.updateUser', async () => {
-    updateUserMock.mockResolvedValue({ data: { user: {} }, error: null })
+  it('cambia la contraseña con change_own_password (origen profile), sin auth.updateUser', async () => {
+    changeOwnPasswordMock.mockResolvedValue(undefined)
     vi.spyOn(authModule, 'useAuth').mockReturnValue(authValue({}))
 
     render(<ProfilePage />)
@@ -279,9 +287,44 @@ describe('ProfilePage (COM-04)', () => {
     expect(
       await screen.findByText('Cambiamos tu contraseña.'),
     ).toBeInTheDocument()
-    expect(updateUserMock).toHaveBeenCalledWith({
-      password: 'contraseña-larga-1',
+    expect(changeOwnPasswordMock).toHaveBeenCalledWith(
+      'contraseña-larga-1',
+      'profile',
+    )
+    expect(updateUserMock).not.toHaveBeenCalled()
+  })
+
+  it('si la función falla, muestra el error y no confirma el cambio (CR-13)', async () => {
+    changeOwnPasswordMock.mockRejectedValue(
+      new ApiError('Esa contraseña es muy débil.', 'VALIDATION_ERROR'),
+    )
+    vi.spyOn(authModule, 'useAuth').mockReturnValue(authValue({}))
+
+    render(<ProfilePage />)
+    fireEvent.change(screen.getByLabelText('Contraseña nueva'), {
+      target: { value: 'contraseña-larga-1' },
     })
+    fireEvent.change(screen.getByLabelText('Confirmar contraseña'), {
+      target: { value: 'contraseña-larga-1' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Cambiar contraseña' }))
+
+    expect(
+      await screen.findByText('Esa contraseña es muy débil.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Cambiamos tu contraseña.')).toBeNull()
+  })
+
+  it('muestra el aviso de que la administración puede ver la contraseña (CR-12)', () => {
+    vi.spyOn(authModule, 'useAuth').mockReturnValue(authValue({}))
+
+    render(<ProfilePage />)
+
+    expect(
+      screen.getByText(
+        'La administración de la empresa puede ver tu contraseña. No uses una que tengas en otros servicios.',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('sin consentimiento de ubicación, ofrece darlo y lo guarda con la RPC (hora del servidor)', async () => {

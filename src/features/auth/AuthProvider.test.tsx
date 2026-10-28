@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthProvider, useAuth } from './AuthProvider'
 
@@ -76,6 +76,9 @@ function Probe() {
       <p data-testid="displayName">{auth.displayName}</p>
       <p data-testid="passwordRecovery">{String(auth.isPasswordRecovery)}</p>
       <button onClick={() => void auth.signOut()}>salir</button>
+      <button onClick={() => auth.finishPasswordRecovery?.()}>
+        terminar recuperación
+      </button>
     </div>
   )
 }
@@ -294,6 +297,28 @@ describe('AuthProvider / useAuth', () => {
       )
     })
     expect(screen.getByTestId('passwordRecovery')).toHaveTextContent('false')
+  })
+
+  it('finishPasswordRecovery apaga isPasswordRecovery sin depender de USER_UPDATED (P26.3)', () => {
+    renderProbe()
+
+    act(() => {
+      authStateCallbacks[0]?.(
+        'PASSWORD_RECOVERY',
+        fakeSession('user-1', 'carlos.medina@extendiendoservicios.com', {
+          roles: ['employee'],
+          capabilities: [],
+        }),
+      )
+    })
+    expect(screen.getByTestId('passwordRecovery')).toHaveTextContent('true')
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'terminar recuperación' }),
+    )
+
+    expect(screen.getByTestId('passwordRecovery')).toHaveTextContent('false')
+    expect(screen.getByTestId('status')).toHaveTextContent('authenticated')
   })
 
   it('SIGNED_OUT también apaga isPasswordRecovery', () => {
