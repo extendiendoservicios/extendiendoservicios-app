@@ -78,9 +78,23 @@ begin
   from pg_class c
   join pg_namespace n on n.oid = c.relnamespace
   where n.nspname = 'public' and c.relkind in ('r', 'p', 'v')
+    -- account_credentials (0075, P26.1) es la excepción a propósito: copia cifrada de contraseñas,
+    -- sin permisos para nadie salvo service_role (se verifica aparte, más abajo).
+    and c.relname <> 'account_credentials'
     and not has_table_privilege('authenticated', c.oid, 'SELECT');
   return query select 'authenticated_select_en_todo', case when v_lista is null then 'OK' else 'FALLA' end,
-    coalesce('authenticated sin select en: ' || v_lista, 'authenticated tiene select en todas las tablas y vistas');
+    coalesce('authenticated sin select en: ' || v_lista, 'authenticated tiene select en todas las tablas y vistas (salvo account_credentials)');
+
+  -- 3 ter. account_credentials (0075, P26.1): ni anon ni authenticated tienen ningún privilegio -----
+  select count(*) into v_n
+  from pg_class c
+  join pg_namespace n on n.oid = c.relnamespace
+  cross join lateral aclexplode(coalesce(c.relacl, '{}'::aclitem[])) a
+  where n.nspname = 'public' and c.relname = 'account_credentials'
+    and a.grantee in (v_anon, v_auth);
+  return query select 'account_credentials_cerrada',
+    case when v_n = 0 and exists (select 1 from pg_class where oid = to_regclass('public.account_credentials') and relrowsecurity) then 'OK' else 'FALLA' end,
+    case when v_n = 0 then 'anon y authenticated no tienen privilegios sobre account_credentials' else v_n || ' privilegios de más sobre account_credentials' end;
 
   select string_agg(distinct c.relname || ':' || a.privilege_type, ', ')
     into v_lista
