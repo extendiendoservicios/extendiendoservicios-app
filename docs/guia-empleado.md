@@ -230,6 +230,8 @@ Arriba ves dos botones, **Retirar insumos** y **Avisar faltante**, y debajo tres
 
 Es la lista de insumos que hay, con su foto, su código, el nombre y la presentación (por ejemplo, «Lavandina · 5 L»). Podés buscar por código o nombre, y filtrar por categoría. **No ves cuántas unidades hay ni los precios.** Si de un insumo no queda nada, aparece con la etiqueta **Sin stock** y no se puede elegir para retirar.
 
+![El catálogo de Insumos en el celular](guias/img/emp-insumos.png)
+
 ### Retirar insumos
 
 1. Tocá **Retirar insumos**.
@@ -237,6 +239,8 @@ Es la lista de insumos que hay, con su foto, su código, el nombre y la presenta
 3. Buscá cada insumo y tocá **Agregar**. Con **+** y **−** elegís la cantidad (números enteros). Los que dicen **Sin stock** no tienen botón.
 4. Tocá **Revisar retiro**. Ahí podés cambiar las cantidades, **Quitar** un artículo y, si querés, escribir una **Observación (opcional)**.
 5. Tocá **Confirmar retiro**.
+
+![Elegir los artículos de un retiro](guias/img/emp-insumos-retirar.png)
 
 Vas a ver el resumen con la fecha y la hora del retiro y lo que retiraste. Tocá **Volver a Insumos**.
 
@@ -252,6 +256,8 @@ Si algo se terminó o no hay en el depósito, avisalo para que la oficina lo rep
 2. Elegí cómo indicarlo: **Del catálogo** (buscá el insumo y tocalo) u **Otro insumo** (escribí cuál es, si no está en la lista).
 3. Si querés, en **¿Dónde falta? (opcional)** elegí un turno o una sede, y escribí un **Comentario (opcional)**.
 4. Tocá **Enviar aviso**.
+
+![Avisar que falta un insumo](guias/img/emp-insumos-faltante.png)
 
 El aviso queda **Abierto** hasta que Administración lo resuelve. No es un pedido: es solo para que la oficina se entere.
 

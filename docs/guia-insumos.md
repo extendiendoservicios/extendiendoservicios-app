@@ -113,6 +113,8 @@ Para **editar** un artículo (código, nombre, presentación, mínimo, notas o i
 
 En la pestaña **Stock** ves, por artículo: imagen chica, código, nombre y presentación, categoría, **stock**, **mínimo**, **costo**, **venta** y **valor a costo** (stock por costo). Abajo está el total: cantidad de artículos y **valor del stock a costo** de lo que estás viendo.
 
+![La lista de Stock, con los artículos en rojo, en amarillo y sin color](guias/img/adm-insumos-stock.png)
+
 **Colores de las filas:**
 
 | Color        | Cuándo                                                                | Etiqueta      |
@@ -142,6 +144,8 @@ En el celular la tabla se ve como tarjetas, con los mismos datos y botones.
 
 Tocá **Ficha** en la fila del artículo. Ahí ves:
 
+![La ficha de un artículo, con su historial de precios y sus movimientos](guias/img/adm-insumos-ficha.png)
+
 - Los datos y la imagen, con la etiqueta **Activo** o **Inactivo**, y «Sin mínimo» si no tiene.
 - Los botones **Editar**, **Cambiar precios**, **Ajustar** y **Desactivar** (o **Activar**).
 - El [historial de precios](#precios-y-su-historial).
@@ -170,6 +174,8 @@ Cada cambio queda en el **historial de precios** de la ficha: cuándo, quién, d
 3. En **Artículos**, buscá con **Buscar y agregar un artículo…** y tocá el que quieras. Por cada artículo indicá la **Cantidad** (un número entero mayor que cero) y, si lo sabés, el **Costo unitario (opcional)**. Con **Quitar** sacás una fila. Ves el stock y el costo actuales de cada artículo para guiarte.
 4. Si querés, completá **Proveedor (opcional)**, **Remito o factura (opcional)** y **Observación (opcional)**. Pueden quedar vacíos: hay ingresos sin comprobante.
 5. Tocá **Registrar ingreso** (o **Registrar devolución**).
+
+![El formulario de ingreso, con dos artículos cargados](guias/img/adm-insumos-ingreso.png)
 
 **Si cargaste un costo distinto del vigente**, antes de guardar aparece **Costos distintos del vigente** y te pregunta, artículo por artículo, «¿Actualizar el precio de costo de X a $ N?». Tenés que contestar cada uno:
 
@@ -215,7 +221,7 @@ Un artículo desactivado con stock cero **no** cuenta como «Sin stock» ni como
 1. En **Stock**, tocá **Retiro en nombre de**.
 2. En **Quién retira**, elegí a la persona (empleados y coordinadores activos).
 3. En **Para qué retira** elegí:
-   - **Un turno:** y elegí el **Turno**. Ves los turnos de **30 días atrás a 7 días adelante**, de **todos** los clientes (sin los cancelados), porque la carga suele hacerse después del hecho.
+   - **Un turno:** y elegí el **Turno**. Ves los turnos de **30 días atrás a 7 días adelante**, de **todos** los clientes, porque la carga suele hacerse después del hecho. Los turnos de la persona que elegiste (los que tiene asignados o, si es coordinador, los que coordina) salen **primero** y llevan al final «· es su turno»; el resto sigue disponible por si el retiro fue en otro turno. Los turnos **cancelados** no aparecen.
    - **Una sede:** y elegí la **Sede**. Es para un retiro que no corresponde a un turno puntual (por ejemplo, «reposición de la semana»). En ese caso la **observación es obligatoria**.
 4. En **Artículos**, agregá cada artículo con su cantidad. Solo ofrece artículos activos con stock. Si ponés más de lo que hay, te avisa «No alcanza el stock: hay N».
 5. Escribí una observación si querés (obligatoria con sede) y tocá **Registrar retiro**.
@@ -229,6 +235,8 @@ El retiro queda **a nombre de la persona**, con tu nombre como quien lo registr�
 ## Movimientos: consultar, anular y exportar
 
 La pestaña **Movimientos** muestra, uno por uno, todo lo que pasó con el stock: **Ingreso**, **Devolución**, **Retiro**, **Ajuste**, **Control de stock** y **Anulación**. Cada movimiento es una tarjeta con su fecha y hora, quién lo registró, la persona que retiró (tocándola abrís sus [retiros](#los-retiros-de-una-persona)), el turno o la sede, el proveedor y el comprobante, el motivo del ajuste y la observación. Abajo, la lista de artículos con su cantidad, el costo y la venta de cada uno, el stock que quedó y los totales a costo y a venta. Tocando un artículo abrís su ficha.
+
+![La pestaña Movimientos, con un retiro anulado y su anulación](guias/img/adm-insumos-movimientos.png)
 
 **Filtros:** fechas **Desde** y **Hasta**, tipo, persona, artículo, cliente y sede (la lista de sedes se acota al cliente elegido). Todos arrancan en «Todos»; **Limpiar filtros** los vuelve a ese estado. En pantalla se ven hasta 500 líneas: si hay más, un aviso te pide acotar los filtros.
 
@@ -262,6 +270,8 @@ La ven el dueño y todos los administradores, tengan o no «Gestionar stock». E
 
 La pestaña **Consumo por cliente** suma lo que se retiró en un período y lo reparte por cliente y por sede, **a costo y a venta**. Sirve para saber cuánto insumo consume cada cliente.
 
+![La pestaña Consumo por cliente, con el total del período y el detalle por cliente y sede](guias/img/adm-insumos-consumo.png)
+
 1. Elegí el período con **Desde** y **Hasta** (arranca en el mes en curso; hay atajos **Este mes** y **Mes anterior**).
 2. Si querés, filtrá por cliente y por sede.
 3. Ves el **total del período** y, por cliente y por sede, las unidades y los importes. Tocando una sede se despliega el **detalle por artículo**.
@@ -290,13 +300,15 @@ Con la hoja en la mano, contá lo que hay en el depósito y anotá la cantidad e
 ### 3. Cargar control
 
 1. En **Stock**, tocá **Cargar control**.
-2. Indicá cuándo se hizo el conteo: **Día del control** y **Hora del control** (por omisión, ahora; no puede ser en el futuro).
+2. Indicá cuándo se hizo el conteo: **Día del control** y **Hora del control** (por omisión, ahora). Se puede cargar un control de **hasta 30 días atrás**; no puede ser de una fecha futura ni más vieja que eso. Si te pasás, la pantalla avisa «El control no puede ser de hace más de 30 días. Elegí una fecha más reciente.» o «La fecha y la hora del control no pueden ser futuras.».
 3. En **Quién revisó** elegí **Una persona de la app** (y elegila en la lista **Persona**) o **Un nombre escrito**. Es una cosa o la otra. No viene ninguna elegida para que el control no quede a nombre de quien lo carga sin querer.
 4. Escribí las **Observaciones** si hay.
 5. En la tabla de artículos, escribí la cantidad en **Contado**. Podés buscar un artículo o filtrar por categoría.
    - **Una fila en blanco no se toca.** No significa cero: significa «no lo conté».
    - **Cero es un conteo válido** («no hay nada»).
 6. Tocá **Confirmar control**. Ves un resumen con el **stock del sistema**, lo **contado** y la **diferencia** de cada artículo.
+
+![La pantalla Cargar control, con tres artículos contados](guias/img/adm-insumos-control.png)
 
 **Cómo se calcula la diferencia:** contra el **stock que el sistema tenía a la hora del control**, no contra el de ahora. Por eso, si entre que contaste y que cargaste alguien hizo un retiro, ese retiro **no se toma como un faltante**. La pantalla te avisa en cada artículo: «Tuvo 2 movimientos después de esa hora; se tienen en cuenta».
 
@@ -311,6 +323,8 @@ La pestaña **Controles** guarda el historial: fecha y hora del conteo, quién r
 ## Faltantes avisados
 
 Los empleados y los coordinadores pueden **avisar que falta un insumo** desde el celular. No hay pedidos de reposición: el aviso es para que la oficina se entere. Aparecen en la pestaña **Faltantes** y, como número, junto a **Insumos** en el menú.
+
+![La pestaña Faltantes, con avisos abiertos y uno resuelto](guias/img/adm-insumos-faltantes.png)
 
 Cada aviso muestra quién avisó y cuándo, el artículo (con enlace a su ficha) o, si lo escribió a mano porque no está cargado, el texto con la etiqueta **No está en el catálogo**, el turno o la sede, y el comentario. Los **abiertos** van primero.
 

@@ -35,6 +35,8 @@ Esta sección no la lee la referente. La completa **quien organiza la sesión** 
 | Empleado o empleada                     | 2                 | **Empleado A** hace toda la jornada de prueba; **Empleado B** prueba el inicio sin ubicación y "registrar en nombre" |
 | Empleado B (opcional) y una persona más | 1                 | Para dar de baja y resetear contraseña (UAT-ADM-22 y UAT-ADM-23): puede ser una cuenta creada en la propia sesión    |
 
+**Insumos (bloque G):** el permiso **Gestionar stock** es un octavo permiso que el dueño le da al Administrador 1 en UAT-DUE-06; el Administrador 2 no lo recibe, para probar lo que puede hacer un administrador sin él. Para ese bloque hace falta, además, el Empleado B con un turno asignado (ver el comienzo del bloque G).
+
 **Importante, los emails:** la planilla que devolvió la empresa trae los empleados y coordinadores **sin email**, y sin email no se puede crear el usuario. Antes de la sesión hay que **pedir a la empresa un email de login** para, como mínimo, el Empleado A, el Empleado B y la coordinadora, o usar casillas de prueba que el organizador controle. Los administradores y el dueño también necesitan email.
 
 Cada persona tiene que poder **recibir correo** en ese email (para probar la recuperación de contraseña) y **entrar con su celular** (empleados y coordinadora).
@@ -54,6 +56,7 @@ La empresa devolvió la planilla con **clientes**, **empleados** y **coordinador
 
 - **Antes de la sesión (importación):** los clientes, con su CUIT y, si los mandó, sus contactos. Los empleados y coordinadores solo si ya hay un email para cada uno; si no, se crean en la sesión (UAT-ADM-07 y UAT-ADM-08).
 - **Durante la sesión (por pantalla):** las sedes, los servicios, las tareas, los turnos, las asignaciones de empleados y los clientes y sedes preferenciales de la coordinadora. Los escenarios del bloque B (UAT-ADM-04 a UAT-ADM-10) los cargan **a mano**, con los datos de la tabla siguiente.
+- **Insumos (bloque G):** el catálogo de artículos no se importa. Se carga por pantalla durante el bloque G (UAT-ADM-26), con datos de prueba.
 - Los **criterios de calificación definitivos** de la empresa, el **teléfono de soporte** y el **texto de consentimiento de ubicación**: si la empresa ya los mandó, tenerlos escritos aparte para cargarlos en UAT-DUE-03 y UAT-DUE-04.
 
 ### 1.5. Datos de la sesión (completar a mano antes de empezar)
@@ -151,17 +154,18 @@ Los escenarios están agrupados en bloques. **Conviene respetar el orden**, porq
 | D      | La jornada de hoy: empleado en el celular y administración mirando | UAT-EMP-01 a UAT-EMP-11, UAT-ADM-17 a UAT-ADM-19, UAT-ADM-20                        | 60 minutos      |
 | E      | La jornada y la supervisión del coordinador                        | UAT-SUP-01 a UAT-SUP-07, UAT-SUP-09, UAT-SUP-10, UAT-ADM-21, UAT-ADM-24, UAT-ADM-25 | 70 minutos      |
 | F      | Cierre: contraseñas, bajas, sesión y seguridad                     | UAT-ADM-22, UAT-ADM-23, UAT-TRA-01 a UAT-TRA-04, UAT-DUE-05, UAT-EMP-12, UAT-SUP-08 | 30 minutos      |
+| G      | Insumos: catálogo, stock, retiros, controles y faltantes           | UAT-DUE-06, UAT-ADM-26 a UAT-ADM-36, UAT-EMP-13, UAT-EMP-14, UAT-SUP-11, UAT-SUP-12 | 120 minutos     |
 
-Total: unas **5 horas**, con una pausa entre bloques. Si hay menos tiempo, se hacen primero los escenarios **Imprescindibles** y se dejan para otra sesión los **Opcionales**.
+Total: unas **7 horas** (cinco para los bloques A a F y dos para el bloque G), con una pausa entre bloques. El bloque G, el de **Insumos**, se puede hacer en una **sesión aparte**. Si hay menos tiempo, se hacen primero los escenarios **Imprescindibles** y se dejan para otra sesión los **Opcionales**.
 
 Resumen por rol (para ubicarse):
 
 | Rol                      | Escenarios | Cantidad |
 | ------------------------ | ---------- | -------- |
-| Dueño (UAT-DUE)          | 01 a 05    | 5        |
-| Administración (UAT-ADM) | 01 a 25    | 25       |
-| Empleado (UAT-EMP)       | 01 a 12    | 12       |
-| Coordinador (UAT-SUP)    | 01 a 10    | 10       |
+| Dueño (UAT-DUE)          | 01 a 06    | 6        |
+| Administración (UAT-ADM) | 01 a 36    | 36       |
+| Empleado (UAT-EMP)       | 01 a 14    | 14       |
+| Coordinador (UAT-SUP)    | 01 a 12    | 12       |
 | Transversales (UAT-TRA)  | 01 a 04    | 4        |
 
 ---
@@ -1761,6 +1765,519 @@ Se hace **a la vez** que UAT-EMP-05.
 | ------------------- | ----------- | ----------------------------------------- |
 | ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
 
+### Bloque G · Insumos
+
+Este bloque prueba el módulo de **Insumos y control de stock**: el catálogo, el stock, los retiros desde el celular y los avisos de faltante. La guía de referencia es la [guía de Insumos](../guia-insumos.md).
+
+**Qué tiene que estar listo antes del bloque G**
+
+- Las cuentas del resto del guion. En particular el **Administrador 1** (el que va a recibir el permiso **Gestionar stock** en UAT-DUE-06) y el **Administrador 2**, que **no** lo recibe: sirve para ver lo que puede hacer un administrador sin ese permiso.
+- El **Empleado A** con un turno de **hoy** y, si se puede, otro de los **últimos días** (de hasta 30 días atrás). El **Empleado B** con al menos un turno asignado. La **coordinadora** con al menos un turno de hoy. Un turno **cancelado** (el de UAT-ADM-14 sirve).
+- **El catálogo de insumos no se importa:** los artículos se cargan de a uno, por pantalla, en UAT-ADM-26. Los datos que se usan acá (por ejemplo "Lavandina") son de prueba.
+- Una **impresora**, o la opción "Guardar como PDF" del navegador, para la planilla de UAT-ADM-34.
+- Las cantidades de los ejemplos son orientativas. Si usás otras, fijate que el stock llegue a verse en rojo, en amarillo y sin color.
+
+**Dos observaciones para quien conduce**
+
+- El bloque G va **después del cierre** del bloque F. Si se hace en la misma sesión, el dueño deja para **después de este bloque** el cierre de UAT-DUE-05 y, si quiere dejar el entorno como estaba, le quita **Gestionar stock** al Administrador 1.
+- Los escenarios están numerados **en el orden en que conviene hacerlos**: los últimos usan los datos de los primeros.
+
+#### UAT-DUE-06 · El dueño le da el permiso «Gestionar stock» a un administrador
+
+|                  |                                                                                                       |
+| ---------------- | ----------------------------------------------------------------------------------------------------- |
+| **Rol**          | Dueño                                                                                                 |
+| **Dónde**        | Computadora                                                                                           |
+| **Tipo**         | Imprescindible                                                                                        |
+| **Cubre**        | IS-19 (la capacidad **Gestionar stock**: la da el dueño, que la tiene sin que nadie se la dé)         |
+| **Precondición** | El **Administrador 1** y el **Administrador 2** existen. Ninguno de los dos tiene todavía el permiso. |
+
+**Pasos**
+
+1. Entrá con la cuenta del dueño. Mirá el menú de la izquierda: tiene que estar **Insumos**, después de **Tareas**.
+2. Tocá **Insumos** y mirá las pestañas de arriba y los botones de la pestaña **Stock**.
+3. Entrá a **Configuración** y a **Usuarios**. Buscá al **Administrador 1**, abrí el menú de su fila y elegí **Editar roles y capacidades**.
+4. Mirá la lista de permisos y encendé **Gestionar stock**. Se guarda solo, sin botón.
+5. Cerrá el panel. **No** le des el permiso al Administrador 2.
+6. Pedile al Administrador 1 que cierre sesión y vuelva a ingresar (los permisos se leen al ingresar).
+
+**Resultado esperado**
+
+- El dueño ve **Insumos** en el menú, con seis pestañas: **Stock**, **Movimientos**, **Faltantes**, **Consumo por cliente**, **Controles** y **Categorías**. En **Stock** ve los botones **Ingreso**, **Retiro en nombre de**, **Imprimir planilla**, **Cargar control** y **Nuevo artículo** sin haberse dado ningún permiso.
+- En la lista de permisos aparece **Gestionar stock**, con una explicación de lo que habilita, y se enciende sin ningún botón de guardar.
+- El Administrador 2 sigue sin el permiso (se comprueba en UAT-ADM-29).
+
+| Resultado           | Observación | Clasificación                             |
+| ------------------- | ----------- | ----------------------------------------- |
+| ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
+
+#### UAT-ADM-26 · Categorías y alta de un artículo
+
+|                  |                                                                                                                       |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **Rol**          | Administrador (**Administrador 1**, con **Gestionar stock**)                                                          |
+| **Dónde**        | Computadora                                                                                                           |
+| **Tipo**         | Imprescindible                                                                                                        |
+| **Cubre**        | IS-01 a IS-07 (catálogo, categorías, precios y stock mínimo) e IS-25 (la lista de stock y sus colores)                |
+| **Precondición** | UAT-DUE-06 hecho. El Administrador 1 volvió a ingresar. Todavía no hay artículos cargados (o se usan códigos nuevos). |
+
+**Pasos**
+
+1. Entrá a **Insumos**, pestaña **Categorías**.
+2. Tocá **Nueva categoría**, escribí `Químicos` y **Guardar**. Cargá otra: `Descartables`.
+3. Probá cargar de nuevo `Químicos`. Después, con las flechas de cada fila, bajá `Químicos` y volvé a subirla.
+4. Volvé a **Stock** y tocá **Nuevo artículo**. Completá: **Código interno** `QUI-001`, **Categoría** `Químicos`, **Artículo** `Lavandina`, **Presentación** `Bidón de 5 L`, **Stock mínimo** `5`, **Precio de costo** `1250,50`, **Precio de venta** `1800`. Si querés, sumá una imagen con **Elegir imagen**. Tocá **Cargar artículo**.
+5. Cargá un segundo artículo en `Descartables`: código `DES-001`, **Artículo** `Bolsa de residuos`, **Presentación** `Rollo x 10`, **sin** stock mínimo, costo `800` y venta `1100`.
+6. Cargá un tercer artículo en `Descartables`: código `DES-002`, **Artículo** `Guantes de látex`, **Presentación** `Par`, **Stock mínimo** `10`, costo `300` y venta `450`. Este **no** va a recibir ingresos: queda sin stock para el resto del bloque.
+7. Probá cargar otro artículo con el código `qui-001` (en minúsculas).
+8. Mirá la lista de **Stock**: las filas nuevas, sus colores y etiquetas, y el total de abajo.
+
+**Resultado esperado**
+
+- Una categoría con un nombre que ya existe **no se acepta** ("Ya existe una categoría con ese nombre.").
+- Las flechas cambian el orden de las categorías; ese orden es el de la lista de Stock.
+- Los artículos se cargan con **stock cero**. El código repetido (aunque cambien las mayúsculas) **no se acepta** ("Ya existe un artículo con ese código…").
+- Las tres filas aparecen en **rojo** con la etiqueta **Sin stock** (el stock es cero, aunque `DES-001` no tenga mínimo).
+- Los precios se aceptan escritos con coma. Con la imagen, se ve una miniatura en la fila.
+
+| Resultado           | Observación | Clasificación                             |
+| ------------------- | ----------- | ----------------------------------------- |
+| ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
+
+#### UAT-ADM-27 · Un ingreso con un costo distinto del vigente
+
+|                  |                                                                                    |
+| ---------------- | ---------------------------------------------------------------------------------- |
+| **Rol**          | Administrador (**Administrador 1**, con **Gestionar stock**)                       |
+| **Dónde**        | Computadora                                                                        |
+| **Tipo**         | Imprescindible                                                                     |
+| **Cubre**        | IS-09 (ingreso), IS-22 e IS-23 (precios, historial y costo de un ingreso)          |
+| **Precondición** | UAT-ADM-26 hecho: los artículos `QUI-001` (costo 1250,50) y `DES-001` (costo 800). |
+
+**Pasos**
+
+1. En **Stock**, tocá **Ingreso**. Dejá **Tipo de movimiento** en **Ingreso**.
+2. Con **Buscar y agregar un artículo…**, agregá `Lavandina`: **Cantidad** `12` y **Costo unitario** `1400`. Agregá `Bolsa de residuos`: **Cantidad** `30` y **Costo unitario** `800` (el mismo que tiene).
+3. Escribí un **Proveedor** de ejemplo y un **Remito o factura**. Tocá **Registrar ingreso**.
+4. Se abre **Costos distintos del vigente**. Mirá por qué artículos pregunta. Para la lavandina contestá **Sí, actualizar**. Tocá **Confirmar ingreso**.
+5. Mirá el resumen que aparece: artículos, cantidades, costos y el **stock que quedó**.
+6. Abrí la **Ficha** de la lavandina. Mirá el **historial de precios** y el precio de costo.
+7. Hacé un segundo ingreso de `Lavandina` por `3` unidades con costo `1500` y esta vez contestá **No, dejar el actual**. Mirá de nuevo la ficha.
+8. Hacé una **Devolución** de `1` unidad de `Bolsa de residuos` (en **Tipo de movimiento** elegí **Devolución**).
+
+**Resultado esperado**
+
+- La pregunta **solo aparece por el artículo cuyo costo cambió** (la lavandina), no por la bolsa, que ya tenía ese costo.
+- Con **Sí, actualizar**, el costo de la lavandina pasa a `1400` y el historial muestra un cambio con origen **Costo de un ingreso**. Con **No, dejar el actual**, el ingreso guarda `1500` pero el costo del artículo sigue en `1400`.
+- El **precio de venta** no cambió en ningún caso.
+- El stock de la lavandina queda en `15` y el de la bolsa en `31` (con la devolución). La lavandina, con mínimo `5`, queda **sin color**.
+- Los dos ingresos y la devolución figuran en **Movimientos** con su tipo.
+
+| Resultado           | Observación | Clasificación                             |
+| ------------------- | ----------- | ----------------------------------------- |
+| ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
+
+#### UAT-ADM-28 · Ajustar el stock y ver los colores
+
+|                  |                                                              |
+| ---------------- | ------------------------------------------------------------ |
+| **Rol**          | Administrador (**Administrador 1**, con **Gestionar stock**) |
+| **Dónde**        | Computadora                                                  |
+| **Tipo**         | Imprescindible                                               |
+| **Cubre**        | IS-10 (ajuste con motivo) e IS-25 (colores del stock)        |
+| **Precondición** | UAT-ADM-27 hecho: `Lavandina` con stock `15` y mínimo `5`.   |
+
+**Pasos**
+
+1. En **Stock**, en la fila de `Lavandina`, tocá **Ajustar**.
+2. Elegí **Restar (−)**, **Cantidad** `12`, **Motivo** **Rotura**. Leé lo que dice el diálogo sobre cómo va a quedar el stock y tocá **Registrar ajuste**.
+3. Mirá el color de la fila.
+4. Abrí **Ajustar** de nuevo. Probá restar `50` (más de lo que hay).
+5. Probá un ajuste con el motivo **Otro** y la observación vacía.
+6. Completá la observación y registralo como **Sumar (+)** `1`.
+7. Probá el filtro **Solo con aviso** y después **Incluir inactivos**.
+
+**Resultado esperado**
+
+- Después de restar 12, el stock queda en `3`, por debajo del mínimo `5`: la fila se pone en **amarillo** con la etiqueta **Bajo mínimo**.
+- **No deja restar más de lo que hay.**
+- Con el motivo **Otro** y sin observación, **no se acepta** y pide la observación.
+- Con el ajuste de `+1`, el stock queda en `4` y sigue en amarillo.
+- **Solo con aviso** deja las filas amarillas y rojas.
+- Los ajustes quedan en **Movimientos** con su motivo. Un ajuste **no tiene** botón **Anular**.
+
+| Resultado           | Observación | Clasificación                             |
+| ------------------- | ----------- | ----------------------------------------- |
+| ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
+
+#### UAT-ADM-29 · Un administrador sin «Gestionar stock» solo mira y resuelve faltantes
+
+|                  |                                                                                                           |
+| ---------------- | --------------------------------------------------------------------------------------------------------- |
+| **Rol**          | Administrador (el **Administrador 2**, sin **Gestionar stock**)                                           |
+| **Dónde**        | Computadora                                                                                               |
+| **Tipo**         | Imprescindible                                                                                            |
+| **Cubre**        | IS-19 e IS-21 (sin la capacidad se mira todo y se resuelven avisos, pero no se mueve el stock)            |
+| **Precondición** | UAT-ADM-28 hecho: hay artículos con stock y movimientos. El Administrador 2 no tiene **Gestionar stock**. |
+
+**Pasos**
+
+1. Si el Administrador 2 tenía la sesión abierta, cerrala y volvé a ingresar.
+2. Entrá a **Insumos**. Recorré las seis pestañas.
+3. En **Stock**, buscá los botones **Nuevo artículo**, **Ingreso**, **Retiro en nombre de**, **Imprimir planilla**, **Cargar control** y, en cada fila, **Ajustar**.
+4. Abrí la **Ficha** de `Lavandina`: buscá **Editar**, **Cambiar precios**, **Ajustar** y **Desactivar**. Mirá el historial de precios.
+5. En **Movimientos**, buscá el botón **Anular** en las tarjetas.
+6. En **Categorías**, buscá **Nueva categoría**.
+7. En **Faltantes**, mirá si hay botón **Resolver** (si todavía no hay avisos, se vuelve a mirar en UAT-ADM-36).
+
+**Resultado esperado**
+
+- Ve **las seis pestañas y sus datos**: stock con precios, historial de precios, movimientos, consumo, controles y faltantes.
+- **No aparece ninguno** de los botones que mueven el stock o cambian el catálogo (ni **Ajustar**, ni **Anular**, ni los de la ficha ni los de categorías).
+- Si hay avisos de faltante, el botón **Resolver** **sí** aparece.
+
+| Resultado           | Observación | Clasificación                             |
+| ------------------- | ----------- | ----------------------------------------- |
+| ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
+
+#### UAT-EMP-13 · Retirar insumos desde el celular
+
+|                  |                                                                                                                                                    |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Rol**          | Empleado (Empleado A)                                                                                                                              |
+| **Dónde**        | Celular                                                                                                                                            |
+| **Tipo**         | Imprescindible                                                                                                                                     |
+| **Cubre**        | IS-11 a IS-13 (retiro sin aprobación que descuenta en el momento), IS-20 (sin cantidades ni precios), IS-28 (qué turnos puede elegir)              |
+| **Precondición** | UAT-ADM-28 hecho. El Empleado A tiene un turno de hoy. `Bolsa de residuos` tiene stock `31`, `Lavandina` tiene `4` y `Guantes de látex` tiene `0`. |
+
+**Pasos**
+
+1. En el celular del Empleado A, tocá **Insumos** en la barra de abajo. Mirá el **Catálogo**: buscá por código y filtrá por categoría.
+2. Buscá los `Guantes de látex` (sin stock). Mirá qué dice y probá tocarlos.
+3. Tocá **Retirar insumos**. En **¿Para qué turno es el retiro?** elegí **Un turno** y mirá qué turnos ofrece. Elegí el de hoy y tocá **Continuar**.
+4. Agregá `Lavandina` con **+** hasta `2` y `Bolsa de residuos` hasta `4`. Tocá **Revisar retiro**.
+5. Cambiá una cantidad, **Quitá** un artículo y volvelo a agregar. Escribí una **Observación (opcional)** y tocá **Confirmar retiro**.
+6. Mirá el resumen y tocá **Volver a Insumos**. Abrí **Mis retiros**.
+7. Empezá otro retiro, esta vez eligiendo **Una sede**: intentá seguir **sin** escribir la observación. Después cancelá o volvé atrás sin registrar nada.
+8. Abrí el **detalle de un servicio** de hoy y mirá el botón **Retirar insumos** (el atajo). Tocalo.
+9. En la computadora, mirá el stock de `Lavandina` y de `Bolsa de residuos`.
+
+**Resultado esperado**
+
+- El catálogo muestra foto, código, nombre y presentación, **sin cantidades ni precios**. Los guantes llevan la etiqueta **Sin stock** y **no se pueden elegir**.
+- Solo ofrece **los turnos del Empleado A, de hoy y de los próximos 7 días**.
+- Con **Una sede**, la observación es **obligatoria**: sin ella no deja seguir.
+- El retiro **se registra en el momento**, sin aprobación, y el resumen muestra la fecha, la hora y lo retirado. **Mis retiros** lo muestra con el turno y los artículos.
+- El atajo del detalle del servicio abre el retiro con ese turno **ya elegido**.
+- En la computadora el stock bajó: la lavandina de `4` a `2` y la bolsa de `31` a `27`.
+
+| Resultado           | Observación | Clasificación                             |
+| ------------------- | ----------- | ----------------------------------------- |
+| ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
+
+#### UAT-SUP-11 · Retirar insumos como coordinador
+
+|                  |                                                                                                                        |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **Rol**          | Coordinador (la coordinadora)                                                                                          |
+| **Dónde**        | Celular                                                                                                                |
+| **Tipo**         | Imprescindible                                                                                                         |
+| **Cubre**        | IS-12 e IS-28 (el coordinador ve todos los turnos), IS-20 (sin cantidades ni precios)                                  |
+| **Precondición** | UAT-EMP-13 hecho. Hay turnos de hoy de **más de un cliente**; la coordinadora tiene sedes preferenciales (UAT-ADM-16). |
+
+**Pasos**
+
+1. En el celular de la coordinadora, tocá **Insumos** en la barra de abajo. Mirá el **Catálogo**.
+2. Tocá **Retirar insumos** y elegí **Un turno**. Mirá cómo se ordenan los turnos.
+3. Elegí un turno de **otro cliente** (uno que no sea de sus sedes preferenciales) y tocá **Continuar**.
+4. Agregá `Bolsa de residuos` por `2`, revisá y tocá **Confirmar retiro**.
+5. Abrí **Mis retiros**.
+6. Entrá al **Detalle del turno** de un turno de hoy y tocá **Retirar insumos**.
+
+**Resultado esperado**
+
+- El catálogo es el mismo que ve el empleado: sin cantidades ni precios.
+- Ve los turnos de **todos los clientes**, de hoy y de los próximos 7 días, con **Mis sedes** primero y **Otras sedes** después.
+- El retiro de un turno que no es de sus sedes **se registra igual**. Queda en **Mis retiros**.
+- El atajo del detalle abre el retiro con ese turno ya elegido.
+
+| Resultado           | Observación | Clasificación                             |
+| ------------------- | ----------- | ----------------------------------------- |
+| ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
+
+#### UAT-ADM-30 · Retirar en nombre de otra persona
+
+|                  |                                                                                                                                              |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Rol**          | Administrador (**Administrador 1**, con **Gestionar stock**)                                                                                 |
+| **Dónde**        | Computadora                                                                                                                                  |
+| **Tipo**         | Imprescindible                                                                                                                               |
+| **Cubre**        | IS-11, IS-12 e IS-35 (el retiro en nombre de otra persona: los turnos de la persona primero, y el resto disponible)                          |
+| **Precondición** | UAT-EMP-13 hecho. El **Empleado B** tiene al menos un turno asignado y hay turnos de otras personas en los últimos 30 días y los próximos 7. |
+
+**Pasos**
+
+1. En **Insumos**, **Stock**, tocá **Retiro en nombre de**.
+2. En **Quién retira**, elegí al **Empleado B**.
+3. En **Para qué retira** elegí **Un turno** y abrí la lista de **Turno**. Mirá el orden y los rótulos. Buscá un turno **cancelado**.
+4. Elegí un turno del Empleado B. Agregá `Lavandina` por `1` y escribí una observación. Tocá **Registrar retiro**.
+5. Probá antes (en otro retiro) pedir **más de lo que hay** de un artículo.
+6. Hacé otro retiro con el Empleado B eligiendo un turno **que no es de él** (el retiro pudo ser para otro turno).
+7. Hacé un tercero eligiendo **Una sede**: primero sin observación y después con observación.
+8. Mirá el resumen y abrí **Movimientos**.
+
+**Resultado esperado**
+
+- La lista muestra turnos de **30 días atrás a 7 días adelante**, de todos los clientes.
+- Los turnos del Empleado B salen **primero** y llevan al final **· es su turno**. El resto sigue ofrecido, sin la marca.
+- El turno **cancelado** no aparece en la lista.
+- Pedir más de lo que hay avisa "No alcanza el stock: hay N." y no registra nada.
+- Un turno que no es del Empleado B **se acepta** igual. Con **Una sede**, sin observación **no se acepta**.
+- En **Movimientos** el retiro figura **a nombre del Empleado B**, con el nombre del Administrador 1 como quien lo registró.
+
+| Resultado           | Observación | Clasificación                             |
+| ------------------- | ----------- | ----------------------------------------- |
+| ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
+
+#### UAT-ADM-31 · Anular un retiro y un ingreso
+
+|                  |                                                                                                                |
+| ---------------- | -------------------------------------------------------------------------------------------------------------- |
+| **Rol**          | Administrador (**Administrador 1**, con **Gestionar stock**)                                                   |
+| **Dónde**        | Computadora                                                                                                    |
+| **Tipo**         | Imprescindible                                                                                                 |
+| **Cubre**        | IS-13 e IS-27 (anular con motivo; las cantidades vuelven o se descuentan)                                      |
+| **Precondición** | UAT-ADM-30 hecho: hay retiros. Anotá el stock actual de `Lavandina` y de `Bolsa de residuos` antes de empezar. |
+
+**Pasos**
+
+1. En **Movimientos**, buscá el retiro de la lavandina que cargó el Administrador 1 en nombre del Empleado B y tocá **Anular**.
+2. Probá confirmar **sin motivo**. Después escribí un motivo y confirmá.
+3. Mirá el movimiento original y el movimiento nuevo que apareció. Mirá el stock de la lavandina.
+4. Intentá anular de nuevo el mismo retiro.
+5. Buscá el **primer ingreso** de la lavandina (los 12 del comienzo) y probá **Anular**.
+6. Buscá un **ajuste** y un movimiento de tipo **Anulación**: mirá si tienen **Anular**.
+
+**Resultado esperado**
+
+- **Sin motivo no se anula.** El diálogo explica que, al anular un **retiro**, las cantidades **vuelven al stock**.
+- El retiro original queda con la etiqueta **Anulado**, con quién lo anuló y por qué, y aparece un movimiento nuevo de tipo **Anulación** enlazado a él. El stock de la lavandina **sube** lo que se había retirado.
+- Un retiro ya anulado **no se anula dos veces**.
+- Anular el primer ingreso **no se deja** si parte de esas unidades ya se usaron en retiros (el stock no puede quedar negativo): el sistema lo explica.
+- Los **ajustes**, los **controles** y las **anulaciones** no tienen **Anular**.
+
+| Resultado           | Observación | Clasificación                             |
+| ------------------- | ----------- | ----------------------------------------- |
+| ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
+
+#### UAT-ADM-32 · Movimientos, filtros, Excel y los retiros de una persona
+
+|                  |                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------ |
+| **Rol**          | Administrador (**Administrador 1**)                                                        |
+| **Dónde**        | Computadora, y Excel para abrir el archivo                                                 |
+| **Tipo**         | Imprescindible                                                                             |
+| **Cubre**        | IS-18 (consultas por fecha, persona, artículo, cliente y sede; pestaña **Retiros**; Excel) |
+| **Precondición** | UAT-ADM-31 hecho: hay ingresos, retiros, ajustes, una anulación y un retiro anulado.       |
+
+**Pasos**
+
+1. En **Movimientos**, filtrá por **tipo** `Retiro`, después por **persona** (el Empleado A) y por **artículo**. Probá **Limpiar filtros**.
+2. Filtrá por **cliente** y mirá cómo se acota la lista de **sedes**.
+3. Tocá el nombre de la persona que retiró en una tarjeta, y el nombre de un artículo.
+4. Con un filtro puesto, tocá **Exportar a Excel**. Abrí el archivo.
+5. Entrá a **Empleados**, abrí la ficha del Empleado A y la pestaña **Retiros**. Cambiá las fechas y tocá **Este mes**.
+
+**Resultado esperado**
+
+- Cada filtro acota la lista; **Limpiar filtros** los deja en "Todos".
+- Tocar la persona abre sus retiros; tocar el artículo abre su ficha.
+- El archivo se llama `movimientos-insumos-AAAA-MM-DD.xlsx`, trae **solo lo filtrado**, con una fila por artículo de cada movimiento, y los importes salen como **números con formato de pesos**.
+- En **Retiros** del Empleado A se ve el mes en curso, con los retiros anulados marcados **Anulado** y el total a venta **sin contarlos**. Un retiro cargado por la oficina dice "Lo cargó X".
+
+| Resultado           | Observación | Clasificación                             |
+| ------------------- | ----------- | ----------------------------------------- |
+| ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
+
+#### UAT-ADM-33 · Consumo por cliente
+
+|                  |                                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------- |
+| **Rol**          | Administrador (**Administrador 1**)                                                   |
+| **Dónde**        | Computadora                                                                           |
+| **Tipo**         | Imprescindible                                                                        |
+| **Cubre**        | IS-24 (consumo por cliente y sede, a costo y a venta)                                 |
+| **Precondición** | UAT-ADM-32 hecho: hay retiros de hoy, uno de ellos anulado, y alguno "para una sede". |
+
+**Pasos**
+
+1. Entrá a **Insumos**, pestaña **Consumo por cliente**.
+2. Mirá el período que trae. Probá **Este mes** y **Mes anterior**, y después elegí con **Desde** y **Hasta** el día de hoy.
+3. Mirá el **total del período** y, por cliente y por sede, las unidades y los importes. Tocá una sede para ver el detalle por artículo.
+4. Filtrá por un cliente y por una sede.
+5. Tocá **Exportar a Excel**.
+6. Verificá a mano un número: las unidades retiradas de un artículo por su costo y por su venta.
+
+**Resultado esperado**
+
+- Arranca en el **mes en curso**; los atajos cambian el período.
+- Los números **no cuentan el retiro anulado**.
+- Los retiros "para una sede" se suman a esa sede.
+- Las unidades por el costo y por la venta de cada retiro (lo que valía el día del retiro) dan los importes de la pantalla.
+- El Excel baja las filas del período.
+
+| Resultado           | Observación | Clasificación                             |
+| ------------------- | ----------- | ----------------------------------------- |
+| ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
+
+#### UAT-ADM-34 · Planilla, «Cargar control» y Controles
+
+|                  |                                                                                                                                   |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Rol**          | Administrador (**Administrador 1**, con **Gestionar stock**)                                                                      |
+| **Dónde**        | Computadora, con una impresora o "Guardar como PDF"                                                                               |
+| **Tipo**         | Imprescindible                                                                                                                    |
+| **Cubre**        | IS-15 a IS-17 (planilla y carga del control), IS-31 (diferencia contra el stock a la hora del control), IS-36 (fecha del control) |
+| **Precondición** | UAT-ADM-33 hecho. Hay al menos dos artículos con stock. Anotá el stock del sistema de cada uno.                                   |
+
+**Pasos**
+
+1. En **Stock**, tocá **Imprimir planilla**. Probá elegir una **Categoría** y después **Todas las categorías**. Tocá **Imprimir o guardar como PDF**.
+2. Mirá la hoja: membrete, fecha, "Revisó: ____", columnas de **stock del sistema**, **Contado**, casillero, **+ / −**, **Observación**, y el pie con firma y aclaración.
+3. Contá "en el depósito" (inventá los números): para `Lavandina`, una cantidad **menor** al stock del sistema; para `Bolsa de residuos`, **dejá la fila en blanco**.
+4. Tocá **Cargar control**. Fijate qué viene elegido en **Día del control**, **Hora del control** y **Quién revisó**.
+5. Probá poner el día de **mañana**. Probá poner el día de hoy con una hora **más adelante que la actual**. Probá un día de **hace más de 30 días**.
+6. Poné una fecha de **hace 2 o 3 días**, **Quién revisó**: **Un nombre escrito** y un nombre de ejemplo. Escribí el **Contado** de la lavandina y dejá en blanco la bolsa. Tocá **Confirmar control**.
+7. Mirá el resumen: **stock del sistema**, **contado** y **diferencia**.
+8. Abrí **Movimientos** y la pestaña **Controles**.
+9. Repetí un control **de hoy, de hace unos minutos**, con **Una persona de la app** como revisora, y poné `0` en un artículo.
+
+**Resultado esperado**
+
+- La planilla es una hoja A4 vertical con todo lo indicado, ordenada como la lista de Stock, y **sin** los artículos desactivados.
+- En **Cargar control**, ninguna opción de **Quién revisó** viene elegida de antemano; hay que elegir una.
+- El día de **mañana**, la hora **futura** y el día de **hace más de 30 días** **no se pueden cargar**: el calendario no los ofrece o la pantalla avisa ("La fecha y la hora del control no pueden ser futuras." o "El control no puede ser de hace más de 30 días. Elegí una fecha más reciente.").
+- Se puede cargar un control de **hasta 30 días atrás**.
+- La **fila en blanco no se toca** (no es cero). El **cero** sí es un conteo válido.
+- Si hubo movimientos entre la hora del control y ahora, la pantalla lo avisa en el artículo y la diferencia **no los toma como faltante**.
+- La diferencia distinta de cero queda como **un solo movimiento "Control de stock"** en **Movimientos**, con el nombre de quien revisó. En **Controles** queda el registro, con quién lo cargó y cuándo.
+
+| Resultado           | Observación | Clasificación                             |
+| ------------------- | ----------- | ----------------------------------------- |
+| ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
+
+#### UAT-EMP-14 · Avisar un faltante y ver «Mis avisos»
+
+|                  |                                                                 |
+| ---------------- | --------------------------------------------------------------- |
+| **Rol**          | Empleado (Empleado A)                                           |
+| **Dónde**        | Celular, y la computadora para ver el aviso                     |
+| **Tipo**         | Imprescindible                                                  |
+| **Cubre**        | IS-14 e IS-29 (aviso de faltante; no hay pedidos de reposición) |
+| **Precondición** | UAT-EMP-13 hecho. El Empleado A tiene un turno de hoy.          |
+
+**Pasos**
+
+1. En **Insumos**, tocá **Avisar faltante**.
+2. Elegí **Del catálogo**, buscá `Lavandina` y tocala. En **¿Dónde falta? (opcional)** elegí el turno de hoy y escribí un **Comentario (opcional)**. Tocá **Enviar aviso**.
+3. Mandá otro aviso con **Otro insumo**: escribí `Esponjas verdes` (algo que no está en el catálogo) y enviá.
+4. Abrí **Mis avisos**.
+5. En la computadora, mirá en **Insumos** el número junto al nombre del menú y la pestaña **Faltantes**.
+
+**Resultado esperado**
+
+- Los dos avisos se envían y quedan **Abiertos** en **Mis avisos**.
+- En **Faltantes** de la administración se ven los dos: el de la lavandina con enlace a la ficha, y el de las esponjas con la etiqueta **No está en el catálogo**. Se ve quién avisó, cuándo, el turno y el comentario.
+- En el menú de la administración, **Insumos** muestra el número de avisos abiertos.
+- La app no habla de "pedido" ni de compras: es solo un aviso.
+
+| Resultado           | Observación | Clasificación                             |
+| ------------------- | ----------- | ----------------------------------------- |
+| ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
+
+#### UAT-SUP-12 · Avisar un faltante como coordinador
+
+|                  |                                                      |
+| ---------------- | ---------------------------------------------------- |
+| **Rol**          | Coordinador (la coordinadora)                        |
+| **Dónde**        | Celular                                              |
+| **Tipo**         | Opcional                                             |
+| **Cubre**        | IS-14 e IS-29 (el aviso de faltante del coordinador) |
+| **Precondición** | UAT-SUP-11 hecho.                                    |
+
+**Pasos**
+
+1. En **Insumos**, tocá **Avisar faltante**.
+2. Elegí **Del catálogo** y buscá `Bolsa de residuos`. En **¿Dónde falta? (opcional)** elegí **una sede** (no un turno) y escribí un comentario. Tocá **Enviar aviso**.
+3. Abrí **Mis avisos**.
+
+**Resultado esperado**
+
+- El aviso se envía y queda **Abierto** en **Mis avisos**, con la sede.
+- La administración lo ve en **Faltantes**, con el nombre de la coordinadora.
+
+| Resultado           | Observación | Clasificación                             |
+| ------------------- | ----------- | ----------------------------------------- |
+| ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
+
+#### UAT-ADM-35 · Las tarjetas de Insumos en el Resumen
+
+|                  |                                                                                                                                |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **Rol**          | Dueño y administradores                                                                                                        |
+| **Dónde**        | Computadora                                                                                                                    |
+| **Tipo**         | Imprescindible                                                                                                                 |
+| **Cubre**        | IS-30 (tarjetas **Faltantes avisados** y **Stock bajo**)                                                                       |
+| **Precondición** | UAT-EMP-14 hecho (avisos abiertos). Hay un artículo en **rojo** (sin stock) y otro en **amarillo** (bajo mínimo), como mínimo. |
+
+**Pasos**
+
+1. Entrá a **Resumen** y bajá, debajo de los indicadores de hoy.
+2. Mirá las dos tarjetas: **Faltantes avisados** y **Stock bajo**, sus números y su color.
+3. Tocá **Faltantes avisados**. Volvé al Resumen y tocá **Stock bajo**.
+4. Repetí el paso 1 con el Administrador 2 (sin **Gestionar stock**).
+
+**Resultado esperado**
+
+- **Faltantes avisados** cuenta los **artículos** con aviso abierto (si dos personas avisan del mismo, cuenta uno) y abajo cuántos avisos hay. Es **amarilla** si hay alguno.
+- **Stock bajo** muestra la cantidad de artículos en aviso y el detalle "N sin stock · M bajo mínimo". Es **roja** si hay algún artículo sin stock; **amarilla** si solo hay bajo mínimo.
+- La primera tarjeta lleva a **Faltantes**; la segunda, a **Stock** con **Solo con aviso** ya puesto.
+- Los dos administradores ven las tarjetas.
+
+| Resultado           | Observación | Clasificación                             |
+| ------------------- | ----------- | ----------------------------------------- |
+| ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
+
+#### UAT-ADM-36 · Resolver los faltantes avisados
+
+|                  |                                                                                        |
+| ---------------- | -------------------------------------------------------------------------------------- |
+| **Rol**          | Administrador (el **Administrador 2**, sin **Gestionar stock**) y el Empleado A        |
+| **Dónde**        | Computadora y celular                                                                  |
+| **Tipo**         | Imprescindible                                                                         |
+| **Cubre**        | IS-21 e IS-29 (resolver un aviso con una nota; lo puede hacer cualquier administrador) |
+| **Precondición** | UAT-EMP-14 hecho: dos avisos abiertos del Empleado A.                                  |
+
+**Pasos**
+
+1. Con el **Administrador 2**, entrá a **Insumos**, pestaña **Faltantes**. Mirá el orden de los avisos.
+2. Tocá **Resolver** en el aviso de la lavandina. Probá confirmar con la **Nota de resolución** vacía. Después escribí `Se compró` y tocá **Resolver**.
+3. Mirá cómo quedó el aviso y el número junto a **Insumos** en el menú.
+4. En el celular del Empleado A, abrí **Insumos**, **Mis avisos**.
+5. Con el **Administrador 1**, cargá el artículo de las esponjas en el catálogo (para que la próxima vez se elija de la lista) y resolvé el otro aviso.
+
+**Resultado esperado**
+
+- Los avisos **abiertos van primero**.
+- Sin nota **no se resuelve**.
+- El aviso pasa a **Resuelto**, con la nota y quién lo resolvió. El número del menú baja.
+- En **Mis avisos** del Empleado A, el aviso aparece **Resuelto** con la **Respuesta** "Se compró".
+- Un administrador **sin** **Gestionar stock** puede resolver avisos igual que uno que lo tiene.
+
+| Resultado           | Observación | Clasificación                             |
+| ------------------- | ----------- | ----------------------------------------- |
+| ☐ OK &nbsp; ☐ Falla |             | ☐ Base &nbsp; ☐ Ampliación &nbsp; ☐ No sé |
+
 ---
 
 ## 5. Acta de la sesión
@@ -1791,7 +2308,7 @@ Se completa **al final de la sesión**, con la referente. Es el documento que qu
 
 | Dato                                                 | Cantidad |
 | ---------------------------------------------------- | -------- |
-| Escenarios del guion                                 | 56       |
+| Escenarios del guion                                 | 72       |
 | Escenarios ejecutados                                |          |
 | Con resultado **OK**                                 |          |
 | Con resultado **Falla**                              |          |
