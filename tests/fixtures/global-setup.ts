@@ -19,6 +19,11 @@ import {
 } from './accounts.ts'
 import { sweepResidues } from './scenario.ts'
 import {
+  hayResiduosDeInsumos,
+  MARCAS_INSUMOS,
+  purgarInsumosE2e,
+} from './stock.ts'
+import {
   emailOf,
   signInSession,
   writeIds,
@@ -36,6 +41,12 @@ export default async function globalSetup(): Promise<void> {
   }
 
   if (process.env.E2E_SKIP_SWEEP !== '1') {
+    // P25.5c: un movimiento de stock con turno o sede impide borrar el cliente de prueba (y los
+    // movimientos son inmutables): los residuos de Insumos van primero.
+    if (await hayResiduosDeInsumos(db)) {
+      const notas = await purgarInsumosE2e(MARCAS_INSUMOS)
+      if (notas.length > 0) console.warn(`[fixtures] ${notas.join(' | ')}`)
+    }
     const swept = await sweepResidues(db)
     if (swept > 0)
       console.log(`[fixtures] residuos barridos: ${swept} cliente(s) e2e-`)

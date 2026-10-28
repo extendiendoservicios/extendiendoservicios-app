@@ -23,6 +23,7 @@ import { readE2eEnv, requireE2eEnv } from '../../fixtures/env.ts'
 import { esLimiteDeTasa } from '../../fixtures/sessions.ts'
 import type { Database } from '../../../src/lib/database.types.ts'
 import type { Contexto, IdsCuentas } from './contexto.ts'
+import { purgarInsumosE2e } from '../../fixtures/stock.ts'
 import { barrerResiduos, limpiar, plantar } from './escenario.ts'
 import { EMAIL_DE, PERFILES_CON_SESION } from './perfiles.ts'
 
@@ -116,6 +117,8 @@ export default async function setup(project: TestProject) {
     .eq('id', 1)
     .single()
 
+  // P25.5c: los movimientos de stock con turno o sede impiden borrar el cliente: primero Insumos.
+  await purgarInsumosE2e(['permstock'])
   await barrerResiduos(db)
   const fechaTurno = daysFromToday(3)
   const e = await plantar(db, owner.cliente, ids, fechaTurno)
@@ -135,6 +138,7 @@ export default async function setup(project: TestProject) {
     // Siempre activas y con sus capacidades de origen, pase lo que pase en la corrida.
     await ensureFixedAccounts(dbFinal)
     const notas = await limpiar(dbFinal, e)
+    notas.push(...(await purgarInsumosE2e(['permstock'])))
     for (const p of perfilesAntes ?? []) {
       await dbFinal
         .from('profiles')

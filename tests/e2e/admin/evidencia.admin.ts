@@ -250,8 +250,10 @@ test.describe('ADM-32 Fotos y videos', () => {
             .getByRole('combobox', { name: 'Filtrar por conservación' })
             .click()
           await page.getByRole('option', { name: 'Todas' }).click()
+          // Con la base cargada, la lista vuelve a pedirse con más demora que los 10 s de siempre.
           await expect(grupo(page, a.cliente.name)).toContainText(
             '3 fotos · 1 video',
+            { timeout: 30_000 },
           )
         })
 

@@ -290,7 +290,16 @@ test.describe('con la geoposición concedida', () => {
         })
 
         await test.step('con B en curso, Fichar vuelve a B (no a A)', async () => {
-          await page.goto('/app')
+          // En WebKit, la navegación a `en-curso/B` del paso anterior puede estar todavía en
+          // curso y cortar este `goto`: se reintenta una vez solo por ese motivo.
+          try {
+            await page.goto('/app')
+          } catch (error) {
+            if (!String(error).includes('interrupted by another navigation')) {
+              throw error
+            }
+            await page.goto('/app')
+          }
           await botonFichar(page).click()
           await expect(page).toHaveURL(
             new RegExp(`/app/en-curso/${asignacionB}$`),

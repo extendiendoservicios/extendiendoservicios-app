@@ -589,3 +589,48 @@ Resultado de la matriz completa con P24.5: **2.893 casos** (12 expected fail de 
 | DEF-P24-03 | Menor         | Los enlaces de «Coordinadores preferenciales» (ADM-21, ADM-22) y de la pestaña de preferencias de la ficha (ADM-17) miden 34 a 42 px de alto a 390 px (el mínimo es 44)                                                                                                                                                                                                                                                                                                   | e2e `responsive/touch-targets` (falla, sin ajustar) (abierto: Mike lo deja para después) |
 | OBS-P24-01 | Informativa   | SUP-03 no muestra el contacto de la sede ni las indicaciones de acceso (sí SUP-04). La especificación pide «datos del turno y empleados»; confirmar si hace falta antes de salir                                                                                                                                                                                                                                                                                          | sup `hoy-historial`                                                                      |
 | OBS-P24-02 | Informativa   | Con el Chromium de pruebas, el primer evento tras aceptar el consentimiento se registra sin coordenadas: el segundo `getCurrentPosition` seguido del que hace el propio consentimiento espera los 6 s de tiempo máximo. Parece una limitación del navegador simulado, no de un teléfono                                                                                                                                                                                   | sup `jornada` (no afirma la posición de ese primer evento)                               |
+
+## 14. P25.5c: módulo E, Insumos (cierre de las verificaciones)
+
+### 14.1 Qué hay
+
+- **Administración** (`tests/e2e/admin/insumos.admin.ts`): 27 tests más axe de 11 pantallas, en escritorio y en celular. Incluye IS-35 con la cuenta fija `adminOperativo` (administradora y empleada a la vez) y un administrador sin `manage_stock` (IS-21).
+- **Empleado** (`tests/e2e/empleado/insumos.empleado.ts`, 390 px): 12 tests. «Sin stock» no es elegible y no se ven precios ni cantidades, ni en pantalla ni en la API.
+- **Coordinador** (`tests/e2e/supervisor/insumos.supervisor.ts`, 390 px): 5 tests.
+- **Permisos** (`tests/permissions/suite/95-insumos.permissions.ts` y `96-client-photos.permissions.ts`): 8 tablas, 11 vistas, 12 RPC y los buckets `supply-images` y `client-photos`.
+- **Piezas**: `fixtures/stock.ts` (datos con prefijo `e2e-<marca>-` y purga) y `fixtures/stock-ui.ts` (ayudas de pantalla).
+
+### 14.2 Ajustes de estabilidad de este cierre (solo `tests/`)
+
+| Qué                                                                                                                                                                                             | Dónde                                   |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| El barrido de residuos borra también `employee_availability` de las cuentas fijas: la matriz de permisos carga una franja de los lunes y, si se corta, hacía salir «fuera de su disponibilidad» | `fixtures/scenario.ts`, `sweepResidues` |
+| `buscarEnStock` espera a que el filtro (con antirrebote) deje solo las filas buscadas                                                                                                           | `fixtures/stock-ui.ts`                  |
+| Las tarjetas del Resumen: se espera el contador antes del clic (mientras carga, la tarjeta lleva a `/admin/insumos` a secas)                                                                    | `insumos.admin.ts`                      |
+| El alta de clientes de prueba reintenta si la base corta por `57014` (statement timeout)                                                                                                        | `fixtures/scenario.ts`, `client`        |
+| Más margen (30 s) en la lista de evidencia bajo carga                                                                                                                                           | `evidencia.admin.ts`                    |
+
+### 14.3 Reglas para correr
+
+- La matriz de permisos y los e2e comparten cuentas fijas y base (App_dev): **no correrlas a la vez**, ni junto a las pruebas pgTAP o migraciones sobre App_dev. En este cierre, ese cruce produjo cortes por tiempo y datos borrados a mitad de corrida.
+- `usuarios-sesiones.admin.ts`: no se reprodujo el fallo de la primera corrida. Pasó en las seis corridas completas de este cierre (chromium y edge) con la cuenta `adminOperativo` presente; lo más probable es el cruce con otra corrida contra las mismas cuentas.
+
+### 14.4 Resultados de la corrida de cierre (28 oct 2026, App_dev)
+
+| Corrida                                                              | Resultado                                                                                         |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Insumos, administración, chromium, tres corridas seguidas (TEST-029) | 27 de 27, 27 de 27, 27 de 27                                                                      |
+| Insumos, administración, Edge (`msedge`)                             | 27 de 27 (una vez)                                                                                |
+| Insumos, empleado (mobile y webkit), tres corridas seguidas          | 24 de 24 las tres veces                                                                           |
+| Insumos, coordinador, tres corridas seguidas                         | 10 de 10 las tres veces                                                                           |
+| Administración completa: chromium, mobile, a11y                      | 79 de 80 en la última corrida completa; falla intermitente `evidencia.admin.ts` (ver 14.5)        |
+| Administración: Edge y `dueno-config`                                | 84 de 84 (con `--no-deps`, porque la corrida completa se corta si falla una dependencia)          |
+| Coordinador completo                                                 | 54 de 54                                                                                          |
+| Empleado completo                                                    | 87 pasan, 2 saltados, 1 falla intermitente de WebKit (ya ajustada, ver 14.2); pasó 5 de 5 después |
+
+### 14.5 Observaciones y pendientes
+
+- **Intermitente, posible defecto de la app (menor):** `evidencia.admin.ts` (ADM-32), paso «Dejar de conservar». En 2 de 6 corridas completas, tras dejar de conservar desde el visor y cambiar el filtro a «Todas», el visor aparece abierto de nuevo («1 de 17») y la lista no se encuentra. Sospecha: el visor se desmonta solo cuando la foto sale de «Conservadas», pero su estado de abierto queda activo y reaparece al volver a haber fotos. Suelto pasa 4 de 4. Sin corregir en la prueba; hay que revisarlo en la app.
+- **Datos de Insumos de App_dev:** 10 de los 17 artículos del seed no tienen el stock del seed (quedaron movimientos del 27 oct sin nota, hechos fuera de las pruebas con prefijo `e2e-`). Se corrige volviendo a correr `pnpm db:seed:insumos` (idempotente); no se hizo porque el permiso se denegó.
+- **Orquestación:** el alta con `statement timeout` y las corridas lentas se debieron al cruce con otras corridas sobre App_dev. Además, la purga lanza `supabase db query` con un `timeout` de 120 s que mata al envoltorio pero no siempre al proceso hijo: quedaron 7 procesos huérfanos (se cerraron a mano).
+- **Edge y `dueno-config`** de la corrida completa: se corrieron aparte, no encadenados. Edge de Insumos corrió una sola vez (no tres).
