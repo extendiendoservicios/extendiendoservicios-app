@@ -9,7 +9,7 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [0.25.0] - 2026-10-28
 
-Módulo E: inventario y control de stock de insumos (P25.1 a P25.7). Migraciones 0069 a 0073.
+Módulo E: inventario y control de stock de insumos (P25.1 a P25.8). Migraciones 0069 a 0074.
 
 ### Agregado
 
@@ -26,6 +26,7 @@ Módulo E: inventario y control de stock de insumos (P25.1 a P25.7). Migraciones
 - Resumen: tarjetas «Faltantes avisados» y «Stock bajo».
 - Ficha del empleado y del coordinador: pestaña «Retiros», con el total a venta del período.
 - Permiso nuevo «Gestionar stock», para mover stock y cambiar el catálogo. Un administrador sin este permiso puede mirar la sección y resolver faltantes.
+- Catálogo inicial, a pedido de los dueños: 4 categorías y 16 artículos precargados, con el stock y los precios en cero y sin mínimo. Hay que completar los precios, los mínimos y los códigos reales de la empresa.
 - Guía de Insumos, secciones nuevas en las guías del empleado y del coordinador, bloque G del guion de UAT y capturas.
 
 ### Corregido
@@ -38,7 +39,7 @@ Módulo E: inventario y control de stock de insumos (P25.1 a P25.7). Migraciones
 
 ### Pruebas y automatización
 
-- Pruebas e2e de Insumos por rol, matriz de permisos de las tablas y funciones nuevas, y pruebas pgTAP de las migraciones 0069 a 0073.
+- Pruebas e2e de Insumos por rol, matriz de permisos de las tablas y funciones nuevas, y pruebas pgTAP de las migraciones 0069 a 0074.
 
 ## [0.24.0] - 2026-10-26
 

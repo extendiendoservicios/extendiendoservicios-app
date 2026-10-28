@@ -85,6 +85,8 @@ En la pestaña **Categorías** armás los grupos para ordenar el catálogo (por 
 
 Conviene tener las categorías antes de cargar artículos.
 
+> **El catálogo arranca precargado.** Al empezar a usar Insumos ya vas a encontrar 4 categorías y 16 artículos de ejemplo, con el **stock y los precios en cero**. Es un punto de partida: completá los **precios**, los **mínimos** y los **códigos reales** de la empresa, y editá o desactivá lo que no uses.
+
 ---
 
 ## Cargar un artículo nuevo
