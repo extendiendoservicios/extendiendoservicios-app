@@ -153,7 +153,7 @@ const errors = {
   employeeDataRequired: () =>
     new DomainError(
       'EMPLOYEE_DATA_REQUIRED',
-      'Para asignar el rol de empleado o coordinador hace falta cargar los datos de empleado (al menos el DNI).',
+      'Para asignar el rol de empleado, coordinador, administrador o dueño hace falta cargar los datos de empleado (al menos el DNI).',
       400,
     ),
   // `owner`: a quién pertenece (quien da de alta ya puede ver a todo el personal), así se nota si
@@ -703,8 +703,19 @@ export async function actionCreateUser(
 ): Promise<Record<string, unknown>> {
   const input = assertValidCreateUserInput(body)
 
+  // P26.7 (CR-16, CR-17): un dueño o administrador también trabaja, así que su alta exige la ficha
+  // laboral y suma sola el rol `employee` (la función SQL hace lo mismo, esto es el espejo para la
+  // validación temprana y para el evento).
   const needsEmployeeRow =
-    input.roles.includes('employee') || input.roles.includes('supervisor')
+    input.roles.includes('employee') ||
+    input.roles.includes('supervisor') ||
+    input.roles.includes('owner') ||
+    input.roles.includes('admin')
+  const effectiveRoles: AppRole[] =
+    (input.roles.includes('owner') || input.roles.includes('admin')) &&
+    !input.roles.includes('employee')
+      ? [...input.roles, 'employee']
+      : input.roles
 
   if (!isOwner(actor)) {
     // A + manage_users: "solo roles supervisor y employee" (06 sección 2.1).
@@ -837,7 +848,7 @@ export async function actionCreateUser(
       p_actor_id: actor.id,
       p_first_name: input.first_name,
       p_last_name: input.last_name,
-      p_roles: input.roles,
+      p_roles: effectiveRoles,
       p_phone: input.phone,
       p_employee: input.employee
         ? {
@@ -876,7 +887,7 @@ export async function actionCreateUser(
     profileId,
     {
       email: input.email,
-      roles: input.roles,
+      roles: effectiveRoles,
       ...(resumed ? { resumed: true } : {}),
     },
     ip,

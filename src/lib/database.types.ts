@@ -7285,6 +7285,35 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      add_employee_record: {
+        Args: { p_employee: Json; p_profile_id: string }
+        Returns: {
+          address: string | null
+          birth_date: string | null
+          created_at: string
+          created_by: string | null
+          cuil: string | null
+          deleted_at: string | null
+          dni: string
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          emergency_contact_relationship: string | null
+          employee_number: number
+          hire_date: string | null
+          notes: string | null
+          profile_id: string
+          status: Database["public"]["Enums"]["employee_status"]
+          terminated_at: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "employees"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       adjust_stock: {
         Args: {
           p_delta: number
