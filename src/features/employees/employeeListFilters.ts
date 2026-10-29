@@ -44,12 +44,13 @@ export function filterEmployeesByDefaultStatus<
 
 /** Etiquetas de `06_API.md` sección 3 / `05` línea 65 para el selector de rol de ADM-16. */
 export const EMPLOYEE_ROLE_FILTER_OPTIONS: {
-  value: 'all' | 'employee' | 'supervisor'
+  value: 'all' | 'employee' | 'supervisor' | 'administration'
   label: string
 }[] = [
   { value: 'all', label: 'Todos los roles' },
   { value: 'employee', label: 'Empleado' },
   { value: 'supervisor', label: 'Coordinador' },
+  { value: 'administration', label: 'Administración' },
 ]
 
 export type { EmployeeListRow }

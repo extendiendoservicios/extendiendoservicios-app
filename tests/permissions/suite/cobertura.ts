@@ -7,6 +7,13 @@
 
 export const BUCKETS_CUBIERTOS = ['avatars', 'branding'] as const
 
+/** Acciones de `admin-users` que cubre la suite propia `97-credenciales.permissions.ts` (P26.4). */
+export const ACCIONES_DE_CREDENCIALES = [
+  'get_credentials',
+  'get_access_status',
+  'change_own_password',
+] as const
+
 /** Edge Functions cubiertas y las acciones de cada una (ver `edge-casos.ts`). */
 export const EDGE_CUBIERTAS: Record<string, readonly string[]> = {
   'admin-users': [
@@ -16,6 +23,8 @@ export const EDGE_CUBIERTAS: Record<string, readonly string[]> = {
     'sign_out_user',
     'deactivate_user',
     'reactivate_user',
+    // P26.1 (credenciales): sus casos viven en `97-credenciales.permissions.ts`.
+    ...ACCIONES_DE_CREDENCIALES,
   ],
   // Sin acciones: se autentica con el secreto del encabezado, no con un JWT (H-08, P21.1). Sus
   // casos están en `61-edge-evidence-cleanup.permissions.ts`.
@@ -33,6 +42,7 @@ export type SuiteExterna =
   | '61-edge-evidence-cleanup.permissions.ts'
   | '95-insumos.permissions.ts'
   | '96-client-photos.permissions.ts'
+  | '97-credenciales.permissions.ts'
 
 export const COBERTURA_EXTERNA: {
   tablas: Record<string, SuiteExterna>
@@ -41,6 +51,8 @@ export const COBERTURA_EXTERNA: {
   buckets: Record<string, SuiteExterna>
 } = {
   tablas: {
+    // Credenciales visibles (0075, P26.4): sin políticas, nadie la lee ni la escribe por PostgREST
+    account_credentials: '97-credenciales.permissions.ts',
     // Módulo H (0047)
     shift_media: '90-evidencia.permissions.ts',
     // Avisos y anuncios (0042), datos bancarios y observación del turno (0040), fijos (0041)

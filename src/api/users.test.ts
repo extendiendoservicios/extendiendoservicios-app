@@ -61,6 +61,7 @@ describe('fetchUsers', () => {
         deleted_at: string | null
         avatar_path: string | null
         user_roles: { role: string }[]
+        employees: { profile_id: string } | null
       }[]
     > = {
       data: [
@@ -72,6 +73,7 @@ describe('fetchUsers', () => {
           deleted_at: null,
           avatar_path: 'p1/foto.jpg',
           user_roles: [{ role: 'admin' }],
+          employees: { profile_id: 'p1' },
         },
         {
           id: 'p2',
@@ -81,6 +83,7 @@ describe('fetchUsers', () => {
           deleted_at: '2026-09-01T00:00:00Z',
           avatar_path: null,
           user_roles: [],
+          employees: null,
         },
       ],
       error: null,
@@ -105,6 +108,7 @@ describe('fetchUsers', () => {
         deletedAt: null,
         avatarPath: 'p1/foto.jpg',
         roles: ['admin'],
+        hasEmployeeRecord: true,
       },
       {
         profileId: 'p2',
@@ -114,6 +118,7 @@ describe('fetchUsers', () => {
         deletedAt: '2026-09-01T00:00:00Z',
         avatarPath: null,
         roles: [],
+        hasEmployeeRecord: false,
       },
     ])
   })

@@ -71,13 +71,16 @@ function emptyToNull(value: string | undefined): string | null {
  * roles que puede tener un empleado desde ADM-18 (`05` línea 67: "roles
  * (empleado, supervisor; admin y dueño solo desde ADM-27)").
  */
-const employeeCommonFieldsSchema = z.object({
-  firstName: z.string().trim().min(1, 'Falta el nombre.'),
-  lastName: z.string().trim().min(1, 'Falta el apellido.'),
+/**
+ * P26.8 (CR-17, CR-18): la ficha laboral en sí (lo que guarda `employees`),
+ * sin nombre, teléfono, roles ni datos bancarios. Es la parte que comparten el
+ * alta de empleado, el alta de un usuario administrativo y «Completar ficha
+ * laboral»: un solo esquema para que las tres pidan y validen lo mismo.
+ */
+export const employeeRecordShape = {
   dni: dniSchema,
   cuil: cuilSchema,
   employeeNumber: employeeNumberSchema,
-  phone: z.string().trim().optional(),
   address: z.string().trim().optional(),
   birthDate: z.string().trim().optional(),
   hireDate: z.string().trim().optional(),
@@ -85,11 +88,22 @@ const employeeCommonFieldsSchema = z.object({
   emergencyContactPhone: z.string().trim().optional(),
   emergencyContactRelationship: z.string().trim().optional(),
   notes: z.string().trim().optional(),
+}
+
+const employeeCommonFieldsSchema = z.object({
+  firstName: z.string().trim().min(1, 'Falta el nombre.'),
+  lastName: z.string().trim().min(1, 'Falta el apellido.'),
+  phone: z.string().trim().optional(),
+  ...employeeRecordShape,
   isEmployeeRole: z.boolean(),
   isSupervisorRole: z.boolean(),
   // AJ2-04: datos bancarios (solo dueño y administrador); se guardan por RPC aparte.
   ...bankFieldsShape,
 })
+
+/** P26.8: formulario de «Completar ficha laboral» (solo la ficha). */
+export const employeeRecordSchema = z.object(employeeRecordShape)
+export type EmployeeRecordFormValues = z.infer<typeof employeeRecordSchema>
 
 function refineAtLeastOneRole<
   T extends z.ZodType<{ isEmployeeRole: boolean; isSupervisorRole: boolean }>,
@@ -147,6 +161,24 @@ export function employeeRolesFromCheckboxes(values: {
   return roles
 }
 
+/** P26.8: normaliza solo la ficha laboral (sin nombre ni teléfono). */
+export function employeeRecordValuesToInput(values: EmployeeRecordFormValues) {
+  return {
+    dni: onlyDigits(values.dni.trim()),
+    cuil: values.cuil ? emptyToNull(onlyDigits(values.cuil)) : null,
+    employeeNumber: Number(values.employeeNumber),
+    address: emptyToNull(values.address),
+    birthDate: emptyToNull(values.birthDate),
+    hireDate: emptyToNull(values.hireDate),
+    emergencyContactName: emptyToNull(values.emergencyContactName),
+    emergencyContactPhone: emptyToNull(values.emergencyContactPhone),
+    emergencyContactRelationship: emptyToNull(
+      values.emergencyContactRelationship,
+    ),
+    notes: emptyToNull(values.notes),
+  }
+}
+
 /** Normaliza los campos comunes antes de mandarlos a `src/api/employees.ts`. */
 function commonValuesToInput(
   values: Omit<
@@ -157,19 +189,8 @@ function commonValuesToInput(
   return {
     firstName: values.firstName.trim(),
     lastName: values.lastName.trim(),
-    dni: onlyDigits(values.dni.trim()),
-    cuil: values.cuil ? emptyToNull(onlyDigits(values.cuil)) : null,
-    employeeNumber: Number(values.employeeNumber),
     phone: emptyToNull(values.phone),
-    address: emptyToNull(values.address),
-    birthDate: emptyToNull(values.birthDate),
-    hireDate: emptyToNull(values.hireDate),
-    emergencyContactName: emptyToNull(values.emergencyContactName),
-    emergencyContactPhone: emptyToNull(values.emergencyContactPhone),
-    emergencyContactRelationship: emptyToNull(
-      values.emergencyContactRelationship,
-    ),
-    notes: emptyToNull(values.notes),
+    ...employeeRecordValuesToInput(values),
   }
 }
 

@@ -140,7 +140,8 @@ export async function fetchActiveEmployeeOptions(): Promise<EmployeeOption[]> {
 export interface EmployeeListFilters {
   /** Busca en nombre, apellido, DNI y legajo (si el texto es numérico). */
   text?: string
-  role?: 'employee' | 'supervisor' | 'all'
+  /** `administration`: quienes tienen rol `owner` o `admin` (CR-19). */
+  role?: 'employee' | 'supervisor' | 'administration' | 'all'
   status?: EmployeeEffectiveStatus | 'all'
 }
 
@@ -179,7 +180,9 @@ export async function fetchEmployees(
     }
     query = query.or(orParts.join(','))
   }
-  if (filters.role && filters.role !== 'all') {
+  if (filters.role === 'administration') {
+    query = query.overlaps('roles', ['owner', 'admin'])
+  } else if (filters.role && filters.role !== 'all') {
     query = query.contains('roles', [filters.role])
   }
   if (filters.status && filters.status !== 'all') {
@@ -402,6 +405,51 @@ export async function createEmployeeUser(input: EmployeeCreateInput): Promise<{
   return { profileId, employeeNumber: employeeNumber ?? input.employeeNumber }
 }
 
+export interface EmployeeRecordInput {
+  dni: string
+  employeeNumber: number
+  cuil: string | null
+  address: string | null
+  birthDate: string | null
+  hireDate: string | null
+  emergencyContactName: string | null
+  emergencyContactPhone: string | null
+  emergencyContactRelationship: string | null
+  notes: string | null
+}
+
+/**
+ * P26.8 (CR-18): «Completar ficha laboral». Crea la fila de `employees` de un
+ * dueño o administrador que todavía no la tiene y le suma el rol `employee`
+ * (RPC `add_employee_record`, solo dueño). Errores con su `hint`:
+ * `FORBIDDEN`, `PROFILE_NOT_FOUND`, `ALREADY_EMPLOYEE`,
+ * `EMPLOYEE_DATA_REQUIRED`, `DNI_IN_USE`, `EMPLOYEE_NUMBER_IN_USE`,
+ * `VALIDATION_ERROR`.
+ */
+export async function addEmployeeRecord(
+  profileId: string,
+  input: EmployeeRecordInput,
+): Promise<void> {
+  const { error } = await supabase.rpc('add_employee_record', {
+    p_profile_id: profileId,
+    p_employee: {
+      dni: input.dni,
+      employee_number: input.employeeNumber,
+      cuil: input.cuil,
+      address: input.address,
+      birth_date: input.birthDate,
+      hire_date: input.hireDate,
+      emergency_contact_name: input.emergencyContactName,
+      emergency_contact_phone: input.emergencyContactPhone,
+      emergency_contact_relationship: input.emergencyContactRelationship,
+      notes: input.notes,
+    },
+  })
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+}
+
 export interface EmployeeUpdateInput {
   firstName: string
   lastName: string
@@ -438,18 +486,24 @@ export async function updateEmployee(
   profileId: string,
   input: EmployeeUpdateInput,
   updatedBy: string,
+  options: { updateProfile?: boolean } = {},
 ): Promise<EmployeeDetail> {
-  const { error: profileError } = await supabase
-    .from('profiles')
-    .update({
-      first_name: input.firstName,
-      last_name: input.lastName,
-      phone: input.phone,
-      contact_email: input.contactEmail,
-    })
-    .eq('id', profileId)
-  if (profileError) {
-    throw mapWriteError(profileError)
+  // CR-19: el perfil (nombre, teléfono, email de contacto) de un dueño o
+  // administrador solo lo cambia el dueño (trigger de 0030). Quien no puede
+  // pasa `updateProfile: false` y se guardan solo los datos laborales.
+  if (options.updateProfile !== false) {
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({
+        first_name: input.firstName,
+        last_name: input.lastName,
+        phone: input.phone,
+        contact_email: input.contactEmail,
+      })
+      .eq('id', profileId)
+    if (profileError) {
+      throw mapWriteError(profileError)
+    }
   }
 
   const { error: employeeError } = await supabase

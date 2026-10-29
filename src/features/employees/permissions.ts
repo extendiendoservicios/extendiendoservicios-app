@@ -1,4 +1,5 @@
 import type { AdminCapability, Role } from '@/api/users'
+import { isPrivilegedRoleSet } from '@/features/users/permissions'
 
 /**
  * Lógica de permisos de ADM-16, ADM-17 y ADM-18 (EMP-003, EMP-005), sin
@@ -42,4 +43,17 @@ export function canManageEmployeeAccounts(
 /** Editar datos laborales y personales (sin exigir `manage_users`). */
 export function canEditEmployee(actor: EmployeesScreenActor): boolean {
   return isOwner(actor) || actor.roles.includes('admin')
+}
+
+/**
+ * P26.8 (CR-19): nombre, teléfono y email de contacto de un dueño o
+ * administrador solo los cambia el dueño (trigger de `0030`). Sobre el resto
+ * de las personas, el dueño y cualquier administrador editan el perfil. Los
+ * datos laborales no dependen de esto.
+ */
+export function canEditPersonalProfile(
+  actor: EmployeesScreenActor,
+  targetRoles: Role[],
+): boolean {
+  return isOwner(actor) || !isPrivilegedRoleSet(targetRoles)
 }

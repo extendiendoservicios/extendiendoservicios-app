@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  EMPLOYEE_ROLE_FILTER_OPTIONS,
   filterEmployeesByClient,
   filterEmployeesByDefaultStatus,
   sortByEmployeeNumber,
@@ -87,5 +88,17 @@ describe('sortByEmployeeNumber', () => {
     const copy = [...unsorted]
     sortByEmployeeNumber(unsorted)
     expect(unsorted).toEqual(copy)
+  })
+})
+
+describe('EMPLOYEE_ROLE_FILTER_OPTIONS (CR-19)', () => {
+  it('suma el filtro «Administración» después de Empleado y Coordinador', () => {
+    expect(EMPLOYEE_ROLE_FILTER_OPTIONS.map((option) => option.label)).toEqual([
+      'Todos los roles',
+      'Empleado',
+      'Coordinador',
+      'Administración',
+    ])
+    expect(EMPLOYEE_ROLE_FILTER_OPTIONS.at(-1)?.value).toBe('administration')
   })
 })

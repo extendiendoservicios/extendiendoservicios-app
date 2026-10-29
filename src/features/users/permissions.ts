@@ -44,7 +44,7 @@ function isAdminWithManageUsers(actor: UsersScreenActor): boolean {
   )
 }
 
-function isPrivilegedRoleSet(roles: Role[]): boolean {
+export function isPrivilegedRoleSet(roles: Role[]): boolean {
   return roles.includes('owner') || roles.includes('admin')
 }
 
@@ -109,10 +109,33 @@ export function canEditPersonName(actor: UsersScreenActor): boolean {
   return isOwner(actor)
 }
 
+/**
+ * P26.8 (CR-18): «Completar ficha laboral». Solo el dueño, sobre una persona
+ * activa con rol `owner` o `admin` que todavía no tiene ficha. La cuenta
+ * técnica «Extendiendo Servicios» no se completa (CR-18), pero el servidor no
+ * la distingue: queda como criterio de uso del dueño.
+ */
+export function canCompleteEmployeeRecord(
+  actor: UsersScreenActor,
+  user: {
+    roles: Role[]
+    deletedAt: string | null
+    hasEmployeeRecord?: boolean
+  },
+): boolean {
+  return (
+    isOwner(actor) &&
+    user.deletedAt == null &&
+    isPrivilegedRoleSet(user.roles) &&
+    user.hasEmployeeRecord === false
+  )
+}
+
 /** Cada botón que puede aparecer en el menú "…" de una fila de ADM-27. */
 export type UserActionKind =
   | 'edit-roles'
   | 'edit-name'
+  | 'complete-employee-record'
   | 'view-access'
   | 'reset-password'
   | 'update-email'
@@ -129,7 +152,11 @@ export type UserActionKind =
  */
 export function getVisibleUserActions(
   actor: UsersScreenActor,
-  user: { roles: Role[]; deletedAt: string | null },
+  user: {
+    roles: Role[]
+    deletedAt: string | null
+    hasEmployeeRecord?: boolean
+  },
 ): UserActionKind[] {
   const actions: UserActionKind[] = []
   const isDeactivated = user.deletedAt != null
@@ -139,6 +166,9 @@ export function getVisibleUserActions(
   }
   if (canEditPersonName(actor)) {
     actions.push('edit-name')
+  }
+  if (canCompleteEmployeeRecord(actor, user)) {
+    actions.push('complete-employee-record')
   }
   if (!isDeactivated && canActOnUser(actor, user.roles)) {
     if (canViewCredentials(actor, user.roles)) {

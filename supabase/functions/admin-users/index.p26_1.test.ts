@@ -867,6 +867,8 @@ const ALTA = {
   first_name: 'Nora',
   last_name: 'Celeste',
   roles: ['admin'],
+  // P26.7: un administrador también lleva ficha laboral.
+  employee: { dni: '30111222' },
 }
 
 Deno.test('create_user: guarda la copia con source created', async () => {

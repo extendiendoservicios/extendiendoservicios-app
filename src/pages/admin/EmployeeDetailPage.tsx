@@ -11,7 +11,7 @@ import { StatusBadge } from '@/components/status'
 import { avatarUrl } from '@/lib/avatarUrl'
 import { formatCalendarDate } from '@/lib/format'
 import { AccessBlock } from '@/features/users/components/AccessBlock'
-import { canViewCredentials } from '@/features/users/permissions'
+import { canActOnUser, canViewCredentials } from '@/features/users/permissions'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { BankDetailsCard } from '@/features/bank/components/BankDetailsCard'
 import { useEmployeeBankDetailsQuery } from '@/features/bank/queries'
@@ -32,10 +32,7 @@ import { EmployeeLeavesTab } from '@/features/employees/components/EmployeeLeave
 import { EmployeeRatingsTab } from '@/features/employees/components/EmployeeRatingsTab'
 import { EmployeeUpcomingShiftsTab } from '@/features/employees/components/EmployeeUpcomingShiftsTab'
 import { EmployeeRolesDialog } from '@/features/employees/components/EmployeeRolesDialog'
-import {
-  canEditEmployee,
-  canManageEmployeeAccounts,
-} from '@/features/employees/permissions'
+import { canEditEmployee } from '@/features/employees/permissions'
 import {
   useEmployeeDetailQuery,
   useEmployeeRatingsSummaryQuery,
@@ -133,7 +130,9 @@ export default function EmployeeDetailPage() {
 
   const isTerminated = employee.effectiveStatus === 'terminated'
   const canEdit = canEditEmployee(actor)
-  const canManageAccount = canManageEmployeeAccounts(actor)
+  // CR-19: baja, cambio de roles, contraseña y cierre de sesiones sobre un
+  // dueño o administrador solo los hace el dueño (`canActOnUser` ya lo cubre).
+  const canManageAccount = canActOnUser(actor, employee.roles)
   const isSupervisor = employee.roles.includes('supervisor')
   const canViewWithdrawals = canViewPersonWithdrawals(actor)
   const showAccess = canViewCredentials(actor, employee.roles)

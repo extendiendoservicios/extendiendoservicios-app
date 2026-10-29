@@ -270,48 +270,106 @@ Deno.test(
   },
 )
 
+function fakeAltaAdministrativa(
+  rpcCalls: Array<{ fn: string; params: Record<string, unknown> }>,
+) {
+  return createFakeAdminClient({
+    // Ni el DNI ni el legajo están en uso.
+    responder: () => ({ data: null, error: null }),
+    rpc: (fn, params) => {
+      rpcCalls.push({ fn, params })
+      if (fn === 'admin_find_orphan_account') {
+        return { data: null, error: null }
+      }
+      return {
+        data: { profile_id: 'nuevo-admin-1', employee_number: 31 },
+        error: null,
+      }
+    },
+    createUser: () =>
+      Promise.resolve({
+        data: { user: { id: 'nuevo-admin-1' } },
+        error: null,
+      }),
+  })
+}
+
+const ALTA_ADMIN_BODY = {
+  email: 'nuevo.admin@extendiendoservicios.example',
+  password: 'contraseña-larga-1',
+  first_name: 'Nueva',
+  last_name: 'Administradora',
+  roles: ['admin'],
+  employee: { dni: '30222333' },
+}
+
 Deno.test(
-  'actionCreateUser: el dueño crea un administrador; roles y capacidades van juntos en admin_create_user_records',
+  'actionCreateUser: el dueño crea un administrador con ficha; suma employee y manda todo junto a admin_create_user_records (P26.7, CR-17)',
   async () => {
     const rpcCalls: Array<{ fn: string; params: Record<string, unknown> }> = []
-    const admin = createFakeAdminClient({
-      responder: () => ({ data: null, error: null }),
-      rpc: (fn, params) => {
-        rpcCalls.push({ fn, params })
-        if (fn === 'admin_find_orphan_account') {
-          return { data: null, error: null }
-        }
-        return {
-          data: { profile_id: 'nuevo-admin-1', employee_number: null },
-          error: null,
-        }
-      },
-      createUser: () =>
-        Promise.resolve({
-          data: { user: { id: 'nuevo-admin-1' } },
-          error: null,
-        }),
-    })
+    const admin = fakeAltaAdministrativa(rpcCalls)
 
     const result = await actionCreateUser(
       admin,
       OWNER_ACTOR,
-      {
-        email: 'nuevo.admin@extendiendoservicios.example',
-        password: 'contraseña-larga-1',
-        first_name: 'Nueva',
-        last_name: 'Administradora',
-        roles: ['admin'],
-      },
+      ALTA_ADMIN_BODY,
       null,
     )
 
-    assertEquals(result, { profile_id: 'nuevo-admin-1', employee_number: null })
-    // Todas las capacidades las inserta la RPC (0035, cubierto por su pgTAP; ocho desde 0069).
+    assertEquals(result, { profile_id: 'nuevo-admin-1', employee_number: 31 })
+    // Las capacidades las inserta la RPC (0035, cubierto por su pgTAP; ocho desde 0069).
     const records = rpcCalls.find((c) => c.fn === 'admin_create_user_records')
     assertEquals(records?.params.p_profile_id, 'nuevo-admin-1')
-    assertEquals(records?.params.p_roles, ['admin'])
-    assertEquals(records?.params.p_employee, null)
+    assertEquals(records?.params.p_roles, ['admin', 'employee'])
+    assertEquals(
+      (records?.params.p_employee as { dni: string }).dni,
+      '30222333',
+    )
+  },
+)
+
+Deno.test(
+  'actionCreateUser: el dueño crea otro dueño con ficha; suma employee una sola vez (P26.7, CR-17)',
+  async () => {
+    const rpcCalls: Array<{ fn: string; params: Record<string, unknown> }> = []
+    const admin = fakeAltaAdministrativa(rpcCalls)
+
+    await actionCreateUser(
+      admin,
+      OWNER_ACTOR,
+      { ...ALTA_ADMIN_BODY, roles: ['owner', 'employee'] },
+      null,
+    )
+    const records = rpcCalls.find((c) => c.fn === 'admin_create_user_records')
+    assertEquals(records?.params.p_roles, ['owner', 'employee'])
+
+    rpcCalls.length = 0
+    await actionCreateUser(
+      admin,
+      OWNER_ACTOR,
+      { ...ALTA_ADMIN_BODY, roles: ['owner'] },
+      null,
+    )
+    const solo = rpcCalls.find((c) => c.fn === 'admin_create_user_records')
+    assertEquals(solo?.params.p_roles, ['owner', 'employee'])
+  },
+)
+
+Deno.test(
+  'actionCreateUser: alta de administrador o dueño sin ficha laboral falla con EMPLOYEE_DATA_REQUIRED antes de tocar Auth (P26.7, CR-17)',
+  async () => {
+    for (const roles of [['admin'], ['owner'], ['owner', 'admin']]) {
+      const rpcCalls: Array<{ fn: string; params: Record<string, unknown> }> =
+        []
+      const admin = fakeAltaAdministrativa(rpcCalls)
+      const { employee: _sinFicha, ...sinFicha } = ALTA_ADMIN_BODY
+      const err = await captureDomainError(() =>
+        actionCreateUser(admin, OWNER_ACTOR, { ...sinFicha, roles }, null),
+      )
+      assertEquals(err.hint, 'EMPLOYEE_DATA_REQUIRED')
+      assertEquals(err.status, 400)
+      assertEquals(rpcCalls.length, 0)
+    }
   },
 )
 

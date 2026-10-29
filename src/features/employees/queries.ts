@@ -6,10 +6,11 @@ import type {
   EmployeeCreateInput,
   EmployeeLeaveInput,
   EmployeeListFilters,
+  EmployeeRecordInput,
   EmployeeUpdateInput,
 } from '@/api/employees'
 import { setUserRoles, signOutUser, type Role } from '@/api/users'
-import { useInvalidateAccessStatus } from '@/features/users/queries'
+import { useInvalidateAccessStatus, usersKeys } from '@/features/users/queries'
 
 /**
  * Hooks de TanStack Query de ADM-16, ADM-17 y ADM-18 (EMP-001). Patrón de
@@ -141,6 +142,28 @@ export function useCreateEmployeeMutation() {
   })
 }
 
+/**
+ * P26.8 (CR-18): completar la ficha laboral de un dueño o administrador.
+ * Invalida Empleados y Usuarios: la persona pasa a figurar en el listado y
+ * ADM-27 deja de ofrecer la acción.
+ */
+export function useAddEmployeeRecordMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      profileId,
+      input,
+    }: {
+      profileId: string
+      input: EmployeeRecordInput
+    }) => employeesApi.addEmployeeRecord(profileId, input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: employeesKeys.all })
+      void queryClient.invalidateQueries({ queryKey: usersKeys.list() })
+    },
+  })
+}
+
 export function useUpdateEmployeeMutation() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -148,11 +171,17 @@ export function useUpdateEmployeeMutation() {
       profileId,
       input,
       updatedBy,
+      updateProfile,
     }: {
       profileId: string
       input: EmployeeUpdateInput
       updatedBy: string
-    }) => employeesApi.updateEmployee(profileId, input, updatedBy),
+      /** `false`: no toca `profiles` (CR-19, el admin sobre un dueño o admin). */
+      updateProfile?: boolean
+    }) =>
+      employeesApi.updateEmployee(profileId, input, updatedBy, {
+        updateProfile,
+      }),
     onSuccess: (employee) => {
       void queryClient.invalidateQueries({ queryKey: employeesKeys.all })
       queryClient.setQueryData(

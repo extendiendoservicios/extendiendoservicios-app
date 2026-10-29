@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   canActOnUser,
+  canCompleteEmployeeRecord,
   canCreateAdminUser,
   canEditPersonName,
   canEditRolesAndCapabilities,
@@ -221,5 +222,58 @@ describe('canViewCredentials (CR-02, CR-07, CR-08)', () => {
         deletedAt: null,
       }),
     ).not.toContain('view-access')
+  })
+})
+
+describe('«Completar ficha laboral» (CR-18)', () => {
+  const adminSinFicha = {
+    roles: ['admin'] as Role[],
+    deletedAt: null,
+    hasEmployeeRecord: false,
+  }
+
+  it('el dueño la ve en un administrador o dueño activo sin ficha', () => {
+    expect(getVisibleUserActions(owner, adminSinFicha)).toContain(
+      'complete-employee-record',
+    )
+    expect(
+      getVisibleUserActions(owner, { ...adminSinFicha, roles: ['owner'] }),
+    ).toContain('complete-employee-record')
+  })
+
+  it('un administrador, aunque tenga manage_users, no la ve', () => {
+    expect(
+      getVisibleUserActions(adminWithManageUsers, adminSinFicha),
+    ).not.toContain('complete-employee-record')
+    expect(canCompleteEmployeeRecord(adminWithManageUsers, adminSinFicha)).toBe(
+      false,
+    )
+  })
+
+  it('no la ve nadie si la persona ya tiene ficha', () => {
+    expect(
+      getVisibleUserActions(owner, {
+        ...adminSinFicha,
+        hasEmployeeRecord: true,
+      }),
+    ).not.toContain('complete-employee-record')
+  })
+
+  it('no aparece en una persona desactivada ni en quien no es dueño o administrador', () => {
+    expect(
+      getVisibleUserActions(owner, {
+        ...adminSinFicha,
+        deletedAt: '2026-09-01T00:00:00Z',
+      }),
+    ).not.toContain('complete-employee-record')
+    expect(
+      getVisibleUserActions(owner, { ...adminSinFicha, roles: ['supervisor'] }),
+    ).not.toContain('complete-employee-record')
+  })
+
+  it('sin saber si tiene ficha (dato ausente) no se ofrece', () => {
+    expect(
+      getVisibleUserActions(owner, { roles: ['admin'], deletedAt: null }),
+    ).not.toContain('complete-employee-record')
   })
 })

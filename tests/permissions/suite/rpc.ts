@@ -97,6 +97,15 @@ export const CASOS_RPC: CasoRpc[] = [
     { owner: 'ADMIN_ROLE_REQUIRED' },
     { cubre: ['RB-A01', 'RB-X02', 'CB-17'] },
   ),
+  // P26.7 (0076, CR-18): completar la ficha laboral de quien ya existe. Solo el dueño. Con un id
+  // inexistente el dueño pasa la puerta y recibe PROFILE_NOT_FOUND sin escribir nada; el resto
+  // recibe FORBIDDEN (administrador con todas las capacidades incluido) y anon, 42501.
+  caso(
+    'add_employee_record',
+    () => ({ p_profile_id: U, p_employee: { dni: '99260999' } }),
+    { owner: 'PROFILE_NOT_FOUND' },
+    { cubre: ['CR-16', 'CR-18', 'RB-X02'] },
+  ),
   caso(
     'mark_changes_seen',
     () => ({}),

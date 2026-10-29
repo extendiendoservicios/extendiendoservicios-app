@@ -20,10 +20,19 @@ set -euo pipefail
 # supabase/tests/README.md) es que cada archivo abre su propia transacción y termina en
 # `rollback`, incluida la creación de la extensión pgtap con `create extension if not exists`.
 
+#
+# Única excepción: antes de las pruebas se adelanta employee_number_seq hasta el legajo más alto.
+# Desde P26.7 la app asigna el legajo como max + 1 (o el que se carga a mano) y no usa la
+# secuencia, que queda atrás; los archivos que dan de alta empleados con el legajo por defecto
+# chocaban con legajos reales de App_dev (#257, 29 oct 2026). setval solo adelanta el contador.
+SQL_SECUENCIA="select setval('public.employee_number_seq', greatest((select coalesce(max(employee_number), 1) from public.employees), (select last_value from public.employee_number_seq)))"
+
 if [ -n "${SUPABASE_DB_URL_DEV:-}" ]; then
   echo "db:test — CI: corriendo contra SUPABASE_DB_URL_DEV."
+  supabase db query --db-url "$SUPABASE_DB_URL_DEV" "$SQL_SECUENCIA"
   exec supabase test db --db-url "$SUPABASE_DB_URL_DEV"
 fi
 
 echo "db:test — local: corriendo contra el proyecto vinculado (--linked)."
+supabase db query --linked "$SQL_SECUENCIA"
 exec supabase test db --linked

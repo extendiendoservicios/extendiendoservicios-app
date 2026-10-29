@@ -119,7 +119,7 @@ select throws_ok(
        'c3500000-0000-0000-0000-000000000003', 'c3500000-0000-0000-0000-000000000001',
        'Nora', 'Celeste', array['employee']::public.app_role[], null) $$,
   'P0001',
-  'Para asignar el rol de empleado o coordinador hace falta cargar los datos de empleado (al menos el DNI).',
+  'Para asignar el rol de empleado, coordinador, administrador o dueño hace falta cargar los datos de empleado (al menos el DNI).',
   'rol de empleado sin ficha: EMPLOYEE_DATA_REQUIRED'
 );
 
@@ -161,7 +161,7 @@ select is(
 
 select public.admin_create_user_records(
   'c3500000-0000-0000-0000-000000000004', 'c3500000-0000-0000-0000-000000000001',
-  'Nueva', 'Admin', array['admin']::public.app_role[], null
+  'Nueva', 'Admin', array['admin']::public.app_role[], jsonb_build_object('dni', '90350004')
 );
 select is(
   (select count(*)::int from public.admin_capabilities
@@ -171,8 +171,8 @@ select is(
 );
 select is(
   (select count(*)::int from public.employees where profile_id = 'c3500000-0000-0000-0000-000000000004'),
-  0,
-  'un administrador sin datos de empleado no tiene ficha'
+  1,
+  'desde 0076 (CR-17) un administrador lleva ficha laboral'
 );
 
 -- Sin legajo pedido: el más alto + 1 --------------------------------------------------------
