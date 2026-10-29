@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { employeeRecordShape } from '@/features/employees/schemas'
 
 /**
  * Esquemas zod de ADM-27 (USERS-009, USERS-011): repiten las restricciones
@@ -7,8 +8,14 @@ import { z } from 'zod'
  * la Edge Function vuelve a validar todo esto.
  */
 
-/** USERS-009: alta de un usuario administrativo. */
+/**
+ * USERS-009 + P26.8 (CR-17): alta de un usuario administrativo. Pide la
+ * ficha laboral completa, con las mismas validaciones que el alta de
+ * empleado (`employeeRecordShape`): el servidor responde
+ * `EMPLOYEE_DATA_REQUIRED` si falta.
+ */
 export const createAdminUserSchema = z.object({
+  ...employeeRecordShape,
   firstName: z.string().trim().min(1, 'Falta el nombre.'),
   lastName: z.string().trim().min(1, 'Falta el apellido.'),
   email: z.email('Ingresá un email válido.'),

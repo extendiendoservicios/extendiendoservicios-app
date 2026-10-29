@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as usersApi from '@/api/users'
 import { getAccessStatus, getCredentials } from '@/api/credentials'
 import type { AdminCapability, Role } from '@/api/users'
+import { employeesKeys } from '@/features/employees/queries'
 
 /**
  * Hooks de TanStack Query de ADM-27 (USERS-007 a USERS-011). Patrón de
@@ -79,10 +80,15 @@ function useInvalidateUsers() {
 
 /** USERS-009: alta de un usuario administrativo. */
 export function useCreateAdminUserMutation() {
+  const queryClient = useQueryClient()
   const invalidate = useInvalidateUsers()
   return useMutation({
     mutationFn: usersApi.createAdminUser,
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate()
+      // P26.8 (CR-17): el alta administrativa crea también la ficha laboral.
+      void queryClient.invalidateQueries({ queryKey: employeesKeys.all })
+    },
   })
 }
 

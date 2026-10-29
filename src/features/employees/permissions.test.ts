@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   canEditEmployee,
+  canEditPersonalProfile,
   canManageEmployeeAccounts,
   type EmployeesScreenActor,
 } from './permissions'
@@ -45,5 +46,29 @@ describe('canEditEmployee', () => {
     expect(canEditEmployee({ roles: ['supervisor'], capabilities: [] })).toBe(
       false,
     )
+  })
+})
+
+describe('canEditPersonalProfile (CR-19)', () => {
+  const adminSinManage: EmployeesScreenActor = {
+    roles: ['admin'],
+    capabilities: [],
+  }
+
+  it('el dueño edita el perfil de cualquiera', () => {
+    expect(canEditPersonalProfile(owner, ['owner', 'employee'])).toBe(true)
+    expect(canEditPersonalProfile(owner, ['admin', 'employee'])).toBe(true)
+  })
+
+  it('un administrador no edita el perfil de un dueño ni de otro administrador', () => {
+    expect(canEditPersonalProfile(adminWithManageUsers, ['owner'])).toBe(false)
+    expect(canEditPersonalProfile(adminSinManage, ['admin', 'employee'])).toBe(
+      false,
+    )
+  })
+
+  it('un administrador edita el perfil de un empleado o coordinador', () => {
+    expect(canEditPersonalProfile(adminSinManage, ['employee'])).toBe(true)
+    expect(canEditPersonalProfile(adminSinManage, ['supervisor'])).toBe(true)
   })
 })

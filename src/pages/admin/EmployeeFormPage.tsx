@@ -41,6 +41,7 @@ import {
   useSuggestedEmployeeNumberQuery,
   useUpdateEmployeeMutation,
 } from '@/features/employees/queries'
+import { canEditPersonalProfile } from '@/features/employees/permissions'
 import { useLeaveForm } from '@/app/shells/backNavigation'
 
 /**
@@ -78,6 +79,9 @@ const DUPLICATE_FIELD_BY_CODE: Record<
   EMPLOYEE_NUMBER_IN_USE: 'employeeNumber',
   EMAIL_IN_USE: 'email',
 }
+
+/** CR-19: ayuda de los campos de perfil de un dueño o administrador vistos por un administrador. */
+const PROFILE_READ_ONLY_HELP = 'Solo el dueño puede cambiar estos datos.'
 
 function EmployeeCreateForm() {
   const navigate = useNavigate()
@@ -499,6 +503,15 @@ function EmployeeEditForm({ profileId }: { profileId: string }) {
   const auth = useAuth()
   const employeeQuery = useEmployeeDetailQuery(profileId)
   const updateEmployee = useUpdateEmployeeMutation()
+  // CR-19: nombre, teléfono y email de contacto de un dueño o administrador
+  // solo los cambia el dueño. Para el resto queda de solo lectura, con una
+  // ayuda, y `updateEmployee` no toca `profiles`.
+  const profileEditable = employeeQuery.data
+    ? canEditPersonalProfile(
+        { roles: auth.roles, capabilities: auth.capabilities },
+        employeeQuery.data.roles,
+      )
+    : true
   const bankQuery = useEmployeeBankDetailsQuery(profileId)
   const setBankDetails = useSetEmployeeBankDetailsMutation()
 
@@ -565,6 +578,7 @@ function EmployeeEditForm({ profileId }: { profileId: string }) {
         profileId,
         input,
         updatedBy: auth.userId as string,
+        updateProfile: profileEditable,
       })
       // AJ2-04: datos bancarios por RPC aparte. Si la lectura de lo guardado
       // falló no se pisa nada; sin datos previos ni nuevos, no se llama.
@@ -635,10 +649,16 @@ function EmployeeEditForm({ profileId }: { profileId: string }) {
         <h2 className="text-[14px] font-semibold text-text sm:col-span-2">
           Datos personales
         </h2>
+        {!profileEditable && (
+          <p className="text-[11px] text-text-3 sm:col-span-2">
+            {PROFILE_READ_ONLY_HELP}
+          </p>
+        )}
         <Field data-invalid={Boolean(errors.firstName) || undefined}>
           <FieldLabel htmlFor="employee-first-name">Nombre</FieldLabel>
           <Input
             id="employee-first-name"
+            readOnly={!profileEditable}
             aria-invalid={Boolean(errors.firstName)}
             {...register('firstName')}
           />
@@ -650,6 +670,7 @@ function EmployeeEditForm({ profileId }: { profileId: string }) {
           <FieldLabel htmlFor="employee-last-name">Apellido</FieldLabel>
           <Input
             id="employee-last-name"
+            readOnly={!profileEditable}
             aria-invalid={Boolean(errors.lastName)}
             {...register('lastName')}
           />
@@ -692,7 +713,11 @@ function EmployeeEditForm({ profileId }: { profileId: string }) {
         </Field>
         <Field data-invalid={Boolean(errors.phone) || undefined}>
           <FieldLabel htmlFor="employee-phone">Teléfono</FieldLabel>
-          <Input id="employee-phone" {...register('phone')} />
+          <Input
+            id="employee-phone"
+            readOnly={!profileEditable}
+            {...register('phone')}
+          />
           {errors.phone && <FieldError>{errors.phone.message}</FieldError>}
         </Field>
         <Field data-invalid={Boolean(errors.birthDate) || undefined}>
@@ -784,11 +809,15 @@ function EmployeeEditForm({ profileId }: { profileId: string }) {
           <Input
             id="employee-contact-email"
             type="email"
+            readOnly={!profileEditable}
             aria-invalid={Boolean(errors.contactEmail)}
             {...register('contactEmail')}
           />
           {errors.contactEmail && (
             <FieldError>{errors.contactEmail.message}</FieldError>
+          )}
+          {!profileEditable && (
+            <p className="text-[11px] text-text-3">{PROFILE_READ_ONLY_HELP}</p>
           )}
         </Field>
       </div>

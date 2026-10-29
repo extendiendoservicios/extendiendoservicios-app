@@ -21,6 +21,7 @@ function makeChainable<T>(result: PostgrestResult<T>) {
     eq: () => chain,
     or: () => chain,
     contains: () => chain,
+    overlaps: overlapsMock,
     in: () => chain,
     order: () => chain,
     limit: () => chain,
@@ -34,13 +35,19 @@ function makeChainable<T>(result: PostgrestResult<T>) {
   return chain
 }
 
-const { fromMock, invokeMock } = vi.hoisted(() => ({
+const { fromMock, invokeMock, rpcMock, overlapsMock } = vi.hoisted(() => ({
   fromMock: vi.fn(),
   invokeMock: vi.fn(),
+  rpcMock: vi.fn(),
+  overlapsMock: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase', () => ({
-  supabase: { from: fromMock, functions: { invoke: invokeMock } },
+  supabase: {
+    from: fromMock,
+    rpc: rpcMock,
+    functions: { invoke: invokeMock },
+  },
 }))
 
 const {
@@ -50,6 +57,7 @@ const {
   fetchEmployeeDetail,
   createEmployeeUser,
   updateEmployee,
+  addEmployeeRecord,
   terminateEmployee,
   fetchEmployeeClientPermissionsFor,
   addEmployeeClientPermission,
@@ -67,6 +75,8 @@ const {
 beforeEach(() => {
   fromMock.mockReset()
   invokeMock.mockReset()
+  rpcMock.mockReset()
+  overlapsMock.mockReset()
 })
 
 describe('fetchEmployees', () => {
@@ -343,6 +353,104 @@ describe('updateEmployee', () => {
     expect(result.profileId).toBe('e1')
     expect(fromMock).toHaveBeenNthCalledWith(1, 'profiles')
     expect(fromMock).toHaveBeenNthCalledWith(2, 'employees')
+  })
+})
+
+describe('updateEmployee · sin tocar el perfil (CR-19)', () => {
+  it('con updateProfile en false no escribe en profiles: solo employees y la lectura', async () => {
+    fromMock
+      .mockReturnValueOnce(makeChainable({ data: [], error: null })) // employees.update
+      .mockReturnValueOnce(
+        makeChainable({
+          data: {
+            profile_id: 'o1',
+            first_name: 'Dueña',
+            last_name: 'Uno',
+            employee_number: 1,
+            roles: ['owner', 'employee'],
+            status: 'active',
+            effective_status: 'active',
+            profile_is_active: true,
+            deleted_at: null,
+            dni: '20111222',
+          },
+          error: null,
+        }),
+      ) // fetchEmployeeDetail
+
+    await updateEmployee(
+      'o1',
+      {
+        firstName: 'Dueña',
+        lastName: 'Uno',
+        phone: null,
+        contactEmail: null,
+        employeeNumber: 1,
+        dni: '20111222',
+        cuil: null,
+        address: 'Calle 1',
+        birthDate: null,
+        hireDate: null,
+        emergencyContactName: null,
+        emergencyContactPhone: null,
+        emergencyContactRelationship: null,
+        notes: null,
+      },
+      'admin-1',
+      { updateProfile: false },
+    )
+
+    const tables = fromMock.mock.calls.map((call: unknown[]) => call[0])
+    expect(tables).not.toContain('profiles')
+    expect(tables[0]).toBe('employees')
+  })
+})
+
+describe('fetchEmployees · filtro de rol «Administración» (CR-19)', () => {
+  it('pide los que tienen owner o admin (overlaps), sin usar contains', async () => {
+    const chain = makeChainable({ data: [], error: null })
+    overlapsMock.mockReturnValue(chain)
+    fromMock.mockReturnValue(chain)
+
+    await fetchEmployees({ role: 'administration' })
+
+    expect(overlapsMock).toHaveBeenCalledWith('roles', ['owner', 'admin'])
+  })
+})
+
+describe('addEmployeeRecord', () => {
+  const input = {
+    dni: '20111222',
+    employeeNumber: 9,
+    cuil: null,
+    address: null,
+    birthDate: null,
+    hireDate: null,
+    emergencyContactName: null,
+    emergencyContactPhone: null,
+    emergencyContactRelationship: null,
+    notes: null,
+  }
+
+  it('llama a add_employee_record con la ficha en snake_case', async () => {
+    rpcMock.mockResolvedValue({ data: {}, error: null })
+    await addEmployeeRecord('p1', input)
+    expect(rpcMock).toHaveBeenCalledWith('add_employee_record', {
+      p_profile_id: 'p1',
+      p_employee: expect.objectContaining<Record<string, unknown>>({
+        dni: '20111222',
+        employee_number: 9,
+      }) as unknown,
+    })
+  })
+
+  it('traduce el hint de un error del servidor', async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: { message: 'Ese DNI ya está registrado.', hint: 'DNI_IN_USE' },
+    })
+    const error = await addEmployeeRecord('p1', input).catch((e: unknown) => e)
+    expect(isApiError(error) && error.hint).toBe('DNI_IN_USE')
   })
 })
 
