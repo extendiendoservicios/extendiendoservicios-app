@@ -7,6 +7,30 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.27.0] - 2026-10-28
+
+Administradores y dueños como empleados (P26.7 a P26.9). Migraciones 0076 y 0077.
+
+### Agregado
+
+- Los administradores y dueños que trabajan pasan a ser empleados completos: tienen ficha laboral (legajo, DNI, disponibilidad), figuran en el listado de empleados y se les pueden asignar turnos. En el celular entran a la app del empleado.
+- El alta de un administrador pide la ficha laboral completa y lo suma como empleado.
+- Usuarios: «Completar ficha laboral», solo para el dueño, para los administradores y dueños que ya existían. Desde ese momento figuran en Empleados.
+- Empleados: filtro de rol «Administración».
+
+### Cambiado
+
+- Cuando un administrador mira la ficha de un dueño o de otro administrador, puede editar los datos laborales (disponibilidad, clientes, licencias), pero no darlo de baja, cambiarle los roles ni ver su acceso. El nombre, el teléfono y el email de contacto quedan de solo lectura: solo el dueño los cambia.
+- Un dueño o administrador que trabaja un turno avisa demora o ausencia y anota observaciones con las mismas reglas que cualquier empleado. Sobre los turnos de otras personas sigue actuando como administración.
+
+### Seguridad
+
+- Solo el dueño puede dar de baja como empleado a un dueño o a un administrador. Lo controla la base, además de la pantalla.
+
+### Pruebas y automatización
+
+- pgTAP de las migraciones 0076 y 0077 y permisos por API de la ficha laboral, el alta y la baja del personal administrativo.
+
 ## [0.26.0] - 2026-10-28
 
 Credenciales visibles para la administración (P26.1 a P26.4), pedido urgente de la reunión con los dueños del 27 oct. Migración 0075.
