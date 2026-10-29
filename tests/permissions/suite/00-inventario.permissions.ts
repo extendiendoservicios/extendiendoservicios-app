@@ -12,6 +12,7 @@ import { readFileSync, existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
+  ACCIONES_DE_CREDENCIALES,
   BUCKETS_CUBIERTOS,
   COBERTURA_EXTERNA,
   EDGE_CUBIERTAS,
@@ -180,8 +181,13 @@ describe('inventario de migraciones contra la matriz', () => {
       ).toEqual([])
     }
     // Y los casos concretos cubren exactamente las acciones declaradas.
+    // (las de credenciales, P26.4, tienen su propia suite: 97-credenciales)
     expect(CASOS.map((c) => c.accion).sort()).toEqual(
-      [...(EDGE_CUBIERTAS['admin-users'] ?? [])].sort(),
+      [...(EDGE_CUBIERTAS['admin-users'] ?? [])]
+        .filter(
+          (a) => !(ACCIONES_DE_CREDENCIALES as readonly string[]).includes(a),
+        )
+        .sort(),
     )
   })
 })
