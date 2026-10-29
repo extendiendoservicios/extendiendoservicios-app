@@ -41,6 +41,8 @@ export interface AdminUserRow {
   roles: Role[]
   /** Ruta de la foto en el bucket `avatars` (AJ2-11). */
   avatarPath: string | null
+  /** P26.8 (CR-18): tiene fila en `employees` (ficha laboral). */
+  hasEmployeeRecord: boolean
 }
 
 /**
@@ -66,7 +68,7 @@ export async function fetchUsers(): Promise<AdminUserRow[]> {
   const { data, error } = await supabase
     .from('profiles')
     .select(
-      'id, first_name, last_name, avatar_path, is_active, deleted_at, user_roles!user_roles_profile_id_fkey(role)',
+      'id, first_name, last_name, avatar_path, is_active, deleted_at, user_roles!user_roles_profile_id_fkey(role), employees!employees_profile_id_fkey(profile_id)',
     )
     .order('last_name', { ascending: true })
     .order('first_name', { ascending: true })
@@ -83,6 +85,10 @@ export async function fetchUsers(): Promise<AdminUserRow[]> {
     deletedAt: row.deleted_at,
     avatarPath: row.avatar_path,
     roles: (row.user_roles ?? []).map((userRole) => userRole.role),
+    // La relación es uno a uno: PostgREST devuelve un objeto o `null`.
+    hasEmployeeRecord: Array.isArray(row.employees)
+      ? row.employees.length > 0
+      : row.employees != null,
   }))
 }
 

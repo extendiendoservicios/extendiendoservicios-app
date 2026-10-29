@@ -54,6 +54,8 @@ sobre subirlo a `src/components/`).
 
 Botón "Nuevo empleado" (ADM-18) solo si `canManageEmployeeAccounts`.
 
+**Filtro «Administración» (P26.8, CR-19):** el selector de rol suma «Administración», que trae a quienes tienen `owner` o `admin` (`fetchEmployees` con `overlaps('roles', ['owner', 'admin'])`). La columna «Roles» ya muestra la etiqueta de cada rol (Dueño, Administrador, Coordinador, Empleado), así que un dueño que trabaja figura como «Dueño, Empleado».
+
 ### Filtro de estado por omisión (decisión de Mike, 24 sep 2026)
 
 Por defecto (`statusFilter === 'all'`, etiqueta "Activos y de licencia") la
@@ -235,3 +237,13 @@ como texto (`^[0-9]+$`, positivo), no con `z.coerce.number()`: el tipo de
 entrada y el de salida de `z.coerce` no coinciden, lo que rompe el tipado de
 `zodResolver` con `useForm` — se convierte a `number` recién al mapear al
 input de `src/api/employees.ts`.
+
+## Dueños y administradores en Empleados (P26.8, CR-16 a CR-19)
+
+Un dueño o administrador con ficha laboral figura en el listado como cualquier empleado. Cuando lo mira **un administrador** (no el dueño):
+
+- **ADM-17, bloque principal:** los botones «Cambiar contraseña», «Cerrar sesiones», «Dar de baja» y «Editar roles» salen con `canActOnUser(actor, employee.roles)` (`features/users/permissions.ts`), la misma regla de ADM-27: no aparecen sobre un dueño ni sobre otro administrador. El bloque «Acceso a la app» ya se resolvía así desde P26.2. «Editar» y las pestañas laborales (habilitaciones, disponibilidad, licencias) siguen disponibles.
+- **ADM-18, edición:** nombre, apellido, teléfono y email de contacto quedan de **solo lectura** con la ayuda «Solo el dueño puede cambiar estos datos.» (`canEditPersonalProfile`, `features/employees/permissions.ts`; el trigger de `0030` lo impide en el servidor). `updateEmployee(..., { updateProfile: false })` no manda el `update` de `profiles`; los datos laborales se guardan normalmente.
+- El dueño puede todo.
+
+La ficha laboral de un dueño o administrador que todavía no la tiene se completa desde ADM-27 (ver `usuarios-y-configuracion.md`).

@@ -9,6 +9,8 @@ import {
   employeeLeaveFormValuesToInput,
   employeeLeaveSchema,
   employeeRolesEditSchema,
+  employeeRecordSchema,
+  employeeRecordValuesToInput,
   employeeRolesFromCheckboxes,
   nextEmployeeRoles,
   onlyDigits,
@@ -314,5 +316,44 @@ describe('nextEmployeeRoles', () => {
       isSupervisorRole: false,
     })
     expect(result).toEqual(['admin'])
+  })
+})
+
+describe('ficha laboral compartida (P26.8, CR-17 y CR-18)', () => {
+  const valid = {
+    dni: '30.123.456',
+    cuil: '20-30123456-6',
+    employeeNumber: '12',
+    address: ' Calle 1 ',
+    birthDate: '',
+    hireDate: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+    emergencyContactRelationship: '',
+    notes: '',
+  }
+
+  it('exige DNI y legajo, igual que el alta de empleado', () => {
+    const result = employeeRecordSchema.safeParse({
+      ...valid,
+      dni: '',
+      employeeNumber: '',
+    })
+    expect(result.success).toBe(false)
+    const paths = result.error?.issues.map((issue) => issue.path[0])
+    expect(paths).toContain('dni')
+    expect(paths).toContain('employeeNumber')
+  })
+
+  it('normaliza DNI y CUIL sin puntos ni guiones y pasa vacíos a null', () => {
+    const parsed = employeeRecordSchema.parse(valid)
+    expect(employeeRecordValuesToInput(parsed)).toMatchObject({
+      dni: '30123456',
+      cuil: '20301234566',
+      employeeNumber: 12,
+      address: 'Calle 1',
+      birthDate: null,
+      notes: null,
+    })
   })
 })

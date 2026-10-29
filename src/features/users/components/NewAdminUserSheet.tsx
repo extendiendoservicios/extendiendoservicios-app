@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
@@ -8,11 +9,15 @@ import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
 import { isApiError } from '@/api/errors'
+import { EmployeeRecordFields } from '@/features/employees/components/EmployeeRecordFields'
+import { useSuggestedEmployeeNumberQuery } from '@/features/employees/queries'
+import { employeeRecordValuesToInput } from '@/features/employees/schemas'
 import { useCreateAdminUserMutation } from '@/features/users/queries'
 import {
   createAdminUserSchema,
@@ -29,7 +34,33 @@ import {
  * capacidades (confirmado por Mike el 23 sep 2026): esta pantalla no vuelve
  * a tocarlas, la persona ya queda con todo activo y el dueño puede
  * recortarlas después desde "Editar roles y capacidades".
+ *
+ * P26.8 (CR-17): el alta pide también la ficha laboral completa, con los
+ * mismos campos y validaciones que el alta de empleado
+ * (`EmployeeRecordFields`, `employeeRecordShape`): el servidor responde
+ * `EMPLOYEE_DATA_REQUIRED` si falta y suma el rol `employee` solo. Sigue
+ * siendo un panel lateral: es largo, pero se desplaza con el encabezado y los
+ * botones fijos, y en el celular los paneles pasan a pantalla completa
+ * (P-094); una página aparte no suma nada para un alta que hace solo el dueño
+ * y pocas veces.
  */
+const EMPTY_VALUES: CreateAdminUserFormValues = {
+  firstName: '',
+  lastName: '',
+  email: '',
+  password: '',
+  dni: '',
+  cuil: '',
+  employeeNumber: '',
+  address: '',
+  birthDate: '',
+  hireDate: '',
+  emergencyContactName: '',
+  emergencyContactPhone: '',
+  emergencyContactRelationship: '',
+  notes: '',
+}
+
 function NewAdminUserSheet({
   open,
   onOpenChange,
@@ -38,18 +69,31 @@ function NewAdminUserSheet({
   onOpenChange: (open: boolean) => void
 }) {
   const createAdminUser = useCreateAdminUserMutation()
+  const form = useForm<CreateAdminUserFormValues>({
+    resolver: zodResolver(createAdminUserSchema),
+    defaultValues: EMPTY_VALUES,
+  })
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors },
-  } = useForm<CreateAdminUserFormValues>({
-    resolver: zodResolver(createAdminUserSchema),
-  })
+    setValue,
+    setError,
+    formState: { errors, dirtyFields },
+  } = form
+  const suggestedNumberQuery = useSuggestedEmployeeNumberQuery(open)
+
+  // Legajo sugerido mientras la persona no lo haya tocado.
+  useEffect(() => {
+    if (suggestedNumberQuery.data != null && !dirtyFields.employeeNumber) {
+      setValue('employeeNumber', String(suggestedNumberQuery.data))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggestedNumberQuery.data])
 
   function handleOpenChange(nextOpen: boolean) {
     if (!nextOpen) {
-      reset()
+      reset(EMPTY_VALUES)
       createAdminUser.reset()
     }
     onOpenChange(nextOpen)
@@ -63,15 +107,25 @@ function NewAdminUserSheet({
         email: values.email,
         password: values.password,
         roles: ['admin'],
+        employee: employeeRecordValuesToInput(values),
       })
       toast.success(
         `Creamos la cuenta de ${values.firstName} ${values.lastName}.`,
       )
       handleOpenChange(false)
     } catch (error) {
-      toast.error(
-        isApiError(error) ? error.message : 'No pudimos crear el usuario.',
-      )
+      const message = isApiError(error)
+        ? error.message
+        : 'No pudimos crear el usuario.'
+      // El dato repetido queda marcado en su campo, además del aviso.
+      if (isApiError(error) && error.hint === 'DNI_IN_USE') {
+        setError('dni', { message }, { shouldFocus: true })
+      } else if (isApiError(error) && error.hint === 'EMPLOYEE_NUMBER_IN_USE') {
+        setError('employeeNumber', { message }, { shouldFocus: true })
+      } else if (isApiError(error) && error.hint === 'EMAIL_IN_USE') {
+        setError('email', { message }, { shouldFocus: true })
+      }
+      toast.error(message)
     }
   }
 
@@ -80,10 +134,15 @@ function NewAdminUserSheet({
       <SheetContent>
         <SheetHeader>
           <SheetTitle>Nuevo administrador</SheetTitle>
+          <SheetDescription>
+            Un administrador también trabaja: figura en Empleados desde el alta,
+            por eso se pide la ficha laboral completa.
+          </SheetDescription>
         </SheetHeader>
         <form
+          noValidate
           onSubmit={(event) => void handleSubmit(onSubmit)(event)}
-          className="flex flex-1 flex-col gap-4 overflow-y-auto px-6"
+          className="flex flex-1 flex-col gap-5 overflow-y-auto px-6"
         >
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field data-invalid={Boolean(errors.firstName) || undefined}>
@@ -138,6 +197,11 @@ function NewAdminUserSheet({
               </p>
             )}
           </Field>
+          <EmployeeRecordFields
+            form={form}
+            idPrefix="new-admin"
+            numberHint="Sugerido según el último cargado; podés cambiarlo."
+          />
         </form>
         <SheetFooter className="flex-row justify-end">
           <Button

@@ -7,6 +7,7 @@ import {
   LogOut,
   Mail,
   MoreHorizontal,
+  ClipboardList,
   Eye,
   Pencil,
   ShieldCheck,
@@ -33,6 +34,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { CompleteEmployeeRecordSheet } from '@/features/employees/components/CompleteEmployeeRecordSheet'
 import { AccessSheet } from '@/features/users/components/AccessBlock'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { isApiError } from '@/api/errors'
@@ -80,6 +82,7 @@ function UserActionsMenu({
 }) {
   type DialogKind =
     | 'edit-name'
+    | 'complete-record'
     | 'view-access'
     | 'reset-password'
     | 'update-email'
@@ -96,9 +99,11 @@ function UserActionsMenu({
   const visibleActions = getVisibleUserActions(actor, {
     roles: user.roles,
     deletedAt: user.deletedAt,
+    hasEmployeeRecord: user.hasEmployeeRecord,
   })
   const canEditRoles = visibleActions.includes('edit-roles')
   const canEditName = visibleActions.includes('edit-name')
+  const canCompleteRecord = visibleActions.includes('complete-employee-record')
   const canViewAccess = visibleActions.includes('view-access')
   const showActiveActions = visibleActions.includes('reset-password')
   const showReactivate = visibleActions.includes('reactivate')
@@ -127,6 +132,11 @@ function UserActionsMenu({
           {canEditName && (
             <DropdownMenuItem onSelect={() => setOpenDialog('edit-name')}>
               <Pencil /> Editar nombre
+            </DropdownMenuItem>
+          )}
+          {canCompleteRecord && (
+            <DropdownMenuItem onSelect={() => setOpenDialog('complete-record')}>
+              <ClipboardList /> Completar ficha laboral
             </DropdownMenuItem>
           )}
           {showActiveActions && (
@@ -170,6 +180,16 @@ function UserActionsMenu({
         open={openDialog === 'edit-name'}
         onOpenChange={(open) => setOpenDialog(open ? 'edit-name' : null)}
       />
+      {canCompleteRecord && (
+        <CompleteEmployeeRecordSheet
+          profileId={user.profileId}
+          fullName={fullName}
+          open={openDialog === 'complete-record'}
+          onOpenChange={(open) =>
+            setOpenDialog(open ? 'complete-record' : null)
+          }
+        />
+      )}
       {canViewAccess && openDialog === 'view-access' && (
         <AccessSheet
           person={user}

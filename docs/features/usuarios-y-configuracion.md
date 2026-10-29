@@ -248,3 +248,26 @@ Filas «Usuario» y «Contraseña» (`src/features/users/components/AccessBlock.
 - `CREDENTIALS_NOT_CONFIGURED` y los demás errores se muestran inline con el mensaje del servidor, sin afectar al resto de la ficha.
 
 **Datos**: `src/api/credentials.ts` (`getAccessStatus` y `getCredentials`) sobre las acciones `get_access_status` y `get_credentials` de `admin-users`. `get_credentials` se usa con una mutación (`useGetCredentialsMutation`, `gcTime: 0`) y no con una consulta: trae la contraseña y deja un evento, así que no debe repetirse sola (foco, reconexión) ni quedar en el caché. La contraseña vive solo en el estado del componente.
+
+## Personal administrativo: ficha laboral de dueños y administradores (P26.8, CR-16 a CR-19)
+
+Un dueño o administrador que trabaja tiene además el rol `employee` y una fila en `employees`; así figura en Empleados, en las asignaciones y en las horas. El backend (`0076`) lo exige en las altas nuevas y ofrece `add_employee_record` para los que ya existían.
+
+### Alta de un usuario administrativo (CR-17)
+
+- `NewAdminUserSheet` ("Nuevo administrador", solo dueño) pide, además de nombre, apellido, email y contraseña, la **ficha laboral completa**: DNI, CUIL, fecha de nacimiento, domicilio, legajo, fecha de ingreso, notas y contacto de emergencia.
+- Los campos y las validaciones son los del alta de empleado: salen de `employeeRecordShape` (`features/employees/schemas.ts`) y se dibujan con `EmployeeRecordFields` (`features/employees/components/`). `createAdminUserSchema` suma esa forma, no la copia.
+- Se manda en una sola llamada: `createAdminUser({ roles: ['admin'], employee: {...} })`. El servidor suma `employee` solo. El legajo se sugiere con `useSuggestedEmployeeNumberQuery`. `DNI_IN_USE`, `EMPLOYEE_NUMBER_IN_USE` y `EMAIL_IN_USE` quedan marcados en su campo y se avisa con el mensaje del servidor.
+- Se mantiene como panel lateral (no pasa a página): el formulario es largo pero se desplaza con el título y los botones fijos, en el celular los paneles ocupan toda la pantalla y es un alta poco frecuente del dueño.
+- Al crear se invalidan Usuarios y Empleados.
+
+### «Completar ficha laboral» (CR-18)
+
+- Acción nueva en el menú «…» de ADM-27. La ve **solo el dueño**, en personas **activas** con rol `owner` o `admin` que **no tienen ficha** (`canCompleteEmployeeRecord`, sumada a `getVisibleUserActions` como `complete-employee-record`).
+- Para saber si hay ficha, `fetchUsers` embebe `employees!employees_profile_id_fkey(profile_id)` y arma `AdminUserRow.hasEmployeeRecord`. Si el dato no viene, la acción no se ofrece.
+- Abre `CompleteEmployeeRecordSheet` con los mismos campos y llama a `add_employee_record` (`addEmployeeRecord` en `src/api/employees.ts`, `useAddEmployeeRecordMutation`). Al terminar invalida Empleados y Usuarios y avisa «Ya figura en Empleados: <nombre>.».
+- La cuenta técnica «Extendiendo Servicios» no se completa (CR-18), pero el servidor no la distingue: queda como criterio de uso del dueño.
+
+### Qué ve un administrador de la ficha de un dueño o administrador (CR-19)
+
+Ver `docs/features/empleados.md` (ADM-16, ADM-17 y ADM-18).

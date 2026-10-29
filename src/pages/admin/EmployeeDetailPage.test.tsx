@@ -22,7 +22,7 @@ vi.mock('@/features/auth/AuthProvider', () => ({
   useAuth: () => authState.current,
 }))
 
-const employee = {
+const baseEmployee = {
   profileId: 'p1',
   firstName: 'Lucía',
   lastName: 'Torres',
@@ -37,8 +37,15 @@ const employee = {
   birthDate: null,
 }
 
+const { employeeState } = vi.hoisted(() => ({
+  employeeState: { current: null as object | null },
+}))
+
 vi.mock('@/features/employees/queries', () => ({
-  useEmployeeDetailQuery: () => ({ isLoading: false, data: employee }),
+  useEmployeeDetailQuery: () => ({
+    isLoading: false,
+    data: employeeState.current,
+  }),
   useEmployeeRatingsSummaryQuery: () => ({ data: new Map() }),
 }))
 
@@ -81,6 +88,7 @@ function renderPage() {
 
 beforeEach(() => {
   authState.current = { roles: ['owner'], capabilities: [], userId: 'u-owner' }
+  employeeState.current = baseEmployee
 })
 
 describe('EmployeeDetailPage · acceso en el bloque principal', () => {
@@ -106,5 +114,68 @@ describe('EmployeeDetailPage · acceso en el bloque principal', () => {
     expect(
       screen.getByRole('heading', { name: 'Lucía Torres' }),
     ).toBeInTheDocument()
+  })
+})
+
+describe('EmployeeDetailPage · ficha de un dueño o administrador (CR-19)', () => {
+  const owner = {
+    ...baseEmployee,
+    profileId: 'p-owner',
+    firstName: 'Marta',
+    lastName: 'Dueña',
+    roles: ['owner', 'employee'],
+  }
+
+  it('un administrador con manage_users ve la ficha y «Editar», sin baja, contraseña, cierre de sesiones ni cambio de roles', () => {
+    authState.current = {
+      roles: ['admin'],
+      capabilities: ['manage_users'],
+      userId: 'u-admin',
+    }
+    employeeState.current = owner
+    renderPage()
+    expect(
+      screen.getByRole('heading', { name: 'Marta Dueña' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Editar' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Dar de baja' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Cambiar contraseña' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Cerrar sesiones' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Editar roles' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('el mismo administrador sí ve la baja y los roles de un empleado común', () => {
+    authState.current = {
+      roles: ['admin'],
+      capabilities: ['manage_users'],
+      userId: 'u-admin',
+    }
+    renderPage()
+    expect(
+      screen.getByRole('button', { name: 'Dar de baja' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Editar roles' }),
+    ).toBeInTheDocument()
+  })
+
+  it('el dueño puede todo sobre la ficha de otro dueño', () => {
+    employeeState.current = owner
+    renderPage()
+    expect(
+      screen.getByRole('button', { name: 'Dar de baja' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Editar roles' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Editar' })).toBeInTheDocument()
   })
 })
