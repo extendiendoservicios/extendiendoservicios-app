@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
 import { createMarkerIcon, SITE_PIN_HEIGHT, SITE_PIN_WIDTH } from './markerIcon'
 
