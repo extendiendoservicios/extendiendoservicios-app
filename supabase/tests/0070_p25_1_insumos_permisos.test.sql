@@ -382,7 +382,7 @@ select is(
 select tests_0070e.as_user('test-db0070per-admin-sin@example.com');
 
 select results_eq(
-  $$select code, status, stock_value from public.v_stock_admin where code like 'TE-%' and active order by code$$,
+  $$select code, status, stock_value from public.v_stock_admin where code like 'TP-%' and active order by code$$,
   $$values ('TP-001'::text, 'low'::text, 500.00::numeric),
            ('TP-002', 'ok', 2000.00),
            ('TP-003', 'low', 50.50),
@@ -407,19 +407,19 @@ select columns_are(
   'v_supply_catalog no trae precios, stock ni mínimos: solo out_of_stock'
 );
 select results_eq(
-  $$select code, out_of_stock from public.v_supply_catalog where code like 'TE-%' order by code$$,
+  $$select code, out_of_stock from public.v_supply_catalog where code like 'TP-%' order by code$$,
   $$values ('TP-001'::text, false), ('TP-002', false), ('TP-003', false), ('TP-004', true)$$,
   'la empleada ve el catálogo activo (sin el inactivo) con out_of_stock solo donde el stock es cero'
 );
 select tests_0070e.as_user('test-db0070per-coord@example.com');
 select is(
-  (select count(*)::integer from public.v_supply_catalog where code like 'TE-%'),
+  (select count(*)::integer from public.v_supply_catalog where code like 'TP-%'),
   4,
   'el coordinador también ve el catálogo'
 );
 select tests_0070e.as_user('test-db0070per-admin-sin@example.com');
 select is(
-  (select count(*)::integer from public.v_supply_catalog where code like 'TE-%'),
+  (select count(*)::integer from public.v_supply_catalog where code like 'TP-%'),
   4,
   'la administración también lo ve'
 );
@@ -428,7 +428,7 @@ select is(
 set local role postgres;
 update public.profiles set is_active = false where id = tests_0070e.uid(6);
 select tests_0070e.as_user('test-db0070per-emp-b@example.com');
-select is((select count(*)::integer from public.v_supply_catalog where code like 'TE-%'), 0, 'un empleado desactivado no ve el catálogo');
+select is((select count(*)::integer from public.v_supply_catalog where code like 'TP-%'), 0, 'un empleado desactivado no ve el catálogo');
 select is((select count(*)::integer from public.v_withdrawal_shift_options), 0, 'ni los turnos para retirar');
 select is(tests_0070e.err_hint($$select public.register_withdrawal(jsonb_build_array(tests_0070e.l(2, 1)), tests_0070e.shid(2))$$), 'FORBIDDEN', 'ni puede retirar: FORBIDDEN');
 set local role postgres;

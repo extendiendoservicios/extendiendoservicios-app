@@ -295,27 +295,27 @@ select throws_ok(
   '23514', null, 'el código no puede estar en blanco'
 );
 select throws_ok(
-  $$insert into public.supplies (code, name, category_id, cost_price) values ('TE-X1', 'Costo negativo', 'e2500002-0000-0000-0000-0000000000d1', -1)$$,
+  $$insert into public.supplies (code, name, category_id, cost_price) values ('TS-X1', 'Costo negativo', 'e2500002-0000-0000-0000-0000000000d1', -1)$$,
   '23514', null, 'el costo no puede ser negativo (IS-34)'
 );
 select throws_ok(
-  $$insert into public.supplies (code, name, category_id, sale_price) values ('TE-X2', 'Venta negativa', 'e2500002-0000-0000-0000-0000000000d1', -1)$$,
+  $$insert into public.supplies (code, name, category_id, sale_price) values ('TS-X2', 'Venta negativa', 'e2500002-0000-0000-0000-0000000000d1', -1)$$,
   '23514', null, 'la venta no puede ser negativa (IS-34)'
 );
 select throws_ok(
-  $$insert into public.supplies (code, name, category_id, min_qty) values ('TE-X3', 'Mínimo negativo', 'e2500002-0000-0000-0000-0000000000d1', -1)$$,
+  $$insert into public.supplies (code, name, category_id, min_qty) values ('TS-X3', 'Mínimo negativo', 'e2500002-0000-0000-0000-0000000000d1', -1)$$,
   '23514', null, 'el mínimo no puede ser negativo'
 );
 select throws_ok(
-  $$insert into public.supplies (code, name, category_id, stock_qty) values ('TE-X4', 'Stock negativo', 'e2500002-0000-0000-0000-0000000000d1', -1)$$,
+  $$insert into public.supplies (code, name, category_id, stock_qty) values ('TS-X4', 'Stock negativo', 'e2500002-0000-0000-0000-0000000000d1', -1)$$,
   '23514', null, 'el stock no puede ser negativo'
 );
 select throws_ok(
-  $$insert into public.supplies (code, name, category_id) values ('TE-X5', 'Sin categoría', null)$$,
+  $$insert into public.supplies (code, name, category_id) values ('TS-X5', 'Sin categoría', null)$$,
   '23502', null, 'el artículo exige categoría'
 );
 select throws_ok(
-  $$insert into public.supply_categories (name) values (' TEST E categoría UNO ')$$,
+  $$insert into public.supply_categories (name) values (' TEST Eest categoría UNO ')$$,
   '23505', null, 'el nombre de categoría es único sin distinguir mayúsculas ni espacios'
 );
 
