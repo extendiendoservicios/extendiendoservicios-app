@@ -130,10 +130,10 @@ insert into public.employees (profile_id, dni) values
   ('f4402000-0000-0000-0000-000000000004', '94400004'),
   ('f4402000-0000-0000-0000-000000000005', '94400005');
 
-insert into public.clients (id, legal_name, status) values
-  ('f4402000-0000-0000-0000-0000000000c1', 'Cliente AJ2D Uno SA', 'active'),
-  ('f4402000-0000-0000-0000-0000000000c2', 'Cliente AJ2D Dos SA', 'active'),
-  ('f4402000-0000-0000-0000-0000000000c3', 'Cliente AJ2D Tres SA', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('f4402000-0000-0000-0000-0000000000c1', 'Cliente AJ2D Uno SA', 'active', 0),
+  ('f4402000-0000-0000-0000-0000000000c2', 'Cliente AJ2D Dos SA', 'active', 0),
+  ('f4402000-0000-0000-0000-0000000000c3', 'Cliente AJ2D Tres SA', 'active', 0);
 
 insert into public.sites (id, client_id, name, address, status) values
   ('f4402000-0000-0000-0000-0000000000a1', 'f4402000-0000-0000-0000-0000000000c1', 'Sede AJ2D', 'Calle 1', 'active');

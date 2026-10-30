@@ -76,22 +76,22 @@ select ok(not app.valid_weekdays(array[1, 1]::smallint[]), 'app.valid_weekdays s
 -- ---------------------------------------------------------------------------------------------
 
 select lives_ok(
-  $$insert into public.clients (id, legal_name, cuit) values ('c5100000-0000-0000-0000-000000000001', 'Cliente CUIT válido', '20123456789')$$,
+  $$insert into public.clients (id, legal_name, cuit, calendar_color) values ('c5100000-0000-0000-0000-000000000001', 'Cliente CUIT válido', '20123456789', 0)$$,
   'clients.cuit: 11 dígitos entra'
 );
 
 select lives_ok(
-  $$insert into public.clients (id, legal_name, cuit) values ('c5100000-0000-0000-0000-000000000002', 'Cliente sin CUIT', null)$$,
+  $$insert into public.clients (id, legal_name, cuit, calendar_color) values ('c5100000-0000-0000-0000-000000000002', 'Cliente sin CUIT', null, 0)$$,
   'clients.cuit: null entra (columna opcional)'
 );
 
 prepare cuit_con_letras as
-  insert into public.clients (legal_name, cuit) values ('Cliente CUIT inválido', '2012345678A');
+  insert into public.clients (legal_name, cuit, calendar_color) values ('Cliente CUIT inválido', '2012345678A', 0);
 
 select throws_ok('cuit_con_letras', '23514', null, 'clients.cuit: rechaza CUIT con letras');
 
 prepare cuit_largo_incorrecto as
-  insert into public.clients (legal_name, cuit) values ('Cliente CUIT corto', '2012345');
+  insert into public.clients (legal_name, cuit, calendar_color) values ('Cliente CUIT corto', '2012345', 0);
 
 select throws_ok('cuit_largo_incorrecto', '23514', null, 'clients.cuit: rechaza CUIT con menos de 11 dígitos');
 
@@ -172,7 +172,7 @@ select is(
 -- 4. app.sync_assignment_window: no recalcula asignaciones quitadas ------------------------------
 -- ---------------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name) values ('c5100000-0000-0000-0000-000000000003', 'Cliente hardening turnos');
+insert into public.clients (id, legal_name, calendar_color) values ('c5100000-0000-0000-0000-000000000003', 'Cliente hardening turnos', 0);
 insert into public.sites (id, client_id, name, address)
 values ('c5100000-0000-0000-0000-000000000031', 'c5100000-0000-0000-0000-000000000003', 'Sede', 'Dirección');
 

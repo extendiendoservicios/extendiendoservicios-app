@@ -48,8 +48,8 @@ grant execute on function tests_0065.as_user(text) to authenticated, anon;
 select plan(15);
 
 -- Fixtures
-insert into public.clients (id, legal_name, trade_name, status) values
-  ('f6500000-0000-0000-0000-000000000001', 'Cliente de sede uno', 'Fantasía de sede uno', 'active');
+insert into public.clients (id, legal_name, trade_name, status, calendar_color) values
+  ('f6500000-0000-0000-0000-000000000001', 'Cliente de sede uno', 'Fantasía de sede uno', 'active', 0);
 
 insert into public.sites (id, client_id, name, address, latitude, longitude, status,
   contact_name, contact_phone, access_instructions, building_hours, restrictions_notes) values

@@ -79,8 +79,8 @@ select has_function('public', 'update_shift_details', array['uuid', 'smallint', 
 -- por escenario, ver más abajo).
 -- ---------------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('e2800000-0000-0000-0000-000000000001', 'Cliente de v_my_day y acciones propias', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('e2800000-0000-0000-0000-000000000001', 'Cliente de v_my_day y acciones propias', 'active', 0);
 
 insert into public.sites (id, client_id, name, address, status) values
   ('e2800000-0000-0000-0000-000000000011', 'e2800000-0000-0000-0000-000000000001', 'Sede de v_my_day y acciones propias', 'Dirección 1', 'active');

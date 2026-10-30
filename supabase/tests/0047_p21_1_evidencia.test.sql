@@ -126,8 +126,8 @@ select ok(
 
 -- Fixtures -------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('f4700000-0000-0000-0000-000000000001', 'Cliente de evidencia 0047', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('f4700000-0000-0000-0000-000000000001', 'Cliente de evidencia 0047', 'active', 0);
 insert into public.sites (id, client_id, name, address, status, photos_not_allowed) values
   ('f4700000-0000-0000-0000-000000000011', 'f4700000-0000-0000-0000-000000000001', 'Sede con fotos 0047', 'Dirección 1', 'active', false),
   ('f4700000-0000-0000-0000-000000000012', 'f4700000-0000-0000-0000-000000000001', 'Sede sin fotos 0047', 'Dirección 2', 'active', true);

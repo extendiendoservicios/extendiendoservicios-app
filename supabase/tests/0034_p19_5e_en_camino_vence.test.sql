@@ -176,8 +176,8 @@ select tests_0034.emp(n), 'employee' from generate_series(1, 30) n;
 insert into public.employees (profile_id, dni)
 select tests_0034.emp(n), (93400100 + n)::text from generate_series(1, 30) n;
 
-insert into public.clients (id, legal_name, status) values
-  ('e3400000-0000-0000-0000-000000000011', 'Cliente 0034', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('e3400000-0000-0000-0000-000000000011', 'Cliente 0034', 'active', 0);
 insert into public.sites (id, client_id, name, address, status) values
   ('e3400000-0000-0000-0000-000000000021', 'e3400000-0000-0000-0000-000000000011', 'Sede 0034', 'Calle 1', 'active');
 

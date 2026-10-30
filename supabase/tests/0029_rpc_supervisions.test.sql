@@ -77,8 +77,8 @@ select has_function('public', 'rate_employee', array['uuid', 'uuid', 'integer', 
 -- employees dada de baja (para SUPERVISOR_ROLE_REQUIRED) y tres empleados.
 -- ---------------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('e2900000-0000-0000-0000-000000000001', 'Cliente de supervisiones', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('e2900000-0000-0000-0000-000000000001', 'Cliente de supervisiones', 'active', 0);
 
 insert into public.sites (id, client_id, name, address, city, latitude, longitude, contact_name, contact_phone, access_instructions, building_hours, phone_restricted, photos_not_allowed, restrictions_notes, status) values
   ('e2900000-0000-0000-0000-000000000011', 'e2900000-0000-0000-0000-000000000001', 'Sede de supervisiones', 'Dirección 29', 'Buenos Aires', -34.6, -58.4, 'Recepción', '+54 11 4000-0000', 'Timbre 3', 'Lun a vie 7 a 20', true, false, 'No sacar fotos en el depósito', 'active');

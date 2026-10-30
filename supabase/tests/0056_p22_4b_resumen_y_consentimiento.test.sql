@@ -66,8 +66,8 @@ select plan(32);
 
 -- Fixtures ----------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('e5600000-0000-0000-0000-000000000001', 'Cliente del resumen geo', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('e5600000-0000-0000-0000-000000000001', 'Cliente del resumen geo', 'active', 0);
 
 insert into public.sites (id, client_id, name, address, latitude, longitude, status) values
   ('e5600000-0000-0000-0000-000000000011', 'e5600000-0000-0000-0000-000000000001', 'Sede R1', 'Dirección 1', -34.603700, -58.381600, 'active');

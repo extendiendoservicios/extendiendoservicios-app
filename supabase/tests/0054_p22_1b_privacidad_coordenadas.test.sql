@@ -114,8 +114,8 @@ select ok(
 
 update public.company_settings set geofence_radius_m = 150, geofence_max_accuracy_m = 150 where id = 1;
 
-insert into public.clients (id, legal_name, status) values
-  ('e5400000-0000-0000-0000-000000000001', 'Cliente de privacidad', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('e5400000-0000-0000-0000-000000000001', 'Cliente de privacidad', 'active', 0);
 
 insert into public.sites (id, client_id, name, address, latitude, longitude, geofence_radius_m, status) values
   ('e5400000-0000-0000-0000-000000000011', 'e5400000-0000-0000-0000-000000000001', 'Sede P1', 'Dirección 1', -34.603700, -58.381600, null, 'active');

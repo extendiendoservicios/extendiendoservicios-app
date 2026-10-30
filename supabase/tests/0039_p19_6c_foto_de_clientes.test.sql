@@ -93,8 +93,8 @@ insert into public.user_roles (profile_id, role) values
   ('c4390000-0000-0000-0000-000000000003', 'employee'),
   ('c4390000-0000-0000-0000-000000000004', 'supervisor');
 
-insert into public.clients (id, legal_name) values
-  ('c4390000-0000-0000-0000-0000000000c1', 'Cliente Foto AJ206 SA');
+insert into public.clients (id, legal_name, calendar_color) values
+  ('c4390000-0000-0000-0000-0000000000c1', 'Cliente Foto AJ206 SA', 0);
 
 -- Admin: sube, lee y actualiza ------------------------------------------------------------------
 

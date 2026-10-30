@@ -103,8 +103,8 @@ select ok(
 
 -- Fixtures -------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('f4710000-0000-0000-0000-000000000001', 'Cliente de evidencia 0047 b', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('f4710000-0000-0000-0000-000000000001', 'Cliente de evidencia 0047 b', 'active', 0);
 insert into public.sites (id, client_id, name, address, status) values
   ('f4710000-0000-0000-0000-000000000011', 'f4710000-0000-0000-0000-000000000001', 'Sede 0047 b', 'Dirección 1', 'active');
 

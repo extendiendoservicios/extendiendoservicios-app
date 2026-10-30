@@ -196,9 +196,9 @@ select has_index('public', 'assignments', 'assignments_shift_id_idx', 'assignmen
 insert into auth.users (id, email, raw_user_meta_data) values
   ('10000000-0000-0000-0000-000000000090', 'test-db009-admin@example.com', jsonb_build_object('first_name', 'Admin', 'last_name', 'Prueba'));
 
-insert into public.clients (id, legal_name) values
-  ('10000000-0000-0000-0000-000000000001', 'Cliente Uno'),
-  ('10000000-0000-0000-0000-000000000002', 'Cliente Dos');
+insert into public.clients (id, legal_name, calendar_color) values
+  ('10000000-0000-0000-0000-000000000001', 'Cliente Uno', 0),
+  ('10000000-0000-0000-0000-000000000002', 'Cliente Dos', 0);
 
 insert into public.sites (id, client_id, name, address) values
   ('10000000-0000-0000-0000-000000000011', '10000000-0000-0000-0000-000000000001', 'Sede Uno', 'Dirección uno'),

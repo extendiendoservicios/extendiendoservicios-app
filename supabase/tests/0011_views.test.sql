@@ -68,7 +68,7 @@ select ok(
 
 -- Fixtures comunes: cliente, sede, tres empleados -------------------------------------------------
 
-insert into public.clients (id, legal_name) values ('c1500000-0000-0000-0000-000000000001', 'Cliente vistas');
+insert into public.clients (id, legal_name, calendar_color) values ('c1500000-0000-0000-0000-000000000001', 'Cliente vistas', 0);
 insert into public.sites (id, client_id, name, address)
 values ('c1500000-0000-0000-0000-000000000011', 'c1500000-0000-0000-0000-000000000001', 'Sede vistas', 'Dirección');
 

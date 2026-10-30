@@ -54,7 +54,7 @@ select plan(34);
 -- Fixtures: cliente/sede, turno supervisado por S1 con E1 asignado y calificado; S2 es una
 -- segunda supervisora sin relación con ese turno (para probar que S ve solo las propias) -------
 
-insert into public.clients (id, legal_name) values ('c2400000-0000-0000-0000-000000000001', 'Cliente supervisiones');
+insert into public.clients (id, legal_name, calendar_color) values ('c2400000-0000-0000-0000-000000000001', 'Cliente supervisiones', 0);
 insert into public.sites (id, client_id, name, address)
 values ('c2400000-0000-0000-0000-000000000011', 'c2400000-0000-0000-0000-000000000001', 'Sede', 'Dirección');
 

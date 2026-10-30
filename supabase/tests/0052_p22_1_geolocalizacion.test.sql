@@ -187,8 +187,8 @@ select is(
 
 -- Fixtures ----------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('e5200000-0000-0000-0000-000000000001', 'Cliente de geolocalización', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('e5200000-0000-0000-0000-000000000001', 'Cliente de geolocalización', 'active', 0);
 
 -- S1: con coordenadas, radio general. S2: sin coordenadas. S3: radio propio de 60 m, 1112 m al norte.
 insert into public.sites (id, client_id, name, address, latitude, longitude, geofence_radius_m, status) values

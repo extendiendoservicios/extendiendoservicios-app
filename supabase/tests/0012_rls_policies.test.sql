@@ -62,7 +62,7 @@ select plan(30);
 -- Fixtures: owner, admin, supervisora, dos empleados de un mismo turno supervisado (E1, E2) y un
 -- tercer empleado "de afuera" (E3, sin turno compartido con nadie del fixture) --------------------
 
-insert into public.clients (id, legal_name) values ('c2100000-0000-0000-0000-000000000001', 'Cliente RLS 1');
+insert into public.clients (id, legal_name, calendar_color) values ('c2100000-0000-0000-0000-000000000001', 'Cliente RLS 1', 0);
 insert into public.sites (id, client_id, name, address)
 values ('c2100000-0000-0000-0000-000000000011', 'c2100000-0000-0000-0000-000000000001', 'Sede RLS 1', 'Dirección');
 

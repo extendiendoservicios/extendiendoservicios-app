@@ -62,9 +62,9 @@ select has_function('public', 'reload_shift_tasks', array['uuid'], 'existe publi
 -- roles y las capacidades relevantes (cancel_shifts, edit_checklists) activadas o no.
 -- ---------------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('e2300000-0000-0000-0000-000000000001', 'Cliente activo de turnos', 'active'),
-  ('e2300000-0000-0000-0000-000000000002', 'Cliente suspendido de turnos', 'suspended');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('e2300000-0000-0000-0000-000000000001', 'Cliente activo de turnos', 'active', 0),
+  ('e2300000-0000-0000-0000-000000000002', 'Cliente suspendido de turnos', 'suspended', 0);
 
 insert into public.sites (id, client_id, name, address, status) values
   ('e2300000-0000-0000-0000-000000000011', 'e2300000-0000-0000-0000-000000000001', 'Sede activa', 'Dirección 1', 'active'),

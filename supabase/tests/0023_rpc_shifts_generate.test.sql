@@ -63,9 +63,9 @@ select has_function('public', 'generate_shifts', array['int', 'int'], 'existe pu
 -- E (en el cliente suspendido, no debe generar nada), F (vigencia que no cubre marzo 2199).
 -- ---------------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('e2301000-0000-0000-0000-000000000001', 'Cliente activo de generación', 'active'),
-  ('e2301000-0000-0000-0000-000000000002', 'Cliente suspendido de generación', 'suspended');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('e2301000-0000-0000-0000-000000000001', 'Cliente activo de generación', 'active', 0),
+  ('e2301000-0000-0000-0000-000000000002', 'Cliente suspendido de generación', 'suspended', 0);
 
 insert into public.sites (id, client_id, name, address, status) values
   ('e2301000-0000-0000-0000-000000000011', 'e2301000-0000-0000-0000-000000000001', 'Sede activa', 'Dirección 1', 'active'),

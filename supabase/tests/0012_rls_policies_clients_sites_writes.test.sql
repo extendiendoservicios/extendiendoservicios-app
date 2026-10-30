@@ -85,8 +85,8 @@ insert into public.employees (profile_id, dni) values
   ('c2201000-0000-0000-0000-000000000004', '52201004'),
   ('c2201000-0000-0000-0000-000000000005', '52201005');
 
-insert into public.clients (id, legal_name) values
-  ('c2201100-0000-0000-0000-000000000001', 'Cliente Escritura SRL');
+insert into public.clients (id, legal_name, calendar_color) values
+  ('c2201100-0000-0000-0000-000000000001', 'Cliente Escritura SRL', 0);
 
 insert into public.sites (id, client_id, name, address) values
   ('c2201100-0000-0000-0000-000000000011', 'c2201100-0000-0000-0000-000000000001', 'Sede Escritura', 'Dirección de prueba');
@@ -126,21 +126,21 @@ set local role postgres;
 
 select tests_0012d.as_user('test-db014e-owner@example.com');
 select lives_ok(
-  $$insert into public.clients (id, legal_name) values ('c2201100-0000-0000-0000-000000000002', 'Cliente Alta Owner')$$,
+  $$insert into public.clients (id, legal_name, calendar_color) values ('c2201100-0000-0000-0000-000000000002', 'Cliente Alta Owner', 0)$$,
   'clients: el owner puede insertar un cliente'
 );
 set local role postgres;
 
 select tests_0012d.as_user('test-db014e-admin-full@example.com');
 select lives_ok(
-  $$insert into public.clients (id, legal_name) values ('c2201100-0000-0000-0000-000000000003', 'Cliente Alta Admin Con Capacidad')$$,
+  $$insert into public.clients (id, legal_name, calendar_color) values ('c2201100-0000-0000-0000-000000000003', 'Cliente Alta Admin Con Capacidad', 0)$$,
   'clients: un admin con una capacidad activa puede insertar un cliente'
 );
 set local role postgres;
 
 select tests_0012d.as_user('test-db014e-admin-nocap@example.com');
 select lives_ok(
-  $$insert into public.clients (id, legal_name) values ('c2201100-0000-0000-0000-000000000004', 'Cliente Alta Admin Sin Capacidad')$$,
+  $$insert into public.clients (id, legal_name, calendar_color) values ('c2201100-0000-0000-0000-000000000004', 'Cliente Alta Admin Sin Capacidad', 0)$$,
   'clients: un admin SIN ninguna capacidad activa también puede insertar un cliente (no hay capacidad que lo exija)'
 );
 select lives_ok(
@@ -162,7 +162,7 @@ set local role postgres;
 select tests_0012d.as_user('test-db014e-supervisora@example.com');
 
 prepare client_insert_supervisor as
-  insert into public.clients (id, legal_name) values ('c2201100-0000-0000-0000-000000000006', 'Cliente Rechazado Supervisora');
+  insert into public.clients (id, legal_name, calendar_color) values ('c2201100-0000-0000-0000-000000000006', 'Cliente Rechazado Supervisora', 0);
 select throws_ok(
   'client_insert_supervisor', '42501', null,
   'clients: la supervisora no puede insertar un cliente'
@@ -211,7 +211,7 @@ set local role postgres;
 select tests_0012d.as_user('test-db014e-empleado@example.com');
 
 prepare client_insert_empleado as
-  insert into public.clients (id, legal_name) values ('c2201100-0000-0000-0000-000000000008', 'Cliente Rechazado Empleado');
+  insert into public.clients (id, legal_name, calendar_color) values ('c2201100-0000-0000-0000-000000000008', 'Cliente Rechazado Empleado', 0);
 select throws_ok(
   'client_insert_empleado', '42501', null,
   'clients: el empleado no puede insertar un cliente'

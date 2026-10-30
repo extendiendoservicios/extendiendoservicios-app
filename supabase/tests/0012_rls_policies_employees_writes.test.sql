@@ -61,7 +61,7 @@ select plan(23);
 -- Fixtures: owner, admin (sin manage_users -- alcanza para update, que no exige la capacidad),
 -- supervisora, dos empleados (E1 con turno bajo la supervisora, E2 "de afuera") -----------------
 
-insert into public.clients (id, legal_name) values ('c2302000-0000-0000-0000-000000000001', 'Cliente EMP-013');
+insert into public.clients (id, legal_name, calendar_color) values ('c2302000-0000-0000-0000-000000000001', 'Cliente EMP-013', 0);
 insert into public.sites (id, client_id, name, address)
 values ('c2302000-0000-0000-0000-000000000011', 'c2302000-0000-0000-0000-000000000001', 'Sede EMP-013', 'Dirección');
 

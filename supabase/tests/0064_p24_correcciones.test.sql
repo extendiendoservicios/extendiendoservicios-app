@@ -105,9 +105,9 @@ select ok(
 -- Fixtures
 -- ---------------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('f6400000-0000-0000-0000-000000000001', 'Cliente de correcciones uno', 'active'),
-  ('f6400000-0000-0000-0000-000000000002', 'Cliente de correcciones dos', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('f6400000-0000-0000-0000-000000000001', 'Cliente de correcciones uno', 'active', 0),
+  ('f6400000-0000-0000-0000-000000000002', 'Cliente de correcciones dos', 'active', 0);
 
 insert into public.sites (id, client_id, name, address, latitude, longitude, status, geofence_radius_m) values
   ('f6400000-0000-0000-0000-000000000011', 'f6400000-0000-0000-0000-000000000001', 'Sede con radio propio', 'Dirección 1', -34.6, -58.4, 'active', 300),

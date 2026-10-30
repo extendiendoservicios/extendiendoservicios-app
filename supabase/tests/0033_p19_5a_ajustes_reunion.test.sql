@@ -249,10 +249,10 @@ insert into public.employees (profile_id, dni) values
 insert into public.employees (profile_id, dni)
 select tests_0033.emp(n), (93300100 + n)::text from generate_series(1, 40) n;
 
-insert into public.clients (id, legal_name, status) values
-  ('e3300000-0000-0000-0000-000000000011', 'Cliente 0033 principal', 'active'),
-  ('e3300000-0000-0000-0000-000000000012', 'Cliente 0033 sin servicios', 'active'),
-  ('e3300000-0000-0000-0000-000000000013', 'Cliente 0033 fuera de rango', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('e3300000-0000-0000-0000-000000000011', 'Cliente 0033 principal', 'active', 0),
+  ('e3300000-0000-0000-0000-000000000012', 'Cliente 0033 sin servicios', 'active', 0),
+  ('e3300000-0000-0000-0000-000000000013', 'Cliente 0033 fuera de rango', 'active', 0);
 
 insert into public.sites (id, client_id, name, address, status) values
   ('e3300000-0000-0000-0000-000000000021', 'e3300000-0000-0000-0000-000000000011', 'Sede A 0033', 'Calle 1', 'active'),

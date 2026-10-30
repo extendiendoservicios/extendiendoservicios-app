@@ -59,9 +59,9 @@ select plan(6);
 -- Fixtures: dos clientes con una sede cada uno, y personas con los cuatro roles.
 -- ---------------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name) values
-  ('e2302000-0000-0000-0000-000000000001', 'Cliente uno de SERVICE-005'),
-  ('e2302000-0000-0000-0000-000000000002', 'Cliente dos de SERVICE-005');
+insert into public.clients (id, legal_name, calendar_color) values
+  ('e2302000-0000-0000-0000-000000000001', 'Cliente uno de SERVICE-005', 0),
+  ('e2302000-0000-0000-0000-000000000002', 'Cliente dos de SERVICE-005', 0);
 
 insert into public.sites (id, client_id, name, address) values
   ('e2302000-0000-0000-0000-000000000011', 'e2302000-0000-0000-0000-000000000001', 'Sede del cliente uno', 'Dirección 1'),

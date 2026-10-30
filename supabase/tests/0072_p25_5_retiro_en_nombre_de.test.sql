@@ -100,9 +100,9 @@ insert into public.employees (profile_id, dni, status) values
   ('e2500006-0000-0000-0000-000000000006', '92720006', 'active'),
   ('e2500006-0000-0000-0000-000000000007', '92720007', 'active');
 
-insert into public.clients (id, legal_name, trade_name, status) values
-  ('e2500006-0000-0000-0000-0000000000c1', 'Cliente Retiro Uno SA', 'Cliente Uno', 'active'),
-  ('e2500006-0000-0000-0000-0000000000c2', 'Cliente Retiro Dos SA', null, 'active');
+insert into public.clients (id, legal_name, trade_name, status, calendar_color) values
+  ('e2500006-0000-0000-0000-0000000000c1', 'Cliente Retiro Uno SA', 'Cliente Uno', 'active', 0),
+  ('e2500006-0000-0000-0000-0000000000c2', 'Cliente Retiro Dos SA', null, 'active', 0);
 
 insert into public.sites (id, client_id, name, address, status) values
   ('e2500006-0000-0000-0000-0000000000a1', 'e2500006-0000-0000-0000-0000000000c1', 'Sede Uno', 'Calle 1', 'active'),

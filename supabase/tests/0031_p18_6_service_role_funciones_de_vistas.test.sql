@@ -23,8 +23,8 @@ insert into public.user_roles (profile_id, role) values
 insert into public.employees (profile_id, dni) values
   ('e3100000-0000-0000-0000-000000000001', '93100001'),
   ('e3100000-0000-0000-0000-000000000002', '93100002');
-insert into public.clients (id, legal_name, status) values
-  ('e3100000-0000-0000-0000-000000000101', 'Cliente 0031', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('e3100000-0000-0000-0000-000000000101', 'Cliente 0031', 'active', 0);
 insert into public.sites (id, client_id, name, address, status) values
   ('e3100000-0000-0000-0000-000000000111', 'e3100000-0000-0000-0000-000000000101', 'Sede 0031', 'Calle 31', 'active');
 insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_time, required_staff, status) values

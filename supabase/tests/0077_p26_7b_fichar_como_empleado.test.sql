@@ -94,7 +94,7 @@ insert into public.employees (profile_id, employee_number, dni) values
   ('c7700000-0000-0000-0000-000000000002', 90770002, '90770002'),
   ('c7700000-0000-0000-0000-000000000003', 90770003, '90770003');
 
-insert into public.clients (id, legal_name) values ('c7700000-0000-0000-0000-0000000000c1', 'Cliente 0077');
+insert into public.clients (id, legal_name, calendar_color) values ('c7700000-0000-0000-0000-0000000000c1', 'Cliente 0077', 0);
 insert into public.sites (id, client_id, name, address, status) values
   ('c7700000-0000-0000-0000-0000000000a1', 'c7700000-0000-0000-0000-0000000000c1', 'Sede 0077', 'Dirección 1', 'active');
 

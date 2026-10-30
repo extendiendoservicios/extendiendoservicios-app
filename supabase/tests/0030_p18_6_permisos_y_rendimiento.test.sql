@@ -124,8 +124,8 @@ update public.profiles set phone = '1155000006', contact_email = 'emp2-contacto@
 update public.profiles set last_seen_changes_at = now() - interval '1 hour'
   where id in ('e3000000-0000-0000-0000-000000000005', 'e3000000-0000-0000-0000-000000000007');
 
-insert into public.clients (id, legal_name, trade_name, cuit, admin_address, notes, status) values
-  ('e3000000-0000-0000-0000-000000000101', 'Cliente P18.6 S.A.', 'Cliente Treinta', '30930001011', 'Domicilio administrativo secreto', 'Notas internas del cliente', 'active');
+insert into public.clients (id, legal_name, trade_name, cuit, admin_address, notes, status, calendar_color) values
+  ('e3000000-0000-0000-0000-000000000101', 'Cliente P18.6 S.A.', 'Cliente Treinta', '30930001011', 'Domicilio administrativo secreto', 'Notas internas del cliente', 'active', 0);
 insert into public.sites (id, client_id, name, address, status) values
   ('e3000000-0000-0000-0000-000000000111', 'e3000000-0000-0000-0000-000000000101', 'Sede P18.6', 'Calle 30', 'active');
 

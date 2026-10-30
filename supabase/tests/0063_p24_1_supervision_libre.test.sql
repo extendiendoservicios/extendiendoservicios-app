@@ -105,9 +105,9 @@ select has_column('public', 'v_supervisions_admin', 'workday_auto_closed', 'v_su
 -- Fixtures
 -- ---------------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('f6301000-0000-0000-0000-000000000001', 'Cliente de supervisión uno', 'active'),
-  ('f6301000-0000-0000-0000-000000000002', 'Cliente de supervisión dos', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('f6301000-0000-0000-0000-000000000001', 'Cliente de supervisión uno', 'active', 0),
+  ('f6301000-0000-0000-0000-000000000002', 'Cliente de supervisión dos', 'active', 0);
 
 insert into public.sites (id, client_id, name, address, latitude, longitude, status) values
   ('f6301000-0000-0000-0000-000000000011', 'f6301000-0000-0000-0000-000000000001', 'Sede uno', 'Dirección 1', -34.6, -58.4, 'active'),

@@ -115,7 +115,7 @@ select has_function('app', 'supervises_shift', array['uuid'], 'existe app.superv
 
 -- Fixtures: cliente, sede, un empleado supervisor y otro empleado común, un turno y su asignación
 
-insert into public.clients (id, legal_name) values ('50000000-0000-0000-0000-000000000001', 'Cliente de supervisiones');
+insert into public.clients (id, legal_name, calendar_color) values ('50000000-0000-0000-0000-000000000001', 'Cliente de supervisiones', 0);
 insert into public.sites (id, client_id, name, address)
 values ('50000000-0000-0000-0000-000000000011', '50000000-0000-0000-0000-000000000001', 'Sede', 'Dirección');
 insert into auth.users (id, email, raw_user_meta_data) values

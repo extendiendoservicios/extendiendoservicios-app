@@ -80,8 +80,8 @@ insert into public.user_roles (profile_id, role) values
 insert into public.employees (profile_id, dni, status) values
   ('e25d0000-0000-0000-0000-000000000005', '92500905', 'active');
 
-insert into public.clients (id, legal_name, trade_name, status) values
-  ('e25d0000-0000-0000-0000-0000000000c1', 'Cliente Validaciones SA', 'Cliente V', 'active');
+insert into public.clients (id, legal_name, trade_name, status, calendar_color) values
+  ('e25d0000-0000-0000-0000-0000000000c1', 'Cliente Validaciones SA', 'Cliente V', 'active', 0);
 
 insert into public.sites (id, client_id, name, address, status) values
   ('e25d0000-0000-0000-0000-0000000000a1', 'e25d0000-0000-0000-0000-0000000000c1', 'Sede V', 'Calle 1', 'active');

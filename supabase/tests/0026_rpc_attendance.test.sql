@@ -69,8 +69,8 @@ select has_function('public', 'set_assignment_notes', array['uuid', 'text'], 'ex
 -- pisar la exclusión de superposición del mismo empleado).
 -- ---------------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('e2600000-0000-0000-0000-000000000001', 'Cliente de asistencia', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('e2600000-0000-0000-0000-000000000001', 'Cliente de asistencia', 'active', 0);
 
 insert into public.sites (id, client_id, name, address, status) values
   ('e2600000-0000-0000-0000-000000000011', 'e2600000-0000-0000-0000-000000000001', 'Sede de asistencia', 'Dirección 1', 'active');

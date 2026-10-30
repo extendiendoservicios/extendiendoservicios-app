@@ -82,8 +82,8 @@ select is(app.date_matches_weeks_of_month(date '2199-02-22', array[5]::smallint[
 select is(app.date_matches_weeks_of_month(date '2199-04-15', array[1, 5]::smallint[]), false, 'varias semanas: el 15 no está en {1, última}');
 
 -- Check de la columna: se prueba como la base, insertando como postgres
-insert into public.clients (id, legal_name, status) values
-  ('f4400000-0000-0000-0000-000000000001', 'Cliente de servicios 0044', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('f4400000-0000-0000-0000-000000000001', 'Cliente de servicios 0044', 'active', 0);
 insert into public.sites (id, client_id, name, address, status) values
   ('f4400000-0000-0000-0000-000000000011', 'f4400000-0000-0000-0000-000000000001', 'Sede de servicios 0044', 'Dirección 1', 'active');
 

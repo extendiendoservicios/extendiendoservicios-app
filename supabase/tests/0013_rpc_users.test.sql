@@ -56,7 +56,7 @@ select has_function('public', 'mark_changes_seen', array[]::text[], 'existe publ
 -- supervisora, un empleado sin roles privilegiados, una persona sin fila en employees y una
 -- persona con doble rol (employee + supervisor) para probar el reemplazo -----------------------
 
-insert into public.clients (id, legal_name) values ('c3100000-0000-0000-0000-000000000001', 'Cliente RPC users');
+insert into public.clients (id, legal_name, calendar_color) values ('c3100000-0000-0000-0000-000000000001', 'Cliente RPC users', 0);
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('c3100000-0000-0000-0000-000000000081', 'test-db015-owner@example.com', jsonb_build_object('first_name', 'Owner', 'last_name', 'Uno')),

@@ -64,9 +64,9 @@ select has_function('public', 'update_shift_details', array['uuid', 'smallint', 
 -- (sin restricciones, licencia vigente, disponibilidad declarada para otro día, inactivo).
 -- ---------------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('e2400000-0000-0000-0000-000000000001', 'Cliente de asignaciones', 'active'),
-  ('e2400000-0000-0000-0000-000000000002', 'Otro cliente de asignaciones', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('e2400000-0000-0000-0000-000000000001', 'Cliente de asignaciones', 'active', 0),
+  ('e2400000-0000-0000-0000-000000000002', 'Otro cliente de asignaciones', 'active', 0);
 
 insert into public.sites (id, client_id, name, address, status) values
   ('e2400000-0000-0000-0000-000000000011', 'e2400000-0000-0000-0000-000000000001', 'Sede de asignaciones', 'Dirección 1', 'active');

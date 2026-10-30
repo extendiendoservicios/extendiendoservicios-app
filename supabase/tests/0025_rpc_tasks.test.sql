@@ -62,10 +62,10 @@ select has_function('public', 'update_task_status', array['uuid', 'task_status',
 -- los cuatro roles y las capacidades relevantes (edit_checklists activada o no).
 -- ---------------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('e2500007-0000-0000-0000-000000000001', 'Cliente de tareas', 'active'),
-  ('e2500007-0000-0000-0000-000000000002', 'Cliente sin plantilla', 'active'),
-  ('e2500007-0000-0000-0000-000000000003', 'Cliente suspendido de tareas', 'suspended');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('e2500007-0000-0000-0000-000000000001', 'Cliente de tareas', 'active', 0),
+  ('e2500007-0000-0000-0000-000000000002', 'Cliente sin plantilla', 'active', 0),
+  ('e2500007-0000-0000-0000-000000000003', 'Cliente suspendido de tareas', 'suspended', 0);
 
 insert into public.sites (id, client_id, name, address, status) values
   ('e2500007-0000-0000-0000-000000000011', 'e2500007-0000-0000-0000-000000000001', 'Sede sin plantilla propia', 'Dirección 1', 'active'),

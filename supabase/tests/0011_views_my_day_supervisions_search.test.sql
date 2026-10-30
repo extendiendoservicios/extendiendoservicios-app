@@ -50,7 +50,7 @@ select plan(22);
 
 -- Fixtures comunes: cliente, sede, un empleado, otro empleado (compañero), una supervisora -------
 
-insert into public.clients (id, legal_name) values ('c1600000-0000-0000-0000-000000000001', 'Cliente vistas 2');
+insert into public.clients (id, legal_name, calendar_color) values ('c1600000-0000-0000-0000-000000000001', 'Cliente vistas 2', 0);
 insert into public.sites (id, client_id, name, address)
 values ('c1600000-0000-0000-0000-000000000011', 'c1600000-0000-0000-0000-000000000001', 'Sede vistas 2', 'Dirección');
 
@@ -252,7 +252,7 @@ select is(
 
 -- 5. v_clients: conteo de sedes y servicios activos -----------------------------------------------
 
-insert into public.clients (id, legal_name) values ('c1600000-0000-0000-0000-000000000002', 'Cliente conteo');
+insert into public.clients (id, legal_name, calendar_color) values ('c1600000-0000-0000-0000-000000000002', 'Cliente conteo', 0);
 insert into public.sites (id, client_id, name, address, deleted_at) values
   ('c1600000-0000-0000-0000-000000000021', 'c1600000-0000-0000-0000-000000000002', 'Sede vigente', 'Dirección', null),
   ('c1600000-0000-0000-0000-000000000022', 'c1600000-0000-0000-0000-000000000002', 'Sede dada de baja', 'Dirección', now());

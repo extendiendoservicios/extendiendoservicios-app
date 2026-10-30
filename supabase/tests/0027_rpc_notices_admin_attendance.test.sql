@@ -108,8 +108,8 @@ select has_function('public', 'close_assignment', array['uuid', 'text', 'timesta
 -- Fixtures comunes: un cliente activo con una sede activa; personas con los cuatro roles.
 -- ---------------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('e2700000-0000-0000-0000-000000000001', 'Cliente de avisos y asistencia admin', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('e2700000-0000-0000-0000-000000000001', 'Cliente de avisos y asistencia admin', 'active', 0);
 
 insert into public.sites (id, client_id, name, address, status) values
   ('e2700000-0000-0000-0000-000000000011', 'e2700000-0000-0000-0000-000000000001', 'Sede de avisos y asistencia admin', 'Dirección 1', 'active');

@@ -56,7 +56,7 @@ select plan(23);
 -- Fixtures: cliente/sede, turno1 (supervisado por S, con E1 y E2 asignados), turno2 (sin
 -- relación con nadie, para el criterio de aceptación "no lee asignaciones de turnos ajenos) -------
 
-insert into public.clients (id, legal_name) values ('c2300000-0000-0000-0000-000000000001', 'Cliente tareas y asistencia');
+insert into public.clients (id, legal_name, calendar_color) values ('c2300000-0000-0000-0000-000000000001', 'Cliente tareas y asistencia', 0);
 insert into public.sites (id, client_id, name, address)
 values ('c2300000-0000-0000-0000-000000000011', 'c2300000-0000-0000-0000-000000000001', 'Sede', 'Dirección');
 

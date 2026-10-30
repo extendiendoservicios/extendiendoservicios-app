@@ -27,7 +27,7 @@ select plan(22);
 
 -- Fixtures: un cliente con una sede, y dos empleados (X e Y) ------------------------------------
 
-insert into public.clients (id, legal_name) values ('20000000-0000-0000-0000-000000000001', 'Cliente de asignaciones');
+insert into public.clients (id, legal_name, calendar_color) values ('20000000-0000-0000-0000-000000000001', 'Cliente de asignaciones', 0);
 insert into public.sites (id, client_id, name, address)
 values ('20000000-0000-0000-0000-000000000011', '20000000-0000-0000-0000-000000000001', 'Sede', 'Dirección');
 

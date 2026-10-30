@@ -105,7 +105,7 @@ insert into public.employees (profile_id, employee_number, dni) values
 update public.profiles set is_active = false
 where id = 'c7600000-0000-0000-0000-000000000009';
 
-insert into public.clients (id, legal_name) values ('c7600000-0000-0000-0000-0000000000c1', 'Cliente 0076');
+insert into public.clients (id, legal_name, calendar_color) values ('c7600000-0000-0000-0000-0000000000c1', 'Cliente 0076', 0);
 
 -- Estructura y permisos -----------------------------------------------------------------------
 

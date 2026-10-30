@@ -96,8 +96,8 @@ select ok(
 
 -- Fixtures -------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('f6100000-0000-0000-0000-000000000001', 'Cliente de coordinador de licencia', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('f6100000-0000-0000-0000-000000000001', 'Cliente de coordinador de licencia', 'active', 0);
 
 insert into public.sites (id, client_id, name, address, status) values
   ('f6100000-0000-0000-0000-000000000011', 'f6100000-0000-0000-0000-000000000001', 'Sede de coordinador de licencia', 'Dirección 1', 'active');

@@ -67,9 +67,9 @@ select ok(
 
 -- Fixtures -------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('f4600000-0000-0000-0000-000000000001', 'Cliente de repetición 0046', 'active'),
-  ('f4600000-0000-0000-0000-000000000002', 'Cliente suspendido 0046', 'suspended');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('f4600000-0000-0000-0000-000000000001', 'Cliente de repetición 0046', 'active', 0),
+  ('f4600000-0000-0000-0000-000000000002', 'Cliente suspendido 0046', 'suspended', 0);
 insert into public.sites (id, client_id, name, address, status) values
   ('f4600000-0000-0000-0000-000000000011', 'f4600000-0000-0000-0000-000000000001', 'Sede de repetición 0046', 'Dirección 1', 'active');
 

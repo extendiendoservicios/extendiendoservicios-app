@@ -49,9 +49,9 @@ select plan(23);
 
 -- Fixtures: dos clientes (uno con un turno compartido por S/E, otro sin relación con nadie) -------
 
-insert into public.clients (id, legal_name) values
-  ('c2200000-0000-0000-0000-000000000001', 'Cliente con turno'),
-  ('c2200000-0000-0000-0000-000000000002', 'Cliente sin relación');
+insert into public.clients (id, legal_name, calendar_color) values
+  ('c2200000-0000-0000-0000-000000000001', 'Cliente con turno', 0),
+  ('c2200000-0000-0000-0000-000000000002', 'Cliente sin relación', 0);
 
 insert into public.client_contacts (id, client_id, name, is_primary) values
   ('c2200000-0000-0000-0000-000000000005', 'c2200000-0000-0000-0000-000000000001', 'Contacto uno', true),

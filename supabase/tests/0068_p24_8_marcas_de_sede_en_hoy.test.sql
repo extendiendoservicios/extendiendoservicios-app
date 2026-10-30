@@ -52,8 +52,8 @@ select ok(
   'los grants de app.supervisor_today y v_supervisor_today se conservan'
 );
 
-insert into public.clients (id, legal_name, status) values
-  ('f6800000-0000-0000-0000-000000000001', 'Cliente de marcas', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('f6800000-0000-0000-0000-000000000001', 'Cliente de marcas', 'active', 0);
 insert into public.sites (id, client_id, name, address, latitude, longitude, status, phone_restricted, photos_not_allowed) values
   ('f6800000-0000-0000-0000-000000000011', 'f6800000-0000-0000-0000-000000000001', 'Sede con marcas', 'Dirección 1', -34.6, -58.4, 'active', true, true),
   ('f6800000-0000-0000-0000-000000000012', 'f6800000-0000-0000-0000-000000000001', 'Sede sin marcas', 'Dirección 2', -34.7, -58.5, 'active', false, false);
