@@ -14,10 +14,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0042;
+grant usage on schema tests_0042 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0042.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -28,7 +28,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0042.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -43,7 +43,7 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0042.as_user(text) to authenticated, anon;
 
 select plan(88);
 
@@ -134,7 +134,7 @@ insert into public.announcement_recipients (announcement_id, profile_id) values
 
 -- Como empleado 1: ve lo suyo ---------------------------------------------------------------------
 
-select tests.as_user('test-aj2e-emp1@example.com');
+select tests_0042.as_user('test-aj2e-emp1@example.com');
 
 select is(
   (select array_agg(title order by title) from public.announcements where title like 'T42%'),
@@ -219,7 +219,7 @@ select throws_ok(
 
 -- Como empleado 2: no es destinatario del custom ----------------------------------------------------
 
-select tests.as_user('test-aj2e-emp2@example.com');
+select tests_0042.as_user('test-aj2e-emp2@example.com');
 
 select is(
   (select array_agg(title order by title) from public.announcements where title like 'T42%'),
@@ -236,7 +236,7 @@ select public.acknowledge_announcement('f4200000-0000-0000-0000-0000000000a3');
 
 -- Como supervisor ------------------------------------------------------------------------------------
 
-select tests.as_user('test-aj2e-supervisor@example.com');
+select tests_0042.as_user('test-aj2e-supervisor@example.com');
 
 select is(
   (select array_agg(title order by title) from public.v_my_announcements where title like 'T42%'),
@@ -251,7 +251,7 @@ select throws_ok(
 
 -- Persona con ambos roles ----------------------------------------------------------------------------
 
-select tests.as_user('test-aj2e-dual@example.com');
+select tests_0042.as_user('test-aj2e-dual@example.com');
 
 select is(
   (select array_agg(title order by title) from public.v_my_announcements where title like 'T42%'),
@@ -262,7 +262,7 @@ select public.acknowledge_announcement('f4200000-0000-0000-0000-0000000000a3');
 
 -- Perfil inactivo --------------------------------------------------------------------------------------
 
-select tests.as_user('test-aj2e-inactivo@example.com');
+select tests_0042.as_user('test-aj2e-inactivo@example.com');
 
 select is((select count(*)::int from public.announcements where title like 'T42%'), 0, 'perfil inactivo: no ve anuncios');
 select throws_ok(
@@ -272,7 +272,7 @@ select throws_ok(
 
 -- Como administrador ----------------------------------------------------------------------------------
 
-select tests.as_user('test-aj2e-admin@example.com');
+select tests_0042.as_user('test-aj2e-admin@example.com');
 
 select is(
   (select count(*)::int from public.announcements where title like 'T42%'), 8,
@@ -439,7 +439,7 @@ select is(
   'update: pero la fila de lectura anterior se conserva'
 );
 
-select tests.as_user('test-aj2e-emp1@example.com');
+select tests_0042.as_user('test-aj2e-emp1@example.com');
 select is(
   (select read_at from public.v_my_announcements where id = 'f4200000-0000-0000-0000-0000000000a1'), null,
   'empleado 1: tras la corrección vuelve a figurar sin leer'
@@ -455,7 +455,7 @@ select is(
 );
 
 -- Archivar
-select tests.as_user('test-aj2e-owner@example.com');
+select tests_0042.as_user('test-aj2e-owner@example.com');
 select is(
   (select archived_at is not null from public.archive_announcement('f4200000-0000-0000-0000-0000000000a3')), true,
   'dueño: archiva un anuncio'
@@ -477,7 +477,7 @@ select is(
   'archive: conserva las lecturas (se siguen contando para administración)'
 );
 
-select tests.as_user('test-aj2e-emp2@example.com');
+select tests_0042.as_user('test-aj2e-emp2@example.com');
 select is(
   (select count(*)::int from public.v_my_announcements where id = 'f4200000-0000-0000-0000-0000000000a3'), 0,
   'archivado: deja de mostrarse a los destinatarios'

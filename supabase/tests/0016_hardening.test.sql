@@ -12,10 +12,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0016;
+grant usage on schema tests_0016 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0016.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -26,7 +26,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0016.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -41,7 +41,7 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0016.as_user(text) to authenticated, anon;
 
 select plan(21);
 

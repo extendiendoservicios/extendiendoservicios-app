@@ -13,12 +13,12 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
--- tests.as_user(email) (TEST-002) -- ver supabase/tests/README.md y
+-- tests_0011.as_user(email) (TEST-002) -- ver supabase/tests/README.md y
 -- 0003_profiles_roles_capabilities_permissions.test.sql para el detalle comentado.
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0011;
+grant usage on schema tests_0011 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0011.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -29,7 +29,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0011.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -44,7 +44,7 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0011.as_user(text) to authenticated, anon;
 
 select plan(22);
 
@@ -98,7 +98,7 @@ values
   ('c1600000-0000-0000-0000-000000000053', 'c1600000-0000-0000-0000-000000000042', 'c1600000-0000-0000-0000-000000000081'),
   ('c1600000-0000-0000-0000-000000000054', 'c1600000-0000-0000-0000-000000000043', 'c1600000-0000-0000-0000-000000000081');
 
-select tests.as_user('test-db013-myday-empleado@example.com');
+select tests_0011.as_user('test-db013-myday-empleado@example.com');
 
 select is(
   (select count(*)::int from public.v_my_day where shift_id = 'c1600000-0000-0000-0000-000000000041'),
@@ -146,7 +146,7 @@ set last_seen_changes_at = (
 ) - interval '1 hour'
 where id = 'c1600000-0000-0000-0000-000000000081';
 
-select tests.as_user('test-db013-myday-empleado@example.com');
+select tests_0011.as_user('test-db013-myday-empleado@example.com');
 
 select ok(
   (select changed_since_last_seen from public.v_my_day where assignment_id = 'c1600000-0000-0000-0000-000000000051'),
@@ -159,7 +159,7 @@ update public.profiles
 set last_seen_changes_at = now()
 where id = 'c1600000-0000-0000-0000-000000000081';
 
-select tests.as_user('test-db013-myday-empleado@example.com');
+select tests_0011.as_user('test-db013-myday-empleado@example.com');
 
 select ok(
   not (select changed_since_last_seen from public.v_my_day where assignment_id = 'c1600000-0000-0000-0000-000000000051'),
@@ -198,7 +198,7 @@ select is(
   'v_supervisions_admin: ratings_avg = promedio simple del turno (4 y 2 -> 3.00)'
 );
 
-select tests.as_user('test-db013-mysupervisions@example.com');
+select tests_0011.as_user('test-db013-mysupervisions@example.com');
 
 select is(
   (select count(*)::int from public.v_my_supervisions where id = 'c1600000-0000-0000-0000-000000000061'),

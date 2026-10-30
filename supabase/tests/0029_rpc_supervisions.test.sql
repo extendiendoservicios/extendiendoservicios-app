@@ -28,10 +28,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0029;
+grant usage on schema tests_0029 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0029.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -42,7 +42,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0029.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -57,7 +57,7 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0029.as_user(text) to authenticated, anon;
 
 select plan(34);
 
@@ -252,7 +252,7 @@ insert into e2900000_sup_ids (label, id) values
 -- cancel_supervision -----------------------------------------------------------------------------
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db029-admin-full@example.com');
+select tests_0029.as_user('test-db029-admin-full@example.com');
 
 -- CANCEL_REASON_REQUIRED.
 prepare cancel_sup_sin_motivo as
@@ -304,7 +304,7 @@ set local role postgres;
 -- ---------------------------------------------------------------------------------------------
 
 -- FORBIDDEN: empleado.
-select tests.as_user('test-db029-emp-x@example.com');
+select tests_0029.as_user('test-db029-emp-x@example.com');
 
 prepare rate_forbidden_empleado as
   select public.rate_employee(
@@ -319,7 +319,7 @@ select throws_ok(
 );
 
 -- FORBIDDEN: admin sin edit_ratings y sin rol supervisor.
-select tests.as_user('test-db029-admin-sin-cap@example.com');
+select tests_0029.as_user('test-db029-admin-sin-cap@example.com');
 
 prepare rate_forbidden_admin as
   select public.rate_employee(
@@ -334,7 +334,7 @@ select throws_ok(
 );
 
 -- NOT_YOUR_SUPERVISION: otra supervisora, sobre la supervisión 102 (todavía in_progress).
-select tests.as_user('test-db029-supervisora-b@example.com');
+select tests_0029.as_user('test-db029-supervisora-b@example.com');
 
 prepare rate_ajena as
   select public.rate_employee(
@@ -348,7 +348,7 @@ select throws_ok(
   'rate_employee: otra supervisora -> NOT_YOUR_SUPERVISION'
 );
 
-select tests.as_user('test-db029-supervisora-a@example.com');
+select tests_0029.as_user('test-db029-supervisora-a@example.com');
 
 -- SUPERVISION_NOT_ACTIVE: supervisión 103, todavía "assigned".
 prepare rate_no_activa as
@@ -479,7 +479,7 @@ insert into public.supervision_attendance (supervision_id, kind, recorded_at) va
   ('e2900000-0000-0000-0000-000000000306', 'check_out', app.local_ts(app.today() - 1, '09:00'::time));
 update public.supervisions set status = 'completed' where id = 'e2900000-0000-0000-0000-000000000306';
 
-select tests.as_user('test-db029-supervisora-a@example.com');
+select tests_0029.as_user('test-db029-supervisora-a@example.com');
 
 prepare rate_plazo_vencido as
   select public.rate_employee('e2900000-0000-0000-0000-000000000306', 'e2900000-0000-0000-0000-000000000205', 3);
@@ -490,7 +490,7 @@ select throws_ok(
 );
 
 -- El administrador con edit_ratings SÍ puede, siempre (P-083).
-select tests.as_user('test-db029-admin-full@example.com');
+select tests_0029.as_user('test-db029-admin-full@example.com');
 
 select is(
   (public.rate_employee('e2900000-0000-0000-0000-000000000306', 'e2900000-0000-0000-0000-000000000205', 3, 'Cargado fuera de plazo por administración')).score,
@@ -514,7 +514,7 @@ set local role postgres;
 -- probado arriba (FORBIDDEN). Esto agrega el lado de lectura sobre una fila que sí existe.
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db029-emp-y@example.com');
+select tests_0029.as_user('test-db029-emp-y@example.com');
 
 select is(
   (select count(*)::int from public.ratings where assignment_id = 'e2900000-0000-0000-0000-000000000203'),
@@ -528,7 +528,7 @@ set local role postgres;
 -- v_supervisions_admin / v_my_supervisions: columnas nuevas de 0029 (SUP-006) --------------------
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db029-owner@example.com');
+select tests_0029.as_user('test-db029-owner@example.com');
 
 select is(
   (select start_time from public.v_supervisions_admin where shift_id = 'e2900000-0000-0000-0000-000000000102'),
@@ -554,10 +554,10 @@ select ok(
 
 -- Un empleado registra su inicio en el turno 101 (fuera del alcance de esta migración, pero
 -- necesario para probar check_in_at dentro de assigned_employees).
-select tests.as_user('test-db029-emp-x@example.com');
+select tests_0029.as_user('test-db029-emp-x@example.com');
 select public.record_check_in('e2900000-0000-0000-0000-000000000201');
 
-select tests.as_user('test-db029-supervisora-a@example.com');
+select tests_0029.as_user('test-db029-supervisora-a@example.com');
 
 select ok(
   (select (assigned_employees -> 0 ->> 'check_in_at') is not null

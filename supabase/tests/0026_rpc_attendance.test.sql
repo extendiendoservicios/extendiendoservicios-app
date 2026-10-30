@@ -24,10 +24,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0026;
+grant usage on schema tests_0026 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0026.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -38,7 +38,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0026.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -53,7 +53,7 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0026.as_user(text) to authenticated, anon;
 
 select plan(49);
 
@@ -178,7 +178,7 @@ insert into public.assignments (id, shift_id, employee_id) values
 -- ---------------------------------------------------------------------------------------------
 
 -- ASSIGNMENT_NOT_FOUND: id inexistente.
-select tests.as_user('test-db026-emp-solo@example.com');
+select tests_0026.as_user('test-db026-emp-solo@example.com');
 
 prepare check_in_not_found as
   select public.record_check_in('00000000-0000-0000-0000-000000000000');
@@ -198,7 +198,7 @@ select throws_ok(
 );
 
 -- NOT_YOUR_ASSIGNMENT: otro empleado.
-select tests.as_user('test-db026-emp-ajeno@example.com');
+select tests_0026.as_user('test-db026-emp-ajeno@example.com');
 
 prepare check_in_ajena as
   select public.record_check_in('e2600000-0000-0000-0000-000000000201');
@@ -209,7 +209,7 @@ select throws_ok(
 );
 
 -- SHIFT_CANCELLED.
-select tests.as_user('test-db026-emp-cancelado@example.com');
+select tests_0026.as_user('test-db026-emp-cancelado@example.com');
 
 prepare check_in_cancelado as
   select public.record_check_in('e2600000-0000-0000-0000-000000000204');
@@ -220,7 +220,7 @@ select throws_ok(
 );
 
 -- NOT_TODAY.
-select tests.as_user('test-db026-emp-otro-dia@example.com');
+select tests_0026.as_user('test-db026-emp-otro-dia@example.com');
 
 prepare check_in_otro_dia as
   select public.record_check_in('e2600000-0000-0000-0000-000000000205');
@@ -231,7 +231,7 @@ select throws_ok(
 );
 
 -- COORDINATES_INCOMPLETE: solo latitud.
-select tests.as_user('test-db026-emp-coords@example.com');
+select tests_0026.as_user('test-db026-emp-coords@example.com');
 
 prepare check_in_coords_incompletas as
   select public.record_check_in('e2600000-0000-0000-0000-000000000208', -34.6);
@@ -251,7 +251,7 @@ select throws_ok(
 );
 
 -- Feliz, con ubicación: emp-solo en su turno de dotación 1. El turno pasa a in_progress.
-select tests.as_user('test-db026-emp-solo@example.com');
+select tests_0026.as_user('test-db026-emp-solo@example.com');
 
 select is(
   (public.record_check_in('e2600000-0000-0000-0000-000000000201', -34.603722, -58.381592, 8.5)).kind::text,
@@ -280,7 +280,7 @@ select is(
 );
 
 -- ALREADY_CHECKED_IN: doble inicio sobre la misma asignación.
-select tests.as_user('test-db026-emp-solo@example.com');
+select tests_0026.as_user('test-db026-emp-solo@example.com');
 
 prepare check_in_doble as
   select public.record_check_in('e2600000-0000-0000-0000-000000000201');
@@ -292,7 +292,7 @@ select throws_ok(
 
 -- Feliz, sin ubicación: turno de equipo, primer empleado. El turno (assigned, dotación 2) pasa a
 -- in_progress con el primer inicio, aunque el segundo todavía no marcó nada.
-select tests.as_user('test-db026-emp-equipo-a@example.com');
+select tests_0026.as_user('test-db026-emp-equipo-a@example.com');
 
 select is(
   (public.record_check_in('e2600000-0000-0000-0000-000000000202')).latitude,
@@ -313,7 +313,7 @@ select is(
 -- ---------------------------------------------------------------------------------------------
 
 -- NOT_CHECKED_IN: fin sin inicio previo.
-select tests.as_user('test-db026-emp-fin-sin-inicio@example.com');
+select tests_0026.as_user('test-db026-emp-fin-sin-inicio@example.com');
 
 prepare check_out_sin_inicio as
   select public.record_check_out('e2600000-0000-0000-0000-000000000207');
@@ -324,7 +324,7 @@ select throws_ok(
 );
 
 -- NOT_YOUR_ASSIGNMENT.
-select tests.as_user('test-db026-emp-ajeno@example.com');
+select tests_0026.as_user('test-db026-emp-ajeno@example.com');
 
 prepare check_out_ajena as
   select public.record_check_out('e2600000-0000-0000-0000-000000000201');
@@ -336,7 +336,7 @@ select throws_ok(
 
 -- Feliz, con ubicación: emp-solo cierra su turno de dotación 1 -> completed (única asignación
 -- vigente, ya finished).
-select tests.as_user('test-db026-emp-solo@example.com');
+select tests_0026.as_user('test-db026-emp-solo@example.com');
 
 select is(
   (public.record_check_out('e2600000-0000-0000-0000-000000000201', -34.603722, -58.381592, 12)).kind::text,
@@ -359,7 +359,7 @@ select is(
 );
 
 -- ALREADY_CHECKED_OUT: doble fin.
-select tests.as_user('test-db026-emp-solo@example.com');
+select tests_0026.as_user('test-db026-emp-solo@example.com');
 
 prepare check_out_doble as
   select public.record_check_out('e2600000-0000-0000-0000-000000000201');
@@ -372,7 +372,7 @@ select throws_ok(
 -- Turno de equipo: el primer empleado cierra y el turno NO se completa porque el segundo todavía
 -- no marcó nada (04 sección 6.1: recién completed cuando TODAS las vigentes están finished o
 -- absence_notified).
-select tests.as_user('test-db026-emp-equipo-a@example.com');
+select tests_0026.as_user('test-db026-emp-equipo-a@example.com');
 
 select is(
   (public.record_check_out('e2600000-0000-0000-0000-000000000202')).kind::text,
@@ -389,7 +389,7 @@ select is(
 );
 
 -- Segundo empleado del equipo marca inicio y fin: recién ahí el turno pasa a completed.
-select tests.as_user('test-db026-emp-equipo-b@example.com');
+select tests_0026.as_user('test-db026-emp-equipo-b@example.com');
 
 select public.record_check_in('e2600000-0000-0000-0000-000000000203');
 select public.record_check_out('e2600000-0000-0000-0000-000000000203');
@@ -404,7 +404,7 @@ select is(
 
 -- COORDINATES_INCOMPLETE/COORDINATES_OUT_OF_RANGE también en record_check_out: se registra el
 -- inicio del turno 0107 (emp-coords) y se prueban los dos rechazos antes del fin correcto.
-select tests.as_user('test-db026-emp-coords@example.com');
+select tests_0026.as_user('test-db026-emp-coords@example.com');
 
 select public.record_check_in('e2600000-0000-0000-0000-000000000208');
 
@@ -449,7 +449,7 @@ insert into public.assignments (id, shift_id, employee_id, status) values
   ('e2600000-0000-0000-0000-00000000020a', 'e2600000-0000-0000-0000-000000000109', 'e2600000-0000-0000-0000-00000000008e', 'finished');
 
 -- ASSIGNMENT_NOT_FOUND.
-select tests.as_user('test-db026-emp-notas-abierto@example.com');
+select tests_0026.as_user('test-db026-emp-notas-abierto@example.com');
 
 prepare notes_not_found as
   select public.set_assignment_notes('00000000-0000-0000-0000-000000000000', 'Todo bien');
@@ -483,7 +483,7 @@ select throws_ok(
 );
 
 -- FORBIDDEN: otro empleado sobre una asignación ajena.
-select tests.as_user('test-db026-emp-notas-ajeno@example.com');
+select tests_0026.as_user('test-db026-emp-notas-ajeno@example.com');
 
 prepare notes_ajena as
   select public.set_assignment_notes('e2600000-0000-0000-0000-000000000209', 'Intento ajeno');
@@ -494,7 +494,7 @@ select throws_ok(
 );
 
 -- FORBIDDEN: supervisor.
-select tests.as_user('test-db026-supervisora@example.com');
+select tests_0026.as_user('test-db026-supervisora@example.com');
 
 prepare notes_supervisor as
   select public.set_assignment_notes('e2600000-0000-0000-0000-000000000209', 'Intento supervisor');
@@ -505,7 +505,7 @@ select throws_ok(
 );
 
 -- SHIFT_COMPLETED: el propio empleado, pero el turno ya terminó.
-select tests.as_user('test-db026-emp-notas-completado@example.com');
+select tests_0026.as_user('test-db026-emp-notas-completado@example.com');
 
 prepare notes_completado as
   select public.set_assignment_notes('e2600000-0000-0000-0000-00000000020a', 'Demasiado tarde');
@@ -516,7 +516,7 @@ select throws_ok(
 );
 
 -- O y A sí pueden, aunque el turno esté completed y aunque la asignación no sea propia.
-select tests.as_user('test-db026-owner@example.com');
+select tests_0026.as_user('test-db026-owner@example.com');
 
 select is(
   (public.set_assignment_notes('e2600000-0000-0000-0000-00000000020a', 'Cargado por el dueño')).notes,
@@ -524,7 +524,7 @@ select is(
   'set_assignment_notes: el owner puede editar aunque el turno esté completed'
 );
 
-select tests.as_user('test-db026-admin@example.com');
+select tests_0026.as_user('test-db026-admin@example.com');
 
 select is(
   (public.set_assignment_notes('e2600000-0000-0000-0000-00000000020a', 'Cargado por admin')).notes,
@@ -548,7 +548,7 @@ insert into public.assignments (id, shift_id, employee_id) values
   ('e2600000-0000-0000-0000-00000000020c', 'e2600000-0000-0000-0000-00000000010b', 'e2600000-0000-0000-0000-000000000090'),
   ('e2600000-0000-0000-0000-00000000020d', 'e2600000-0000-0000-0000-00000000010c', 'e2600000-0000-0000-0000-000000000090');
 
-select tests.as_user('test-db026-emp-dia@example.com');
+select tests_0026.as_user('test-db026-emp-dia@example.com');
 
 select is(
   (select count(*)::int from public.v_my_day),
@@ -563,7 +563,7 @@ select is(
 );
 
 -- Otro empleado no ve las asignaciones de emp-dia.
-select tests.as_user('test-db026-emp-solo@example.com');
+select tests_0026.as_user('test-db026-emp-solo@example.com');
 
 select is(
   (select count(*)::int from public.v_my_day
@@ -573,7 +573,7 @@ select is(
 );
 
 -- changed_since_last_seen: nunca abrió Hoy (last_seen_changes_at null) -> todo cambiado.
-select tests.as_user('test-db026-emp-dia@example.com');
+select tests_0026.as_user('test-db026-emp-dia@example.com');
 
 select is(
   (select bool_and(changed_since_last_seen) from public.v_my_day),
@@ -605,7 +605,7 @@ update public.profiles
 set last_seen_changes_at = now() - interval '1 hour'
 where id = 'e2600000-0000-0000-0000-000000000090';
 
-select tests.as_user('test-db026-emp-dia@example.com');
+select tests_0026.as_user('test-db026-emp-dia@example.com');
 
 select public.set_assignment_notes('e2600000-0000-0000-0000-00000000020b', 'Aviso para mí misma');
 
@@ -634,7 +634,7 @@ set local role postgres;
 -- El empleado no puede insertar ni modificar attendance_records directo por PostgREST -----------
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db026-emp-solo@example.com');
+select tests_0026.as_user('test-db026-emp-solo@example.com');
 
 prepare attendance_records_insert_directo as
   insert into public.attendance_records (assignment_id, kind, recorded_at, source)

@@ -14,10 +14,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0044;
+grant usage on schema tests_0044 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0044.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -28,7 +28,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0044.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -43,7 +43,7 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0044.as_user(text) to authenticated, anon;
 
 select plan(56);
 
@@ -133,7 +133,7 @@ insert into public.services (id, client_id, site_id, name, weekdays, weeks_of_mo
   ('f4400000-0000-0000-0000-000000000022', 'f4400000-0000-0000-0000-000000000001', 'f4400000-0000-0000-0000-000000000011', 'Primer y último lunes', array[1]::smallint[], array[1, 5]::smallint[], '08:00', '12:00', '2199-01-01'),
   ('f4400000-0000-0000-0000-000000000023', 'f4400000-0000-0000-0000-000000000001', 'f4400000-0000-0000-0000-000000000011', 'Segundo y cuarto lunes', array[1]::smallint[], array[2, 4]::smallint[], '08:00', '12:00', '2199-01-01');
 
-select tests.as_user('test-db044-admin-cap@example.com');
+select tests_0044.as_user('test-db044-admin-cap@example.com');
 select set_config('t.g1', public.generate_shifts(2199, 4)::text, true);
 
 select is(
@@ -164,7 +164,7 @@ select is(
 set local role postgres;
 insert into public.services (id, client_id, site_id, name, weekdays, weeks_of_month, start_time, end_time, valid_from) values
   ('f4400000-0000-0000-0000-000000000024', 'f4400000-0000-0000-0000-000000000001', 'f4400000-0000-0000-0000-000000000011', 'Cuarto y último', array[1]::smallint[], array[4, 5]::smallint[], '08:00', '12:00', '2199-01-01');
-select tests.as_user('test-db044-admin-cap@example.com');
+select tests_0044.as_user('test-db044-admin-cap@example.com');
 select public.generate_shifts(2199, 5);
 select is(
   (select array_agg(shift_date::text order by shift_date) from public.shifts where service_id = 'f4400000-0000-0000-0000-000000000024'),
@@ -230,14 +230,14 @@ insert into public.attendance_notices (assignment_id, kind, reason_code, source)
 
 -- Permisos ---------------------------------------------------------------------------------------
 
-select tests.as_user('test-db044-empleado@example.com');
+select tests_0044.as_user('test-db044-empleado@example.com');
 prepare prev_emp as select public.service_delete_preview('f4400000-0000-0000-0000-000000000031');
 prepare del_emp as select public.delete_service('f4400000-0000-0000-0000-000000000031');
 select throws_ok('prev_emp', 'P0001', 'No tenés permiso para hacer esto.', 'preview: un empleado no puede (FORBIDDEN)');
 select throws_ok('del_emp', 'P0001', 'No tenés permiso para hacer esto.', 'delete_service: un empleado no puede (FORBIDDEN)');
 
 set local role postgres;
-select tests.as_user('test-db044-supervisora@example.com');
+select tests_0044.as_user('test-db044-supervisora@example.com');
 select throws_ok('prev_emp', 'P0001', 'No tenés permiso para hacer esto.', 'preview: un supervisor no puede (FORBIDDEN)');
 select throws_ok('del_emp', 'P0001', 'No tenés permiso para hacer esto.', 'delete_service: un supervisor no puede (FORBIDDEN)');
 
@@ -249,7 +249,7 @@ select throws_ok('del_emp', '42501', null, 'delete_service: anon no tiene permis
 -- Vista previa (admin sin capacidades: editar servicios no exige ninguna) -------------------------
 
 set local role postgres;
-select tests.as_user('test-db044-admin@example.com');
+select tests_0044.as_user('test-db044-admin@example.com');
 
 select is(
   (select public.service_delete_preview('f4400000-0000-0000-0000-000000000031')),
@@ -362,14 +362,14 @@ insert into public.services (id, client_id, site_id, name, weekdays, start_time,
   ('f4400000-0000-0000-0000-000000000041', 'f4400000-0000-0000-0000-000000000001', 'f4400000-0000-0000-0000-000000000011', 'D5 del dueño', array[3]::smallint[], '08:00', '12:00', '2199-01-01'),
   ('f4400000-0000-0000-0000-000000000042', 'f4400000-0000-0000-0000-000000000001', 'f4400000-0000-0000-0000-000000000011', 'D6 del admin con capacidad', array[3]::smallint[], '08:00', '12:00', '2199-01-01');
 
-select tests.as_user('test-db044-owner@example.com');
+select tests_0044.as_user('test-db044-owner@example.com');
 select is(
   (select public.delete_service('f4400000-0000-0000-0000-000000000041') ->> 'shifts_deleted'),
   '0',
   'delete_service: el dueño puede (servicio sin turnos)'
 );
 set local role postgres;
-select tests.as_user('test-db044-admin-cap@example.com');
+select tests_0044.as_user('test-db044-admin-cap@example.com');
 select is(
   (select public.service_delete_preview('f4400000-0000-0000-0000-000000000042') ->> 'can_delete'),
   'true',

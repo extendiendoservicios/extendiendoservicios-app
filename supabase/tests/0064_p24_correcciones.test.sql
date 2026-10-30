@@ -19,10 +19,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0064;
+grant usage on schema tests_0064 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0064.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -33,7 +33,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0064.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -48,10 +48,10 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0064.as_user(text) to authenticated, anon;
 
 -- Devuelve el `hint` del error (código estable) o el SQLSTATE si no trae hint; null si anduvo.
-create or replace function tests.err_hint(p_sql text)
+create or replace function tests_0064.err_hint(p_sql text)
 returns text
 language plpgsql
 as $$
@@ -66,7 +66,7 @@ exception when others then
 end;
 $$;
 
-grant execute on function tests.err_hint(text) to authenticated, anon;
+grant execute on function tests_0064.err_hint(text) to authenticated, anon;
 
 select plan(61);
 
@@ -207,7 +207,7 @@ select is(
 -- 2. DEF-P24-01 A: corregir el fin a las 18:00 con la supervisión «Sin cerrar» (Ana)
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db064-owner@example.com');
+select tests_0064.as_user('test-db064-owner@example.com');
 
 select is(
   (select unclosed from public.v_supervisions_admin where id = 'f6400000-0000-0000-0000-0000000000c1'),
@@ -220,7 +220,7 @@ select is(
   'A: antes de corregir, dura 10:00 a 23:55 = 835 minutos'
 );
 select is(
-  tests.err_hint(format(
+  tests_0064.err_hint(format(
     $$select public.admin_correct_workday_event(%L, 'Prueba', %L)$$,
     (select id from public.supervisor_workday_events
      where workday_id = 'f6400000-0000-0000-0000-0000000000b1' and kind = 'supervision_end'),
@@ -230,7 +230,7 @@ select is(
   'A: el fin automático de la supervisión no se corrige directamente (EVENT_NOT_CORRECTABLE)'
 );
 select is(
-  tests.err_hint(format(
+  tests_0064.err_hint(format(
     $$select public.admin_correct_workday_event(%L, '', %L)$$,
     (select id from public.supervisor_workday_events
      where workday_id = 'f6400000-0000-0000-0000-0000000000b1' and kind = 'end'),
@@ -345,9 +345,9 @@ select lives_ok(
   'A: el fin también se puede llevar después de las 23:55 (23:58)'
 );
 
-select tests.as_user('test-db064-admin-sin@example.com');
+select tests_0064.as_user('test-db064-admin-sin@example.com');
 select is(
-  tests.err_hint(format(
+  tests_0064.err_hint(format(
     $$select public.admin_correct_workday_event(%L, 'Prueba', %L)$$,
     (select id from public.supervisor_workday_events
      where workday_id = 'f6400000-0000-0000-0000-0000000000b2' and kind = 'end'),
@@ -361,7 +361,7 @@ select is(
 -- 3. DEF-P24-01 B: cancelar la supervisión «Sin cerrar» y después corregir (Beto)
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db064-owner@example.com');
+select tests_0064.as_user('test-db064-owner@example.com');
 
 select lives_ok(
   $$select public.cancel_supervision('f6400000-0000-0000-0000-0000000000c2', 'Se cargó por error')$$,
@@ -409,7 +409,7 @@ select is(
 -- ---------------------------------------------------------------------------------------------
 
 select is(
-  tests.err_hint(format(
+  tests_0064.err_hint(format(
     $$select public.admin_correct_workday_event(%L, 'Prueba', %L)$$,
     (select id from public.supervisor_workday_events
      where workday_id = 'f6400000-0000-0000-0000-0000000000b3' and kind = 'end'),
@@ -460,7 +460,7 @@ select lives_ok(
 -- ---------------------------------------------------------------------------------------------
 
 select is(
-  tests.err_hint(format(
+  tests_0064.err_hint(format(
     $$select public.admin_correct_workday_event(%L, 'Prueba', %L)$$,
     (select id from public.supervisor_workday_events
      where workday_id = 'f6400000-0000-0000-0000-0000000000b4' and kind = 'supervision_end'),
@@ -470,7 +470,7 @@ select is(
   'D: el supervision_end que registró el coordinador no se corrige (EVENT_NOT_CORRECTABLE)'
 );
 select is(
-  tests.err_hint(format(
+  tests_0064.err_hint(format(
     $$select public.admin_correct_workday_event(%L, 'Prueba', %L)$$,
     (select id from public.supervisor_workday_events
      where workday_id = 'f6400000-0000-0000-0000-0000000000b4' and kind = 'supervision_start'),
@@ -480,7 +480,7 @@ select is(
   'D: tampoco el supervision_start'
 );
 select is(
-  tests.err_hint(format(
+  tests_0064.err_hint(format(
     $$select public.admin_correct_workday_event(%L, 'Prueba', %L)$$,
     (select id from public.supervisor_workday_events
      where workday_id = 'f6400000-0000-0000-0000-0000000000b4' and kind = 'end'),
@@ -517,13 +517,13 @@ select is(
 -- 6. DEF-P24-01 E: el coordinador descarta la supervisión «Sin cerrar» y después se corrige (Elena)
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db064-se@example.com');
+select tests_0064.as_user('test-db064-se@example.com');
 select lives_ok(
   $$select public.discard_supervision('f6400000-0000-0000-0000-0000000000c5')$$,
   'E: la coordinadora descarta su supervisión «Sin cerrar»'
 );
 
-select tests.as_user('test-db064-owner@example.com');
+select tests_0064.as_user('test-db064-owner@example.com');
 select is(
   (select count(*)::integer from public.supervisor_workday_events
    where supervision_id = 'f6400000-0000-0000-0000-0000000000c5' and removed_at is null),
@@ -553,7 +553,7 @@ select is(
 -- 7. DEF-P24-02: v_supervisor_today trae site_radius_m y max_accuracy_m
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db064-sa@example.com');
+select tests_0064.as_user('test-db064-sa@example.com');
 
 select is(
   (select site_radius_m from public.v_supervisor_today where shift_id = 'f6400000-0000-0000-0000-000000000042'),
@@ -587,7 +587,7 @@ select is(
   'SUP-03: ningún turno de hoy viene sin radio ni precisión máxima'
 );
 
-select tests.as_user('test-db064-owner@example.com');
+select tests_0064.as_user('test-db064-owner@example.com');
 select is(
   (select count(*)::integer from public.v_supervisor_today),
   0,
@@ -597,7 +597,7 @@ select is(
 set local role postgres;
 -- Un cambio en el ajuste general se refleja en la vista.
 update public.company_settings set geofence_max_accuracy_m = 77 where id = 1;
-select tests.as_user('test-db064-sa@example.com');
+select tests_0064.as_user('test-db064-sa@example.com');
 select is(
   (select max_accuracy_m from public.v_supervisor_today where shift_id = 'f6400000-0000-0000-0000-000000000043'),
   77::smallint,

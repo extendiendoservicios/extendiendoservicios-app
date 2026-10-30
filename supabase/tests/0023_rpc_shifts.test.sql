@@ -15,10 +15,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0023a;
+grant usage on schema tests_0023a to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0023a.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -29,7 +29,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0023a.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -44,7 +44,7 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0023a.as_user(text) to authenticated, anon;
 
 select plan(40);
 
@@ -112,7 +112,7 @@ insert into public.employees (profile_id, dni) values
 -- ---------------------------------------------------------------------------------------------
 
 -- Un supervisor no puede llamarla.
-select tests.as_user('test-db023-supervisora@example.com');
+select tests_0023a.as_user('test-db023-supervisora@example.com');
 
 prepare create_shift_as_supervisor as
   select public.create_shift(
@@ -126,7 +126,7 @@ select throws_ok(
 );
 
 -- Un empleado tampoco.
-select tests.as_user('test-db023-empleado@example.com');
+select tests_0023a.as_user('test-db023-empleado@example.com');
 
 prepare create_shift_as_employee as
   select public.create_shift(
@@ -142,7 +142,7 @@ select throws_ok(
 set local role postgres;
 
 -- El owner sí puede: INVALID_TIME_RANGE con end <= start.
-select tests.as_user('test-db023-owner@example.com');
+select tests_0023a.as_user('test-db023-owner@example.com');
 
 prepare create_shift_invalid_range as
   select public.create_shift(
@@ -208,7 +208,7 @@ select is(
 insert into public.sites (id, client_id, name, address, status)
 values ('e2300000-0000-0000-0000-000000000013', 'e2300000-0000-0000-0000-000000000001', 'Sede sin plantilla propia', 'Dirección 3', 'active');
 
-select tests.as_user('test-db023-owner@example.com');
+select tests_0023a.as_user('test-db023-owner@example.com');
 
 select is(
   (public.create_shift(
@@ -230,7 +230,7 @@ select is(
 -- Advertencia HOLIDAY (informativa, no bloquea) cuando la fecha es feriado.
 insert into public.holidays (holiday_date, name) values ('2199-03-04', 'Feriado de prueba 0023');
 
-select tests.as_user('test-db023-owner@example.com');
+select tests_0023a.as_user('test-db023-owner@example.com');
 
 select is(
   (public.create_shift(
@@ -263,7 +263,7 @@ insert into public.assignments (shift_id, employee_id) values
   ('e2300000-0000-0000-0000-000000000042', 'e2300000-0000-0000-0000-000000000086');
 
 -- Un empleado no puede llamarla.
-select tests.as_user('test-db023-empleado@example.com');
+select tests_0023a.as_user('test-db023-empleado@example.com');
 
 prepare update_time_as_employee as
   select public.update_shift_time('e2300000-0000-0000-0000-000000000041', '09:00', '12:00');
@@ -276,7 +276,7 @@ select throws_ok(
 set local role postgres;
 
 -- SHIFT_NOT_FOUND.
-select tests.as_user('test-db023-owner@example.com');
+select tests_0023a.as_user('test-db023-owner@example.com');
 
 prepare update_time_not_found as
   select public.update_shift_time('00000000-0000-0000-0000-000000000000', '08:00', '12:00');
@@ -322,7 +322,7 @@ select is(
 );
 
 -- Cambio válido: el turno 1 pasa de 08-12 a 09-12 (sin pisar el turno 2, que sigue en 13-17).
-select tests.as_user('test-db023-owner@example.com');
+select tests_0023a.as_user('test-db023-owner@example.com');
 
 select is(
   (public.update_shift_time('e2300000-0000-0000-0000-000000000041', '09:00', '12:00')).start_time::text,
@@ -341,7 +341,7 @@ select is(
 -- SHIFT_STARTED / in_progress: solo se puede cambiar el fin.
 update public.shifts set status = 'in_progress' where id = 'e2300000-0000-0000-0000-000000000041';
 
-select tests.as_user('test-db023-owner@example.com');
+select tests_0023a.as_user('test-db023-owner@example.com');
 
 prepare update_time_in_progress_start as
   select public.update_shift_time('e2300000-0000-0000-0000-000000000041', '08:00', '13:00');
@@ -363,7 +363,7 @@ set local role postgres;
 update public.shifts set status = 'cancelled', cancelled_at = now(), cancelled_by = 'e2300000-0000-0000-0000-000000000081', cancel_reason = 'motivo de prueba' where id = 'e2300000-0000-0000-0000-000000000041';
 update public.shifts set status = 'completed' where id = 'e2300000-0000-0000-0000-000000000042';
 
-select tests.as_user('test-db023-owner@example.com');
+select tests_0023a.as_user('test-db023-owner@example.com');
 
 prepare update_time_cancelled as
   select public.update_shift_time('e2300000-0000-0000-0000-000000000041', '09:00', '12:00');
@@ -395,7 +395,7 @@ insert into public.assignments (shift_id, employee_id) values ('e2300000-0000-00
 insert into public.supervisions (shift_id, supervisor_id, status) values ('e2300000-0000-0000-0000-000000000051', 'e2300000-0000-0000-0000-000000000084', 'assigned');
 
 -- Un admin sin cancel_shifts no puede llamarla.
-select tests.as_user('test-db023-admin-sin-cap@example.com');
+select tests_0023a.as_user('test-db023-admin-sin-cap@example.com');
 
 prepare cancel_as_admin_no_cap as
   select public.cancel_shift('e2300000-0000-0000-0000-000000000051', 'motivo');
@@ -408,7 +408,7 @@ select throws_ok(
 set local role postgres;
 
 -- Motivo obligatorio.
-select tests.as_user('test-db023-admin-con-cap@example.com');
+select tests_0023a.as_user('test-db023-admin-con-cap@example.com');
 
 prepare cancel_no_reason as
   select public.cancel_shift('e2300000-0000-0000-0000-000000000051', '   ');
@@ -449,7 +449,7 @@ select is(
 );
 
 -- Ya cancelado -> SHIFT_CANCELLED.
-select tests.as_user('test-db023-admin-con-cap@example.com');
+select tests_0023a.as_user('test-db023-admin-con-cap@example.com');
 
 prepare cancel_already_cancelled as
   select public.cancel_shift('e2300000-0000-0000-0000-000000000051', 'de nuevo');
@@ -470,7 +470,7 @@ insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_t
   ('e2300000-0000-0000-0000-000000000062', 'e2300000-0000-0000-0000-000000000001', 'e2300000-0000-0000-0000-000000000011', '2199-03-07', '13:00', '17:00', 1, 'in_progress');
 
 -- Un admin sin edit_checklists no puede llamarla.
-select tests.as_user('test-db023-admin-sin-cap@example.com');
+select tests_0023a.as_user('test-db023-admin-sin-cap@example.com');
 
 prepare reload_as_admin_no_cap as
   select public.reload_shift_tasks('e2300000-0000-0000-0000-000000000061');
@@ -483,7 +483,7 @@ select throws_ok(
 set local role postgres;
 
 -- Turno in_progress -> SHIFT_NOT_EDITABLE.
-select tests.as_user('test-db023-admin-con-cap@example.com');
+select tests_0023a.as_user('test-db023-admin-con-cap@example.com');
 
 prepare reload_in_progress as
   select public.reload_shift_tasks('e2300000-0000-0000-0000-000000000062');
@@ -512,7 +512,7 @@ select is(
 insert into public.checklist_template_items (template_id, position, title) values
   ('e2300000-0000-0000-0000-000000000022', 2, 'Ítem de la sede 2');
 
-select tests.as_user('test-db023-admin-con-cap@example.com');
+select tests_0023a.as_user('test-db023-admin-con-cap@example.com');
 
 select is(
   (select count(*)::int from public.reload_shift_tasks('e2300000-0000-0000-0000-000000000061')),

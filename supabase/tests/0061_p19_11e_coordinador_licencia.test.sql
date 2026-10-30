@@ -15,10 +15,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0061;
+grant usage on schema tests_0061 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0061.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -29,7 +29,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0061.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -44,10 +44,10 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0061.as_user(text) to authenticated, anon;
 
 -- Devuelve el `hint` del error (código estable) o el SQLSTATE si no trae hint; null si anduvo.
-create or replace function tests.err_hint(p_sql text)
+create or replace function tests_0061.err_hint(p_sql text)
 returns text
 language plpgsql
 as $$
@@ -62,9 +62,9 @@ exception when others then
 end;
 $$;
 
-grant execute on function tests.err_hint(text) to authenticated, anon;
+grant execute on function tests_0061.err_hint(text) to authenticated, anon;
 
-create or replace function tests.err_message(p_sql text)
+create or replace function tests_0061.err_message(p_sql text)
 returns text
 language plpgsql
 as $$
@@ -76,7 +76,7 @@ exception when others then
 end;
 $$;
 
-grant execute on function tests.err_message(text) to authenticated, anon;
+grant execute on function tests_0061.err_message(text) to authenticated, anon;
 
 select plan(10);
 
@@ -150,17 +150,17 @@ insert into public.supervisions (id, shift_id, supervisor_id, status, cancel_rea
 
 -- 1. (assign_supervision: quitado en P24.1) -------------------------------------------------------
 
-select tests.as_user('test-db061-owner@example.com');
+select tests_0061.as_user('test-db061-owner@example.com');
 
 -- 2. update_shift_time(p_date) -------------------------------------------------------------------
 
 select is(
-  tests.err_hint($$select public.update_shift_time('f6100000-0000-0000-0000-000000000044', '08:00', '12:00', false, date '2199-03-10')$$),
+  tests_0061.err_hint($$select public.update_shift_time('f6100000-0000-0000-0000-000000000044', '08:00', '12:00', false, date '2199-03-10')$$),
   'ON_LEAVE',
   'update_shift_time: mover a un día de licencia del coordinador -> ON_LEAVE'
 );
 select matches(
-  tests.err_message($$select public.update_shift_time('f6100000-0000-0000-0000-000000000044', '08:00', '12:00', false, date '2199-03-10')$$),
+  tests_0061.err_message($$select public.update_shift_time('f6100000-0000-0000-0000-000000000044', '08:00', '12:00', false, date '2199-03-10')$$),
   'Ana Licenciada',
   'update_shift_time: el mensaje nombra al coordinador'
 );

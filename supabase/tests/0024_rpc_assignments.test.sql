@@ -18,10 +18,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0024;
+grant usage on schema tests_0024 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0024.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -32,7 +32,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0024.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -47,7 +47,7 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0024.as_user(text) to authenticated, anon;
 
 select plan(48);
 
@@ -133,14 +133,14 @@ insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_t
   ('e2400000-0000-0000-0000-000000000041', 'e2400000-0000-0000-0000-000000000001', 'e2400000-0000-0000-0000-000000000011', '2199-04-02', '08:00', '12:00', 2, 'scheduled');
 
 -- Permisos: un supervisor y un empleado no pueden llamarla.
-select tests.as_user('test-db024-supervisora@example.com');
+select tests_0024.as_user('test-db024-supervisora@example.com');
 
 prepare assign_as_supervisor as
   select public.assign_employee('e2400000-0000-0000-0000-000000000041', 'e2400000-0000-0000-0000-000000000091');
 
 select throws_ok('assign_as_supervisor', 'P0001', 'No tenés permiso para hacer esto.', 'assign_employee: supervisor no puede (FORBIDDEN)');
 
-select tests.as_user('test-db024-empleado@example.com');
+select tests_0024.as_user('test-db024-empleado@example.com');
 
 prepare assign_as_employee as
   select public.assign_employee('e2400000-0000-0000-0000-000000000041', 'e2400000-0000-0000-0000-000000000091');
@@ -150,7 +150,7 @@ select throws_ok('assign_as_employee', 'P0001', 'No tenés permiso para hacer es
 set local role postgres;
 
 -- Empleado inactivo -> EMPLOYEE_NOT_ACTIVE.
-select tests.as_user('test-db024-owner@example.com');
+select tests_0024.as_user('test-db024-owner@example.com');
 
 prepare assign_inactive as
   select public.assign_employee('e2400000-0000-0000-0000-000000000041', 'e2400000-0000-0000-0000-000000000095');
@@ -179,7 +179,7 @@ select is(
 );
 
 -- Ya asignado a este turno -> ALREADY_ASSIGNED.
-select tests.as_user('test-db024-owner@example.com');
+select tests_0024.as_user('test-db024-owner@example.com');
 
 prepare assign_already as
   select public.assign_employee('e2400000-0000-0000-0000-000000000041', 'e2400000-0000-0000-0000-000000000091');
@@ -203,7 +203,7 @@ select is(
 );
 
 -- Cupo lleno -> SHIFT_FULL.
-select tests.as_user('test-db024-owner@example.com');
+select tests_0024.as_user('test-db024-owner@example.com');
 
 prepare assign_full as
   select public.assign_employee('e2400000-0000-0000-0000-000000000041', 'e2400000-0000-0000-0000-000000000096');
@@ -217,7 +217,7 @@ insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_t
   ('e2400000-0000-0000-0000-000000000043', 'e2400000-0000-0000-0000-000000000001', 'e2400000-0000-0000-0000-000000000011', '2199-04-02', '14:00', '16:00', 1, 'scheduled'),
   ('e2400000-0000-0000-0000-000000000044', 'e2400000-0000-0000-0000-000000000001', 'e2400000-0000-0000-0000-000000000011', '2199-04-02', '17:00', '19:00', 1, 'scheduled');
 
-select tests.as_user('test-db024-owner@example.com');
+select tests_0024.as_user('test-db024-owner@example.com');
 
 select is(
   (public.assign_employee('e2400000-0000-0000-0000-000000000043', 'e2400000-0000-0000-0000-000000000093') ->> 'warnings')::jsonb,
@@ -239,7 +239,7 @@ insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_t
   ('e2400000-0000-0000-0000-000000000045', 'e2400000-0000-0000-0000-000000000001', 'e2400000-0000-0000-0000-000000000011', '2199-04-03', '08:00', '12:00', 1, 'scheduled'),
   ('e2400000-0000-0000-0000-000000000046', 'e2400000-0000-0000-0000-000000000001', 'e2400000-0000-0000-0000-000000000011', '2199-04-03', '11:00', '15:00', 1, 'scheduled');
 
-select tests.as_user('test-db024-owner@example.com');
+select tests_0024.as_user('test-db024-owner@example.com');
 
 select public.assign_employee('e2400000-0000-0000-0000-000000000045', 'e2400000-0000-0000-0000-000000000098');
 
@@ -256,14 +256,14 @@ insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_t
 select 'e2400000-0000-0000-0000-000000000047', 'e2400000-0000-0000-0000-000000000001', 'e2400000-0000-0000-0000-000000000011',
        (current_date - 1), '00:00'::time, '23:59'::time, 1, 'scheduled';
 
-select tests.as_user('test-db024-admin-sin-cap@example.com');
+select tests_0024.as_user('test-db024-admin-sin-cap@example.com');
 
 prepare assign_shift_started_no_cap as
   select public.assign_employee('e2400000-0000-0000-0000-000000000047', 'e2400000-0000-0000-0000-000000000091');
 
 select throws_ok('assign_shift_started_no_cap', 'P0001', 'El turno ya empezó.', 'assign_employee: turno ya empezó, admin sin manage_attendance -> SHIFT_STARTED');
 
-select tests.as_user('test-db024-admin-con-cap@example.com');
+select tests_0024.as_user('test-db024-admin-con-cap@example.com');
 
 select isnt(
   (public.assign_employee('e2400000-0000-0000-0000-000000000047', 'e2400000-0000-0000-0000-000000000091') -> 'assignment' ->> 'id'),
@@ -280,7 +280,7 @@ insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_t
 insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_time, required_staff, status) values
   ('e2400000-0000-0000-0000-000000000049', 'e2400000-0000-0000-0000-000000000001', 'e2400000-0000-0000-0000-000000000011', '2199-04-05', '13:00', '17:00', 1, 'completed');
 
-select tests.as_user('test-db024-owner@example.com');
+select tests_0024.as_user('test-db024-owner@example.com');
 
 prepare assign_cancelled as
   select public.assign_employee('e2400000-0000-0000-0000-000000000048', 'e2400000-0000-0000-0000-000000000091');
@@ -300,7 +300,7 @@ set local role postgres;
 
 -- Turno con dotación 2 y las dos asignaciones vigentes (ya en assigned, ver arriba): quitar una
 -- devuelve el turno a scheduled.
-select tests.as_user('test-db024-owner@example.com');
+select tests_0024.as_user('test-db024-owner@example.com');
 
 prepare remove_no_reason as
   select public.remove_assignment(
@@ -328,7 +328,7 @@ select is(
 );
 
 -- ASSIGNMENT_NOT_FOUND: la que acabamos de quitar, o cualquier id inexistente.
-select tests.as_user('test-db024-owner@example.com');
+select tests_0024.as_user('test-db024-owner@example.com');
 
 prepare remove_not_found as
   select public.remove_assignment('00000000-0000-0000-0000-000000000000', 'motivo');
@@ -345,7 +345,7 @@ select 'e2400000-0000-0000-0000-000000000050', 'e2400000-0000-0000-0000-00000000
 insert into public.assignments (id, shift_id, employee_id, status) values
   ('e2400000-0000-0000-0000-000000000051', 'e2400000-0000-0000-0000-000000000050', 'e2400000-0000-0000-0000-000000000096', 'present');
 
-select tests.as_user('test-db024-admin-con-cap@example.com');
+select tests_0024.as_user('test-db024-admin-con-cap@example.com');
 
 prepare remove_started as
   select public.remove_assignment('e2400000-0000-0000-0000-000000000051', 'motivo');
@@ -359,14 +359,14 @@ set local role postgres;
 insert into public.assignments (id, shift_id, employee_id) values
   ('e2400000-0000-0000-0000-000000000052', 'e2400000-0000-0000-0000-000000000050', 'e2400000-0000-0000-0000-000000000097');
 
-select tests.as_user('test-db024-admin-sin-cap@example.com');
+select tests_0024.as_user('test-db024-admin-sin-cap@example.com');
 
 prepare remove_shift_started_no_cap as
   select public.remove_assignment('e2400000-0000-0000-0000-000000000052', 'motivo');
 
 select throws_ok('remove_shift_started_no_cap', 'P0001', 'El turno ya empezó.', 'remove_assignment: turno ya empezó, admin sin manage_attendance -> SHIFT_STARTED');
 
-select tests.as_user('test-db024-admin-con-cap@example.com');
+select tests_0024.as_user('test-db024-admin-con-cap@example.com');
 
 select isnt(
   (public.remove_assignment('e2400000-0000-0000-0000-000000000052', 'motivo')).removed_at,
@@ -381,7 +381,7 @@ set local role postgres;
 insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_time, required_staff, status) values
   ('e2400000-0000-0000-0000-000000000053', 'e2400000-0000-0000-0000-000000000001', 'e2400000-0000-0000-0000-000000000011', '2199-04-06', '08:00', '12:00', 1, 'scheduled');
 
-select tests.as_user('test-db024-owner@example.com');
+select tests_0024.as_user('test-db024-owner@example.com');
 
 select public.assign_employee('e2400000-0000-0000-0000-000000000053', 'e2400000-0000-0000-0000-000000000091');
 select public.cancel_shift('e2400000-0000-0000-0000-000000000053', 'Motivo de cancelación de prueba 0024');
@@ -401,12 +401,12 @@ select is(
 insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_time, required_staff, status) values
   ('e2400000-0000-0000-0000-000000000061', 'e2400000-0000-0000-0000-000000000001', 'e2400000-0000-0000-0000-000000000011', '2199-04-07', '08:00', '16:00', 1, 'scheduled');
 
-select tests.as_user('test-db024-owner@example.com');
+select tests_0024.as_user('test-db024-owner@example.com');
 
 select public.assign_employee('e2400000-0000-0000-0000-000000000061', 'e2400000-0000-0000-0000-000000000091');
 
 -- Un empleado no puede llamarla.
-select tests.as_user('test-db024-empleado@example.com');
+select tests_0024.as_user('test-db024-empleado@example.com');
 
 prepare update_assignment_time_as_employee as
   select public.update_assignment_time(
@@ -418,7 +418,7 @@ select throws_ok('update_assignment_time_as_employee', 'P0001', 'No tenés permi
 
 set local role postgres;
 
-select tests.as_user('test-db024-owner@example.com');
+select tests_0024.as_user('test-db024-owner@example.com');
 
 -- Franja propia fuera de la del turno -> ASSIGNMENT_TIME_OUT_OF_SHIFT.
 prepare update_assignment_time_out_of_shift as
@@ -446,7 +446,7 @@ set local role postgres;
 insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_time, required_staff, status) values
   ('e2400000-0000-0000-0000-000000000062', 'e2400000-0000-0000-0000-000000000001', 'e2400000-0000-0000-0000-000000000011', '2199-04-07', '10:00', '18:00', 1, 'scheduled');
 
-select tests.as_user('test-db024-owner@example.com');
+select tests_0024.as_user('test-db024-owner@example.com');
 
 select public.assign_employee('e2400000-0000-0000-0000-000000000062', 'e2400000-0000-0000-0000-000000000091', '12:00', '14:00');
 
@@ -464,7 +464,7 @@ set local role postgres;
 insert into public.assignments (id, shift_id, employee_id) values
   ('e2400000-0000-0000-0000-000000000063', 'e2400000-0000-0000-0000-000000000050', 'e2400000-0000-0000-0000-000000000098');
 
-select tests.as_user('test-db024-owner@example.com');
+select tests_0024.as_user('test-db024-owner@example.com');
 
 prepare update_assignment_time_started as
   select public.update_assignment_time('e2400000-0000-0000-0000-000000000063', '10:00', '12:00');
@@ -487,7 +487,7 @@ insert into public.assignments (shift_id, employee_id) values
 update public.shifts set status = 'assigned' where id = 'e2400000-0000-0000-0000-000000000071';
 
 -- Un supervisor no puede llamarla.
-select tests.as_user('test-db024-supervisora@example.com');
+select tests_0024.as_user('test-db024-supervisora@example.com');
 
 prepare update_details_as_supervisor as
   select public.update_shift_details('e2400000-0000-0000-0000-000000000071', 2::smallint, 'nota');
@@ -496,7 +496,7 @@ select throws_ok('update_details_as_supervisor', 'P0001', 'No tenés permiso par
 
 set local role postgres;
 
-select tests.as_user('test-db024-owner@example.com');
+select tests_0024.as_user('test-db024-owner@example.com');
 
 -- Fuera de rango -> REQUIRED_STAFF_RANGE.
 prepare update_details_out_of_range as
@@ -526,7 +526,7 @@ select is(
 );
 
 -- Bajarla de nuevo a 2 (igual a los asignados) vuelve a completar la dotación -> assigned.
-select tests.as_user('test-db024-owner@example.com');
+select tests_0024.as_user('test-db024-owner@example.com');
 
 select is(
   (public.update_shift_details('e2400000-0000-0000-0000-000000000071', 2::smallint, null)).status::text,
@@ -537,7 +537,7 @@ select is(
 set local role postgres;
 
 -- SHIFT_CANCELLED / SHIFT_COMPLETED / SHIFT_NOT_FOUND.
-select tests.as_user('test-db024-owner@example.com');
+select tests_0024.as_user('test-db024-owner@example.com');
 
 prepare update_details_not_found as
   select public.update_shift_details('00000000-0000-0000-0000-000000000000', 1::smallint, null);
@@ -572,7 +572,7 @@ insert into public.employees (profile_id, dni, status, deleted_at) values
 insert into public.assignments (id, shift_id, employee_id) values
   ('e2400000-0000-0000-0000-000000000149', 'e2400000-0000-0000-0000-000000000049', 'e2400000-0000-0000-0000-000000000097');
 
-select tests.as_user('test-db024-owner@example.com');
+select tests_0024.as_user('test-db024-owner@example.com');
 
 prepare assign_deleted_employee as
   select public.assign_employee('e2400000-0000-0000-0000-000000000071', 'e2400000-0000-0000-0000-000000000099');

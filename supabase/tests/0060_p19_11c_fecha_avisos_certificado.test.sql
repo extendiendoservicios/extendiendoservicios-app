@@ -19,10 +19,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0060;
+grant usage on schema tests_0060 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0060.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -33,7 +33,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0060.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -48,10 +48,10 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0060.as_user(text) to authenticated, anon;
 
 -- Devuelve el `hint` del error (código estable) o el SQLSTATE si no trae hint; null si anduvo.
-create or replace function tests.err_hint(p_sql text)
+create or replace function tests_0060.err_hint(p_sql text)
 returns text
 language plpgsql
 as $$
@@ -66,9 +66,9 @@ exception when others then
 end;
 $$;
 
-grant execute on function tests.err_hint(text) to authenticated, anon;
+grant execute on function tests_0060.err_hint(text) to authenticated, anon;
 
-create or replace function tests.err_message(p_sql text)
+create or replace function tests_0060.err_message(p_sql text)
 returns text
 language plpgsql
 as $$
@@ -80,7 +80,7 @@ exception when others then
 end;
 $$;
 
-grant execute on function tests.err_message(text) to authenticated, anon;
+grant execute on function tests_0060.err_message(text) to authenticated, anon;
 
 select plan(57);
 
@@ -213,20 +213,20 @@ select throws_ok('n_demora_con_certificado', '23514', null, 'restricción: has_c
 
 -- 1. No mover un turno al pasado ---------------------------------------------------------------
 
-select tests.as_user('test-db060-admin@example.com');
+select tests_0060.as_user('test-db060-admin@example.com');
 
 select is(
-  tests.err_hint($$select public.update_shift_time('f6000000-0000-0000-0000-000000000044', time '08:00', time '12:00', false, date '2020-01-01')$$),
+  tests_0060.err_hint($$select public.update_shift_time('f6000000-0000-0000-0000-000000000044', time '08:00', time '12:00', false, date '2020-01-01')$$),
   'SHIFT_DATE_IN_PAST',
   'fecha pasada: SHIFT_DATE_IN_PAST'
 );
 select is(
-  tests.err_hint(format($$select public.update_shift_time('f6000000-0000-0000-0000-000000000044', time '08:00', time '12:00', false, %L::date)$$, app.today() - 1)),
+  tests_0060.err_hint(format($$select public.update_shift_time('f6000000-0000-0000-0000-000000000044', time '08:00', time '12:00', false, %L::date)$$, app.today() - 1)),
   'SHIFT_DATE_IN_PAST',
   'fecha pasada: ayer ya es pasado'
 );
 select is(
-  tests.err_message($$select public.update_shift_time('f6000000-0000-0000-0000-000000000044', time '08:00', time '12:00', false, date '2020-01-01')$$),
+  tests_0060.err_message($$select public.update_shift_time('f6000000-0000-0000-0000-000000000044', time '08:00', time '12:00', false, date '2020-01-01')$$),
   'No se puede mover el turno a una fecha que ya pasó.',
   'fecha pasada: mensaje'
 );
@@ -318,7 +318,7 @@ select is(
 -- Un aviso nuevo (después del cambio) sí se muestra.
 insert into public.attendance_notices (assignment_id, kind, minutes_late, source)
 values ('f6000000-0000-0000-0000-000000000052', 'delay', 5, 'employee_app');
-select tests.as_user('test-db060-admin@example.com');
+select tests_0060.as_user('test-db060-admin@example.com');
 select is(
   (select last_notice_minutes_late::int from public.v_assignments_board where id = 'f6000000-0000-0000-0000-000000000052'),
   5,
@@ -351,18 +351,18 @@ select is(
 );
 
 -- v_my_day: la empleada ve su demora de hoy; al mover el turno a mañana deja de verla.
-select tests.as_user('test-db060-empleado@example.com');
+select tests_0060.as_user('test-db060-empleado@example.com');
 select is(
   (select last_notice_kind::text from public.v_my_day where assignment_id = 'f6000000-0000-0000-0000-000000000071'),
   'delay',
   'v_my_day antes de mover: la empleada ve su aviso de demora'
 );
-select tests.as_user('test-db060-admin@example.com');
+select tests_0060.as_user('test-db060-admin@example.com');
 select lives_ok(
   format($$select public.update_shift_time('f6000000-0000-0000-0000-000000000046', time '06:00', time '07:00', false, %L::date)$$, app.today() + 1),
   'mover a mañana el turno de hoy de la empleada'
 );
-select tests.as_user('test-db060-empleado@example.com');
+select tests_0060.as_user('test-db060-empleado@example.com');
 select results_eq(
   $$select status::text, last_notice_kind::text, shift_date = app.today() + 1 from public.v_my_day where assignment_id = 'f6000000-0000-0000-0000-000000000071'$$,
   $$values ('expected', null::text, true)$$,
@@ -375,12 +375,12 @@ select is(
   'absence',
   'v_my_history antes de mover: la ausencia de ayer'
 );
-select tests.as_user('test-db060-admin@example.com');
+select tests_0060.as_user('test-db060-admin@example.com');
 select lives_ok(
   format($$select public.update_shift_time('f6000000-0000-0000-0000-000000000047', time '06:00', time '07:00', false, %L::date)$$, app.today() + 2),
   'mover a pasado mañana el turno de ayer (todavía no empezó)'
 );
-select tests.as_user('test-db060-empleado@example.com');
+select tests_0060.as_user('test-db060-empleado@example.com');
 select is(
   (select count(*) from public.v_my_history where assignment_id = 'f6000000-0000-0000-0000-000000000072'),
   0::bigint,
@@ -395,53 +395,53 @@ select results_eq(
 -- 3. set_absence_certificate -------------------------------------------------------------------
 
 select is(
-  tests.err_hint($$select public.set_absence_certificate('f6000000-0000-0000-0000-000000000061', true)$$),
+  tests_0060.err_hint($$select public.set_absence_certificate('f6000000-0000-0000-0000-000000000061', true)$$),
   'FORBIDDEN',
   'set_absence_certificate: la empleada no puede'
 );
 
-select tests.as_user('test-db060-coordinadora@example.com');
+select tests_0060.as_user('test-db060-coordinadora@example.com');
 select is(
-  tests.err_hint($$select public.set_absence_certificate('f6000000-0000-0000-0000-000000000061', true)$$),
+  tests_0060.err_hint($$select public.set_absence_certificate('f6000000-0000-0000-0000-000000000061', true)$$),
   'FORBIDDEN',
   'set_absence_certificate: la coordinadora no puede'
 );
 
-select tests.as_user('test-db060-admin-sin@example.com');
+select tests_0060.as_user('test-db060-admin-sin@example.com');
 select is(
-  tests.err_hint($$select public.set_absence_certificate('f6000000-0000-0000-0000-000000000061', true)$$),
+  tests_0060.err_hint($$select public.set_absence_certificate('f6000000-0000-0000-0000-000000000061', true)$$),
   'FORBIDDEN',
   'set_absence_certificate: admin sin manage_attendance no puede'
 );
 
-select tests.as_user('test-db060-admin@example.com');
+select tests_0060.as_user('test-db060-admin@example.com');
 select is(
-  tests.err_hint($$select public.set_absence_certificate('f6000000-0000-0000-0000-000000000061', null)$$),
+  tests_0060.err_hint($$select public.set_absence_certificate('f6000000-0000-0000-0000-000000000061', null)$$),
   'CERTIFICATE_REQUIRED',
   'set_absence_certificate: null da CERTIFICATE_REQUIRED'
 );
 select is(
-  tests.err_hint($$select public.set_absence_certificate('f6000000-0000-0000-0000-0000000fffff', true)$$),
+  tests_0060.err_hint($$select public.set_absence_certificate('f6000000-0000-0000-0000-0000000fffff', true)$$),
   'ASSIGNMENT_NOT_FOUND',
   'set_absence_certificate: asignación inexistente'
 );
 select is(
-  tests.err_hint($$select public.set_absence_certificate('f6000000-0000-0000-0000-000000000063', true)$$),
+  tests_0060.err_hint($$select public.set_absence_certificate('f6000000-0000-0000-0000-000000000063', true)$$),
   'NO_ABSENCE',
   'set_absence_certificate: solo tiene una demora -> NO_ABSENCE'
 );
 select is(
-  tests.err_hint($$select public.set_absence_certificate('f6000000-0000-0000-0000-000000000064', true)$$),
+  tests_0060.err_hint($$select public.set_absence_certificate('f6000000-0000-0000-0000-000000000064', true)$$),
   'NO_ABSENCE',
   'set_absence_certificate: sin avisos -> NO_ABSENCE'
 );
 select is(
-  tests.err_message($$select public.set_absence_certificate('f6000000-0000-0000-0000-000000000064', true)$$),
+  tests_0060.err_message($$select public.set_absence_certificate('f6000000-0000-0000-0000-000000000064', true)$$),
   'Esa asignación no tiene una ausencia avisada.',
   'set_absence_certificate: mensaje de NO_ABSENCE'
 );
 select is(
-  tests.err_hint($$select public.set_absence_certificate('f6000000-0000-0000-0000-000000000051', true)$$),
+  tests_0060.err_hint($$select public.set_absence_certificate('f6000000-0000-0000-0000-000000000051', true)$$),
   'NO_ABSENCE',
   'set_absence_certificate: la ausencia quedó anulada al mover de día -> NO_ABSENCE'
 );
@@ -475,7 +475,7 @@ select is(
 );
 
 -- Corregir de con a sin (el dueño también puede).
-select tests.as_user('test-db060-owner@example.com');
+select tests_0060.as_user('test-db060-owner@example.com');
 select is(
   (select has_certificate from public.set_absence_certificate('f6000000-0000-0000-0000-000000000061', false)),
   false,

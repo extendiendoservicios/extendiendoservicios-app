@@ -19,10 +19,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0028;
+grant usage on schema tests_0028 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0028.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -33,7 +33,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0028.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -48,7 +48,7 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0028.as_user(text) to authenticated, anon;
 
 -- Ancla futura: mañana de 10:00 a 11:00 (hora de Argentina), un turno que todavía no empezó.
 -- Antes era "dentro de 3 horas" y fallaba entre las 20:00 y las 21:00 de Argentina: el fin caía
@@ -60,7 +60,7 @@ select
   '10:00'::time as future_start,
   '11:00'::time as future_end;
 
--- Varias llamadas de más abajo se hacen como authenticated (vía tests.as_user) y necesitan leer
+-- Varias llamadas de más abajo se hacen como authenticated (vía tests_0028.as_user) y necesitan leer
 -- esta tabla temporal (por ejemplo, para armar los parámetros de update_shift_time).
 grant select on t28_anchors to authenticated;
 
@@ -151,7 +151,7 @@ from t28_anchors;
 insert into public.assignments (id, shift_id, employee_id) values
   ('e2800000-0000-0000-0000-000000000301', 'e2800000-0000-0000-0000-000000000201', 'e2800000-0000-0000-0000-000000000091');
 
-select tests.as_user('test-db028-emp-aviso@example.com');
+select tests_0028.as_user('test-db028-emp-aviso@example.com');
 select public.notify_delay('e2800000-0000-0000-0000-000000000301', 15);
 
 select ok(
@@ -172,7 +172,7 @@ values ('e2800000-0000-0000-0000-000000000202', 'e2800000-0000-0000-0000-0000000
 insert into public.assignments (id, shift_id, employee_id) values
   ('e2800000-0000-0000-0000-000000000302', 'e2800000-0000-0000-0000-000000000202', 'e2800000-0000-0000-0000-000000000095');
 
-select tests.as_user('test-db028-emp-inicio@example.com');
+select tests_0028.as_user('test-db028-emp-inicio@example.com');
 select public.record_check_in('e2800000-0000-0000-0000-000000000302');
 
 select ok(
@@ -188,7 +188,7 @@ select is(
   'record_check_in llevó el turno a in_progress (app.start_shift_if_needed, sin esto el resto del test no prueba nada)'
 );
 
-select tests.as_user('test-db028-emp-inicio@example.com');
+select tests_0028.as_user('test-db028-emp-inicio@example.com');
 select public.record_check_out('e2800000-0000-0000-0000-000000000302');
 
 select ok(
@@ -212,7 +212,7 @@ from t28_anchors;
 insert into public.assignments (id, shift_id, employee_id) values
   ('e2800000-0000-0000-0000-000000000303', 'e2800000-0000-0000-0000-000000000203', 'e2800000-0000-0000-0000-000000000096');
 
-select tests.as_user('test-db028-emp-observacion@example.com');
+select tests_0028.as_user('test-db028-emp-observacion@example.com');
 select public.set_assignment_notes('e2800000-0000-0000-0000-000000000303', 'Todo bien, sede cerrada al llegar');
 
 select ok(
@@ -233,14 +233,14 @@ from t28_anchors;
 insert into public.assignments (id, shift_id, employee_id) values
   ('e2800000-0000-0000-0000-000000000304', 'e2800000-0000-0000-0000-000000000204', 'e2800000-0000-0000-0000-000000000092');
 
-select tests.as_user('test-db028-admin@example.com');
+select tests_0028.as_user('test-db028-admin@example.com');
 select public.update_shift_time(
   'e2800000-0000-0000-0000-000000000204',
   (select future_start from t28_anchors),
   (select (future_end + interval '1 hour')::time from t28_anchors)
 );
 
-select tests.as_user('test-db028-emp-reprograma@example.com');
+select tests_0028.as_user('test-db028-emp-reprograma@example.com');
 
 select ok(
   (select changed_since_last_seen from public.v_my_day where assignment_id = 'e2800000-0000-0000-0000-000000000304'),
@@ -260,10 +260,10 @@ from t28_anchors;
 insert into public.assignments (id, shift_id, employee_id) values
   ('e2800000-0000-0000-0000-000000000305', 'e2800000-0000-0000-0000-000000000205', 'e2800000-0000-0000-0000-000000000097');
 
-select tests.as_user('test-db028-admin@example.com');
+select tests_0028.as_user('test-db028-admin@example.com');
 select public.update_shift_details('e2800000-0000-0000-0000-000000000205', 1::smallint, 'Pidieron reforzar la limpieza de baños');
 
-select tests.as_user('test-db028-emp-notas@example.com');
+select tests_0028.as_user('test-db028-emp-notas@example.com');
 
 select ok(
   (select changed_since_last_seen from public.v_my_day where assignment_id = 'e2800000-0000-0000-0000-000000000305'),
@@ -281,12 +281,12 @@ insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_t
 select 'e2800000-0000-0000-0000-000000000206', 'e2800000-0000-0000-0000-000000000001', 'e2800000-0000-0000-0000-000000000011', future_date, future_start, future_end, 2, 'scheduled'
 from t28_anchors;
 
-select tests.as_user('test-db028-admin@example.com');
+select tests_0028.as_user('test-db028-admin@example.com');
 
 create temporary table t28_new_assignment on commit drop as
 select (public.assign_employee('e2800000-0000-0000-0000-000000000206', 'e2800000-0000-0000-0000-000000000093') -> 'assignment' ->> 'id')::uuid as id;
 
-select tests.as_user('test-db028-emp-nuevo@example.com');
+select tests_0028.as_user('test-db028-emp-nuevo@example.com');
 
 select ok(
   (select changed_since_last_seen from public.v_my_day where assignment_id = (select id from t28_new_assignment)),
@@ -311,18 +311,18 @@ insert into public.assignments (id, shift_id, employee_id) values
 -- El empleado carga su propia observación primero (queda updated_by = él mismo) y recién ahí se
 -- marca "visto" -- si update_assignment_time no fijara updated_by, la fila seguiría atribuida a
 -- él y el cambio de administración de más abajo quedaría enmascarado.
-select tests.as_user('test-db028-emp-residual@example.com');
+select tests_0028.as_user('test-db028-emp-residual@example.com');
 select public.set_assignment_notes('e2800000-0000-0000-0000-000000000307', 'Llego un rato antes de la hora habitual');
 
 set local role postgres;
-select tests.as_user('test-db028-admin@example.com');
+select tests_0028.as_user('test-db028-admin@example.com');
 select public.update_assignment_time(
   'e2800000-0000-0000-0000-000000000307',
   (select future_start from t28_anchors),
   (select (future_end - interval '30 minutes')::time from t28_anchors)
 );
 
-select tests.as_user('test-db028-emp-residual@example.com');
+select tests_0028.as_user('test-db028-emp-residual@example.com');
 
 select ok(
   (select changed_since_last_seen from public.v_my_day where assignment_id = 'e2800000-0000-0000-0000-000000000307'),

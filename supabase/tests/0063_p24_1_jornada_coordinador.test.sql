@@ -25,10 +25,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0063a;
+grant usage on schema tests_0063a to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0063a.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -39,7 +39,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0063a.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -54,10 +54,10 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0063a.as_user(text) to authenticated, anon;
 
 -- Devuelve el `hint` del error (código estable) o el SQLSTATE si no trae hint; null si anduvo.
-create or replace function tests.err_hint(p_sql text)
+create or replace function tests_0063a.err_hint(p_sql text)
 returns text
 language plpgsql
 as $$
@@ -72,9 +72,9 @@ exception when others then
 end;
 $$;
 
-grant execute on function tests.err_hint(text) to authenticated, anon;
+grant execute on function tests_0063a.err_hint(text) to authenticated, anon;
 
-create or replace function tests.err_message(p_sql text)
+create or replace function tests_0063a.err_message(p_sql text)
 returns text
 language plpgsql
 as $$
@@ -86,11 +86,11 @@ exception when others then
 end;
 $$;
 
-grant execute on function tests.err_message(text) to authenticated, anon;
+grant execute on function tests_0063a.err_message(text) to authenticated, anon;
 
 -- Cantidad de tareas de pg_cron con ese nombre (dinámico: en un entorno sin pg_cron la consulta
 -- directa no compilaría).
-create or replace function tests.cron_schedule(p_name text)
+create or replace function tests_0063a.cron_schedule(p_name text)
 returns text
 language plpgsql
 as $$
@@ -105,7 +105,7 @@ begin
 end;
 $$;
 
-create or replace function tests.cron_job_count(p_name text)
+create or replace function tests_0063a.cron_job_count(p_name text)
 returns integer
 language plpgsql
 as $$
@@ -209,11 +209,11 @@ select ok(
   'app.auto_close_workdays no la ejecuta ni authenticated ni anon'
 );
 select cmp_ok(
-  tests.cron_job_count('auto-close-workdays'), '<>', 0,
+  tests_0063a.cron_job_count('auto-close-workdays'), '<>', 0,
   'pg_cron: la tarea auto-close-workdays existe (o pg_cron no está habilitada en este entorno, -1)'
 );
 select ok(
-  coalesce(tests.cron_schedule('auto-close-workdays') = '55 2 * * *', true),
+  coalesce(tests_0063a.cron_schedule('auto-close-workdays') = '55 2 * * *', true),
   'pg_cron: se programa a las 02:55 UTC = 23:55 de Argentina'
 );
 
@@ -282,31 +282,31 @@ insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_t
 -- 2. RPC de jornada: transiciones y bloqueos (coordinadora Ana)
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db063-sa@example.com');
+select tests_0063a.as_user('test-db063-sa@example.com');
 
-select is(tests.err_hint($$select public.pause_workday()$$), 'WORKDAY_NOT_STARTED', 'pausar sin jornada iniciada -> WORKDAY_NOT_STARTED');
-select is(tests.err_hint($$select public.resume_workday()$$), 'WORKDAY_NOT_STARTED', 'reanudar sin jornada -> WORKDAY_NOT_STARTED');
-select is(tests.err_hint($$select public.end_workday()$$), 'WORKDAY_NOT_STARTED', 'finalizar sin jornada -> WORKDAY_NOT_STARTED');
-select is(tests.err_hint($$select public.reopen_workday()$$), 'WORKDAY_NOT_STARTED', 'reabrir sin jornada -> WORKDAY_NOT_STARTED');
-select is(tests.err_hint($$select public.start_workday(-34.6, null, null)$$), 'COORDINATES_INCOMPLETE', 'iniciar con posición incompleta -> COORDINATES_INCOMPLETE');
-select is(tests.err_hint($$select public.start_workday(-134.6, -58.4, 10)$$), 'COORDINATES_OUT_OF_RANGE', 'iniciar con latitud fuera de rango -> COORDINATES_OUT_OF_RANGE');
+select is(tests_0063a.err_hint($$select public.pause_workday()$$), 'WORKDAY_NOT_STARTED', 'pausar sin jornada iniciada -> WORKDAY_NOT_STARTED');
+select is(tests_0063a.err_hint($$select public.resume_workday()$$), 'WORKDAY_NOT_STARTED', 'reanudar sin jornada -> WORKDAY_NOT_STARTED');
+select is(tests_0063a.err_hint($$select public.end_workday()$$), 'WORKDAY_NOT_STARTED', 'finalizar sin jornada -> WORKDAY_NOT_STARTED');
+select is(tests_0063a.err_hint($$select public.reopen_workday()$$), 'WORKDAY_NOT_STARTED', 'reabrir sin jornada -> WORKDAY_NOT_STARTED');
+select is(tests_0063a.err_hint($$select public.start_workday(-34.6, null, null)$$), 'COORDINATES_INCOMPLETE', 'iniciar con posición incompleta -> COORDINATES_INCOMPLETE');
+select is(tests_0063a.err_hint($$select public.start_workday(-134.6, -58.4, 10)$$), 'COORDINATES_OUT_OF_RANGE', 'iniciar con latitud fuera de rango -> COORDINATES_OUT_OF_RANGE');
 
 select is(
   (select public.start_workday(-34.6, -58.4, 12)->>'state'),
   'running',
   'start_workday: la jornada queda en marcha'
 );
-select is(tests.err_hint($$select public.start_workday()$$), 'WORKDAY_ALREADY_STARTED', 'una jornada por día: segundo inicio -> WORKDAY_ALREADY_STARTED');
-select is(tests.err_hint($$select public.resume_workday()$$), 'WORKDAY_NOT_PAUSED', 'reanudar sin pausa -> WORKDAY_NOT_PAUSED');
-select is(tests.err_hint($$select public.reopen_workday()$$), 'WORKDAY_NOT_ENDED', 'reabrir una jornada en marcha -> WORKDAY_NOT_ENDED');
-select is(tests.err_hint($$select public.pause_workday(repeat('x', 301))$$), 'REASON_TOO_LONG', 'pausar con un motivo de más de 300 caracteres -> REASON_TOO_LONG');
+select is(tests_0063a.err_hint($$select public.start_workday()$$), 'WORKDAY_ALREADY_STARTED', 'una jornada por día: segundo inicio -> WORKDAY_ALREADY_STARTED');
+select is(tests_0063a.err_hint($$select public.resume_workday()$$), 'WORKDAY_NOT_PAUSED', 'reanudar sin pausa -> WORKDAY_NOT_PAUSED');
+select is(tests_0063a.err_hint($$select public.reopen_workday()$$), 'WORKDAY_NOT_ENDED', 'reabrir una jornada en marcha -> WORKDAY_NOT_ENDED');
+select is(tests_0063a.err_hint($$select public.pause_workday(repeat('x', 301))$$), 'REASON_TOO_LONG', 'pausar con un motivo de más de 300 caracteres -> REASON_TOO_LONG');
 
 select is(
   (select public.pause_workday('Almuerzo')->>'state'),
   'paused',
   'pause_workday: la jornada queda en pausa'
 );
-select is(tests.err_hint($$select public.pause_workday()$$), 'WORKDAY_PAUSED', 'pausar dos veces -> WORKDAY_PAUSED');
+select is(tests_0063a.err_hint($$select public.pause_workday()$$), 'WORKDAY_PAUSED', 'pausar dos veces -> WORKDAY_PAUSED');
 select is(
   (select public.resume_workday()->>'state'),
   'running',
@@ -322,9 +322,9 @@ select is(
   'ended',
   'end_workday: se puede finalizar estando en pausa'
 );
-select is(tests.err_hint($$select public.end_workday()$$), 'WORKDAY_ENDED', 'finalizar dos veces -> WORKDAY_ENDED');
-select is(tests.err_hint($$select public.pause_workday()$$), 'WORKDAY_ENDED', 'pausar una jornada finalizada -> WORKDAY_ENDED');
-select is(tests.err_hint($$select public.resume_workday()$$), 'WORKDAY_ENDED', 'reanudar una jornada finalizada -> WORKDAY_ENDED');
+select is(tests_0063a.err_hint($$select public.end_workday()$$), 'WORKDAY_ENDED', 'finalizar dos veces -> WORKDAY_ENDED');
+select is(tests_0063a.err_hint($$select public.pause_workday()$$), 'WORKDAY_ENDED', 'pausar una jornada finalizada -> WORKDAY_ENDED');
+select is(tests_0063a.err_hint($$select public.resume_workday()$$), 'WORKDAY_ENDED', 'reanudar una jornada finalizada -> WORKDAY_ENDED');
 select is(
   (select public.reopen_workday()->>'state'),
   'running',
@@ -376,22 +376,22 @@ select is(
 
 -- Licencia, perfil sin ficha activa y roles que no son coordinador ------------------------------
 
-select tests.as_user('test-db063-sl@example.com');
-select is(tests.err_hint($$select public.start_workday()$$), 'ON_LEAVE', 'coordinadora de licencia hoy -> ON_LEAVE (CJ-29)');
+select tests_0063a.as_user('test-db063-sl@example.com');
+select is(tests_0063a.err_hint($$select public.start_workday()$$), 'ON_LEAVE', 'coordinadora de licencia hoy -> ON_LEAVE (CJ-29)');
 select is(
-  tests.err_message($$select public.start_workday()$$),
+  tests_0063a.err_message($$select public.start_workday()$$),
   'Estás de licencia hoy: no podés iniciar la jornada.',
   'mensaje de la licencia'
 );
 
-select tests.as_user('test-db063-sd@example.com');
-select is(tests.err_hint($$select public.start_workday()$$), 'SUPERVISOR_ROLE_REQUIRED', 'coordinador con la ficha de empleado dada de baja -> SUPERVISOR_ROLE_REQUIRED');
+select tests_0063a.as_user('test-db063-sd@example.com');
+select is(tests_0063a.err_hint($$select public.start_workday()$$), 'SUPERVISOR_ROLE_REQUIRED', 'coordinador con la ficha de empleado dada de baja -> SUPERVISOR_ROLE_REQUIRED');
 
-select tests.as_user('test-db063-emp@example.com');
-select is(tests.err_hint($$select public.start_workday()$$), 'FORBIDDEN', 'empleado no inicia jornada -> FORBIDDEN');
+select tests_0063a.as_user('test-db063-emp@example.com');
+select is(tests_0063a.err_hint($$select public.start_workday()$$), 'FORBIDDEN', 'empleado no inicia jornada -> FORBIDDEN');
 
-select tests.as_user('test-db063-admin-full@example.com');
-select is(tests.err_hint($$select public.start_workday()$$), 'FORBIDDEN', 'administrador sin rol de coordinador no inicia jornada -> FORBIDDEN');
+select tests_0063a.as_user('test-db063-admin-full@example.com');
+select is(tests_0063a.err_hint($$select public.start_workday()$$), 'FORBIDDEN', 'administrador sin rol de coordinador no inicia jornada -> FORBIDDEN');
 
 -- ---------------------------------------------------------------------------------------------
 -- 3. Minutos: inicio a fin menos pausas, con reapertura (jornada de ayer de Beto)
@@ -560,70 +560,70 @@ select is(
 -- 5. Administración (CJ-32): permisos
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db063-admin-sin@example.com');
+select tests_0063a.as_user('test-db063-admin-sin@example.com');
 select is(
-  tests.err_hint($$select public.admin_correct_workday_event('f6300000-0000-0000-0000-0000000000e2', 'Prueba', app.local_ts(app.today() - 1, '10:15'))$$),
+  tests_0063a.err_hint($$select public.admin_correct_workday_event('f6300000-0000-0000-0000-0000000000e2', 'Prueba', app.local_ts(app.today() - 1, '10:15'))$$),
   'FORBIDDEN', 'administrador sin manage_attendance no corrige eventos'
 );
 select is(
-  tests.err_hint($$select public.admin_add_workday_pause('f6300000-0000-0000-0000-0000000000b1', app.local_ts(app.today() - 1, '15:00'), app.local_ts(app.today() - 1, '15:15'), 'Prueba')$$),
+  tests_0063a.err_hint($$select public.admin_add_workday_pause('f6300000-0000-0000-0000-0000000000b1', app.local_ts(app.today() - 1, '15:00'), app.local_ts(app.today() - 1, '15:15'), 'Prueba')$$),
   'FORBIDDEN', 'administrador sin manage_attendance no agrega pausas'
 );
 select is(
-  tests.err_hint($$select public.admin_record_workday('f6300000-0000-0000-0000-000000000091', app.today() - 2, app.local_ts(app.today() - 2, '08:00'), 'Prueba', app.local_ts(app.today() - 2, '12:00'))$$),
+  tests_0063a.err_hint($$select public.admin_record_workday('f6300000-0000-0000-0000-000000000091', app.today() - 2, app.local_ts(app.today() - 2, '08:00'), 'Prueba', app.local_ts(app.today() - 2, '12:00'))$$),
   'FORBIDDEN', 'administrador sin manage_attendance no registra jornadas'
 );
 select is(
-  tests.err_hint($$select public.set_supervisor_priority('f6300000-0000-0000-0000-000000000091', 'f6300000-0000-0000-0000-000000000001', null)$$),
+  tests_0063a.err_hint($$select public.set_supervisor_priority('f6300000-0000-0000-0000-000000000091', 'f6300000-0000-0000-0000-000000000001', null)$$),
   'FORBIDDEN', 'administrador sin manage_supervisions no carga prioridades'
 );
 
-select tests.as_user('test-db063-sa@example.com');
+select tests_0063a.as_user('test-db063-sa@example.com');
 select is(
-  tests.err_hint($$select public.admin_correct_workday_event('f6300000-0000-0000-0000-0000000000e2', 'Prueba', app.local_ts(app.today() - 1, '10:15'))$$),
+  tests_0063a.err_hint($$select public.admin_correct_workday_event('f6300000-0000-0000-0000-0000000000e2', 'Prueba', app.local_ts(app.today() - 1, '10:15'))$$),
   'FORBIDDEN', 'el coordinador no corrige eventos de jornada'
 );
 select is(
-  tests.err_hint($$select public.set_supervisor_priority('f6300000-0000-0000-0000-000000000091', 'f6300000-0000-0000-0000-000000000001', null)$$),
+  tests_0063a.err_hint($$select public.set_supervisor_priority('f6300000-0000-0000-0000-000000000091', 'f6300000-0000-0000-0000-000000000001', null)$$),
   'FORBIDDEN', 'el coordinador no se carga prioridades'
 );
 
-select tests.as_user('test-db063-emp@example.com');
+select tests_0063a.as_user('test-db063-emp@example.com');
 select is(
-  tests.err_hint($$select public.admin_record_workday('f6300000-0000-0000-0000-000000000091', app.today() - 2, app.local_ts(app.today() - 2, '08:00'), 'Prueba', app.local_ts(app.today() - 2, '12:00'))$$),
+  tests_0063a.err_hint($$select public.admin_record_workday('f6300000-0000-0000-0000-000000000091', app.today() - 2, app.local_ts(app.today() - 2, '08:00'), 'Prueba', app.local_ts(app.today() - 2, '12:00'))$$),
   'FORBIDDEN', 'el empleado no registra jornadas'
 );
 
 -- Correcciones --------------------------------------------------------------------------------
 
-select tests.as_user('test-db063-admin-full@example.com');
+select tests_0063a.as_user('test-db063-admin-full@example.com');
 
 select is(
-  tests.err_hint($$select public.admin_correct_workday_event('f6300000-0000-0000-0000-0000000000e2', '  ', app.local_ts(app.today() - 1, '10:15'))$$),
+  tests_0063a.err_hint($$select public.admin_correct_workday_event('f6300000-0000-0000-0000-0000000000e2', '  ', app.local_ts(app.today() - 1, '10:15'))$$),
   'REASON_REQUIRED', 'corregir sin motivo -> REASON_REQUIRED'
 );
 select is(
-  tests.err_hint($$select public.admin_correct_workday_event('f6300000-0000-0000-0000-0000000000e2', 'Prueba')$$),
+  tests_0063a.err_hint($$select public.admin_correct_workday_event('f6300000-0000-0000-0000-0000000000e2', 'Prueba')$$),
   'TIME_REQUIRED', 'corregir sin hora nueva -> TIME_REQUIRED'
 );
 select is(
-  tests.err_hint($$select public.admin_correct_workday_event('f6300000-0000-0000-0000-0000000000ff', 'Prueba', app.local_ts(app.today() - 1, '10:15'))$$),
+  tests_0063a.err_hint($$select public.admin_correct_workday_event('f6300000-0000-0000-0000-0000000000ff', 'Prueba', app.local_ts(app.today() - 1, '10:15'))$$),
   'EVENT_NOT_FOUND', 'evento inexistente -> EVENT_NOT_FOUND'
 );
 select is(
-  tests.err_hint($$select public.admin_correct_workday_event('f6300000-0000-0000-0000-0000000000e2', 'Prueba', app.local_ts(app.today(), '00:00') + interval '1 second')$$),
+  tests_0063a.err_hint($$select public.admin_correct_workday_event('f6300000-0000-0000-0000-0000000000e2', 'Prueba', app.local_ts(app.today(), '00:00') + interval '1 second')$$),
   'AT_OUT_OF_RANGE', 'una hora fuera del día de la jornada -> AT_OUT_OF_RANGE'
 );
 select is(
-  tests.err_hint($$select public.admin_correct_workday_event('f6300000-0000-0000-0000-0000000000e2', 'Prueba', app.local_ts(app.today() - 1, '10:00'))$$),
+  tests_0063a.err_hint($$select public.admin_correct_workday_event('f6300000-0000-0000-0000-0000000000e2', 'Prueba', app.local_ts(app.today() - 1, '10:00'))$$),
   'SAME_TIME', 'la misma hora -> SAME_TIME'
 );
 select is(
-  tests.err_hint($$select public.admin_correct_workday_event('f6300000-0000-0000-0000-0000000000e3', 'Prueba', app.local_ts(app.today() - 1, '09:00'))$$),
+  tests_0063a.err_hint($$select public.admin_correct_workday_event('f6300000-0000-0000-0000-0000000000e3', 'Prueba', app.local_ts(app.today() - 1, '09:00'))$$),
   'INVALID_EVENT_ORDER', 'reanudar antes de la pausa deja la secuencia inválida -> INVALID_EVENT_ORDER'
 );
 select is(
-  tests.err_hint($$select public.admin_correct_workday_event('f6300000-0000-0000-0000-0000000000e1', 'Prueba', null, true)$$),
+  tests_0063a.err_hint($$select public.admin_correct_workday_event('f6300000-0000-0000-0000-0000000000e1', 'Prueba', null, true)$$),
   'EVENT_NOT_REMOVABLE', 'solo se quitan pausas -> EVENT_NOT_REMOVABLE'
 );
 select is(
@@ -634,7 +634,7 @@ select is(
 
 -- Una supervisión suelta: el evento supervision_start no se corrige.
 select is(
-  tests.err_hint(format(
+  tests_0063a.err_hint(format(
     $$select public.admin_correct_workday_event(%L, 'Prueba', app.local_ts(app.today() - 1, '09:10'))$$,
     (select id from public.supervisor_workday_events where workday_id = 'f6300000-0000-0000-0000-0000000000b4' and kind = 'supervision_start')
   )),
@@ -661,7 +661,7 @@ select is(
   1,
   'la corrección queda en security_events'
 );
-select tests.as_user('test-db063-admin-full@example.com');
+select tests_0063a.as_user('test-db063-admin-full@example.com');
 
 -- Quita la pausa (con su reanudación): 480 - 120 = 360.
 select is(
@@ -683,23 +683,23 @@ select is(
 
 -- Agrega una pausa: 11:00 a 11:30 -> 330.
 select is(
-  tests.err_hint($$select public.admin_add_workday_pause('f6300000-0000-0000-0000-0000000000b1', app.local_ts(app.today() - 1, '11:30'), app.local_ts(app.today() - 1, '11:00'), 'Prueba')$$),
+  tests_0063a.err_hint($$select public.admin_add_workday_pause('f6300000-0000-0000-0000-0000000000b1', app.local_ts(app.today() - 1, '11:30'), app.local_ts(app.today() - 1, '11:00'), 'Prueba')$$),
   'INVALID_TIME_RANGE', 'una pausa que termina antes de empezar -> INVALID_TIME_RANGE'
 );
 select is(
-  tests.err_hint($$select public.admin_add_workday_pause('f6300000-0000-0000-0000-0000000000b1', app.local_ts(app.today() - 1, '11:00'), app.local_ts(app.today() - 1, '11:30'), '')$$),
+  tests_0063a.err_hint($$select public.admin_add_workday_pause('f6300000-0000-0000-0000-0000000000b1', app.local_ts(app.today() - 1, '11:00'), app.local_ts(app.today() - 1, '11:30'), '')$$),
   'REASON_REQUIRED', 'una pausa sin motivo de corrección -> REASON_REQUIRED'
 );
 select is(
-  tests.err_hint($$select public.admin_add_workday_pause('f6300000-0000-0000-0000-0000000000b1', app.local_ts(app.today() - 1, '07:00'), app.local_ts(app.today() - 1, '07:30'), 'Prueba')$$),
+  tests_0063a.err_hint($$select public.admin_add_workday_pause('f6300000-0000-0000-0000-0000000000b1', app.local_ts(app.today() - 1, '07:00'), app.local_ts(app.today() - 1, '07:30'), 'Prueba')$$),
   'INVALID_EVENT_ORDER', 'una pausa antes del inicio de la jornada -> INVALID_EVENT_ORDER'
 );
 select is(
-  tests.err_hint($$select public.admin_add_workday_pause('f6300000-0000-0000-0000-0000000000b1', app.local_ts(app.today() - 1, '12:30'), app.local_ts(app.today() - 1, '13:00'), 'Prueba')$$),
+  tests_0063a.err_hint($$select public.admin_add_workday_pause('f6300000-0000-0000-0000-0000000000b1', app.local_ts(app.today() - 1, '12:30'), app.local_ts(app.today() - 1, '13:00'), 'Prueba')$$),
   'INVALID_EVENT_ORDER', 'una pausa dentro del hueco de la reapertura -> INVALID_EVENT_ORDER'
 );
 select is(
-  tests.err_hint($$select public.admin_add_workday_pause('f6300000-0000-0000-0000-0000000000ff', app.local_ts(app.today() - 1, '11:00'), app.local_ts(app.today() - 1, '11:30'), 'Prueba')$$),
+  tests_0063a.err_hint($$select public.admin_add_workday_pause('f6300000-0000-0000-0000-0000000000ff', app.local_ts(app.today() - 1, '11:00'), app.local_ts(app.today() - 1, '11:30'), 'Prueba')$$),
   'WORKDAY_NOT_FOUND', 'jornada inexistente -> WORKDAY_NOT_FOUND'
 );
 select is(
@@ -727,31 +727,31 @@ select ok(
   'la jornada registrada en nombre queda corrected'
 );
 select is(
-  tests.err_hint($$select public.admin_record_workday('f6300000-0000-0000-0000-000000000091', app.today() - 2, app.local_ts(app.today() - 2, '08:00'), 'Otra vez', app.local_ts(app.today() - 2, '12:00'))$$),
+  tests_0063a.err_hint($$select public.admin_record_workday('f6300000-0000-0000-0000-000000000091', app.today() - 2, app.local_ts(app.today() - 2, '08:00'), 'Otra vez', app.local_ts(app.today() - 2, '12:00'))$$),
   'WORKDAY_ALREADY_EXISTS', 'una jornada por día -> WORKDAY_ALREADY_EXISTS'
 );
 select is(
-  tests.err_hint($$select public.admin_record_workday('f6300000-0000-0000-0000-000000000091', app.today() + 1, app.local_ts(app.today(), '00:00'), 'Prueba', null)$$),
+  tests_0063a.err_hint($$select public.admin_record_workday('f6300000-0000-0000-0000-000000000091', app.today() + 1, app.local_ts(app.today(), '00:00'), 'Prueba', null)$$),
   'DATE_IN_FUTURE', 'una jornada de mañana -> DATE_IN_FUTURE'
 );
 select is(
-  tests.err_hint($$select public.admin_record_workday('f6300000-0000-0000-0000-000000000091', app.today() - 3, app.local_ts(app.today() - 3, '08:00'), 'Prueba', null)$$),
+  tests_0063a.err_hint($$select public.admin_record_workday('f6300000-0000-0000-0000-000000000091', app.today() - 3, app.local_ts(app.today() - 3, '08:00'), 'Prueba', null)$$),
   'ENDED_AT_REQUIRED', 'una jornada de un día anterior sin fin -> ENDED_AT_REQUIRED'
 );
 select is(
-  tests.err_hint($$select public.admin_record_workday('f6300000-0000-0000-0000-000000000091', app.today() - 3, app.local_ts(app.today() - 3, '12:00'), 'Prueba', app.local_ts(app.today() - 3, '08:00'))$$),
+  tests_0063a.err_hint($$select public.admin_record_workday('f6300000-0000-0000-0000-000000000091', app.today() - 3, app.local_ts(app.today() - 3, '12:00'), 'Prueba', app.local_ts(app.today() - 3, '08:00'))$$),
   'INVALID_TIME_RANGE', 'un fin anterior al inicio -> INVALID_TIME_RANGE'
 );
 select is(
-  tests.err_hint($$select public.admin_record_workday('f6300000-0000-0000-0000-000000000091', app.today() - 3, app.local_ts(app.today() - 3, '08:00'), '', app.local_ts(app.today() - 3, '12:00'))$$),
+  tests_0063a.err_hint($$select public.admin_record_workday('f6300000-0000-0000-0000-000000000091', app.today() - 3, app.local_ts(app.today() - 3, '08:00'), '', app.local_ts(app.today() - 3, '12:00'))$$),
   'REASON_REQUIRED', 'sin motivo -> REASON_REQUIRED'
 );
 select is(
-  tests.err_hint($$select public.admin_record_workday('f6300000-0000-0000-0000-0000000000a1', app.today() - 3, app.local_ts(app.today() - 3, '08:00'), 'Prueba', app.local_ts(app.today() - 3, '12:00'))$$),
+  tests_0063a.err_hint($$select public.admin_record_workday('f6300000-0000-0000-0000-0000000000a1', app.today() - 3, app.local_ts(app.today() - 3, '08:00'), 'Prueba', app.local_ts(app.today() - 3, '12:00'))$$),
   'SUPERVISOR_ROLE_REQUIRED', 'una persona que no es coordinadora -> SUPERVISOR_ROLE_REQUIRED'
 );
 select is(
-  tests.err_hint($$select public.admin_record_workday('f6300000-0000-0000-0000-000000000091', app.today() - 3, app.local_ts(app.today() - 3, '08:00'), 'Prueba', app.local_ts(app.today() - 2, '12:00'))$$),
+  tests_0063a.err_hint($$select public.admin_record_workday('f6300000-0000-0000-0000-000000000091', app.today() - 3, app.local_ts(app.today() - 3, '08:00'), 'Prueba', app.local_ts(app.today() - 2, '12:00'))$$),
   'AT_OUT_OF_RANGE', 'un fin en otro día -> AT_OUT_OF_RANGE'
 );
 
@@ -783,23 +783,23 @@ select is(
 -- Prioridades (CJ-03, CJ-24) --------------------------------------------------------------------
 
 select is(
-  tests.err_hint($$select public.set_supervisor_priority('f6300000-0000-0000-0000-000000000091', null, null)$$),
+  tests_0063a.err_hint($$select public.set_supervisor_priority('f6300000-0000-0000-0000-000000000091', null, null)$$),
   'INVALID_PRIORITY_TARGET', 'una prioridad sin cliente ni sede -> INVALID_PRIORITY_TARGET'
 );
 select is(
-  tests.err_hint($$select public.set_supervisor_priority('f6300000-0000-0000-0000-000000000091', 'f6300000-0000-0000-0000-000000000001', 'f6300000-0000-0000-0000-000000000011')$$),
+  tests_0063a.err_hint($$select public.set_supervisor_priority('f6300000-0000-0000-0000-000000000091', 'f6300000-0000-0000-0000-000000000001', 'f6300000-0000-0000-0000-000000000011')$$),
   'INVALID_PRIORITY_TARGET', 'una prioridad con cliente y sede a la vez -> INVALID_PRIORITY_TARGET'
 );
 select is(
-  tests.err_hint($$select public.set_supervisor_priority('f6300000-0000-0000-0000-0000000000a1', 'f6300000-0000-0000-0000-000000000001', null)$$),
+  tests_0063a.err_hint($$select public.set_supervisor_priority('f6300000-0000-0000-0000-0000000000a1', 'f6300000-0000-0000-0000-000000000001', null)$$),
   'SUPERVISOR_ROLE_REQUIRED', 'una prioridad para quien no es coordinador -> SUPERVISOR_ROLE_REQUIRED'
 );
 select is(
-  tests.err_hint($$select public.set_supervisor_priority('f6300000-0000-0000-0000-000000000091', 'f6300000-0000-0000-0000-0000000000ff', null)$$),
+  tests_0063a.err_hint($$select public.set_supervisor_priority('f6300000-0000-0000-0000-000000000091', 'f6300000-0000-0000-0000-0000000000ff', null)$$),
   'CLIENT_NOT_FOUND', 'cliente inexistente -> CLIENT_NOT_FOUND'
 );
 select is(
-  tests.err_hint($$select public.set_supervisor_priority('f6300000-0000-0000-0000-000000000091', null, 'f6300000-0000-0000-0000-0000000000ff')$$),
+  tests_0063a.err_hint($$select public.set_supervisor_priority('f6300000-0000-0000-0000-000000000091', null, 'f6300000-0000-0000-0000-0000000000ff')$$),
   'SITE_NOT_FOUND', 'sede inexistente -> SITE_NOT_FOUND'
 );
 select is(
@@ -808,7 +808,7 @@ select is(
   'set_supervisor_priority: prioridad por cliente'
 );
 select is(
-  tests.err_hint($$select public.set_supervisor_priority('f6300000-0000-0000-0000-000000000091', 'f6300000-0000-0000-0000-000000000001', null)$$),
+  tests_0063a.err_hint($$select public.set_supervisor_priority('f6300000-0000-0000-0000-000000000091', 'f6300000-0000-0000-0000-000000000001', null)$$),
   'PRIORITY_ALREADY_EXISTS', 'la misma prioridad vigente dos veces -> PRIORITY_ALREADY_EXISTS'
 );
 select is(
@@ -829,11 +829,11 @@ select is(
   'remove_supervisor_priority: marca removed_by (sin borrado físico)'
 );
 select is(
-  tests.err_hint($$select public.remove_supervisor_priority((select id from public.supervisor_priorities where supervisor_id = 'f6300000-0000-0000-0000-000000000091' and site_id = 'f6300000-0000-0000-0000-000000000012'))$$),
+  tests_0063a.err_hint($$select public.remove_supervisor_priority((select id from public.supervisor_priorities where supervisor_id = 'f6300000-0000-0000-0000-000000000091' and site_id = 'f6300000-0000-0000-0000-000000000012'))$$),
   'PRIORITY_ALREADY_REMOVED', 'dar de baja dos veces -> PRIORITY_ALREADY_REMOVED'
 );
 select is(
-  tests.err_hint($$select public.remove_supervisor_priority('f6300000-0000-0000-0000-0000000000ff')$$),
+  tests_0063a.err_hint($$select public.remove_supervisor_priority('f6300000-0000-0000-0000-0000000000ff')$$),
   'PRIORITY_NOT_FOUND', 'prioridad inexistente -> PRIORITY_NOT_FOUND'
 );
 select lives_ok(
@@ -846,7 +846,7 @@ select lives_ok(
 -- ---------------------------------------------------------------------------------------------
 
 -- Dueño y administrador ven todo.
-select tests.as_user('test-db063-owner@example.com');
+select tests_0063a.as_user('test-db063-owner@example.com');
 select cmp_ok(
   (select count(*)::integer from public.supervisor_workdays where supervisor_id::text like 'f6300000-%'), '>=', 6,
   'el dueño ve las jornadas de todos'
@@ -856,7 +856,7 @@ select cmp_ok(
   'el dueño ve las prioridades de todos'
 );
 
-select tests.as_user('test-db063-admin-sin@example.com');
+select tests_0063a.as_user('test-db063-admin-sin@example.com');
 select cmp_ok(
   (select count(*)::integer from public.supervisor_workdays where supervisor_id::text like 'f6300000-%'), '>=', 6,
   'un administrador (sin capacidades) ve las jornadas de todos'
@@ -881,7 +881,7 @@ select is(
 );
 
 -- Un coordinador ve solo lo suyo.
-select tests.as_user('test-db063-sa@example.com');
+select tests_0063a.as_user('test-db063-sa@example.com');
 select is(
   (select count(*)::integer from public.supervisor_workdays where supervisor_id <> 'f6300000-0000-0000-0000-000000000091'),
   0,
@@ -960,14 +960,14 @@ select is(
 );
 
 -- Otro coordinador no ve la jornada de Ana.
-select tests.as_user('test-db063-sb@example.com');
+select tests_0063a.as_user('test-db063-sb@example.com');
 select is(
   (select count(*)::integer from public.supervisor_workdays where supervisor_id = 'f6300000-0000-0000-0000-000000000091'), 0,
   'Beto no ve las jornadas de Ana'
 );
 
 -- El empleado no ve nada de esto.
-select tests.as_user('test-db063-emp@example.com');
+select tests_0063a.as_user('test-db063-emp@example.com');
 select is(
   (select count(*)::integer from public.supervisor_workdays), 0,
   'el empleado no ve jornadas'
@@ -988,7 +988,7 @@ select is(
 );
 
 -- v_supervisor_status (administración): estados.
-select tests.as_user('test-db063-admin-sin@example.com');
+select tests_0063a.as_user('test-db063-admin-sin@example.com');
 select is(
   (select status from public.v_supervisor_status where supervisor_id = 'f6300000-0000-0000-0000-000000000091'),
   'in_activity',
@@ -1046,7 +1046,7 @@ select is(
   'queda un único evento de fin del cierre automático'
 );
 
-select tests.as_user('test-db063-admin-sin@example.com');
+select tests_0063a.as_user('test-db063-admin-sin@example.com');
 select is(
   (select status from public.v_supervisor_status where supervisor_id = 'f6300000-0000-0000-0000-000000000092'),
   'finished',

@@ -20,10 +20,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0012b;
+grant usage on schema tests_0012b to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0012b.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -34,7 +34,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0012b.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -49,7 +49,7 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0012b.as_user(text) to authenticated, anon;
 
 select plan(23);
 
@@ -100,7 +100,7 @@ values ('c2300000-0000-0000-0000-000000000041', 'c2300000-0000-0000-0000-0000000
 -- 1. assignments: select (criterio de aceptación de F4) y update de notes propia
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db014c-owner@example.com');
+select tests_0012b.as_user('test-db014c-owner@example.com');
 select is(
   (select coalesce(array_agg(id order by id), array[]::uuid[]) from public.assignments
     where id = any(array[
@@ -114,7 +114,7 @@ select is(
   'assignments: owner ve las 3 asignaciones del fixture'
 );
 
-select tests.as_user('test-db014c-supervisora@example.com');
+select tests_0012b.as_user('test-db014c-supervisora@example.com');
 select is(
   (select coalesce(array_agg(id order by id), array[]::uuid[]) from public.assignments
     where id = any(array[
@@ -128,7 +128,7 @@ select is(
 -- Desde 0030 (P18.6, DEF-P06) un empleado lee de `assignments` solo la propia: los compañeros del
 -- mismo turno (P-103) los ve por v_shift_peers (nombre y foto), porque la fila de la asignación
 -- trae la observación de cada empleado, que ven administración y el supervisor (P-062).
-select tests.as_user('test-db014c-empleado1@example.com');
+select tests_0012b.as_user('test-db014c-empleado1@example.com');
 select is(
   (select coalesce(array_agg(id order by id), array[]::uuid[]) from public.assignments
     where id = any(array[
@@ -139,7 +139,7 @@ select is(
   'assignments: empleado 1 lee SOLO la propia; a los compañeros del mismo turno los ve por v_shift_peers, sin su observación (P-062, P-103, 0030, DEF-P06)'
 );
 
-select tests.as_user('test-db014c-empleado-afuera@example.com');
+select tests_0012b.as_user('test-db014c-empleado-afuera@example.com');
 select is(
   (select coalesce(array_agg(id order by id), array[]::uuid[]) from public.assignments
     where id = any(array[
@@ -159,7 +159,7 @@ set local role postgres;
 -- casos de acá (propia, ajena, turno completed) dan los mismos "permission denied", ya no "0 filas
 -- afectadas": se mantienen los tres, documentando que ninguno pasa por RLS -- corta antes, en el
 -- ACL de la tabla.
-select tests.as_user('test-db014c-empleado1@example.com');
+select tests_0012b.as_user('test-db014c-empleado1@example.com');
 
 prepare c2300000_update_own as
   update public.assignments set notes = 'nota propia' where id = 'c2300000-0000-0000-0000-000000000051';
@@ -170,7 +170,7 @@ select throws_ok(
 );
 
 set local role postgres;
-select tests.as_user('test-db014c-empleado1@example.com');
+select tests_0012b.as_user('test-db014c-empleado1@example.com');
 
 prepare c2300000_update_ajena as
   update public.assignments set notes = 'nota ajena' where id = 'c2300000-0000-0000-0000-000000000052';
@@ -191,7 +191,7 @@ values ('c2300000-0000-0000-0000-000000000043', 'c2300000-0000-0000-0000-0000000
 insert into public.assignments (id, shift_id, employee_id, status)
 values ('c2300000-0000-0000-0000-000000000054', 'c2300000-0000-0000-0000-000000000043', 'c2300000-0000-0000-0000-000000000084', 'finished');
 
-select tests.as_user('test-db014c-empleado1@example.com');
+select tests_0012b.as_user('test-db014c-empleado1@example.com');
 
 prepare c2300000_update_completed as
   update public.assignments set notes = 'demasiado tarde' where id = 'c2300000-0000-0000-0000-000000000054';
@@ -215,7 +215,7 @@ values
 insert into public.attendance_notices (assignment_id, kind, reason_code, source, reported_by)
 values ('c2300000-0000-0000-0000-000000000053', 'absence', 'illness', 'employee_app', 'c2300000-0000-0000-0000-000000000086');
 
-select tests.as_user('test-db014c-owner@example.com');
+select tests_0012b.as_user('test-db014c-owner@example.com');
 select is(
   (select count(*)::int from public.attendance_records
     where assignment_id = any(array['c2300000-0000-0000-0000-000000000051'::uuid, 'c2300000-0000-0000-0000-000000000052'])),
@@ -223,7 +223,7 @@ select is(
   'attendance_records: owner ve los dos registros'
 );
 
-select tests.as_user('test-db014c-supervisora@example.com');
+select tests_0012b.as_user('test-db014c-supervisora@example.com');
 select is(
   (select count(*)::int from public.attendance_records
     where assignment_id = any(array['c2300000-0000-0000-0000-000000000051'::uuid, 'c2300000-0000-0000-0000-000000000052'])),
@@ -231,7 +231,7 @@ select is(
   'attendance_records: supervisora ve los registros de su turno'
 );
 
-select tests.as_user('test-db014c-empleado1@example.com');
+select tests_0012b.as_user('test-db014c-empleado1@example.com');
 select is(
   (select count(*)::int from public.attendance_records
     where assignment_id = 'c2300000-0000-0000-0000-000000000051'),
@@ -246,14 +246,14 @@ select is(
   'attendance_records: empleado 1 NO ve el registro de su compañero (04 sección 7.2: "E: propios", sin la excepción de compañeros que sí tiene assignments)'
 );
 
-select tests.as_user('test-db014c-empleado-afuera@example.com');
+select tests_0012b.as_user('test-db014c-empleado-afuera@example.com');
 select is(
   (select count(*)::int from public.attendance_notices where assignment_id = 'c2300000-0000-0000-0000-000000000053'),
   1,
   'attendance_notices: el empleado de afuera ve su propio aviso'
 );
 
-select tests.as_user('test-db014c-empleado1@example.com');
+select tests_0012b.as_user('test-db014c-empleado1@example.com');
 select is(
   (select count(*)::int from public.attendance_notices where assignment_id = 'c2300000-0000-0000-0000-000000000053'),
   0,
@@ -272,21 +272,21 @@ values ('c2300000-0000-0000-0000-000000000061', 'c2300000-0000-0000-0000-0000000
 insert into public.checklist_template_items (id, template_id, position, title)
 values ('c2300000-0000-0000-0000-000000000062', 'c2300000-0000-0000-0000-000000000061', 1, 'Ítem 1');
 
-select tests.as_user('test-db014c-owner@example.com');
+select tests_0012b.as_user('test-db014c-owner@example.com');
 select is(
   (select count(*)::int from public.checklist_templates where id = 'c2300000-0000-0000-0000-000000000061'),
   1,
   'checklist_templates: owner ve la plantilla'
 );
 
-select tests.as_user('test-db014c-supervisora@example.com');
+select tests_0012b.as_user('test-db014c-supervisora@example.com');
 select is(
   (select count(*)::int from public.checklist_templates where id = 'c2300000-0000-0000-0000-000000000061'),
   0,
   'checklist_templates: la supervisora no ve plantillas (04 sección 7.2: "S, E: no")'
 );
 
-select tests.as_user('test-db014c-empleado1@example.com');
+select tests_0012b.as_user('test-db014c-empleado1@example.com');
 select is(
   (select count(*)::int from public.checklist_template_items where id = 'c2300000-0000-0000-0000-000000000062'),
   0,
@@ -299,7 +299,7 @@ set local role postgres;
 -- excepción (a diferencia de un INSERT, donde el WITH CHECK sí corta con 42501 -- ver
 -- employees_insert_no_capability en 0012_rls_policies.test.sql). Se verifica con el patrón de
 -- tabla temporal, mismo criterio que assignments más arriba.
-select tests.as_user('test-db014c-admin@example.com');
+select tests_0012b.as_user('test-db014c-admin@example.com');
 
 create temporary table c2300000_checklist_probe (n int) on commit drop;
 
@@ -320,7 +320,7 @@ set local role postgres;
 insert into public.admin_capabilities (profile_id, capability, enabled)
 values ('c2300000-0000-0000-0000-000000000082', 'edit_checklists', true);
 
-select tests.as_user('test-db014c-admin@example.com');
+select tests_0012b.as_user('test-db014c-admin@example.com');
 select lives_ok(
   $$update public.checklist_templates set name = 'renombrada' where id = 'c2300000-0000-0000-0000-000000000061'$$,
   'checklist_templates: admin con edit_checklists sí puede escribir'
@@ -335,28 +335,28 @@ set local role postgres;
 insert into public.shift_tasks (id, shift_id, position, title, is_required)
 values ('c2300000-0000-0000-0000-000000000071', 'c2300000-0000-0000-0000-000000000041', 1, 'Tarea', true);
 
-select tests.as_user('test-db014c-owner@example.com');
+select tests_0012b.as_user('test-db014c-owner@example.com');
 select is(
   (select count(*)::int from public.shift_tasks where id = 'c2300000-0000-0000-0000-000000000071'),
   1,
   'shift_tasks: owner ve la tarea'
 );
 
-select tests.as_user('test-db014c-supervisora@example.com');
+select tests_0012b.as_user('test-db014c-supervisora@example.com');
 select is(
   (select count(*)::int from public.shift_tasks where id = 'c2300000-0000-0000-0000-000000000071'),
   1,
   'shift_tasks: supervisora ve la tarea de su turno'
 );
 
-select tests.as_user('test-db014c-empleado1@example.com');
+select tests_0012b.as_user('test-db014c-empleado1@example.com');
 select is(
   (select count(*)::int from public.shift_tasks where id = 'c2300000-0000-0000-0000-000000000071'),
   1,
   'shift_tasks: empleado 1 ve la tarea de su turno'
 );
 
-select tests.as_user('test-db014c-empleado-afuera@example.com');
+select tests_0012b.as_user('test-db014c-empleado-afuera@example.com');
 select is(
   (select count(*)::int from public.shift_tasks where id = 'c2300000-0000-0000-0000-000000000071'),
   0,
@@ -369,7 +369,7 @@ select is(
 -- ningún rol): el intento corta con permission denied, no con "0 filas afectadas" como antes de
 -- 0017 (cuando el ACL por defecto todavía daba el privilegio de tabla y solo RLS bloqueaba).
 set local role postgres;
-select tests.as_user('test-db014c-admin@example.com');
+select tests_0012b.as_user('test-db014c-admin@example.com');
 
 prepare shift_tasks_update_direct as
   update public.shift_tasks set status = 'done' where id = 'c2300000-0000-0000-0000-000000000071';

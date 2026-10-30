@@ -14,10 +14,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0056;
+grant usage on schema tests_0056 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0056.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -28,7 +28,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0056.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -43,9 +43,9 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0056.as_user(text) to authenticated, anon;
 
-create or replace function tests.err_hint(p_sql text)
+create or replace function tests_0056.err_hint(p_sql text)
 returns text
 language plpgsql
 as $$
@@ -60,7 +60,7 @@ exception when others then
 end;
 $$;
 
-grant execute on function tests.err_hint(text) to authenticated, anon;
+grant execute on function tests_0056.err_hint(text) to authenticated, anon;
 
 select plan(32);
 
@@ -161,7 +161,7 @@ select ok(
 
 -- Resumen: validación por ubicación ---------------------------------------------------------------
 
-select tests.as_user('test-db056-admin@example.com');
+select tests_0056.as_user('test-db056-admin@example.com');
 
 create temp table res as
 select public.client_service_summary('e5600000-0000-0000-0000-000000000001', app.today(), app.today()) as r;
@@ -230,22 +230,22 @@ select ok(
   'resumen: los totales previos no cambiaron (1 turno, 3 empleados con inicio)'
 );
 
-select tests.as_user('test-db056-owner@example.com');
+select tests_0056.as_user('test-db056-owner@example.com');
 select is(
   jsonb_array_length(public.client_service_summary('e5600000-0000-0000-0000-000000000001', app.today(), app.today()) -> 'shifts' -> 0 -> 'employees'),
   4,
   'resumen: el dueño también puede consultarlo'
 );
 
-select tests.as_user('test-db056-super@example.com');
+select tests_0056.as_user('test-db056-super@example.com');
 select is(
-  tests.err_hint($$select public.client_service_summary('e5600000-0000-0000-0000-000000000001', app.today(), app.today())$$),
+  tests_0056.err_hint($$select public.client_service_summary('e5600000-0000-0000-0000-000000000001', app.today(), app.today())$$),
   'FORBIDDEN',
   'resumen: el supervisor no lo consulta (FORBIDDEN)'
 );
-select tests.as_user('test-db056-emp-a@example.com');
+select tests_0056.as_user('test-db056-emp-a@example.com');
 select is(
-  tests.err_hint($$select public.client_service_summary('e5600000-0000-0000-0000-000000000001', app.today(), app.today())$$),
+  tests_0056.err_hint($$select public.client_service_summary('e5600000-0000-0000-0000-000000000001', app.today(), app.today())$$),
   'FORBIDDEN',
   'resumen: el empleado no lo consulta (FORBIDDEN)'
 );
@@ -261,7 +261,7 @@ where id = 'e5600000-0000-0000-0000-000000000092';
 update public.profiles set location_consent_at = null
 where id = 'e5600000-0000-0000-0000-000000000091';
 
-select tests.as_user('test-db056-emp-a@example.com');
+select tests_0056.as_user('test-db056-emp-a@example.com');
 select is(
   public.accept_location_consent(),
   now(),
@@ -279,12 +279,12 @@ select is(
   'no toca el perfil de otra persona'
 );
 -- 0057: la RPC no toca updated_by (el guardia de perfil propio lo bloquea para quien no es admin).
-select tests.as_user('test-db056-super@example.com');
+select tests_0056.as_user('test-db056-super@example.com');
 select lives_ok($$select public.accept_location_consent()$$, 'accept_location_consent corre para el supervisor (0057)');
 set local role postgres;
 select set_config('request.jwt.claims', '', true);
 
-select tests.as_user('test-db056-emp-a@example.com');
+select tests_0056.as_user('test-db056-emp-a@example.com');
 select lives_ok($$select public.revoke_location_consent()$$, 'revoke_location_consent corre para el empleado');
 set local role postgres;
 select is(
@@ -299,9 +299,9 @@ select is(
 );
 
 -- Cualquier rol con sesión lo hace sobre sí mismo.
-select tests.as_user('test-db056-super@example.com');
+select tests_0056.as_user('test-db056-super@example.com');
 select lives_ok($$select public.accept_location_consent()$$, 'el supervisor acepta su propio consentimiento');
-select tests.as_user('test-db056-admin@example.com');
+select tests_0056.as_user('test-db056-admin@example.com');
 select lives_ok($$select public.accept_location_consent()$$, 'el administrador acepta su propio consentimiento');
 set local role postgres;
 select is(
@@ -316,7 +316,7 @@ select is(
 set local role authenticated;
 select set_config('request.jwt.claims', '', true);
 select is(
-  tests.err_hint($$select public.accept_location_consent()$$),
+  tests_0056.err_hint($$select public.accept_location_consent()$$),
   'FORBIDDEN',
   'sin usuario en el JWT: FORBIDDEN'
 );
@@ -325,7 +325,7 @@ set local role postgres;
 -- anon: sin permiso de ejecución.
 set local role anon;
 select is(
-  tests.err_hint($$select public.accept_location_consent()$$),
+  tests_0056.err_hint($$select public.accept_location_consent()$$),
   '42501',
   'anon: permission denied al aceptar el consentimiento'
 );

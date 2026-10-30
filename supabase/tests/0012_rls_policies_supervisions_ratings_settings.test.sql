@@ -18,10 +18,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0012f;
+grant usage on schema tests_0012f to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0012f.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -32,7 +32,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0012f.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -47,7 +47,7 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0012f.as_user(text) to authenticated, anon;
 
 select plan(34);
 
@@ -96,42 +96,42 @@ values ('c2400000-0000-0000-0000-000000000071', 'c2400000-0000-0000-0000-0000000
 -- 1. supervisions, supervision_attendance (04 sección 7.2: "O, A: todas. S: propias. E: no.")
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db014d-owner@example.com');
+select tests_0012f.as_user('test-db014d-owner@example.com');
 select is(
   (select count(*)::int from public.supervisions where id = 'c2400000-0000-0000-0000-000000000061'),
   1,
   'supervisions: owner ve la supervisión'
 );
 
-select tests.as_user('test-db014d-supervisora1@example.com');
+select tests_0012f.as_user('test-db014d-supervisora1@example.com');
 select is(
   (select count(*)::int from public.supervisions where id = 'c2400000-0000-0000-0000-000000000061'),
   1,
   'supervisions: la propia supervisora ve su supervisión'
 );
 
-select tests.as_user('test-db014d-supervisora2@example.com');
+select tests_0012f.as_user('test-db014d-supervisora2@example.com');
 select is(
   (select count(*)::int from public.supervisions where id = 'c2400000-0000-0000-0000-000000000061'),
   0,
   'supervisions: otra supervisora sin relación no ve la supervisión ajena'
 );
 
-select tests.as_user('test-db014d-empleado1@example.com');
+select tests_0012f.as_user('test-db014d-empleado1@example.com');
 select is(
   (select count(*)::int from public.supervisions where id = 'c2400000-0000-0000-0000-000000000061'),
   0,
   'supervisions: el empleado no ve la supervisión de su propio turno (04 sección 7.2: "E: no")'
 );
 
-select tests.as_user('test-db014d-supervisora1@example.com');
+select tests_0012f.as_user('test-db014d-supervisora1@example.com');
 select is(
   (select count(*)::int from public.supervision_attendance where supervision_id = 'c2400000-0000-0000-0000-000000000061'),
   1,
   'supervision_attendance: la propia supervisora ve el registro de su supervisión'
 );
 
-select tests.as_user('test-db014d-supervisora2@example.com');
+select tests_0012f.as_user('test-db014d-supervisora2@example.com');
 select is(
   (select count(*)::int from public.supervision_attendance where supervision_id = 'c2400000-0000-0000-0000-000000000061'),
   0,
@@ -145,35 +145,35 @@ set local role postgres;
 --    siquiera la propia.
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db014d-owner@example.com');
+select tests_0012f.as_user('test-db014d-owner@example.com');
 select is(
   (select count(*)::int from public.ratings where id = 'c2400000-0000-0000-0000-000000000071'),
   1,
   'ratings: owner ve la calificación'
 );
 
-select tests.as_user('test-db014d-admin@example.com');
+select tests_0012f.as_user('test-db014d-admin@example.com');
 select is(
   (select count(*)::int from public.ratings where id = 'c2400000-0000-0000-0000-000000000071'),
   1,
   'ratings: admin ve la calificación'
 );
 
-select tests.as_user('test-db014d-supervisora1@example.com');
+select tests_0012f.as_user('test-db014d-supervisora1@example.com');
 select is(
   (select count(*)::int from public.ratings where id = 'c2400000-0000-0000-0000-000000000071'),
   1,
   'ratings: la supervisora que la hizo ve su propia calificación'
 );
 
-select tests.as_user('test-db014d-supervisora2@example.com');
+select tests_0012f.as_user('test-db014d-supervisora2@example.com');
 select is(
   (select count(*)::int from public.ratings where id = 'c2400000-0000-0000-0000-000000000071'),
   0,
   'ratings: otra supervisora sin relación no ve la calificación'
 );
 
-select tests.as_user('test-db014d-empleado1@example.com');
+select tests_0012f.as_user('test-db014d-empleado1@example.com');
 select is(
   (select count(*)::int from public.ratings where id = 'c2400000-0000-0000-0000-000000000071'),
   0,
@@ -197,7 +197,7 @@ values
   ('c2400000-0000-0000-0000-000000000091', 1, 'Criterio vigente', current_date - 30, null),
   ('c2400000-0000-0000-0000-000000000092', 2, 'Criterio pasado', current_date - 90, current_date - 60);
 
-select tests.as_user('test-db014d-supervisora1@example.com');
+select tests_0012f.as_user('test-db014d-supervisora1@example.com');
 select is(
   (select count(*)::int from public.rating_criteria
     where id = any(array['c2400000-0000-0000-0000-000000000091'::uuid, 'c2400000-0000-0000-0000-000000000092'])),
@@ -205,7 +205,7 @@ select is(
   'rating_criteria: la supervisora ve vigentes y pasadas (sin filtrar por valid_to)'
 );
 
-select tests.as_user('test-db014d-empleado1@example.com');
+select tests_0012f.as_user('test-db014d-empleado1@example.com');
 select is(
   (select count(*)::int from public.rating_criteria
     where id = any(array['c2400000-0000-0000-0000-000000000091'::uuid, 'c2400000-0000-0000-0000-000000000092'])),
@@ -216,7 +216,7 @@ select is(
 set local role postgres;
 
 -- Escritura: solo owner, ni siquiera admin (a diferencia de la mayoría de los maestros).
-select tests.as_user('test-db014d-admin@example.com');
+select tests_0012f.as_user('test-db014d-admin@example.com');
 
 create temporary table c2400000_criteria_probe (n int) on commit drop;
 
@@ -233,7 +233,7 @@ select is(
   'rating_criteria: admin NO puede escribir (04 sección 7.2: "O.", sin admin, a diferencia de otros maestros)'
 );
 
-select tests.as_user('test-db014d-owner@example.com');
+select tests_0012f.as_user('test-db014d-owner@example.com');
 select lives_ok(
   $$update public.rating_criteria set title = 'renombrado' where id = 'c2400000-0000-0000-0000-000000000091'$$,
   'rating_criteria: el owner sí puede escribir'
@@ -252,7 +252,7 @@ insert into public.holidays (id, holiday_date, name, deleted_at) values
   ('c2400000-0000-0000-0000-000000000093', date '2199-01-04', 'Feriado vigente', null),
   ('c2400000-0000-0000-0000-000000000094', date '2199-01-05', 'Feriado dado de baja', now());
 
-select tests.as_user('test-db014d-empleado1@example.com');
+select tests_0012f.as_user('test-db014d-empleado1@example.com');
 select is(
   (select count(*)::int from public.holidays where id = 'c2400000-0000-0000-0000-000000000093'),
   1,
@@ -277,7 +277,7 @@ select throws_ok(
 
 set local role postgres;
 
-select tests.as_user('test-db014d-admin@example.com');
+select tests_0012f.as_user('test-db014d-admin@example.com');
 
 create temporary table c2400000_holidays_probe (n int) on commit drop;
 
@@ -309,7 +309,7 @@ delete from public.company_settings;
 insert into public.company_settings (id, name, logo_path, support_phone, location_consent_text)
 values (1, 'Extendiendo Servicios', 'branding/logo.png', '+54 11 5555-5555', 'Texto de consentimiento');
 
-select tests.as_user('test-db014d-empleado1@example.com');
+select tests_0012f.as_user('test-db014d-empleado1@example.com');
 select is(
   (select name from public.company_settings where id = 1),
   'Extendiendo Servicios',
@@ -345,7 +345,7 @@ select is(
 );
 set local role postgres;
 
-select tests.as_user('test-db014d-admin@example.com');
+select tests_0012f.as_user('test-db014d-admin@example.com');
 select lives_ok(
   $$update public.company_settings set logo_path = 'logo.png' where id = 1$$,
   'company_settings: admin puede actualizar el logo (04 sección 7.2, P-117 y 03 sección 6; el resto es del dueño, 0030, DEF-P01)'
@@ -359,14 +359,14 @@ set local role postgres;
 
 select app.log_security_event('sign_in'::public.security_event_type, 'c2400000-0000-0000-0000-000000000085');
 
-select tests.as_user('test-db014d-owner@example.com');
+select tests_0012f.as_user('test-db014d-owner@example.com');
 select is(
   (select count(*)::int from public.security_events where actor_id = 'c2400000-0000-0000-0000-000000000085'),
   1,
   'security_events: el owner ve el evento'
 );
 
-select tests.as_user('test-db014d-admin@example.com');
+select tests_0012f.as_user('test-db014d-admin@example.com');
 select is(
   (select count(*)::int from public.security_events where actor_id = 'c2400000-0000-0000-0000-000000000085'),
   0,

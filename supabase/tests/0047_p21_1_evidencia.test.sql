@@ -15,10 +15,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0047a;
+grant usage on schema tests_0047a to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0047a.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -29,7 +29,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0047a.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -44,10 +44,10 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0047a.as_user(text) to authenticated, anon;
 
 -- Devuelve el código estable (hint) del error que levanta la consulta, o null si no falla.
-create or replace function tests.hint_of(p_sql text)
+create or replace function tests_0047a.hint_of(p_sql text)
 returns text
 language plpgsql
 as $$
@@ -63,7 +63,7 @@ exception
 end;
 $$;
 
-grant execute on function tests.hint_of(text) to authenticated, anon;
+grant execute on function tests_0047a.hint_of(text) to authenticated, anon;
 
 select plan(83);
 
@@ -210,87 +210,87 @@ insert into public.shift_media (id, shift_id, assignment_id, uploaded_by, kind, 
 
 -- begin_shift_media: validaciones --------------------------------------------------------------
 
-select tests.as_user('test-db047-empc@example.com');
+select tests_0047a.as_user('test-db047-empc@example.com');
 select is(
-  tests.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'photo', 'image/jpeg', 150000, 20000)$$),
+  tests_0047a.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'photo', 'image/jpeg', 150000, 20000)$$),
   'NOT_SHIFT_PARTICIPANT', 'un empleado no asignado al turno no puede subir'
 );
 
-select tests.as_user('test-db047-admin@example.com');
+select tests_0047a.as_user('test-db047-admin@example.com');
 select is(
-  tests.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'photo', 'image/jpeg', 150000, 20000)$$),
+  tests_0047a.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'photo', 'image/jpeg', 150000, 20000)$$),
   'FORBIDDEN', 'un administrador no puede subir (H-02)'
 );
-select tests.as_user('test-db047-owner@example.com');
+select tests_0047a.as_user('test-db047-owner@example.com');
 select is(
-  tests.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'photo', 'image/jpeg', 150000, 20000)$$),
+  tests_0047a.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'photo', 'image/jpeg', 150000, 20000)$$),
   'FORBIDDEN', 'un dueño no puede subir (H-02)'
 );
 
-select tests.as_user('test-db047-empa@example.com');
+select tests_0047a.as_user('test-db047-empa@example.com');
 select is(
-  tests.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000999', 'photo', 'image/jpeg', 150000, 20000)$$),
+  tests_0047a.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000999', 'photo', 'image/jpeg', 150000, 20000)$$),
   'SHIFT_NOT_FOUND', 'turno inexistente'
 );
 select is(
-  tests.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'photo', 'video/mp4', 150000, 20000)$$),
+  tests_0047a.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'photo', 'video/mp4', 150000, 20000)$$),
   'MEDIA_INVALID_TYPE', 'una foto tiene que ser image/jpeg'
 );
 select is(
-  tests.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'video', 'image/jpeg', 150000, 20000, null, null, 10)$$),
+  tests_0047a.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'video', 'image/jpeg', 150000, 20000, null, null, 10)$$),
   'MEDIA_INVALID_TYPE', 'un video tiene que ser mp4 o webm'
 );
 select is(
-  tests.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'photo', 'image/jpeg', 0, 20000)$$),
+  tests_0047a.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'photo', 'image/jpeg', 0, 20000)$$),
   'MEDIA_INVALID_SIZE', 'tamaño cero'
 );
 select is(
-  tests.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'photo', 'image/jpeg', 20971521, 20000)$$),
+  tests_0047a.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'photo', 'image/jpeg', 20971521, 20000)$$),
   'MEDIA_TOO_LARGE', 'más de 20 MB'
 );
 select is(
-  tests.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'video', 'video/mp4', 3000000, 20000, 854, 480, 31)$$),
+  tests_0047a.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'video', 'video/mp4', 3000000, 20000, 854, 480, 31)$$),
   'MEDIA_TOO_LONG', 'un video de más de 30 segundos se rechaza'
 );
 select is(
-  tests.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'video', 'video/mp4', 3000000, 20000, 854, 480, null)$$),
+  tests_0047a.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'video', 'video/mp4', 3000000, 20000, 854, 480, null)$$),
   'MEDIA_INVALID_DURATION', 'un video sin duración se rechaza'
 );
 
-select tests.as_user('test-db047-empd@example.com');
+select tests_0047a.as_user('test-db047-empd@example.com');
 select is(
-  tests.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000102', 'photo', 'image/jpeg', 150000, 20000)$$),
+  tests_0047a.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000102', 'photo', 'image/jpeg', 150000, 20000)$$),
   'PHOTOS_NOT_ALLOWED', 'sede con photos_not_allowed: la base rechaza (H-13)'
 );
-select tests.as_user('test-db047-empe@example.com');
+select tests_0047a.as_user('test-db047-empe@example.com');
 select is(
-  tests.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000103', 'photo', 'image/jpeg', 150000, 20000)$$),
+  tests_0047a.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000103', 'photo', 'image/jpeg', 150000, 20000)$$),
   'MEDIA_WINDOW_NOT_OPEN', 'antes del inicio del turno no se puede subir (H-12)'
 );
-select tests.as_user('test-db047-empf@example.com');
+select tests_0047a.as_user('test-db047-empf@example.com');
 select is(
-  tests.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000104', 'photo', 'image/jpeg', 150000, 20000)$$),
+  tests_0047a.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000104', 'photo', 'image/jpeg', 150000, 20000)$$),
   'MEDIA_WINDOW_CLOSED', 'más de 2 horas después del fin no se puede subir (H-12)'
 );
-select tests.as_user('test-db047-empg@example.com');
+select tests_0047a.as_user('test-db047-empg@example.com');
 select is(
-  tests.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000106', 'photo', 'image/jpeg', 150000, 20000)$$),
+  tests_0047a.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000106', 'photo', 'image/jpeg', 150000, 20000)$$),
   'SHIFT_CANCELLED', 'turno cancelado'
 );
-select tests.as_user('test-db047-suph@example.com');
+select tests_0047a.as_user('test-db047-suph@example.com');
 select is(
-  tests.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'photo', 'image/jpeg', 150000, 20000)$$),
+  tests_0047a.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'photo', 'image/jpeg', 150000, 20000)$$),
   'NOT_SHIFT_PARTICIPANT', 'un supervisor con la supervisión cancelada no puede subir'
 );
-select tests.as_user('test-db047-supa@example.com');
+select tests_0047a.as_user('test-db047-supa@example.com');
 select is(
-  tests.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000105', 'photo', 'image/jpeg', 150000, 20000)$$),
+  tests_0047a.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000105', 'photo', 'image/jpeg', 150000, 20000)$$),
   'NOT_SHIFT_PARTICIPANT', 'un supervisor no sube a un turno que no supervisa'
 );
 
 -- begin_shift_media: flujo feliz del empleado ---------------------------------------------------
 
-select tests.as_user('test-db047-empa@example.com');
+select tests_0047a.as_user('test-db047-empa@example.com');
 select set_config('t.r1', public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'photo', 'image/jpeg', 150000, 20000, 1280, 960, null, now() - interval '1 hour')::text, true);
 select set_config('t.m1', current_setting('t.r1')::jsonb -> 'media' ->> 'id', true);
 
@@ -327,7 +327,7 @@ select throws_ok(
   '42501', null, 'Storage: no se puede escribir en una ruta sin fila pendiente'
 );
 
-select tests.as_user('test-db047-empb@example.com');
+select tests_0047a.as_user('test-db047-empb@example.com');
 select throws_ok(
   format($f$insert into storage.objects (bucket_id, name, metadata) values ('evidence', %L, '{"size": 10}')$f$, current_setting('t.r1')::jsonb ->> 'storage_path'),
   '42501', null, 'Storage: otro empleado no escribe en la ruta de una fila ajena'
@@ -340,18 +340,18 @@ select is(
 -- confirm_shift_media ----------------------------------------------------------------------------
 
 select is(
-  tests.hint_of(format($f$select public.confirm_shift_media(%L)$f$, current_setting('t.m1'))),
+  tests_0047a.hint_of(format($f$select public.confirm_shift_media(%L)$f$, current_setting('t.m1'))),
   'NOT_YOUR_MEDIA', 'confirm: solo el autor'
 );
 
-select tests.as_user('test-db047-empa@example.com');
+select tests_0047a.as_user('test-db047-empa@example.com');
 select is(
-  tests.hint_of($$select public.confirm_shift_media('f4700000-0000-0000-0000-000000000999')$$),
+  tests_0047a.hint_of($$select public.confirm_shift_media('f4700000-0000-0000-0000-000000000999')$$),
   'MEDIA_NOT_FOUND', 'confirm: fila inexistente'
 );
 select set_config('t.r2', public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'photo', 'image/jpeg', 100, 100)::text, true);
 select is(
-  tests.hint_of(format($f$select public.confirm_shift_media(%L)$f$, current_setting('t.r2')::jsonb -> 'media' ->> 'id')),
+  tests_0047a.hint_of(format($f$select public.confirm_shift_media(%L)$f$, current_setting('t.r2')::jsonb -> 'media' ->> 'id')),
   'MEDIA_UPLOAD_INCOMPLETE', 'confirm: sin los dos archivos en Storage no confirma'
 );
 select is(
@@ -383,7 +383,7 @@ select is(
   8::bigint, 'hasta 10 fotos por persona y turno'
 );
 select is(
-  tests.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'photo', 'image/jpeg', 100, 100)$$),
+  tests_0047a.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'photo', 'image/jpeg', 100, 100)$$),
   'MEDIA_LIMIT_REACHED', 'la foto 11 se rechaza'
 );
 select is(
@@ -394,23 +394,23 @@ select is(
   2::bigint, 'hasta 2 videos por persona y turno (30 s exactos entran)'
 );
 select is(
-  tests.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'video', 'video/webm', 3000000, 20000, 854, 480, 5)$$),
+  tests_0047a.hint_of($$select public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'video', 'video/webm', 3000000, 20000, 854, 480, 5)$$),
   'MEDIA_LIMIT_REACHED', 'el video 3 se rechaza'
 );
 
 -- remove_shift_media (H-15) ---------------------------------------------------------------------
 
-select tests.as_user('test-db047-empb@example.com');
+select tests_0047a.as_user('test-db047-empb@example.com');
 select is(
-  tests.hint_of(format($f$select public.remove_shift_media(%L)$f$, current_setting('t.m1'))),
+  tests_0047a.hint_of(format($f$select public.remove_shift_media(%L)$f$, current_setting('t.m1'))),
   'NOT_YOUR_MEDIA', 'remove: solo el autor'
 );
-select tests.as_user('test-db047-empf@example.com');
+select tests_0047a.as_user('test-db047-empf@example.com');
 select is(
-  tests.hint_of($$select public.remove_shift_media('f4700000-0000-0000-0000-000000000a01')$$),
+  tests_0047a.hint_of($$select public.remove_shift_media('f4700000-0000-0000-0000-000000000a01')$$),
   'MEDIA_WINDOW_CLOSED', 'remove: con la ventana cerrada no se puede quitar'
 );
-select tests.as_user('test-db047-empa@example.com');
+select tests_0047a.as_user('test-db047-empa@example.com');
 select is(
   (select (public.remove_shift_media(current_setting('t.m1')::uuid)).removed_by::text),
   'f4700000-0000-0000-0000-000000000091', 'remove: el autor quita su foto'
@@ -426,7 +426,7 @@ select lives_ok(
 
 -- El supervisor sube como supervisor (H-02) ------------------------------------------------------
 
-select tests.as_user('test-db047-supa@example.com');
+select tests_0047a.as_user('test-db047-supa@example.com');
 select set_config('t.r3', public.begin_shift_media('f4700000-0000-0000-0000-000000000101', 'photo', 'image/jpeg', 150000, 20000)::text, true);
 select is(
   (select array[(assignment_id is null)::text, supervision_id::text] from public.shift_media where id = (current_setting('t.r3')::jsonb -> 'media' ->> 'id')::uuid),
@@ -456,23 +456,23 @@ select throws_ok(
 
 -- RLS de lectura ---------------------------------------------------------------------------------
 
-select tests.as_user('test-db047-empa@example.com');
+select tests_0047a.as_user('test-db047-empa@example.com');
 select is(
   (select count(*) from public.shift_media where uploaded_by <> 'f4700000-0000-0000-0000-000000000091'),
   0::bigint, 'RLS: el empleado no ve lo ajeno'
 );
 select cmp_ok((select count(*) from public.shift_media), '>', 0::bigint, 'RLS: el empleado ve lo suyo');
 
-select tests.as_user('test-db047-empb@example.com');
+select tests_0047a.as_user('test-db047-empb@example.com');
 select is((select count(*) from public.shift_media), 0::bigint, 'RLS: otro empleado del día no ve nada de ese turno');
-select tests.as_user('test-db047-supb@example.com');
+select tests_0047a.as_user('test-db047-supb@example.com');
 select is((select count(*) from public.shift_media), 0::bigint, 'RLS: el supervisor de otro turno no ve nada');
 
 set local role postgres;
 select set_config('t.total', (select count(*)::text from public.shift_media), true);
-select tests.as_user('test-db047-admin@example.com');
+select tests_0047a.as_user('test-db047-admin@example.com');
 select is((select count(*)::text from public.shift_media), current_setting('t.total'), 'RLS: el administrador ve todo');
-select tests.as_user('test-db047-owner@example.com');
+select tests_0047a.as_user('test-db047-owner@example.com');
 select is((select count(*)::text from public.shift_media), current_setting('t.total'), 'RLS: el dueño ve todo');
 select is(
   (select count(*) from storage.objects where bucket_id = 'evidence' and name like 'f4700000-%'),
@@ -481,14 +481,14 @@ select is(
 
 -- set_shift_media_keep ---------------------------------------------------------------------------
 
-select tests.as_user('test-db047-empa@example.com');
+select tests_0047a.as_user('test-db047-empa@example.com');
 select is(
-  tests.hint_of(format($f$select public.set_shift_media_keep(%L, true)$f$, current_setting('t.m1'))),
+  tests_0047a.hint_of(format($f$select public.set_shift_media_keep(%L, true)$f$, current_setting('t.m1'))),
   'FORBIDDEN', 'keep: un empleado no puede conservar'
 );
-select tests.as_user('test-db047-supa@example.com');
+select tests_0047a.as_user('test-db047-supa@example.com');
 select is(
-  tests.hint_of(format($f$select public.set_shift_media_keep(%L, true)$f$, current_setting('t.m1'))),
+  tests_0047a.hint_of(format($f$select public.set_shift_media_keep(%L, true)$f$, current_setting('t.m1'))),
   'FORBIDDEN', 'keep: un supervisor no puede conservar'
 );
 
@@ -506,7 +506,7 @@ insert into public.shift_media (id, shift_id, assignment_id, uploaded_by, kind, 
    'f4700000-0000-0000-0000-000000000101/f4700000-0000-0000-0000-000000000a04.jpg',
    'f4700000-0000-0000-0000-000000000101/f4700000-0000-0000-0000-000000000a04_thumb.jpg', 2000, now() - interval '70 days', now());
 
-select tests.as_user('test-db047-admin@example.com');
+select tests_0047a.as_user('test-db047-admin@example.com');
 select is(
   (select array[keep::text, (kept_by is not null)::text, (kept_at is not null)::text] from public.set_shift_media_keep('f4700000-0000-0000-0000-000000000a02', true)),
   array['true', 'true', 'true'], 'keep: el administrador conserva un archivo'
@@ -516,19 +516,19 @@ select is(
   array['false', 'true', 'true'], 'keep: y lo deja de conservar'
 );
 select is(
-  tests.hint_of($$select public.set_shift_media_keep('f4700000-0000-0000-0000-000000000a04', true)$$),
+  tests_0047a.hint_of($$select public.set_shift_media_keep('f4700000-0000-0000-0000-000000000a04', true)$$),
   'MEDIA_EXPIRED', 'keep: un archivo ya vencido no se puede conservar'
 );
 select is(
-  tests.hint_of(format($f$select public.set_shift_media_keep(%L, true)$f$, current_setting('t.r2')::jsonb -> 'media' ->> 'id')),
+  tests_0047a.hint_of(format($f$select public.set_shift_media_keep(%L, true)$f$, current_setting('t.r2')::jsonb -> 'media' ->> 'id')),
   'MEDIA_NOT_FOUND', 'keep: una subida pendiente no existe todavía'
 );
 select is(
-  tests.hint_of(format($f$select public.set_shift_media_keep(%L, true)$f$, current_setting('t.m1'))),
+  tests_0047a.hint_of(format($f$select public.set_shift_media_keep(%L, true)$f$, current_setting('t.m1'))),
   'MEDIA_NOT_FOUND', 'keep: una foto quitada no existe'
 );
 select is(
-  tests.hint_of($$select public.set_shift_media_keep('f4700000-0000-0000-0000-000000000a02', null)$$),
+  tests_0047a.hint_of($$select public.set_shift_media_keep('f4700000-0000-0000-0000-000000000a02', null)$$),
   'KEEP_REQUIRED', 'keep: null no vale'
 );
 select is(
@@ -562,7 +562,7 @@ select is(
   true, 'v_shift_media: la subida pendiente del supervisor todavía no figura'
 );
 
-select tests.as_user('test-db047-empa@example.com');
+select tests_0047a.as_user('test-db047-empa@example.com');
 select is(
   (select count(*) from public.v_shift_media where uploaded_by <> 'f4700000-0000-0000-0000-000000000091'),
   0::bigint, 'v_shift_media: el empleado solo ve lo suyo'

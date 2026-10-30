@@ -14,10 +14,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0058;
+grant usage on schema tests_0058 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0058.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -28,7 +28,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0058.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -43,10 +43,10 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0058.as_user(text) to authenticated, anon;
 
 -- Devuelve el código estable (hint) del error que levanta la consulta, o null si no falla.
-create or replace function tests.hint_of(p_sql text)
+create or replace function tests_0058.hint_of(p_sql text)
 returns text
 language plpgsql
 as $$
@@ -62,11 +62,11 @@ exception
 end;
 $$;
 
-grant execute on function tests.hint_of(text) to authenticated, anon;
+grant execute on function tests_0058.hint_of(text) to authenticated, anon;
 
 -- Cuántos objetos del bucket evidence borra el delete con la sesión actual (la política de Storage
 -- filtra en silencio los que no puede borrar).
-create or replace function tests.borrar_objetos(p_like text)
+create or replace function tests_0058.borrar_objetos(p_like text)
 returns bigint
 language sql
 as $$
@@ -76,7 +76,7 @@ as $$
   select count(*) from d;
 $$;
 
-grant execute on function tests.borrar_objetos(text) to authenticated, anon;
+grant execute on function tests_0058.borrar_objetos(text) to authenticated, anon;
 
 -- Storage protege el borrado directo de storage.objects (solo lo hace la API de Storage); en la prueba
 -- lo habilitamos para ejercitar la política de borrado como lo hace la API con la sesión del usuario.
@@ -185,14 +185,14 @@ from (values
 
 -- delete_shift_media: quién puede ---------------------------------------------------------------
 
-select tests.as_user('test-db058-empa@example.com');
+select tests_0058.as_user('test-db058-empa@example.com');
 select is(
-  tests.hint_of($$select public.delete_shift_media(array['f5800000-0000-0000-0000-0000000000b1']::uuid[])$$),
+  tests_0058.hint_of($$select public.delete_shift_media(array['f5800000-0000-0000-0000-0000000000b1']::uuid[])$$),
   'FORBIDDEN', 'eliminar: un empleado (aunque sea el autor) no puede'
 );
-select tests.as_user('test-db058-supa@example.com');
+select tests_0058.as_user('test-db058-supa@example.com');
 select is(
-  tests.hint_of($$select public.delete_shift_media(array['f5800000-0000-0000-0000-0000000000b1']::uuid[])$$),
+  tests_0058.hint_of($$select public.delete_shift_media(array['f5800000-0000-0000-0000-0000000000b1']::uuid[])$$),
   'FORBIDDEN', 'eliminar: un supervisor no puede'
 );
 set local role postgres;
@@ -203,7 +203,7 @@ select is(
 
 -- delete_shift_media: administrador ---------------------------------------------------------------
 
-select tests.as_user('test-db058-admin@example.com');
+select tests_0058.as_user('test-db058-admin@example.com');
 -- b1 (se elimina), b3 (archivo vencido), b4 (pendiente) y un id inexistente: solo b1 cuenta.
 select set_config('t.d1', public.delete_shift_media(array[
   'f5800000-0000-0000-0000-0000000000b1', 'f5800000-0000-0000-0000-0000000000b3',
@@ -256,7 +256,7 @@ select is(
 );
 
 -- Idempotencia: repetir no vuelve a marcar ni a registrar.
-select tests.as_user('test-db058-admin@example.com');
+select tests_0058.as_user('test-db058-admin@example.com');
 select is(
   (select public.delete_shift_media(array['f5800000-0000-0000-0000-0000000000b1']::uuid[]) ->> 'deleted_count'),
   '0', 'eliminar: repetir la misma eliminación no marca nada (idempotente)'
@@ -270,7 +270,7 @@ select is(
 
 -- delete_shift_media: dueño, también lo marcado «Conservar» ----------------------------------------
 
-select tests.as_user('test-db058-owner@example.com');
+select tests_0058.as_user('test-db058-owner@example.com');
 select is(
   (select public.delete_shift_media(array['f5800000-0000-0000-0000-0000000000b2']::uuid[]) ->> 'bytes_freed_estimate'),
   '2000', 'eliminar: el dueño elimina también un archivo marcado «Conservar»'
@@ -284,11 +284,11 @@ select is(
 
 -- delete_shift_media: lista vacía y tope -----------------------------------------------------------
 
-select tests.as_user('test-db058-admin@example.com');
-select is(tests.hint_of($$select public.delete_shift_media('{}'::uuid[])$$), 'MEDIA_IDS_REQUIRED', 'eliminar: lista vacía');
-select is(tests.hint_of($$select public.delete_shift_media(null)$$), 'MEDIA_IDS_REQUIRED', 'eliminar: lista nula');
+select tests_0058.as_user('test-db058-admin@example.com');
+select is(tests_0058.hint_of($$select public.delete_shift_media('{}'::uuid[])$$), 'MEDIA_IDS_REQUIRED', 'eliminar: lista vacía');
+select is(tests_0058.hint_of($$select public.delete_shift_media(null)$$), 'MEDIA_IDS_REQUIRED', 'eliminar: lista nula');
 select is(
-  tests.hint_of($$select public.delete_shift_media(array(select gen_random_uuid() from generate_series(1, 201)))$$),
+  tests_0058.hint_of($$select public.delete_shift_media(array(select gen_random_uuid() from generate_series(1, 201)))$$),
   'MEDIA_TOO_MANY', 'eliminar: más de 200 archivos'
 );
 select is(
@@ -314,7 +314,7 @@ select is(
    from public.v_shift_media where id = 'f5800000-0000-0000-0000-0000000000b2'),
   array['false', null, 'true', 'Dueña'], 'v_shift_media: la «Conservar» eliminada tampoco tiene archivo'
 );
-select tests.as_user('test-db058-empa@example.com');
+select tests_0058.as_user('test-db058-empa@example.com');
 select is(
   (select array[has_file::text, (deleted_at is not null)::text, deleted_by_first_name] from public.v_shift_media where id = 'f5800000-0000-0000-0000-0000000000b1'),
   array['false', 'true', null], 'v_shift_media: la autora ve su foto eliminada como constancia (el nombre de quien eliminó no, por la RLS de profiles)'
@@ -322,14 +322,14 @@ select is(
 
 -- Política de Storage ----------------------------------------------------------------------------
 
-select tests.as_user('test-db058-empa@example.com');
+select tests_0058.as_user('test-db058-empa@example.com');
 select is(
-  tests.borrar_objetos('%0000-0000-0000-0000000000b1%'),
+  tests_0058.borrar_objetos('%0000-0000-0000-0000000000b1%'),
   0::bigint, 'Storage: la autora no borra los objetos de una fila eliminada por administración'
 );
-select tests.as_user('test-db058-supa@example.com');
+select tests_0058.as_user('test-db058-supa@example.com');
 select is(
-  tests.borrar_objetos('f5800000-%'),
+  tests_0058.borrar_objetos('f5800000-%'),
   0::bigint, 'Storage: el supervisor no borra evidencia'
 );
 set local role postgres;
@@ -338,18 +338,18 @@ select is(
   6::bigint, 'Storage: tras los intentos no autorizados siguen los seis objetos'
 );
 
-select tests.as_user('test-db058-admin@example.com');
+select tests_0058.as_user('test-db058-admin@example.com');
 select is(
-  tests.borrar_objetos('%0000-0000-0000-0000000000b8%'),
+  tests_0058.borrar_objetos('%0000-0000-0000-0000000000b8%'),
   0::bigint, 'Storage: el administrador no borra los objetos de una fila que no se eliminó'
 );
 select is(
-  tests.borrar_objetos('%0000-0000-0000-0000000000b1%'),
+  tests_0058.borrar_objetos('%0000-0000-0000-0000000000b1%'),
   2::bigint, 'Storage: el administrador borra archivo y miniatura de una fila eliminada'
 );
-select tests.as_user('test-db058-owner@example.com');
+select tests_0058.as_user('test-db058-owner@example.com');
 select is(
-  tests.borrar_objetos('%0000-0000-0000-0000000000b2%'),
+  tests_0058.borrar_objetos('%0000-0000-0000-0000000000b2%'),
   2::bigint, 'Storage: el dueño borra los objetos de una fila eliminada (también «Conservar»)'
 );
 set local role postgres;
@@ -391,18 +391,18 @@ select is(
 
 -- set_shift_media_keep_many ------------------------------------------------------------------------
 
-select tests.as_user('test-db058-empa@example.com');
+select tests_0058.as_user('test-db058-empa@example.com');
 select is(
-  tests.hint_of($$select public.set_shift_media_keep_many(array['f5800000-0000-0000-0000-0000000000b5']::uuid[], true)$$),
+  tests_0058.hint_of($$select public.set_shift_media_keep_many(array['f5800000-0000-0000-0000-0000000000b5']::uuid[], true)$$),
   'FORBIDDEN', 'conservar varias: un empleado no puede'
 );
-select tests.as_user('test-db058-supa@example.com');
+select tests_0058.as_user('test-db058-supa@example.com');
 select is(
-  tests.hint_of($$select public.set_shift_media_keep_many(array['f5800000-0000-0000-0000-0000000000b5']::uuid[], true)$$),
+  tests_0058.hint_of($$select public.set_shift_media_keep_many(array['f5800000-0000-0000-0000-0000000000b5']::uuid[], true)$$),
   'FORBIDDEN', 'conservar varias: un supervisor no puede'
 );
 
-select tests.as_user('test-db058-admin@example.com');
+select tests_0058.as_user('test-db058-admin@example.com');
 -- b5 y b6 cambian; b3 y b7 (sin archivo), b4 (pendiente), b2 (eliminada) y un inexistente se ignoran.
 select is(
   public.set_shift_media_keep_many(array[
@@ -431,7 +431,7 @@ select is(
   0, 'conservar varias: si ya estaba como se pide no cuenta'
 );
 
-select tests.as_user('test-db058-owner@example.com');
+select tests_0058.as_user('test-db058-owner@example.com');
 select is(
   public.set_shift_media_keep_many(array['f5800000-0000-0000-0000-0000000000b5', 'f5800000-0000-0000-0000-0000000000b6']::uuid[], false),
   2, 'conservar varias: el dueño desmarca dos'
@@ -444,10 +444,10 @@ select is(
   'conservar varias: al desmarcar limpia kept_by y kept_at'
 );
 
-select is(tests.hint_of($$select public.set_shift_media_keep_many('{}'::uuid[], true)$$), 'MEDIA_IDS_REQUIRED', 'conservar varias: lista vacía');
-select is(tests.hint_of($$select public.set_shift_media_keep_many(null, true)$$), 'MEDIA_IDS_REQUIRED', 'conservar varias: lista nula');
+select is(tests_0058.hint_of($$select public.set_shift_media_keep_many('{}'::uuid[], true)$$), 'MEDIA_IDS_REQUIRED', 'conservar varias: lista vacía');
+select is(tests_0058.hint_of($$select public.set_shift_media_keep_many(null, true)$$), 'MEDIA_IDS_REQUIRED', 'conservar varias: lista nula');
 select is(
-  tests.hint_of($$select public.set_shift_media_keep_many(array(select gen_random_uuid() from generate_series(1, 201)), true)$$),
+  tests_0058.hint_of($$select public.set_shift_media_keep_many(array(select gen_random_uuid() from generate_series(1, 201)), true)$$),
   'MEDIA_TOO_MANY', 'conservar varias: más de 200 archivos'
 );
 select is(
@@ -455,7 +455,7 @@ select is(
   0, 'conservar varias: 200 archivos exactos entran en el tope'
 );
 select is(
-  tests.hint_of($$select public.set_shift_media_keep_many(array['f5800000-0000-0000-0000-0000000000b5']::uuid[], null)$$),
+  tests_0058.hint_of($$select public.set_shift_media_keep_many(array['f5800000-0000-0000-0000-0000000000b5']::uuid[], null)$$),
   'KEEP_REQUIRED', 'conservar varias: p_keep nulo no vale'
 );
 
@@ -465,7 +465,7 @@ select is(
   true, 'conservar una: la individual sigue andando igual'
 );
 select is(
-  tests.hint_of($$select public.set_shift_media_keep('f5800000-0000-0000-0000-0000000000b1', true)$$),
+  tests_0058.hint_of($$select public.set_shift_media_keep('f5800000-0000-0000-0000-0000000000b1', true)$$),
   'MEDIA_EXPIRED', 'conservar una: una fila eliminada por administración responde MEDIA_EXPIRED'
 );
 

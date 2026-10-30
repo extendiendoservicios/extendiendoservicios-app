@@ -80,8 +80,8 @@ select lives_ok(
 -- Un authenticated común no se hace pasar por service_role -------------------------------------
 
 set local role postgres;
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0031;
+grant usage on schema tests_0031 to authenticated, anon;
 
 select set_config('role', 'authenticated', true);
 select set_config('request.jwt.claims', jsonb_build_object('sub', 'e3100000-0000-0000-0000-000000000001', 'role', 'authenticated')::text, true);

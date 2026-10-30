@@ -78,7 +78,7 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('c1500000-0000-0000-0000-000000000083', 'test-db013-emp-licencia-pasada@example.com', jsonb_build_object('first_name', 'Pasada', 'last_name', 'Tres'));
 
 insert into public.employees (profile_id, dni) values
-  ('c1500000-0000-0000-0000-000000000081', '50000081'),
+  ('c1500000-0000-0000-0000-000000000081', '50011081'),
   ('c1500000-0000-0000-0000-000000000082', '50000082'),
   ('c1500000-0000-0000-0000-000000000083', '50000083');
 
