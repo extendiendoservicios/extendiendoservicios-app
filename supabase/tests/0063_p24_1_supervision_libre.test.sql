@@ -25,10 +25,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0063b;
+grant usage on schema tests_0063b to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0063b.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -39,7 +39,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0063b.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -54,9 +54,9 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0063b.as_user(text) to authenticated, anon;
 
-create or replace function tests.err_hint(p_sql text)
+create or replace function tests_0063b.err_hint(p_sql text)
 returns text
 language plpgsql
 as $$
@@ -71,9 +71,9 @@ exception when others then
 end;
 $$;
 
-grant execute on function tests.err_hint(text) to authenticated, anon;
+grant execute on function tests_0063b.err_hint(text) to authenticated, anon;
 
-create or replace function tests.err_message(p_sql text)
+create or replace function tests_0063b.err_message(p_sql text)
 returns text
 language plpgsql
 as $$
@@ -85,7 +85,7 @@ exception when others then
 end;
 $$;
 
-grant execute on function tests.err_message(text) to authenticated, anon;
+grant execute on function tests_0063b.err_message(text) to authenticated, anon;
 
 select plan(110);
 
@@ -105,9 +105,9 @@ select has_column('public', 'v_supervisions_admin', 'workday_auto_closed', 'v_su
 -- Fixtures
 -- ---------------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('f6301000-0000-0000-0000-000000000001', 'Cliente de supervisión uno', 'active'),
-  ('f6301000-0000-0000-0000-000000000002', 'Cliente de supervisión dos', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('f6301000-0000-0000-0000-000000000001', 'Cliente de supervisión uno', 'active', 0),
+  ('f6301000-0000-0000-0000-000000000002', 'Cliente de supervisión dos', 'active', 0);
 
 insert into public.sites (id, client_id, name, address, latitude, longitude, status) values
   ('f6301000-0000-0000-0000-000000000011', 'f6301000-0000-0000-0000-000000000001', 'Sede uno', 'Dirección 1', -34.6, -58.4, 'active'),
@@ -211,39 +211,39 @@ insert into public.supervisions (id, shift_id, supervisor_id, status) values
 -- 1. take_supervision: requisitos y bloqueos
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db063b-sa@example.com');
+select tests_0063b.as_user('test-db063b-sa@example.com');
 
 select is(
-  tests.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-000000000041')$$),
+  tests_0063b.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-000000000041')$$),
   'WORKDAY_NOT_STARTED', 'sin la jornada iniciada no se puede supervisar (CJ-07)'
 );
 select is(
-  tests.err_message($$select public.take_supervision('f6301000-0000-0000-0000-000000000041')$$),
+  tests_0063b.err_message($$select public.take_supervision('f6301000-0000-0000-0000-000000000041')$$),
   'Primero iniciá tu jornada.', 'mensaje de la jornada sin iniciar'
 );
 
 select is((select public.start_workday()->>'state'), 'running', 'Ana inicia su jornada');
 
 select is(
-  tests.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-0000000000ff')$$),
+  tests_0063b.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-0000000000ff')$$),
   'SHIFT_NOT_FOUND', 'turno inexistente -> SHIFT_NOT_FOUND'
 );
 select is(
-  tests.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-000000000043')$$),
+  tests_0063b.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-000000000043')$$),
   'NOT_TODAY', 'un turno de mañana -> NOT_TODAY'
 );
 select is(
-  tests.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-000000000044')$$),
+  tests_0063b.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-000000000044')$$),
   'SHIFT_NOT_SUPERVISABLE', 'un turno cancelado -> SHIFT_NOT_SUPERVISABLE'
 );
 select is(
-  tests.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-000000000041', -34.6, null, null)$$),
+  tests_0063b.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-000000000041', -34.6, null, null)$$),
   'COORDINATES_INCOMPLETE', 'posición incompleta -> COORDINATES_INCOMPLETE'
 );
 
 select is((select public.pause_workday()->>'state'), 'paused', 'Ana pausa');
 select is(
-  tests.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-000000000041')$$),
+  tests_0063b.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-000000000041')$$),
   'WORKDAY_PAUSED', 'en pausa no se puede supervisar (CJ-07)'
 );
 select is((select public.resume_workday()->>'state'), 'running', 'Ana reanuda');
@@ -279,29 +279,29 @@ select ok(
   'el inicio deja el evento supervision_start con posición (CJ-20)'
 );
 
-select tests.as_user('test-db063b-sa@example.com');
+select tests_0063b.as_user('test-db063b-sa@example.com');
 
 -- De a una (CJ-08) y bloqueos de la jornada con una supervisión abierta (CJ-29).
 select is(
-  tests.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-000000000045')$$),
+  tests_0063b.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-000000000045')$$),
   'SUPERVISION_ALREADY_OPEN', 'con una supervisión abierta no se abre otra (CJ-08)'
 );
 select is(
-  tests.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-000000000041')$$),
+  tests_0063b.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-000000000041')$$),
   'SUPERVISION_ALREADY_OPEN', 'el mismo turno otra vez, con la supervisión abierta -> SUPERVISION_ALREADY_OPEN'
 );
 select is(
-  tests.err_hint($$select public.pause_workday()$$),
+  tests_0063b.err_hint($$select public.pause_workday()$$),
   'SUPERVISION_OPEN', 'no se puede pausar con una supervisión abierta (CJ-29)'
 );
 select is(
-  tests.err_hint($$select public.end_workday()$$),
+  tests_0063b.err_hint($$select public.end_workday()$$),
   'SUPERVISION_OPEN', 'no se puede finalizar con una supervisión abierta (CJ-29)'
 );
 
 -- Dos coordinadores en el mismo turno (CJ-05).
-select tests.as_user('test-db063b-sb@example.com');
-select is(tests.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-000000000041')$$), 'WORKDAY_NOT_STARTED', 'Beto sin jornada tampoco supervisa');
+select tests_0063b.as_user('test-db063b-sb@example.com');
+select is(tests_0063b.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-000000000041')$$), 'WORKDAY_NOT_STARTED', 'Beto sin jornada tampoco supervisa');
 select is((select public.start_workday()->>'state'), 'running', 'Beto inicia su jornada');
 select is(
   (select public.take_supervision('f6301000-0000-0000-0000-000000000041')->'warnings'),
@@ -318,7 +318,7 @@ select is(
 );
 
 -- v_supervisor_today (CJ-02, CJ-25): todos los turnos de hoy, con quién supervisa.
-select tests.as_user('test-db063b-sb@example.com');
+select tests_0063b.as_user('test-db063b-sb@example.com');
 select is(
   (select jsonb_array_length(supervisors) from public.v_supervisor_today where shift_id = 'f6301000-0000-0000-0000-000000000041'),
   2,
@@ -364,7 +364,7 @@ select is(
   'ninguna', 'v_supervisor_today: Beto no tiene prioridades'
 );
 
-select tests.as_user('test-db063b-sa@example.com');
+select tests_0063b.as_user('test-db063b-sa@example.com');
 select is(
   (select priority_kind from public.v_supervisor_today where shift_id = 'f6301000-0000-0000-0000-000000000041')
   || '/' || (select priority_kind from public.v_supervisor_today where shift_id = 'f6301000-0000-0000-0000-000000000042')
@@ -382,12 +382,12 @@ select is(
 -- ---------------------------------------------------------------------------------------------
 
 select is(
-  tests.err_hint($$select public.complete_supervision((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000041' and supervisor_id = 'f6301000-0000-0000-0000-000000000091'))$$),
+  tests_0063b.err_hint($$select public.complete_supervision((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000041' and supervisor_id = 'f6301000-0000-0000-0000-000000000091'))$$),
   'RATINGS_PENDING', 'cerrar sin calificar a nadie -> RATINGS_PENDING (CJ-10)'
 );
 select ok(
   (select m ~ 'Ximena Uno' and m ~ 'Yago Dos' and m !~ 'Zoe' and m !~ 'Rita'
-   from (select tests.err_message($$select public.complete_supervision((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000041' and supervisor_id = 'f6301000-0000-0000-0000-000000000091'))$$) as m) q),
+   from (select tests_0063b.err_message($$select public.complete_supervision((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000041' and supervisor_id = 'f6301000-0000-0000-0000-000000000091'))$$) as m) q),
   'el mensaje nombra a Ximena y a Yago (con inicio), no a Zoe (ausente, CJ-28) ni a Rita (asignación quitada)'
 );
 select lives_ok(
@@ -395,7 +395,7 @@ select lives_ok(
   'Ana califica a Ximena'
 );
 select is(
-  tests.err_message($$select public.complete_supervision((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000041' and supervisor_id = 'f6301000-0000-0000-0000-000000000091'))$$),
+  tests_0063b.err_message($$select public.complete_supervision((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000041' and supervisor_id = 'f6301000-0000-0000-0000-000000000091'))$$),
   'Falta calificar a: Yago Dos.',
   'con Ximena calificada, falta solo Yago'
 );
@@ -433,28 +433,28 @@ select is(
   'Todo en orden', 'cerrar guarda las observaciones'
 );
 
-select tests.as_user('test-db063b-sa@example.com');
+select tests_0063b.as_user('test-db063b-sa@example.com');
 select is(
-  tests.err_hint($$select public.complete_supervision((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000041' and supervisor_id = 'f6301000-0000-0000-0000-000000000091'))$$),
+  tests_0063b.err_hint($$select public.complete_supervision((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000041' and supervisor_id = 'f6301000-0000-0000-0000-000000000091'))$$),
   'SUPERVISION_NOT_EDITABLE', 'cerrar dos veces -> SUPERVISION_NOT_EDITABLE'
 );
 select is(
-  tests.err_hint($$select public.discard_supervision((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000041' and supervisor_id = 'f6301000-0000-0000-0000-000000000091'))$$),
+  tests_0063b.err_hint($$select public.discard_supervision((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000041' and supervisor_id = 'f6301000-0000-0000-0000-000000000091'))$$),
   'SUPERVISION_NOT_EDITABLE', 'una supervisión cerrada no se descarta'
 );
 select is(
-  tests.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-000000000041')$$),
+  tests_0063b.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-000000000041')$$),
   'ALREADY_SUPERVISED', 'volver a tomar un turno que ya supervisó y cerró -> ALREADY_SUPERVISED (CJ-27)'
 );
 
 -- Cada coordinador califica con su criterio (CJ-09): el mismo empleado, dos calificaciones.
-select tests.as_user('test-db063b-sb@example.com');
+select tests_0063b.as_user('test-db063b-sb@example.com');
 select lives_ok(
   $$select public.rate_employee((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000041' and supervisor_id = 'f6301000-0000-0000-0000-000000000092' and status <> 'cancelled'), 'f6301000-0000-0000-0000-000000000201', 3, 'Regular')$$,
   'Beto califica a Ximena con su criterio'
 );
 select is(
-  tests.err_hint($$select public.discard_supervision((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000041' and supervisor_id = 'f6301000-0000-0000-0000-000000000092' and status <> 'cancelled'))$$),
+  tests_0063b.err_hint($$select public.discard_supervision((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000041' and supervisor_id = 'f6301000-0000-0000-0000-000000000092' and status <> 'cancelled'))$$),
   'SUPERVISION_HAS_RATINGS', 'con una calificación cargada no se puede descartar (CJ-27)'
 );
 select lives_ok(
@@ -482,7 +482,7 @@ select is(
 );
 
 -- v_supervisions_admin: varias filas por turno, duración informativa (CJ-14).
-select tests.as_user('test-db063b-admin@example.com');
+select tests_0063b.as_user('test-db063b-admin@example.com');
 select is(
   (select count(*)::integer from public.v_supervisions_admin where shift_id = 'f6301000-0000-0000-0000-000000000041' and status = 'completed'),
   2, 'v_supervisions_admin: dos filas para el mismo turno'
@@ -497,21 +497,21 @@ select ok(
 -- 3. discard_supervision y volver a tomar (CJ-27); turnos sin empleados con inicio
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db063b-sa@example.com');
+select tests_0063b.as_user('test-db063b-sa@example.com');
 select is(
   (select public.take_supervision('f6301000-0000-0000-0000-000000000045')->'supervision'->>'status'),
   'in_progress', 'Ana toma el turno seis (sin empleados)'
 );
 select is(
-  tests.err_hint($$select public.discard_supervision('f6301000-0000-0000-0000-0000000000ff')$$),
+  tests_0063b.err_hint($$select public.discard_supervision('f6301000-0000-0000-0000-0000000000ff')$$),
   'SUPERVISION_NOT_FOUND', 'descartar una supervisión inexistente -> SUPERVISION_NOT_FOUND'
 );
 select is(
-  tests.err_hint($$select public.discard_supervision('f6301000-0000-0000-0000-0000000000d2')$$),
+  tests_0063b.err_hint($$select public.discard_supervision('f6301000-0000-0000-0000-0000000000d2')$$),
   'NOT_YOUR_SUPERVISION', 'descartar la supervisión de otro -> NOT_YOUR_SUPERVISION'
 );
 select is(
-  tests.err_hint($$select public.complete_supervision('f6301000-0000-0000-0000-0000000000d2')$$),
+  tests_0063b.err_hint($$select public.complete_supervision('f6301000-0000-0000-0000-0000000000d2')$$),
   'NOT_YOUR_SUPERVISION', 'cerrar la supervisión de otro -> NOT_YOUR_SUPERVISION'
 );
 select is(
@@ -549,13 +549,13 @@ select is(
 -- 4. Un turno ya terminado del mismo día (CJ-06) y la ventana de calificación (P-083)
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db063b-sa@example.com');
+select tests_0063b.as_user('test-db063b-sa@example.com');
 select is(
   (select public.take_supervision('f6301000-0000-0000-0000-000000000040')->'supervision'->>'status'),
   'in_progress', 'Ana toma un turno ya terminado del mismo día (CJ-06)'
 );
 select is(
-  tests.err_message($$select public.complete_supervision((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000040' and supervisor_id = 'f6301000-0000-0000-0000-000000000091' and status <> 'cancelled'))$$),
+  tests_0063b.err_message($$select public.complete_supervision((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000040' and supervisor_id = 'f6301000-0000-0000-0000-000000000091' and status <> 'cancelled'))$$),
   'Falta calificar a: Walter Cinco.', 'faltan los que tuvieron inicio, también en un turno terminado'
 );
 select lives_ok(
@@ -577,15 +577,15 @@ where kind = 'check_out'
   and supervision_id = (select id from public.supervisions
                         where shift_id = 'f6301000-0000-0000-0000-000000000040' and supervisor_id = 'f6301000-0000-0000-0000-000000000091');
 
-select tests.as_user('test-db063b-sa@example.com');
+select tests_0063b.as_user('test-db063b-sa@example.com');
 -- El turno cinco termina a las 00:01 de hoy: entre las 00:00 y las 00:01 el plazo seguiría abierto.
 select is(
   case when now() > app.local_ts(app.today(), '00:01') then
-    tests.err_hint($$select public.rate_employee((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000040' and supervisor_id = 'f6301000-0000-0000-0000-000000000091'), 'f6301000-0000-0000-0000-000000000207', 4, 'Cambio')$$)
+    tests_0063b.err_hint($$select public.rate_employee((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000040' and supervisor_id = 'f6301000-0000-0000-0000-000000000091'), 'f6301000-0000-0000-0000-000000000207', 4, 'Cambio')$$)
   else 'RATING_WINDOW_CLOSED' end,
   'RATING_WINDOW_CLOSED', 'cerrada la supervisión y pasado el plazo, el coordinador no edita (P-083)'
 );
-select tests.as_user('test-db063b-admin@example.com');
+select tests_0063b.as_user('test-db063b-admin@example.com');
 select lives_ok(
   $$select public.rate_employee((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000040' and supervisor_id = 'f6301000-0000-0000-0000-000000000091'), 'f6301000-0000-0000-0000-000000000207', 4, 'Corregida')$$,
   'el administrador con edit_ratings edita siempre'
@@ -595,18 +595,18 @@ select lives_ok(
 -- 5. El coordinador también asignado como empleado (CJ-28, P15.0)
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db063b-sa@example.com');
+select tests_0063b.as_user('test-db063b-sa@example.com');
 select is(
   (select public.take_supervision('f6301000-0000-0000-0000-000000000042')->'warnings'),
   '["SUPERVISES_OWN_SHIFT"]'::jsonb,
   'take_supervision: advierte SUPERVISES_OWN_SHIFT si también está asignada como empleada'
 );
 select is(
-  tests.err_hint($$select public.rate_employee((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000042' and supervisor_id = 'f6301000-0000-0000-0000-000000000091' and status <> 'cancelled'), 'f6301000-0000-0000-0000-000000000204', 5, null)$$),
+  tests_0063b.err_hint($$select public.rate_employee((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000042' and supervisor_id = 'f6301000-0000-0000-0000-000000000091' and status <> 'cancelled'), 'f6301000-0000-0000-0000-000000000204', 5, null)$$),
   'SELF_RATING_NOT_ALLOWED', 'no se califica a sí misma'
 );
 select is(
-  tests.err_message($$select public.complete_supervision((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000042' and supervisor_id = 'f6301000-0000-0000-0000-000000000091' and status <> 'cancelled'))$$),
+  tests_0063b.err_message($$select public.complete_supervision((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000042' and supervisor_id = 'f6301000-0000-0000-0000-000000000091' and status <> 'cancelled'))$$),
   'Falta calificar a: Vera Cuatro.', 'ella queda fuera del requisito: solo falta Vera'
 );
 select lives_ok(
@@ -624,33 +624,33 @@ select is(
 -- 6. Permisos por rol y funciones revocadas
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db063b-x@example.com');
-select is(tests.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-000000000045')$$), 'FORBIDDEN', 'el empleado no toma supervisiones');
-select is(tests.err_hint($$select public.discard_supervision('f6301000-0000-0000-0000-0000000000d2')$$), 'FORBIDDEN', 'el empleado no descarta supervisiones');
-select is(tests.err_hint($$select public.complete_supervision('f6301000-0000-0000-0000-0000000000d2')$$), 'FORBIDDEN', 'el empleado no cierra supervisiones');
+select tests_0063b.as_user('test-db063b-x@example.com');
+select is(tests_0063b.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-000000000045')$$), 'FORBIDDEN', 'el empleado no toma supervisiones');
+select is(tests_0063b.err_hint($$select public.discard_supervision('f6301000-0000-0000-0000-0000000000d2')$$), 'FORBIDDEN', 'el empleado no descarta supervisiones');
+select is(tests_0063b.err_hint($$select public.complete_supervision('f6301000-0000-0000-0000-0000000000d2')$$), 'FORBIDDEN', 'el empleado no cierra supervisiones');
 select is(
-  tests.err_hint($$select public.rate_employee('f6301000-0000-0000-0000-0000000000d2', 'f6301000-0000-0000-0000-000000000201', 5, null)$$),
+  tests_0063b.err_hint($$select public.rate_employee('f6301000-0000-0000-0000-0000000000d2', 'f6301000-0000-0000-0000-000000000201', 5, null)$$),
   'FORBIDDEN', 'el empleado no califica'
 );
 select is((select count(*)::integer from public.ratings), 0, 'el empleado no lee ratings, ni las suyas (P-084)');
 select is((select count(*)::integer from public.supervisions), 0, 'el empleado no lee supervisiones');
 select is((select count(*)::integer from public.v_supervisor_today), 0, 'el empleado no ve la lista de turnos del coordinador');
 
-select tests.as_user('test-db063b-admin@example.com');
-select is(tests.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-000000000045')$$), 'FORBIDDEN', 'un administrador sin el rol de coordinador no toma supervisiones');
-select is(tests.err_hint($$select public.discard_supervision('f6301000-0000-0000-0000-0000000000d2')$$), 'FORBIDDEN', 'un administrador no descarta supervisiones');
-select is(tests.err_hint($$select public.complete_supervision('f6301000-0000-0000-0000-0000000000d2')$$), 'FORBIDDEN', 'un administrador no cierra supervisiones');
-select is(tests.err_hint($$select public.assign_supervision('f6301000-0000-0000-0000-000000000045', 'f6301000-0000-0000-0000-000000000091')$$), '42501', 'assign_supervision revocada: ni el administrador la ejecuta (CJ-01)');
-select is(tests.err_hint($$select public.mark_supervision_not_done('f6301000-0000-0000-0000-0000000000d2', 'Prueba')$$), '42501', 'mark_supervision_not_done revocada (CJ-26)');
-select is(tests.err_hint($$select public.supervision_check_in('f6301000-0000-0000-0000-0000000000d2')$$), '42501', 'supervision_check_in revocada: el inicio es take_supervision');
-select is(tests.err_hint($$select public.supervision_check_out('f6301000-0000-0000-0000-0000000000d2')$$), '42501', 'supervision_check_out revocada: el fin es complete_supervision');
+select tests_0063b.as_user('test-db063b-admin@example.com');
+select is(tests_0063b.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-000000000045')$$), 'FORBIDDEN', 'un administrador sin el rol de coordinador no toma supervisiones');
+select is(tests_0063b.err_hint($$select public.discard_supervision('f6301000-0000-0000-0000-0000000000d2')$$), 'FORBIDDEN', 'un administrador no descarta supervisiones');
+select is(tests_0063b.err_hint($$select public.complete_supervision('f6301000-0000-0000-0000-0000000000d2')$$), 'FORBIDDEN', 'un administrador no cierra supervisiones');
+select is(tests_0063b.err_hint($$select public.assign_supervision('f6301000-0000-0000-0000-000000000045', 'f6301000-0000-0000-0000-000000000091')$$), '42501', 'assign_supervision revocada: ni el administrador la ejecuta (CJ-01)');
+select is(tests_0063b.err_hint($$select public.mark_supervision_not_done('f6301000-0000-0000-0000-0000000000d2', 'Prueba')$$), '42501', 'mark_supervision_not_done revocada (CJ-26)');
+select is(tests_0063b.err_hint($$select public.supervision_check_in('f6301000-0000-0000-0000-0000000000d2')$$), '42501', 'supervision_check_in revocada: el inicio es take_supervision');
+select is(tests_0063b.err_hint($$select public.supervision_check_out('f6301000-0000-0000-0000-0000000000d2')$$), '42501', 'supervision_check_out revocada: el fin es complete_supervision');
 select cmp_ok((select count(*)::integer from public.ratings where supervision_id in (select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000041')), '>=', 4, 'el administrador lee las calificaciones');
 select lives_ok(
   $$select public.cancel_supervision('f6301000-0000-0000-0000-0000000000d2', 'Supervisión anterior a la migración')$$,
   'cancel_supervision sigue disponible para la administración'
 );
 
-select tests.as_user('test-db063b-owner@example.com');
+select tests_0063b.as_user('test-db063b-owner@example.com');
 select cmp_ok((select count(*)::integer from public.ratings where supervision_id in (select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000041')), '>=', 4, 'el dueño lee las calificaciones');
 select is((select count(*)::integer from public.v_supervisor_today), 0, 'el dueño no ve la lista de turnos del coordinador (es del rol coordinador)');
 
@@ -659,23 +659,23 @@ select is((select count(*)::integer from public.v_supervisor_today), 0, 'el due�
 -- ---------------------------------------------------------------------------------------------
 
 -- Beto pausa con motivo y posición; Cora supervisa fuera de la sede; Ana finaliza.
-select tests.as_user('test-db063b-sb@example.com');
+select tests_0063b.as_user('test-db063b-sb@example.com');
 select is(
   (select public.pause_workday('Almuerzo', -34.61, -58.41, 8)->>'state'), 'paused',
   'Beto pausa (su supervisión de la jornada ya está cerrada; la anterior a la migración no cuenta)'
 );
 
-select tests.as_user('test-db063b-sc@example.com');
+select tests_0063b.as_user('test-db063b-sc@example.com');
 select is((select public.start_workday(-34.65, -58.45, 20)->>'state'), 'running', 'Cora inicia su jornada');
 select is(
   (select public.take_supervision('f6301000-0000-0000-0000-000000000047', -34.6, -58.4, 10, 'Estaba en otra sede')->'check_in'->>'geo_status'),
   'outside', 'la validación de sede de B1: lejos de la sede queda «fuera de zona»'
 );
 
-select tests.as_user('test-db063b-sa@example.com');
+select tests_0063b.as_user('test-db063b-sa@example.com');
 select is((select public.end_workday()->>'state'), 'ended', 'Ana finaliza su jornada (sin supervisiones abiertas)');
 
-select tests.as_user('test-db063b-admin@example.com');
+select tests_0063b.as_user('test-db063b-admin@example.com');
 select is(
   (select status from public.v_supervisor_status where supervisor_id = 'f6301000-0000-0000-0000-000000000091'),
   'finished', 'v_supervisor_status: Ana, «Finalizada»'

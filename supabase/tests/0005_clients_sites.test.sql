@@ -145,7 +145,7 @@ select ok((select relrowsecurity from pg_class where oid = 'public.sites'::regcl
 
 -- clients.status: nace 'active' aunque no se indique al crear ------------------------------------
 
-insert into public.clients (id, legal_name) values ('d0000000-0000-0000-0000-000000000001', 'Grupo Norte SA');
+insert into public.clients (id, legal_name, calendar_color) values ('d0000000-0000-0000-0000-000000000001', 'Grupo Norte SA', 0);
 
 select is(
   (select status::text from public.clients where id = 'd0000000-0000-0000-0000-000000000001'),
@@ -161,7 +161,7 @@ select is(
 -- que su fixture no coincida por casualidad con un CUIT real del seed.
 update public.clients set cuit = '99911112223' where id = 'd0000000-0000-0000-0000-000000000001';
 
-insert into public.clients (id, legal_name) values ('d0000000-0000-0000-0000-000000000002', 'Cliente de prueba DB-007 SA');
+insert into public.clients (id, legal_name, calendar_color) values ('d0000000-0000-0000-0000-000000000002', 'Cliente de prueba DB-007 SA', 0);
 
 prepare client_duplicate_cuit as
   update public.clients set cuit = '99911112223' where id = 'd0000000-0000-0000-0000-000000000002';

@@ -1,6 +1,6 @@
 -- pgTAP de la migración 0003_profiles_roles_capabilities.sql (DB-004, DB-005, TEST-002).
 --
--- Cubre: el fixture tests.as_user(email) (TEST-002), el hook app.custom_access_token_hook
+-- Cubre: el fixture tests_0003.as_user(email) (TEST-002), el hook app.custom_access_token_hook
 -- (DB-004) y las funciones de permisos app.jwt_roles/jwt_capabilities/has_role/is_admin/
 -- has_capability (DB-005). Estructura y restricciones de las tablas, handle_new_user y el
 -- trigger del último owner están en 0003_profiles_roles_capabilities.test.sql.
@@ -15,7 +15,7 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
--- tests.as_user(email) (TEST-002) -------------------------------------------------------------
+-- tests_0003.as_user(email) (TEST-002) -------------------------------------------------------------
 --
 -- Se crea acá, dentro de la transacción del archivo (nunca en una migración), tal como
 -- documenta supabase/tests/README.md. Resuelve el profile_id buscando el email en auth.users
@@ -25,14 +25,14 @@ create extension if not exists pgtap with schema extensions;
 -- roles/capacidades y cualquier cambio futuro al hook se refleja acá solo. Cuando exista el
 -- seed (DB-019), esta función no cambia: seguirá resolviendo por email contra auth.users, ya
 -- con las filas que inserte el seed en lugar de las que cree cada test.
-create schema if not exists tests;
+create schema if not exists tests_0003;
 
--- authenticated (y anon, por si algún test futuro necesita encadenar tests.as_user después de
+-- authenticated (y anon, por si algún test futuro necesita encadenar tests_0003.as_user después de
 -- simular un visitante anónimo) necesitan USAGE sobre el esquema para poder invocar la función
 -- de nuevo después de que la primera llamada haya cambiado el rol activo.
-grant usage on schema tests to authenticated, anon;
+grant usage on schema tests_0003 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0003.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -47,7 +47,7 @@ begin
   select id into v_user_id from auth.users where email = p_email;
 
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0003.as_user: no existe auth.users.email = %', p_email;
   end if;
 
   v_claims := (
@@ -68,10 +68,10 @@ begin
 end;
 $$;
 
-comment on function tests.as_user(text) is
+comment on function tests_0003.as_user(text) is
   'TEST-002: fija request.jwt.claims y el rol activo en authenticated como si p_email hubiera iniciado sesión (busca el profile_id en auth.users y arma los claims con app.custom_access_token_hook). Solo para tests; no se crea en una migración.';
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0003.as_user(text) to authenticated, anon;
 
 select plan(20);
 
@@ -180,9 +180,9 @@ select throws_ok(
 
 set local role postgres;
 
--- tests.as_user + funciones de permisos: owner ------------------------------------------------
+-- tests_0003.as_user + funciones de permisos: owner ------------------------------------------------
 
-select tests.as_user('test-perm-owner@example.com');
+select tests_0003.as_user('test-perm-owner@example.com');
 
 select ok(app.has_role('owner'), 'as_user owner: has_role(owner) = true');
 select ok(not app.has_role('admin'), 'as_user owner: has_role(admin) = false (no tiene ese rol asignado)');
@@ -190,9 +190,9 @@ select ok(app.is_admin(), 'as_user owner: is_admin() = true');
 select ok(app.has_capability('cancel_shifts'), 'as_user owner: has_capability(cancel_shifts) = true (el owner las tiene todas implícitamente)');
 select ok(app.has_capability('manage_supervisions'), 'as_user owner: has_capability(manage_supervisions) = true aunque nadie se la haya activado');
 
--- tests.as_user + funciones de permisos: admin con una capacidad habilitada y otra no ---------
+-- tests_0003.as_user + funciones de permisos: admin con una capacidad habilitada y otra no ---------
 
-select tests.as_user('test-perm-admin@example.com');
+select tests_0003.as_user('test-perm-admin@example.com');
 
 select ok(app.has_role('admin'), 'as_user admin: has_role(admin) = true');
 select ok(not app.has_role('owner'), 'as_user admin: has_role(owner) = false');
@@ -201,9 +201,9 @@ select ok(app.has_capability('cancel_shifts'), 'as_user admin: has_capability(ca
 select ok(not app.has_capability('edit_ratings'), 'as_user admin: has_capability(edit_ratings) = false (deshabilitada)');
 select ok(not app.has_capability('manage_users'), 'as_user admin: has_capability(manage_users) = false (nunca se le asignó)');
 
--- tests.as_user + funciones de permisos: sin ningún rol ---------------------------------------
+-- tests_0003.as_user + funciones de permisos: sin ningún rol ---------------------------------------
 
-select tests.as_user('test-perm-sinrol@example.com');
+select tests_0003.as_user('test-perm-sinrol@example.com');
 
 select ok(not app.has_role('employee'), 'as_user sin rol: has_role(employee) = false');
 select ok(not app.is_admin(), 'as_user sin rol: is_admin() = false');

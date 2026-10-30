@@ -15,10 +15,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0047b;
+grant usage on schema tests_0047b to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0047b.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -29,7 +29,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0047b.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -44,9 +44,9 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0047b.as_user(text) to authenticated, anon;
 
-create or replace function tests.hint_of(p_sql text)
+create or replace function tests_0047b.hint_of(p_sql text)
 returns text
 language plpgsql
 as $$
@@ -62,7 +62,7 @@ exception
 end;
 $$;
 
-grant execute on function tests.hint_of(text) to authenticated, anon;
+grant execute on function tests_0047b.hint_of(text) to authenticated, anon;
 
 select plan(47);
 
@@ -103,8 +103,8 @@ select ok(
 
 -- Fixtures -------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('f4710000-0000-0000-0000-000000000001', 'Cliente de evidencia 0047 b', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('f4710000-0000-0000-0000-000000000001', 'Cliente de evidencia 0047 b', 'active', 0);
 insert into public.sites (id, client_id, name, address, status) values
   ('f4710000-0000-0000-0000-000000000011', 'f4710000-0000-0000-0000-000000000001', 'Sede 0047 b', 'Dirección 1', 'active');
 
@@ -134,7 +134,7 @@ insert into public.services (id, client_id, site_id, name, weekdays, start_time,
 
 -- Herencia al generar (H-07) ---------------------------------------------------------------------
 
-select tests.as_user('test-db0472-owner@example.com');
+select tests_0047b.as_user('test-db0472-owner@example.com');
 select public.generate_shifts(2199, 5);
 select is(
   (select array[count(*)::text, count(*) filter (where requires_photos)::text] from public.shifts where service_id = 'f4710000-0000-0000-0000-000000000021'),
@@ -147,7 +147,7 @@ select is(
 
 -- create_shift: hereda, se puede pisar y un turno suelto no pide fotos -------------------------------
 
-select tests.as_user('test-db0472-admin@example.com');
+select tests_0047b.as_user('test-db0472-admin@example.com');
 select is(
   (public.create_shift('f4710000-0000-0000-0000-000000000001', 'f4710000-0000-0000-0000-000000000011', '2199-05-07', '08:00', '12:00', 1::smallint, 'f4710000-0000-0000-0000-000000000021') -> 'shift' ->> 'requires_photos'),
   'true', 'create_shift con servicio: hereda requires_photos'
@@ -193,11 +193,11 @@ select is(
 -- set_media_retention (H-17) ---------------------------------------------------------------------
 
 select is(
-  tests.hint_of($$select public.set_media_retention(6, null)$$),
+  tests_0047b.hint_of($$select public.set_media_retention(6, null)$$),
   'RETENTION_OUT_OF_RANGE', 'plazo de fotos menor a 7'
 );
 select is(
-  tests.hint_of($$select public.set_media_retention(null, 366)$$),
+  tests_0047b.hint_of($$select public.set_media_retention(null, 366)$$),
   'RETENTION_OUT_OF_RANGE', 'plazo de videos mayor a 365'
 );
 select is(
@@ -208,17 +208,17 @@ select is(
   (select array[photo_retention_days::text, video_retention_days::text] from public.set_media_retention(60, 45)),
   array['60', '45'], 'y los dos a la vez'
 );
-select tests.as_user('test-db0472-empa@example.com');
+select tests_0047b.as_user('test-db0472-empa@example.com');
 select is(
-  tests.hint_of($$select public.set_media_retention(60, 30)$$),
+  tests_0047b.hint_of($$select public.set_media_retention(60, 30)$$),
   'FORBIDDEN', 'un empleado no cambia los plazos'
 );
-select tests.as_user('test-db0472-sup@example.com');
+select tests_0047b.as_user('test-db0472-sup@example.com');
 select is(
-  tests.hint_of($$select public.set_media_retention(60, 30)$$),
+  tests_0047b.hint_of($$select public.set_media_retention(60, 30)$$),
   'FORBIDDEN', 'un supervisor no cambia los plazos'
 );
-select tests.as_user('test-db0472-owner@example.com');
+select tests_0047b.as_user('test-db0472-owner@example.com');
 select is(
   (select video_retention_days from public.set_media_retention(null, 30)),
   30::smallint, 'el dueño también los cambia'
@@ -296,9 +296,9 @@ select is(
   1::bigint, 'el límite de candidatos se respeta'
 );
 
-select tests.as_user('test-db0472-admin@example.com');
+select tests_0047b.as_user('test-db0472-admin@example.com');
 select is(
-  tests.hint_of($$select * from public.evidence_cleanup_candidates(10)$$),
+  tests_0047b.hint_of($$select * from public.evidence_cleanup_candidates(10)$$),
   'SQLSTATE 42501', 'un administrador no puede ejecutar el barrido (solo service_role)'
 );
 
@@ -308,7 +308,7 @@ set local role postgres;
 insert into storage.objects (bucket_id, name, metadata) values
   ('evidence', 'f4710000-prueba/uso.jpg', '{"size": 123456}');
 
-select tests.as_user('test-db0472-admin@example.com');
+select tests_0047b.as_user('test-db0472-admin@example.com');
 select is(
   (public.storage_usage() ->> 'limit_bytes')::bigint,
   1073741824::bigint, 'storage_usage: el tope es 1 GB'
@@ -323,12 +323,12 @@ select ok(
     and (public.storage_usage() ->> 'percent')::numeric >= 0,
   'storage_usage: detalle por bucket, porcentaje y nivel'
 );
-select tests.as_user('test-db0472-owner@example.com');
+select tests_0047b.as_user('test-db0472-owner@example.com');
 select cmp_ok((public.storage_usage() ->> 'total_bytes')::bigint, '>=', 123456::bigint, 'storage_usage: el dueño también');
-select tests.as_user('test-db0472-empa@example.com');
-select is(tests.hint_of($$select public.storage_usage()$$), 'FORBIDDEN', 'storage_usage: un empleado no');
-select tests.as_user('test-db0472-sup@example.com');
-select is(tests.hint_of($$select public.storage_usage()$$), 'FORBIDDEN', 'storage_usage: un supervisor no');
+select tests_0047b.as_user('test-db0472-empa@example.com');
+select is(tests_0047b.hint_of($$select public.storage_usage()$$), 'FORBIDDEN', 'storage_usage: un empleado no');
+select tests_0047b.as_user('test-db0472-sup@example.com');
+select is(tests_0047b.hint_of($$select public.storage_usage()$$), 'FORBIDDEN', 'storage_usage: un supervisor no');
 
 -- delete_service con evidencia -------------------------------------------------------------------
 
@@ -345,13 +345,13 @@ insert into public.shift_media (id, shift_id, assignment_id, uploaded_by, kind, 
    'f4710000-0000-0000-0000-000000000111/f4710000-0000-0000-0000-0000000000c1.jpg',
    'f4710000-0000-0000-0000-000000000111/f4710000-0000-0000-0000-0000000000c1_thumb.jpg', 1000, now());
 
-select tests.as_user('test-db0472-admin@example.com');
+select tests_0047b.as_user('test-db0472-admin@example.com');
 select is(
   (select b ->> 'reasons' from jsonb_array_elements(public.service_delete_preview('f4710000-0000-0000-0000-000000000023') -> 'blocking_shifts') as b),
   '["SHIFT_MEDIA"]', 'service_delete_preview: la evidencia bloquea el borrado'
 );
 select is(
-  tests.hint_of($$select public.delete_service('f4710000-0000-0000-0000-000000000023')$$),
+  tests_0047b.hint_of($$select public.delete_service('f4710000-0000-0000-0000-000000000023')$$),
   'SERVICE_HAS_MEDIA', 'delete_service: un servicio con fotos o videos no se elimina'
 );
 select is(
@@ -381,14 +381,14 @@ from (values
   ('f4710000-0000-0000-0000-0000000000d5'::uuid, 'photo', null, 'f4710000-0000-0000-0000-000000000321', 'f4710000-0000-0000-0000-000000000084', now(), null)
 ) as v(id, kind, asg, sup, uploader, confirmed, removed);
 
-select tests.as_user('test-db0472-empa@example.com');
+select tests_0047b.as_user('test-db0472-empa@example.com');
 select is(
   (select array[requires_photos::text, my_photos_count::text, my_videos_count::text, photos_not_allowed::text]
    from public.v_my_day where shift_id = 'f4710000-0000-0000-0000-000000000121'),
   array['true', '1', '1', 'false'],
   'v_my_day: pide fotos, 1 foto y 1 video propios (las quitadas y pendientes no cuentan) y la sede permite fotos'
 );
-select tests.as_user('test-db0472-sup@example.com');
+select tests_0047b.as_user('test-db0472-sup@example.com');
 select is(
   (select array[requires_photos::text, my_photos_count::text, my_videos_count::text, site_photos_not_allowed::text]
    from public.v_my_supervisions where shift_id = 'f4710000-0000-0000-0000-000000000121'),

@@ -5,7 +5,7 @@
 --      movimiento, líneas, historial de precios, controles y avisos.
 --
 -- Convención (ver supabase/tests/README.md): transacción que termina en `rollback`. Prefijo de
--- fixtures propio: 'e2500000-...'. Los usuarios, turnos, clientes y artículos de la prueba los crea
+-- fixtures propio: 'e2500002-...'. Los usuarios, turnos, clientes y artículos de la prueba los crea
 -- este mismo archivo; no depende del seed ni del orden de ejecución. Los turnos usan fechas
 -- relativas a app.today() (no hay instantes armados con «ahora ± horas» salvo donde el caso lo pide:
 -- el control a una hora pasada, que se mide contra now() y no contra el reloj del día).
@@ -17,10 +17,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0070c;
+grant usage on schema tests_0070c to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0070c.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -31,7 +31,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0070c.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -46,10 +46,10 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0070c.as_user(text) to authenticated, anon;
 
 -- Devuelve el `hint` del error (código estable) o el SQLSTATE si no trae hint; null si anduvo.
-create or replace function tests.err_hint(p_sql text)
+create or replace function tests_0070c.err_hint(p_sql text)
 returns text
 language plpgsql
 as $$
@@ -64,10 +64,10 @@ exception when others then
 end;
 $$;
 
-grant execute on function tests.err_hint(text) to authenticated, anon;
+grant execute on function tests_0070c.err_hint(text) to authenticated, anon;
 
 -- Devuelve el mensaje del error; null si anduvo.
-create or replace function tests.err_msg(p_sql text)
+create or replace function tests_0070c.err_msg(p_sql text)
 returns text
 language plpgsql
 as $$
@@ -79,10 +79,10 @@ exception when others then
 end;
 $$;
 
-grant execute on function tests.err_msg(text) to authenticated, anon;
+grant execute on function tests_0070c.err_msg(text) to authenticated, anon;
 
 -- ---------------------------------------------------------------------------------------------
--- Fixtures (prefijo e2500000-...). Todo lo que depende de «hoy» usa app.today() (fechas de los
+-- Fixtures (prefijo e2500002-...). Todo lo que depende de «hoy» usa app.today() (fechas de los
 -- turnos); ningún instante se arma con «ahora ± horas» salvo donde el caso lo pide (el control a
 -- una hora pasada).
 --   usuarios: 01 dueño, 02 admin CON manage_stock, 03 admin SIN la capacidad, 04 coordinador,
@@ -94,87 +94,87 @@ grant execute on function tests.err_msg(text) to authenticated, anon;
 -- ---------------------------------------------------------------------------------------------
 
 insert into auth.users (id, email, raw_user_meta_data) values
-  ('e2500000-0000-0000-0000-000000000001', 'test-db0070-owner@example.com', jsonb_build_object('first_name', 'Dueña', 'last_name', 'Insumos')),
-  ('e2500000-0000-0000-0000-000000000002', 'test-db0070-admin@example.com', jsonb_build_object('first_name', 'Admin', 'last_name', 'ConStock')),
-  ('e2500000-0000-0000-0000-000000000003', 'test-db0070-admin-sin@example.com', jsonb_build_object('first_name', 'Admin', 'last_name', 'SinStock')),
-  ('e2500000-0000-0000-0000-000000000004', 'test-db0070-coord@example.com', jsonb_build_object('first_name', 'Coordi', 'last_name', 'Nadora')),
-  ('e2500000-0000-0000-0000-000000000005', 'test-db0070-emp-a@example.com', jsonb_build_object('first_name', 'Ana', 'last_name', 'Empleada')),
-  ('e2500000-0000-0000-0000-000000000006', 'test-db0070-emp-b@example.com', jsonb_build_object('first_name', 'Beto', 'last_name', 'Empleado'));
+  ('e2500002-0000-0000-0000-000000000001', 'test-db0070est-owner@example.com', jsonb_build_object('first_name', 'Dueña', 'last_name', 'Insumos')),
+  ('e2500002-0000-0000-0000-000000000002', 'test-db0070est-admin@example.com', jsonb_build_object('first_name', 'Admin', 'last_name', 'ConStock')),
+  ('e2500002-0000-0000-0000-000000000003', 'test-db0070est-admin-sin@example.com', jsonb_build_object('first_name', 'Admin', 'last_name', 'SinStock')),
+  ('e2500002-0000-0000-0000-000000000004', 'test-db0070est-coord@example.com', jsonb_build_object('first_name', 'Coordi', 'last_name', 'Nadora')),
+  ('e2500002-0000-0000-0000-000000000005', 'test-db0070est-emp-a@example.com', jsonb_build_object('first_name', 'Ana', 'last_name', 'Empleada')),
+  ('e2500002-0000-0000-0000-000000000006', 'test-db0070est-emp-b@example.com', jsonb_build_object('first_name', 'Beto', 'last_name', 'Empleado'));
 
 insert into public.user_roles (profile_id, role) values
-  ('e2500000-0000-0000-0000-000000000001', 'owner'),
-  ('e2500000-0000-0000-0000-000000000002', 'admin'),
-  ('e2500000-0000-0000-0000-000000000003', 'admin'),
-  ('e2500000-0000-0000-0000-000000000004', 'supervisor'),
-  ('e2500000-0000-0000-0000-000000000005', 'employee'),
-  ('e2500000-0000-0000-0000-000000000006', 'employee');
+  ('e2500002-0000-0000-0000-000000000001', 'owner'),
+  ('e2500002-0000-0000-0000-000000000002', 'admin'),
+  ('e2500002-0000-0000-0000-000000000003', 'admin'),
+  ('e2500002-0000-0000-0000-000000000004', 'supervisor'),
+  ('e2500002-0000-0000-0000-000000000005', 'employee'),
+  ('e2500002-0000-0000-0000-000000000006', 'employee');
 
 insert into public.admin_capabilities (profile_id, capability, enabled) values
-  ('e2500000-0000-0000-0000-000000000002', 'manage_stock', true),
-  ('e2500000-0000-0000-0000-000000000003', 'manage_users', true),
-  ('e2500000-0000-0000-0000-000000000003', 'manage_stock', false);
+  ('e2500002-0000-0000-0000-000000000002', 'manage_stock', true),
+  ('e2500002-0000-0000-0000-000000000003', 'manage_users', true),
+  ('e2500002-0000-0000-0000-000000000003', 'manage_stock', false);
 
 insert into public.employees (profile_id, dni, status) values
-  ('e2500000-0000-0000-0000-000000000004', '92500004', 'active'),
-  ('e2500000-0000-0000-0000-000000000005', '92500005', 'active'),
-  ('e2500000-0000-0000-0000-000000000006', '92500006', 'active');
+  ('e2500002-0000-0000-0000-000000000004', '92502004', 'active'),
+  ('e2500002-0000-0000-0000-000000000005', '92502005', 'active'),
+  ('e2500002-0000-0000-0000-000000000006', '92502006', 'active');
 
-insert into public.clients (id, legal_name, trade_name, status) values
-  ('e2500000-0000-0000-0000-0000000000c1', 'Cliente Insumos Uno SA', 'Cliente Uno', 'active'),
-  ('e2500000-0000-0000-0000-0000000000c2', 'Cliente Insumos Dos SA', null, 'active');
+insert into public.clients (id, legal_name, trade_name, status, calendar_color) values
+  ('e2500002-0000-0000-0000-0000000000c1', 'Cliente Insumos Uno SA', 'Cliente Uno', 'active', 0),
+  ('e2500002-0000-0000-0000-0000000000c2', 'Cliente Insumos Dos SA', null, 'active', 0);
 
 insert into public.sites (id, client_id, name, address, status) values
-  ('e2500000-0000-0000-0000-0000000000a1', 'e2500000-0000-0000-0000-0000000000c1', 'Sede Uno', 'Calle 1', 'active'),
-  ('e2500000-0000-0000-0000-0000000000a2', 'e2500000-0000-0000-0000-0000000000c2', 'Sede Dos', 'Calle 2', 'active'),
-  ('e2500000-0000-0000-0000-0000000000a3', 'e2500000-0000-0000-0000-0000000000c1', 'Sede Tres', 'Calle 3', 'active');
+  ('e2500002-0000-0000-0000-0000000000a1', 'e2500002-0000-0000-0000-0000000000c1', 'Sede Uno', 'Calle 1', 'active'),
+  ('e2500002-0000-0000-0000-0000000000a2', 'e2500002-0000-0000-0000-0000000000c2', 'Sede Dos', 'Calle 2', 'active'),
+  ('e2500002-0000-0000-0000-0000000000a3', 'e2500002-0000-0000-0000-0000000000c1', 'Sede Tres', 'Calle 3', 'active');
 
 insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_time, required_staff, status) values
-  ('e2500000-0000-0000-0000-000000000b01', 'e2500000-0000-0000-0000-0000000000c1', 'e2500000-0000-0000-0000-0000000000a1', app.today(), '08:00', '12:00', 1, 'scheduled'),
-  ('e2500000-0000-0000-0000-000000000b02', 'e2500000-0000-0000-0000-0000000000c2', 'e2500000-0000-0000-0000-0000000000a2', app.today(), '08:00', '12:00', 1, 'scheduled'),
-  ('e2500000-0000-0000-0000-000000000b03', 'e2500000-0000-0000-0000-0000000000c1', 'e2500000-0000-0000-0000-0000000000a1', app.today() + 1, '08:00', '12:00', 1, 'scheduled'),
-  ('e2500000-0000-0000-0000-000000000b04', 'e2500000-0000-0000-0000-0000000000c1', 'e2500000-0000-0000-0000-0000000000a1', app.today() + 5, '08:00', '12:00', 1, 'scheduled'),
-  ('e2500000-0000-0000-0000-000000000b05', 'e2500000-0000-0000-0000-0000000000c1', 'e2500000-0000-0000-0000-0000000000a1', app.today() + 10, '08:00', '12:00', 1, 'scheduled'),
-  ('e2500000-0000-0000-0000-000000000b06', 'e2500000-0000-0000-0000-0000000000c1', 'e2500000-0000-0000-0000-0000000000a1', app.today() - 2, '08:00', '12:00', 1, 'completed');
+  ('e2500002-0000-0000-0000-000000000b01', 'e2500002-0000-0000-0000-0000000000c1', 'e2500002-0000-0000-0000-0000000000a1', app.today(), '08:00', '12:00', 1, 'scheduled'),
+  ('e2500002-0000-0000-0000-000000000b02', 'e2500002-0000-0000-0000-0000000000c2', 'e2500002-0000-0000-0000-0000000000a2', app.today(), '08:00', '12:00', 1, 'scheduled'),
+  ('e2500002-0000-0000-0000-000000000b03', 'e2500002-0000-0000-0000-0000000000c1', 'e2500002-0000-0000-0000-0000000000a1', app.today() + 1, '08:00', '12:00', 1, 'scheduled'),
+  ('e2500002-0000-0000-0000-000000000b04', 'e2500002-0000-0000-0000-0000000000c1', 'e2500002-0000-0000-0000-0000000000a1', app.today() + 5, '08:00', '12:00', 1, 'scheduled'),
+  ('e2500002-0000-0000-0000-000000000b05', 'e2500002-0000-0000-0000-0000000000c1', 'e2500002-0000-0000-0000-0000000000a1', app.today() + 10, '08:00', '12:00', 1, 'scheduled'),
+  ('e2500002-0000-0000-0000-000000000b06', 'e2500002-0000-0000-0000-0000000000c1', 'e2500002-0000-0000-0000-0000000000a1', app.today() - 2, '08:00', '12:00', 1, 'completed');
 
 insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_time, required_staff, status, cancelled_at, cancelled_by, cancel_reason) values
-  ('e2500000-0000-0000-0000-000000000b07', 'e2500000-0000-0000-0000-0000000000c1', 'e2500000-0000-0000-0000-0000000000a1', app.today() + 1, '14:00', '18:00', 1, 'cancelled', now(), 'e2500000-0000-0000-0000-000000000001', 'Cancelado para la prueba');
+  ('e2500002-0000-0000-0000-000000000b07', 'e2500002-0000-0000-0000-0000000000c1', 'e2500002-0000-0000-0000-0000000000a1', app.today() + 1, '14:00', '18:00', 1, 'cancelled', now(), 'e2500002-0000-0000-0000-000000000001', 'Cancelado para la prueba');
 
 insert into public.assignments (shift_id, employee_id) values
-  ('e2500000-0000-0000-0000-000000000b01', 'e2500000-0000-0000-0000-000000000005'),
-  ('e2500000-0000-0000-0000-000000000b02', 'e2500000-0000-0000-0000-000000000006'),
-  ('e2500000-0000-0000-0000-000000000b03', 'e2500000-0000-0000-0000-000000000005'),
-  ('e2500000-0000-0000-0000-000000000b04', 'e2500000-0000-0000-0000-000000000005'),
-  ('e2500000-0000-0000-0000-000000000b05', 'e2500000-0000-0000-0000-000000000005'),
-  ('e2500000-0000-0000-0000-000000000b06', 'e2500000-0000-0000-0000-000000000005'),
-  ('e2500000-0000-0000-0000-000000000b07', 'e2500000-0000-0000-0000-000000000005');
+  ('e2500002-0000-0000-0000-000000000b01', 'e2500002-0000-0000-0000-000000000005'),
+  ('e2500002-0000-0000-0000-000000000b02', 'e2500002-0000-0000-0000-000000000006'),
+  ('e2500002-0000-0000-0000-000000000b03', 'e2500002-0000-0000-0000-000000000005'),
+  ('e2500002-0000-0000-0000-000000000b04', 'e2500002-0000-0000-0000-000000000005'),
+  ('e2500002-0000-0000-0000-000000000b05', 'e2500002-0000-0000-0000-000000000005'),
+  ('e2500002-0000-0000-0000-000000000b06', 'e2500002-0000-0000-0000-000000000005'),
+  ('e2500002-0000-0000-0000-000000000b07', 'e2500002-0000-0000-0000-000000000005');
 
 insert into public.supervisor_priorities (supervisor_id, site_id, created_by) values
-  ('e2500000-0000-0000-0000-000000000004', 'e2500000-0000-0000-0000-0000000000a2', 'e2500000-0000-0000-0000-000000000001');
+  ('e2500002-0000-0000-0000-000000000004', 'e2500002-0000-0000-0000-0000000000a2', 'e2500002-0000-0000-0000-000000000001');
 
 insert into public.supply_categories (id, name, sort_order) values
-  ('e2500000-0000-0000-0000-0000000000d1', 'Test E categoría uno', 10),
-  ('e2500000-0000-0000-0000-0000000000d2', 'Test E categoría dos', 20);
+  ('e2500002-0000-0000-0000-0000000000d1', 'Test Eest categoría uno', 10),
+  ('e2500002-0000-0000-0000-0000000000d2', 'Test Eest categoría dos', 20);
 
 -- Artículos de la prueba: arrancan en cero; el stock entra por registrar ingresos (RPC).
 insert into public.supplies (id, code, name, presentation, category_id, min_qty, cost_price, sale_price) values
-  ('e2500000-0000-0000-0000-0000000000e1', 'TE-001', 'Test lavandina', '1 L', 'e2500000-0000-0000-0000-0000000000d1', 5, 100.00, 150.00),
-  ('e2500000-0000-0000-0000-0000000000e2', 'TE-002', 'Test detergente', '5 L', 'e2500000-0000-0000-0000-0000000000d1', null, 200.00, 300.00),
-  ('e2500000-0000-0000-0000-0000000000e3', 'TE-003', 'Test bolsas', 'paquete x 10', 'e2500000-0000-0000-0000-0000000000d2', 2, 50.50, 80.00);
+  ('e2500002-0000-0000-0000-0000000000e1', 'TS-001', 'Test lavandina', '1 L', 'e2500002-0000-0000-0000-0000000000d1', 5, 100.00, 150.00),
+  ('e2500002-0000-0000-0000-0000000000e2', 'TS-002', 'Test detergente', '5 L', 'e2500002-0000-0000-0000-0000000000d1', null, 200.00, 300.00),
+  ('e2500002-0000-0000-0000-0000000000e3', 'TS-003', 'Test bolsas', 'paquete x 10', 'e2500002-0000-0000-0000-0000000000d2', 2, 50.50, 80.00);
 
 -- Atajos de las fixtures: artículo n, turno n, sede n y usuario n.
-create function tests.sid(n integer) returns uuid language sql immutable as $$ select ('e2500000-0000-0000-0000-0000000000e' || n)::uuid $$;
-create function tests.shid(n integer) returns uuid language sql immutable as $$ select ('e2500000-0000-0000-0000-000000000b0' || n)::uuid $$;
-create function tests.siteid(n integer) returns uuid language sql immutable as $$ select ('e2500000-0000-0000-0000-0000000000a' || n)::uuid $$;
-create function tests.uid(n integer) returns uuid language sql immutable as $$ select ('e2500000-0000-0000-0000-00000000000' || n)::uuid $$;
+create function tests_0070c.sid(n integer) returns uuid language sql immutable as $$ select ('e2500002-0000-0000-0000-0000000000e' || n)::uuid $$;
+create function tests_0070c.shid(n integer) returns uuid language sql immutable as $$ select ('e2500002-0000-0000-0000-000000000b0' || n)::uuid $$;
+create function tests_0070c.siteid(n integer) returns uuid language sql immutable as $$ select ('e2500002-0000-0000-0000-0000000000a' || n)::uuid $$;
+create function tests_0070c.uid(n integer) returns uuid language sql immutable as $$ select ('e2500002-0000-0000-0000-00000000000' || n)::uuid $$;
 -- Línea {supply_id, qty} y línea de ingreso con costo.
-create function tests.l(p_n integer, p_qty numeric) returns jsonb language sql immutable as $$
-  select jsonb_build_object('supply_id', tests.sid(p_n), 'qty', p_qty) $$;
-create function tests.lc(p_n integer, p_qty numeric, p_cost numeric, p_update boolean) returns jsonb language sql immutable as $$
-  select jsonb_build_object('supply_id', tests.sid(p_n), 'qty', p_qty, 'unit_cost', p_cost, 'update_cost', p_update) $$;
-create function tests.stock(p_n integer) returns integer language sql stable security definer as $$
-  select stock_qty from public.supplies where id = tests.sid(p_n) $$;
+create function tests_0070c.l(p_n integer, p_qty numeric) returns jsonb language sql immutable as $$
+  select jsonb_build_object('supply_id', tests_0070c.sid(p_n), 'qty', p_qty) $$;
+create function tests_0070c.lc(p_n integer, p_qty numeric, p_cost numeric, p_update boolean) returns jsonb language sql immutable as $$
+  select jsonb_build_object('supply_id', tests_0070c.sid(p_n), 'qty', p_qty, 'unit_cost', p_cost, 'update_cost', p_update) $$;
+create function tests_0070c.stock(p_n integer) returns integer language sql stable security definer as $$
+  select stock_qty from public.supplies where id = tests_0070c.sid(p_n) $$;
 
-grant execute on all functions in schema tests to authenticated, anon;
+grant execute on all functions in schema tests_0070c to authenticated, anon;
 
 select plan(83);
 
@@ -283,150 +283,150 @@ select ok(
 -- ---------------------------------------------------------------------------------------------
 
 select throws_ok(
-  $$insert into public.supplies (code, name, category_id) values ('te-001', 'Duplicado', 'e2500000-0000-0000-0000-0000000000d1')$$,
+  $$insert into public.supplies (code, name, category_id) values ('ts-001', 'Duplicado', 'e2500002-0000-0000-0000-0000000000d1')$$,
   '23505', null, 'el código de artículo es único sin distinguir mayúsculas'
 );
 select throws_ok(
-  $$insert into public.supplies (code, name, category_id) values ('  TE-001 ', 'Duplicado', 'e2500000-0000-0000-0000-0000000000d1')$$,
+  $$insert into public.supplies (code, name, category_id) values ('  TS-001 ', 'Duplicado', 'e2500002-0000-0000-0000-0000000000d1')$$,
   '23505', null, 'ni con espacios de los extremos'
 );
 select throws_ok(
-  $$insert into public.supplies (code, name, category_id) values ('   ', 'Sin código', 'e2500000-0000-0000-0000-0000000000d1')$$,
+  $$insert into public.supplies (code, name, category_id) values ('   ', 'Sin código', 'e2500002-0000-0000-0000-0000000000d1')$$,
   '23514', null, 'el código no puede estar en blanco'
 );
 select throws_ok(
-  $$insert into public.supplies (code, name, category_id, cost_price) values ('TE-X1', 'Costo negativo', 'e2500000-0000-0000-0000-0000000000d1', -1)$$,
+  $$insert into public.supplies (code, name, category_id, cost_price) values ('TS-X1', 'Costo negativo', 'e2500002-0000-0000-0000-0000000000d1', -1)$$,
   '23514', null, 'el costo no puede ser negativo (IS-34)'
 );
 select throws_ok(
-  $$insert into public.supplies (code, name, category_id, sale_price) values ('TE-X2', 'Venta negativa', 'e2500000-0000-0000-0000-0000000000d1', -1)$$,
+  $$insert into public.supplies (code, name, category_id, sale_price) values ('TS-X2', 'Venta negativa', 'e2500002-0000-0000-0000-0000000000d1', -1)$$,
   '23514', null, 'la venta no puede ser negativa (IS-34)'
 );
 select throws_ok(
-  $$insert into public.supplies (code, name, category_id, min_qty) values ('TE-X3', 'Mínimo negativo', 'e2500000-0000-0000-0000-0000000000d1', -1)$$,
+  $$insert into public.supplies (code, name, category_id, min_qty) values ('TS-X3', 'Mínimo negativo', 'e2500002-0000-0000-0000-0000000000d1', -1)$$,
   '23514', null, 'el mínimo no puede ser negativo'
 );
 select throws_ok(
-  $$insert into public.supplies (code, name, category_id, stock_qty) values ('TE-X4', 'Stock negativo', 'e2500000-0000-0000-0000-0000000000d1', -1)$$,
+  $$insert into public.supplies (code, name, category_id, stock_qty) values ('TS-X4', 'Stock negativo', 'e2500002-0000-0000-0000-0000000000d1', -1)$$,
   '23514', null, 'el stock no puede ser negativo'
 );
 select throws_ok(
-  $$insert into public.supplies (code, name, category_id) values ('TE-X5', 'Sin categoría', null)$$,
+  $$insert into public.supplies (code, name, category_id) values ('TS-X5', 'Sin categoría', null)$$,
   '23502', null, 'el artículo exige categoría'
 );
 select throws_ok(
-  $$insert into public.supply_categories (name) values (' TEST E categoría UNO ')$$,
+  $$insert into public.supply_categories (name) values (' TEST Eest categoría UNO ')$$,
   '23505', null, 'el nombre de categoría es único sin distinguir mayúsculas ni espacios'
 );
 
 select lives_ok(
-  $$update public.supplies set name = 'Test lavandina editada' where id = tests.sid(1)$$,
+  $$update public.supplies set name = 'Test lavandina editada' where id = tests_0070c.sid(1)$$,
   'un artículo se puede editar'
 );
 select isnt(
-  (select updated_at from public.supplies where id = tests.sid(1)),
+  (select updated_at from public.supplies where id = tests_0070c.sid(1)),
   null,
   'el trigger fija updated_at'
 );
 
 -- Movimientos
 insert into public.stock_movements (id, kind, recorded_by) values
-  ('e2500000-0000-0000-0000-0000000000f5', 'entry', 'e2500000-0000-0000-0000-000000000002');
+  ('e2500002-0000-0000-0000-0000000000f5', 'entry', 'e2500002-0000-0000-0000-000000000002');
 
 select throws_ok(
-  $$insert into public.stock_movements (kind, recorded_by) values ('withdrawal', 'e2500000-0000-0000-0000-000000000002')$$,
+  $$insert into public.stock_movements (kind, recorded_by) values ('withdrawal', 'e2500002-0000-0000-0000-000000000002')$$,
   '23514', null, 'un retiro exige persona y sede'
 );
 select throws_ok(
-  $$insert into public.stock_movements (kind, recorded_by, person_id, site_id) values ('withdrawal', 'e2500000-0000-0000-0000-000000000002', null, 'e2500000-0000-0000-0000-0000000000a1')$$,
+  $$insert into public.stock_movements (kind, recorded_by, person_id, site_id) values ('withdrawal', 'e2500002-0000-0000-0000-000000000002', null, 'e2500002-0000-0000-0000-0000000000a1')$$,
   '23514', null, 'un retiro exige persona'
 );
 select throws_ok(
-  $$insert into public.stock_movements (kind, recorded_by) values ('adjustment', 'e2500000-0000-0000-0000-000000000002')$$,
+  $$insert into public.stock_movements (kind, recorded_by) values ('adjustment', 'e2500002-0000-0000-0000-000000000002')$$,
   '23514', null, 'un ajuste exige motivo (IS-10)'
 );
 select throws_ok(
-  $$insert into public.stock_movements (kind, recorded_by) values ('count', 'e2500000-0000-0000-0000-000000000002')$$,
+  $$insert into public.stock_movements (kind, recorded_by) values ('count', 'e2500002-0000-0000-0000-000000000002')$$,
   '23514', null, 'un movimiento de control exige el control'
 );
 select throws_ok(
-  $$insert into public.stock_movements (kind, recorded_by) values ('reversal', 'e2500000-0000-0000-0000-000000000002')$$,
+  $$insert into public.stock_movements (kind, recorded_by) values ('reversal', 'e2500002-0000-0000-0000-000000000002')$$,
   '23514', null, 'una anulación exige el movimiento que anula'
 );
 select throws_ok(
-  $$insert into public.stock_movements (kind, recorded_by, reverses_id) values ('entry', 'e2500000-0000-0000-0000-000000000002', 'e2500000-0000-0000-0000-0000000000f5')$$,
+  $$insert into public.stock_movements (kind, recorded_by, reverses_id) values ('entry', 'e2500002-0000-0000-0000-000000000002', 'e2500002-0000-0000-0000-0000000000f5')$$,
   '23514', null, 'solo una anulación puede apuntar a otro movimiento'
 );
 select throws_ok(
-  $$insert into public.stock_movements (kind, recorded_by, shift_id) values ('entry', 'e2500000-0000-0000-0000-000000000002', 'e2500000-0000-0000-0000-000000000b01')$$,
+  $$insert into public.stock_movements (kind, recorded_by, shift_id) values ('entry', 'e2500002-0000-0000-0000-000000000002', 'e2500002-0000-0000-0000-000000000b01')$$,
   '23514', null, 'un turno exige sede'
 );
 select throws_ok(
-  $$insert into public.stock_movements (kind, recorded_by, voided_at) values ('entry', 'e2500000-0000-0000-0000-000000000002', now())$$,
+  $$insert into public.stock_movements (kind, recorded_by, voided_at) values ('entry', 'e2500002-0000-0000-0000-000000000002', now())$$,
   '23514', null, 'la marca de anulación es todo o nada (quién y motivo)'
 );
 
 insert into public.stock_movements (kind, recorded_by, reverses_id) values
-  ('reversal', 'e2500000-0000-0000-0000-000000000002', 'e2500000-0000-0000-0000-0000000000f5');
+  ('reversal', 'e2500002-0000-0000-0000-000000000002', 'e2500002-0000-0000-0000-0000000000f5');
 select throws_ok(
-  $$insert into public.stock_movements (kind, recorded_by, reverses_id) values ('reversal', 'e2500000-0000-0000-0000-000000000002', 'e2500000-0000-0000-0000-0000000000f5')$$,
+  $$insert into public.stock_movements (kind, recorded_by, reverses_id) values ('reversal', 'e2500002-0000-0000-0000-000000000002', 'e2500002-0000-0000-0000-0000000000f5')$$,
   '23505', null, 'un movimiento se anula una sola vez (reverses_id único)'
 );
 
 -- Líneas
 select throws_ok(
   $$insert into public.stock_movement_lines (movement_id, supply_id, qty_delta, unit_cost, unit_sale, stock_after)
-    values ('e2500000-0000-0000-0000-0000000000f5', tests.sid(1), 0, 1, 1, 0)$$,
+    values ('e2500002-0000-0000-0000-0000000000f5', tests_0070c.sid(1), 0, 1, 1, 0)$$,
   '23514', null, 'una línea no puede mover cero unidades'
 );
 select throws_ok(
   $$insert into public.stock_movement_lines (movement_id, supply_id, qty_delta, unit_cost, unit_sale, stock_after)
-    values ('e2500000-0000-0000-0000-0000000000f5', tests.sid(1), 1, -1, 1, 1)$$,
+    values ('e2500002-0000-0000-0000-0000000000f5', tests_0070c.sid(1), 1, -1, 1, 1)$$,
   '23514', null, 'una línea no puede tener precios negativos'
 );
 select throws_ok(
   $$insert into public.stock_movement_lines (movement_id, supply_id, qty_delta, unit_cost, unit_sale, stock_after)
-    values ('e2500000-0000-0000-0000-0000000000f5', tests.sid(1), -1, 1, 1, -1)$$,
+    values ('e2500002-0000-0000-0000-0000000000f5', tests_0070c.sid(1), -1, 1, 1, -1)$$,
   '23514', null, 'una línea no puede dejar el stock resultante negativo'
 );
 insert into public.stock_movement_lines (movement_id, supply_id, qty_delta, unit_cost, unit_sale, stock_after)
-values ('e2500000-0000-0000-0000-0000000000f5', tests.sid(1), 1, 1, 1, 1);
+values ('e2500002-0000-0000-0000-0000000000f5', tests_0070c.sid(1), 1, 1, 1, 1);
 select throws_ok(
   $$insert into public.stock_movement_lines (movement_id, supply_id, qty_delta, unit_cost, unit_sale, stock_after)
-    values ('e2500000-0000-0000-0000-0000000000f5', tests.sid(1), 2, 1, 1, 3)$$,
+    values ('e2500002-0000-0000-0000-0000000000f5', tests_0070c.sid(1), 2, 1, 1, 3)$$,
   '23505', null, 'un artículo aparece una sola vez por movimiento'
 );
 
 -- Historial de precios, controles y avisos
 select throws_ok(
-  $$insert into public.supply_price_changes (supply_id, new_cost_price, new_sale_price, source) values (tests.sid(1), 1, 1, 'otro')$$,
+  $$insert into public.supply_price_changes (supply_id, new_cost_price, new_sale_price, source) values (tests_0070c.sid(1), 1, 1, 'otro')$$,
   '23514', null, 'el origen del cambio de precio es create, manual o entry'
 );
 insert into public.stock_counts (id, counted_at, reviewer_name, created_by) values
-  ('e2500000-0000-0000-0000-0000000000f6', now(), 'Revisora', 'e2500000-0000-0000-0000-000000000002');
+  ('e2500002-0000-0000-0000-0000000000f6', now(), 'Revisora', 'e2500002-0000-0000-0000-000000000002');
 select throws_ok(
   $$insert into public.stock_count_lines (count_id, supply_id, system_qty, counted_qty, difference)
-    values ('e2500000-0000-0000-0000-0000000000f6', tests.sid(1), 5, 3, 1)$$,
+    values ('e2500002-0000-0000-0000-0000000000f6', tests_0070c.sid(1), 5, 3, 1)$$,
   '23514', null, 'la diferencia de una línea de control es contado menos sistema'
 );
 select throws_ok(
-  $$insert into public.supply_shortage_reports (reported_by, supply_id, description) values ('e2500000-0000-0000-0000-000000000005', tests.sid(1), 'y texto')$$,
+  $$insert into public.supply_shortage_reports (reported_by, supply_id, description) values ('e2500002-0000-0000-0000-000000000005', tests_0070c.sid(1), 'y texto')$$,
   '23514', null, 'un aviso es de un artículo o de un texto, no de los dos'
 );
 select throws_ok(
-  $$insert into public.supply_shortage_reports (reported_by) values ('e2500000-0000-0000-0000-000000000005')$$,
+  $$insert into public.supply_shortage_reports (reported_by) values ('e2500002-0000-0000-0000-000000000005')$$,
   '23514', null, 'un aviso exige artículo o texto'
 );
 select throws_ok(
-  $$insert into public.supply_shortage_reports (reported_by, supply_id, shift_id) values ('e2500000-0000-0000-0000-000000000005', tests.sid(1), 'e2500000-0000-0000-0000-000000000b01')$$,
+  $$insert into public.supply_shortage_reports (reported_by, supply_id, shift_id) values ('e2500002-0000-0000-0000-000000000005', tests_0070c.sid(1), 'e2500002-0000-0000-0000-000000000b01')$$,
   '23514', null, 'un aviso con turno exige sede'
 );
 select throws_ok(
-  $$insert into public.supply_shortage_reports (reported_by, supply_id, status) values ('e2500000-0000-0000-0000-000000000005', tests.sid(1), 'resolved')$$,
+  $$insert into public.supply_shortage_reports (reported_by, supply_id, status) values ('e2500002-0000-0000-0000-000000000005', tests_0070c.sid(1), 'resolved')$$,
   '23514', null, 'un aviso resuelto exige quién, cuándo y nota'
 );
 select throws_ok(
-  $$insert into public.supply_shortage_reports (reported_by, supply_id, resolved_by) values ('e2500000-0000-0000-0000-000000000005', tests.sid(1), 'e2500000-0000-0000-0000-000000000002')$$,
+  $$insert into public.supply_shortage_reports (reported_by, supply_id, resolved_by) values ('e2500002-0000-0000-0000-000000000005', tests_0070c.sid(1), 'e2500002-0000-0000-0000-000000000002')$$,
   '23514', null, 'un aviso abierto no puede traer datos de resolución'
 );
 

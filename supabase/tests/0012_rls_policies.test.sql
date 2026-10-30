@@ -25,11 +25,11 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
--- tests.as_user(email) (TEST-002) -- ver supabase/tests/README.md.
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+-- tests_0012a.as_user(email) (TEST-002) -- ver supabase/tests/README.md.
+create schema if not exists tests_0012a;
+grant usage on schema tests_0012a to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0012a.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -40,7 +40,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0012a.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -55,14 +55,14 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0012a.as_user(text) to authenticated, anon;
 
 select plan(30);
 
 -- Fixtures: owner, admin, supervisora, dos empleados de un mismo turno supervisado (E1, E2) y un
 -- tercer empleado "de afuera" (E3, sin turno compartido con nadie del fixture) --------------------
 
-insert into public.clients (id, legal_name) values ('c2100000-0000-0000-0000-000000000001', 'Cliente RLS 1');
+insert into public.clients (id, legal_name, calendar_color) values ('c2100000-0000-0000-0000-000000000001', 'Cliente RLS 1', 0);
 insert into public.sites (id, client_id, name, address)
 values ('c2100000-0000-0000-0000-000000000011', 'c2100000-0000-0000-0000-000000000001', 'Sede RLS 1', 'Dirección');
 
@@ -111,7 +111,7 @@ values ('c2100000-0000-0000-0000-000000000041', 'c2100000-0000-0000-0000-0000000
 -- 1. profiles
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db014-owner@example.com');
+select tests_0012a.as_user('test-db014-owner@example.com');
 select is(
   (select coalesce(array_agg(id order by id), array[]::uuid[]) from public.profiles
     where id = any(array[
@@ -127,7 +127,7 @@ select is(
   'profiles: owner ve las 6 filas del fixture'
 );
 
-select tests.as_user('test-db014-admin@example.com');
+select tests_0012a.as_user('test-db014-admin@example.com');
 select is(
   (select coalesce(array_agg(id order by id), array[]::uuid[]) from public.profiles
     where id = any(array[
@@ -143,7 +143,7 @@ select is(
   'profiles: admin ve las 6 filas del fixture'
 );
 
-select tests.as_user('test-db014-supervisora@example.com');
+select tests_0012a.as_user('test-db014-supervisora@example.com');
 select is(
   (select coalesce(array_agg(id order by id), array[]::uuid[]) from public.profiles
     where id = any(array[
@@ -155,7 +155,7 @@ select is(
   'profiles: supervisora lee de la tabla SOLO su propia fila; los empleados de su turno los ve por v_people_basic (0030, DEF-P03)'
 );
 
-select tests.as_user('test-db014-empleado1@example.com');
+select tests_0012a.as_user('test-db014-empleado1@example.com');
 select is(
   (select coalesce(array_agg(id order by id), array[]::uuid[]) from public.profiles
     where id = any(array[
@@ -167,7 +167,7 @@ select is(
   'profiles: empleado 1 lee de la tabla SOLO su propia fila; a su compañero de turno (E2, P-103) lo ve por v_people_basic (0030, DEF-P03)'
 );
 
-select tests.as_user('test-db014-empleado-afuera@example.com');
+select tests_0012a.as_user('test-db014-empleado-afuera@example.com');
 select is(
   (select coalesce(array_agg(id order by id), array[]::uuid[]) from public.profiles
     where id = any(array[
@@ -196,7 +196,7 @@ set local role postgres;
 -- Update propio: solo la propia fila (with check), solo columnas de contacto (grant de columna +
 -- trigger app.enforce_profile_self_update_columns, ambos de 0017_grants.sql, DB-017 tramo B --
 -- ver el comentario de esa migración sobre por qué hace falta el trigger además del grant).
-select tests.as_user('test-db014-empleado1@example.com');
+select tests_0012a.as_user('test-db014-empleado1@example.com');
 
 select lives_ok(
   $$update public.profiles set contact_email = 'empleado1@example.com' where id = 'c2100000-0000-0000-0000-000000000084'$$,
@@ -242,7 +242,7 @@ select is(
 -- 2. user_roles
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db014-owner@example.com');
+select tests_0012a.as_user('test-db014-owner@example.com');
 select is(
   (select count(*)::int from public.user_roles
     where profile_id = any(array[
@@ -254,7 +254,7 @@ select is(
   'user_roles: owner ve las 6 filas del fixture'
 );
 
-select tests.as_user('test-db014-empleado1@example.com');
+select tests_0012a.as_user('test-db014-empleado1@example.com');
 select is(
   (select coalesce(array_agg(role order by role), array[]::public.app_role[]) from public.user_roles
     where profile_id = any(array[
@@ -270,21 +270,21 @@ select is(
 -- 3. admin_capabilities
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db014-owner@example.com');
+select tests_0012a.as_user('test-db014-owner@example.com');
 select is(
   (select count(*)::int from public.admin_capabilities where profile_id = 'c2100000-0000-0000-0000-000000000082'),
   1,
   'admin_capabilities: owner ve la fila del admin'
 );
 
-select tests.as_user('test-db014-admin@example.com');
+select tests_0012a.as_user('test-db014-admin@example.com');
 select is(
   (select count(*)::int from public.admin_capabilities where profile_id = 'c2100000-0000-0000-0000-000000000082'),
   1,
   'admin_capabilities: el propio admin ve su fila'
 );
 
-select tests.as_user('test-db014-supervisora@example.com');
+select tests_0012a.as_user('test-db014-supervisora@example.com');
 select is(
   (select count(*)::int from public.admin_capabilities where profile_id = 'c2100000-0000-0000-0000-000000000082'),
   0,
@@ -295,7 +295,7 @@ select is(
 -- 4. employees
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db014-owner@example.com');
+select tests_0012a.as_user('test-db014-owner@example.com');
 select is(
   (select coalesce(array_agg(profile_id order by profile_id), array[]::uuid[]) from public.employees
     where profile_id = any(array[
@@ -309,7 +309,7 @@ select is(
   'employees: owner ve las 4 filas del fixture'
 );
 
-select tests.as_user('test-db014-supervisora@example.com');
+select tests_0012a.as_user('test-db014-supervisora@example.com');
 select is(
   (select coalesce(array_agg(profile_id order by profile_id), array[]::uuid[]) from public.employees
     where profile_id = any(array[
@@ -320,7 +320,7 @@ select is(
   'employees: supervisora ve SOLO su propia fila (DNI, CUIL, domicilio de los empleados de su turno son de owner/admin, 0030, DEF-P04)'
 );
 
-select tests.as_user('test-db014-empleado1@example.com');
+select tests_0012a.as_user('test-db014-empleado1@example.com');
 select is(
   (select coalesce(array_agg(profile_id order by profile_id), array[]::uuid[]) from public.employees
     where profile_id = any(array[
@@ -332,7 +332,7 @@ select is(
 );
 
 -- Insert: requiere manage_users (owner siempre, admin solo si tiene la capacidad habilitada).
-select tests.as_user('test-db014-admin@example.com');
+select tests_0012a.as_user('test-db014-admin@example.com');
 
 prepare employees_insert_no_capability as
   insert into public.employees (profile_id, dni) values ('c2100000-0000-0000-0000-000000000086', '99999999');
@@ -349,7 +349,7 @@ set local role postgres;
 insert into auth.users (id, email, raw_user_meta_data)
 values ('c2100000-0000-0000-0000-000000000087', 'test-db014-nuevo-empleado@example.com', jsonb_build_object('first_name', 'Nuevo', 'last_name', 'Empleado'));
 
-select tests.as_user('test-db014-admin@example.com');
+select tests_0012a.as_user('test-db014-admin@example.com');
 
 prepare employees_insert_no_capability_2 as
   insert into public.employees (profile_id, dni) values ('c2100000-0000-0000-0000-000000000087', '52100087');
@@ -366,7 +366,7 @@ set local role postgres;
 update public.admin_capabilities set enabled = true
 where profile_id = 'c2100000-0000-0000-0000-000000000082' and capability = 'manage_users';
 
-select tests.as_user('test-db014-admin@example.com');
+select tests_0012a.as_user('test-db014-admin@example.com');
 
 select lives_ok(
   $$insert into public.employees (profile_id, dni) values ('c2100000-0000-0000-0000-000000000087', '52100087')$$,
@@ -388,49 +388,49 @@ values ('c2100000-0000-0000-0000-000000000084', 1, '08:00', '16:00');
 insert into public.employee_leaves (employee_id, starts_on, ends_on)
 values ('c2100000-0000-0000-0000-000000000085', current_date - 3, current_date + 3);
 
-select tests.as_user('test-db014-owner@example.com');
+select tests_0012a.as_user('test-db014-owner@example.com');
 select is(
   (select count(*)::int from public.employee_client_permissions where employee_id = 'c2100000-0000-0000-0000-000000000084'),
   1,
   'employee_client_permissions: owner ve la fila'
 );
 
-select tests.as_user('test-db014-empleado1@example.com');
+select tests_0012a.as_user('test-db014-empleado1@example.com');
 select is(
   (select count(*)::int from public.employee_client_permissions where employee_id = 'c2100000-0000-0000-0000-000000000084'),
   1,
   'employee_client_permissions: el propio empleado ve su fila'
 );
 
-select tests.as_user('test-db014-empleado2@example.com');
+select tests_0012a.as_user('test-db014-empleado2@example.com');
 select is(
   (select count(*)::int from public.employee_client_permissions where employee_id = 'c2100000-0000-0000-0000-000000000084'),
   0,
   'employee_client_permissions: otro empleado no ve la fila ajena'
 );
 
-select tests.as_user('test-db014-supervisora@example.com');
+select tests_0012a.as_user('test-db014-supervisora@example.com');
 select is(
   (select count(*)::int from public.employee_availability where employee_id = 'c2100000-0000-0000-0000-000000000084'),
   0,
   'employee_availability: la supervisora NO ve la disponibilidad de un empleado de su turno (04 sección 7.2: "S: no")'
 );
 
-select tests.as_user('test-db014-empleado1@example.com');
+select tests_0012a.as_user('test-db014-empleado1@example.com');
 select is(
   (select count(*)::int from public.employee_availability where employee_id = 'c2100000-0000-0000-0000-000000000084'),
   1,
   'employee_availability: el propio empleado ve su disponibilidad'
 );
 
-select tests.as_user('test-db014-empleado2@example.com');
+select tests_0012a.as_user('test-db014-empleado2@example.com');
 select is(
   (select count(*)::int from public.employee_leaves where employee_id = 'c2100000-0000-0000-0000-000000000085'),
   1,
   'employee_leaves: el propio empleado ve su licencia vigente'
 );
 
-select tests.as_user('test-db014-empleado1@example.com');
+select tests_0012a.as_user('test-db014-empleado1@example.com');
 select is(
   (select count(*)::int from public.employee_leaves where employee_id = 'c2100000-0000-0000-0000-000000000085'),
   0,
@@ -440,7 +440,7 @@ select is(
 set local role postgres;
 
 -- Write: O/A pueden, un empleado no.
-select tests.as_user('test-db014-admin@example.com');
+select tests_0012a.as_user('test-db014-admin@example.com');
 
 select lives_ok(
   $$insert into public.employee_availability (employee_id, weekday, start_time, end_time)
@@ -448,7 +448,7 @@ select lives_ok(
   'employee_availability: admin puede insertar disponibilidad de un empleado'
 );
 
-select tests.as_user('test-db014-empleado1@example.com');
+select tests_0012a.as_user('test-db014-empleado1@example.com');
 
 prepare employee_availability_insert_employee as
   insert into public.employee_availability (employee_id, weekday, start_time, end_time)

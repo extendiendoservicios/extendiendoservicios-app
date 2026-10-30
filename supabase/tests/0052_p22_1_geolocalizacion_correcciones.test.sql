@@ -8,7 +8,7 @@
 -- Convención (ver supabase/tests/README.md): todo el archivo corre en una transacción que
 -- termina en `rollback`. Prefijo de fixtures propio de este archivo: 'e5210000-...'.
 --
--- Fechas: los turnos son de `app.today()` y todos los instantes se calculan con `tests.t(p)`, que
+-- Fechas: los turnos son de `app.today()` y todos los instantes se calculan con `tests_0052b.t(p)`, que
 -- devuelve la fracción `p` del tramo entre las 0:00 de hoy (Argentina) y el `now()` de la
 -- transacción. Así ningún instante cae en el futuro ni antes de la medianoche del día del turno,
 -- sin importar a qué hora corra el archivo.
@@ -20,10 +20,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0052b;
+grant usage on schema tests_0052b to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0052b.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -34,7 +34,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0052b.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -49,9 +49,9 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0052b.as_user(text) to authenticated, anon;
 
-create or replace function tests.t(p numeric)
+create or replace function tests_0052b.t(p numeric)
 returns timestamptz
 language sql
 stable
@@ -60,7 +60,7 @@ as $$
          + (now() - app.local_ts(app.today(), '00:00'::time)) * p;
 $$;
 
-grant execute on function tests.t(numeric) to authenticated, anon;
+grant execute on function tests_0052b.t(numeric) to authenticated, anon;
 
 select plan(96);
 
@@ -113,8 +113,8 @@ select has_column('public', 'v_supervisions_admin', 'check_out_geo_overridden', 
 -- Radio y tope generales conocidos (la fila de App_dev puede haberse editado a mano).
 update public.company_settings set geofence_radius_m = 150, geofence_max_accuracy_m = 150 where id = 1;
 
-insert into public.clients (id, legal_name, status) values
-  ('e5210000-0000-0000-0000-000000000001', 'Cliente de correcciones', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('e5210000-0000-0000-0000-000000000001', 'Cliente de correcciones', 'active', 0);
 
 insert into public.sites (id, client_id, name, address, latitude, longitude, geofence_radius_m, status) values
   ('e5210000-0000-0000-0000-000000000011', 'e5210000-0000-0000-0000-000000000001', 'Sede C1', 'Dirección 1', -34.603700, -58.381600, null, 'active'),
@@ -188,10 +188,10 @@ insert into public.attendance_records (
   id, assignment_id, kind, recorded_at, latitude, longitude, accuracy_m, source, recorded_by,
   geo_status, geo_unvalidated_reason, site_distance_m, geofence_radius_m
 ) values
-  ('e5210000-0000-0000-0000-000000000501', 'e5210000-0000-0000-0000-000000000301', 'check_in', tests.t(0.25), -34.603800, -58.381600, 10, 'employee_app', 'e5210000-0000-0000-0000-000000000091', 'valid', null, 10, 150),
-  ('e5210000-0000-0000-0000-000000000502', 'e5210000-0000-0000-0000-000000000301', 'check_out', tests.t(0.75), -34.599200, -58.381600, 10, 'employee_app', 'e5210000-0000-0000-0000-000000000091', 'outside', null, 500, 150),
-  ('e5210000-0000-0000-0000-000000000503', 'e5210000-0000-0000-0000-000000000302', 'check_in', tests.t(0.25), -34.593700, -58.381600, 20, 'employee_app', 'e5210000-0000-0000-0000-000000000092', 'outside', null, 1112, 150),
-  ('e5210000-0000-0000-0000-000000000504', 'e5210000-0000-0000-0000-000000000303', 'check_in', tests.t(0.25), null, null, null, 'employee_app', 'e5210000-0000-0000-0000-000000000093', 'unvalidated', 'no_location', null, 300),
+  ('e5210000-0000-0000-0000-000000000501', 'e5210000-0000-0000-0000-000000000301', 'check_in', tests_0052b.t(0.25), -34.603800, -58.381600, 10, 'employee_app', 'e5210000-0000-0000-0000-000000000091', 'valid', null, 10, 150),
+  ('e5210000-0000-0000-0000-000000000502', 'e5210000-0000-0000-0000-000000000301', 'check_out', tests_0052b.t(0.75), -34.599200, -58.381600, 10, 'employee_app', 'e5210000-0000-0000-0000-000000000091', 'outside', null, 500, 150),
+  ('e5210000-0000-0000-0000-000000000503', 'e5210000-0000-0000-0000-000000000302', 'check_in', tests_0052b.t(0.25), -34.593700, -58.381600, 20, 'employee_app', 'e5210000-0000-0000-0000-000000000092', 'outside', null, 1112, 150),
+  ('e5210000-0000-0000-0000-000000000504', 'e5210000-0000-0000-0000-000000000303', 'check_in', tests_0052b.t(0.25), null, null, null, 'employee_app', 'e5210000-0000-0000-0000-000000000093', 'unvalidated', 'no_location', null, 300),
   ('e5210000-0000-0000-0000-000000000505', 'e5210000-0000-0000-0000-000000000305', 'check_in', app.local_ts(app.today(), '00:00'::time) - interval '1 hour', -34.603700, -58.381600, 10, 'employee_app', 'e5210000-0000-0000-0000-000000000095', 'valid', null, 0, 150);
 
 -- Supervisión en curso con inicio fuera de zona.
@@ -201,15 +201,15 @@ insert into public.supervision_attendance (
   id, supervision_id, kind, recorded_at, latitude, longitude, accuracy_m,
   geo_status, geo_unvalidated_reason, site_distance_m, geofence_radius_m
 ) values
-  ('e5210000-0000-0000-0000-000000000601', 'e5210000-0000-0000-0000-000000000401', 'check_in', tests.t(0.3), -34.593700, -58.381600, 10, 'outside', null, 1112, 150);
+  ('e5210000-0000-0000-0000-000000000601', 'e5210000-0000-0000-0000-000000000401', 'check_in', tests_0052b.t(0.3), -34.593700, -58.381600, 10, 'outside', null, 1112, 150);
 
 -- correct_attendance_time (B-28) --------------------------------------------------------------------
 
-select tests.as_user('test-db052c-owner@example.com');
+select tests_0052b.as_user('test-db052c-owner@example.com');
 
 select is(
-  (select recorded_at from public.correct_attendance_time('e5210000-0000-0000-0000-000000000501', tests.t(0.5), 'Se olvidó de fichar al llegar')),
-  tests.t(0.5),
+  (select recorded_at from public.correct_attendance_time('e5210000-0000-0000-0000-000000000501', tests_0052b.t(0.5), 'Se olvidó de fichar al llegar')),
+  tests_0052b.t(0.5),
   'correct_attendance_time: el dueño cambia la hora del inicio de A'
 );
 
@@ -220,7 +220,7 @@ select results_eq(
 );
 
 select results_eq(
-  $$select kind::text, old_recorded_at = tests.t(0.25), new_recorded_at = tests.t(0.5), reason, corrected_by
+  $$select kind::text, old_recorded_at = tests_0052b.t(0.25), new_recorded_at = tests_0052b.t(0.5), reason, corrected_by
     from public.attendance_corrections where attendance_record_id = 'e5210000-0000-0000-0000-000000000501'$$,
   $$values ('time'::text, true, true, 'Se olvidó de fichar al llegar'::text, 'e5210000-0000-0000-0000-000000000081'::uuid)$$,
   'attendance_corrections guarda el valor anterior, el nuevo, el motivo y quién corrigió'
@@ -237,7 +237,7 @@ select is(
   'la corrección de hora queda en security_events (actor, empleado afectado y registro)'
 );
 
-select tests.as_user('test-db052c-owner@example.com');
+select tests_0052b.as_user('test-db052c-owner@example.com');
 
 select throws_ok(
   $$select * from public.correct_attendance_time('e5210000-0000-0000-0000-000000000501', app.local_ts(app.today(), '00:00'::time) - interval '1 minute', 'Antes del día')$$,
@@ -252,25 +252,25 @@ select throws_ok(
   'correct_attendance_time: una hora futura = AT_OUT_OF_RANGE'
 );
 select throws_ok(
-  $$select * from public.correct_attendance_time('e5210000-0000-0000-0000-000000000501', tests.t(0.5), 'Igual')$$,
+  $$select * from public.correct_attendance_time('e5210000-0000-0000-0000-000000000501', tests_0052b.t(0.5), 'Igual')$$,
   'P0001',
   'La hora nueva es igual a la actual.',
   'correct_attendance_time: la misma hora = SAME_TIME'
 );
 select throws_ok(
-  $$select * from public.correct_attendance_time('e5210000-0000-0000-0000-000000000501', tests.t(0.9), 'Después del fin')$$,
+  $$select * from public.correct_attendance_time('e5210000-0000-0000-0000-000000000501', tests_0052b.t(0.9), 'Después del fin')$$,
   'P0001',
   'La hora de fin tiene que ser posterior a la de inicio.',
   'correct_attendance_time: un inicio posterior al fin = INVALID_TIME_RANGE'
 );
 select throws_ok(
-  $$select * from public.correct_attendance_time('e5210000-0000-0000-0000-000000000502', tests.t(0.4), 'Antes del inicio')$$,
+  $$select * from public.correct_attendance_time('e5210000-0000-0000-0000-000000000502', tests_0052b.t(0.4), 'Antes del inicio')$$,
   'P0001',
   'La hora de fin tiene que ser posterior a la de inicio.',
   'correct_attendance_time: un fin anterior al inicio = INVALID_TIME_RANGE'
 );
 select throws_ok(
-  $$select * from public.correct_attendance_time('e5210000-0000-0000-0000-000000000503', tests.t(0.2), '   ')$$,
+  $$select * from public.correct_attendance_time('e5210000-0000-0000-0000-000000000503', tests_0052b.t(0.2), '   ')$$,
   'P0001',
   'Indicá el motivo.',
   'correct_attendance_time: sin motivo = REASON_REQUIRED'
@@ -282,7 +282,7 @@ select throws_ok(
   'correct_attendance_time: sin hora = TIME_REQUIRED'
 );
 select throws_ok(
-  $$select * from public.correct_attendance_time('e5210000-0000-0000-0000-0000000009ff', tests.t(0.2), 'No existe')$$,
+  $$select * from public.correct_attendance_time('e5210000-0000-0000-0000-0000000009ff', tests_0052b.t(0.2), 'No existe')$$,
   'P0001',
   'No encontramos ese registro.',
   'correct_attendance_time: registro inexistente = RECORD_NOT_FOUND'
@@ -296,38 +296,38 @@ select is(
 
 -- Un fin también se corrige.
 select is(
-  (select recorded_at from public.correct_attendance_time('e5210000-0000-0000-0000-000000000502', tests.t(0.8), 'Salió más tarde')),
-  tests.t(0.8),
+  (select recorded_at from public.correct_attendance_time('e5210000-0000-0000-0000-000000000502', tests_0052b.t(0.8), 'Salió más tarde')),
+  tests_0052b.t(0.8),
   'correct_attendance_time: el dueño cambia la hora del fin de A'
 );
 
-select tests.as_user('test-db052c-admin@example.com');
+select tests_0052b.as_user('test-db052c-admin@example.com');
 
 select is(
-  (select recorded_at from public.correct_attendance_time('e5210000-0000-0000-0000-000000000503', tests.t(0.2), 'Llegó antes')),
-  tests.t(0.2),
+  (select recorded_at from public.correct_attendance_time('e5210000-0000-0000-0000-000000000503', tests_0052b.t(0.2), 'Llegó antes')),
+  tests_0052b.t(0.2),
   'correct_attendance_time: un administrador con manage_attendance también corrige'
 );
 
-select tests.as_user('test-db052c-admin-sin-cap@example.com');
+select tests_0052b.as_user('test-db052c-admin-sin-cap@example.com');
 select throws_ok(
-  $$select * from public.correct_attendance_time('e5210000-0000-0000-0000-000000000504', tests.t(0.2), 'Sin capacidad')$$,
+  $$select * from public.correct_attendance_time('e5210000-0000-0000-0000-000000000504', tests_0052b.t(0.2), 'Sin capacidad')$$,
   'P0001', 'No tenés permiso para hacer esto.', 'correct_attendance_time: administrador sin manage_attendance = FORBIDDEN'
 );
-select tests.as_user('test-db052c-super@example.com');
+select tests_0052b.as_user('test-db052c-super@example.com');
 select throws_ok(
-  $$select * from public.correct_attendance_time('e5210000-0000-0000-0000-000000000504', tests.t(0.2), 'Supervisor')$$,
+  $$select * from public.correct_attendance_time('e5210000-0000-0000-0000-000000000504', tests_0052b.t(0.2), 'Supervisor')$$,
   'P0001', 'No tenés permiso para hacer esto.', 'correct_attendance_time: supervisor = FORBIDDEN'
 );
-select tests.as_user('test-db052c-emp-c@example.com');
+select tests_0052b.as_user('test-db052c-emp-c@example.com');
 select throws_ok(
-  $$select * from public.correct_attendance_time('e5210000-0000-0000-0000-000000000504', tests.t(0.2), 'Empleado')$$,
+  $$select * from public.correct_attendance_time('e5210000-0000-0000-0000-000000000504', tests_0052b.t(0.2), 'Empleado')$$,
   'P0001', 'No tenés permiso para hacer esto.', 'correct_attendance_time: empleado = FORBIDDEN'
 );
 
 -- override_geo_validation (B-09) --------------------------------------------------------------------
 
-select tests.as_user('test-db052c-admin@example.com');
+select tests_0052b.as_user('test-db052c-admin@example.com');
 
 select results_eq(
   $$select r ->> 'geo_status', (r ->> 'geo_override_at') is not null, r ->> 'geo_override_reason', r ->> 'geo_override_by'
@@ -382,17 +382,17 @@ select results_eq(
   'override_geo_validation: marca el fichaje de una supervisión'
 );
 
-select tests.as_user('test-db052c-admin-sin-cap@example.com');
+select tests_0052b.as_user('test-db052c-admin-sin-cap@example.com');
 select throws_ok(
   $$select * from public.override_geo_validation('attendance', 'e5210000-0000-0000-0000-000000000502', 'Sin capacidad')$$,
   'P0001', 'No tenés permiso para hacer esto.', 'override_geo_validation: administrador sin manage_attendance = FORBIDDEN'
 );
-select tests.as_user('test-db052c-super@example.com');
+select tests_0052b.as_user('test-db052c-super@example.com');
 select throws_ok(
   $$select * from public.override_geo_validation('attendance', 'e5210000-0000-0000-0000-000000000502', 'Supervisor')$$,
   'P0001', 'No tenés permiso para hacer esto.', 'override_geo_validation: supervisor = FORBIDDEN'
 );
-select tests.as_user('test-db052c-emp-a@example.com');
+select tests_0052b.as_user('test-db052c-emp-a@example.com');
 select throws_ok(
   $$select * from public.override_geo_validation('attendance', 'e5210000-0000-0000-0000-000000000502', 'Empleado')$$,
   'P0001', 'No tenés permiso para hacer esto.', 'override_geo_validation: empleado = FORBIDDEN'
@@ -417,7 +417,7 @@ select is(
 
 -- attendance_corrections: quién la lee (B-28, B-40, B-41) -------------------------------------------
 
-select tests.as_user('test-db052c-owner@example.com');
+select tests_0052b.as_user('test-db052c-owner@example.com');
 select cmp_ok(
   (select count(*)::int from public.attendance_corrections where attendance_record_id in (
     'e5210000-0000-0000-0000-000000000501', 'e5210000-0000-0000-0000-000000000502',
@@ -425,25 +425,25 @@ select cmp_ok(
   '=', 5,
   'el dueño lee las cinco correcciones hechas (tres de hora y dos de validación)'
 );
-select tests.as_user('test-db052c-admin-sin-cap@example.com');
+select tests_0052b.as_user('test-db052c-admin-sin-cap@example.com');
 select cmp_ok(
   (select count(*)::int from public.attendance_corrections where attendance_record_id = 'e5210000-0000-0000-0000-000000000501'),
   '=', 1,
   'un administrador lee las correcciones (la lectura no depende de manage_attendance)'
 );
-select tests.as_user('test-db052c-emp-a@example.com');
+select tests_0052b.as_user('test-db052c-emp-a@example.com');
 select is(
   (select count(*)::int from public.attendance_corrections),
   0,
   'el empleado no ve ninguna corrección, ni las de su propio fichaje'
 );
-select tests.as_user('test-db052c-super@example.com');
+select tests_0052b.as_user('test-db052c-super@example.com');
 select is(
   (select count(*)::int from public.attendance_corrections),
   0,
   'el supervisor no ve ninguna corrección'
 );
-select tests.as_user('test-db052c-admin@example.com');
+select tests_0052b.as_user('test-db052c-admin@example.com');
 select throws_ok(
   $$delete from public.attendance_corrections$$, '42501', null, 'nadie borra correcciones: ni un administrador'
 );
@@ -460,7 +460,7 @@ select throws_ok($$select count(*) from public.attendance_corrections$$, '42501'
 
 -- Marca de corrección visible para el empleado, sin motivo ------------------------------------------
 
-select tests.as_user('test-db052c-emp-a@example.com');
+select tests_0052b.as_user('test-db052c-emp-a@example.com');
 
 select results_eq(
   $$select check_in_time_corrected, check_out_time_corrected, check_in_geo_status::text, check_out_geo_status::text,
@@ -470,7 +470,7 @@ select results_eq(
   'v_my_day: A ve «corregido» en inicio y fin, su validación y el radio vigente de la sede'
 );
 
-select tests.as_user('test-db052c-emp-b@example.com');
+select tests_0052b.as_user('test-db052c-emp-b@example.com');
 
 select results_eq(
   $$select check_in_geo_status::text, check_in_geo_overridden, check_in_time_corrected, check_out_geo_status::text
@@ -479,7 +479,7 @@ select results_eq(
   'v_my_day: B ve su fichaje fuera de zona con las marcas de validación corregida y de hora corregida'
 );
 
-select tests.as_user('test-db052c-emp-c@example.com');
+select tests_0052b.as_user('test-db052c-emp-c@example.com');
 
 select results_eq(
   $$select site_geofence_radius_m, check_in_geo_status::text, check_in_geo_reason::text
@@ -496,7 +496,7 @@ select is(
 
 -- Planilla (v_assignments_board) -----------------------------------------------------------------
 
-select tests.as_user('test-db052c-admin@example.com');
+select tests_0052b.as_user('test-db052c-admin@example.com');
 
 select results_eq(
   $$select check_in_geo_status::text, check_out_geo_status::text, check_in_distance_m, check_out_distance_m,
@@ -533,7 +533,7 @@ select results_eq(
   'v_supervisions_admin: la supervisión trae la validación y la marca de corrección'
 );
 
-select tests.as_user('test-db052c-super@example.com');
+select tests_0052b.as_user('test-db052c-super@example.com');
 
 select results_eq(
   $$select check_in_geo_status::text, check_in_distance_m, check_in_geo_overridden, site_geofence_radius_m, geofence_max_accuracy_m
@@ -544,7 +544,7 @@ select results_eq(
 
 -- set_geofence_radius (B-02) ---------------------------------------------------------------------------
 
-select tests.as_user('test-db052c-owner@example.com');
+select tests_0052b.as_user('test-db052c-owner@example.com');
 
 select is(
   (select geofence_radius_m from public.set_geofence_radius(200)),
@@ -552,7 +552,7 @@ select is(
   'set_geofence_radius: el dueño cambia el radio general'
 );
 
-select tests.as_user('test-db052c-admin-sin-cap@example.com');
+select tests_0052b.as_user('test-db052c-admin-sin-cap@example.com');
 
 select is(
   (select geofence_radius_m from public.set_geofence_radius(250)),
@@ -564,9 +564,9 @@ select throws_ok($$select * from public.set_geofence_radius(49)$$, 'P0001', 'El 
 select throws_ok($$select * from public.set_geofence_radius(1001)$$, 'P0001', 'El radio tiene que estar entre 50 y 1000 metros.', 'set_geofence_radius: 1001 = RADIUS_OUT_OF_RANGE');
 select throws_ok($$select * from public.set_geofence_radius(null)$$, 'P0001', 'El radio tiene que estar entre 50 y 1000 metros.', 'set_geofence_radius: nulo = RADIUS_OUT_OF_RANGE');
 
-select tests.as_user('test-db052c-super@example.com');
+select tests_0052b.as_user('test-db052c-super@example.com');
 select throws_ok($$select * from public.set_geofence_radius(100)$$, 'P0001', 'No tenés permiso para hacer esto.', 'set_geofence_radius: supervisor = FORBIDDEN');
-select tests.as_user('test-db052c-emp-a@example.com');
+select tests_0052b.as_user('test-db052c-emp-a@example.com');
 select throws_ok($$select * from public.set_geofence_radius(100)$$, 'P0001', 'No tenés permiso para hacer esto.', 'set_geofence_radius: empleado = FORBIDDEN');
 with u as (update public.company_settings set geofence_radius_m = 60 where id = 1 returning 1)
 select is(
@@ -592,12 +592,12 @@ select is(
 
 -- Radio propio de una sede: update directo bajo RLS + rastro ---------------------------------------------
 
-select tests.as_user('test-db052c-admin@example.com');
+select tests_0052b.as_user('test-db052c-admin@example.com');
 select lives_ok(
   $$update public.sites set geofence_radius_m = 80 where id = 'e5210000-0000-0000-0000-000000000011'$$,
   'un administrador fija el radio propio de una sede'
 );
-select tests.as_user('test-db052c-super@example.com');
+select tests_0052b.as_user('test-db052c-super@example.com');
 with u as (update public.sites set geofence_radius_m = 90 where id = 'e5210000-0000-0000-0000-000000000011' returning 1)
 select is(
   (select count(*)::int from u),
@@ -620,7 +620,7 @@ select is(
 set local role postgres;
 update public.company_settings set location_consent_updated_at = null where id = 1;
 
-select tests.as_user('test-db052c-admin@example.com');
+select tests_0052b.as_user('test-db052c-admin@example.com');
 select throws_ok(
   $$update public.company_settings set location_consent_text = 'Texto del administrador' where id = 1$$,
   'P0001',
@@ -628,7 +628,7 @@ select throws_ok(
   'el administrador sigue sin poder cambiar el texto de consentimiento'
 );
 
-select tests.as_user('test-db052c-owner@example.com');
+select tests_0052b.as_user('test-db052c-owner@example.com');
 select lives_ok(
   $$update public.company_settings set support_phone = support_phone where id = 1$$,
   'el dueño guarda la configuración sin tocar el consentimiento'
@@ -654,7 +654,7 @@ set local role postgres;
 update public.company_settings set geofence_radius_m = 150 where id = 1;
 update public.sites set geofence_radius_m = null where id = 'e5210000-0000-0000-0000-000000000011';
 
-select tests.as_user('test-db052c-owner@example.com');
+select tests_0052b.as_user('test-db052c-owner@example.com');
 
 select is(
   (select count(*)::int from public.v_presence_today
@@ -704,21 +704,21 @@ select results_eq(
   'v_presence_today: las dos sedes con turno hoy, con el radio vigente de cada una'
 );
 
-select tests.as_user('test-db052c-admin-sin-cap@example.com');
+select tests_0052b.as_user('test-db052c-admin-sin-cap@example.com');
 select is(
   (select count(*)::int from public.v_presence_today where client_id = 'e5210000-0000-0000-0000-000000000001'),
   6,
   'un administrador ve las mismas seis filas (tres empleados, un supervisor y dos sedes)'
 );
 
-select tests.as_user('test-db052c-super@example.com');
+select tests_0052b.as_user('test-db052c-super@example.com');
 select is(
   (select count(*)::int from public.v_presence_today),
   0,
   'el supervisor no ve v_presence_today, ni siquiera su propia supervisión'
 );
 
-select tests.as_user('test-db052c-emp-b@example.com');
+select tests_0052b.as_user('test-db052c-emp-b@example.com');
 select is(
   (select count(*)::int from public.v_presence_today),
   0,

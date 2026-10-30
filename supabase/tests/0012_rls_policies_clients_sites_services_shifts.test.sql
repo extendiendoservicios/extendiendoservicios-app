@@ -14,10 +14,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0012c;
+grant usage on schema tests_0012c to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0012c.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -28,7 +28,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0012c.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -43,15 +43,15 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0012c.as_user(text) to authenticated, anon;
 
 select plan(23);
 
 -- Fixtures: dos clientes (uno con un turno compartido por S/E, otro sin relación con nadie) -------
 
-insert into public.clients (id, legal_name) values
-  ('c2200000-0000-0000-0000-000000000001', 'Cliente con turno'),
-  ('c2200000-0000-0000-0000-000000000002', 'Cliente sin relación');
+insert into public.clients (id, legal_name, calendar_color) values
+  ('c2200000-0000-0000-0000-000000000001', 'Cliente con turno', 0),
+  ('c2200000-0000-0000-0000-000000000002', 'Cliente sin relación', 0);
 
 insert into public.client_contacts (id, client_id, name, is_primary) values
   ('c2200000-0000-0000-0000-000000000005', 'c2200000-0000-0000-0000-000000000001', 'Contacto uno', true),
@@ -98,7 +98,7 @@ values ('c2200000-0000-0000-0000-000000000041', 'c2200000-0000-0000-0000-0000000
 -- 1. clients
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db014b-owner@example.com');
+select tests_0012c.as_user('test-db014b-owner@example.com');
 select is(
   (select coalesce(array_agg(id order by id), array[]::uuid[]) from public.clients
     where id = any(array['c2200000-0000-0000-0000-000000000001'::uuid, 'c2200000-0000-0000-0000-000000000002'])),
@@ -106,7 +106,7 @@ select is(
   'clients: owner ve los dos clientes del fixture'
 );
 
-select tests.as_user('test-db014b-supervisora@example.com');
+select tests_0012c.as_user('test-db014b-supervisora@example.com');
 select is(
   (select coalesce(array_agg(id order by id), array[]::uuid[]) from public.clients
     where id = any(array['c2200000-0000-0000-0000-000000000001'::uuid, 'c2200000-0000-0000-0000-000000000002'])),
@@ -114,7 +114,7 @@ select is(
   'clients: supervisora ve solo el cliente de su turno supervisado'
 );
 
-select tests.as_user('test-db014b-empleado@example.com');
+select tests_0012c.as_user('test-db014b-empleado@example.com');
 select is(
   (select coalesce(array_agg(id order by id), array[]::uuid[]) from public.clients
     where id = any(array['c2200000-0000-0000-0000-000000000001'::uuid, 'c2200000-0000-0000-0000-000000000002'])),
@@ -128,7 +128,7 @@ select is(
   'v_clients_basic: empleado ve solo el nombre del cliente de su turno'
 );
 
-select tests.as_user('test-db014b-empleado-afuera@example.com');
+select tests_0012c.as_user('test-db014b-empleado-afuera@example.com');
 select is(
   (select count(*)::int from public.clients
     where id = any(array['c2200000-0000-0000-0000-000000000001'::uuid, 'c2200000-0000-0000-0000-000000000002'])),
@@ -143,7 +143,7 @@ set local role postgres;
 -- ver la nota de arquitectura al principio de 0012_rls_policies.sql)
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db014b-supervisora@example.com');
+select tests_0012c.as_user('test-db014b-supervisora@example.com');
 select is(
   (select coalesce(array_agg(id order by id), array[]::uuid[]) from public.client_contacts
     where id = any(array['c2200000-0000-0000-0000-000000000005'::uuid, 'c2200000-0000-0000-0000-000000000006'])),
@@ -151,7 +151,7 @@ select is(
   'client_contacts: supervisora ve solo el contacto del cliente de su turno supervisado'
 );
 
-select tests.as_user('test-db014b-empleado@example.com');
+select tests_0012c.as_user('test-db014b-empleado@example.com');
 select is(
   (select count(*)::int from public.client_contacts
     where id = any(array['c2200000-0000-0000-0000-000000000005'::uuid, 'c2200000-0000-0000-0000-000000000006'])),
@@ -165,7 +165,7 @@ set local role postgres;
 -- 3. sites
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db014b-owner@example.com');
+select tests_0012c.as_user('test-db014b-owner@example.com');
 select is(
   (select coalesce(array_agg(id order by id), array[]::uuid[]) from public.sites
     where id = any(array['c2200000-0000-0000-0000-000000000011'::uuid, 'c2200000-0000-0000-0000-000000000012'])),
@@ -173,7 +173,7 @@ select is(
   'sites: owner ve las dos sedes del fixture'
 );
 
-select tests.as_user('test-db014b-supervisora@example.com');
+select tests_0012c.as_user('test-db014b-supervisora@example.com');
 select is(
   (select coalesce(array_agg(id order by id), array[]::uuid[]) from public.sites
     where id = any(array['c2200000-0000-0000-0000-000000000011'::uuid, 'c2200000-0000-0000-0000-000000000012'])),
@@ -181,7 +181,7 @@ select is(
   'sites: supervisora ve solo la sede de su turno supervisado'
 );
 
-select tests.as_user('test-db014b-empleado@example.com');
+select tests_0012c.as_user('test-db014b-empleado@example.com');
 select is(
   (select coalesce(array_agg(id order by id), array[]::uuid[]) from public.sites
     where id = any(array['c2200000-0000-0000-0000-000000000011'::uuid, 'c2200000-0000-0000-0000-000000000012'])),
@@ -189,7 +189,7 @@ select is(
   'sites: empleado ve solo la sede de su turno'
 );
 
-select tests.as_user('test-db014b-empleado-afuera@example.com');
+select tests_0012c.as_user('test-db014b-empleado-afuera@example.com');
 select is(
   (select count(*)::int from public.sites
     where id = any(array['c2200000-0000-0000-0000-000000000011'::uuid, 'c2200000-0000-0000-0000-000000000012'])),
@@ -213,28 +213,28 @@ set local role postgres;
 -- 4. services (04 sección 7.2: "O, A. | O, A." -- sin acceso S ni E)
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db014b-owner@example.com');
+select tests_0012c.as_user('test-db014b-owner@example.com');
 select is(
   (select count(*)::int from public.services where id = 'c2200000-0000-0000-0000-000000000021'),
   1,
   'services: owner ve el servicio'
 );
 
-select tests.as_user('test-db014b-admin@example.com');
+select tests_0012c.as_user('test-db014b-admin@example.com');
 select is(
   (select count(*)::int from public.services where id = 'c2200000-0000-0000-0000-000000000021'),
   1,
   'services: admin ve el servicio'
 );
 
-select tests.as_user('test-db014b-supervisora@example.com');
+select tests_0012c.as_user('test-db014b-supervisora@example.com');
 select is(
   (select count(*)::int from public.services where id = 'c2200000-0000-0000-0000-000000000021'),
   0,
   'services: la supervisora no ve servicios, aunque supervise un turno de ese cliente'
 );
 
-select tests.as_user('test-db014b-empleado@example.com');
+select tests_0012c.as_user('test-db014b-empleado@example.com');
 select is(
   (select count(*)::int from public.services where id = 'c2200000-0000-0000-0000-000000000021'),
   0,
@@ -243,7 +243,7 @@ select is(
 
 set local role postgres;
 
-select tests.as_user('test-db014b-admin@example.com');
+select tests_0012c.as_user('test-db014b-admin@example.com');
 select lives_ok(
   $$update public.services set notes = 'ajustado por admin' where id = 'c2200000-0000-0000-0000-000000000021'$$,
   'services: admin puede escribir'
@@ -258,7 +258,7 @@ set local role postgres;
 insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_time, required_staff)
 values ('c2200000-0000-0000-0000-000000000042', 'c2200000-0000-0000-0000-000000000002', 'c2200000-0000-0000-0000-000000000012', current_date, '08:00', '16:00', 1);
 
-select tests.as_user('test-db014b-owner@example.com');
+select tests_0012c.as_user('test-db014b-owner@example.com');
 select is(
   (select coalesce(array_agg(id order by id), array[]::uuid[]) from public.shifts
     where id = any(array['c2200000-0000-0000-0000-000000000041'::uuid, 'c2200000-0000-0000-0000-000000000042'])),
@@ -266,7 +266,7 @@ select is(
   'shifts: owner ve los dos turnos del fixture'
 );
 
-select tests.as_user('test-db014b-supervisora@example.com');
+select tests_0012c.as_user('test-db014b-supervisora@example.com');
 select is(
   (select coalesce(array_agg(id order by id), array[]::uuid[]) from public.shifts
     where id = any(array['c2200000-0000-0000-0000-000000000041'::uuid, 'c2200000-0000-0000-0000-000000000042'])),
@@ -274,7 +274,7 @@ select is(
   'shifts: supervisora ve solo el turno que supervisa'
 );
 
-select tests.as_user('test-db014b-empleado@example.com');
+select tests_0012c.as_user('test-db014b-empleado@example.com');
 select is(
   (select coalesce(array_agg(id order by id), array[]::uuid[]) from public.shifts
     where id = any(array['c2200000-0000-0000-0000-000000000041'::uuid, 'c2200000-0000-0000-0000-000000000042'])),
@@ -282,7 +282,7 @@ select is(
   'shifts: empleado ve solo el turno donde tiene asignación'
 );
 
-select tests.as_user('test-db014b-empleado-afuera@example.com');
+select tests_0012c.as_user('test-db014b-empleado-afuera@example.com');
 select is(
   (select count(*)::int from public.shifts
     where id = any(array['c2200000-0000-0000-0000-000000000041'::uuid, 'c2200000-0000-0000-0000-000000000042'])),
@@ -304,7 +304,7 @@ select throws_ok(
 
 set local role postgres;
 
-select tests.as_user('test-db014b-admin@example.com');
+select tests_0012c.as_user('test-db014b-admin@example.com');
 
 prepare shifts_insert_direct_admin as
   insert into public.shifts (client_id, site_id, shift_date, start_time, end_time, required_staff)

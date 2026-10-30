@@ -20,10 +20,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0023b;
+grant usage on schema tests_0023b to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0023b.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -34,7 +34,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0023b.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -49,7 +49,7 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0023b.as_user(text) to authenticated, anon;
 
 select plan(17);
 
@@ -63,9 +63,9 @@ select has_function('public', 'generate_shifts', array['int', 'int'], 'existe pu
 -- E (en el cliente suspendido, no debe generar nada), F (vigencia que no cubre marzo 2199).
 -- ---------------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('e2301000-0000-0000-0000-000000000001', 'Cliente activo de generación', 'active'),
-  ('e2301000-0000-0000-0000-000000000002', 'Cliente suspendido de generación', 'suspended');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('e2301000-0000-0000-0000-000000000001', 'Cliente activo de generación', 'active', 0),
+  ('e2301000-0000-0000-0000-000000000002', 'Cliente suspendido de generación', 'suspended', 0);
 
 insert into public.sites (id, client_id, name, address, status) values
   ('e2301000-0000-0000-0000-000000000011', 'e2301000-0000-0000-0000-000000000001', 'Sede activa', 'Dirección 1', 'active'),
@@ -134,7 +134,7 @@ insert into public.shifts (id, service_id, client_id, site_id, shift_date, start
 -- Permisos --------------------------------------------------------------------------------------
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db023gen-supervisora@example.com');
+select tests_0023b.as_user('test-db023gen-supervisora@example.com');
 
 prepare generate_as_supervisor as select public.generate_shifts(2199, 3);
 
@@ -143,7 +143,7 @@ select throws_ok(
   'generate_shifts: un supervisor no puede llamarla (FORBIDDEN)'
 );
 
-select tests.as_user('test-db023gen-empleado@example.com');
+select tests_0023b.as_user('test-db023gen-empleado@example.com');
 
 prepare generate_as_employee as select public.generate_shifts(2199, 3);
 
@@ -152,7 +152,7 @@ select throws_ok(
   'generate_shifts: un empleado no puede llamarla (FORBIDDEN)'
 );
 
-select tests.as_user('test-db023gen-admin-sin-cap@example.com');
+select tests_0023b.as_user('test-db023gen-admin-sin-cap@example.com');
 
 prepare generate_as_admin_no_cap as select public.generate_shifts(2199, 3);
 
@@ -192,7 +192,7 @@ select is(
 create temporary table tests_e2301000_before on commit drop as
   select count(*)::int as n from public.shifts where shift_date between '2199-03-01' and '2199-03-31' and deleted_at is null;
 
-select tests.as_user('test-db023gen-admin-con-cap@example.com');
+select tests_0023b.as_user('test-db023gen-admin-con-cap@example.com');
 
 -- Servicio A: 8 días lunes/miércoles, uno ya existe (2199-03-04, modificado a mano) -> 7 creados,
 -- 1 omitido (skipped). Servicio B: 31 días, works_on_holidays = false, 1 feriado (2199-03-11)
@@ -279,7 +279,7 @@ select is(
 -- Segunda corrida: idempotente -- no crea nada -----------------------------------------------------
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db023gen-owner@example.com');
+select tests_0023b.as_user('test-db023gen-owner@example.com');
 
 -- Esta aserción SÍ es exacta e independiente de los datos reales del sistema: una corrida
 -- inmediatamente después de otra siempre tiene que crear cero turnos (idempotencia, P-044,

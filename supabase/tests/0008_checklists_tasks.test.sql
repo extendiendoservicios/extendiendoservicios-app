@@ -89,7 +89,7 @@ select has_index('public', 'shift_tasks', 'shift_tasks_shift_id_position_idx', '
 
 -- Fixtures: un cliente con dos sedes, y un turno de esa sede ---------------------------------------
 
-insert into public.clients (id, legal_name) values ('30000000-0000-0000-0000-000000000001', 'Cliente de checklists');
+insert into public.clients (id, legal_name, calendar_color) values ('30000000-0000-0000-0000-000000000001', 'Cliente de checklists', 0);
 insert into public.sites (id, client_id, name, address) values
   ('30000000-0000-0000-0000-000000000011', '30000000-0000-0000-0000-000000000001', 'Sede Uno', 'Dirección uno'),
   ('30000000-0000-0000-0000-000000000012', '30000000-0000-0000-0000-000000000001', 'Sede Dos', 'Dirección dos');
@@ -143,7 +143,7 @@ select lives_ok(
 
 -- checklist_templates: la FK compuesta rechaza una sede que no pertenece al cliente indicado -----
 
-insert into public.clients (id, legal_name) values ('30000000-0000-0000-0000-000000000002', 'Otro cliente');
+insert into public.clients (id, legal_name, calendar_color) values ('30000000-0000-0000-0000-000000000002', 'Otro cliente', 0);
 
 prepare checklist_template_site_client_mismatch as
   insert into public.checklist_templates (client_id, site_id, name)
