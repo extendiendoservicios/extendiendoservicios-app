@@ -430,6 +430,7 @@ export type Database = {
           created_by: string | null
           employee_id: string
           end_time: string | null
+          from_fixed: boolean
           id: string
           notes: string | null
           removed_at: string | null
@@ -448,6 +449,7 @@ export type Database = {
           created_by?: string | null
           employee_id: string
           end_time?: string | null
+          from_fixed?: boolean
           id?: string
           notes?: string | null
           removed_at?: string | null
@@ -466,6 +468,7 @@ export type Database = {
           created_by?: string | null
           employee_id?: string
           end_time?: string | null
+          from_fixed?: boolean
           id?: string
           notes?: string | null
           removed_at?: string | null
@@ -1236,6 +1239,82 @@ export type Database = {
           },
         ]
       }
+      client_categories: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_categories_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_categories_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "client_categories_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "client_categories_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_categories_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "client_categories_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+        ]
+      }
       client_contacts: {
         Row: {
           client_id: string
@@ -1342,6 +1421,7 @@ export type Database = {
         Row: {
           admin_address: string | null
           calendar_color: number
+          category_id: string | null
           created_at: string
           created_by: string | null
           cuit: string | null
@@ -1360,6 +1440,7 @@ export type Database = {
         Insert: {
           admin_address?: string | null
           calendar_color?: number
+          category_id?: string | null
           created_at?: string
           created_by?: string | null
           cuit?: string | null
@@ -1378,6 +1459,7 @@ export type Database = {
         Update: {
           admin_address?: string | null
           calendar_color?: number
+          category_id?: string | null
           created_at?: string
           created_by?: string | null
           cuit?: string | null
@@ -1394,6 +1476,13 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "clients_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "client_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "clients_created_by_fkey"
             columns: ["created_by"]
@@ -5376,6 +5465,8 @@ export type Database = {
           active_services_count: number | null
           admin_address: string | null
           calendar_color: number | null
+          category_id: string | null
+          category_name: string | null
           created_at: string | null
           created_by: string | null
           cuit: string | null
@@ -5393,6 +5484,13 @@ export type Database = {
           updated_by: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "clients_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "client_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "clients_created_by_fkey"
             columns: ["created_by"]
@@ -5702,13 +5800,6 @@ export type Database = {
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_out_recorded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -5718,8 +5809,8 @@ export type Database = {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_out_recorded_by"]
             isOneToOne: false
-            referencedRelation: "v_announcement_recipients"
-            referencedColumns: ["profile_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
@@ -5731,13 +5822,20 @@ export type Database = {
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_out_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "v_supervisor_status"
             referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_in_recorded_by"]
+            columns: ["check_out_recorded_by"]
             isOneToOne: false
             referencedRelation: "v_supervisor_status"
             referencedColumns: ["supervisor_id"]
@@ -7099,12 +7197,18 @@ export type Database = {
           ended_at: string | null
           events: Json | null
           id: string | null
+          is_open: boolean | null
+          list_status: string | null
+          open_pause_event_id: string | null
+          open_supervision_id: string | null
           pause_minutes: number | null
           pauses: Json | null
           started_at: string | null
           state: string | null
           supervisions: Json | null
           supervisions_count: number | null
+          supervisor_avatar_path: string | null
+          supervisor_employee_number: number | null
           supervisor_first_name: string | null
           supervisor_id: string | null
           supervisor_last_name: string | null
@@ -7333,10 +7437,24 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_close_workday_pause: {
+        Args: { p_at?: string; p_event_id: string; p_reason: string }
+        Returns: Json
+      }
+      admin_correct_supervision_time: {
+        Args: {
+          p_end_at?: string
+          p_reason: string
+          p_start_at?: string
+          p_supervision_id: string
+        }
+        Returns: Json
+      }
       admin_correct_workday_event: {
         Args: {
           p_event_id: string
           p_new_time?: string
+          p_pause_reason?: string
           p_reason: string
           p_remove?: boolean
         }
@@ -7352,6 +7470,10 @@ export type Database = {
           p_profile_id: string
           p_roles: Database["public"]["Enums"]["app_role"][]
         }
+        Returns: Json
+      }
+      admin_end_workday: {
+        Args: { p_at?: string; p_reason: string; p_workday_id: string }
         Returns: Json
       }
       admin_find_orphan_account: { Args: { p_email: string }; Returns: string }
@@ -7406,6 +7528,10 @@ export type Database = {
       admin_revoke_user_sessions: {
         Args: { p_profile_id: string }
         Returns: undefined
+      }
+      apply_service_fixed_employees: {
+        Args: { p_from_date: string; p_service_id: string }
+        Returns: Json
       }
       archive_announcement: {
         Args: { p_id: string }
@@ -7995,6 +8121,52 @@ export type Database = {
         Args: { p_reason: string; p_record_id: string; p_record_type: string }
         Returns: Json
       }
+      owner_delete_client: {
+        Args: { p_client_id: string; p_confirm_name: string }
+        Returns: Json
+      }
+      owner_delete_employee: {
+        Args: { p_confirm_name: string; p_employee_id: string }
+        Returns: Json
+      }
+      owner_delete_preview_client: {
+        Args: { p_client_id: string }
+        Returns: Json
+      }
+      owner_delete_preview_employee: {
+        Args: { p_employee_id: string }
+        Returns: Json
+      }
+      owner_delete_preview_service: {
+        Args: { p_service_id: string }
+        Returns: Json
+      }
+      owner_delete_preview_service_shifts: {
+        Args: { p_from_date: string; p_service_id: string }
+        Returns: Json
+      }
+      owner_delete_preview_shift: {
+        Args: { p_shift_id: string }
+        Returns: Json
+      }
+      owner_delete_preview_site: { Args: { p_site_id: string }; Returns: Json }
+      owner_delete_service: {
+        Args: { p_confirm_name: string; p_service_id: string }
+        Returns: Json
+      }
+      owner_delete_service_shifts: {
+        Args: {
+          p_confirm_name: string
+          p_from_date: string
+          p_service_id: string
+        }
+        Returns: Json
+      }
+      owner_delete_shift: { Args: { p_shift_id: string }; Returns: Json }
+      owner_delete_site: {
+        Args: { p_confirm_name: string; p_site_id: string }
+        Returns: Json
+      }
       pause_workday: {
         Args: {
           p_accuracy?: number
@@ -8179,6 +8351,7 @@ export type Database = {
           created_by: string | null
           employee_id: string
           end_time: string | null
+          from_fixed: boolean
           id: string
           notes: string | null
           removed_at: string | null
@@ -8199,6 +8372,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      remove_client_category: { Args: { p_id: string }; Returns: Json }
       remove_shift_media: {
         Args: { p_media_id: string }
         Returns: {
@@ -8258,6 +8432,25 @@ export type Database = {
       reopen_workday: {
         Args: { p_accuracy?: number; p_lat?: number; p_lng?: number }
         Returns: Json
+      }
+      reorder_client_categories: {
+        Args: { p_ids: string[] }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string | null
+          updated_by: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "client_categories"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       report_supply_shortage: {
         Args: {
@@ -8377,6 +8570,7 @@ export type Database = {
           created_by: string | null
           employee_id: string
           end_time: string | null
+          from_fixed: boolean
           id: string
           notes: string | null
           removed_at: string | null
@@ -8747,6 +8941,7 @@ export type Database = {
           created_by: string | null
           employee_id: string
           end_time: string | null
+          from_fixed: boolean
           id: string
           notes: string | null
           removed_at: string | null
@@ -8910,6 +9105,25 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      upsert_client_category: {
+        Args: { p_id?: string; p_name: string; p_sort_order?: number }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "client_categories"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       upsert_supply: {
         Args: {
           p_category_id: string
@@ -9044,6 +9258,7 @@ export type Database = {
         | "supply_price_changed"
         | "credentials_viewed"
         | "password_changed_by_user"
+        | "record_deleted"
       service_status: "active" | "paused" | "ended"
       shift_status:
         | "scheduled"
@@ -9282,6 +9497,7 @@ export const Constants = {
         "supply_price_changed",
         "credentials_viewed",
         "password_changed_by_user",
+        "record_deleted",
       ],
       service_status: ["active", "paused", "ended"],
       shift_status: [

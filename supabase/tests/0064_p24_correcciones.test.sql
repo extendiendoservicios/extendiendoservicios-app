@@ -85,8 +85,8 @@ select ok(
   'app.remove_supervision_workday_events no la ejecuta ni authenticated ni anon'
 );
 select ok(
-  not has_function_privilege('anon', 'public.admin_correct_workday_event(uuid, text, timestamptz, boolean)', 'execute')
-  and has_function_privilege('authenticated', 'public.admin_correct_workday_event(uuid, text, timestamptz, boolean)', 'execute')
+  not has_function_privilege('anon', 'public.admin_correct_workday_event(uuid, text, timestamptz, boolean, text)', 'execute')
+  and has_function_privilege('authenticated', 'public.admin_correct_workday_event(uuid, text, timestamptz, boolean, text)', 'execute')
   and not has_function_privilege('anon', 'public.cancel_supervision(uuid, text)', 'execute')
   and has_function_privilege('authenticated', 'public.cancel_supervision(uuid, text)', 'execute')
   and not has_function_privilege('anon', 'public.discard_supervision(uuid)', 'execute')
