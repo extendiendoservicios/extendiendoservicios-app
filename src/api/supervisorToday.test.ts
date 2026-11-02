@@ -127,8 +127,6 @@ describe('fetchSupervisorToday', () => {
         data: [
           {
             ...ROW,
-            site_contact_name: 'Rosa Pérez',
-            site_contact_phone: '11 5555-1234',
             access_instructions: 'Timbre 3B',
             building_hours: 'Lunes a viernes de 7 a 20',
             restrictions_notes: 'No mover los equipos',
@@ -142,8 +140,6 @@ describe('fetchSupervisorToday', () => {
     )
     const shifts = await fetchSupervisorToday()
     expect(shifts[0]).toMatchObject({
-      siteContactName: 'Rosa Pérez',
-      siteContactPhone: '11 5555-1234',
       accessInstructions: 'Timbre 3B',
       buildingHours: 'Lunes a viernes de 7 a 20',
       restrictionsNotes: 'No mover los equipos',
@@ -151,8 +147,6 @@ describe('fetchSupervisorToday', () => {
       photosNotAllowed: true,
     })
     expect(shifts[1]).toMatchObject({
-      siteContactName: null,
-      siteContactPhone: null,
       accessInstructions: null,
       buildingHours: null,
       restrictionsNotes: null,

@@ -108,8 +108,6 @@ export default function SupervisionDetailPage() {
     city: supervision.siteCity,
     latitude: supervision.siteLatitude,
     longitude: supervision.siteLongitude,
-    contactName: supervision.siteContactName,
-    contactPhone: supervision.siteContactPhone,
     accessInstructions: supervision.accessInstructions,
     buildingHours: supervision.buildingHours,
     phoneRestricted: supervision.phoneRestricted,
