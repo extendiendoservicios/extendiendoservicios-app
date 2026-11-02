@@ -10,11 +10,10 @@ import { Combobox } from '@/components/Combobox'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
-import { useEmployeesQuery } from '@/features/employees/queries'
 import {
-  useClientFilterOptionsQuery,
-  useSitesMapQuery,
-} from '@/features/sites/queries'
+  useEmployeesQuery,
+  useLeavesInRangeQuery,
+} from '@/features/employees/queries'
 import {
   addWeeksToIsoDate,
   startOfWeekIso,
@@ -25,6 +24,19 @@ import {
   legendClientsOf,
 } from '@/features/planning/grouping'
 import { useColorBy } from '@/features/planning/colorBy'
+import {
+  describeCalendarFilters,
+  leaveEmployeesByDate,
+  toBoardFilters,
+  visibleLeaves,
+} from '@/features/planning/calendarFilters'
+import { useCalendarFilters } from '@/features/planning/useCalendarFilters'
+import {
+  CalendarFiltersBar,
+  useCalendarFilterOptions,
+} from '@/features/planning/components/CalendarFiltersBar'
+import { CalendarPrintButton } from '@/features/planning/components/CalendarPrintButton'
+import { WeekPrint } from '@/features/planning/components/CalendarPrintViews'
 import { clientChipColors } from '@/features/planning/clientColors'
 import { ColorByToggle } from '@/features/planning/components/ColorByToggle'
 import {
@@ -32,7 +44,10 @@ import {
   StatusDotLegend,
 } from '@/features/planning/components/ColorLegends'
 import { StatusDot } from '@/features/planning/components/ShiftChip'
-import { useAssignmentsBoardRangeQuery } from '@/features/planning/queries'
+import {
+  useAssignmentsBoardRangeQuery,
+  useShiftsBoardRangeQuery,
+} from '@/features/planning/queries'
 import { formatDateOnly } from '@/features/settings/dateOnly'
 import { formatShiftRange } from '@/features/shifts/openEnded'
 
@@ -103,8 +118,9 @@ function WeekGrid() {
   const today = todayInBuenosAires()
 
   const [weekStart, setWeekStart] = useState(() => startOfWeekIso(today))
-  const [clientId, setClientId] = useState<string>('all')
-  const [siteId, setSiteId] = useState<string>('all')
+  // OD-12: los filtros viven en la URL y son los mismos en mes, semana y día.
+  const [filters, setFilters] = useCalendarFilters()
+  const { names: filterNames } = useCalendarFilterOptions(filters)
   const [text, setText] = useState('')
   const debouncedText = useDebouncedValue(text)
   const [mobileEmployeeId, setMobileEmployeeId] = useState<string>('')
@@ -119,24 +135,63 @@ function WeekGrid() {
   const employees = useMemo(
     () =>
       (employeesQuery.data ?? []).filter(
-        (employee) => employee.effectiveStatus !== 'terminated',
+        (employee) =>
+          employee.effectiveStatus !== 'terminated' &&
+          (filters.employeeId === 'all' ||
+            employee.profileId === filters.employeeId),
       ),
-    [employeesQuery.data],
+    [employeesQuery.data, filters.employeeId],
   )
 
   const assignmentsQuery = useAssignmentsBoardRangeQuery(
     weekDays[0] as string,
     weekDays[6] as string,
     {
-      clientId: clientId !== 'all' ? clientId : undefined,
-      siteId: siteId !== 'all' ? siteId : undefined,
+      clientId: filters.clientId !== 'all' ? filters.clientId : undefined,
+      siteId: filters.siteId !== 'all' ? filters.siteId : undefined,
+      employeeId: filters.employeeId !== 'all' ? filters.employeeId : undefined,
       // La vista trae también las quitadas (quedan para historia).
       onlyActive: true,
     },
   )
+  // El estado es el del turno (`display_status`, con los derivados «Sin
+  // cubrir» y «Próximo»): la vista de asignaciones no lo trae, así que se
+  // pide el tablero de turnos con los mismos filtros y se dejan las
+  // asignaciones de esos turnos.
+  const statusActive = filters.status !== 'all'
+  const statusShiftsQuery = useShiftsBoardRangeQuery(
+    weekDays[0] as string,
+    weekDays[6] as string,
+    toBoardFilters(filters),
+    statusActive,
+  )
+  const statusShiftIds = useMemo(
+    () => new Set((statusShiftsQuery.data ?? []).map((shift) => shift.id)),
+    [statusShiftsQuery.data],
+  )
+  const visibleAssignments = useMemo(
+    () =>
+      statusActive
+        ? (assignmentsQuery.data ?? []).filter((assignment) =>
+            statusShiftIds.has(assignment.shiftId),
+          )
+        : (assignmentsQuery.data ?? []),
+    [assignmentsQuery.data, statusActive, statusShiftIds],
+  )
   const assignmentsByEmployee = useMemo(
-    () => groupAssignmentsByEmployeeAndDate(assignmentsQuery.data ?? []),
-    [assignmentsQuery.data],
+    () => groupAssignmentsByEmployeeAndDate(visibleAssignments),
+    [visibleAssignments],
+  )
+
+  // OD-14: licencias de la semana por día.
+  const leavesQuery = useLeavesInRangeQuery(weekDays[0], weekDays[6])
+  const leaveIdsByDate = useMemo(
+    () =>
+      leaveEmployeesByDate(
+        visibleLeaves(leavesQuery.data ?? [], filters),
+        weekDays,
+      ),
+    [leavesQuery.data, filters, weekDays],
   )
 
   // Leyenda: todos los clientes de la semana, aunque el filtro deje uno solo.
@@ -144,7 +199,8 @@ function WeekGrid() {
     weekDays[0] as string,
     weekDays[6] as string,
     {
-      siteId: siteId !== 'all' ? siteId : undefined,
+      siteId: filters.siteId !== 'all' ? filters.siteId : undefined,
+      employeeId: filters.employeeId !== 'all' ? filters.employeeId : undefined,
       onlyActive: true,
     },
     colorBy === 'client',
@@ -152,16 +208,6 @@ function WeekGrid() {
   const legendClients = useMemo(
     () => legendClientsOf(legendQuery.data ?? []),
     [legendQuery.data],
-  )
-
-  const clientOptionsQuery = useClientFilterOptionsQuery()
-  const sitesQuery = useSitesMapQuery({})
-  const siteOptions = useMemo(
-    () =>
-      (sitesQuery.data ?? []).filter(
-        (site) => clientId === 'all' || site.clientId === clientId,
-      ),
-    [sitesQuery.data, clientId],
   )
 
   const mobileEmployee =
@@ -202,57 +248,43 @@ function WeekGrid() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          icon={Search}
-          placeholder="Buscar empleado…"
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          className="w-56"
-        />
-        <Combobox
-          aria-label="Filtrar por cliente"
-          placeholder="Todos los clientes"
-          className="w-52"
-          value={clientId}
-          onValueChange={(value) => {
-            setClientId(value)
-            setSiteId('all')
-          }}
-          options={[
-            { value: 'all', label: 'Todos los clientes' },
-            ...(clientOptionsQuery.data ?? []).map((option) => ({
-              value: option.id,
-              label: option.name,
-            })),
-          ]}
-        />
-        <Combobox
-          aria-label="Filtrar por sede"
-          placeholder="Todas las sedes"
-          className="w-52"
-          value={siteId}
-          onValueChange={setSiteId}
-          options={[
-            { value: 'all', label: 'Todas las sedes' },
-            ...siteOptions.map((option) => ({
-              value: option.id,
-              label: option.name,
-            })),
-          ]}
-        />
-        <ColorByToggle value={colorBy} onValueChange={setColorBy} />
-      </div>
+      <CalendarFiltersBar
+        filters={filters}
+        onChange={setFilters}
+        leading={
+          <Input
+            icon={Search}
+            placeholder="Buscar empleado…"
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            className="w-56"
+          />
+        }
+        trailing={
+          <>
+            <ColorByToggle value={colorBy} onValueChange={setColorBy} />
+            <CalendarPrintButton
+              title={`Calendario · semana del ${formatDateOnly(weekDays[0] as string)} al ${formatDateOnly(weekDays[6] as string)}`}
+              filterLines={describeCalendarFilters(filters, filterNames)}
+            >
+              <WeekPrint
+                weekDays={weekDays}
+                employees={employees}
+                assignmentsByEmployee={assignmentsByEmployee}
+                leaveIdsByDate={leaveIdsByDate}
+                colorBy={colorBy}
+              />
+            </CalendarPrintButton>
+          </>
+        }
+      />
 
       {colorBy === 'client' && (
         <ClientLegend
           title="Clientes de la semana"
           clients={legendClients}
-          selectedId={clientId !== 'all' ? clientId : null}
-          onSelect={(id) => {
-            setClientId(id ?? 'all')
-            setSiteId('all')
-          }}
+          selectedId={filters.clientId !== 'all' ? filters.clientId : null}
+          onSelect={(id) => setFilters({ clientId: id ?? 'all' })}
         />
       )}
 
@@ -314,6 +346,9 @@ function WeekGrid() {
                     </td>
                     {weekDays.map((day) => {
                       const dayAssignments = byDate?.get(day) ?? []
+                      const dayOnLeave = (
+                        leaveIdsByDate.get(day) ?? []
+                      ).includes(employee.profileId)
                       return (
                         <td
                           key={day}
@@ -322,8 +357,18 @@ function WeekGrid() {
                           <div
                             className={`min-w-0 ${onLeave ? 'opacity-50' : ''}`}
                           >
+                            {dayOnLeave && (
+                              <span
+                                data-testid="leave-cell"
+                                className="mb-1 block truncate rounded border border-dashed border-border-strong bg-secondary px-1 py-0.5 text-[11px] font-medium text-text-2"
+                              >
+                                Licencia
+                              </span>
+                            )}
                             {dayAssignments.length === 0 ? (
-                              <span className="text-text-3">Libre</span>
+                              dayOnLeave ? null : (
+                                <span className="text-text-3">Libre</span>
+                              )
                             ) : (
                               <div className="flex flex-col gap-1">
                                 {dayAssignments.map((assignment) => {
@@ -432,6 +477,9 @@ function WeekGrid() {
                   assignmentsByEmployee
                     .get(mobileEmployee.profileId)
                     ?.get(day) ?? []
+                const dayOnLeave = (leaveIdsByDate.get(day) ?? []).includes(
+                  mobileEmployee.profileId,
+                )
                 return (
                   <li
                     key={day}
@@ -440,8 +488,18 @@ function WeekGrid() {
                     <p className="text-[12px] font-semibold text-text-3 capitalize">
                       {formatDateOnly(day)}
                     </p>
+                    {dayOnLeave && (
+                      <p
+                        data-testid="leave-cell"
+                        className="text-[13px] font-medium text-text-2"
+                      >
+                        Licencia
+                      </p>
+                    )}
                     {dayAssignments.length === 0 ? (
-                      <p className="text-[13px] text-text-3">Libre</p>
+                      dayOnLeave ? null : (
+                        <p className="text-[13px] text-text-3">Libre</p>
+                      )
                     ) : (
                       <div className="flex flex-col gap-1 pt-1">
                         {dayAssignments.map((assignment) => {

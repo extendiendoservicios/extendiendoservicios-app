@@ -14,7 +14,8 @@ import { IconButton } from '@/components/IconButton'
 import { DatePicker } from '@/components/DatePicker'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { DataTable, type DataTableColumnDef } from '@/components/DataTable'
-import { StatusBadge } from '@/components/status'
+import { Badge } from '@/components/ui/badge'
+import { StatusBadge, getStatusMeta } from '@/components/status'
 import type { ShiftStatus as BadgeShiftStatus } from '@/components/status'
 import type { ShiftListRow } from '@/api/shifts'
 import { useAuth } from '@/features/auth/AuthProvider'
@@ -24,6 +25,7 @@ import {
   localDateToIsoDate,
 } from '@/features/settings/dateOnly'
 import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
+import { useLeavesInRangeQuery } from '@/features/employees/queries'
 import {
   canCancelShift,
   canManageShiftTime,
@@ -38,6 +40,20 @@ import { groupShiftsByFranja, shiftFranjaKey } from '@/features/shifts/grouping'
 import { RequiresPhotosMark } from '@/features/shifts/components/RequiresPhotosMark'
 import { NO_CHECKOUT_LABEL } from '@/features/shifts/openEnded'
 import { useColorBy } from '@/features/planning/colorBy'
+import {
+  describeCalendarFilters,
+  filterShiftsOfDay,
+  hasActiveFilters,
+  visibleLeaves,
+} from '@/features/planning/calendarFilters'
+import { useCalendarFilters } from '@/features/planning/useCalendarFilters'
+import {
+  CalendarFiltersBar,
+  useCalendarFilterOptions,
+} from '@/features/planning/components/CalendarFiltersBar'
+import { CalendarPrintButton } from '@/features/planning/components/CalendarPrintButton'
+import { DayPrint } from '@/features/planning/components/CalendarPrintViews'
+import { useShiftsBoardRangeQuery } from '@/features/planning/queries'
 import { clientChipColors } from '@/features/planning/clientColors'
 import { ColorByToggle } from '@/features/planning/components/ColorByToggle'
 import { StatusDotLegend } from '@/features/planning/components/ColorLegends'
@@ -75,8 +91,12 @@ function isoDateToDate(isoDate: string): Date {
  * hasta que ADM-06 se construya en P11.3 -- el encargo pide dejar el enlace
  * a la ruta prevista sin inventar la pantalla.
  *
- * Sin filtros de cliente/sede/estado (`05` línea 39 no los pide para
- * ADM-05, a diferencia de ADM-03 y ADM-04): solo fecha navegable.
+ * P27.5 (OD-12): suma los filtros del calendario (cliente, sede, empleado y
+ * estado), los mismos de la vista de mes y de semana, guardados en la URL.
+ * Cliente, sede y estado se resuelven acá sobre los turnos del día; el
+ * empleado, con una consulta aparte de sus turnos (`v_shifts_board`).
+ * OD-13: «Colorear por estado» pinta el cliente · sede con el color del
+ * estado, como el chip del mes. OD-14: las licencias del día se listan abajo.
  */
 interface ShiftsDayListProps {
   date: string
@@ -92,16 +112,55 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
   const canCancel = canCancelShift(actor)
   const [cancelTarget, setCancelTarget] = useState<ShiftListRow | null>(null)
   const [colorBy, setColorBy] = useColorBy()
+  const [filters, setFilters] = useCalendarFilters()
+  const { employeeOptions, names: filterNames } =
+    useCalendarFilterOptions(filters)
 
   const isToday = date === todayInBuenosAires()
   const shiftsQuery = useShiftsByDateQuery(date, isToday)
   // AJ2-18: nombres de los asignados y del supervisor (dos consultas por día).
   const peopleQuery = useShiftPeopleByDateQuery(date, isToday)
   const people = peopleQuery.data
-  const franjaGroups = useMemo(
-    () => groupShiftsByFranja(shiftsQuery.data ?? []),
-    [shiftsQuery.data],
+  const employeeShiftsQuery = useShiftsBoardRangeQuery(
+    date,
+    date,
+    { employeeId: filters.employeeId },
+    filters.employeeId !== 'all',
   )
+  const employeeShiftIds = useMemo(
+    () =>
+      filters.employeeId === 'all'
+        ? null
+        : new Set((employeeShiftsQuery.data ?? []).map((shift) => shift.id)),
+    [filters.employeeId, employeeShiftsQuery.data],
+  )
+  const dayShifts = useMemo(
+    () => filterShiftsOfDay(shiftsQuery.data ?? [], filters, employeeShiftIds),
+    [shiftsQuery.data, filters, employeeShiftIds],
+  )
+  const franjaGroups = useMemo(
+    () => groupShiftsByFranja(dayShifts),
+    [dayShifts],
+  )
+  const filtered = hasActiveFilters(filters)
+
+  // OD-14: quiénes están de licencia ese día.
+  const leavesQuery = useLeavesInRangeQuery(date, date)
+  const leaveNames = useMemo(() => {
+    const nameOf = new Map(
+      (employeeOptions ?? []).map((employee) => [
+        employee.profileId,
+        `${employee.firstName} ${employee.lastName}`,
+      ]),
+    )
+    return [
+      ...new Set(
+        visibleLeaves(leavesQuery.data ?? [], filters).map(
+          (leave) => nameOf.get(leave.employeeId) ?? 'Empleado',
+        ),
+      ),
+    ].sort((a, b) => a.localeCompare(b, 'es'))
+  }, [leavesQuery.data, filters, employeeOptions])
 
   const columns: DataTableColumnDef<ShiftListRow>[] = [
     {
@@ -129,6 +188,27 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
           colorBy === 'client'
             ? clientChipColors(row.original.clientCalendarColor)
             : null
+        if (colorBy === 'status') {
+          // OD-13: el color del estado (el mismo del chip del mes).
+          const meta = getStatusMeta({
+            domain: 'shift',
+            status: row.original.displayStatus as BadgeShiftStatus,
+          })
+          return (
+            <span className="flex items-center gap-1">
+              <Badge
+                data-testid="status-colored-cell"
+                variant={meta.variant}
+                title={label}
+                className="block min-w-0 truncate rounded px-1.5 py-0.5 text-[12px] font-medium"
+              >
+                <span className="sr-only">{meta.label}: </span>
+                {label}
+              </Badge>
+              {row.original.requiresPhotos && <RequiresPhotosMark />}
+            </span>
+          )
+        }
         return (
           <span className="flex items-center gap-1">
             <span
@@ -342,13 +422,38 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
             <UpdatedAgo dataUpdatedAt={shiftsQuery.dataUpdatedAt} />
           )}
         </div>
-        <ColorByToggle value={colorBy} onValueChange={setColorBy} />
         {canManage && (
           <Button asChild icon={Plus}>
             <Link to={`/admin/turnos/nuevo?fecha=${date}`}>Nuevo turno</Link>
           </Button>
         )}
       </div>
+
+      <CalendarFiltersBar
+        filters={filters}
+        onChange={setFilters}
+        trailing={
+          <>
+            <ColorByToggle value={colorBy} onValueChange={setColorBy} />
+            <CalendarPrintButton
+              title={`Calendario · ${formatDateOnly(date)}`}
+              filterLines={describeCalendarFilters(filters, filterNames)}
+            >
+              <DayPrint
+                shifts={dayShifts}
+                employeesOfShift={(shiftId) =>
+                  peopleOfShift(people, shiftId).employees
+                }
+                supervisorsOfShift={(shiftId) =>
+                  peopleOfShift(people, shiftId).supervisors
+                }
+                leaveNames={leaveNames}
+                colorBy={colorBy}
+              />
+            </CalendarPrintButton>
+          </>
+        }
+      />
 
       <p className="text-[12.5px] text-text-3 capitalize">
         {formatDateOnly(date)}
@@ -364,10 +469,14 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
           isLoading={shiftsQuery.isLoading}
           emptyState={{
             icon: CalendarClock,
-            title: 'No hay turnos para este día',
-            description: canManage
-              ? 'Generá el mes desde "Generar turnos del mes" o creá uno puntual con "Nuevo turno".'
-              : undefined,
+            title: filtered
+              ? 'No hay turnos con estos filtros'
+              : 'No hay turnos para este día',
+            description: filtered
+              ? 'Probá con otros filtros para este día.'
+              : canManage
+                ? 'Generá el mes desde "Generar turnos del mes" o creá uno puntual con "Nuevo turno".'
+                : undefined,
           }}
         />
       ) : (
@@ -397,6 +506,19 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
             ))}
           </div>
         </div>
+      )}
+
+      {leaveNames.length > 0 && (
+        <section
+          aria-label="De licencia"
+          data-testid="day-leaves"
+          className="rounded-lg border border-dashed border-border-strong bg-secondary/40 px-3 py-2"
+        >
+          <h3 className="text-[12.5px] font-semibold text-text-3">
+            De licencia ({leaveNames.length})
+          </h3>
+          <p className="text-[13px] text-text-2">{leaveNames.join(', ')}</p>
+        </section>
       )}
 
       {colorBy === 'client' && <StatusDotLegend />}

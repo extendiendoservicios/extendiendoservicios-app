@@ -21,6 +21,10 @@ const VISTA_OPTIONS: { value: Vista; label: string }[] = [
  * está en `05`: la navegación entre ADM-03/ADM-04/ADM-05 ahí solo dice a
  * dónde van, no cómo se ve el selector).
  *
+ * P27.5 (OD-12): los filtros (cliente, sede, empleado y estado) viven en la
+ * URL (`?cliente=&sede=&empleado=&estado=`), así que al cambiar de vista con
+ * `goToVista` y `handleOpenDay` se conservan: ambas copian los parámetros.
+ *
  * Abrir un turno lleva directo al detalle (`/admin/turnos/:id`, ADM-06,
  * ASSIGN-011): un enlace propio en cada chip del calendario, cada tarjeta de
  * la grilla semanal y cada fila de la lista del día. El número de día del

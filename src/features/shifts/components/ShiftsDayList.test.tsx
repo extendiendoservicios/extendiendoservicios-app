@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ShiftsDayList } from './ShiftsDayList'
@@ -20,6 +20,24 @@ vi.mock('@/features/auth/AuthProvider', () => ({
 vi.mock('@/features/employees/employeeLeaveStatus', () => ({
   todayInBuenosAires: () => '2026-10-20',
 }))
+vi.mock('@/features/employees/queries', () => ({
+  // OD-14: Ana tiene licencia ese día.
+  useLeavesInRangeQuery: () => ({
+    data: [{ employeeId: 'e1', startsOn: '2026-10-20', endsOn: '2026-10-22' }],
+  }),
+  useEmployeesQuery: () => ({
+    data: [{ profileId: 'e1', firstName: 'Ana', lastName: 'Gómez' }],
+  }),
+}))
+vi.mock('@/features/sites/queries', () => ({
+  useClientFilterOptionsQuery: () => ({
+    data: [{ id: 'c1', name: 'Cliente con un nombre larguísimo' }],
+  }),
+  useSitesMapQuery: () => ({ data: [] }),
+}))
+vi.mock('@/features/planning/queries', () => ({
+  useShiftsBoardRangeQuery: () => ({ data: [] }),
+}))
 vi.mock('@/features/shifts/queries', () => ({
   useShiftsByDateQuery: () => ({
     isLoading: false,
@@ -27,6 +45,8 @@ vi.mock('@/features/shifts/queries', () => ({
     data: [
       {
         id: 's1',
+        clientId: 'c1',
+        siteId: 'si1',
         clientName: 'Cliente con un nombre larguísimo',
         siteName: 'Sede Central',
         shiftDate: '2026-10-20',
@@ -45,9 +65,9 @@ vi.mock('@/features/shifts/queries', () => ({
   useCancelShiftMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
-function renderList() {
+function renderList(url = '/admin/planificacion?vista=dia') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[url]}>
       <ShiftsDayList date="2026-10-20" onDateChange={() => undefined} />
     </MemoryRouter>,
   )
@@ -93,5 +113,57 @@ describe('ShiftsDayList (ancho)', () => {
     expect(screen.getByRole('link', { name: 'Editar' })).toHaveTextContent(
       'Editar',
     )
+  })
+})
+
+describe('ShiftsDayList: filtros, color por estado y licencias (P27.5)', () => {
+  beforeEach(() => {
+    desktop.value = true
+    window.localStorage.clear()
+  })
+
+  it('OD-13: por defecto colorea por estado (el color del estado en el cliente · sede)', () => {
+    renderList()
+    const cell = screen.getByTestId('status-colored-cell')
+    expect(cell).toHaveTextContent(
+      'Cliente con un nombre larguísimo · Sede Central',
+    )
+    expect(cell).toHaveTextContent('Programado')
+  })
+
+  it('OD-13: al colorear por cliente deja de pintar por estado', () => {
+    renderList()
+    fireEvent.click(screen.getByRole('radio', { name: 'Cliente' }))
+    expect(screen.queryByTestId('status-colored-cell')).toBeNull()
+    expect(screen.getAllByTestId('status-dot').length).toBeGreaterThan(0)
+  })
+
+  it('OD-12: un filtro de cliente que no coincide muestra el vacío con filtros', () => {
+    renderList('/admin/planificacion?vista=dia&cliente=otro')
+    expect(
+      screen.getByText('No hay turnos con estos filtros'),
+    ).toBeInTheDocument()
+  })
+
+  it('OD-12: un filtro de cliente que coincide conserva el turno', () => {
+    renderList('/admin/planificacion?vista=dia&cliente=c1&estado=scheduled')
+    expect(screen.getByTestId('status-colored-cell')).toBeInTheDocument()
+  })
+
+  it('OD-14: lista a quienes están de licencia ese día', () => {
+    renderList()
+    expect(screen.getByTestId('day-leaves')).toHaveTextContent('Ana Gómez')
+  })
+
+  it('OD-14: con otro empleado filtrado no aparecen las licencias de Ana', () => {
+    renderList('/admin/planificacion?vista=dia&empleado=e9')
+    expect(screen.queryByTestId('day-leaves')).toBeNull()
+  })
+
+  it('OD-15: hay un botón «Imprimir calendario»', () => {
+    renderList()
+    expect(
+      screen.getByRole('button', { name: 'Imprimir calendario' }),
+    ).toBeInTheDocument()
   })
 })
