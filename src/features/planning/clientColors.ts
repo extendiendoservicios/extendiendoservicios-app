@@ -10,7 +10,7 @@
  * contraste, también sobre blanco), así que el par sirve para ambos.
  *
  * Ninguno se parece al rojo de «Sin cubrir» ni al verde de «Finalizado»; el
- * oliva y el turquesa quedan lejos del verde de estado (#2f9e6b) por tono y
+ * oliva y el turquesa quedan lejos del verde de estado (#2e7d32) por tono y
  * claridad, y el estado va aparte en un puntito.
  */
 export interface ClientColor {
