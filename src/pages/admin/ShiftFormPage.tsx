@@ -5,6 +5,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { CalendarClock, TriangleAlert } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -82,8 +83,24 @@ import {
   type ShiftEditFormValues,
   type ShiftFormValues,
 } from '@/features/shifts/schemas'
-import { useUpdateShiftDetailsMutation } from '@/features/planning/queries'
+import {
+  useAssignEmployeeMutation,
+  useShiftDetailQuery,
+  useUpdateShiftDetailsMutation,
+} from '@/features/planning/queries'
+import { canManageAssignmentsAfterStart } from '@/features/planning/permissions'
+import {
+  assignEmployeesOnEdit,
+  remainingSlots,
+} from '@/features/shifts/assignOnEdit'
 import { useLeaveForm } from '@/app/shells/backNavigation'
+
+/** Título del aviso de rechazados al asignar desde «Editar turno» (el turno ya se guardó). */
+function rejectedTitleOnEdit(count: number): string {
+  return count === 1
+    ? 'Guardamos el turno, pero a una persona no se la pudo asignar:'
+    : `Guardamos el turno, pero a ${count} personas no se las pudo asignar:`
+}
 
 /** `"YYYY-MM-DD"` → `Date` para `DatePicker` (mismo criterio que `ServiceFormPage`). */
 function isoDateToDate(isoDate: string | undefined): Date | undefined {
@@ -793,7 +810,15 @@ function EditShiftTimeForm({
   )
   const updateShiftDetails = useUpdateShiftDetailsMutation()
   const dateWarnings = useShiftDateWarningsMutation()
-  const isSaving = updateShiftTime.isPending || updateShiftDetails.isPending
+  const assignEmployee = useAssignEmployeeMutation()
+  const auth = useAuth()
+  // OD-16: empleados que se suman al guardar (los ya asignados se ven aparte).
+  const [pickedEmployeeIds, setPickedEmployeeIds] = useState<string[]>([])
+  const detailQuery = useShiftDetailQuery(id)
+  const employeeOptionsQuery = useActiveEmployeeOptionsQuery()
+  const [isAssigning, setIsAssigning] = useState(false)
+  const isSaving =
+    updateShiftTime.isPending || updateShiftDetails.isPending || isAssigning
   // P19.11d: advertencias del cambio de fecha pendientes de confirmar.
   const [pendingDateSave, setPendingDateSave] = useState<{
     values: ShiftEditFormValues
@@ -825,6 +850,35 @@ function EditShiftTimeForm({
 
   const watchedOpenEnded = useWatch({ control, name: 'openEnded' }) ?? false
   const watchedDate = useWatch({ control, name: 'date' })
+  const watchedRequiredStaff = useWatch({ control, name: 'requiredStaff' })
+
+  // OD-16: mismas reglas que el alta (tope = dotación, licencia bloquea).
+  const currentAssignments = detailQuery.data?.assignments ?? []
+  const assignedIds = new Set(
+    currentAssignments.map((assignment) => assignment.employeeId),
+  )
+  const staffNumber = Number(watchedRequiredStaff)
+  const staffLimit =
+    Number.isInteger(staffNumber) && staffNumber >= 1 && staffNumber <= 10
+      ? staffNumber
+      : (shiftQuery.data?.requiredStaff ?? 1)
+  const freeSlots = remainingSlots(staffLimit, currentAssignments.length)
+  const editDate = watchedDate || shiftQuery.data?.shiftDate
+  const leavesQuery = useLeavesInRangeQuery(editDate, editDate)
+  const blockedEmployeeIds = employeesOnLeaveIn(
+    leavesQuery.data ?? [],
+    editDate ?? '',
+    editDate ?? '',
+  )
+  const pickableEmployees = (employeeOptionsQuery.data ?? []).filter(
+    (option) => !assignedIds.has(option.profileId),
+  )
+  const employeeIds = clampSelection(
+    pickedEmployeeIds.filter(
+      (employeeId) => !blockedEmployeeIds.has(employeeId),
+    ),
+    freeSlots,
+  )
 
   // Franja (`update_shift_time`) y dotación/notas (`update_shift_details`)
   // son dos RPC separadas (`06` sección 7, ASSIGN-013): un solo formulario
@@ -864,6 +918,62 @@ function EditShiftTimeForm({
     await save(values)
   }
 
+  // OD-16: el turno ya quedó guardado; lo que no se pueda asignar se avisa
+  // aparte (no deshace nada, igual que en el alta).
+  async function assignPickedEmployees() {
+    if (employeeIds.length === 0) {
+      return
+    }
+    setIsAssigning(true)
+    try {
+      const result = await assignEmployeesOnEdit(
+        id,
+        employeeIds,
+        assignEmployee.mutateAsync,
+      )
+      const names: Record<string, string> = Object.fromEntries(
+        (employeeOptionsQuery.data ?? []).map((option) => [
+          option.profileId,
+          option.name,
+        ]),
+      )
+      const warningLines = result.assigned
+        .filter((item) => item.warnings.length > 0)
+        .map(
+          (item) =>
+            `${names[item.employeeId] ?? 'Empleado'}: ${item.warnings
+              .map(
+                (code) =>
+                  WARNING_MESSAGES[code as keyof typeof WARNING_MESSAGES] ??
+                  code,
+              )
+              .join(' ')}`,
+        )
+      const rejectedLinesText = result.rejected.map(
+        (item) => `${names[item.employeeId] ?? 'Empleado'}: ${item.message}`,
+      )
+      if (rejectedLinesText.length > 0 || warningLines.length > 0) {
+        toast.warning(
+          rejectedLinesText.length > 0
+            ? rejectedTitleOnEdit(rejectedLinesText.length)
+            : 'Asignamos a los empleados, con advertencias:',
+          {
+            duration: 20_000,
+            description: (
+              <ul className="list-disc pl-4">
+                {[...rejectedLinesText, ...warningLines].map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            ),
+          },
+        )
+      }
+    } finally {
+      setIsAssigning(false)
+    }
+  }
+
   async function save(values: ShiftEditFormValues) {
     const inputs = shiftEditFormValuesToInputs(values)
     const shift = shiftQuery.data
@@ -901,6 +1011,7 @@ function EditShiftTimeForm({
             ]),
       ])
       setPendingDateSave(null)
+      await assignPickedEmployees()
       toast.success(
         newDate
           ? `Movimos el turno al ${formatDateOnly(newDate)}.`
@@ -946,6 +1057,17 @@ function EditShiftTimeForm({
     shift.status === 'cancelled' ||
     (shift.status === 'completed' && !isCompletedOpenEnded)
   const isInProgress = shift.status === 'in_progress'
+  // OD-16: asignar después del inicio exige además `manage_attendance` (06 sección 8).
+  const shiftStarted =
+    detailQuery.data?.startsAt != null &&
+    new Date() >= new Date(detailQuery.data.startsAt)
+  const canAssignHere =
+    detailQuery.data != null &&
+    (!shiftStarted ||
+      canManageAssignmentsAfterStart({
+        roles: auth.roles,
+        capabilities: auth.capabilities,
+      }))
 
   if (!canManage) {
     return (
@@ -1110,6 +1232,45 @@ function EditShiftTimeForm({
                     <FieldError>{errors.requiredStaff.message}</FieldError>
                   )}
                 </Field>
+                {canAssignHere && (
+                  <Field className="col-span-2">
+                    <FieldLabel>Empleados asignados</FieldLabel>
+                    {currentAssignments.length > 0 ? (
+                      <ul
+                        aria-label="Empleados ya asignados"
+                        className="flex flex-wrap gap-2"
+                      >
+                        {currentAssignments.map((assignment) => (
+                          <li key={assignment.id}>
+                            <Badge variant="neutral" className="text-[12px]">
+                              {assignment.employeeFirstName}{' '}
+                              {assignment.employeeLastName}
+                            </Badge>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-[12.5px] text-text-3">
+                        Todavía no hay nadie asignado.
+                      </p>
+                    )}
+                    <EmployeeMultiPicker
+                      aria-label="Sumar empleados al turno"
+                      options={pickableEmployees}
+                      loading={employeeOptionsQuery.isLoading}
+                      value={employeeIds}
+                      onValueChange={setPickedEmployeeIds}
+                      blockedIds={blockedEmployeeIds}
+                      max={freeSlots}
+                      placeholder="Sumá quién va a este turno"
+                    />
+                    <p className="text-[11px] text-text-3">
+                      Quedan asignados al guardar, hasta completar la dotación.
+                      Quien está de licencia ese día no se puede elegir. Para
+                      quitar a alguien usá el detalle del turno.
+                    </p>
+                  </Field>
+                )}
                 <Controller
                   control={control}
                   name="requiresPhotos"
