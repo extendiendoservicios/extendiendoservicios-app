@@ -104,3 +104,9 @@
     page-break-inside: avoid;
   }
 }
+
+/* Que los colores de fondo (franjas por cliente, feriados) salgan en el papel. */
+.print-exact {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
