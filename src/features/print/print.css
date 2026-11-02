@@ -9,14 +9,31 @@
   margin: 15mm;
 }
 
-/* Vista previa: líneas finas que marcan el límite entre páginas A4 (297 mm). */
+/*
+ * OD-18: página con nombre para las hojas en A4 horizontal. La hoja la pide
+ * con `page: landscape` (ver `.print-portal[data-orientation='landscape']`).
+ */
+@page landscape {
+  size: A4 landscape;
+  margin: 10mm;
+}
+
+.print-portal[data-orientation='landscape'] {
+  page: landscape;
+}
+
+/*
+ * Vista previa: líneas finas que marcan el límite entre páginas A4. El alto de
+ * página (`--page-h`) lo fija `PrintSheet` según la orientación (297 mm
+ * vertical, 210 mm horizontal).
+ */
 .print-sheet {
   background-image: repeating-linear-gradient(
     to bottom,
     transparent 0,
-    transparent calc(297mm - 1px),
-    #cbd5e1 calc(297mm - 1px),
-    #cbd5e1 297mm
+    transparent calc(var(--page-h, 297mm) - 1px),
+    #cbd5e1 calc(var(--page-h, 297mm) - 1px),
+    #cbd5e1 var(--page-h, 297mm)
   );
 }
 
@@ -60,7 +77,7 @@
     margin-top: 0 !important;
   }
 
-  /* Ancho útil de la página: 210 mm menos los 15 mm de `@page` a cada lado. */
+  /* Ancho útil de la página: el de la hoja menos el margen de `@page` a cada lado. */
   .print-sheet {
     box-sizing: border-box;
     width: auto !important;

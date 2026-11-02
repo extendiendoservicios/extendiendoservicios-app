@@ -258,35 +258,45 @@ describe('printableEntries / personSignerLabel', () => {
       leaves,
       now: NOW,
     })
-    expect(services(sheet).rows.map((row) => row.key)).toEqual([
-      'leave-l0',
-      'service-a1',
-      'service-a3',
-      'leave-l1',
-      'service-a2',
+    // OD-19: una fila por cada día corrido de cada licencia dentro del período.
+    // l0: 1 al 3 de sep (recortada al inicio); l1 (abierta): 18 al 30 de sep.
+    const keys = services(sheet).rows.map((row) => row.key)
+    expect(keys.filter((k) => k.startsWith('leave-l0'))).toEqual([
+      'leave-l0-2026-09-01',
+      'leave-l0-2026-09-02',
+      'leave-l0-2026-09-03',
     ])
-    expect(services(sheet).rows[0]).toMatchObject({
-      date: '1 sep 2026',
+    expect(keys.filter((k) => k.startsWith('leave-l1'))).toHaveLength(13)
+    expect(keys).toContain('leave-l1-2026-09-30')
+    expect(keys.some((k) => k.startsWith('leave-l2'))).toBe(false)
+    expect(keys.indexOf('service-a3')).toBeLessThan(
+      keys.indexOf('leave-l1-2026-09-18'),
+    )
+    expect(
+      services(sheet).rows.find((row) => row.key === 'leave-l0-2026-09-02'),
+    ).toMatchObject({
+      date: '2 sep 2026',
       hours: '—',
-      client: 'Licencia del 25/08/2026 al 03/09/2026 — Vacaciones',
+      client: 'Licencia — Vacaciones',
       novelty: '',
     })
     // La observación ocupa de Cliente a Observaciones en una sola celda.
-    expect(services(sheet).spans).toEqual({
-      'leave-l0': { from: 'client', to: 'novelty' },
-      'leave-l1': { from: 'client', to: 'novelty' },
+    expect(services(sheet).spans['leave-l0-2026-09-01']).toEqual({
+      from: 'client',
+      to: 'novelty',
     })
     expect(
       services(sheet)
         .columns.filter((c) => c.wrap)
         .map((c) => c.key),
     ).toEqual(['client', 'site', 'novelty'])
-    expect(services(sheet).rows[2]?.novelty).toBe(
-      'Inasistencia — con certificado — Enfermedad',
-    )
-    expect(services(sheet).rows[3]?.client).toBe(
-      'Licencia del 18/09/2026 al abierta — Sin motivo',
-    )
+    expect(
+      services(sheet).rows.find((row) => row.key === 'service-a3')?.novelty,
+    ).toBe('Inasistencia — con certificado — Enfermedad')
+    expect(
+      services(sheet).rows.find((row) => row.key === 'leave-l1-2026-09-20')
+        ?.client,
+    ).toBe('Licencia — Sin motivo')
     // Solo suman las horas de los turnos trabajados: 4 h + 2 h.
     expect(sheet.totalMinutes).toBe(360)
     expect(services(sheet).footer.value).toBe('6 h')

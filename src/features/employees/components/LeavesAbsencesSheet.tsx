@@ -85,7 +85,11 @@ function LeavesAbsencesSheet({
   const emittedAt = useMemo(() => issuedAt ?? new Date(), [issuedAt])
 
   return (
-    <PrintSheet documentTitle={sheet.documentTitle} onClose={onClose}>
+    <PrintSheet
+      documentTitle={sheet.documentTitle}
+      onClose={onClose}
+      orientation="landscape"
+    >
       <PrintableLetterhead title={LEAVES_ABSENCES_TITLE} issuedAt={emittedAt} />
       {isLoading ? (
         <p role="status">Cargando los datos del período…</p>
