@@ -29,7 +29,7 @@ import { formatAssignmentRange } from '@/features/employee/shiftRange'
 /**
  * EMP-04 · Detalle del servicio (MOB-EMP-004, `05` fila EMP-04): cliente,
  * sede, dirección (enlace a mapas), horario y duración, compañeros del
- * turno, instrucciones de acceso, restricciones, contacto de la sede,
+ * turno, instrucciones de acceso, restricciones,
  * tareas previstas (solo lectura: EMP-08, la pantalla que las deja marcar,
  * es de P13.3) y estado propio.
  *
@@ -40,7 +40,7 @@ import { formatAssignmentRange } from '@/features/employee/shiftRange'
  * fila.
  *
  * La parte de "sede" (dirección, enlace a mapas, horario del edificio,
- * instrucciones de acceso, restricciones, contacto) se arma con `SiteInfo`
+ * instrucciones de acceso, restricciones) se arma con `SiteInfo`
  * (SITE-010, ya compartido con `ADM-22`, `src/pages/admin/SiteDetailPage.tsx`)
  * en vez de repetir esas tarjetas a mano: es la dependencia que pide
  * MOB-EMP-004 en `08_Fases_y_Backlog.md`, y evita mantener dos veces la
@@ -96,8 +96,6 @@ export default function ServiceDetailPage() {
     city: assignment.siteCity,
     latitude: assignment.siteLatitude,
     longitude: assignment.siteLongitude,
-    contactName: assignment.siteContactName,
-    contactPhone: assignment.siteContactPhone,
     accessInstructions: assignment.accessInstructions,
     buildingHours: assignment.buildingHours,
     phoneRestricted: assignment.phoneRestricted,
