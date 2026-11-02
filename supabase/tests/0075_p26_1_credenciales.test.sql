@@ -71,7 +71,7 @@ insert into public.employees (profile_id, dni, status) values
 insert into public.account_credentials (profile_id, ciphertext, iv, key_version, source, set_by) values
   ('c2600000-0000-0000-0000-000000000004', 'Y2lmcmFkby1maWN0aWNpbw==', 'aXYtZmljdGljaW8x', 1, 'created', 'c2600000-0000-0000-0000-000000000001');
 
-select plan(54);
+select plan(55);
 
 -- ---------------------------------------------------------------------------------------------
 -- Estructura
@@ -223,9 +223,18 @@ select is(
 );
 select is(
   (select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-    where n.nspname in ('public', 'app') and p.prosrc ilike '%account_credentials%'),
+    where n.nspname in ('public', 'app') and p.prosrc ilike '%account_credentials%'
+      -- 0078 (P27.1): el borrado del dueño cuenta y borra la fila de la persona que elimina; no la lee.
+      and p.proname not in ('od_plan_employee', 'owner_delete_employee', 'profile_foreign_refs')),
   0,
-  'ninguna función o RPC de public ni app lee account_credentials'
+  'ninguna función o RPC de public ni app lee account_credentials (salvo las del borrado del dueño, que solo la cuentan o la borran)'
+);
+select is(
+  (select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname in ('public', 'app') and p.proname in ('od_plan_employee', 'owner_delete_employee', 'profile_foreign_refs')
+      and p.prosrc ilike '%ciphertext%'),
+  0,
+  'las funciones del borrado del dueño nunca tocan el texto cifrado'
 );
 
 -- ---------------------------------------------------------------------------------------------
