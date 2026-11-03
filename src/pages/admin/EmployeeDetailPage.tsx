@@ -23,6 +23,7 @@ import {
   TerminateEmployeeDialog,
 } from '@/features/employees/components/EmployeeAccountDialogs'
 import { EmployeeAvailabilityTab } from '@/features/employees/components/EmployeeAvailabilityTab'
+import { EmployeeCronogramaTab } from '@/features/employees/components/EmployeeCronogramaTab'
 import { EmployeeClientPermissionsTab } from '@/features/employees/components/EmployeeClientPermissionsTab'
 import {
   personSignerLabel,
@@ -46,6 +47,7 @@ import { SupervisorWorkdaysTab } from '@/features/workdays/components/Supervisor
 
 const TABS = [
   'datos',
+  'cronograma',
   'habilitaciones',
   'disponibilidad',
   'licencias',
@@ -64,7 +66,7 @@ function isEmployeeDetailTab(value: string | null): value is EmployeeDetailTab {
 
 /**
  * ADM-17 "Empleado · ficha" (`05` línea 66): cabecera (foto, nombre,
- * legajo, roles, estado efectivo) y las siete pestañas (más dos para quien
+ * legajo, roles, estado efectivo) y las siete pestañas, más «Cronograma» (P27.4, OD-01) después de «Datos» (más dos para quien
  * tiene el rol coordinador, P24.3: «Clientes y sedes preferenciales» y
  * «Jornadas», y «Retiros» de insumos para dueño y administradores, P25.3). Datos, Habilitaciones
  * (EMP-006), Disponibilidad (EMP-007) y Licencias (EMP-008) están completas;
@@ -232,6 +234,7 @@ export default function EmployeeDetailPage() {
       <Tabs value={visibleTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="datos">Datos</TabsTrigger>
+          <TabsTrigger value="cronograma">Cronograma</TabsTrigger>
           <TabsTrigger value="habilitaciones">Habilitaciones</TabsTrigger>
           <TabsTrigger value="disponibilidad">Disponibilidad</TabsTrigger>
           <TabsTrigger value="licencias">Licencias</TabsTrigger>
@@ -256,6 +259,16 @@ export default function EmployeeDetailPage() {
             employee={employee}
             canEditRoles={canManageAccount}
             onEditRoles={() => setOpenDialog('roles')}
+          />
+        </TabsContent>
+
+        <TabsContent value="cronograma" className="pt-3">
+          <EmployeeCronogramaTab
+            profileId={employee.profileId}
+            person={{
+              employeeNumber: employee.employeeNumber,
+              name: `${employee.firstName} ${employee.lastName}`,
+            }}
           />
         </TabsContent>
 

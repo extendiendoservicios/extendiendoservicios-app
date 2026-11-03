@@ -6,6 +6,8 @@ import {
   absenceReasonText,
   leaveOverlapsPeriod,
 } from '@/features/employees/leavesAbsencesSheet'
+import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
+import { addDaysToIsoDate } from '@/features/settings/dateOnly'
 import { formatCalendarDate, formatMinutes, formatTime } from '@/lib/format'
 import type {
   PrintColumn,
@@ -163,12 +165,6 @@ export function printRoleLabels(roles: Role[]): string[] {
     .map((role) => ROLE_LABELS[role])
 }
 
-/** «dd/mm/aaaa» de una fecha `"YYYY-MM-DD"`. */
-function numericDate(isoDate: string): string {
-  const [year = '', month = '', day = ''] = isoDate.slice(0, 10).split('-')
-  return `${day}/${month}/${year}`
-}
-
 /**
  * Novedad de una inasistencia. Si fue avisada como ausencia:
  * «Inasistencia — con certificado — Enfermedad». Si no tuvo aviso queda el
@@ -188,14 +184,34 @@ export function absenceSheetNote(row: AttendanceBoardRow): string {
 }
 
 /**
- * Texto de una licencia dentro de la tabla: «Licencia del 02/03/2026 al
- * 06/03/2026 — Vacaciones» (o «abierta» si no tiene fin).
+ * OD-19: texto de un día de licencia dentro de la tabla: «Licencia —
+ * Vacaciones» (o «Licencia — Sin motivo»). La fila ya lleva la fecha.
  */
-export function leaveSheetNote(
-  leave: Pick<EmployeeLeave, 'startsOn' | 'endsOn' | 'reason'>,
-): string {
-  const until = leave.endsOn ? numericDate(leave.endsOn) : 'abierta'
-  return `Licencia del ${numericDate(leave.startsOn)} al ${until} — ${leave.reason?.trim() || 'Sin motivo'}`
+export function leaveDayNote(leave: Pick<EmployeeLeave, 'reason'>): string {
+  return `Licencia — ${leave.reason?.trim() || 'Sin motivo'}`
+}
+
+/**
+ * OD-19: cada día corrido de una licencia dentro del período (extremos
+ * incluidos). Una licencia abierta llega hasta el fin del período o hasta
+ * hoy, lo que ocurra primero (los días futuros no se conocen).
+ */
+export function leaveDatesInPeriod(
+  leave: Pick<EmployeeLeave, 'startsOn' | 'endsOn'>,
+  from: string,
+  to: string,
+  today: string,
+): string[] {
+  const start = leave.startsOn > from ? leave.startsOn : from
+  let end = leave.endsOn ?? (today < to ? today : to)
+  if (end > to) {
+    end = to
+  }
+  const dates: string[] = []
+  for (let date = start; date <= end; date = addDaysToIsoDate(date, 1)) {
+    dates.push(date)
+  }
+  return dates
 }
 
 /**
@@ -454,9 +470,10 @@ function buildServicesSection(
       leave.deletedAt == null &&
       leaveOverlapsPeriod(leave, input.from, input.to),
   )
-  // Cada fila de la tabla (turno o licencia) con su clave de orden: fecha y
-  // hora de inicio. Una licencia va en su fecha de inicio (o al comienzo del
-  // período si empezó antes) y antes de los turnos de ese día.
+  // Cada fila de la tabla (turno o día de licencia) con su clave de orden:
+  // fecha y hora de inicio. Cada licencia ocupa una fila por cada día corrido
+  // dentro del período (OD-19), antes de los turnos de ese día.
+  const today = todayInBuenosAires(now)
   type Line =
     | {
         type: 'entry'
@@ -472,12 +489,11 @@ function buildServicesSection(
       sortTime: entry.startTime,
       entry,
     })),
-    ...leaves.map((leave): Line => ({
-      type: 'leave',
-      date: leave.startsOn > input.from ? leave.startsOn : input.from,
-      sortTime: '',
-      leave,
-    })),
+    ...leaves.flatMap((leave) =>
+      leaveDatesInPeriod(leave, input.from, input.to, today).map(
+        (date): Line => ({ type: 'leave', date, sortTime: '', leave }),
+      ),
+    ),
   ].sort(
     (a, b) =>
       a.date.localeCompare(b.date) ||
@@ -507,12 +523,13 @@ function buildServicesSection(
   const spans: Record<string, PrintRowSpan> = {}
   const rows: PrintRowData[] = allLines.map((line) => {
     if (line.type === 'leave') {
-      spans[`leave-${line.leave.id}`] = { from: 'client', to: 'novelty' }
+      const leaveKey = `leave-${line.leave.id}-${line.date}`
+      spans[leaveKey] = { from: 'client', to: 'novelty' }
       return {
-        key: `leave-${line.leave.id}`,
+        key: leaveKey,
         date: formatPeriodDate(line.date),
         // La observación va en la celda unida que arranca en Cliente y llega hasta Observaciones (`spans`).
-        client: leaveSheetNote(line.leave),
+        client: leaveDayNote(line.leave),
         site: '',
         franja: '',
         start: '',

@@ -39,6 +39,10 @@ export function formatWorkedHours(minutes: number | undefined): string {
 
 export const CLIENT_SUMMARY_SHEET_TITLE = 'Resumen de servicios'
 
+/** OD-18: pie de firma en conformidad, como el de la ficha de asistencia. */
+export const CLIENT_SUMMARY_CONSENT_TEXT =
+  'Las partes prestan conformidad con el detalle de servicios, horas e inasistencias consignado.'
+
 export interface ClientSummarySheetModel {
   title: string
   facts: { label: string; value: string }[]
@@ -46,6 +50,7 @@ export interface ClientSummarySheetModel {
   rows: PrintRowData[]
   footer: { label: string; value: string }
   signers: string[]
+  consentText: string
   documentTitle: string
 }
 
@@ -238,7 +243,8 @@ export function buildClientSummarySheet(input: {
       label: 'Horas totales',
       value: formatMinutes(summary.totals.workedMinutes),
     },
-    signers: ['Responsable (administración)'],
+    signers: ['Responsable (administración)', 'Cliente'],
+    consentText: CLIENT_SUMMARY_CONSENT_TEXT,
     documentTitle: `Resumen de servicios - ${input.clientName} - ${summary.from} al ${summary.to}`,
   }
 }

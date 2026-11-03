@@ -14,6 +14,25 @@ interface PrintSheetProps {
    * archivo que propone el navegador al guardar como PDF.
    */
   documentTitle: string
+  /**
+   * Orientación de la hoja (OD-18). `portrait` (A4 vertical, 210 × 297 mm,
+   * 15 mm de margen) es la de siempre; `landscape` (A4 horizontal,
+   * 297 × 210 mm, 10 mm de margen) es la de los informes de asistencia y el
+   * cronograma. La vista previa y la página impresa (`@page` con nombre en
+   * `print.css`) usan la misma.
+   */
+  orientation?: PrintOrientation
+}
+
+export type PrintOrientation = 'portrait' | 'landscape'
+
+/** Medidas (mm) de la hoja A4 según la orientación. */
+export const SHEET_MM: Record<
+  PrintOrientation,
+  { width: number; height: number; margin: number }
+> = {
+  portrait: { width: 210, height: 297, margin: 15 },
+  landscape: { width: 297, height: 210, margin: 10 },
 }
 
 /**
@@ -23,7 +42,8 @@ interface PrintSheetProps {
  * la hoja (A4, con márgenes) o la guarda como PDF desde su diálogo. Sin
  * librerías de PDF.
  *
- * Ancho fijo: la hoja mide siempre 210 mm (A4) con 15 mm de margen interno,
+ * Ancho fijo: la hoja mide siempre 210 mm (A4 vertical; 297 mm con 10 mm de
+ * margen en horizontal, OD-18) con 15 mm de margen interno,
  * sin importar la ventana ni el contenido. En pantallas angostas el contenedor
  * se achica con `transform: scale()` hasta entrar entera (el diseño de
  * 210 mm no se reacomoda). Al imprimir no se escala. Al imprimir, el ancho
@@ -48,9 +68,6 @@ interface SheetFit {
 
 /** Medidas de la hoja A4 en px de CSS (1 mm = 96/25.4 px). */
 const MM = 96 / 25.4
-const PAGE_HEIGHT = 297 * MM
-const PAGE_MARGIN = 15 * MM
-const PAGE_USABLE_HEIGHT = PAGE_HEIGHT - 2 * PAGE_MARGIN
 
 interface PageLayout {
   /** Páginas A4 completas que ocupa la hoja. */
@@ -70,7 +87,13 @@ export function computePageLayout(input: {
   contentHeight: number
   signaturesTop: number | null
   signaturesHeight: number
+  /** Por omisión, vertical. */
+  orientation?: PrintOrientation
 }): PageLayout {
+  const mm = SHEET_MM[input.orientation ?? 'portrait']
+  const PAGE_HEIGHT = mm.height * MM
+  const PAGE_MARGIN = mm.margin * MM
+  const PAGE_USABLE_HEIGHT = PAGE_HEIGHT - 2 * PAGE_MARGIN
   let push = 0
   const { signaturesTop: top, signaturesHeight: height } = input
   if (top != null && height > 0 && height <= PAGE_USABLE_HEIGHT) {
@@ -110,7 +133,14 @@ export function computeSheetFit(
   }
 }
 
-function PrintSheet({ children, onClose, documentTitle }: PrintSheetProps) {
+function PrintSheet({
+  children,
+  onClose,
+  documentTitle,
+  orientation = 'portrait',
+}: PrintSheetProps) {
+  const sheetMm = SHEET_MM[orientation]
+  const isLandscape = orientation === 'landscape'
   const [isEditing, setEditing] = useState(false)
   // Contenido congelado desde la primera edición: null = se sigue al original.
   const [frozen, setFrozen] = useState<React.ReactNode | null>(null)
@@ -147,6 +177,7 @@ function PrintSheet({ children, onClose, documentTitle }: PrintSheetProps) {
             ? signatures.offsetTop - pushRef.current
             : null,
           signaturesHeight: signatures?.offsetHeight ?? 0,
+          orientation,
         })
         pushRef.current = nextLayout.push
         setLayout((prev) =>
@@ -183,7 +214,7 @@ function PrintSheet({ children, onClose, documentTitle }: PrintSheetProps) {
       window.removeEventListener('resize', measure)
       observer.disconnect()
     }
-  }, [])
+  }, [orientation])
 
   function toggleEditing() {
     if (!isEditing && frozen === null) {
@@ -222,6 +253,7 @@ function PrintSheet({ children, onClose, documentTitle }: PrintSheetProps) {
       aria-modal="true"
       aria-label={documentTitle}
       ref={portalRef}
+      data-orientation={orientation}
       className="print-portal fixed inset-0 z-[100] flex flex-col overflow-auto bg-bg"
     >
       <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 border-b border-border bg-surface px-4 py-2 print:hidden">
@@ -265,7 +297,7 @@ function PrintSheet({ children, onClose, documentTitle }: PrintSheetProps) {
       {isEditing && (
         <p
           role="status"
-          className="mx-auto box-border w-[210mm] max-w-full shrink-0 px-4 pt-3 text-[12px] text-text-2 print:hidden"
+          className={`mx-auto box-border max-w-full shrink-0 px-4 pt-3 text-[12px] text-text-2 print:hidden ${isLandscape ? 'w-[297mm]' : 'w-[210mm]'}`}
           style={fit.scale < 1 ? { width: fit.width } : undefined}
         >
           Los cambios valen solo para esta impresión: no se guardan en la app.
@@ -281,11 +313,14 @@ function PrintSheet({ children, onClose, documentTitle }: PrintSheetProps) {
         <div
           ref={sheetRef}
           data-testid="print-sheet"
-          className="print-sheet box-border w-[210mm] shrink-0 origin-top-left bg-white p-[15mm] text-[12px] text-black shadow-card print:m-0 print:w-auto print:p-0 print:shadow-none"
-          style={{
-            minHeight: `${layout.pages * 297}mm`,
-            ...(fit.scale < 1 ? { transform: `scale(${fit.scale})` } : {}),
-          }}
+          className={`print-sheet box-border shrink-0 origin-top-left bg-white text-[12px] text-black shadow-card print:m-0 print:w-auto print:p-0 print:shadow-none ${isLandscape ? 'w-[297mm] p-[10mm]' : 'w-[210mm] p-[15mm]'}`}
+          style={
+            {
+              '--page-h': `${sheetMm.height}mm`,
+              minHeight: `${layout.pages * sheetMm.height}mm`,
+              ...(fit.scale < 1 ? { transform: `scale(${fit.scale})` } : {}),
+            } as React.CSSProperties
+          }
         >
           <div
             ref={bodyRef}

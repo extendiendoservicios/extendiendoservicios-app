@@ -326,7 +326,11 @@ function ClientSummarySheet({
   const emittedAt = useMemo(() => issuedAt ?? new Date(), [issuedAt])
 
   return (
-    <PrintSheet documentTitle={sheet.documentTitle} onClose={onClose}>
+    <PrintSheet
+      documentTitle={sheet.documentTitle}
+      onClose={onClose}
+      orientation="landscape"
+    >
       <PrintableLetterhead title={sheet.title} issuedAt={emittedAt} />
       <PrintFacts facts={sheet.facts} />
       <PrintTable
@@ -335,7 +339,7 @@ function ClientSummarySheet({
         footer={sheet.footer}
         emptyText="No hubo turnos realizados ni inasistencias en este período."
       />
-      <PrintSignatures signers={sheet.signers} />
+      <PrintSignatures intro={sheet.consentText} signers={sheet.signers} />
     </PrintSheet>
   )
 }
