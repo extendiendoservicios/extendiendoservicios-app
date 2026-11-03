@@ -163,7 +163,7 @@ function ClientsListTab() {
     {
       id: 'name',
       header: 'Nombre',
-      meta: { card: 'title', width: '26%' },
+      meta: { card: 'title', width: '24%' },
       cell: ({ row }) => {
         const client = row.original
         const primaryName = client.tradeName ?? client.legalName
@@ -200,9 +200,9 @@ function ClientsListTab() {
     {
       id: 'cuit',
       header: 'CUIT',
-      meta: { card: 'meta', cardLabel: 'CUIT', width: '13%' },
+      meta: { card: 'meta', cardLabel: 'CUIT', width: '15%' },
       cell: ({ row }) => (
-        <span className="whitespace-nowrap">
+        <span className="whitespace-nowrap pr-4 inline-block">
           {formatTaxId(row.original.cuit) ?? '—'}
         </span>
       ),
