@@ -732,13 +732,141 @@ export const CASOS_RPC: CasoRpc[] = [
       cubre: ['RB-X02'],
     },
   ),
+  // --- P27 (OD-22, OD-23): borrado físico, SOLO del dueño. Ni el administrador con todas las
+  // capacidades. Con un id inexistente el dueño pasa la puerta y recibe *_NOT_FOUND sin escribir.
+  caso(
+    'owner_delete_preview_shift',
+    () => ({ p_shift_id: U }),
+    { owner: 'SHIFT_NOT_FOUND' },
+    { cubre: ['RB-X02', 'OD-22', 'OD-23'] },
+  ),
+  caso(
+    'owner_delete_shift',
+    () => ({ p_shift_id: U }),
+    { owner: 'SHIFT_NOT_FOUND' },
+    { cubre: ['RB-X02', 'OD-22', 'OD-23'] },
+  ),
+  caso(
+    'owner_delete_preview_service',
+    () => ({ p_service_id: U }),
+    { owner: 'SERVICE_NOT_FOUND' },
+    { cubre: ['RB-X02', 'OD-22', 'OD-23'] },
+  ),
+  caso(
+    'owner_delete_service',
+    () => ({ p_service_id: U, p_confirm_name: 'e2e-perm' }),
+    { owner: 'SERVICE_NOT_FOUND' },
+    { cubre: ['RB-X02', 'OD-22', 'OD-22b'] },
+  ),
+  caso(
+    'owner_delete_preview_service_shifts',
+    () => ({ p_service_id: U, p_from_date: '2099-01-01' }),
+    { owner: 'SERVICE_NOT_FOUND' },
+    { cubre: ['RB-X02', 'OD-22', 'OD-23'] },
+  ),
+  caso(
+    'owner_delete_service_shifts',
+    () => ({
+      p_service_id: U,
+      p_from_date: '2099-01-01',
+      p_confirm_name: 'e2e-perm',
+    }),
+    { owner: 'SERVICE_NOT_FOUND' },
+    { cubre: ['RB-X02', 'OD-22', 'OD-23'] },
+  ),
+  caso(
+    'owner_delete_preview_site',
+    () => ({ p_site_id: U }),
+    { owner: 'SITE_NOT_FOUND' },
+    { cubre: ['RB-X02', 'OD-22', 'OD-23'] },
+  ),
+  caso(
+    'owner_delete_site',
+    () => ({ p_site_id: U, p_confirm_name: 'e2e-perm' }),
+    { owner: 'SITE_NOT_FOUND' },
+    { cubre: ['RB-X02', 'OD-22', 'OD-23'] },
+  ),
+  caso(
+    'owner_delete_preview_client',
+    () => ({ p_client_id: U }),
+    { owner: 'CLIENT_NOT_FOUND' },
+    { cubre: ['RB-X02', 'OD-22', 'OD-23'] },
+  ),
+  caso(
+    'owner_delete_client',
+    () => ({ p_client_id: U, p_confirm_name: 'e2e-perm' }),
+    { owner: 'CLIENT_NOT_FOUND' },
+    { cubre: ['RB-X02', 'OD-22', 'OD-23'] },
+  ),
+  caso(
+    'owner_delete_preview_employee',
+    () => ({ p_employee_id: U }),
+    { owner: 'EMPLOYEE_NOT_FOUND' },
+    { cubre: ['RB-X02', 'OD-22', 'OD-23'] },
+  ),
+  caso(
+    'owner_delete_employee',
+    () => ({ p_employee_id: U, p_confirm_name: 'e2e-perm' }),
+    { owner: 'EMPLOYEE_NOT_FOUND' },
+    { cubre: ['RB-X02', 'OD-22', 'OD-23'] },
+  ),
+  // --- P27 (OD-20): categorías de clientes, dueño y administradores (con o sin capacidades).
+  caso(
+    'upsert_client_category',
+    () => ({ p_name: '' }),
+    admins('NAME_REQUIRED'),
+    { cubre: ['RB-X02', 'OD-20'] },
+  ),
+  caso(
+    'reorder_client_categories',
+    () => ({ p_ids: [U] }),
+    admins('CATEGORY_NOT_FOUND'),
+    { cubre: ['RB-X02', 'OD-20'] },
+  ),
+  caso(
+    'remove_client_category',
+    () => ({ p_id: U }),
+    admins('CATEGORY_NOT_FOUND'),
+    { cubre: ['RB-X02', 'OD-20'] },
+  ),
+  // --- P27 (OD-11): fijos en lote, dueño y administradores.
+  caso(
+    'apply_service_fixed_employees',
+    () => ({ p_service_id: U, p_from_date: '2099-01-01' }),
+    admins('SERVICE_NOT_FOUND'),
+    { cubre: ['RB-X02', 'OD-11'] },
+  ),
+  // --- P27 (OD-06, OD-07): jornada desde la administración, con `manage_attendance`.
+  caso(
+    'admin_end_workday',
+    () => ({ p_workday_id: U, p_reason: 'e2e-perm' }),
+    conCapacidad('WORKDAY_NOT_FOUND'),
+    { cubre: ['RB-A07', 'RB-X02', 'CB-17', 'OD-06'] },
+  ),
+  caso(
+    'admin_close_workday_pause',
+    () => ({ p_event_id: U, p_reason: 'e2e-perm' }),
+    conCapacidad('EVENT_NOT_FOUND'),
+    { cubre: ['RB-A07', 'RB-X02', 'CB-17', 'OD-07'] },
+  ),
+  caso(
+    'admin_correct_supervision_time',
+    () => ({ p_supervision_id: U, p_reason: 'e2e-perm' }),
+    conCapacidad('SUPERVISION_NOT_FOUND'),
+    { cubre: ['RB-A07', 'RB-X02', 'CB-17', 'OD-07'] },
+  ),
+  // --- P27.1b (OD-27): `generate_shifts` limitado a un servicio exige la misma capacidad.
+  caso(
+    'generate_shifts',
+    () => ({ p_year: 2099, p_month: 1, p_service_id: U }),
+    conCapacidad('SERVICE_NOT_FOUND'),
+    { variante: 'con p_service_id', cubre: ['RB-A04', 'RB-X02', 'OD-27'] },
+  ),
   caso(
     'delete_service',
     () => ({ p_service_id: U }),
-    admins('SERVICE_NOT_FOUND'),
-    {
-      cubre: ['RB-X02'],
-    },
+    { owner: 'SERVICE_NOT_FOUND' },
+    { cubre: ['RB-X02', 'OD-22b'] },
   ),
   caso(
     'preview_shift_series',

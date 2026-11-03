@@ -91,4 +91,16 @@ export const CASOS: CasoEdge[] = [
     esperado: esperado({ owner: 'PROFILE_NOT_FOUND' }),
     cubre: ['RB-A01', 'RB-X02'],
   },
+  {
+    // P27.1 (OD-22, OD-23): borrar de verdad a un empleado es solo del dueño, ni el administrador
+    // con `manage_users`. Con una persona inexistente el dueño recibe PROFILE_NOT_FOUND.
+    accion: 'delete_user',
+    cuerpo: () => ({
+      action: 'delete_user',
+      profile_id: INEXISTENTE,
+      confirm_name: 'e2e-perm',
+    }),
+    esperado: esperado({ owner: 'PROFILE_NOT_FOUND' }),
+    cubre: ['RB-A01', 'RB-X02', 'OD-22', 'OD-23'],
+  },
 ]
