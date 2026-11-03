@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   effectiveShiftState,
   matchesShiftSearch,
+  myPastSupervisions,
+  pastSupervisionLabel,
   sortShifts,
   splitTodayShifts,
   supervisorsLabels,
@@ -155,7 +157,7 @@ describe('takeSupervisionBlock (CJ-07, CJ-08, CJ-27)', () => {
     expect(takeSupervisionBlock(shift, workday)).toMatch(/Cerrá o descartá/)
   })
 
-  it('un turno que ya tomó no se vuelve a tomar', () => {
+  it('un turno que está supervisando no se vuelve a tomar', () => {
     expect(
       takeSupervisionBlock(
         makeTodayShift({
@@ -165,6 +167,9 @@ describe('takeSupervisionBlock (CJ-07, CJ-08, CJ-27)', () => {
         makeWorkday(),
       ),
     ).toMatch(/Ya estás supervisando/)
+  })
+
+  it('OD-10: un turno que ya supervisó y cerró se puede volver a supervisar', () => {
     expect(
       takeSupervisionBlock(
         makeTodayShift({
@@ -173,7 +178,71 @@ describe('takeSupervisionBlock (CJ-07, CJ-08, CJ-27)', () => {
         }),
         makeWorkday(),
       ),
-    ).toMatch(/Ya supervisaste/)
+    ).toBeNull()
+  })
+
+  it('OD-08: cualquier estado del turno se puede supervisar', () => {
+    for (const displayState of [
+      'pending',
+      'in_progress',
+      'finished',
+    ] as const) {
+      expect(
+        takeSupervisionBlock(makeTodayShift({ displayState }), makeWorkday()),
+      ).toBeNull()
+    }
+  })
+})
+
+describe('supervisiones anteriores propias (OD-10)', () => {
+  const mine = (over: Record<string, unknown>) => ({
+    supervisionId: 'x',
+    supervisorId: 'me',
+    firstName: 'Yo',
+    lastName: 'Mismo',
+    status: 'completed' as const,
+    checkInAt: '2026-10-23T12:00:00Z',
+    checkOutAt: '2026-10-23T12:30:00Z',
+    isMe: true,
+    ...over,
+  })
+  const fmt = (iso: string) => iso.slice(11, 16)
+
+  it('lista las cerradas de la más vieja a la más nueva y deja afuera la abierta y las ajenas', () => {
+    const shift = makeTodayShift({
+      supervisors: [
+        mine({ supervisionId: 'b', checkInAt: '2026-10-23T14:00:00Z' }),
+        mine({ supervisionId: 'a' }),
+        mine({
+          supervisionId: 'abierta',
+          status: 'in_progress',
+          checkInAt: '2026-10-23T16:00:00Z',
+          checkOutAt: null,
+        }),
+        mine({ supervisionId: 'otro', isMe: false }),
+      ],
+    })
+    expect(myPastSupervisions(shift).map((s) => s.supervisionId)).toEqual([
+      'a',
+      'b',
+    ])
+  })
+
+  it('rotula hora y cuántos calificó', () => {
+    const s = mine({})
+    expect(pastSupervisionLabel(s, 2, fmt)).toBe(
+      '12:00 a 12:30 · calificaste a 2 empleados',
+    )
+    expect(pastSupervisionLabel(s, 1, fmt)).toMatch(/a 1 empleado$/)
+    expect(pastSupervisionLabel(s, 0, fmt)).toMatch(/no calificaste a nadie/)
+    expect(pastSupervisionLabel(s, undefined, fmt)).toBe('12:00 a 12:30')
+  })
+
+  it('el nombre del coordinador no se repite con varias pasadas', () => {
+    const shift = makeTodayShift({
+      supervisors: [mine({ supervisionId: 'a' }), mine({ supervisionId: 'b' })],
+    })
+    expect(supervisorsLabels(shift)).toEqual(['Supervisó: Vos'])
   })
 })
 
