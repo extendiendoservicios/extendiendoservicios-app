@@ -137,6 +137,12 @@ test(
         })
         await page.getByRole('button', { name: 'Crear servicio' }).click()
         await expect(page.getByText('Creamos el servicio.')).toBeVisible()
+        // OD-27 (P27): al crear un servicio se ofrece «¿Generar los turnos de este mes ahora?».
+        // Este recorrido genera el mes lejano más abajo (ADM-09): acá se responde «Ahora no».
+        await page
+          .getByRole('dialog')
+          .getByRole('button', { name: 'Ahora no' })
+          .click()
         await expect(page).toHaveURL(
           new RegExp(`/admin/clientes/${clienteId}\\?pestana=servicios`),
         )
@@ -347,13 +353,15 @@ test(
           .getByRole('row')
           .filter({ hasText: nombreCliente })
         await expect(filas.first()).toContainText(nombreDe('empleado1'))
-        // P24.4: el bloque muestra las jornadas de los coordinadores (abiertas y cerradas solas).
-        await expect(
-          page.getByRole('region', { name: 'Supervisiones de hoy' }),
-        ).toContainText(`${nombreDe('supervisor2')}`)
-        await expect(
-          page.getByRole('region', { name: 'Supervisiones de hoy' }),
-        ).toContainText('Jornadas abiertas')
+        // P24.4 y P27 (OD-04): el bloque muestra una tarjeta por coordinador, con su estado.
+        const bloque = page.getByRole('region', {
+          name: 'Supervisiones de hoy',
+        })
+        const tarjeta = bloque.getByRole('article', {
+          name: `Coordinador ${nombreDe('supervisor2')}`,
+        })
+        await expect(tarjeta).toBeVisible()
+        await expect(tarjeta).toContainText('En actividad')
       })
     } finally {
       expect(await sc.cleanup(), 'limpieza').toEqual([])
