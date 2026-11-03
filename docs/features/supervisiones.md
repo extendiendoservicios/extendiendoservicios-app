@@ -389,3 +389,51 @@ una fila por calificación (`ratings.id`), así que dos coordinadores que
 califican al mismo empleado en el mismo turno aparecen como dos registros.
 Ningún resumen agrupa por turno: el promedio de la ficha
 (`v_employee_ratings`) es sobre todas las calificaciones.
+
+## P27.6 · Coordinadores: tarjetas, jornadas y correcciones (OD-04 a OD-07)
+
+Especificación: `Docs/Plan_Maestro/modulos/P27_observaciones_de_los_duenos_2_nov.md`.
+Backend: migración `0079` (`admin_end_workday`, `admin_close_workday_pause`,
+`admin_correct_supervision_time`, `p_pause_reason` de
+`admin_correct_workday_event` y las columnas nuevas de
+`v_supervisor_workdays_admin`). Todas las acciones piden `manage_attendance`
+(`canCorrectWorkdays`): sin la capacidad los botones no aparecen.
+
+- **OD-04, tarjeta por coordinador** (`CoordinatorCards`, `CoordinatorCard`):
+  la usan el Resumen (`SupervisionsTodayBlock`) y «Asistencia de hoy»
+  (`CoordinatorsDaySection`). Muestra el estado (CJ-33), el inicio, el fin, las
+  horas netas, cada pausa (desde, hasta y motivo; la abierta figura «sin
+  cerrar») y la supervisión en curso con cliente y sede. Hoy une
+  `v_supervisor_status` (incluye a quien no inició) con las jornadas del día;
+  otra fecha, solo las jornadas. Polling de 60 s. La lógica pura está en
+  `coordinatorCards.ts`. Reemplaza a `coordinatorDay.ts` y a
+  `coordinatorWorkdays.ts`.
+- **OD-04, «Ver actividad»** (`CoordinatorActivityPanel`): panel lateral (pantalla
+  completa en celular) con la línea de tiempo del día (`buildActivityTimeline`:
+  eventos, inicio y fin de cada supervisión, correcciones con la hora anterior y
+  el motivo, y bajas), las pausas, las supervisiones y las correcciones, con
+  enlace al detalle de la jornada.
+- **OD-05, pestaña «Jornadas»** de ADM-14 (`?pestana=jornadas`, después de
+  «Calificaciones»): `AllWorkdaysTab` lista las jornadas de todos los
+  coordinadores desde `v_supervisor_workdays_admin` con período (por defecto el
+  mes), coordinador y estado (abierta, cerrada, cerrada automáticamente =
+  `list_status`; corregida = `corrected`). Cada jornada es el mismo `WorkdayCard`
+  de la ficha del coordinador (con `showSupervisor`). Esta pestaña tiene sus
+  propios filtros: los de empleado, cliente y sede no se aplican.
+- **OD-06, «Finalizar jornada»** (`EndWorkdayDialog`): en la tarjeta, en el panel
+  y en el detalle (mientras la jornada esté abierta). La hora de fin es elegible
+  (por defecto ahora, sin tocar no se manda `p_at`; no se admite futura ni
+  anterior al inicio) y el motivo es obligatorio. El diálogo explica que cierra
+  la pausa abierta y que la supervisión abierta queda «Sin cerrar» (CJ-31).
+- **OD-07, todo se corrige** en `WorkdayCard`: hora y motivo de la pausa
+  (`CorrectWorkdayEventDialog`, solo se manda lo que cambió), «Cerrar pausa» en la
+  pausa abierta (`CloseWorkdayPauseDialog`), alta y baja de pausas (ya existían) y
+  «Corregir las horas» de inicio y fin de cada supervisión
+  (`CorrectSupervisionTimeDialog`; el fin solo si ya tiene fin). Motivo
+  obligatorio. Los errores muestran el `message` del servidor en español.
+- API: `src/api/workdaysAdmin.ts` (`endWorkday`, `closeWorkdayPause`,
+  `correctSupervisionTime`, `fetchAllWorkdays`, `pauseReason`); hooks en
+  `src/features/workdays/queries.ts`.
+- Tests: `coordinatorCards.test.ts`, `components/CoordinatorCards.test.tsx`,
+  `components/EndWorkdayDialog.test.tsx`, `components/AllWorkdaysTab.test.tsx`,
+  `components/WorkdayCard.test.tsx`, `schemas.test.ts`, `time.test.ts`.

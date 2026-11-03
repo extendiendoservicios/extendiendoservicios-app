@@ -27,6 +27,7 @@ import {
 } from '@/features/supervisions/queries'
 import { formatShiftRange } from '@/features/shifts/openEnded'
 import { SupervisionStateBadges } from './UnclosedBadge'
+import { AllWorkdaysTab } from '@/features/workdays/components/AllWorkdaysTab'
 import { UpdatedAgo } from './UpdatedAgo'
 
 /** "YYYY-MM-DD" → `Date` para `DatePicker` (mismo criterio que `ShiftsDayList`/`AttendanceTodayList`). */
@@ -72,10 +73,10 @@ const EMPTY_FILTERS: Filters = {
  * listado de supervisiones no trae nombres de empleado por sí solo.
  * Decisión propia, documentada en el reporte del encargo.
  */
-type SupervisionsAdminTab = 'supervisiones' | 'calificaciones'
+type SupervisionsAdminTab = 'supervisiones' | 'calificaciones' | 'jornadas'
 
 interface SupervisionsAdminScreenProps {
-  /** `?pestana=calificaciones` (`05` sección 5): lo controla `SupervisionsPage`. */
+  /** `?pestana=calificaciones` o `?pestana=jornadas` (`05` sección 5; OD-05): lo controla `SupervisionsPage`. */
   tab: SupervisionsAdminTab
   onTabChange: (tab: SupervisionsAdminTab) => void
 }
@@ -294,119 +295,132 @@ function SupervisionsAdminScreen({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {tab === 'supervisiones' && supervisionsQuery.dataUpdatedAt > 0 && (
-          <UpdatedAgo dataUpdatedAt={supervisionsQuery.dataUpdatedAt} />
-        )}
-        {tab === 'calificaciones' && ratingsQuery.dataUpdatedAt > 0 && (
-          <UpdatedAgo dataUpdatedAt={ratingsQuery.dataUpdatedAt} />
-        )}
-      </div>
+      {tab !== 'jornadas' && (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {tab === 'supervisiones' && supervisionsQuery.dataUpdatedAt > 0 && (
+              <UpdatedAgo dataUpdatedAt={supervisionsQuery.dataUpdatedAt} />
+            )}
+            {tab === 'calificaciones' && ratingsQuery.dataUpdatedAt > 0 && (
+              <UpdatedAgo dataUpdatedAt={ratingsQuery.dataUpdatedAt} />
+            )}
+          </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <Select
-          value={filters.employeeId}
-          onValueChange={(value) =>
-            setFilters((prev) => ({ ...prev, employeeId: value }))
-          }
-        >
-          <SelectTrigger aria-label="Filtrar por empleado" className="w-52">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los empleados</SelectItem>
-            {employeeOptions.map((option) => (
-              <SelectItem key={option.id} value={option.id}>
-                {option.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={filters.supervisorId}
-          onValueChange={(value) =>
-            setFilters((prev) => ({ ...prev, supervisorId: value }))
-          }
-        >
-          <SelectTrigger aria-label="Filtrar por coordinador" className="w-52">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los coordinadores</SelectItem>
-            {supervisorOptions.map((option) => (
-              <SelectItem key={option.id} value={option.id}>
-                {option.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={filters.clientId}
-          onValueChange={(value) =>
-            setFilters((prev) => ({ ...prev, clientId: value }))
-          }
-        >
-          <SelectTrigger aria-label="Filtrar por cliente" className="w-52">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los clientes</SelectItem>
-            {clientOptions.map((option) => (
-              <SelectItem key={option.id} value={option.id}>
-                {option.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={filters.siteId}
-          onValueChange={(value) =>
-            setFilters((prev) => ({ ...prev, siteId: value }))
-          }
-        >
-          <SelectTrigger aria-label="Filtrar por sede" className="w-52">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas las sedes</SelectItem>
-            {siteOptions.map((option) => (
-              <SelectItem key={option.id} value={option.id}>
-                {option.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-semibold text-text-2">Desde</span>
-          <DatePicker
-            aria-label="Desde"
-            value={
-              filters.dateFrom ? isoDateToDate(filters.dateFrom) : undefined
-            }
-            onValueChange={(next) =>
-              setFilters((prev) => ({
-                ...prev,
-                dateFrom: next ? localDateToIsoDate(next) : '',
-              }))
-            }
-            className="w-44"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-semibold text-text-2">Hasta</span>
-          <DatePicker
-            aria-label="Hasta"
-            value={filters.dateTo ? isoDateToDate(filters.dateTo) : undefined}
-            onValueChange={(next) =>
-              setFilters((prev) => ({
-                ...prev,
-                dateTo: next ? localDateToIsoDate(next) : '',
-              }))
-            }
-            className="w-44"
-          />
-        </div>
-      </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Select
+              value={filters.employeeId}
+              onValueChange={(value) =>
+                setFilters((prev) => ({ ...prev, employeeId: value }))
+              }
+            >
+              <SelectTrigger aria-label="Filtrar por empleado" className="w-52">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los empleados</SelectItem>
+                {employeeOptions.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {option.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={filters.supervisorId}
+              onValueChange={(value) =>
+                setFilters((prev) => ({ ...prev, supervisorId: value }))
+              }
+            >
+              <SelectTrigger
+                aria-label="Filtrar por coordinador"
+                className="w-52"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los coordinadores</SelectItem>
+                {supervisorOptions.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {option.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={filters.clientId}
+              onValueChange={(value) =>
+                setFilters((prev) => ({ ...prev, clientId: value }))
+              }
+            >
+              <SelectTrigger aria-label="Filtrar por cliente" className="w-52">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los clientes</SelectItem>
+                {clientOptions.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {option.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={filters.siteId}
+              onValueChange={(value) =>
+                setFilters((prev) => ({ ...prev, siteId: value }))
+              }
+            >
+              <SelectTrigger aria-label="Filtrar por sede" className="w-52">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las sedes</SelectItem>
+                {siteOptions.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {option.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-semibold text-text-2">
+                Desde
+              </span>
+              <DatePicker
+                aria-label="Desde"
+                value={
+                  filters.dateFrom ? isoDateToDate(filters.dateFrom) : undefined
+                }
+                onValueChange={(next) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    dateFrom: next ? localDateToIsoDate(next) : '',
+                  }))
+                }
+                className="w-44"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-semibold text-text-2">
+                Hasta
+              </span>
+              <DatePicker
+                aria-label="Hasta"
+                value={
+                  filters.dateTo ? isoDateToDate(filters.dateTo) : undefined
+                }
+                onValueChange={(next) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    dateTo: next ? localDateToIsoDate(next) : '',
+                  }))
+                }
+                className="w-44"
+              />
+            </div>
+          </div>
+        </>
+      )}
 
       <Tabs
         value={tab}
@@ -415,6 +429,7 @@ function SupervisionsAdminScreen({
         <TabsList>
           <TabsTrigger value="supervisiones">Supervisiones</TabsTrigger>
           <TabsTrigger value="calificaciones">Calificaciones</TabsTrigger>
+          <TabsTrigger value="jornadas">Jornadas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="supervisiones" className="pt-3">
@@ -443,6 +458,10 @@ function SupervisionsAdminScreen({
               title: 'No hay calificaciones para mostrar con estos filtros',
             }}
           />
+        </TabsContent>
+
+        <TabsContent value="jornadas" className="pt-3">
+          <AllWorkdaysTab />
         </TabsContent>
       </Tabs>
     </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { Clock, Pause, Plus, TriangleAlert } from 'lucide-react'
+import { Clock, Pause, Plus, Square, TriangleAlert } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatMinutes, formatTime } from '@/lib/format'
@@ -10,12 +10,16 @@ import {
   type AdminWorkday,
   type WorkdayEvent,
   type WorkdayEventKind,
+  type WorkdaySupervision,
 } from '@/api/workdaysAdmin'
 import { formatDateOnly } from '@/features/settings/dateOnly'
 import { SupervisionStateBadges } from '@/features/supervisions/components/UnclosedBadge'
 import type { SupervisionStatus } from '@/api/supervisions'
 import { formatPauseDuration } from '../time'
 import { AddWorkdayPauseDialog } from './AddWorkdayPauseDialog'
+import { CloseWorkdayPauseDialog } from './CloseWorkdayPauseDialog'
+import { CorrectSupervisionTimeDialog } from './CorrectSupervisionTimeDialog'
+import { EndWorkdayDialog } from './EndWorkdayDialog'
 import { CorrectWorkdayEventDialog } from './CorrectWorkdayEventDialog'
 import { RemoveWorkdayPauseDialog } from './RemoveWorkdayPauseDialog'
 
@@ -38,6 +42,8 @@ interface WorkdayCardProps {
   workday: AdminWorkday
   /** Corregir (`manage_attendance`): oculta los botones si es falso. */
   canCorrect: boolean
+  /** Muestra el nombre del coordinador (pantalla «Jornadas» de Supervisiones, OD-05). */
+  showSupervisor?: boolean
 }
 
 /**
@@ -47,35 +53,65 @@ interface WorkdayCardProps {
  * se corrija (CJ-31) y el historial de correcciones (CJ-32). Se ve igual a
  * 390 px: una columna de tarjeta.
  */
-function WorkdayCard({ workday, canCorrect }: WorkdayCardProps) {
+function WorkdayCard({
+  workday,
+  canCorrect,
+  showSupervisor = false,
+}: WorkdayCardProps) {
   const [correctTarget, setCorrectTarget] = useState<WorkdayEvent | null>(null)
   const [removePauseId, setRemovePauseId] = useState<string | null>(null)
   const [isAddPauseOpen, setAddPauseOpen] = useState(false)
+  const [closePauseId, setClosePauseId] = useState<string | null>(null)
+  const [isEndOpen, setEndOpen] = useState(false)
+  const [timeTarget, setTimeTarget] = useState<WorkdaySupervision | null>(null)
 
   const state = STATE_BADGE[workday.state]
   const visibleEvents = workday.events.filter((event) => !event.removed)
+  const closePauseEvent = closePauseId
+    ? workday.events.find((event) => event.id === closePauseId)
+    : undefined
   const history = workday.events.filter(
     (event) => event.corrected || event.removed,
   )
 
   return (
     <article
-      aria-label={`Jornada del ${formatDateOnly(workday.workDate)}`}
+      aria-label={`Jornada del ${formatDateOnly(workday.workDate)}${showSupervisor ? ` de ${workday.supervisorName}` : ''}`}
       className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5"
     >
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
+          {showSupervisor && (
+            <Link
+              to={`/admin/empleados/${workday.supervisorId}?pestana=jornadas`}
+              className="text-[14px] font-semibold text-text hover:text-primary-800"
+            >
+              {workday.supervisorName || 'Sin nombre'}
+            </Link>
+          )}
           <h3 className="text-[14px] font-semibold text-text capitalize">
             {formatDateOnly(workday.workDate)}
           </h3>
           <Badge variant={state.variant}>{state.label}</Badge>
           {workday.corrected && <Badge variant="info">Corregida</Badge>}
         </div>
-        <p className="flex items-center gap-1.5 text-[13px] font-semibold text-text">
-          <Clock aria-hidden="true" className="size-4 text-text-3" />
-          {formatMinutes(workday.workedMinutes)}
-          <span className="text-[11px] font-normal text-text-3">netas</span>
-        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="flex items-center gap-1.5 text-[13px] font-semibold text-text">
+            <Clock aria-hidden="true" className="size-4 text-text-3" />
+            {formatMinutes(workday.workedMinutes)}
+            <span className="text-[11px] font-normal text-text-3">netas</span>
+          </p>
+          {canCorrect && workday.isOpen && (
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={Square}
+              onClick={() => setEndOpen(true)}
+            >
+              Finalizar jornada
+            </Button>
+          )}
+        </div>
       </header>
 
       {workday.autoCloseWarning && (
@@ -166,6 +202,18 @@ function WorkdayCard({ workday, canCorrect }: WorkdayCardProps) {
                   {supervision.clientName} · {supervision.siteName}
                 </Link>
                 <span className="flex flex-wrap items-center gap-2 text-text-2">
+                  {canCorrect &&
+                    supervision.checkInAt &&
+                    supervision.status !== 'cancelled' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Corregir las horas de la supervisión en ${supervision.clientName} · ${supervision.siteName}`}
+                        onClick={() => setTimeTarget(supervision)}
+                      >
+                        Corregir horas
+                      </Button>
+                    )}
                   {supervision.checkInAt
                     ? formatTime(supervision.checkInAt)
                     : '—'}
@@ -235,8 +283,20 @@ function WorkdayCard({ workday, canCorrect }: WorkdayCardProps) {
                     aria-label={`Corregir hora: ${WORKDAY_EVENT_LABELS[event.kind].toLowerCase()} de las ${formatTime(event.recordedAt)}`}
                     onClick={() => setCorrectTarget(event)}
                   >
-                    Corregir hora
+                    {event.kind === 'pause'
+                      ? 'Corregir hora o motivo'
+                      : 'Corregir hora'}
                   </Button>
+                  {event.id === workday.openPauseEventId && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`Cerrar la pausa de las ${formatTime(event.recordedAt)}`}
+                      onClick={() => setClosePauseId(event.id)}
+                    >
+                      Cerrar pausa
+                    </Button>
+                  )}
                   {event.kind === 'pause' && (
                     <Button
                       variant="ghost"
@@ -299,6 +359,37 @@ function WorkdayCard({ workday, canCorrect }: WorkdayCardProps) {
           }}
         />
       )}
+      {closePauseEvent && (
+        <CloseWorkdayPauseDialog
+          pauseEventId={closePauseEvent.id}
+          pauseStartedAt={closePauseEvent.recordedAt}
+          workDate={workday.workDate}
+          open
+          onOpenChange={(open) => {
+            if (!open) setClosePauseId(null)
+          }}
+        />
+      )}
+      {timeTarget && (
+        <CorrectSupervisionTimeDialog
+          supervision={timeTarget}
+          workDate={workday.workDate}
+          open
+          onOpenChange={(open) => {
+            if (!open) setTimeTarget(null)
+          }}
+        />
+      )}
+      <EndWorkdayDialog
+        workdayId={workday.id}
+        supervisorName={workday.supervisorName || 'el coordinador'}
+        workDate={workday.workDate}
+        startedAt={workday.startedAt}
+        hasOpenPause={workday.openPauseEventId != null}
+        hasOpenSupervision={workday.openSupervisionId != null}
+        open={isEndOpen}
+        onOpenChange={setEndOpen}
+      />
       <AddWorkdayPauseDialog
         workdayId={workday.id}
         workDate={workday.workDate}
