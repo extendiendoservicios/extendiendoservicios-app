@@ -54,6 +54,7 @@ import {
   type ServiceFormValues,
 } from '@/features/services/schemas'
 import { RepeatFields } from '@/features/services/components/RepeatFields'
+import { ApplyFixedEmployeesDialog } from '@/features/services/components/ApplyFixedEmployeesDialog'
 import { useLeaveForm } from '@/app/shells/backNavigation'
 
 /** `"YYYY-MM-DD"` (columna `date` de Postgres, o cadena vacía) → `Date` para `DatePicker`. */
@@ -98,6 +99,11 @@ export default function ServiceFormPage() {
     serviceQuery.data?.siteId ?? '',
   )
   const setFixedEmployees = useSetServiceFixedEmployeesMutation()
+  // OD-11: tras guardar cambios en los fijos se pregunta si se aplican a los turnos.
+  const [applyPrompt, setApplyPrompt] = useState<{
+    serviceId: string
+    destination: string
+  } | null>(null)
   const isSaving =
     createService.isPending ||
     updateService.isPending ||
@@ -248,10 +254,12 @@ export default function ServiceFormPage() {
           })
         }
         toast.success('Guardamos los cambios del servicio.')
-        leaveForm(
-          `/admin/clientes/${service.clientId}?pestana=servicios`,
-          'edit',
-        )
+        const destination = `/admin/clientes/${service.clientId}?pestana=servicios`
+        if (mustSaveFixed) {
+          setApplyPrompt({ serviceId: service.id, destination })
+          return
+        }
+        leaveForm(destination, 'edit')
       } else {
         const service = await createService.mutateAsync({
           input,
@@ -664,6 +672,13 @@ export default function ServiceFormPage() {
           Cancelar
         </Button>
       </div>
+
+      {applyPrompt && (
+        <ApplyFixedEmployeesDialog
+          serviceId={applyPrompt.serviceId}
+          onFinish={() => leaveForm(applyPrompt.destination, 'edit')}
+        />
+      )}
     </form>
   )
 }

@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/sheet'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { ShiftDetail } from '@/features/planning/components/ShiftDetail'
+import { DeleteShiftAction } from '@/features/shifts/components/DeleteShiftAction'
 
 const DESKTOP_QUERY = '(min-width: 1024px)'
 
@@ -46,6 +47,11 @@ export default function ShiftDetailPage() {
     }
   }
 
+  // OD-22: después de borrar el turno no hay a dónde volver en el historial.
+  function handleDeleted() {
+    void navigate('/admin/planificacion', { replace: true })
+  }
+
   if (isDesktop) {
     return (
       <Sheet open onOpenChange={(open) => !open && handleClose()}>
@@ -54,6 +60,7 @@ export default function ShiftDetailPage() {
             <SheetTitle>Detalle del turno</SheetTitle>
           </SheetHeader>
           <ShiftDetail shiftId={id} />
+          <DeleteShiftAction shiftId={id} onDeleted={handleDeleted} />
         </SheetContent>
       </Sheet>
     )
@@ -62,6 +69,7 @@ export default function ShiftDetailPage() {
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-4">
       <ShiftDetail shiftId={id} />
+      <DeleteShiftAction shiftId={id} onDeleted={handleDeleted} />
     </div>
   )
 }

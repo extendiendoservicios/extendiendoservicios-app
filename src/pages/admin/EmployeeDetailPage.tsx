@@ -1,7 +1,7 @@
 import { formatTaxId } from '@/lib/taxId'
 import { useMemo, useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router'
-import { KeyRound, LogOut, Pencil, User, UserX } from 'lucide-react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
+import { KeyRound, LogOut, Pencil, Trash2, User, UserX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -13,6 +13,8 @@ import { formatCalendarDate } from '@/lib/format'
 import { AccessBlock } from '@/features/users/components/AccessBlock'
 import { canActOnUser, canViewCredentials } from '@/features/users/permissions'
 import { useAuth } from '@/features/auth/AuthProvider'
+import { OwnerDeleteDialog } from '@/features/ownerDelete/components/OwnerDeleteDialog'
+import { canOwnerDelete } from '@/features/ownerDelete/matching'
 import { BankDetailsCard } from '@/features/bank/components/BankDetailsCard'
 import { useEmployeeBankDetailsQuery } from '@/features/bank/queries'
 import { ROLE_LABELS } from '@/features/auth/session'
@@ -78,13 +80,14 @@ function isEmployeeDetailTab(value: string | null): value is EmployeeDetailTab {
 export default function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const auth = useAuth()
+  const navigate = useNavigate()
   const actor = useMemo(
     () => ({ roles: auth.roles, capabilities: auth.capabilities }),
     [auth.roles, auth.capabilities],
   )
   const [searchParams, setSearchParams] = useSearchParams()
   const [openDialog, setOpenDialog] = useState<
-    'reset-password' | 'sign-out' | 'terminate' | 'roles' | null
+    'reset-password' | 'sign-out' | 'terminate' | 'roles' | 'delete' | null
   >(null)
 
   const activeTab = isEmployeeDetailTab(searchParams.get('pestana'))
@@ -215,6 +218,17 @@ export default function EmployeeDetailPage() {
                 <Link to={`/admin/empleados/${employee.profileId}/editar`}>
                   Editar
                 </Link>
+              </Button>
+            )}
+            {canOwnerDelete(auth) && employee.profileId !== auth.userId && (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={Trash2}
+                className="text-danger"
+                onClick={() => setOpenDialog('delete')}
+              >
+                Eliminar
               </Button>
             )}
           </div>
@@ -356,6 +370,15 @@ export default function EmployeeDetailPage() {
         open={openDialog === 'roles'}
         onOpenChange={(open) => setOpenDialog(open ? 'roles' : null)}
       />
+      {canOwnerDelete(auth) && openDialog === 'delete' && (
+        <OwnerDeleteDialog
+          kind="employee"
+          id={employee.profileId}
+          open={openDialog === 'delete'}
+          onOpenChange={(open) => setOpenDialog(open ? 'delete' : null)}
+          onDeleted={() => void navigate('/admin/empleados', { replace: true })}
+        />
+      )}
     </div>
   )
 }
