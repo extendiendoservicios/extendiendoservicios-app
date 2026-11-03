@@ -7,7 +7,6 @@ import {
   ChevronRight,
   Eye,
   Pencil,
-  Plus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/IconButton'
@@ -422,11 +421,6 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
             <UpdatedAgo dataUpdatedAt={shiftsQuery.dataUpdatedAt} />
           )}
         </div>
-        {canManage && (
-          <Button asChild icon={Plus}>
-            <Link to={`/admin/turnos/nuevo?fecha=${date}`}>Nuevo turno</Link>
-          </Button>
-        )}
       </div>
 
       <CalendarFiltersBar

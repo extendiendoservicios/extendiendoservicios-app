@@ -51,3 +51,7 @@ En «Servicios de hoy» del Resumen y en «Asistencia de hoy», la celda «Inici
 
 - Sin tolerancia, pero comparando **al minuto**: se descartan los segundos de los dos instantes. La celda muestra «HH:mm», así que un fichaje a las 08:00:40 contra un inicio de 08:00 no se marca (diría «08:00» igual que el horario).
 - Lógica en `isLateArrival` (`src/features/attendance/derive.ts`); la celda es `CheckInCell`.
+
+## OD-26: acciones en las tres vistas
+
+«Generar turnos del mes» y «Nuevo turno» salieron de la vista de mes (y de la de día) a una barra común en `PlanningPage`, a la derecha del selector Mes/Semana/Día. Se ven en mes, semana y día, también en celular y tablet. Debajo de 640 px quedan como íconos con el texto solo para lectores de pantalla (`max-sm:sr-only`) y la barra envuelve sin desbordar. En la vista de día «Nuevo turno» conserva `?fecha=`. Los permisos son los de siempre (`canGenerateShifts`, `canManageShiftTime`).

@@ -2,21 +2,15 @@ import { useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Link } from 'react-router'
-import { ChevronLeft, ChevronRight, ListChecks, Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { IconButton } from '@/components/IconButton'
 import { MonthPicker } from '@/components/MonthPicker'
 import { getStatusMeta } from '@/components/status'
 import type { ShiftStatus as BadgeShiftStatus } from '@/components/status'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
-import { useAuth } from '@/features/auth/AuthProvider'
 import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
 import { useLeavesInRangeQuery } from '@/features/employees/queries'
 import { useHolidaysQuery } from '@/features/settings/queries'
-import {
-  canGenerateShifts,
-  canManageShiftTime,
-} from '@/features/shifts/permissions'
 import {
   addMonthsToYearMonth,
   buildMonthGridDays,
@@ -74,8 +68,6 @@ interface MonthCalendarProps {
 }
 
 function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
-  const auth = useAuth()
-  const actor = { roles: auth.roles, capabilities: auth.capabilities }
   const isDesktop = useMediaQuery(DESKTOP_QUERY)
 
   const today = todayInBuenosAires()
@@ -183,18 +175,6 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
               goToMonth(next.year, next.month)
             }}
           />
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {canGenerateShifts(actor) && (
-            <Button asChild variant="ghost" icon={ListChecks}>
-              <Link to="/admin/turnos/generar">Generar turnos del mes</Link>
-            </Button>
-          )}
-          {canManageShiftTime(actor) && (
-            <Button asChild icon={Plus}>
-              <Link to="/admin/turnos/nuevo">Nuevo turno</Link>
-            </Button>
-          )}
         </div>
       </div>
 
