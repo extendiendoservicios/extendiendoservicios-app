@@ -30,6 +30,8 @@ import {
 } from '../schemas'
 import { isWithinWorkdayBounds, workdayTimeBounds } from '../time'
 
+const NOTHING_TO_CHANGE_MESSAGE =
+  'No cambiaste nada: modificá la hora o el motivo de la pausa.'
 const OUT_OF_RANGE_MESSAGE =
   'La hora tiene que estar entre las 0:00 del día de la jornada y este momento, y no puede pasar la medianoche.'
 
@@ -81,6 +83,8 @@ function CorrectWorkdayEventForm({
   // «Ahora» se congela al abrir, para que el máximo del campo no se corra mientras se escribe.
   const [bounds] = useState(() => workdayTimeBounds(workDate))
   const label = WORKDAY_EVENT_LABELS[event.kind].toLowerCase()
+  const isPause = event.kind === 'pause'
+  const initialAt = toDateTimeLocal(new Date(event.recordedAt))
 
   const {
     register,
@@ -90,24 +94,38 @@ function CorrectWorkdayEventForm({
   } = useForm<CorrectWorkdayEventFormValues>({
     resolver: zodResolver(correctWorkdayEventSchema),
     defaultValues: {
-      at: toDateTimeLocal(new Date(event.recordedAt)),
+      at: initialAt,
+      pauseReason: event.reason ?? '',
       reason: '',
     },
   })
 
   async function onSubmit(values: CorrectWorkdayEventFormValues) {
-    const currentBounds = workdayTimeBounds(workDate)
-    if (!isWithinWorkdayBounds(values.at, currentBounds)) {
+    const timeChanged = values.at !== initialAt
+    // OD-07: solo las pausas tienen motivo; vacío lo borra, sin cambio no se manda.
+    const pauseReasonChanged =
+      isPause && (values.pauseReason ?? '') !== (event.reason ?? '')
+    if (!timeChanged && !pauseReasonChanged) {
+      setError('at', { message: NOTHING_TO_CHANGE_MESSAGE })
+      return
+    }
+    if (
+      timeChanged &&
+      !isWithinWorkdayBounds(values.at, workdayTimeBounds(workDate))
+    ) {
       setError('at', { message: OUT_OF_RANGE_MESSAGE })
       return
     }
     try {
       await correct.mutateAsync({
         eventId: event.id,
-        newTime: dateTimeLocalToIso(values.at),
+        newTime: timeChanged ? dateTimeLocalToIso(values.at) : undefined,
+        pauseReason: pauseReasonChanged
+          ? (values.pauseReason ?? '')
+          : undefined,
         reason: values.reason,
       })
-      toast.success(`Corregimos la hora: ${label}.`)
+      toast.success(`Corregimos: ${label}.`)
       onClose()
     } catch (error) {
       toast.error(
@@ -123,7 +141,9 @@ function CorrectWorkdayEventForm({
       className="flex flex-col gap-4"
     >
       <DialogHeader>
-        <DialogTitle>Corregir hora: {label}</DialogTitle>
+        <DialogTitle>
+          {isPause ? 'Corregir pausa' : 'Corregir hora'}: {label}
+        </DialogTitle>
         <DialogDescription>
           Queda guardada la hora anterior, quién la corrigió y el motivo. La
           jornada pasa a figurar como corregida.
@@ -141,6 +161,22 @@ function CorrectWorkdayEventForm({
         />
         {errors.at && <FieldError>{errors.at.message}</FieldError>}
       </Field>
+      {isPause && (
+        <Field data-invalid={Boolean(errors.pauseReason) || undefined}>
+          <FieldLabel htmlFor="correct-workday-pause-reason">
+            Motivo de la pausa
+          </FieldLabel>
+          <Input
+            id="correct-workday-pause-reason"
+            placeholder="Por ejemplo: almuerzo (opcional)"
+            aria-invalid={Boolean(errors.pauseReason)}
+            {...register('pauseReason')}
+          />
+          {errors.pauseReason && (
+            <FieldError>{errors.pauseReason.message}</FieldError>
+          )}
+        </Field>
+      )}
       <Field data-invalid={Boolean(errors.reason) || undefined}>
         <FieldLabel htmlFor="correct-workday-reason">Motivo</FieldLabel>
         <Textarea

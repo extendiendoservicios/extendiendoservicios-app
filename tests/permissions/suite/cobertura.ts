@@ -23,6 +23,8 @@ export const EDGE_CUBIERTAS: Record<string, readonly string[]> = {
     'sign_out_user',
     'deactivate_user',
     'reactivate_user',
+    // P27.1 (OD-22): borrado físico de un empleado, solo el dueño (`edge-casos.ts`).
+    'delete_user',
     // P26.1 (credenciales): sus casos viven en `97-credenciales.permissions.ts`.
     ...ACCIONES_DE_CREDENCIALES,
   ],

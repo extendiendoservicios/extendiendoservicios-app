@@ -11,7 +11,7 @@ const CIRCLE_TOKEN: Record<BadgeVariant, { token: string; fallback: string }> =
   {
     neutral: { token: '--text-3', fallback: '#838b9c' },
     primary: { token: '--primary', fallback: '#569ea4' },
-    success: { token: '--success', fallback: '#2f9e6b' },
+    success: { token: '--success', fallback: '#2e7d32' },
     warning: { token: '--warning', fallback: '#c8820c' },
     danger: { token: '--danger', fallback: '#ce4b52' },
     info: { token: '--info', fallback: '#3b72c4' },

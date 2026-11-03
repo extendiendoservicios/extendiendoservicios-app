@@ -14,10 +14,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0051;
+grant usage on schema tests_0051 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0051.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -28,7 +28,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0051.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -43,7 +43,7 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0051.as_user(text) to authenticated, anon;
 
 select plan(11);
 
@@ -73,8 +73,8 @@ select ok(
 
 -- Fixtures ----------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('e5100000-0000-0000-0000-000000000001', 'Cliente de v_my_history', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('e5100000-0000-0000-0000-000000000001', 'Cliente de v_my_history', 'active', 0);
 
 insert into public.sites (id, client_id, name, address, status) values
   ('e5100000-0000-0000-0000-000000000011', 'e5100000-0000-0000-0000-000000000001', 'Sede de v_my_history', 'Dirección 1', 'active');
@@ -122,7 +122,7 @@ update public.assignments
 
 -- Empleado A -------------------------------------------------------------------------------------
 
-select tests.as_user('test-db051-emp-a@example.com');
+select tests_0051.as_user('test-db051-emp-a@example.com');
 
 select results_eq(
   $$select assignment_id from public.v_my_history order by shift_date desc, effective_start_time desc$$,
@@ -156,7 +156,7 @@ select is(
 
 -- Empleado B -------------------------------------------------------------------------------------
 
-select tests.as_user('test-db051-emp-b@example.com');
+select tests_0051.as_user('test-db051-emp-b@example.com');
 
 select results_eq(
   $$select assignment_id from public.v_my_history$$,

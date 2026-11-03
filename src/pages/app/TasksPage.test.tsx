@@ -25,8 +25,6 @@ function assignment(overrides: Partial<MyDayAssignment>): MyDayAssignment {
     siteId: 'si1',
     siteName: 'Sede Centro',
     siteAddress: null,
-    siteContactName: null,
-    siteContactPhone: null,
     accessInstructions: null,
     buildingHours: null,
     phoneRestricted: false,

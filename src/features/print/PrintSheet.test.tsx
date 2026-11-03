@@ -79,6 +79,50 @@ describe('PrintSheet: hoja A4 de ancho fijo', () => {
   })
 })
 
+describe('PrintSheet: orientación (OD-18)', () => {
+  it('por omisión es vertical', () => {
+    renderSheet()
+    expect(screen.getByRole('dialog')).toHaveAttribute(
+      'data-orientation',
+      'portrait',
+    )
+  })
+
+  it('en horizontal la hoja mide 297 mm con 10 mm de margen y 210 mm por página', () => {
+    render(
+      <PrintSheet
+        documentTitle="Informe"
+        onClose={vi.fn()}
+        orientation="landscape"
+      >
+        <p>Texto</p>
+      </PrintSheet>,
+    )
+    expect(screen.getByRole('dialog')).toHaveAttribute(
+      'data-orientation',
+      'landscape',
+    )
+    const sheet = screen.getByTestId('print-sheet')
+    expect(sheet).toHaveClass('w-[297mm]', 'p-[10mm]')
+    expect(sheet).not.toHaveClass('w-[210mm]')
+    expect(sheet.style.getPropertyValue('--page-h')).toBe('210mm')
+  })
+
+  it('computePageLayout usa el alto de página de la orientación', () => {
+    const mm = 96 / 25.4
+    // 250 mm de contenido: en vertical entra en una página; en horizontal, en dos.
+    const base = {
+      contentHeight: 250 * mm,
+      signaturesTop: null,
+      signaturesHeight: 0,
+    }
+    expect(computePageLayout(base).pages).toBe(1)
+    expect(computePageLayout({ ...base, orientation: 'landscape' }).pages).toBe(
+      2,
+    )
+  })
+})
+
 describe('PrintSheet: vista previa en pantallas angostas', () => {
   afterEach(() => {
     vi.restoreAllMocks()

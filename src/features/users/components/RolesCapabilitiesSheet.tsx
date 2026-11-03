@@ -200,8 +200,8 @@ function RolesCapabilitiesSheet({
                 Capacidades de administrador
               </h3>
               <p className="mb-2 text-[11px] text-text-3">
-                Solo el dueño ve y edita estas capacidades. El dueño las tiene
-                todas siempre, por eso no aparece en esta lista.
+                Solo la dirección ve y edita estas capacidades. La dirección las
+                tiene todas siempre, por eso no aparece en esta lista.
               </p>
               {capabilitiesQuery.isLoading ? (
                 <div className="flex flex-col gap-2">

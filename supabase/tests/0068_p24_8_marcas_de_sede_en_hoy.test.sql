@@ -8,10 +8,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0068;
+grant usage on schema tests_0068 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0068.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -22,7 +22,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0068.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -37,7 +37,7 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0068.as_user(text) to authenticated, anon;
 
 
 select plan(8);
@@ -52,8 +52,8 @@ select ok(
   'los grants de app.supervisor_today y v_supervisor_today se conservan'
 );
 
-insert into public.clients (id, legal_name, status) values
-  ('f6800000-0000-0000-0000-000000000001', 'Cliente de marcas', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('f6800000-0000-0000-0000-000000000001', 'Cliente de marcas', 'active', 0);
 insert into public.sites (id, client_id, name, address, latitude, longitude, status, phone_restricted, photos_not_allowed) values
   ('f6800000-0000-0000-0000-000000000011', 'f6800000-0000-0000-0000-000000000001', 'Sede con marcas', 'Dirección 1', -34.6, -58.4, 'active', true, true),
   ('f6800000-0000-0000-0000-000000000012', 'f6800000-0000-0000-0000-000000000001', 'Sede sin marcas', 'Dirección 2', -34.7, -58.5, 'active', false, false);
@@ -73,7 +73,7 @@ insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_t
   ('f6800000-0000-0000-0000-000000000041', 'f6800000-0000-0000-0000-000000000001', 'f6800000-0000-0000-0000-000000000011', app.today(), '08:00', '12:00', 1, 'in_progress'),
   ('f6800000-0000-0000-0000-000000000042', 'f6800000-0000-0000-0000-000000000001', 'f6800000-0000-0000-0000-000000000012', app.today(), '13:00', '17:00', 1, 'in_progress');
 
-select tests.as_user('test-db068-sup@example.com');
+select tests_0068.as_user('test-db068-sup@example.com');
 select results_eq(
   $$select phone_restricted, photos_not_allowed from public.v_supervisor_today where shift_id = 'f6800000-0000-0000-0000-000000000041'$$,
   $$values (true, true)$$,
@@ -84,9 +84,9 @@ select results_eq(
   $$values (false, false)$$,
   'una sede sin marcas trae false y false'
 );
-select tests.as_user('test-db068-owner@example.com');
+select tests_0068.as_user('test-db068-owner@example.com');
 select is((select count(*)::integer from public.v_supervisor_today), 0, 'el dueño no ve filas');
-select tests.as_user('test-db068-emp@example.com');
+select tests_0068.as_user('test-db068-emp@example.com');
 select is((select count(*)::integer from public.v_supervisor_today), 0, 'el empleado no ve filas');
 set local role anon;
 select throws_ok($$select * from public.v_supervisor_today$$, '42501', null, 'anon no puede leer la vista');

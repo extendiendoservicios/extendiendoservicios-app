@@ -54,6 +54,9 @@ import {
   type ServiceFormValues,
 } from '@/features/services/schemas'
 import { RepeatFields } from '@/features/services/components/RepeatFields'
+import { ApplyFixedEmployeesDialog } from '@/features/services/components/ApplyFixedEmployeesDialog'
+import { GenerateServiceShiftsDialog } from '@/features/services/components/GenerateServiceShiftsDialog'
+import { canGenerateShifts } from '@/features/shifts/permissions'
 import { useLeaveForm } from '@/app/shells/backNavigation'
 
 /** `"YYYY-MM-DD"` (columna `date` de Postgres, o cadena vacía) → `Date` para `DatePicker`. */
@@ -98,6 +101,22 @@ export default function ServiceFormPage() {
     serviceQuery.data?.siteId ?? '',
   )
   const setFixedEmployees = useSetServiceFixedEmployeesMutation()
+  // OD-11: tras guardar cambios en los fijos se pregunta si se aplican a los turnos.
+  const [applyPrompt, setApplyPrompt] = useState<{
+    serviceId: string
+    destination: string
+  } | null>(null)
+  // OD-27: servicio nuevo o reactivado → se pregunta si se generan los turnos.
+  const [generatePrompt, setGeneratePrompt] = useState<{
+    serviceId: string
+    validFrom: string | null
+    destination: string
+    mode: 'create' | 'edit'
+  } | null>(null)
+  const canGenerate = canGenerateShifts({
+    roles: auth.roles,
+    capabilities: auth.capabilities,
+  })
   const isSaving =
     createService.isPending ||
     updateService.isPending ||
@@ -248,10 +267,24 @@ export default function ServiceFormPage() {
           })
         }
         toast.success('Guardamos los cambios del servicio.')
-        leaveForm(
-          `/admin/clientes/${service.clientId}?pestana=servicios`,
-          'edit',
-        )
+        const destination = `/admin/clientes/${service.clientId}?pestana=servicios`
+        const reactivated =
+          serviceQuery.data?.status !== 'active' && service.status === 'active'
+        if (reactivated && canGenerate) {
+          setGeneratePrompt({
+            serviceId: service.id,
+            validFrom: service.validFrom,
+            destination,
+            mode: 'edit',
+          })
+        }
+        // El diálogo de fijos va primero; al cerrarlo sigue el de generar.
+        if (mustSaveFixed) {
+          setApplyPrompt({ serviceId: service.id, destination })
+          return
+        }
+        if (reactivated && canGenerate) return
+        leaveForm(destination, 'edit')
       } else {
         const service = await createService.mutateAsync({
           input,
@@ -279,10 +312,17 @@ export default function ServiceFormPage() {
           }
         }
         toast.success('Creamos el servicio.')
-        leaveForm(
-          `/admin/clientes/${service.clientId}?pestana=servicios`,
-          'create',
-        )
+        const destination = `/admin/clientes/${service.clientId}?pestana=servicios`
+        if (service.status === 'active' && canGenerate) {
+          setGeneratePrompt({
+            serviceId: service.id,
+            validFrom: service.validFrom,
+            destination,
+            mode: 'create',
+          })
+          return
+        }
+        leaveForm(destination, 'create')
       }
     } catch (error) {
       const message = isApiError(error)
@@ -664,6 +704,30 @@ export default function ServiceFormPage() {
           Cancelar
         </Button>
       </div>
+
+      {applyPrompt && (
+        <ApplyFixedEmployeesDialog
+          serviceId={applyPrompt.serviceId}
+          onFinish={() => {
+            // OD-27: si además se reactivó, sigue la pregunta de generar.
+            if (generatePrompt) {
+              setApplyPrompt(null)
+              return
+            }
+            leaveForm(applyPrompt.destination, 'edit')
+          }}
+        />
+      )}
+
+      {generatePrompt && !applyPrompt && (
+        <GenerateServiceShiftsDialog
+          serviceId={generatePrompt.serviceId}
+          validFrom={generatePrompt.validFrom}
+          onFinish={() =>
+            leaveForm(generatePrompt.destination, generatePrompt.mode)
+          }
+        />
+      )}
     </form>
   )
 }

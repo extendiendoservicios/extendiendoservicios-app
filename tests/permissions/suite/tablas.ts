@@ -360,6 +360,28 @@ export const TABLAS: TablaSpec[] = [
     ],
     delete: { permitido: TODOS_ADMIN },
   },
+  // P27 (0078, OD-20): categorías de clientes. Leen dueño y administradores; NADIE escribe por
+  // PostgREST (solo las RPC `upsert_client_category`, `reorder_client_categories` y
+  // `remove_client_category`): no hay `grant` de escritura.
+  {
+    tabla: 'client_categories',
+    pk: ['id'],
+    clave: 'id',
+    filas: (c) => ({ categoriaA: c.e.categoriaA }),
+    objetivo: (c) => ({ id: c.e.categoriaA }),
+    ve: ven({ ...admins }),
+    insert: {
+      permitido: [],
+      fila: () => ({ name: `${PREFIJO}categoria-nueva`, sort_order: 9998 }),
+    },
+    update: [
+      {
+        nombre: 'categoría',
+        permitido: [],
+        parche: { name: `${PREFIJO}categoria-editada` },
+      },
+    ],
+  },
   {
     tabla: 'client_contacts',
     pk: ['id'],
@@ -395,6 +417,10 @@ export const TABLAS: TablaSpec[] = [
     tabla: 'sites',
     pk: ['id'],
     clave: 'id',
+    // Desde 0081 (OD-24) `authenticated` no tiene `select` de `contact_name` ni `contact_phone`:
+    // pedir `*` da 42501 para todos los roles (P27.8).
+    columnas:
+      'id, client_id, name, address, city, latitude, longitude, access_instructions, status',
     filas: (c) => ({ sedeA: c.e.sedeA, sedeB: c.e.sedeB }),
     objetivo: (c) => ({ id: c.e.sedeB }),
     ve: ven({

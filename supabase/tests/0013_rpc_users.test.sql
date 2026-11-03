@@ -13,10 +13,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0013;
+grant usage on schema tests_0013 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0013.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -27,7 +27,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0013.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -42,7 +42,7 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0013.as_user(text) to authenticated, anon;
 
 select plan(25);
 
@@ -56,7 +56,7 @@ select has_function('public', 'mark_changes_seen', array[]::text[], 'existe publ
 -- supervisora, un empleado sin roles privilegiados, una persona sin fila en employees y una
 -- persona con doble rol (employee + supervisor) para probar el reemplazo -----------------------
 
-insert into public.clients (id, legal_name) values ('c3100000-0000-0000-0000-000000000001', 'Cliente RPC users');
+insert into public.clients (id, legal_name, calendar_color) values ('c3100000-0000-0000-0000-000000000001', 'Cliente RPC users', 0);
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('c3100000-0000-0000-0000-000000000081', 'test-db015-owner@example.com', jsonb_build_object('first_name', 'Owner', 'last_name', 'Uno')),
@@ -90,7 +90,7 @@ insert into public.employees (profile_id, dni) values
 -- ---------------------------------------------------------------------------------------------
 
 -- Un supervisor no puede llamarla en absoluto.
-select tests.as_user('test-db015-supervisora@example.com');
+select tests_0013.as_user('test-db015-supervisora@example.com');
 
 prepare set_roles_as_supervisor as
   select public.set_user_roles('c3100000-0000-0000-0000-000000000085', array['employee', 'supervisor']::public.app_role[]);
@@ -101,7 +101,7 @@ select throws_ok(
 );
 
 -- Un admin SIN manage_users no puede llamarla.
-select tests.as_user('test-db015-admin-sin-cap@example.com');
+select tests_0013.as_user('test-db015-admin-sin-cap@example.com');
 
 prepare set_roles_as_admin_no_cap as
   select public.set_user_roles('c3100000-0000-0000-0000-000000000085', array['employee', 'supervisor']::public.app_role[]);
@@ -112,7 +112,7 @@ select throws_ok(
 );
 
 -- Un admin CON manage_users no puede otorgar admin/owner.
-select tests.as_user('test-db015-admin-con-cap@example.com');
+select tests_0013.as_user('test-db015-admin-con-cap@example.com');
 
 prepare set_roles_admin_grants_admin as
   select public.set_user_roles('c3100000-0000-0000-0000-000000000085', array['admin']::public.app_role[]);
@@ -142,7 +142,7 @@ set local role postgres;
 
 -- ROLE_REQUIRES_EMPLOYEE: pedir employee/supervisor para alguien sin fila en employees ----------
 
-select tests.as_user('test-db015-owner@example.com');
+select tests_0013.as_user('test-db015-owner@example.com');
 
 prepare set_roles_requires_employee as
   select public.set_user_roles('c3100000-0000-0000-0000-000000000086', array['employee']::public.app_role[]);
@@ -160,12 +160,12 @@ select throws_ok(
 -- su propia transacción con `rollback`, así que sacarle el rol acá adentro (el trigger
 -- `app.prevent_last_owner_removal` lo permite: sigue quedando el owner del fixture) no lo saca de
 -- verdad, solo restaura la premisa "un único owner" para este escenario puntual. `set local role
--- postgres` primero: `authenticated` (el rol activo tras `tests.as_user` de arriba) no tiene
+-- postgres` primero: `authenticated` (el rol activo tras `tests_0013.as_user` de arriba) no tiene
 -- `delete` sobre `user_roles` (tabla "RPC only", 0017_grants.sql); después hay que volver a
--- `tests.as_user` para que la RPC de abajo se siga llamando con la sesión del owner del fixture.
+-- `tests_0013.as_user` para que la RPC de abajo se siga llamando con la sesión del owner del fixture.
 set local role postgres;
 delete from public.user_roles where role = 'owner' and profile_id <> 'c3100000-0000-0000-0000-000000000081';
-select tests.as_user('test-db015-owner@example.com');
+select tests_0013.as_user('test-db015-owner@example.com');
 
 prepare set_roles_last_owner as
   select public.set_user_roles('c3100000-0000-0000-0000-000000000081', array['admin']::public.app_role[]);
@@ -180,7 +180,7 @@ set local role postgres;
 -- El owner SÍ puede reemplazar el conjunto de alguien con doble rol (pierde el que no está en el
 -- nuevo conjunto) --------------------------------------------------------------------------------
 
-select tests.as_user('test-db015-owner@example.com');
+select tests_0013.as_user('test-db015-owner@example.com');
 
 select is(
   public.set_user_roles('c3100000-0000-0000-0000-000000000087', array['employee']::public.app_role[]),
@@ -198,7 +198,7 @@ select is(
 
 -- El owner SÍ puede otorgar admin a alguien -------------------------------------------------------
 
-select tests.as_user('test-db015-owner@example.com');
+select tests_0013.as_user('test-db015-owner@example.com');
 
 select is(
   public.set_user_roles('c3100000-0000-0000-0000-000000000085', array['employee', 'admin']::public.app_role[]),
@@ -218,7 +218,7 @@ select is(
 
 -- PROFILE_NOT_FOUND ---------------------------------------------------------------------------------
 
-select tests.as_user('test-db015-owner@example.com');
+select tests_0013.as_user('test-db015-owner@example.com');
 
 prepare set_roles_profile_not_found as
   select public.set_user_roles('00000000-0000-0000-0000-000000000000', array['employee']::public.app_role[]);
@@ -235,7 +235,7 @@ set local role postgres;
 -- ---------------------------------------------------------------------------------------------
 
 -- Un admin (no owner) no puede llamarla, ni siquiera con manage_users.
-select tests.as_user('test-db015-admin-con-cap@example.com');
+select tests_0013.as_user('test-db015-admin-con-cap@example.com');
 
 prepare set_capability_as_admin as
   select public.set_admin_capability('c3100000-0000-0000-0000-000000000083', 'cancel_shifts'::public.admin_capability, true);
@@ -246,7 +246,7 @@ select throws_ok(
 );
 
 -- ADMIN_ROLE_REQUIRED: profile_id sin rol admin.
-select tests.as_user('test-db015-owner@example.com');
+select tests_0013.as_user('test-db015-owner@example.com');
 
 -- Usa la supervisora (nunca tocada con roles admin en este archivo; el empleado ...085 ya
 -- recibió el rol admin en el bloque anterior de set_user_roles).
@@ -296,7 +296,7 @@ select is(
   'mark_changes_seen: antes de llamarla, last_seen_changes_at sigue en null'
 );
 
-select tests.as_user('test-db015-empleado@example.com');
+select tests_0013.as_user('test-db015-empleado@example.com');
 
 select ok(
   (public.mark_changes_seen()).last_seen_changes_at is not null,

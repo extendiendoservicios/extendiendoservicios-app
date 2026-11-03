@@ -304,3 +304,21 @@ export function getWorkedHoursIndicator(
     : missingText
   return { kind: 'warning', workedMinutes: worked, text, reason }
 }
+
+/**
+ * OD-17: el fichaje de inicio es posterior al inicio programado de la
+ * asignación (`effective_starts_at`), sin tolerancia. Se compara al minuto
+ * (se descartan los segundos de los dos instantes): lo que se ve en pantalla
+ * es «HH:mm», así que 08:00:40 contra un inicio de 08:00 no se marca tarde,
+ * porque en la celda diría «08:00» igual que el horario.
+ */
+export function isLateArrival(
+  row: Pick<AttendanceBoardRow, 'checkInAt' | 'startsAt'>,
+): boolean {
+  if (row.checkInAt == null || row.startsAt == null) {
+    return false
+  }
+  const checkIn = Math.floor(new Date(row.checkInAt).getTime() / 60_000)
+  const planned = Math.floor(new Date(row.startsAt).getTime() / 60_000)
+  return !Number.isNaN(checkIn) && !Number.isNaN(planned) && checkIn > planned
+}

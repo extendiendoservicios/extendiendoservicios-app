@@ -511,6 +511,8 @@ export interface SecurityEvent {
   actorName: string | null
   targetId: string | null
   targetName: string | null
+  /** Detalle del evento (`security_events.details`); en `record_deleted`, la entidad y el nombre. */
+  details: Record<string, unknown> | null
   createdAt: string
 }
 
@@ -548,7 +550,7 @@ export async function fetchSecurityEvents(
   let query = supabase
     .from('security_events')
     .select(
-      `id, event_type, actor_id, target_id, created_at,
+      `id, event_type, actor_id, target_id, created_at, details,
        actor:profiles!security_events_actor_id_fkey(first_name, last_name),
        target:profiles!security_events_target_id_fkey(first_name, last_name)`,
     )
@@ -585,6 +587,12 @@ export async function fetchSecurityEvents(
     targetName: row.target
       ? `${row.target.first_name} ${row.target.last_name}`
       : null,
+    details:
+      row.details &&
+      typeof row.details === 'object' &&
+      !Array.isArray(row.details)
+        ? (row.details as Record<string, unknown>)
+        : null,
     createdAt: row.created_at,
   }))
 }

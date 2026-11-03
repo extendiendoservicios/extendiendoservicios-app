@@ -79,7 +79,7 @@ select has_index('public', 'attendance_notices', 'attendance_notices_assignment_
 
 -- Fixtures: cliente, sede, empleado, turno y asignación -------------------------------------------
 
-insert into public.clients (id, legal_name) values ('40000000-0000-0000-0000-000000000001', 'Cliente de asistencia');
+insert into public.clients (id, legal_name, calendar_color) values ('40000000-0000-0000-0000-000000000001', 'Cliente de asistencia', 0);
 insert into public.sites (id, client_id, name, address)
 values ('40000000-0000-0000-0000-000000000011', '40000000-0000-0000-0000-000000000001', 'Sede', 'Dirección');
 insert into auth.users (id, email, raw_user_meta_data) values

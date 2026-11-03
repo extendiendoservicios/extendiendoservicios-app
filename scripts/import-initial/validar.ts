@@ -494,11 +494,24 @@ function crearResolvedorDeClientes(clientes: PlanCliente[]) {
 // Validación
 // -------------------------------------------------------------------------------------------
 
-export function validar(lectura: LecturaPlantilla): ResultadoValidacion {
+/** Opciones de la validación que dependen de la base de destino. */
+export interface OpcionesValidacion {
+  /**
+   * Nombres de las categorías de clientes vigentes en la base de destino (`client_categories`,
+   * OD-20). Si se informan, la categoría de cada cliente tiene que ser una de ellas; si no
+   * (simulación sin base), no se puede verificar y queda una advertencia.
+   */
+  categoriasVigentes?: string[]
+}
+
+export function validar(
+  lectura: LecturaPlantilla,
+  opciones: OpcionesValidacion = {},
+): ResultadoValidacion {
   const incidencias: Incidencia[] = [...lectura.incidencias]
   const ctx = new Contexto(incidencias)
 
-  const clientes = validarClientes(ctx, lectura)
+  const clientes = validarClientes(ctx, lectura, opciones.categoriasVigentes)
   const resolverCliente = crearResolvedorDeClientes(clientes)
 
   const { contactos } = validarContactos(ctx, lectura, resolverCliente)
@@ -567,9 +580,14 @@ function ordenar(incidencias: Incidencia[]): Incidencia[] {
 function validarClientes(
   ctx: Contexto,
   lectura: LecturaPlantilla,
+  categoriasVigentes?: string[],
 ): PlanCliente[] {
   const h = ctx.hoja('Clientes')
   const clientes: PlanCliente[] = []
+  const categoriaPorClave = new Map(
+    (categoriasVigentes ?? []).map((n) => [claveNorm(n), n] as const),
+  )
+  let categoriasSinVerificar = 0
   for (const f of lectura.hojas.Clientes.filas) {
     const r = h.fila(f)
     const razonSocial = r.txt('razonSocial', true)
@@ -581,6 +599,28 @@ function validarClientes(
       'active',
       'Activo, Suspendido, Baja',
     )
+    // Categoría (OD-20): opcional; se resuelve por nombre sin distinguir mayúsculas ni espacios
+    // de más contra las vigentes. Se guarda el nombre oficial de la base.
+    let categoria = r.txt('categoria')
+    if (categoria !== null) {
+      if (categoriasVigentes === undefined) {
+        categoriasSinVerificar++
+      } else {
+        const oficial = categoriaPorClave.get(claveNorm(categoria))
+        if (oficial === undefined) {
+          const disponibles = [...categoriaPorClave.values()].join(', ')
+          h.error(
+            f.fila,
+            'categoria',
+            'CATEGORIA_INEXISTENTE',
+            `La categoría "${categoria}" no existe entre las categorías de clientes vigentes${disponibles ? ` (${disponibles})` : ''}. Elegí una de la lista o agregala antes en Configuración, en "Categorías de clientes".`,
+          )
+          categoria = null
+        } else {
+          categoria = oficial
+        }
+      }
+    }
     if (razonSocial === null) continue
     clientes.push({
       id: clientes.length,
@@ -591,9 +631,19 @@ function validarClientes(
       direccion: r.txt('direccion'),
       latitud: coords.latitud,
       longitud: coords.longitud,
+      categoria,
       estado,
       notas: r.txt('notas'),
     })
+  }
+
+  if (categoriasSinVerificar > 0) {
+    h.aviso(
+      null,
+      'categoria',
+      'CATEGORIA_SIN_VERIFICAR',
+      `${categoriasSinVerificar} cliente(s) traen categoría y no se pudo comprobar que exista (esta corrida no se conecta a la base). Se verifica al correr contra un entorno.`,
+    )
   }
 
   // CUIT repetido: la base lo rechaza (`unique`).

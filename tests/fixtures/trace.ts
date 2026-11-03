@@ -12,6 +12,8 @@
 // `B-xx`: decisiones del módulo B (`modulos/B_asistencia_avanzada.md`, asistencia avanzada).
 // `CJ-xx`: decisiones de la coordinación libre y la jornada (`modulos/P24_coordinacion_libre_y_jornada.md`).
 // `IS-xx`: decisiones de Insumos y control de stock (`modulos/E_insumos_y_stock.md`, módulo E).
+// `OD-xx`: observaciones de los dueños del 2 nov 2026 (`modulos/P27_observaciones_de_los_duenos_2_nov.md`).
+// `AJ-xx`, `AJ2-xx`: ajustes de las reuniones (`Docs/Plan_Maestro/modulos/`, 6 oct y siguientes).
 type Trace =
   | `RB-${string}`
   | `CB-${string}`
@@ -20,6 +22,9 @@ type Trace =
   | `B-${string}`
   | `CJ-${string}`
   | `IS-${string}`
+  | `OD-${string}`
+  | `AJ-${string}`
+  | `AJ2-${string}`
 
 export function cubre(...ids: Trace[]): {
   tag: string[]

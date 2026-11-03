@@ -16,10 +16,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0075;
+grant usage on schema tests_0075 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0075.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -30,7 +30,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0075.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -45,7 +45,7 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0075.as_user(text) to authenticated, anon;
 
 -- Fixtures: un usuario por rol más una persona sin rol de acceso.
 insert into auth.users (id, email, raw_user_meta_data) values
@@ -71,7 +71,7 @@ insert into public.employees (profile_id, dni, status) values
 insert into public.account_credentials (profile_id, ciphertext, iv, key_version, source, set_by) values
   ('c2600000-0000-0000-0000-000000000004', 'Y2lmcmFkby1maWN0aWNpbw==', 'aXYtZmljdGljaW8x', 1, 'created', 'c2600000-0000-0000-0000-000000000001');
 
-select plan(54);
+select plan(55);
 
 -- ---------------------------------------------------------------------------------------------
 -- Estructura
@@ -223,35 +223,44 @@ select is(
 );
 select is(
   (select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-    where n.nspname in ('public', 'app') and p.prosrc ilike '%account_credentials%'),
+    where n.nspname in ('public', 'app') and p.prosrc ilike '%account_credentials%'
+      -- 0078 (P27.1): el borrado del dueño cuenta y borra la fila de la persona que elimina; no la lee.
+      and p.proname not in ('od_plan_employee', 'owner_delete_employee', 'profile_foreign_refs')),
   0,
-  'ninguna función o RPC de public ni app lee account_credentials'
+  'ninguna función o RPC de public ni app lee account_credentials (salvo las del borrado del dueño, que solo la cuentan o la borran)'
+);
+select is(
+  (select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname in ('public', 'app') and p.proname in ('od_plan_employee', 'owner_delete_employee', 'profile_foreign_refs')
+      and p.prosrc ilike '%ciphertext%'),
+  0,
+  'las funciones del borrado del dueño nunca tocan el texto cifrado'
 );
 
 -- ---------------------------------------------------------------------------------------------
 -- authenticated, con cada rol: no puede leer ni escribir (permission denied = 42501)
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db0075-owner@example.com');
+select tests_0075.as_user('test-db0075-owner@example.com');
 select throws_ok($$ select * from public.account_credentials $$, '42501', null, 'dueño: no lee la tabla');
 select throws_ok($$ select ciphertext from public.account_credentials where profile_id = 'c2600000-0000-0000-0000-000000000004' $$, '42501', null, 'dueño: no lee el texto cifrado');
 select throws_ok($$ insert into public.account_credentials (profile_id, ciphertext, iv, source) values ('c2600000-0000-0000-0000-000000000001', 'x', 'y', 'created') $$, '42501', null, 'dueño: no inserta');
 select throws_ok($$ update public.account_credentials set source = 'admin_reset' $$, '42501', null, 'dueño: no actualiza');
 select throws_ok($$ delete from public.account_credentials $$, '42501', null, 'dueño: no borra');
 
-select tests.as_user('test-db0075-admin@example.com');
+select tests_0075.as_user('test-db0075-admin@example.com');
 select throws_ok($$ select * from public.account_credentials $$, '42501', null, 'administrador (manage_users): no lee la tabla');
 select throws_ok($$ insert into public.account_credentials (profile_id, ciphertext, iv, source) values ('c2600000-0000-0000-0000-000000000002', 'x', 'y', 'created') $$, '42501', null, 'administrador: no inserta');
 select throws_ok($$ update public.account_credentials set source = 'admin_reset' $$, '42501', null, 'administrador: no actualiza');
 select throws_ok($$ delete from public.account_credentials $$, '42501', null, 'administrador: no borra');
 
-select tests.as_user('test-db0075-sup@example.com');
+select tests_0075.as_user('test-db0075-sup@example.com');
 select throws_ok($$ select * from public.account_credentials $$, '42501', null, 'supervisor: no lee la tabla');
 select throws_ok($$ insert into public.account_credentials (profile_id, ciphertext, iv, source) values ('c2600000-0000-0000-0000-000000000003', 'x', 'y', 'created') $$, '42501', null, 'supervisor: no inserta');
 select throws_ok($$ update public.account_credentials set source = 'admin_reset' $$, '42501', null, 'supervisor: no actualiza');
 select throws_ok($$ delete from public.account_credentials $$, '42501', null, 'supervisor: no borra');
 
-select tests.as_user('test-db0075-emp@example.com');
+select tests_0075.as_user('test-db0075-emp@example.com');
 select throws_ok($$ select * from public.account_credentials $$, '42501', null, 'empleado: no lee ni su propia fila');
 select throws_ok($$ insert into public.account_credentials (profile_id, ciphertext, iv, source) values ('c2600000-0000-0000-0000-000000000004', 'x', 'y', 'created') $$, '42501', null, 'empleado: no inserta');
 select throws_ok($$ update public.account_credentials set source = 'admin_reset' $$, '42501', null, 'empleado: no actualiza');

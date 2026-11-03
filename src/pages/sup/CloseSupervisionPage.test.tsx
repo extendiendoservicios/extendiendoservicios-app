@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import CloseSupervisionPage from './CloseSupervisionPage'
 import * as mySupervisionsModule from '@/api/mySupervisions'
 import type { MySupervision, SupervisionRating } from '@/api/mySupervisions'
-import { ApiError } from '@/api/errors'
 import { makeMySupervision } from '@/features/coordinator/fixtures'
 import { mockCommonHooks, renderRoute } from '@/features/coordinator/testUtils'
 
@@ -14,9 +13,8 @@ vi.mock('@/features/settings/queries', () => ({
 }))
 
 /**
- * SUP-06 (P24.2, CJ-10, CJ-28): «Cerrar supervisión» exige haber calificado a
- * todos los empleados con inicio registrado (lista a quién falta) y registra
- * el fin con la posición; sin ubicación el cierre se hace igual (CJ-21).
+ * SUP-06 (P24.2, CJ-28; P27 OD-09): «Cerrar supervisión» no exige calificar:
+ * avisa a quién falta y pide confirmación; registra el fin con la posición; sin ubicación el cierre se hace igual (CJ-21).
  */
 function setup(
   supervision: MySupervision,
@@ -63,15 +61,38 @@ const RATING = { id: 'r1', assignmentId: 'a1', score: 5, comment: null }
 afterEach(() => vi.restoreAllMocks())
 
 describe('CloseSupervisionPage (SUP-06)', () => {
-  it('con alguien sin calificar, deshabilita el cierre y lista a quién falta con acceso a calificar', () => {
-    setup(makeMySupervision())
+  it('OD-09: con alguien sin calificar avisa «Te falta calificar a» pero deja cerrar, con confirmación', async () => {
+    const mutateAsync = setup(makeMySupervision())
 
     expect(
       screen.getByText('Calificaste a 0 de 1 empleado.'),
     ).toBeInTheDocument()
+    expect(screen.getByText('Te falta calificar a:')).toBeInTheDocument()
+    const close = screen.getByRole('button', { name: 'Cerrar supervisión' })
+    expect(close).toBeEnabled()
+
+    fireEvent.click(close)
     expect(
-      screen.getByRole('button', { name: 'Cerrar supervisión' }),
-    ).toBeDisabled()
+      await screen.findByText('¿Cerrar sin calificar a todos?'),
+    ).toBeInTheDocument()
+    expect(mutateAsync).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar igual' }))
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalled())
+  })
+
+  it('OD-09: en la confirmación, «Volver» no cierra', async () => {
+    const mutateAsync = setup(makeMySupervision())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar supervisión' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Volver' }))
+
+    expect(mutateAsync).not.toHaveBeenCalled()
+  })
+
+  it('lista a quién falta con acceso a calificar', () => {
+    setup(makeMySupervision())
+
     const link = screen.getByRole('link', { name: 'Ana Gómez' })
     expect(link).toHaveAttribute('href', '/sup/supervisiones/sv1/calificar/a1')
   })
@@ -118,23 +139,6 @@ describe('CloseSupervisionPage (SUP-06)', () => {
     ).toBeEnabled()
     expect(
       screen.getByText('Calificaste a 0 de 0 empleados.'),
-    ).toBeInTheDocument()
-  })
-
-  it('si la base devuelve RATINGS_PENDING, muestra el mensaje con los nombres', async () => {
-    setup(makeMySupervision(), {
-      ratings: [RATING],
-      mutateAsync: vi
-        .fn()
-        .mockRejectedValue(
-          new ApiError('Falta calificar a: Ana Gómez.', 'RATINGS_PENDING'),
-        ),
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: 'Cerrar supervisión' }))
-
-    expect(
-      await screen.findByText('Falta calificar a: Ana Gómez.'),
     ).toBeInTheDocument()
   })
 

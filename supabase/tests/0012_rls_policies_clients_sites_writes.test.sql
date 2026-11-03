@@ -25,10 +25,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0012d;
+grant usage on schema tests_0012d to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0012d.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -39,7 +39,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0012d.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -54,7 +54,7 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0012d.as_user(text) to authenticated, anon;
 
 select plan(22);
 
@@ -62,11 +62,11 @@ select plan(22);
 -- supervisora y empleado, con un cliente/sede/turno donde S y E tienen parte -------------------
 
 insert into auth.users (id, email, raw_user_meta_data) values
-  ('c2201000-0000-0000-0000-000000000001', 'test-db014c-owner@example.com', jsonb_build_object('first_name', 'Owner', 'last_name', 'Escritura')),
-  ('c2201000-0000-0000-0000-000000000002', 'test-db014c-admin-full@example.com', jsonb_build_object('first_name', 'Admin', 'last_name', 'ConCapacidad')),
-  ('c2201000-0000-0000-0000-000000000003', 'test-db014c-admin-nocap@example.com', jsonb_build_object('first_name', 'Admin', 'last_name', 'SinCapacidad')),
-  ('c2201000-0000-0000-0000-000000000004', 'test-db014c-supervisora@example.com', jsonb_build_object('first_name', 'Super', 'last_name', 'Escritura')),
-  ('c2201000-0000-0000-0000-000000000005', 'test-db014c-empleado@example.com', jsonb_build_object('first_name', 'Emp', 'last_name', 'Escritura'));
+  ('c2201000-0000-0000-0000-000000000001', 'test-db014e-owner@example.com', jsonb_build_object('first_name', 'Owner', 'last_name', 'Escritura')),
+  ('c2201000-0000-0000-0000-000000000002', 'test-db014e-admin-full@example.com', jsonb_build_object('first_name', 'Admin', 'last_name', 'ConCapacidad')),
+  ('c2201000-0000-0000-0000-000000000003', 'test-db014e-admin-nocap@example.com', jsonb_build_object('first_name', 'Admin', 'last_name', 'SinCapacidad')),
+  ('c2201000-0000-0000-0000-000000000004', 'test-db014e-supervisora@example.com', jsonb_build_object('first_name', 'Super', 'last_name', 'Escritura')),
+  ('c2201000-0000-0000-0000-000000000005', 'test-db014e-empleado@example.com', jsonb_build_object('first_name', 'Emp', 'last_name', 'Escritura'));
 
 insert into public.user_roles (profile_id, role) values
   ('c2201000-0000-0000-0000-000000000001', 'owner'),
@@ -85,8 +85,8 @@ insert into public.employees (profile_id, dni) values
   ('c2201000-0000-0000-0000-000000000004', '52201004'),
   ('c2201000-0000-0000-0000-000000000005', '52201005');
 
-insert into public.clients (id, legal_name) values
-  ('c2201100-0000-0000-0000-000000000001', 'Cliente Escritura SRL');
+insert into public.clients (id, legal_name, calendar_color) values
+  ('c2201100-0000-0000-0000-000000000001', 'Cliente Escritura SRL', 0);
 
 insert into public.sites (id, client_id, name, address) values
   ('c2201100-0000-0000-0000-000000000011', 'c2201100-0000-0000-0000-000000000001', 'Sede Escritura', 'Dirección de prueba');
@@ -104,7 +104,7 @@ values ('c2201100-0000-0000-0000-000000000041', 'c2201000-0000-0000-0000-0000000
 -- 1. Selección por admin (clients, sites): el archivo original solo prueba owner/S/E
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db014c-admin-full@example.com');
+select tests_0012d.as_user('test-db014e-admin-full@example.com');
 select is(
   (select count(*)::int from public.clients where id = 'c2201100-0000-0000-0000-000000000001'),
   1,
@@ -124,23 +124,23 @@ set local role postgres;
 --    client_contacts (a diferencia de employees, que sí exige manage_users para que A cree)
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db014c-owner@example.com');
+select tests_0012d.as_user('test-db014e-owner@example.com');
 select lives_ok(
-  $$insert into public.clients (id, legal_name) values ('c2201100-0000-0000-0000-000000000002', 'Cliente Alta Owner')$$,
+  $$insert into public.clients (id, legal_name, calendar_color) values ('c2201100-0000-0000-0000-000000000002', 'Cliente Alta Owner', 0)$$,
   'clients: el owner puede insertar un cliente'
 );
 set local role postgres;
 
-select tests.as_user('test-db014c-admin-full@example.com');
+select tests_0012d.as_user('test-db014e-admin-full@example.com');
 select lives_ok(
-  $$insert into public.clients (id, legal_name) values ('c2201100-0000-0000-0000-000000000003', 'Cliente Alta Admin Con Capacidad')$$,
+  $$insert into public.clients (id, legal_name, calendar_color) values ('c2201100-0000-0000-0000-000000000003', 'Cliente Alta Admin Con Capacidad', 0)$$,
   'clients: un admin con una capacidad activa puede insertar un cliente'
 );
 set local role postgres;
 
-select tests.as_user('test-db014c-admin-nocap@example.com');
+select tests_0012d.as_user('test-db014e-admin-nocap@example.com');
 select lives_ok(
-  $$insert into public.clients (id, legal_name) values ('c2201100-0000-0000-0000-000000000004', 'Cliente Alta Admin Sin Capacidad')$$,
+  $$insert into public.clients (id, legal_name, calendar_color) values ('c2201100-0000-0000-0000-000000000004', 'Cliente Alta Admin Sin Capacidad', 0)$$,
   'clients: un admin SIN ninguna capacidad activa también puede insertar un cliente (no hay capacidad que lo exija)'
 );
 select lives_ok(
@@ -159,10 +159,10 @@ set local role postgres;
 -- 3. Escritura negada a supervisor y empleado (sin política de insert/update para esos roles)
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db014c-supervisora@example.com');
+select tests_0012d.as_user('test-db014e-supervisora@example.com');
 
 prepare client_insert_supervisor as
-  insert into public.clients (id, legal_name) values ('c2201100-0000-0000-0000-000000000006', 'Cliente Rechazado Supervisora');
+  insert into public.clients (id, legal_name, calendar_color) values ('c2201100-0000-0000-0000-000000000006', 'Cliente Rechazado Supervisora', 0);
 select throws_ok(
   'client_insert_supervisor', '42501', null,
   'clients: la supervisora no puede insertar un cliente'
@@ -208,10 +208,10 @@ select is(
 
 set local role postgres;
 
-select tests.as_user('test-db014c-empleado@example.com');
+select tests_0012d.as_user('test-db014e-empleado@example.com');
 
 prepare client_insert_empleado as
-  insert into public.clients (id, legal_name) values ('c2201100-0000-0000-0000-000000000008', 'Cliente Rechazado Empleado');
+  insert into public.clients (id, legal_name, calendar_color) values ('c2201100-0000-0000-0000-000000000008', 'Cliente Rechazado Empleado', 0);
 select throws_ok(
   'client_insert_empleado', '42501', null,
   'clients: el empleado no puede insertar un cliente'
@@ -246,7 +246,7 @@ set local role postgres;
 -- 4. Un admin sí puede actualizar (cambiar estado del cliente, 06 sección 4 "Cambiar estado")
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db014c-admin-full@example.com');
+select tests_0012d.as_user('test-db014e-admin-full@example.com');
 select lives_ok(
   $$update public.clients set status = 'suspended' where id = 'c2201100-0000-0000-0000-000000000001'$$,
   'clients: un admin puede cambiar el estado del cliente (suspender)'
@@ -275,7 +275,7 @@ values ('c2201100-0000-0000-0000-000000000009', 'c2201100-0000-0000-0000-0000000
 
 update public.client_contacts set deleted_at = now() where id = 'c2201100-0000-0000-0000-000000000009';
 
-select tests.as_user('test-db014c-supervisora@example.com');
+select tests_0012d.as_user('test-db014e-supervisora@example.com');
 select is(
   (select count(*)::int from public.client_contacts where id = 'c2201100-0000-0000-0000-000000000009'),
   0,
@@ -283,7 +283,7 @@ select is(
 );
 set local role postgres;
 
-select tests.as_user('test-db014c-admin-full@example.com');
+select tests_0012d.as_user('test-db014e-admin-full@example.com');
 select is(
   (select count(*)::int from public.client_contacts where id = 'c2201100-0000-0000-0000-000000000009'),
   1,
@@ -293,7 +293,7 @@ set local role postgres;
 
 update public.clients set deleted_at = now() where id = 'c2201100-0000-0000-0000-000000000001';
 
-select tests.as_user('test-db014c-supervisora@example.com');
+select tests_0012d.as_user('test-db014e-supervisora@example.com');
 select is(
   (select count(*)::int from public.clients where id = 'c2201100-0000-0000-0000-000000000001'),
   0,
@@ -301,7 +301,7 @@ select is(
 );
 set local role postgres;
 
-select tests.as_user('test-db014c-admin-full@example.com');
+select tests_0012d.as_user('test-db014e-admin-full@example.com');
 select is(
   (select count(*)::int from public.clients where id = 'c2201100-0000-0000-0000-000000000001'),
   1,
@@ -311,7 +311,7 @@ set local role postgres;
 
 update public.sites set deleted_at = now() where id = 'c2201100-0000-0000-0000-000000000011';
 
-select tests.as_user('test-db014c-empleado@example.com');
+select tests_0012d.as_user('test-db014e-empleado@example.com');
 select is(
   (select count(*)::int from public.sites where id = 'c2201100-0000-0000-0000-000000000011'),
   0,
@@ -319,7 +319,7 @@ select is(
 );
 set local role postgres;
 
-select tests.as_user('test-db014c-owner@example.com');
+select tests_0012d.as_user('test-db014e-owner@example.com');
 select is(
   (select count(*)::int from public.sites where id = 'c2201100-0000-0000-0000-000000000011'),
   1,

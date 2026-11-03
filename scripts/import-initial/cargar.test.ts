@@ -215,3 +215,67 @@ describe('carga de clientes y sedes preferenciales', () => {
     expect(base.filas('supervisor_priorities')).toEqual([])
   })
 })
+
+describe('carga de la categoría del cliente (OD-20, P27.9)', () => {
+  const CATEGORIAS = [
+    { id: 'cat-edificio', name: 'Edificio' },
+    { id: 'cat-empresa', name: 'Empresa' },
+  ]
+
+  function baseConCategorias(): BaseFalsa {
+    const base = new BaseFalsa()
+    for (const c of CATEGORIAS) base.insertar('client_categories', c)
+    base.insertar('client_categories', {
+      id: 'cat-vieja',
+      name: 'Casa',
+      deleted_at: '2026-10-01T00:00:00Z',
+    })
+    return base
+  }
+
+  async function planConCategorias(categorias: (string | null)[]) {
+    const lectura = await leerPlantilla(
+      await crearPlanilla({
+        Clientes: categorias.map((categoria, i) => ({
+          razonSocial: `Test Cliente Cat ${i + 1}`,
+          categoria,
+        })),
+      }),
+    )
+    return validar(lectura, {
+      categoriasVigentes: CATEGORIAS.map((c) => c.name),
+    }).plan
+  }
+
+  it('guarda category_id del cliente según el nombre y deja nulo si no trae categoría', async () => {
+    const plan = await planConCategorias(['edificio', null, ' EMPRESA '])
+    const base = baseConCategorias()
+    const admin = clienteDe(base)
+    const rastro = await cargar(admin, plan, await leerExistentes(admin), {
+      resume: false,
+    })
+    expect(rastro.interrumpidaEn).toBeNull()
+    const clientes = base.filas('clients')
+    expect(clientes.map((c) => c.category_id)).toEqual([
+      'cat-edificio',
+      null,
+      'cat-empresa',
+    ])
+  })
+
+  it('si la categoría ya no está vigente en la base, falla solo esa fila y sigue con las demás', async () => {
+    const plan = await planConCategorias(['Edificio', 'Empresa'])
+    const base = new BaseFalsa()
+    base.insertar('client_categories', { id: 'cat-edificio', name: 'Edificio' })
+    const admin = clienteDe(base)
+    const rastro = await cargar(admin, plan, await leerExistentes(admin), {
+      resume: false,
+    })
+    const paso = rastro.pasos.find((p) => p.entidad === 'Clientes')
+    expect(paso?.creados).toBe(1)
+    expect(paso?.fallidos).toHaveLength(1)
+    expect(paso?.fallidos[0]?.mensaje).toContain(
+      'La categoría "Empresa" no existe',
+    )
+  })
+})

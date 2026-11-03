@@ -218,3 +218,5 @@ Especificación: `Docs/Plan_Maestro/modulos/P24_coordinacion_libre_y_jornada.md`
   y «Finalizada» no se listan.
 - Tests: `coordinatorDay.test.ts` (filas),
   `EmployeeAttendanceHistoryTab.test.tsx`.
+
+> **P27.6 (OD-04):** la sección «Coordinadores» de ADM-10 ahora usa tarjetas (`CoordinatorCards`) en lugar de la tabla; `coordinatorDay.ts` ya no existe. Ver `supervisiones.md`, sección P27.6.

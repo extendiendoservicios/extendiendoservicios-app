@@ -44,9 +44,9 @@
   --text-3: #838b9c; /* etiquetas, ayudas, encabezados de tabla */
 
   /* ---------- Semánticos (uso restringido: ver 07 sección 1) ---------- */
-  --success: #2f9e6b;
-  --success-bg: #e7f5ee;
-  --success-800: #1f7a50; /* texto de badge sobre success-bg, ≥4.5:1 */
+  --success: #2e7d32; /* P27.2 (OD-25): verde más oscuro y más puro, lejos del teal de marca */
+  --success-bg: #e4f3e2;
+  --success-800: #1b5e20; /* texto de badge sobre success-bg, ≥4.5:1 */
   --warning: #c8820c;
   --warning-bg: #fdf3e0;
   --warning-800: #9a6408;
@@ -172,9 +172,9 @@
   --text-2: #1f2330;
   --text-3: #363b4a;
 
-  --success: #17603c;
-  --success-bg: #dcf2e6;
-  --success-800: #0f4d2e;
+  --success: #145a1e;
+  --success-bg: #dcf2dc;
+  --success-800: #0d4415;
   --warning: #7a4f00;
   --warning-bg: #fbe9c4;
   --warning-800: #5e3d00;

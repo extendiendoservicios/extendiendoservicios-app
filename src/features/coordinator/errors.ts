@@ -9,8 +9,7 @@ import { isApiError } from '@/api/errors'
  * para cada código, así no depende de que el servidor lo reformule y queda
  * cubierto por tests. Mismo patrón que `src/features/geo/errors.ts`.
  *
- * `RATINGS_PENDING` no está a propósito: su mensaje del servidor trae los
- * nombres de quienes faltan calificar («Falta calificar a: Ana Pérez, ...»).
+ * Desde P27 (OD-09, OD-10) no existen `RATINGS_PENDING` ni `ALREADY_SUPERVISED`.
  */
 export const COORDINATOR_ERROR_MESSAGES: Record<string, string> = {
   FORBIDDEN: 'No tenés permiso para hacer esta acción.',
@@ -37,7 +36,6 @@ export const COORDINATOR_ERROR_MESSAGES: Record<string, string> = {
   NOT_TODAY: 'Solo podés supervisar turnos de hoy.',
   SUPERVISION_ALREADY_OPEN:
     'Cerrá o descartá tu supervisión abierta antes de empezar otra.',
-  ALREADY_SUPERVISED: 'Ya supervisaste este turno.',
   SUPERVISION_NOT_FOUND: 'No encontramos esa supervisión.',
   NOT_YOUR_SUPERVISION: 'Esa supervisión es de otro coordinador.',
   SUPERVISION_NOT_EDITABLE: 'Esa supervisión ya está cerrada o cancelada.',

@@ -42,7 +42,6 @@ export default defineConfig({
     ),
   },
   test: {
-    environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,
     // Todas las carpetas tests/e2e*/ son de Playwright, no de Vitest (un patrón en vez de una
@@ -51,5 +50,31 @@ export default defineConfig({
     // globals (`Deno.serve`) que Vite no puede resolver -- se corre con `deno test`, no acá (ver
     // `supabase/functions/README.md`).
     exclude: ['node_modules/**', 'tests/e2e*/**', 'supabase/functions/**'],
+    // Entorno por tipo de archivo (rendimiento de CI): levantar jsdom por cada archivo era
+    // ~34 % del tiempo total. Criterio, sin marcar archivo por archivo:
+    //   - `*.test.tsx`  -> jsdom (renderiza componentes).
+    //   - `*.test.ts`   -> node (API, esquemas zod, utilidades, scripts).
+    // Un `.test.ts` que sí necesite DOM (hooks con `renderHook`, `window`, `localStorage`,
+    // `Blob`/`File` de jsdom...) lo declara con `// @vitest-environment jsdom` en la primera
+    // línea; un `.test.tsx` que no lo necesite puede declarar `node`. Los dos proyectos
+    // corren juntos con `pnpm test`.
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'dom',
+          environment: 'jsdom',
+          include: ['**/*.test.tsx'],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'node',
+          environment: 'node',
+          include: ['**/*.test.ts'],
+        },
+      },
+    ],
   },
 })

@@ -66,6 +66,8 @@ export const ESQUEMA: Record<NombreHoja, ColumnaEsquema[]> = {
     c('direccion', 'Dirección administrativa'),
     c('latitud', 'Latitud'),
     c('longitud', 'Longitud'),
+    // OD-20 (P27.9): columna opcional; si falta en una planilla vieja se toma como vacía.
+    c('categoria', 'Categoría'),
     c('estado', 'Estado'),
     c('notas', 'Notas'),
   ],

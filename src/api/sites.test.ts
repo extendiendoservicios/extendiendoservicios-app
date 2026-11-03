@@ -24,6 +24,8 @@ function makeChainable<T>(result: PostgrestResult<T>) {
     eq: () => chain,
     order: () => chain,
     single: () => Promise.resolve(result),
+    // `v_site_contacts` (0081): la fila de prueba trae el contacto, así que sirve el mismo resultado.
+    maybeSingle: () => Promise.resolve(result),
     then: (
       resolve: (value: PostgrestResult<T>) => void,
       reject?: (reason: unknown) => void,

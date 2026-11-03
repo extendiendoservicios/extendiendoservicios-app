@@ -134,14 +134,17 @@ test(
         await expectNoHorizontalScroll(page)
       })
 
-      await test.step('SUP-04: tomado el turno, la supervisión trae contacto de la sede, tareas, criterios y aparece en SUP-07', async () => {
+      await test.step('SUP-04: tomado el turno, la supervisión trae las indicaciones de la sede (sin contacto, OD-24), tareas, criterios y aparece en SUP-07', async () => {
         const supervision = await sc.tomarSupervision(turnoHoy, 'supervisor1')
         await page.goto(`/sup/supervisiones/${supervision}`)
-        // El contacto y las indicaciones de acceso de la sede se ven en la supervisión (SUP-04).
+        // Las indicaciones de acceso de la sede se ven en la supervisión (SUP-04); el contacto NO:
+        // desde P27 (OD-24) lo ven solo dueños y administradores.
         await expect(page.getByText('Entrar por el garage.')).toBeVisible()
         await expect(
           page.getByRole('link', { name: '+541155551111' }),
-        ).toHaveAttribute('href', 'tel:+541155551111')
+        ).toHaveCount(0)
+        await expect(page.getByText('Contacto Sup')).toHaveCount(0)
+        await expect(page.getByText('+541155551111')).toHaveCount(0)
         await expect(page.getByText('Tareas del turno')).toBeVisible()
         await expect(
           page.getByText('e2e-sup: pasar el trapeador'),

@@ -1,6 +1,10 @@
-import '@testing-library/jest-dom/vitest'
-import { cleanup } from '@testing-library/react'
 import { afterEach } from 'vitest'
+
+// Este setup corre en todos los archivos, también en los de entorno `node`
+// (ver `vitest.config.ts`). Lo que depende del DOM se carga solo si hay
+// `document`, para no pagar el import de `@testing-library/react` (y de
+// `react-dom` con él) en los tests que no lo usan.
+const hayDom = typeof document !== 'undefined'
 
 // `ResizeObserver` (EMP-012, P09.2): jsdom no lo implementa, y `cmdk`
 // (`Command`, base de `GlobalSearch`) lo usa para medir la lista de
@@ -14,7 +18,7 @@ class ResizeObserverStub {
   unobserve() {}
   disconnect() {}
 }
-if (typeof globalThis.ResizeObserver === 'undefined') {
+if (hayDom && typeof globalThis.ResizeObserver === 'undefined') {
   globalThis.ResizeObserver = ResizeObserverStub
 }
 
@@ -25,6 +29,10 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
 // texto o rol). Se detectó al escribir los tests de DS-003/DS-004/DS-007
 // (Button, StatusBadge, SegmentedControl, Stepper, WeekdayPicker), que sí
 // tienen varios `it()` por archivo.
-afterEach(() => {
-  cleanup()
-})
+if (hayDom) {
+  await import('@testing-library/jest-dom/vitest')
+  const { cleanup } = await import('@testing-library/react')
+  afterEach(() => {
+    cleanup()
+  })
+}

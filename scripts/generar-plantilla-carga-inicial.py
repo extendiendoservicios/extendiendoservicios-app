@@ -136,6 +136,23 @@ def _aplicar_validacion(ws: Worksheet, columna: Columna, letra: str, fila_desde:
             errorTitle="Opción no válida",
             error="Elegí una opción de la lista desplegable, no escribas un valor distinto.",
         )
+    elif columna.tipo == "lista_abierta":
+        # Lista cuyas opciones puede ampliar la empresa desde la aplicación (categorías de
+        # clientes, OD-20): ofrece las de fábrica pero no bloquea otro valor, solo avisa. El
+        # importador valida el nombre contra las categorías vigentes de la base.
+        dv = DataValidation(
+            type="list",
+            formula1='"' + ",".join(columna.opciones) + '"',
+            allow_blank=True,
+            showDropDown=False,
+            showErrorMessage=True,
+            errorStyle="warning",
+            errorTitle="Revisá la categoría",
+            error=(
+                "Esa categoría no está entre las de fábrica. Si la empresa la agregó en "
+                "Configuración, aceptá igual; si no, la carga va a marcar un error en esta fila."
+            ),
+        )
     elif columna.tipo == "si_no":
         dv = DataValidation(
             type="list",
@@ -596,6 +613,11 @@ def construir_libro() -> Workbook:
             tipo="decimal", minimo=-180, maximo=180,
         ),
         Columna(
+            "Categoría", 16, False,
+            "Opcional. El tipo de cliente: Edificio, Empresa, Casa o Final de obra. Si lo dejás en blanco, el cliente queda sin categoría y se la podés asignar después desde la aplicación. Si la empresa agregó categorías propias en Configuración, escribilas tal cual figuran allá (no importan mayúsculas ni espacios de más).",
+            tipo="lista_abierta", opciones=["Edificio", "Empresa", "Casa", "Final de obra"],
+        ),
+        Columna(
             "Estado", 14, False,
             "Si dejás esta celda en blanco, el cliente queda Activo. Elegí Suspendido o Baja solo si ya sabés que no vas a operar más con ese cliente.",
             tipo="lista", opciones=["Activo", "Suspendido", "Baja"],
@@ -605,12 +627,12 @@ def construir_libro() -> Workbook:
     filas_ejemplo_clientes = [
         [
             "30712345678", "Ejemplo Limpiezas Del Sur S.A.", "Limpiezas Del Sur",
-            "Av. Ejemplo 1234, CABA", None, None, "Activo",
+            "Av. Ejemplo 1234, CABA", None, None, "Edificio", "Activo",
             "Cliente ficticio de ejemplo.",
         ],
         [
             None, "Ejemplo Textiles Norte S.R.L.", None,
-            "Calle Ejemplo 890, San Martín, Buenos Aires", None, None, "Activo",
+            "Calle Ejemplo 890, San Martín, Buenos Aires", None, None, "Empresa", "Activo",
             "Cliente ficticio sin CUIT: la celda de CUIT queda vacía.",
         ],
     ]

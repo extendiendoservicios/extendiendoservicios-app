@@ -13,10 +13,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0030;
+grant usage on schema tests_0030 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0030.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -27,7 +27,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0030.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -42,7 +42,7 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0030.as_user(text) to authenticated, anon;
 
 select plan(91);
 
@@ -124,8 +124,8 @@ update public.profiles set phone = '1155000006', contact_email = 'emp2-contacto@
 update public.profiles set last_seen_changes_at = now() - interval '1 hour'
   where id in ('e3000000-0000-0000-0000-000000000005', 'e3000000-0000-0000-0000-000000000007');
 
-insert into public.clients (id, legal_name, trade_name, cuit, admin_address, notes, status) values
-  ('e3000000-0000-0000-0000-000000000101', 'Cliente P18.6 S.A.', 'Cliente Treinta', '30930001011', 'Domicilio administrativo secreto', 'Notas internas del cliente', 'active');
+insert into public.clients (id, legal_name, trade_name, cuit, admin_address, notes, status, calendar_color) values
+  ('e3000000-0000-0000-0000-000000000101', 'Cliente P18.6 S.A.', 'Cliente Treinta', '30930001011', 'Domicilio administrativo secreto', 'Notas internas del cliente', 'active', 0);
 insert into public.sites (id, client_id, name, address, status) values
   ('e3000000-0000-0000-0000-000000000111', 'e3000000-0000-0000-0000-000000000101', 'Sede P18.6', 'Calle 30', 'active');
 
@@ -166,7 +166,7 @@ insert into storage.objects (bucket_id, name) values
 -- 1. DEF-01: el empleado ve el turno cancelado en Hoy (P-049, CB-03) -----------------------------
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db030-emp3@example.com');
+select tests_0030.as_user('test-db030-emp3@example.com');
 select is(
   (select count(*)::int from public.v_my_day where assignment_id = 'e3000000-0000-0000-0000-000000000303'),
   1,
@@ -177,13 +177,13 @@ select ok(
   'DEF-01: sin cambios ajenos, el indicador de cambios está apagado'
 );
 
-select tests.as_user('test-db030-owner@example.com');
+select tests_0030.as_user('test-db030-owner@example.com');
 select lives_ok(
   $$select public.cancel_shift('e3000000-0000-0000-0000-000000000202', 'Cancelado por la prueba de P18.6')$$,
   'el dueño cancela el turno B'
 );
 
-select tests.as_user('test-db030-emp3@example.com');
+select tests_0030.as_user('test-db030-emp3@example.com');
 select is(
   (select shift_status::text from public.v_my_day where assignment_id = 'e3000000-0000-0000-0000-000000000303'),
   'cancelled',
@@ -203,7 +203,7 @@ select is(
 -- 2. DEF-03: el mensaje de superposición nombra al empleado (CB-10) -------------------------------
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db030-admin-full@example.com');
+select tests_0030.as_user('test-db030-admin-full@example.com');
 prepare p30_overlap as select public.update_shift_time('e3000000-0000-0000-0000-000000000203', '10:30'::time, '13:00'::time);
 select throws_ok(
   'p30_overlap',
@@ -221,7 +221,7 @@ select is(
 -- 3. DEF-P13: quién puede desactivar o editar a quién ---------------------------------------------
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db030-admin-sin@example.com');
+select tests_0030.as_user('test-db030-admin-sin@example.com');
 prepare p30_sin_baja_emp as update public.profiles set is_active = false where id = 'e3000000-0000-0000-0000-000000000006';
 select throws_ok('p30_sin_baja_emp', 'P0001', 'No tenés permiso para hacer esto.',
   'DEF-P13: un administrador sin manage_users no desactiva a un empleado');
@@ -249,7 +249,7 @@ prepare p30_sin_propio as update public.profiles set is_active = false where id 
 select throws_ok('p30_sin_propio', 'P0001', 'No podés desactivar ni reactivar tu propia cuenta.',
   'DEF-P13: nadie se desactiva a sí mismo por esta vía');
 
-select tests.as_user('test-db030-admin-full@example.com');
+select tests_0030.as_user('test-db030-admin-full@example.com');
 select lives_ok(
   $$update public.profiles set is_active = false, deleted_at = now() where id = 'e3000000-0000-0000-0000-000000000006'$$,
   'DEF-P13: un administrador CON manage_users desactiva a un empleado'
@@ -261,7 +261,7 @@ prepare p30_full_reactiva as update public.profiles set is_active = true, delete
 select throws_ok('p30_full_reactiva', 'P0001', 'Solo el dueño puede reactivar una cuenta.',
   'DEF-P13: reactivar una cuenta es solo del dueño');
 
-select tests.as_user('test-db030-owner@example.com');
+select tests_0030.as_user('test-db030-owner@example.com');
 select lives_ok(
   $$update public.profiles set is_active = true, deleted_at = null where id = 'e3000000-0000-0000-0000-000000000006'$$,
   'DEF-P13: el dueño reactiva una cuenta'
@@ -278,7 +278,7 @@ prepare p30_owner_propio as update public.profiles set is_active = false where i
 select throws_ok('p30_owner_propio', 'P0001', 'No podés desactivar ni reactivar tu propia cuenta.',
   'DEF-P13: ni el dueño se desactiva a sí mismo por esta vía');
 
-select tests.as_user('test-db030-emp1@example.com');
+select tests_0030.as_user('test-db030-emp1@example.com');
 select lives_ok(
   $$update public.profiles set phone = '1155000077' where id = 'e3000000-0000-0000-0000-000000000005'$$,
   'la propia persona sigue editando su teléfono'
@@ -288,7 +288,7 @@ select lives_ok(
 -- 4. DEF-P01: el administrador solo cambia el logo -------------------------------------------------
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db030-admin-full@example.com');
+select tests_0030.as_user('test-db030-admin-full@example.com');
 select lives_ok(
   $$update public.company_settings set logo_path = 'logo.png', updated_by = 'e3000000-0000-0000-0000-000000000003' where id = 1$$,
   'DEF-P01: el administrador sube el logo'
@@ -303,7 +303,7 @@ prepare p30_cs_name as update public.company_settings set name = 'Otro nombre' w
 select throws_ok('p30_cs_name', 'P0001', 'Solo el dueño puede cambiar el nombre, el teléfono y el consentimiento. Podés cambiar el logo.',
   'DEF-P01: el administrador no cambia el nombre de la empresa');
 
-select tests.as_user('test-db030-owner@example.com');
+select tests_0030.as_user('test-db030-owner@example.com');
 select lives_ok(
   $$update public.company_settings set support_phone = '+54 11 1111-1111', location_consent_text = 'Texto nuevo', name = 'Empresa nueva' where id = 1$$,
   'DEF-P01: el dueño sí cambia teléfono, consentimiento y nombre'
@@ -313,7 +313,7 @@ select lives_ok(
 -- 5. DEF-P03: teléfono y email de contacto de compañeros ----------------------------------------------
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db030-emp1@example.com');
+select tests_0030.as_user('test-db030-emp1@example.com');
 select is_empty(
   $$select phone, contact_email from public.profiles where id = 'e3000000-0000-0000-0000-000000000006'$$,
   'DEF-P03: el empleado no lee la fila de profiles de un compañero (teléfono y email)'
@@ -334,7 +334,7 @@ select is(
   'v_people_basic del empleado: él y su compañero de turno, nadie más'
 );
 
-select tests.as_user('test-db030-sup@example.com');
+select tests_0030.as_user('test-db030-sup@example.com');
 select is_empty(
   $$select phone, contact_email from public.profiles where id = 'e3000000-0000-0000-0000-000000000005'$$,
   'DEF-P03: el supervisor no lee la fila de profiles de un empleado de su turno'
@@ -355,7 +355,7 @@ select is(
   'v_my_supervisions: el nombre de los empleados viene de v_people_basic'
 );
 
-select tests.as_user('test-db030-admin-sin@example.com');
+select tests_0030.as_user('test-db030-admin-sin@example.com');
 select is(
   (select count(*)::int from public.v_people_basic where profile_id in (
     'e3000000-0000-0000-0000-000000000005', 'e3000000-0000-0000-0000-000000000006', 'e3000000-0000-0000-0000-000000000007')),
@@ -373,7 +373,7 @@ select is(
 -- 6. DEF-P04: el supervisor no lee datos personales del empleado ------------------------------------
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db030-sup@example.com');
+select tests_0030.as_user('test-db030-sup@example.com');
 select is_empty(
   $$select dni, cuil, address, emergency_contact_phone from public.employees where profile_id = 'e3000000-0000-0000-0000-000000000005'$$,
   'DEF-P04: el supervisor no lee employees (DNI, CUIL, domicilio, contacto de emergencia)'
@@ -388,14 +388,14 @@ select is(
   'el supervisor sí lee su propia ficha de employees'
 );
 
-select tests.as_user('test-db030-emp1@example.com');
+select tests_0030.as_user('test-db030-emp1@example.com');
 select is(
   (select count(*)::int from public.employees),
   1,
   'el empleado sigue leyendo solo su propia ficha'
 );
 
-select tests.as_user('test-db030-admin-sin@example.com');
+select tests_0030.as_user('test-db030-admin-sin@example.com');
 select is(
   (select count(*)::int from public.employees where profile_id in (
     'e3000000-0000-0000-0000-000000000005', 'e3000000-0000-0000-0000-000000000006')),
@@ -407,7 +407,7 @@ select is(
 -- 7. DEF-P05: el empleado lee solo el nombre del cliente ---------------------------------------------
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db030-emp1@example.com');
+select tests_0030.as_user('test-db030-emp1@example.com');
 select is_empty(
   $$select cuit, admin_address, notes from public.clients where id = 'e3000000-0000-0000-0000-000000000101'$$,
   'DEF-P05: el empleado no lee la tabla clients (CUIT, domicilio administrativo, notas)'
@@ -427,7 +427,7 @@ select is(
   'el empleado sigue leyendo la sede de su turno'
 );
 
-select tests.as_user('test-db030-sup@example.com');
+select tests_0030.as_user('test-db030-sup@example.com');
 select is(
   (select cuit from public.clients where id = 'e3000000-0000-0000-0000-000000000101'),
   '30930001011',
@@ -438,7 +438,7 @@ select is(
 -- 8. DEF-P06: la observación de los compañeros ---------------------------------------------------------
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db030-emp1@example.com');
+select tests_0030.as_user('test-db030-emp1@example.com');
 select is_empty(
   $$select notes from public.assignments where id = 'e3000000-0000-0000-0000-000000000302'$$,
   'DEF-P06: el empleado no lee la asignación (observación) de un compañero'
@@ -463,7 +463,7 @@ select is_empty(
   'v_shift_peers: nada de un turno que no comparte'
 );
 
-select tests.as_user('test-db030-sup@example.com');
+select tests_0030.as_user('test-db030-sup@example.com');
 select is(
   (select notes from public.assignments where id = 'e3000000-0000-0000-0000-000000000302'),
   'Observación privada de Emp Dos',
@@ -474,7 +474,7 @@ select is(
 -- 9. DEF-P02: rendimiento -- las políticas por turno devuelven lo mismo que antes -------------------------
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db030-emp1@example.com');
+select tests_0030.as_user('test-db030-emp1@example.com');
 select is(
   (select count(*)::int from public.shift_tasks),
   2,
@@ -486,7 +486,7 @@ select is(
   2,
   'el empleado lee sus dos turnos (A y C) y no el B'
 );
-select tests.as_user('test-db030-sup@example.com');
+select tests_0030.as_user('test-db030-sup@example.com');
 select is(
   (select count(*)::int from public.shift_tasks),
   2,
@@ -498,13 +498,13 @@ select is(
   1,
   'el supervisor lee solo el turno que supervisa'
 );
-select tests.as_user('test-db030-emp3@example.com');
+select tests_0030.as_user('test-db030-emp3@example.com');
 select is(
   (select count(*)::int from public.shift_tasks),
   1,
   'el otro empleado lee solo las tareas de su turno'
 );
-select tests.as_user('test-db030-admin-sin@example.com');
+select tests_0030.as_user('test-db030-admin-sin@example.com');
 select is(
   (select count(*)::int from public.shift_tasks where shift_id in (
     'e3000000-0000-0000-0000-000000000201', 'e3000000-0000-0000-0000-000000000202')),
@@ -525,20 +525,20 @@ select is(
   'DEF-P07: anon no lista el bucket avatars'
 );
 
-select tests.as_user('test-db030-emp2@example.com');
+select tests_0030.as_user('test-db030-emp2@example.com');
 select is(
   (select count(*)::int from storage.objects where bucket_id = 'avatars' and name like 'e3000000-%'),
   1,
   'DEF-P07: un empleado lista solo su propia carpeta de avatars'
 );
-select tests.as_user('test-db030-admin-sin@example.com');
+select tests_0030.as_user('test-db030-admin-sin@example.com');
 select is(
   (select count(*)::int from storage.objects where bucket_id = 'avatars' and name like 'e3000000-%'),
   2,
   'DEF-P07: el administrador lista todo avatars'
 );
 
-select tests.as_user('test-db030-emp1@example.com');
+select tests_0030.as_user('test-db030-emp1@example.com');
 select lives_ok(
   $$insert into storage.objects (bucket_id, name) values ('avatars', 'e3000000-0000-0000-0000-000000000005/nueva.jpg')$$,
   'una persona activa sube a su carpeta de avatars'
@@ -546,13 +546,13 @@ select lives_ok(
 prepare p30_av_ajena as insert into storage.objects (bucket_id, name) values ('avatars', 'e3000000-0000-0000-0000-000000000006/intrusa.jpg');
 select throws_ok('p30_av_ajena', '42501', null, 'nadie sube a la carpeta de otra persona');
 
-select tests.as_user('test-db030-owner@example.com');
+select tests_0030.as_user('test-db030-owner@example.com');
 select lives_ok(
   $$update public.profiles set is_active = false, deleted_at = now() where id = 'e3000000-0000-0000-0000-000000000008'$$,
   'el dueño desactiva a Emp Baja (preparación de DEF-P09/P10/P12)'
 );
 
-select tests.as_user('test-db030-emp-baja@example.com');
+select tests_0030.as_user('test-db030-emp-baja@example.com');
 prepare p30_av_baja as insert into storage.objects (bucket_id, name) values ('avatars', 'e3000000-0000-0000-0000-000000000008/foto.jpg');
 select throws_ok('p30_av_baja', '42501', null, 'DEF-P10: una cuenta desactivada no sube a su carpeta de avatars');
 
@@ -574,7 +574,7 @@ prepare p30_baja_seen as select public.mark_changes_seen();
 select throws_ok('p30_baja_seen', 'P0001', 'No tenés permiso para hacer esto.',
   'DEF-P12: mark_changes_seen rechaza a una cuenta desactivada');
 
-select tests.as_user('test-db030-emp1@example.com');
+select tests_0030.as_user('test-db030-emp1@example.com');
 select is(
   (select count(*)::int from public.holidays where id = 'e3000000-0000-0000-0000-000000000501'),
   1,

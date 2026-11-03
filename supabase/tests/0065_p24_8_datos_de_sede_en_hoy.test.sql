@@ -13,10 +13,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0065;
+grant usage on schema tests_0065 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0065.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -27,7 +27,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0065.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -42,14 +42,14 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0065.as_user(text) to authenticated, anon;
 
 
 select plan(15);
 
 -- Fixtures
-insert into public.clients (id, legal_name, trade_name, status) values
-  ('f6500000-0000-0000-0000-000000000001', 'Cliente de sede uno', 'Fantasía de sede uno', 'active');
+insert into public.clients (id, legal_name, trade_name, status, calendar_color) values
+  ('f6500000-0000-0000-0000-000000000001', 'Cliente de sede uno', 'Fantasía de sede uno', 'active', 0);
 
 insert into public.sites (id, client_id, name, address, latitude, longitude, status,
   contact_name, contact_phone, access_instructions, building_hours, restrictions_notes) values
@@ -84,8 +84,8 @@ insert into public.assignments (shift_id, employee_id, status) values
 -- Estructura
 select has_function('app', 'supervisor_today', 'app.supervisor_today()');
 select has_view('public', 'v_supervisor_today', 'existe v_supervisor_today');
-select col_type_is('public', 'v_supervisor_today', 'site_contact_name', 'text', 'site_contact_name es text');
-select col_type_is('public', 'v_supervisor_today', 'site_contact_phone', 'text', 'site_contact_phone es text');
+select hasnt_column('public', 'v_supervisor_today', 'site_contact_name', 'v_supervisor_today ya no trae site_contact_name (0081, OD-24)');
+select hasnt_column('public', 'v_supervisor_today', 'site_contact_phone', 'v_supervisor_today ya no trae site_contact_phone (0081, OD-24)');
 select col_type_is('public', 'v_supervisor_today', 'access_instructions', 'text', 'access_instructions es text');
 select col_type_is('public', 'v_supervisor_today', 'building_hours', 'text', 'building_hours es text');
 select col_type_is('public', 'v_supervisor_today', 'restrictions_notes', 'text', 'restrictions_notes es text');
@@ -106,27 +106,27 @@ select ok(
 );
 
 -- El coordinador ve los datos de la sede en un turno de hoy
-select tests.as_user('test-db065-sup@example.com');
+select tests_0065.as_user('test-db065-sup@example.com');
 
 select results_eq(
-  $$select site_contact_name, site_contact_phone, access_instructions, building_hours, restrictions_notes
+  $$select access_instructions, building_hours, restrictions_notes
     from public.v_supervisor_today where shift_id = 'f6500000-0000-0000-0000-000000000041'$$,
-  $$values ('Marta Encargada'::text, '11-5555-0001'::text, 'Entrar por la cochera'::text, 'Lunes a viernes de 7 a 19'::text, 'No mover los equipos'::text)$$,
-  'SUP-03: el coordinador ve contacto, acceso, horario y restricciones de la sede'
+  $$values ('Entrar por la cochera'::text, 'Lunes a viernes de 7 a 19'::text, 'No mover los equipos'::text)$$,
+  'SUP-03: el coordinador ve acceso, horario y restricciones de la sede (sin contacto, 0081)'
 );
 select results_eq(
-  $$select site_contact_name, site_contact_phone, access_instructions, building_hours, restrictions_notes
+  $$select access_instructions, building_hours, restrictions_notes
     from public.v_supervisor_today where shift_id = 'f6500000-0000-0000-0000-000000000042'$$,
-  $$values (null::text, null::text, null::text, null::text, null::text)$$,
+  $$values (null::text, null::text, null::text)$$,
   'SUP-03: una sede sin datos cargados trae nulos'
 );
 
 -- Los demás roles siguen sin filas
-select tests.as_user('test-db065-owner@example.com');
+select tests_0065.as_user('test-db065-owner@example.com');
 select is((select count(*)::integer from public.v_supervisor_today), 0, 'el dueño no ve filas en v_supervisor_today');
-select tests.as_user('test-db065-admin@example.com');
+select tests_0065.as_user('test-db065-admin@example.com');
 select is((select count(*)::integer from public.v_supervisor_today), 0, 'el administrador no ve filas en v_supervisor_today');
-select tests.as_user('test-db065-emp@example.com');
+select tests_0065.as_user('test-db065-emp@example.com');
 select is((select count(*)::integer from public.v_supervisor_today), 0, 'el empleado no ve filas en v_supervisor_today');
 
 set local role anon;

@@ -15,10 +15,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0070a;
+grant usage on schema tests_0070a to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0070a.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -29,7 +29,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0070a.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -44,10 +44,10 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0070a.as_user(text) to authenticated, anon;
 
 -- Devuelve el `hint` del error (código estable) o el SQLSTATE si no trae hint; null si anduvo.
-create or replace function tests.err_hint(p_sql text)
+create or replace function tests_0070a.err_hint(p_sql text)
 returns text
 language plpgsql
 as $$
@@ -62,10 +62,10 @@ exception when others then
 end;
 $$;
 
-grant execute on function tests.err_hint(text) to authenticated, anon;
+grant execute on function tests_0070a.err_hint(text) to authenticated, anon;
 
 -- Devuelve el mensaje del error; null si anduvo.
-create or replace function tests.err_msg(p_sql text)
+create or replace function tests_0070a.err_msg(p_sql text)
 returns text
 language plpgsql
 as $$
@@ -77,7 +77,7 @@ exception when others then
 end;
 $$;
 
-grant execute on function tests.err_msg(text) to authenticated, anon;
+grant execute on function tests_0070a.err_msg(text) to authenticated, anon;
 
 -- ---------------------------------------------------------------------------------------------
 -- Fixtures (prefijo e2500000-...). Todo lo que depende de «hoy» usa app.today() (fechas de los
@@ -117,9 +117,9 @@ insert into public.employees (profile_id, dni, status) values
   ('e2500000-0000-0000-0000-000000000005', '92500005', 'active'),
   ('e2500000-0000-0000-0000-000000000006', '92500006', 'active');
 
-insert into public.clients (id, legal_name, trade_name, status) values
-  ('e2500000-0000-0000-0000-0000000000c1', 'Cliente Insumos Uno SA', 'Cliente Uno', 'active'),
-  ('e2500000-0000-0000-0000-0000000000c2', 'Cliente Insumos Dos SA', null, 'active');
+insert into public.clients (id, legal_name, trade_name, status, calendar_color) values
+  ('e2500000-0000-0000-0000-0000000000c1', 'Cliente Insumos Uno SA', 'Cliente Uno', 'active', 0),
+  ('e2500000-0000-0000-0000-0000000000c2', 'Cliente Insumos Dos SA', null, 'active', 0);
 
 insert into public.sites (id, client_id, name, address, status) values
   ('e2500000-0000-0000-0000-0000000000a1', 'e2500000-0000-0000-0000-0000000000c1', 'Sede Uno', 'Calle 1', 'active'),
@@ -160,19 +160,19 @@ insert into public.supplies (id, code, name, presentation, category_id, min_qty,
   ('e2500000-0000-0000-0000-0000000000e3', 'TE-003', 'Test bolsas', 'paquete x 10', 'e2500000-0000-0000-0000-0000000000d2', 2, 50.50, 80.00);
 
 -- Atajos de las fixtures: artículo n, turno n, sede n y usuario n.
-create function tests.sid(n integer) returns uuid language sql immutable as $$ select ('e2500000-0000-0000-0000-0000000000e' || n)::uuid $$;
-create function tests.shid(n integer) returns uuid language sql immutable as $$ select ('e2500000-0000-0000-0000-000000000b0' || n)::uuid $$;
-create function tests.siteid(n integer) returns uuid language sql immutable as $$ select ('e2500000-0000-0000-0000-0000000000a' || n)::uuid $$;
-create function tests.uid(n integer) returns uuid language sql immutable as $$ select ('e2500000-0000-0000-0000-00000000000' || n)::uuid $$;
+create function tests_0070a.sid(n integer) returns uuid language sql immutable as $$ select ('e2500000-0000-0000-0000-0000000000e' || n)::uuid $$;
+create function tests_0070a.shid(n integer) returns uuid language sql immutable as $$ select ('e2500000-0000-0000-0000-000000000b0' || n)::uuid $$;
+create function tests_0070a.siteid(n integer) returns uuid language sql immutable as $$ select ('e2500000-0000-0000-0000-0000000000a' || n)::uuid $$;
+create function tests_0070a.uid(n integer) returns uuid language sql immutable as $$ select ('e2500000-0000-0000-0000-00000000000' || n)::uuid $$;
 -- Línea {supply_id, qty} y línea de ingreso con costo.
-create function tests.l(p_n integer, p_qty numeric) returns jsonb language sql immutable as $$
-  select jsonb_build_object('supply_id', tests.sid(p_n), 'qty', p_qty) $$;
-create function tests.lc(p_n integer, p_qty numeric, p_cost numeric, p_update boolean) returns jsonb language sql immutable as $$
-  select jsonb_build_object('supply_id', tests.sid(p_n), 'qty', p_qty, 'unit_cost', p_cost, 'update_cost', p_update) $$;
-create function tests.stock(p_n integer) returns integer language sql stable security definer as $$
-  select stock_qty from public.supplies where id = tests.sid(p_n) $$;
+create function tests_0070a.l(p_n integer, p_qty numeric) returns jsonb language sql immutable as $$
+  select jsonb_build_object('supply_id', tests_0070a.sid(p_n), 'qty', p_qty) $$;
+create function tests_0070a.lc(p_n integer, p_qty numeric, p_cost numeric, p_update boolean) returns jsonb language sql immutable as $$
+  select jsonb_build_object('supply_id', tests_0070a.sid(p_n), 'qty', p_qty, 'unit_cost', p_cost, 'update_cost', p_update) $$;
+create function tests_0070a.stock(p_n integer) returns integer language sql stable security definer as $$
+  select stock_qty from public.supplies where id = tests_0070a.sid(p_n) $$;
 
-grant execute on all functions in schema tests to authenticated, anon;
+grant execute on all functions in schema tests_0070a to authenticated, anon;
 
 select plan(48);
 
@@ -185,12 +185,12 @@ grant all on t_new_supply, t_new_cat to authenticated;
 -- 1. Alta y edición de artículos (IS-01, IS-02, IS-26, IS-34)
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db0070-admin@example.com');
+select tests_0070a.as_user('test-db0070-admin@example.com');
 
 select results_eq(
   $$select code, name, presentation, min_qty, cost_price, sale_price, stock_qty, active, created_by
     from public.upsert_supply(' te-100 ', ' Test nuevo ', 'e2500000-0000-0000-0000-0000000000d1', '2 L', 3, 10.50, 20, 'Notas', null)$$,
-  $$values ('te-100'::text, 'Test nuevo'::text, '2 L'::text, 3, 10.50::numeric, 20.00::numeric, 0, true, tests.uid(2))$$,
+  $$values ('te-100'::text, 'Test nuevo'::text, '2 L'::text, 3, 10.50::numeric, 20.00::numeric, 0, true, tests_0070a.uid(2))$$,
   'upsert_supply crea el artículo con código y nombre sin espacios de los extremos, precios iniciales y stock 0'
 );
 
@@ -208,15 +208,15 @@ select is(
   'el alta no registra evento de cambio de precio'
 );
 
-select tests.as_user('test-db0070-admin@example.com');
+select tests_0070a.as_user('test-db0070-admin@example.com');
 
 select is(
-  tests.err_hint($$select public.upsert_supply('TE-100', 'Otro', 'e2500000-0000-0000-0000-0000000000d1')$$),
+  tests_0070a.err_hint($$select public.upsert_supply('TE-100', 'Otro', 'e2500000-0000-0000-0000-0000000000d1')$$),
   'CODE_ALREADY_EXISTS',
   'el código es único sin distinguir mayúsculas: CODE_ALREADY_EXISTS (IS-26)'
 );
 select is(
-  tests.err_hint($$select public.upsert_supply('  Te-001  ', 'Otro', 'e2500000-0000-0000-0000-0000000000d1')$$),
+  tests_0070a.err_hint($$select public.upsert_supply('  Te-001  ', 'Otro', 'e2500000-0000-0000-0000-0000000000d1')$$),
   'CODE_ALREADY_EXISTS',
   'tampoco con espacios de los extremos'
 );
@@ -233,7 +233,7 @@ select results_eq(
 );
 
 select is(
-  tests.err_hint($$select public.upsert_supply('TE-001', 'Pisa el código', 'e2500000-0000-0000-0000-0000000000d1', null, null, null, null, null, null, (select id from t_new_supply))$$),
+  tests_0070a.err_hint($$select public.upsert_supply('TE-001', 'Pisa el código', 'e2500000-0000-0000-0000-0000000000d1', null, null, null, null, null, null, (select id from t_new_supply))$$),
   'CODE_ALREADY_EXISTS',
   'corregir el código a uno que ya existe: CODE_ALREADY_EXISTS'
 );
@@ -249,94 +249,94 @@ select is(
   'con un p_id que no existe se crea con ese id (el cliente puede subir la imagen antes)'
 );
 
-select is(tests.err_hint($$select public.upsert_supply('  ', 'Sin código', 'e2500000-0000-0000-0000-0000000000d1')$$), 'CODE_REQUIRED', 'código en blanco: CODE_REQUIRED');
-select is(tests.err_hint($$select public.upsert_supply('TE-102', '  ', 'e2500000-0000-0000-0000-0000000000d1')$$), 'NAME_REQUIRED', 'nombre en blanco: NAME_REQUIRED');
-select is(tests.err_hint($$select public.upsert_supply('TE-102', 'X', 'e2500000-0000-0000-0000-0000000000d1', null, -1)$$), 'INVALID_MIN_QTY', 'mínimo negativo: INVALID_MIN_QTY');
-select is(tests.err_hint($$select public.upsert_supply('TE-102', 'X', 'e2500000-0000-0000-0000-0000000000d1', null, null, -1, 0)$$), 'INVALID_PRICE', 'precio de costo negativo: INVALID_PRICE (IS-34)');
-select is(tests.err_hint($$select public.upsert_supply('TE-102', 'X', 'e2500000-0000-0000-0000-0000000000d1', null, null, 0, 1.234)$$), 'INVALID_PRICE', 'más de dos decimales: INVALID_PRICE');
-select is(tests.err_hint($$select public.upsert_supply('TE-102', 'X', gen_random_uuid())$$), 'CATEGORY_NOT_FOUND', 'categoría inexistente: CATEGORY_NOT_FOUND');
-select is(tests.err_hint($$select public.upsert_supply('TE-102', 'X', null)$$), 'CATEGORY_NOT_FOUND', 'sin categoría: CATEGORY_NOT_FOUND');
+select is(tests_0070a.err_hint($$select public.upsert_supply('  ', 'Sin código', 'e2500000-0000-0000-0000-0000000000d1')$$), 'CODE_REQUIRED', 'código en blanco: CODE_REQUIRED');
+select is(tests_0070a.err_hint($$select public.upsert_supply('TE-102', '  ', 'e2500000-0000-0000-0000-0000000000d1')$$), 'NAME_REQUIRED', 'nombre en blanco: NAME_REQUIRED');
+select is(tests_0070a.err_hint($$select public.upsert_supply('TE-102', 'X', 'e2500000-0000-0000-0000-0000000000d1', null, -1)$$), 'INVALID_MIN_QTY', 'mínimo negativo: INVALID_MIN_QTY');
+select is(tests_0070a.err_hint($$select public.upsert_supply('TE-102', 'X', 'e2500000-0000-0000-0000-0000000000d1', null, null, -1, 0)$$), 'INVALID_PRICE', 'precio de costo negativo: INVALID_PRICE (IS-34)');
+select is(tests_0070a.err_hint($$select public.upsert_supply('TE-102', 'X', 'e2500000-0000-0000-0000-0000000000d1', null, null, 0, 1.234)$$), 'INVALID_PRICE', 'más de dos decimales: INVALID_PRICE');
+select is(tests_0070a.err_hint($$select public.upsert_supply('TE-102', 'X', gen_random_uuid())$$), 'CATEGORY_NOT_FOUND', 'categoría inexistente: CATEGORY_NOT_FOUND');
+select is(tests_0070a.err_hint($$select public.upsert_supply('TE-102', 'X', null)$$), 'CATEGORY_NOT_FOUND', 'sin categoría: CATEGORY_NOT_FOUND');
 select is(
-  tests.err_hint($$select public.upsert_supply('TE-102', 'X', 'e2500000-0000-0000-0000-0000000000d1', null, null, null, null, null, 'otra-carpeta/foto.webp')$$),
+  tests_0070a.err_hint($$select public.upsert_supply('TE-102', 'X', 'e2500000-0000-0000-0000-0000000000d1', null, null, null, null, null, 'otra-carpeta/foto.webp')$$),
   'INVALID_IMAGE_PATH',
   'una imagen fuera de la carpeta del artículo: INVALID_IMAGE_PATH'
 );
 
 set local role postgres;
 insert into public.supply_categories (id, name, active) values ('e2500000-0000-0000-0000-0000000000d9', 'Test E categoría inactiva', false);
-select tests.as_user('test-db0070-admin@example.com');
-select is(tests.err_hint($$select public.upsert_supply('TE-103', 'X', 'e2500000-0000-0000-0000-0000000000d9')$$), 'CATEGORY_INACTIVE', 'alta en una categoría desactivada: CATEGORY_INACTIVE');
+select tests_0070a.as_user('test-db0070-admin@example.com');
+select is(tests_0070a.err_hint($$select public.upsert_supply('TE-103', 'X', 'e2500000-0000-0000-0000-0000000000d9')$$), 'CATEGORY_INACTIVE', 'alta en una categoría desactivada: CATEGORY_INACTIVE');
 select is(
-  tests.err_hint($$select public.upsert_supply('TE-100B', 'X', 'e2500000-0000-0000-0000-0000000000d9', null, null, null, null, null, null, (select id from t_new_supply))$$),
+  tests_0070a.err_hint($$select public.upsert_supply('TE-100B', 'X', 'e2500000-0000-0000-0000-0000000000d9', null, null, null, null, null, null, (select id from t_new_supply))$$),
   'CATEGORY_INACTIVE',
   'mover un artículo a una categoría desactivada: CATEGORY_INACTIVE'
 );
 
-select tests.as_user('test-db0070-owner@example.com');
+select tests_0070a.as_user('test-db0070-owner@example.com');
 select is(
   (select code from public.upsert_supply('TE-104', 'Lo carga el dueño', 'e2500000-0000-0000-0000-0000000000d1')),
   'TE-104',
   'el dueño tiene manage_stock implícita'
 );
-select tests.as_user('test-db0070-admin-sin@example.com');
-select is(tests.err_hint($$select public.upsert_supply('TE-105', 'X', 'e2500000-0000-0000-0000-0000000000d1')$$), 'FORBIDDEN', 'el administrador sin manage_stock no da de alta artículos (IS-21)');
-select tests.as_user('test-db0070-emp-a@example.com');
-select is(tests.err_hint($$select public.upsert_supply('TE-105', 'X', 'e2500000-0000-0000-0000-0000000000d1')$$), 'FORBIDDEN', 'un empleado no da de alta artículos');
-select tests.as_user('test-db0070-coord@example.com');
-select is(tests.err_hint($$select public.upsert_supply('TE-105', 'X', 'e2500000-0000-0000-0000-0000000000d1')$$), 'FORBIDDEN', 'un coordinador no da de alta artículos');
+select tests_0070a.as_user('test-db0070-admin-sin@example.com');
+select is(tests_0070a.err_hint($$select public.upsert_supply('TE-105', 'X', 'e2500000-0000-0000-0000-0000000000d1')$$), 'FORBIDDEN', 'el administrador sin manage_stock no da de alta artículos (IS-21)');
+select tests_0070a.as_user('test-db0070-emp-a@example.com');
+select is(tests_0070a.err_hint($$select public.upsert_supply('TE-105', 'X', 'e2500000-0000-0000-0000-0000000000d1')$$), 'FORBIDDEN', 'un empleado no da de alta artículos');
+select tests_0070a.as_user('test-db0070-coord@example.com');
+select is(tests_0070a.err_hint($$select public.upsert_supply('TE-105', 'X', 'e2500000-0000-0000-0000-0000000000d1')$$), 'FORBIDDEN', 'un coordinador no da de alta artículos');
 
 -- ---------------------------------------------------------------------------------------------
 -- 2. Baja y reactivación (IS-26)
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db0070-admin@example.com');
-select public.register_stock_entry(jsonb_build_array(tests.l(1, 5)));
+select tests_0070a.as_user('test-db0070-admin@example.com');
+select public.register_stock_entry(jsonb_build_array(tests_0070a.l(1, 5)));
 
-select is(tests.err_hint($$select public.set_supply_active(tests.sid(1), false)$$), 'STOCK_NOT_ZERO', 'desactivar con stock: STOCK_NOT_ZERO (primero se ajusta)');
-select is(tests.stock(1), 5, 'el artículo sigue activo con su stock');
-select public.adjust_stock(tests.sid(1), -5, 'count', 'Se lleva a cero para desactivar');
-select is((select active from public.set_supply_active(tests.sid(1), false)), false, 'con stock cero se puede desactivar');
-select is((select active from public.set_supply_active(tests.sid(1), false)), false, 'desactivar de nuevo no falla');
+select is(tests_0070a.err_hint($$select public.set_supply_active(tests_0070a.sid(1), false)$$), 'STOCK_NOT_ZERO', 'desactivar con stock: STOCK_NOT_ZERO (primero se ajusta)');
+select is(tests_0070a.stock(1), 5, 'el artículo sigue activo con su stock');
+select public.adjust_stock(tests_0070a.sid(1), -5, 'count', 'Se lleva a cero para desactivar');
+select is((select active from public.set_supply_active(tests_0070a.sid(1), false)), false, 'con stock cero se puede desactivar');
+select is((select active from public.set_supply_active(tests_0070a.sid(1), false)), false, 'desactivar de nuevo no falla');
 select is(
-  tests.err_hint($$select public.register_stock_entry(jsonb_build_array(tests.l(1, 1)))$$),
+  tests_0070a.err_hint($$select public.register_stock_entry(jsonb_build_array(tests_0070a.l(1, 1)))$$),
   'SUPPLY_INACTIVE',
   'un artículo desactivado no recibe ingresos: SUPPLY_INACTIVE'
 );
 select is(
-  tests.err_hint($$select public.adjust_stock(tests.sid(1), 1, 'count')$$),
+  tests_0070a.err_hint($$select public.adjust_stock(tests_0070a.sid(1), 1, 'count')$$),
   'SUPPLY_INACTIVE',
   'ni ajustes'
 );
-select is((select active from public.set_supply_active(tests.sid(1), true)), true, 'se puede reactivar');
-select is(tests.err_hint($$select public.set_supply_active(tests.sid(1), null)$$), 'INVALID_ACTIVE', 'estado nulo: INVALID_ACTIVE');
-select is(tests.err_hint($$select public.set_supply_active(gen_random_uuid(), false)$$), 'SUPPLY_NOT_FOUND', 'artículo inexistente: SUPPLY_NOT_FOUND');
+select is((select active from public.set_supply_active(tests_0070a.sid(1), true)), true, 'se puede reactivar');
+select is(tests_0070a.err_hint($$select public.set_supply_active(tests_0070a.sid(1), null)$$), 'INVALID_ACTIVE', 'estado nulo: INVALID_ACTIVE');
+select is(tests_0070a.err_hint($$select public.set_supply_active(gen_random_uuid(), false)$$), 'SUPPLY_NOT_FOUND', 'artículo inexistente: SUPPLY_NOT_FOUND');
 
 set local role postgres;
-update public.supplies set active = false, category_id = 'e2500000-0000-0000-0000-0000000000d9' where id = tests.sid(2);
-select tests.as_user('test-db0070-admin@example.com');
-select is(tests.err_hint($$select public.set_supply_active(tests.sid(2), true)$$), 'CATEGORY_INACTIVE', 'reactivar un artículo cuya categoría está desactivada: CATEGORY_INACTIVE');
+update public.supplies set active = false, category_id = 'e2500000-0000-0000-0000-0000000000d9' where id = tests_0070a.sid(2);
+select tests_0070a.as_user('test-db0070-admin@example.com');
+select is(tests_0070a.err_hint($$select public.set_supply_active(tests_0070a.sid(2), true)$$), 'CATEGORY_INACTIVE', 'reactivar un artículo cuya categoría está desactivada: CATEGORY_INACTIVE');
 
-select tests.as_user('test-db0070-admin-sin@example.com');
-select is(tests.err_hint($$select public.set_supply_active(tests.sid(1), false)$$), 'FORBIDDEN', 'el administrador sin manage_stock no desactiva: FORBIDDEN');
-select tests.as_user('test-db0070-emp-a@example.com');
-select is(tests.err_hint($$select public.set_supply_active(tests.sid(1), false)$$), 'FORBIDDEN', 'un empleado no desactiva: FORBIDDEN');
-select is(tests.err_hint($$select public.set_supply_prices(tests.sid(1), 1, 1)$$), 'FORBIDDEN', 'un empleado no cambia precios: FORBIDDEN');
+select tests_0070a.as_user('test-db0070-admin-sin@example.com');
+select is(tests_0070a.err_hint($$select public.set_supply_active(tests_0070a.sid(1), false)$$), 'FORBIDDEN', 'el administrador sin manage_stock no desactiva: FORBIDDEN');
+select tests_0070a.as_user('test-db0070-emp-a@example.com');
+select is(tests_0070a.err_hint($$select public.set_supply_active(tests_0070a.sid(1), false)$$), 'FORBIDDEN', 'un empleado no desactiva: FORBIDDEN');
+select is(tests_0070a.err_hint($$select public.set_supply_prices(tests_0070a.sid(1), 1, 1)$$), 'FORBIDDEN', 'un empleado no cambia precios: FORBIDDEN');
 
 -- ---------------------------------------------------------------------------------------------
 -- 3. Categorías (IS-03)
 -- ---------------------------------------------------------------------------------------------
 
-select tests.as_user('test-db0070-admin@example.com');
+select tests_0070a.as_user('test-db0070-admin@example.com');
 
 select results_eq(
   $$select name, sort_order, active, created_by from public.upsert_supply_category('  Test E categoría tres ', 30)$$,
-  $$values ('Test E categoría tres'::text, 30, true, tests.uid(2))$$,
+  $$values ('Test E categoría tres'::text, 30, true, tests_0070a.uid(2))$$,
   'upsert_supply_category crea la categoría (nombre sin espacios de los extremos, orden y activa)'
 );
-select is(tests.err_hint($$select public.upsert_supply_category('test e CATEGORÍA tres')$$), 'CATEGORY_NAME_EXISTS', 'el nombre es único sin distinguir mayúsculas ni espacios: CATEGORY_NAME_EXISTS');
-select is(tests.err_hint($$select public.upsert_supply_category('   ')$$), 'NAME_REQUIRED', 'nombre en blanco: NAME_REQUIRED');
-select is(tests.err_hint($$select public.upsert_supply_category('X', null)$$), 'INVALID_CATEGORY', 'orden nulo: INVALID_CATEGORY');
-select is(tests.err_hint($$select public.upsert_supply_category('X', 1, true, gen_random_uuid())$$), 'CATEGORY_NOT_FOUND', 'editar una categoría que no existe: CATEGORY_NOT_FOUND');
+select is(tests_0070a.err_hint($$select public.upsert_supply_category('test e CATEGORÍA tres')$$), 'CATEGORY_NAME_EXISTS', 'el nombre es único sin distinguir mayúsculas ni espacios: CATEGORY_NAME_EXISTS');
+select is(tests_0070a.err_hint($$select public.upsert_supply_category('   ')$$), 'NAME_REQUIRED', 'nombre en blanco: NAME_REQUIRED');
+select is(tests_0070a.err_hint($$select public.upsert_supply_category('X', null)$$), 'INVALID_CATEGORY', 'orden nulo: INVALID_CATEGORY');
+select is(tests_0070a.err_hint($$select public.upsert_supply_category('X', 1, true, gen_random_uuid())$$), 'CATEGORY_NOT_FOUND', 'editar una categoría que no existe: CATEGORY_NOT_FOUND');
 
 insert into t_new_cat select id from public.supply_categories where name = 'Test E categoría tres';
 
@@ -346,12 +346,12 @@ select results_eq(
   'editar nombre y orden de una categoría'
 );
 select is(
-  tests.err_hint($$select public.upsert_supply_category('Test E categoría dos', 1, true, (select id from t_new_cat))$$),
+  tests_0070a.err_hint($$select public.upsert_supply_category('Test E categoría dos', 1, true, (select id from t_new_cat))$$),
   'CATEGORY_NAME_EXISTS',
   'renombrar a un nombre que ya existe: CATEGORY_NAME_EXISTS'
 );
 select is(
-  tests.err_hint($$select public.upsert_supply_category('Test E categoría uno', 10, false, 'e2500000-0000-0000-0000-0000000000d1')$$),
+  tests_0070a.err_hint($$select public.upsert_supply_category('Test E categoría uno', 10, false, 'e2500000-0000-0000-0000-0000000000d1')$$),
   'CATEGORY_IN_USE',
   'desactivar una categoría con artículos activos: CATEGORY_IN_USE'
 );
@@ -366,10 +366,10 @@ select is(
   'y reactivarla'
 );
 
-select tests.as_user('test-db0070-admin-sin@example.com');
-select is(tests.err_hint($$select public.upsert_supply_category('Test E otra')$$), 'FORBIDDEN', 'el administrador sin manage_stock no gestiona categorías: FORBIDDEN');
-select tests.as_user('test-db0070-emp-a@example.com');
-select is(tests.err_hint($$select public.upsert_supply_category('Test E otra')$$), 'FORBIDDEN', 'un empleado no gestiona categorías: FORBIDDEN');
+select tests_0070a.as_user('test-db0070-admin-sin@example.com');
+select is(tests_0070a.err_hint($$select public.upsert_supply_category('Test E otra')$$), 'FORBIDDEN', 'el administrador sin manage_stock no gestiona categorías: FORBIDDEN');
+select tests_0070a.as_user('test-db0070-emp-a@example.com');
+select is(tests_0070a.err_hint($$select public.upsert_supply_category('Test E otra')$$), 'FORBIDDEN', 'un empleado no gestiona categorías: FORBIDDEN');
 
 select * from finish();
 

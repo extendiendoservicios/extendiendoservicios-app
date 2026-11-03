@@ -1426,7 +1426,7 @@ function DesignPage() {
       <Section title="GlobalSearch (EMP-012, P09.2)">
         <p className="text-[11.5px] text-text-3">
           Buscador global de la topbar del <code>AdminShell</code>, solo para
-          dueño y administradores — empleados, clientes y sedes desde{' '}
+          dirección y administradores — empleados, clientes y sedes desde{' '}
           <code>v_search</code>, agrupados, con navegación por teclado (
           <code>cmdk</code>), atajo <code>Ctrl K</code> (o <code>/</code>) y
           "Escape" para cerrar. El botón de acá abajo es el mismo componente que

@@ -7,6 +7,7 @@ import {
   Plus,
   RefreshCw,
   Trash2,
+  Eraser,
   Users,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -28,7 +29,10 @@ import {
 import { formatServiceDays } from '@/features/services/weekdays'
 import { OPEN_ENDED_LABEL } from '@/features/shifts/openEnded'
 import { ChangeServiceStatusDialog } from './ChangeServiceStatusDialog'
-import { DeleteServiceDialog } from './DeleteServiceDialog'
+import { DeleteServiceShiftsDialog } from './DeleteServiceShiftsDialog'
+import { useAuth } from '@/features/auth/AuthProvider'
+import { OwnerDeleteDialog } from '@/features/ownerDelete/components/OwnerDeleteDialog'
+import { canOwnerDelete } from '@/features/ownerDelete/matching'
 
 /** `"HH:mm:ss"` (columna `time` de Postgres) → `"HH:mm"`. */
 function shortTime(time: string): string {
@@ -54,9 +58,14 @@ function ServiceList(
   const [serviceToChangeStatus, setServiceToChangeStatus] =
     useState<ServiceSummary | null>(null)
 
+  // OD-22: eliminar servicios y turnos es solo del dueño.
+  const auth = useAuth()
+  const ownerCanDelete = canOwnerDelete(auth)
   const [serviceToDelete, setServiceToDelete] = useState<ServiceSummary | null>(
     null,
   )
+  const [serviceToDeleteShifts, setServiceToDeleteShifts] =
+    useState<ServiceSummary | null>(null)
 
   const services = query.data ?? []
 
@@ -121,13 +130,24 @@ function ServiceList(
                     <RefreshCw aria-hidden="true" />
                     Cambiar estado
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onSelect={() => setServiceToDelete(service)}
-                  >
-                    <Trash2 aria-hidden="true" />
-                    Eliminar
-                  </DropdownMenuItem>
+                  {ownerCanDelete && (
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onSelect={() => setServiceToDeleteShifts(service)}
+                    >
+                      <Eraser aria-hidden="true" />
+                      Eliminar turnos sin historia…
+                    </DropdownMenuItem>
+                  )}
+                  {ownerCanDelete && (
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onSelect={() => setServiceToDelete(service)}
+                    >
+                      <Trash2 aria-hidden="true" />
+                      Eliminar
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </li>
@@ -144,11 +164,20 @@ function ServiceList(
       )}
 
       {serviceToDelete && (
-        <DeleteServiceDialog
-          service={serviceToDelete}
-          open={serviceToDelete != null}
+        <OwnerDeleteDialog
+          kind="service"
+          id={serviceToDelete.id}
+          open
           onOpenChange={(open) => !open && setServiceToDelete(null)}
-          onDeactivate={() => setServiceToChangeStatus(serviceToDelete)}
+        />
+      )}
+
+      {serviceToDeleteShifts && (
+        <DeleteServiceShiftsDialog
+          serviceId={serviceToDeleteShifts.id}
+          serviceName={serviceToDeleteShifts.name}
+          open
+          onOpenChange={(open) => !open && setServiceToDeleteShifts(null)}
         />
       )}
     </div>

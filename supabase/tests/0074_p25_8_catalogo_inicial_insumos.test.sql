@@ -5,7 +5,7 @@
 -- seed ni del orden: App_dev ya tiene estos códigos con stock y movimientos, así que el test
 -- «aparta» dentro de la transacción lo que exista (les cambia el código y el nombre, que equivale
 -- a borrarlo sin tocar las tablas inmutables), corre la carga y verifica lo que la carga insertó.
--- El SQL de la carga se copia en tests.cargar_0074() porque un test no puede leer el archivo de la
+-- El SQL de la carga se copia en tests_0074.cargar_0074() porque un test no puede leer el archivo de la
 -- migración; si cambia uno, tiene que cambiar el otro.
 
 begin;
@@ -15,9 +15,9 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
+create schema if not exists tests_0074;
 
-create or replace function tests.cargar_0074()
+create or replace function tests_0074.cargar_0074()
 returns void
 language plpgsql
 as $fn$
@@ -76,7 +76,7 @@ end;
 $fn$;
 
 -- Aparta lo que ya exista (App_dev): equivale a borrarlo para probar la carga desde cero.
-create or replace function tests.apartar_0074()
+create or replace function tests_0074.apartar_0074()
 returns void
 language sql
 as $fn$
@@ -102,8 +102,8 @@ where lower(btrim(s.code)) in (
   'des-005', 'pro-001', 'pro-002', 'pro-003', 'ute-001', 'ute-002', 'ute-003', 'ute-009'
 );
 
-select tests.apartar_0074();
-select tests.cargar_0074();
+select tests_0074.apartar_0074();
+select tests_0074.cargar_0074();
 
 create temporary table tmp_cat on commit drop as
 select * from public.supply_categories where lower(btrim(name)) in ('químicos de limpieza', 'descartables', 'protección personal', 'utensilios');
@@ -139,7 +139,7 @@ select is(
 -- Segunda corrida: no duplica nada. Y lo que alguien editó no se pisa.
 update public.supplies set name = 'Lavandina editada', sale_price = 99, min_qty = 7, stock_qty = 3 where code = 'QUI-001';
 update public.supply_categories set sort_order = 77 where name = 'Descartables';
-select tests.cargar_0074();
+select tests_0074.cargar_0074();
 
 select is((select count(*)::integer from public.supply_categories where lower(btrim(name)) in ('químicos de limpieza', 'descartables', 'protección personal', 'utensilios')), 4, 'correrla otra vez no duplica categorías');
 select is((select count(*)::integer from public.supplies where code ~ '^(QUI|DES|PRO|UTE)-[0-9]{3}$' and code <> 'UTE-009'), 16, 'correrla otra vez no duplica artículos');

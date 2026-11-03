@@ -16,10 +16,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0017;
+grant usage on schema tests_0017 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0017.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -30,7 +30,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0017.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -45,7 +45,7 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0017.as_user(text) to authenticated, anon;
 
 select plan(14);
 
@@ -128,7 +128,7 @@ insert into public.user_roles (profile_id, role) values
   ('c6100000-0000-0000-0000-000000000081', 'employee'),
   ('c6100000-0000-0000-0000-000000000082', 'admin');
 
-select tests.as_user('test-db017-empleado@example.com');
+select tests_0017.as_user('test-db017-empleado@example.com');
 
 select lives_ok(
   $$update public.profiles set phone = '11-5555-5555' where id = 'c6100000-0000-0000-0000-000000000081'$$,
@@ -145,7 +145,7 @@ select throws_ok(
 
 set local role postgres;
 
-select tests.as_user('test-db017-admin@example.com');
+select tests_0017.as_user('test-db017-admin@example.com');
 
 select lives_ok(
   $$update public.profiles set first_name = 'Corregido' where id = 'c6100000-0000-0000-0000-000000000081'$$,

@@ -34,10 +34,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0027;
+grant usage on schema tests_0027 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0027.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -48,7 +48,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0027.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -63,7 +63,7 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0027.as_user(text) to authenticated, anon;
 
 -- Anclas horarias: "hace 3 horas" (turno ya empezado, hora de inicio efectiva ya pasada) y
 -- "dentro de 3 horas" (turno que todavía no empezó). Se calcula la fecha Y la hora de Argentina a
@@ -108,8 +108,8 @@ select has_function('public', 'close_assignment', array['uuid', 'text', 'timesta
 -- Fixtures comunes: un cliente activo con una sede activa; personas con los cuatro roles.
 -- ---------------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('e2700000-0000-0000-0000-000000000001', 'Cliente de avisos y asistencia admin', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('e2700000-0000-0000-0000-000000000001', 'Cliente de avisos y asistencia admin', 'active', 0);
 
 insert into public.sites (id, client_id, name, address, status) values
   ('e2700000-0000-0000-0000-000000000011', 'e2700000-0000-0000-0000-000000000001', 'Sede de avisos y asistencia admin', 'Dirección 1', 'active');
@@ -259,7 +259,7 @@ insert into public.assignments (id, shift_id, employee_id, status) values
   ('e2700000-0000-0000-0000-000000000308', 'e2700000-0000-0000-0000-000000000208', 'e2700000-0000-0000-0000-00000000008c', 'finished');
 
 -- ASSIGNMENT_NOT_FOUND.
-select tests.as_user('test-db027-emp-delay-propio@example.com');
+select tests_0027.as_user('test-db027-emp-delay-propio@example.com');
 
 prepare notify_delay_not_found as select public.notify_delay('00000000-0000-0000-0000-000000000000', 15);
 select throws_ok('notify_delay_not_found', 'P0001', 'No encontramos esa asignación.', 'notify_delay: id inexistente -> ASSIGNMENT_NOT_FOUND');
@@ -269,17 +269,17 @@ prepare notify_delay_ajena as select public.notify_delay('e2700000-0000-0000-000
 select throws_ok('notify_delay_ajena', 'P0001', 'Esa asignación no es tuya.', 'notify_delay: asignación ajena -> NOT_YOUR_ASSIGNMENT');
 
 -- FORBIDDEN: supervisor.
-select tests.as_user('test-db027-supervisora@example.com');
+select tests_0027.as_user('test-db027-supervisora@example.com');
 prepare notify_delay_supervisor as select public.notify_delay('e2700000-0000-0000-0000-000000000301', 15);
 select throws_ok('notify_delay_supervisor', 'P0001', 'No tenés permiso para hacer esto.', 'notify_delay: supervisor -> FORBIDDEN');
 
 -- FORBIDDEN: admin sin manage_attendance.
-select tests.as_user('test-db027-admin-sin-cap@example.com');
+select tests_0027.as_user('test-db027-admin-sin-cap@example.com');
 prepare notify_delay_admin_sin_cap as select public.notify_delay('e2700000-0000-0000-0000-000000000301', 15);
 select throws_ok('notify_delay_admin_sin_cap', 'P0001', 'No tenés permiso para hacer esto.', 'notify_delay: admin sin manage_attendance -> FORBIDDEN');
 
 -- MINUTES_REQUIRED: sin minutos.
-select tests.as_user('test-db027-emp-minutos@example.com');
+select tests_0027.as_user('test-db027-emp-minutos@example.com');
 prepare notify_delay_sin_minutos as select public.notify_delay('e2700000-0000-0000-0000-000000000303', null);
 select throws_ok('notify_delay_sin_minutos', 'P0001', 'Indicá los minutos de demora estimados.', 'notify_delay: sin minutos -> MINUTES_REQUIRED');
 
@@ -291,27 +291,27 @@ prepare notify_delay_minutos_exceso as select public.notify_delay('e2700000-0000
 select throws_ok('notify_delay_minutos_exceso', 'P0001', 'Indicá los minutos de demora estimados.', 'notify_delay: 601 minutos -> MINUTES_REQUIRED');
 
 -- SHIFT_CANCELLED.
-select tests.as_user('test-db027-emp-cancelado@example.com');
+select tests_0027.as_user('test-db027-emp-cancelado@example.com');
 prepare notify_delay_cancelado as select public.notify_delay('e2700000-0000-0000-0000-000000000307', 15);
 select throws_ok('notify_delay_cancelado', 'P0001', 'Este turno está cancelado.', 'notify_delay: turno cancelado -> SHIFT_CANCELLED');
 
 -- SHIFT_COMPLETED.
-select tests.as_user('test-db027-emp-completado@example.com');
+select tests_0027.as_user('test-db027-emp-completado@example.com');
 prepare notify_delay_completado as select public.notify_delay('e2700000-0000-0000-0000-000000000308', 15);
 select throws_ok('notify_delay_completado', 'P0001', 'Este turno ya terminó.', 'notify_delay: turno completed -> SHIFT_COMPLETED');
 
 -- ASSIGNMENT_STARTED: la asignación ya está present.
-select tests.as_user('test-db027-emp-empezada@example.com');
+select tests_0027.as_user('test-db027-emp-empezada@example.com');
 prepare notify_delay_empezada as select public.notify_delay('e2700000-0000-0000-0000-000000000305', 15);
 select throws_ok('notify_delay_empezada', 'P0001', 'La asignación ya empezó.', 'notify_delay: asignación present -> ASSIGNMENT_STARTED');
 
 -- TOO_LATE_TO_NOTIFY: la hora de inicio efectiva ya pasó.
-select tests.as_user('test-db027-emp-tarde@example.com');
+select tests_0027.as_user('test-db027-emp-tarde@example.com');
 prepare notify_delay_tarde as select public.notify_delay('e2700000-0000-0000-0000-000000000304', 15);
 select throws_ok('notify_delay_tarde', 'P0001', 'El aviso tiene que hacerse antes de la hora de inicio.', 'notify_delay: inicio efectivo ya pasado -> TOO_LATE_TO_NOTIFY');
 
 -- Feliz: emp-delay-propio, antes del inicio.
-select tests.as_user('test-db027-emp-delay-propio@example.com');
+select tests_0027.as_user('test-db027-emp-delay-propio@example.com');
 select is(
   (public.notify_delay('e2700000-0000-0000-0000-000000000301', 15, 'Corte de calle')).kind::text,
   'delay',
@@ -326,7 +326,7 @@ select is(
 );
 
 -- Feliz "en nombre": admin-con-cap avisa por emp-en-nombre.
-select tests.as_user('test-db027-admin-con-cap@example.com');
+select tests_0027.as_user('test-db027-admin-con-cap@example.com');
 select is(
   (public.notify_delay('e2700000-0000-0000-0000-000000000306', 20)).source::text,
   'admin',
@@ -383,7 +383,7 @@ insert into public.assignments (id, shift_id, employee_id) values
   ('e2700000-0000-0000-0000-00000000030d', 'e2700000-0000-0000-0000-00000000020d', 'e2700000-0000-0000-0000-000000000091');
 
 -- REASON_REQUIRED: sin motivo.
-select tests.as_user('test-db027-emp-motivo@example.com');
+select tests_0027.as_user('test-db027-emp-motivo@example.com');
 prepare notify_absence_sin_motivo as select public.notify_absence('e2700000-0000-0000-0000-00000000030d', null);
 select throws_ok('notify_absence_sin_motivo', 'P0001', 'Indicá el motivo de la ausencia.', 'notify_absence: sin motivo -> REASON_REQUIRED');
 
@@ -392,17 +392,17 @@ prepare notify_absence_other_sin_texto as select public.notify_absence('e2700000
 select throws_ok('notify_absence_other_sin_texto', 'P0001', 'Indicá el motivo de la ausencia.', 'notify_absence: other sin texto -> REASON_REQUIRED');
 
 -- FORBIDDEN: admin sin manage_attendance.
-select tests.as_user('test-db027-admin-sin-cap@example.com');
+select tests_0027.as_user('test-db027-admin-sin-cap@example.com');
 prepare notify_absence_admin_sin_cap as select public.notify_absence('e2700000-0000-0000-0000-00000000030d', 'illness');
 select throws_ok('notify_absence_admin_sin_cap', 'P0001', 'No tenés permiso para hacer esto.', 'notify_absence: admin sin manage_attendance -> FORBIDDEN');
 
 -- NOT_YOUR_ASSIGNMENT: empleado sobre asignación ajena.
-select tests.as_user('test-db027-emp-motivo@example.com');
+select tests_0027.as_user('test-db027-emp-motivo@example.com');
 prepare notify_absence_ajena as select public.notify_absence('e2700000-0000-0000-0000-000000000309', 'illness');
 select throws_ok('notify_absence_ajena', 'P0001', 'Esa asignación no es tuya.', 'notify_absence: asignación ajena -> NOT_YOUR_ASSIGNMENT');
 
 -- Feliz: emp-ausencia-propia, antes del inicio.
-select tests.as_user('test-db027-emp-ausencia-propia@example.com');
+select tests_0027.as_user('test-db027-emp-ausencia-propia@example.com');
 select is(
   (public.notify_absence('e2700000-0000-0000-0000-000000000309', 'illness', 'Certificado médico')).kind::text,
   'absence',
@@ -423,16 +423,16 @@ select is(
 );
 
 -- TOO_LATE_TO_NOTIFY: el propio empleado, inicio efectivo ya pasado.
-select tests.as_user('test-db027-emp-ausencia-tarde@example.com');
+select tests_0027.as_user('test-db027-emp-ausencia-tarde@example.com');
 prepare notify_absence_tarde as select public.notify_absence('e2700000-0000-0000-0000-00000000030a', 'illness');
 select throws_ok('notify_absence_tarde', 'P0001', 'El aviso tiene que hacerse antes de la hora de inicio.', 'notify_absence: propio después del inicio -> TOO_LATE_TO_NOTIFY');
 
 -- ASSIGNMENT_STARTED: ya present, ni para el propio ni para el admin.
-select tests.as_user('test-db027-emp-ausencia-empezada@example.com');
+select tests_0027.as_user('test-db027-emp-ausencia-empezada@example.com');
 prepare notify_absence_empezada_propio as select public.notify_absence('e2700000-0000-0000-0000-00000000030c', 'illness');
 select throws_ok('notify_absence_empezada_propio', 'P0001', 'La asignación ya empezó.', 'notify_absence: propio, asignación present -> ASSIGNMENT_STARTED');
 
-select tests.as_user('test-db027-admin-con-cap@example.com');
+select tests_0027.as_user('test-db027-admin-con-cap@example.com');
 prepare notify_absence_empezada_admin as select public.notify_absence('e2700000-0000-0000-0000-00000000030c', 'illness');
 select throws_ok('notify_absence_empezada_admin', 'P0001', 'La asignación ya empezó.', 'notify_absence: en nombre, asignación present -> ASSIGNMENT_STARTED');
 
@@ -464,11 +464,11 @@ insert into public.assignments (id, shift_id, employee_id) values
   ('e2700000-0000-0000-0000-00000000030e', 'e2700000-0000-0000-0000-00000000020e', 'e2700000-0000-0000-0000-000000000092');
 
 -- FORBIDDEN: admin sin manage_attendance.
-select tests.as_user('test-db027-admin-sin-cap@example.com');
+select tests_0027.as_user('test-db027-admin-sin-cap@example.com');
 prepare admin_attendance_forbidden as select public.admin_record_attendance('e2700000-0000-0000-0000-00000000030e', 'check_in', null, 'Se olvidó el teléfono');
 select throws_ok('admin_attendance_forbidden', 'P0001', 'No tenés permiso para hacer esto.', 'admin_record_attendance: sin manage_attendance -> FORBIDDEN');
 
-select tests.as_user('test-db027-admin-con-cap@example.com');
+select tests_0027.as_user('test-db027-admin-con-cap@example.com');
 
 -- ASSIGNMENT_NOT_FOUND.
 prepare admin_attendance_not_found as select public.admin_record_attendance('00000000-0000-0000-0000-000000000000', 'check_in', null, 'Motivo');
@@ -531,7 +531,7 @@ select is(
   'admin_record_attendance: el turno (dotación 1) pasa a in_progress con el check_in'
 );
 
-select tests.as_user('test-db027-admin-con-cap@example.com');
+select tests_0027.as_user('test-db027-admin-con-cap@example.com');
 
 -- ALREADY_CHECKED_IN.
 prepare admin_attendance_doble_in as select public.admin_record_attendance('e2700000-0000-0000-0000-00000000030e', 'check_in', null, 'Motivo');
@@ -541,7 +541,7 @@ select throws_ok('admin_attendance_doble_in', 'P0001', 'Ya registraste el inicio
 -- check_in quedó cerca de las 0:00: nunca antes de las 0:00, que daría AT_OUT_OF_RANGE).
 set local role postgres;
 select set_config('t27.check_in_at', (select recorded_at::text from public.attendance_records where assignment_id = 'e2700000-0000-0000-0000-00000000030e' and kind = 'check_in'), false);
-select tests.as_user('test-db027-admin-con-cap@example.com');
+select tests_0027.as_user('test-db027-admin-con-cap@example.com');
 
 prepare admin_attendance_fin_antes_del_inicio as
   select public.admin_record_attendance('e2700000-0000-0000-0000-00000000030e', 'check_out', current_setting('t27.check_in_at')::timestamptz - least(interval '5 minutes', (current_setting('t27.check_in_at')::timestamptz - (date_trunc('day', now() at time zone 'America/Argentina/Buenos_Aires') at time zone 'America/Argentina/Buenos_Aires')) / 2), 'Motivo');
@@ -561,7 +561,7 @@ select is(
   'admin_record_attendance: el turno pasa a completed con el check_out (única asignación)'
 );
 
-select tests.as_user('test-db027-admin-con-cap@example.com');
+select tests_0027.as_user('test-db027-admin-con-cap@example.com');
 
 -- ALREADY_CHECKED_OUT.
 prepare admin_attendance_doble_out as select public.admin_record_attendance('e2700000-0000-0000-0000-00000000030e', 'check_out', null, 'Motivo');
@@ -580,7 +580,7 @@ from t27_anchors;
 insert into public.assignments (id, shift_id, employee_id) values
   ('e2700000-0000-0000-0000-00000000030f', 'e2700000-0000-0000-0000-00000000020f', 'e2700000-0000-0000-0000-000000000099');
 
-select tests.as_user('test-db027-admin-con-cap@example.com');
+select tests_0027.as_user('test-db027-admin-con-cap@example.com');
 prepare admin_attendance_sin_inicio as select public.admin_record_attendance('e2700000-0000-0000-0000-00000000030f', 'check_out', null, 'Motivo');
 select throws_ok('admin_attendance_sin_inicio', 'P0001', 'Todavía no registraste el inicio.', 'admin_record_attendance: check_out sin check_in -> NOT_CHECKED_IN');
 
@@ -596,7 +596,7 @@ from t27_anchors;
 insert into public.assignments (id, shift_id, employee_id) values
   ('e2700000-0000-0000-0000-000000000310', 'e2700000-0000-0000-0000-000000000210', 'e2700000-0000-0000-0000-000000000094');
 
-select tests.as_user('test-db027-admin-con-cap@example.com');
+select tests_0027.as_user('test-db027-admin-con-cap@example.com');
 
 select is(
   (public.admin_record_attendance('e2700000-0000-0000-0000-000000000310', 'check_in', now() - interval '1 hour', 'Se cargó al otro día')).kind::text,
@@ -624,11 +624,11 @@ insert into public.attendance_records (assignment_id, kind, recorded_at, source,
   ('e2700000-0000-0000-0000-000000000311', 'check_in', now() - interval '1 hour', 'employee_app', 'e2700000-0000-0000-0000-000000000093', null);
 
 -- FORBIDDEN: sin manage_attendance.
-select tests.as_user('test-db027-admin-sin-cap@example.com');
+select tests_0027.as_user('test-db027-admin-sin-cap@example.com');
 prepare close_assignment_forbidden as select public.close_assignment('e2700000-0000-0000-0000-000000000311', 'Motivo');
 select throws_ok('close_assignment_forbidden', 'P0001', 'No tenés permiso para hacer esto.', 'close_assignment: sin manage_attendance -> FORBIDDEN');
 
-select tests.as_user('test-db027-admin-con-cap@example.com');
+select tests_0027.as_user('test-db027-admin-con-cap@example.com');
 
 -- REASON_REQUIRED.
 prepare close_assignment_sin_motivo as select public.close_assignment('e2700000-0000-0000-0000-000000000311', '  ');
@@ -658,7 +658,7 @@ select is(
   'close_assignment: el turno pasa a completed (única asignación vigente)'
 );
 
-select tests.as_user('test-db027-admin-con-cap@example.com');
+select tests_0027.as_user('test-db027-admin-con-cap@example.com');
 
 -- ALREADY_CHECKED_OUT.
 prepare close_assignment_doble as select public.close_assignment('e2700000-0000-0000-0000-000000000311', 'Motivo');
@@ -673,7 +673,7 @@ from t27_anchors;
 insert into public.assignments (id, shift_id, employee_id) values
   ('e2700000-0000-0000-0000-000000000312', 'e2700000-0000-0000-0000-000000000212', 'e2700000-0000-0000-0000-000000000095');
 
-select tests.as_user('test-db027-admin-con-cap@example.com');
+select tests_0027.as_user('test-db027-admin-con-cap@example.com');
 prepare close_assignment_sin_inicio as select public.close_assignment('e2700000-0000-0000-0000-000000000312', 'Motivo');
 select throws_ok('close_assignment_sin_inicio', 'P0001', 'Todavía no registraste el inicio.', 'close_assignment: nunca empezó -> NOT_CHECKED_IN');
 
@@ -723,7 +723,7 @@ from t27_anchors;
 insert into public.assignments (id, shift_id, employee_id) values
   ('e2700000-0000-0000-0000-000000000315', 'e2700000-0000-0000-0000-000000000215', 'e2700000-0000-0000-0000-000000000097');
 
-select tests.as_user('test-db027-emp-last-notice@example.com');
+select tests_0027.as_user('test-db027-emp-last-notice@example.com');
 select public.notify_delay('e2700000-0000-0000-0000-000000000315', 5);
 select public.notify_absence('e2700000-0000-0000-0000-000000000315', 'procedure');
 
@@ -757,7 +757,7 @@ set shift_date = t.today_date
 from t27_anchors t
 where id = 'e2700000-0000-0000-0000-000000000215';
 
-select tests.as_user('test-db027-admin-con-cap@example.com');
+select tests_0027.as_user('test-db027-admin-con-cap@example.com');
 select public.admin_record_attendance('e2700000-0000-0000-0000-000000000315', 'check_in', null, 'Cargado por administración');
 
 set local role postgres;
@@ -786,7 +786,7 @@ from t27_anchors;
 insert into public.assignments (id, shift_id, employee_id) values
   ('e2700000-0000-0000-0000-000000000316', 'e2700000-0000-0000-0000-000000000216', 'e2700000-0000-0000-0000-000000000098');
 
-select tests.as_user('test-db027-emp-my-day@example.com');
+select tests_0027.as_user('test-db027-emp-my-day@example.com');
 select public.notify_delay('e2700000-0000-0000-0000-000000000316', 12, 'Embotellamiento');
 
 select is(

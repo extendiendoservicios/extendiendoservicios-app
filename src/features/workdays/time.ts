@@ -1,4 +1,7 @@
-import { toDateTimeLocal } from '@/features/attendance/dateTimeLocal'
+import {
+  dateTimeLocalToIso,
+  toDateTimeLocal,
+} from '@/features/attendance/dateTimeLocal'
 
 /**
  * Rango válido de las horas que corrige la administración en una jornada
@@ -43,4 +46,37 @@ export function formatPauseDuration(
     if (Number.isFinite(ms) && ms < 60_000) return 'menos de 1 min'
   }
   return format(pause.minutes)
+}
+
+/**
+ * Hora que se manda como `p_at` en «Finalizar jornada» y «Cerrar pausa»
+ * (OD-06, OD-07): si quien la elige dejó la que venía por defecto (ahora, al
+ * abrir el diálogo), no se manda y el servidor usa su propio «ahora»; si la
+ * cambió, va como instante de Argentina.
+ */
+export function actionTimeToIso(
+  value: string,
+  initial: string,
+): string | undefined {
+  return value === initial ? undefined : dateTimeLocalToIso(value)
+}
+
+/**
+ * Límites de la hora de una acción de la administración sobre una jornada:
+ * desde `since` (el inicio de la jornada o de la pausa, si cae el mismo día) o
+ * las 0:00 del día de la jornada, hasta ahora (nunca futura).
+ */
+export function actionTimeBounds(
+  workDate: string,
+  since: string | null,
+  now: Date = new Date(),
+): { min: string; max: string } {
+  const bounds = workdayTimeBounds(workDate, now)
+  if (since) {
+    const sinceLocal = toDateTimeLocal(new Date(since))
+    if (sinceLocal > bounds.min && sinceLocal <= bounds.max) {
+      return { min: sinceLocal, max: bounds.max }
+    }
+  }
+  return bounds
 }

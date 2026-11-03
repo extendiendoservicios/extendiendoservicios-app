@@ -315,7 +315,7 @@ test.describe('jornadas del coordinador en la ficha', () => {
             .getByRole('button', { name: 'Corregir hora', exact: true })
             .click()
           await expect(
-            page.getByText('Corregimos la hora: fin de la jornada.'),
+            page.getByText('Corregimos: fin de la jornada.'),
           ).toBeVisible()
           await expect(
             tarjeta.getByText('Corregida', { exact: true }),
@@ -597,29 +597,39 @@ test.describe('Resumen, Asistencia e imprimible', () => {
           autoCerrada: true,
         })
 
-        await test.step('ADM-02: «Jornadas abiertas» y «Cerradas automáticamente»', async () => {
+        await test.step('ADM-02, OD-04: el Resumen muestra una tarjeta por coordinador, con la abierta en actividad y la cerrada sola con su aviso', async () => {
           await page.goto('/admin')
           const bloque = page.getByRole('region', {
             name: 'Supervisiones de hoy',
           })
-          await expect(bloque).toContainText('Jornadas abiertas')
-          await expect(bloque).toContainText(nombreDe('supervisor1'))
-          await expect(bloque).toContainText('En actividad')
-          await expect(bloque).toContainText('Cerradas automáticamente')
-          await expect(bloque).toContainText(nombreDe('supervisor2'))
+          const activo = bloque.getByRole('article', {
+            name: `Coordinador ${nombreDe('supervisor1')}`,
+          })
+          await expect(activo).toContainText('En actividad')
+          await expect(activo).toContainText('Inicio')
+          await expect(
+            activo.getByRole('button', { name: 'Ver actividad' }),
+          ).toBeVisible()
+          const cerrada = bloque.getByRole('article', {
+            name: `Coordinador ${nombreDe('supervisor2')}`,
+          })
+          await expect(cerrada).toContainText('Finalizada')
+          await expect(cerrada).toContainText(
+            'Se cerró sola: revisá el horario de fin',
+          )
         })
 
-        await test.step('ADM-10: la sección «Coordinadores» con el estado, el inicio, el fin y la novedad', async () => {
+        await test.step('ADM-10, OD-04: la sección «Coordinadores» tiene las mismas tarjetas, con el estado, el inicio, el fin y la novedad', async () => {
           await page.goto('/admin/asistencia')
           const seccion = page.getByRole('region', { name: 'Coordinadores' })
           await expect(seccion).toBeVisible()
-          const activo = seccion
-            .getByRole('row')
-            .filter({ hasText: nombreDe('supervisor1') })
+          const activo = seccion.getByRole('article', {
+            name: `Coordinador ${nombreDe('supervisor1')}`,
+          })
           await expect(activo).toContainText('En actividad')
-          const cerrada = seccion
-            .getByRole('row')
-            .filter({ hasText: nombreDe('supervisor2') })
+          const cerrada = seccion.getByRole('article', {
+            name: `Coordinador ${nombreDe('supervisor2')}`,
+          })
           await expect(cerrada).toContainText('Finalizada')
           await expect(cerrada).toContainText(
             'Se cerró sola: revisá el horario de fin',

@@ -211,11 +211,11 @@ test.describe('dos coordinadores en el mismo turno', () => {
           expect(data!.map((s) => s.status)).toEqual(['completed', 'completed'])
         })
 
-        await test.step('CJ-25: el turno queda con «Supervisó: …» de los dos', async () => {
+        await test.step('CJ-25, OD-10: el turno muestra la pasada propia («Supervisaste …») y «Supervisó: …» del otro coordinador', async () => {
           await page.goto('/sup')
           const tarjeta = tarjetaDeTurno(page, sede.name)
+          await expect(tarjeta).toContainText('Supervisaste')
           await expect(tarjeta).toContainText('Supervisó:')
-          await expect(tarjeta).toContainText('Vos')
           await expectNoHorizontalScroll(page)
         })
       } finally {

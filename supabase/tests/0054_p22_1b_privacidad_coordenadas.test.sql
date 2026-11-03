@@ -14,10 +14,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0054;
+grant usage on schema tests_0054 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0054.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -28,7 +28,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0054.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -43,9 +43,9 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0054.as_user(text) to authenticated, anon;
 
-create or replace function tests.t(p numeric)
+create or replace function tests_0054.t(p numeric)
 returns timestamptz
 language sql
 stable
@@ -54,7 +54,7 @@ as $$
          + (now() - app.local_ts(app.today(), '00:00'::time)) * p;
 $$;
 
-grant execute on function tests.t(numeric) to authenticated, anon;
+grant execute on function tests_0054.t(numeric) to authenticated, anon;
 
 
 select plan(59);
@@ -114,8 +114,8 @@ select ok(
 
 update public.company_settings set geofence_radius_m = 150, geofence_max_accuracy_m = 150 where id = 1;
 
-insert into public.clients (id, legal_name, status) values
-  ('e5400000-0000-0000-0000-000000000001', 'Cliente de privacidad', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('e5400000-0000-0000-0000-000000000001', 'Cliente de privacidad', 'active', 0);
 
 insert into public.sites (id, client_id, name, address, latitude, longitude, geofence_radius_m, status) values
   ('e5400000-0000-0000-0000-000000000011', 'e5400000-0000-0000-0000-000000000001', 'Sede P1', 'Dirección 1', -34.603700, -58.381600, null, 'active');
@@ -153,10 +153,10 @@ insert into public.attendance_records (
   geo_status, geo_unvalidated_reason, site_distance_m, geofence_radius_m,
   geo_override_by, geo_override_at, geo_override_reason, time_corrected_at
 ) values (
-  'e5400000-0000-0000-0000-000000000501', 'e5400000-0000-0000-0000-000000000301', 'check_in', tests.t(0.25),
+  'e5400000-0000-0000-0000-000000000501', 'e5400000-0000-0000-0000-000000000301', 'check_in', tests_0054.t(0.25),
   -34.593700, -58.381600, 12.5, 'employee_app', 'e5400000-0000-0000-0000-000000000091',
   'outside', null, 1112, 150,
-  'e5400000-0000-0000-0000-000000000081', tests.t(0.5), 'Motivo reservado de la corrección', tests.t(0.5)
+  'e5400000-0000-0000-0000-000000000081', tests_0054.t(0.5), 'Motivo reservado de la corrección', tests_0054.t(0.5)
 );
 
 insert into public.attendance_corrections (id, attendance_record_id, kind, reason, corrected_by) values
@@ -169,13 +169,13 @@ insert into public.supervision_attendance (
   id, supervision_id, kind, recorded_at, latitude, longitude, accuracy_m,
   geo_status, geo_unvalidated_reason, site_distance_m, geofence_radius_m
 ) values (
-  'e5400000-0000-0000-0000-000000000601', 'e5400000-0000-0000-0000-000000000401', 'check_in', tests.t(0.3),
+  'e5400000-0000-0000-0000-000000000601', 'e5400000-0000-0000-0000-000000000401', 'check_in', tests_0054.t(0.3),
   -34.603800, -58.381600, 8.0, 'valid', null, 11, 150
 );
 
 -- Supervisor: no lee la posición de los empleados -----------------------------------------------------
 
-select tests.as_user('test-db054-super@example.com');
+select tests_0054.as_user('test-db054-super@example.com');
 
 select is(
   (select count(*)::int from public.attendance_records where id = 'e5400000-0000-0000-0000-000000000501'),
@@ -276,7 +276,7 @@ select is(
 );
 
 -- Otro supervisor (sin turnos): ni la fila
-select tests.as_user('test-db054-super-otro@example.com');
+select tests_0054.as_user('test-db054-super-otro@example.com');
 select is(
   (select count(*)::int from public.attendance_records where id = 'e5400000-0000-0000-0000-000000000501'),
   0,
@@ -285,7 +285,7 @@ select is(
 
 -- Empleado: ve su fichaje pero no el motivo de la corrección ---------------------------------------------
 
-select tests.as_user('test-db054-emp-a@example.com');
+select tests_0054.as_user('test-db054-emp-a@example.com');
 
 select results_eq(
   $$select geo_status::text, (geo_override_at is not null), (time_corrected_at is not null) from public.attendance_records where id = 'e5400000-0000-0000-0000-000000000501'$$,
@@ -334,7 +334,7 @@ select lives_ok(
 
 -- Administración: la tabla está cerrada también para ella; se lee por la vista y la RPC --------------------
 
-select tests.as_user('test-db054-admin@example.com');
+select tests_0054.as_user('test-db054-admin@example.com');
 
 select results_eq(
   $$select geo_status::text, site_distance_m, (geo_override_at is not null) from public.attendance_records where id = 'e5400000-0000-0000-0000-000000000501'$$,
@@ -408,7 +408,7 @@ select throws_ok(
 
 -- El dueño también -------------------------------------------------------------------------------------
 
-select tests.as_user('test-db054-owner@example.com');
+select tests_0054.as_user('test-db054-owner@example.com');
 
 select is(
   (select (public.get_attendance_location('attendance', 'e5400000-0000-0000-0000-000000000501') ->> 'latitude')::numeric),
@@ -427,7 +427,7 @@ select throws_ok(
 
 -- Consulta completa del tablero como administrador (sin errores de privilegio) ---------------------------
 
-select tests.as_user('test-db054-admin@example.com');
+select tests_0054.as_user('test-db054-admin@example.com');
 select lives_ok(
   $$select count(*) from public.v_assignments_board where shift_id = 'e5400000-0000-0000-0000-000000000201'$$,
   'administrador: v_assignments_board se consulta completa sin errores de privilegio'

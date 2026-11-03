@@ -22,8 +22,6 @@ function supervision(overrides: Partial<MySupervision>): MySupervision {
     siteCity: null,
     siteLatitude: null,
     siteLongitude: null,
-    siteContactName: null,
-    siteContactPhone: null,
     accessInstructions: null,
     buildingHours: null,
     phoneRestricted: false,

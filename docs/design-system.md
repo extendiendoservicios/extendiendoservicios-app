@@ -57,6 +57,7 @@ escala de Tailwind:
 - Breakpoints del plan: `sm` 480, `md` 768, `lg` 1024, `xl` 1280 (Tailwind
   trae 640/768/1024/1280/1536 por defecto; acá solo cambia `sm`, el resto
   coincide).
+- **Verde de estado (P27.2, OD-25):** `--success` `#2e7d32` / `--success-bg` `#e4f3e2` / `--success-800` `#1b5e20` (texto de píldora 6,8:1; alto contraste `#145a1e`). Es un verde puro, separado en tono del teal de marca (`--primary`, usado en Asignado/En curso). Todo lo que sea «Finalizado» (StatusBadge, puntito del calendario, círculos del mapa) sale de este token: no se escribe hex suelto.
 - Colores: `bg-primary`, `text-text-3`, `bg-success-bg`, `text-danger-800`,
   `bg-background`, `text-muted-foreground`, etc.
 - Radios: la escala de Tailwind (`rounded-sm` … `rounded-2xl`) está acotada a

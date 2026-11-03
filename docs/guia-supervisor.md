@@ -9,7 +9,7 @@ Las imágenes son de ejemplo, con datos inventados. Los nombres de los botones s
 1. **Nadie te asigna supervisiones.** Ves todos los turnos del día, de todos los clientes, y elegís cuál supervisar.
 2. **Primero iniciás tu jornada.** Es tu horario de trabajo: desde que empezás hasta que terminás, menos las pausas.
 3. **Tus sedes aparecen primero.** Son las que Administración marcó como tuyas. Pero podés tomar cualquier turno: así se cubren las ausencias o demoras de otro coordinador.
-4. **Tocás Supervisar**, calificás a todos los empleados del turno y cerrás la supervisión.
+4. **Tocás Supervisar**, calificás a los empleados del turno (si querés) y cerrás la supervisión.
 5. **Al terminar el día, finalizás tu jornada.**
 
 ## Qué necesitás
@@ -182,6 +182,7 @@ Las sedes preferenciales **solo ordenan la lista**: no te limitan. Podés tomar 
 ### Qué turnos podés tomar
 
 - Un turno **en curso**, mientras el personal está trabajando.
+- Un turno **que todavía no empezó**, aunque el empleado no haya llegado.
 - Un turno **que ya terminó el mismo día**: sirve, por ejemplo, para llegar a una sede cuando el equipo ya se fue y calificar igual.
 - Solo turnos **de hoy** y que **no estén cancelados**.
 - **Dos o más coordinadores pueden supervisar el mismo turno.** Cada uno califica con su propio criterio.
@@ -195,7 +196,8 @@ Tocá un turno para abrir el **Detalle del turno**.
 - **Sede:** la dirección (tocá **Abrir en el mapa** para que te lleve el teléfono) y, si están cargados, el horario del edificio, las instrucciones de acceso, las restricciones y el contacto de la sede (el teléfono se toca para llamar).
 - **Empleados del turno:** quiénes trabajan y su estado: **Esperado**, **Presente** (con la hora a la que empezó), **Finalizado** o **Ausencia avisada**.
 - **Quién más lo supervisa:** los otros coordinadores que ya tomaron este turno.
-- Si ya tomaste este turno, aparece **Ir a mi supervisión**.
+- Si tenés una supervisión abierta de este turno, aparece **Ir a mi supervisión**.
+- Si ya supervisaste este turno antes, ves **Tus supervisiones de este turno**, cada una con su hora y a cuántos empleados calificaste, y el botón pasa a **Supervisar de nuevo**. Podés volver al mismo turno las veces que haga falta el mismo día; cada pasada queda registrada por separado.
 
 Las **tareas del turno** y los **criterios de calificación**, los ves **después de tocar Supervisar**, en la pantalla de la supervisión (ver más abajo).
 
@@ -211,13 +213,13 @@ Si el botón **Supervisar** está apagado, la pantalla te dice por qué:
 
 ![Supervisar apagado: la pantalla explica por qué](guias/img/sup-turno-bloqueado.png)
 
-| Mensaje                                                             | Qué hacer                                       |
-| ------------------------------------------------------------------- | ----------------------------------------------- |
-| "Iniciá tu jornada para poder supervisar."                          | Tocá **Iniciar jornada** en **Hoy**             |
-| "Estás en pausa: reanudá tu jornada para poder supervisar."         | Tocá **Reanudar**                               |
-| "Tu jornada está finalizada: reabrila para poder supervisar."       | Tocá **Reabrir jornada**                        |
-| "Cerrá o descartá tu supervisión abierta antes de empezar otra."    | Terminá o descartá la que tenés abierta         |
-| "Ya estás supervisando este turno." / "Ya supervisaste este turno." | Es tu supervisión: buscala en **Supervisiones** |
+| Mensaje                                                          | Qué hacer                                       |
+| ---------------------------------------------------------------- | ----------------------------------------------- |
+| "Iniciá tu jornada para poder supervisar."                       | Tocá **Iniciar jornada** en **Hoy**             |
+| "Estás en pausa: reanudá tu jornada para poder supervisar."      | Tocá **Reanudar**                               |
+| "Tu jornada está finalizada: reabrila para poder supervisar."    | Tocá **Reabrir jornada**                        |
+| "Cerrá o descartá tu supervisión abierta antes de empezar otra." | Terminá o descartá la que tenés abierta         |
+| "Ya estás supervisando este turno."                              | Es tu supervisión: buscala en **Supervisiones** |
 
 ### Una supervisión por vez
 
@@ -264,12 +266,12 @@ Reglas para tener en cuenta:
 - No podés calificarte a vos mismo. Si estás asignado como empleado en ese turno, la app te lo avisa y vos quedás fuera de la lista de los que hay que calificar.
 - Los empleados **no ven** sus calificaciones.
 
-### Hay que calificar a todos para poder cerrar
+### Calificar es opcional al cerrar
 
-Para cerrar la supervisión tenés que **calificar a todos los empleados del turno que registraron su inicio**.
+Podés cerrar la supervisión **sin calificar a todos**.
 
 - Los empleados que **avisaron ausencia** o que **nunca registraron inicio** no se califican.
-- Mientras falte alguien, el botón **Cerrar supervisión** aparece apagado y un aviso te dice **a quién falta calificar** ("Para cerrar la supervisión falta calificar a: …").
+- Si falta alguien, un aviso te dice **a quién** ("Te falta calificar a: …"). Al tocar **Cerrar supervisión** la app te pide confirmar con **Cerrar igual**, o podés volver a calificar.
 
 ---
 
@@ -321,10 +323,10 @@ El aviso queda **Abierto** hasta que Administración lo resuelve. No es un pedid
 
 ## Cerrar la supervisión
 
-1. Cuando terminás en la sede, en el detalle de la supervisión tocá **Cerrar supervisión**. (Si está apagado, mirá a quién falta calificar.)
+1. Cuando terminás en la sede, en el detalle de la supervisión tocá **Cerrar supervisión**. (Si falta calificar a alguien, la app te avisa a quién.)
 2. Si querés, escribí una **Nota general**.
 3. Si la app te pide la ubicación, aceptá o seguí sin ella. Con señal mala, el botón pasa a **Cerrar igual**.
-4. Tocá **Cerrar supervisión** para confirmar.
+4. Tocá **Cerrar supervisión**. Si falta calificar a alguien, confirmá con **Cerrar igual**.
 
 Cerrar registra el fin de la supervisión, con su hora. La supervisión queda en tu **Historial**.
 

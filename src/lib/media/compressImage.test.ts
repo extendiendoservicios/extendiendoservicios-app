@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildJpeg } from '@/test/jpegFixture'
 import { compressImage } from './compressImage'

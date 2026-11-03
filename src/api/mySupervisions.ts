@@ -83,8 +83,6 @@ export interface MySupervision {
   siteCity: string | null
   siteLatitude: number | null
   siteLongitude: number | null
-  siteContactName: string | null
-  siteContactPhone: string | null
   accessInstructions: string | null
   buildingHours: string | null
   phoneRestricted: boolean
@@ -173,8 +171,6 @@ function mapMySupervisionRow(row: MySupervisionRawRow): MySupervision {
     siteCity: row.site_city,
     siteLatitude: row.site_latitude,
     siteLongitude: row.site_longitude,
-    siteContactName: row.site_contact_name,
-    siteContactPhone: row.site_contact_phone,
     accessInstructions: row.site_access_instructions,
     buildingHours: row.site_building_hours,
     phoneRestricted: Boolean(row.site_phone_restricted),
@@ -451,7 +447,7 @@ export async function discardSupervision(
 
 // -------------------------------------------------------------------------
 // 4. Calificar y cerrar (SUP-05, SUP-06): `rate_employee` y
-//    `complete_supervision` (desde P24.1 exige calificar a todos y registra el
+//    `complete_supervision` (desde P27, OD-09, no exige calificar y registra el
 //    fin con la posición). `mark_supervision_not_done` está revocada y se quitó.
 // -------------------------------------------------------------------------
 
@@ -496,9 +492,8 @@ export async function rateEmployee(
 }
 
 /**
- * Cierra la supervisión (SUP-06, `complete_supervision`, P24.1): exige haber
- * calificado a todos los empleados con inicio registrado (CJ-10, CJ-28,
- * `RATINGS_PENDING`) y registra el fin con la posición. Nota general opcional.
+ * Cierra la supervisión (SUP-06, `complete_supervision`): desde P27 (OD-09)
+ * no exige calificar a nadie; registra el fin con la posición. Nota general opcional.
  * `coords` `null` = sin ubicación; el cierre se hace igual.
  */
 export async function completeSupervision(

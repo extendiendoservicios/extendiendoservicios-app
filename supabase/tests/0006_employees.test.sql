@@ -137,7 +137,7 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('e0000000-0000-0000-0000-000000000004', 'test-db008-empleado-d@example.com', jsonb_build_object('first_name', 'Empleado', 'last_name', 'Cuatro')),
   ('e0000000-0000-0000-0000-000000000005', 'test-db008-empleado-e@example.com', jsonb_build_object('first_name', 'Empleada', 'last_name', 'Cinco'));
 
-insert into public.clients (id, legal_name) values ('e0000000-0000-0000-0000-000000000099', 'Cliente de prueba DB-008');
+insert into public.clients (id, legal_name, calendar_color) values ('e0000000-0000-0000-0000-000000000099', 'Cliente de prueba DB-008', 0);
 
 -- Secuencia del legajo: dos altas seguidas no chocan --------------------------------------------
 

@@ -18,10 +18,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0059;
+grant usage on schema tests_0059 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0059.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -32,7 +32,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0059.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -47,10 +47,10 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0059.as_user(text) to authenticated, anon;
 
 -- Devuelve el `hint` del error (código estable) o el SQLSTATE si no trae hint; null si anduvo.
-create or replace function tests.err_hint(p_sql text)
+create or replace function tests_0059.err_hint(p_sql text)
 returns text
 language plpgsql
 as $$
@@ -65,9 +65,9 @@ exception when others then
 end;
 $$;
 
-grant execute on function tests.err_hint(text) to authenticated, anon;
+grant execute on function tests_0059.err_hint(text) to authenticated, anon;
 
-create or replace function tests.err_message(p_sql text)
+create or replace function tests_0059.err_message(p_sql text)
 returns text
 language plpgsql
 as $$
@@ -79,7 +79,7 @@ exception when others then
 end;
 $$;
 
-grant execute on function tests.err_message(text) to authenticated, anon;
+grant execute on function tests_0059.err_message(text) to authenticated, anon;
 
 select plan(64);
 
@@ -109,8 +109,8 @@ select ok(
 
 -- Fixtures -------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('f5900000-0000-0000-0000-000000000001', 'Cliente de ausente y licencias', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('f5900000-0000-0000-0000-000000000001', 'Cliente de ausente y licencias', 'active', 0);
 
 insert into public.sites (id, client_id, name, address, status) values
   ('f5900000-0000-0000-0000-000000000011', 'f5900000-0000-0000-0000-000000000001', 'Sede de ausente y licencias', 'Dirección 1', 'active');
@@ -201,15 +201,15 @@ prepare n_demora_con_certificado as
 select throws_ok('n_demora_con_certificado', '23514', null, 'restricción: has_certificate solo en ausencias');
 
 -- El empleado sigue obligado a dar motivo.
-select tests.as_user('test-db059-empleado@example.com');
+select tests_0059.as_user('test-db059-empleado@example.com');
 
 select is(
-  tests.err_hint($$select public.notify_absence('f5900000-0000-0000-0000-000000000053')$$),
+  tests_0059.err_hint($$select public.notify_absence('f5900000-0000-0000-0000-000000000053')$$),
   'REASON_REQUIRED',
   'notify_absence: el empleado sin motivo -> REASON_REQUIRED'
 );
 select is(
-  tests.err_hint($$select public.notify_absence('f5900000-0000-0000-0000-000000000053', null, null, true)$$),
+  tests_0059.err_hint($$select public.notify_absence('f5900000-0000-0000-0000-000000000053', null, null, true)$$),
   'REASON_REQUIRED',
   'notify_absence: el empleado sin motivo, aunque mande el certificado -> REASON_REQUIRED'
 );
@@ -222,33 +222,33 @@ select is(
 );
 
 -- Administración.
-select tests.as_user('test-db059-admin-sin@example.com');
+select tests_0059.as_user('test-db059-admin-sin@example.com');
 select is(
-  tests.err_hint($$select public.notify_absence('f5900000-0000-0000-0000-000000000051', null, null, true)$$),
+  tests_0059.err_hint($$select public.notify_absence('f5900000-0000-0000-0000-000000000051', null, null, true)$$),
   'FORBIDDEN',
   'notify_absence: admin sin manage_attendance -> FORBIDDEN'
 );
 
-select tests.as_user('test-db059-supervisora@example.com');
+select tests_0059.as_user('test-db059-supervisora@example.com');
 select is(
-  tests.err_hint($$select public.notify_absence('f5900000-0000-0000-0000-000000000051', null, null, true)$$),
+  tests_0059.err_hint($$select public.notify_absence('f5900000-0000-0000-0000-000000000051', null, null, true)$$),
   'FORBIDDEN',
   'notify_absence: supervisor -> FORBIDDEN'
 );
 
-select tests.as_user('test-db059-admin@example.com');
+select tests_0059.as_user('test-db059-admin@example.com');
 select is(
-  tests.err_hint($$select public.notify_absence('f5900000-0000-0000-0000-000000000051')$$),
+  tests_0059.err_hint($$select public.notify_absence('f5900000-0000-0000-0000-000000000051')$$),
   'CERTIFICATE_REQUIRED',
   'notify_absence: administración sin indicar el certificado -> CERTIFICATE_REQUIRED'
 );
 select is(
-  tests.err_hint($$select public.notify_absence('f5900000-0000-0000-0000-000000000051', 'illness')$$),
+  tests_0059.err_hint($$select public.notify_absence('f5900000-0000-0000-0000-000000000051', 'illness')$$),
   'CERTIFICATE_REQUIRED',
   'notify_absence: administración con motivo pero sin certificado -> CERTIFICATE_REQUIRED'
 );
 select is(
-  tests.err_hint($$select public.notify_absence('f5900000-0000-0000-0000-000000000051', 'other', null, true)$$),
+  tests_0059.err_hint($$select public.notify_absence('f5900000-0000-0000-0000-000000000051', 'other', null, true)$$),
   'REASON_REQUIRED',
   'notify_absence: administración con motivo "other" sin texto -> REASON_REQUIRED'
 );
@@ -274,7 +274,7 @@ select is(
 );
 
 -- Las vistas lo muestran.
-select tests.as_user('test-db059-owner@example.com');
+select tests_0059.as_user('test-db059-owner@example.com');
 select is(
   (select array_agg(last_notice_has_certificate::text order by employee_first_name)
    from public.v_assignments_board where shift_id = 'f5900000-0000-0000-0000-000000000041'),
@@ -285,20 +285,20 @@ select is(
 -- 2. Licencias bloquean ------------------------------------------------------------------------
 
 -- get_leave_conflicts primero (antes de crear turnos nuevos con Ana).
-select tests.as_user('test-db059-supervisora@example.com');
+select tests_0059.as_user('test-db059-supervisora@example.com');
 select is(
-  tests.err_hint($$select * from public.get_leave_conflicts('f5900000-0000-0000-0000-000000000091', date '2199-07-10', date '2199-07-20')$$),
+  tests_0059.err_hint($$select * from public.get_leave_conflicts('f5900000-0000-0000-0000-000000000091', date '2199-07-10', date '2199-07-20')$$),
   'FORBIDDEN',
   'get_leave_conflicts: un supervisor no puede (FORBIDDEN)'
 );
-select tests.as_user('test-db059-empleado@example.com');
+select tests_0059.as_user('test-db059-empleado@example.com');
 select is(
-  tests.err_hint($$select * from public.get_leave_conflicts('f5900000-0000-0000-0000-000000000091', date '2199-07-10', date '2199-07-20')$$),
+  tests_0059.err_hint($$select * from public.get_leave_conflicts('f5900000-0000-0000-0000-000000000091', date '2199-07-10', date '2199-07-20')$$),
   'FORBIDDEN',
   'get_leave_conflicts: un empleado no puede (FORBIDDEN)'
 );
 
-select tests.as_user('test-db059-admin@example.com');
+select tests_0059.as_user('test-db059-admin@example.com');
 select is(
   (select array_agg(shift_id order by shift_date) from public.get_leave_conflicts('f5900000-0000-0000-0000-000000000091', date '2199-07-10', date '2199-07-20')),
   array['f5900000-0000-0000-0000-000000000047']::uuid[],
@@ -321,7 +321,7 @@ select is(
   'get_leave_conflicts: los turnos que ya pasaron no son conflicto'
 );
 select is(
-  tests.err_hint($$select * from public.get_leave_conflicts('f5900000-0000-0000-0000-000000000091', date '2199-07-20', date '2199-07-10')$$),
+  tests_0059.err_hint($$select * from public.get_leave_conflicts('f5900000-0000-0000-0000-000000000091', date '2199-07-20', date '2199-07-10')$$),
   'INVALID_DATE_RANGE',
   'get_leave_conflicts: fin anterior al inicio -> INVALID_DATE_RANGE'
 );
@@ -331,15 +331,15 @@ set local role postgres;
 insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_time, required_staff, status) values
   ('f5900000-0000-0000-0000-000000000042', 'f5900000-0000-0000-0000-000000000001', 'f5900000-0000-0000-0000-000000000011', '2199-07-12', '10:00', '12:00', 2, 'scheduled'),
   ('f5900000-0000-0000-0000-000000000043', 'f5900000-0000-0000-0000-000000000001', 'f5900000-0000-0000-0000-000000000011', '2199-12-15', '10:00', '12:00', 1, 'scheduled');
-select tests.as_user('test-db059-owner@example.com');
+select tests_0059.as_user('test-db059-owner@example.com');
 
 select is(
-  tests.err_hint($$select public.assign_employee('f5900000-0000-0000-0000-000000000042', 'f5900000-0000-0000-0000-000000000093')$$),
+  tests_0059.err_hint($$select public.assign_employee('f5900000-0000-0000-0000-000000000042', 'f5900000-0000-0000-0000-000000000093')$$),
   'ON_LEAVE',
   'assign_employee: empleado de licencia -> error ON_LEAVE (ya no es advertencia)'
 );
 select is(
-  tests.err_message($$select public.assign_employee('f5900000-0000-0000-0000-000000000042', 'f5900000-0000-0000-0000-000000000093')$$),
+  tests_0059.err_message($$select public.assign_employee('f5900000-0000-0000-0000-000000000042', 'f5900000-0000-0000-0000-000000000093')$$),
   'El empleado está de licencia ese día.',
   'assign_employee: mensaje en español con voseo'
 );
@@ -349,7 +349,7 @@ select is(
   'assign_employee: no quedó ninguna asignación'
 );
 select is(
-  tests.err_hint($$select public.assign_employee('f5900000-0000-0000-0000-000000000043', 'f5900000-0000-0000-0000-000000000094')$$),
+  tests_0059.err_hint($$select public.assign_employee('f5900000-0000-0000-0000-000000000043', 'f5900000-0000-0000-0000-000000000094')$$),
   'ON_LEAVE',
   'assign_employee: licencia abierta (ends_on null) también bloquea'
 );
@@ -363,7 +363,7 @@ select is(
 set local role postgres;
 update public.employee_leaves set deleted_at = now()
  where employee_id = 'f5900000-0000-0000-0000-000000000094';
-select tests.as_user('test-db059-owner@example.com');
+select tests_0059.as_user('test-db059-owner@example.com');
 select is(
   (public.assign_employee('f5900000-0000-0000-0000-000000000043', 'f5900000-0000-0000-0000-000000000094') -> 'assignment' ->> 'status'),
   'expected',
@@ -408,7 +408,7 @@ set local role postgres;
 insert into public.services (id, client_id, site_id, name, weekdays, start_time, end_time, required_staff, valid_from, valid_to, status) values
   ('f5900000-0000-0000-0000-000000000031', 'f5900000-0000-0000-0000-000000000001', 'f5900000-0000-0000-0000-000000000011', 'Servicio con fijos 0059',
    array[extract(dow from date '2199-07-14')::smallint], '21:00', '23:00', 2, '2199-07-01', '2199-07-31', 'active');
-select tests.as_user('test-db059-admin@example.com');
+select tests_0059.as_user('test-db059-admin@example.com');
 select public.set_service_fixed_employees('f5900000-0000-0000-0000-000000000031', array[
   'f5900000-0000-0000-0000-000000000091', 'f5900000-0000-0000-0000-000000000093']::uuid[]);
 select set_config('t.g1', public.generate_shifts(2199, 7)::text, true);
@@ -457,29 +457,29 @@ insert into public.attendance_records (assignment_id, kind, recorded_at, source,
   ('f5900000-0000-0000-0000-000000000075', 'check_in', timestamptz '2199-09-20 11:00:00+00', 'employee_app', 'f5900000-0000-0000-0000-000000000092');
 
 -- Permisos.
-select tests.as_user('test-db059-supervisora@example.com');
+select tests_0059.as_user('test-db059-supervisora@example.com');
 select is(
-  tests.err_hint($$select public.update_shift_time('f5900000-0000-0000-0000-000000000061', time '08:00', time '12:00', false, date '2199-09-02')$$),
+  tests_0059.err_hint($$select public.update_shift_time('f5900000-0000-0000-0000-000000000061', time '08:00', time '12:00', false, date '2199-09-02')$$),
   'FORBIDDEN',
   'update_shift_time con fecha: un supervisor no puede (FORBIDDEN)'
 );
-select tests.as_user('test-db059-empleado@example.com');
+select tests_0059.as_user('test-db059-empleado@example.com');
 select is(
-  tests.err_hint($$select public.update_shift_time('f5900000-0000-0000-0000-000000000061', time '08:00', time '12:00', false, date '2199-09-02')$$),
+  tests_0059.err_hint($$select public.update_shift_time('f5900000-0000-0000-0000-000000000061', time '08:00', time '12:00', false, date '2199-09-02')$$),
   'FORBIDDEN',
   'update_shift_time con fecha: un empleado no puede (FORBIDDEN)'
 );
 select is(
-  tests.err_hint($$select public.get_shift_date_warnings('f5900000-0000-0000-0000-000000000061', date '2199-09-02')$$),
+  tests_0059.err_hint($$select public.get_shift_date_warnings('f5900000-0000-0000-0000-000000000061', date '2199-09-02')$$),
   'FORBIDDEN',
   'get_shift_date_warnings: un empleado no puede (FORBIDDEN)'
 );
 
-select tests.as_user('test-db059-admin@example.com');
+select tests_0059.as_user('test-db059-admin@example.com');
 
 -- Superposición en la fecha nueva: Ana ya tiene D3 el 09-03 de 09:00 a 11:00.
 select is(
-  tests.err_hint($$select public.update_shift_time('f5900000-0000-0000-0000-000000000061', time '08:00', time '12:00', false, date '2199-09-03')$$),
+  tests_0059.err_hint($$select public.update_shift_time('f5900000-0000-0000-0000-000000000061', time '08:00', time '12:00', false, date '2199-09-03')$$),
   'ASSIGNMENT_OVERLAP',
   'update_shift_time: la fecha nueva deja a Ana superpuesta -> ASSIGNMENT_OVERLAP'
 );
@@ -491,24 +491,24 @@ select is(
 
 -- Licencia en la fecha nueva: Carla está de licencia del 09-10 al 09-12.
 select is(
-  tests.err_hint($$select public.update_shift_time('f5900000-0000-0000-0000-000000000064', time '08:00', time '12:00', false, date '2199-09-11')$$),
+  tests_0059.err_hint($$select public.update_shift_time('f5900000-0000-0000-0000-000000000064', time '08:00', time '12:00', false, date '2199-09-11')$$),
   'ON_LEAVE',
   'update_shift_time: un asignado de licencia en la fecha nueva -> ON_LEAVE'
 );
 select ok(
-  tests.err_message($$select public.update_shift_time('f5900000-0000-0000-0000-000000000064', time '08:00', time '12:00', false, date '2199-09-11')$$) like '%Carla Licencia%',
+  tests_0059.err_message($$select public.update_shift_time('f5900000-0000-0000-0000-000000000064', time '08:00', time '12:00', false, date '2199-09-11')$$) like '%Carla Licencia%',
   'update_shift_time: ON_LEAVE nombra a quien está de licencia'
 );
 
 -- Turno que ya empezó: hay un fichaje.
 select is(
-  tests.err_hint($$select public.update_shift_time('f5900000-0000-0000-0000-000000000065', time '08:00', time '12:00', false, date '2199-09-21')$$),
+  tests_0059.err_hint($$select public.update_shift_time('f5900000-0000-0000-0000-000000000065', time '08:00', time '12:00', false, date '2199-09-21')$$),
   'SHIFT_STARTED',
   'update_shift_time: con un fichaje en sus asignaciones no se puede cambiar la fecha (SHIFT_STARTED)'
 );
 -- Turno en curso, sin fichajes cargados: tampoco.
 select is(
-  tests.err_hint($$select public.update_shift_time('f5900000-0000-0000-0000-000000000066', time '08:00', time '12:00', false, date '2199-09-23')$$),
+  tests_0059.err_hint($$select public.update_shift_time('f5900000-0000-0000-0000-000000000066', time '08:00', time '12:00', false, date '2199-09-23')$$),
   'SHIFT_STARTED',
   'update_shift_time: un turno en curso no admite cambio de fecha (SHIFT_STARTED)'
 );
@@ -555,9 +555,9 @@ insert into public.services (id, client_id, site_id, name, weekdays, start_time,
 insert into public.shifts (id, client_id, site_id, service_id, shift_date, start_time, end_time, required_staff, status) values
   ('f5900000-0000-0000-0000-000000000068', 'f5900000-0000-0000-0000-000000000001', 'f5900000-0000-0000-0000-000000000011', 'f5900000-0000-0000-0000-000000000032', '2199-10-05', '05:00', '06:00', 1, 'scheduled'),
   ('f5900000-0000-0000-0000-000000000069', 'f5900000-0000-0000-0000-000000000001', 'f5900000-0000-0000-0000-000000000011', 'f5900000-0000-0000-0000-000000000032', '2199-10-06', '05:00', '06:00', 1, 'scheduled');
-select tests.as_user('test-db059-admin@example.com');
+select tests_0059.as_user('test-db059-admin@example.com');
 select is(
-  tests.err_hint($$select public.update_shift_time('f5900000-0000-0000-0000-000000000068', time '05:00', time '06:00', false, date '2199-10-06')$$),
+  tests_0059.err_hint($$select public.update_shift_time('f5900000-0000-0000-0000-000000000068', time '05:00', time '06:00', false, date '2199-10-06')$$),
   'SHIFT_DATE_TAKEN',
   'update_shift_time: el servicio ya tiene un turno en la fecha nueva -> SHIFT_DATE_TAKEN'
 );

@@ -14,10 +14,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0046;
+grant usage on schema tests_0046 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0046.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -28,7 +28,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0046.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -43,7 +43,7 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0046.as_user(text) to authenticated, anon;
 
 select plan(50);
 
@@ -67,9 +67,9 @@ select ok(
 
 -- Fixtures -------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('f4600000-0000-0000-0000-000000000001', 'Cliente de repetición 0046', 'active'),
-  ('f4600000-0000-0000-0000-000000000002', 'Cliente suspendido 0046', 'suspended');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('f4600000-0000-0000-0000-000000000001', 'Cliente de repetición 0046', 'active', 0),
+  ('f4600000-0000-0000-0000-000000000002', 'Cliente suspendido 0046', 'suspended', 0);
 insert into public.sites (id, client_id, name, address, status) values
   ('f4600000-0000-0000-0000-000000000011', 'f4600000-0000-0000-0000-000000000001', 'Sede de repetición 0046', 'Dirección 1', 'active');
 
@@ -102,7 +102,7 @@ insert into public.holidays (holiday_date, name) values ('2199-04-15', 'Feriado 
 
 -- preview_shift_series -------------------------------------------------------------------------
 
-select tests.as_user('test-db046-admin@example.com');
+select tests_0046.as_user('test-db046-admin@example.com');
 
 select is(
   public.preview_shift_series('2199-04-01', '2199-04-30', array[1]::smallint[], null, true),
@@ -148,7 +148,7 @@ select throws_ok('p_semanas', 'P0001', 'Las semanas del mes no son válidas.', '
 
 -- create_shift_series: creación ------------------------------------------------------------------
 
-select tests.as_user('test-db046-admin-cap@example.com');
+select tests_0046.as_user('test-db046-admin-cap@example.com');
 
 select set_config('t.s1', public.create_shift_series(
   'f4600000-0000-0000-0000-000000000001', 'f4600000-0000-0000-0000-000000000011',
@@ -287,25 +287,25 @@ select is(
 
 -- Permisos ---------------------------------------------------------------------------------------
 
-select tests.as_user('test-db046-owner@example.com');
+select tests_0046.as_user('test-db046-owner@example.com');
 select is(
   (public.create_shift_series('f4600000-0000-0000-0000-000000000001', 'f4600000-0000-0000-0000-000000000011', '07:00', '08:00', 1::smallint, '2199-06-24', '2199-06-24', array[1]::smallint[]) -> 'created' -> 0 ->> 'shift_date'),
   '2199-06-24',
   'permisos: el dueño puede'
 );
-select tests.as_user('test-db046-admin@example.com');
+select tests_0046.as_user('test-db046-admin@example.com');
 select is(
   (public.create_shift_series('f4600000-0000-0000-0000-000000000001', 'f4600000-0000-0000-0000-000000000011', '07:00', '08:00', 1::smallint, '2199-07-01', '2199-07-01', array[1]::smallint[]) -> 'created' -> 0 ->> 'shift_date'),
   '2199-07-01',
   'permisos: un administrador sin capacidades puede (create_shift solo pide el rol)'
 );
 
-select tests.as_user('test-db046-supervisora@example.com');
+select tests_0046.as_user('test-db046-supervisora@example.com');
 prepare s_prev as select public.preview_shift_series('2199-04-01', '2199-04-30', array[1]::smallint[]);
 prepare s_cre as select public.create_shift_series('f4600000-0000-0000-0000-000000000001', 'f4600000-0000-0000-0000-000000000011', '08:00', '12:00', 1::smallint, '2199-04-01', '2199-04-30', array[1]::smallint[]);
 select throws_ok('s_cre', 'P0001', null, 'permisos: el supervisor no puede crear (FORBIDDEN)');
 select throws_ok('s_prev', 'P0001', null, 'permisos: el supervisor no puede la vista previa (FORBIDDEN)');
-select tests.as_user('test-db046-empleado@example.com');
+select tests_0046.as_user('test-db046-empleado@example.com');
 select throws_ok('s_cre', 'P0001', null, 'permisos: el empleado no puede crear (FORBIDDEN)');
 select throws_ok('s_prev', 'P0001', null, 'permisos: el empleado no puede la vista previa (FORBIDDEN)');
 set local role anon;

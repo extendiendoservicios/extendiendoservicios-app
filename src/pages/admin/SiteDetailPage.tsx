@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router'
-import { Building2, Pencil, RefreshCw } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router'
+import { Building2, Pencil, RefreshCw, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -9,6 +9,9 @@ import { StatusBadge } from '@/components/status'
 import { MapView } from '@/components/map'
 import { useCompanyGeofenceQuery } from '@/features/geo/queries'
 import { describeSiteRadius, effectiveSiteRadiusM } from '@/features/geo/radius'
+import { OwnerDeleteDialog } from '@/features/ownerDelete/components/OwnerDeleteDialog'
+import { canOwnerDelete } from '@/features/ownerDelete/matching'
+import { useAuth } from '@/features/auth/AuthProvider'
 import { useSiteDetailQuery } from '@/features/sites/queries'
 import { ChangeSiteStatusDialog } from '@/features/sites/components/ChangeSiteStatusDialog'
 import { SiteInfo } from '@/features/sites/components/SiteInfo'
@@ -35,6 +38,9 @@ import {
 export default function SiteDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [isChangeStatusOpen, setChangeStatusOpen] = useState(false)
+  const [isDeleteOpen, setDeleteOpen] = useState(false)
+  const navigate = useNavigate()
+  const auth = useAuth()
   // B-16: «Mostrar radios» dibuja el círculo de la sede con su radio vigente.
   const [showRadii, setShowRadii] = useState(false)
   const generalRadiusQuery = useCompanyGeofenceQuery()
@@ -92,6 +98,17 @@ export default function SiteDetailPage() {
           <Button asChild size="sm" icon={Pencil}>
             <Link to={`/admin/sedes/${site.id}/editar`}>Editar</Link>
           </Button>
+          {canOwnerDelete(auth) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={Trash2}
+              className="text-danger"
+              onClick={() => setDeleteOpen(true)}
+            >
+              Eliminar
+            </Button>
+          )}
         </div>
       </div>
 
@@ -181,6 +198,17 @@ export default function SiteDetailPage() {
         open={isChangeStatusOpen}
         onOpenChange={setChangeStatusOpen}
       />
+      {canOwnerDelete(auth) && isDeleteOpen && (
+        <OwnerDeleteDialog
+          kind="site"
+          id={site.id}
+          open={isDeleteOpen}
+          onOpenChange={setDeleteOpen}
+          onDeleted={() =>
+            void navigate(`/admin/clientes/${site.clientId}`, { replace: true })
+          }
+        />
+      )}
     </div>
   )
 }

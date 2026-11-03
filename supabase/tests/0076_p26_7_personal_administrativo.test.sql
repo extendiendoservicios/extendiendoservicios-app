@@ -14,10 +14,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0076;
+grant usage on schema tests_0076 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0076.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -28,7 +28,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0076.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -42,10 +42,10 @@ begin
   perform set_config('request.jwt.claims', v_claims::text, true);
 end;
 $$;
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0076.as_user(text) to authenticated, anon;
 
 -- Devuelve el hint (código estable) del error que produce la sentencia, o 'OK' si no falla.
-create or replace function tests.hint_of(p_sql text)
+create or replace function tests_0076.hint_of(p_sql text)
 returns text
 language plpgsql
 as $$
@@ -59,7 +59,7 @@ exception when others then
   return coalesce(v_hint, 'SQLSTATE ' || sqlstate);
 end;
 $$;
-grant execute on function tests.hint_of(text) to authenticated, anon;
+grant execute on function tests_0076.hint_of(text) to authenticated, anon;
 
 select plan(51);
 
@@ -105,7 +105,7 @@ insert into public.employees (profile_id, employee_number, dni) values
 update public.profiles set is_active = false
 where id = 'c7600000-0000-0000-0000-000000000009';
 
-insert into public.clients (id, legal_name) values ('c7600000-0000-0000-0000-0000000000c1', 'Cliente 0076');
+insert into public.clients (id, legal_name, calendar_color) values ('c7600000-0000-0000-0000-0000000000c1', 'Cliente 0076', 0);
 
 -- Estructura y permisos -----------------------------------------------------------------------
 
@@ -132,21 +132,21 @@ select ok(
 -- 1. Alta de administrador / dueño (CR-17) ----------------------------------------------------
 
 select is(
-  tests.hint_of($$ select public.admin_create_user_records(
+  tests_0076.hint_of($$ select public.admin_create_user_records(
     'c7600000-0000-0000-0000-000000000010', 'c7600000-0000-0000-0000-000000000001',
     'Sin', 'Ficha', array['admin']::public.app_role[], null) $$),
   'EMPLOYEE_DATA_REQUIRED',
   'alta de administrador sin ficha: EMPLOYEE_DATA_REQUIRED'
 );
 select is(
-  tests.hint_of($$ select public.admin_create_user_records(
+  tests_0076.hint_of($$ select public.admin_create_user_records(
     'c7600000-0000-0000-0000-000000000010', 'c7600000-0000-0000-0000-000000000001',
     'Sin', 'Ficha', array['owner']::public.app_role[], null) $$),
   'EMPLOYEE_DATA_REQUIRED',
   'alta de dueño sin ficha: EMPLOYEE_DATA_REQUIRED'
 );
 select is(
-  tests.hint_of($$ select public.admin_create_user_records(
+  tests_0076.hint_of($$ select public.admin_create_user_records(
     'c7600000-0000-0000-0000-000000000010', 'c7600000-0000-0000-0000-000000000001',
     'Sin', 'Ficha', array['admin']::public.app_role[], jsonb_build_object('dni', '  ')) $$),
   'EMPLOYEE_DATA_REQUIRED',
@@ -206,67 +206,67 @@ select is(
 
 -- 2. add_employee_record (CR-18) ---------------------------------------------------------------
 
-select tests.as_user('test-0076-admin@example.com');
+select tests_0076.as_user('test-0076-admin@example.com');
 select is(
-  tests.hint_of($$ select public.add_employee_record(
+  tests_0076.hint_of($$ select public.add_employee_record(
     'c7600000-0000-0000-0000-000000000006', jsonb_build_object('dni', '90760006')) $$),
   'FORBIDDEN',
   'un admin (aun con todas las capacidades) no puede completar fichas: FORBIDDEN'
 );
 
-select tests.as_user('test-0076-empleado@example.com');
+select tests_0076.as_user('test-0076-empleado@example.com');
 select is(
-  tests.hint_of($$ select public.add_employee_record(
+  tests_0076.hint_of($$ select public.add_employee_record(
     'c7600000-0000-0000-0000-000000000006', jsonb_build_object('dni', '90760006')) $$),
   'FORBIDDEN',
   'un empleado no puede completar fichas: FORBIDDEN'
 );
 
-select tests.as_user('test-0076-owner@example.com');
+select tests_0076.as_user('test-0076-owner@example.com');
 select is(
-  tests.hint_of($$ select public.add_employee_record(
+  tests_0076.hint_of($$ select public.add_employee_record(
     'c7600000-0000-0000-0000-000000000005', jsonb_build_object('dni', '90760099')) $$),
   'ALREADY_EMPLOYEE',
   'sobre alguien que ya es empleado: ALREADY_EMPLOYEE'
 );
 select is(
-  tests.hint_of($$ select public.add_employee_record(
+  tests_0076.hint_of($$ select public.add_employee_record(
     'c7600000-0000-0000-0000-000000000003', jsonb_build_object('dni', '90760099')) $$),
   'ALREADY_EMPLOYEE',
   'sobre un dueño que ya tiene ficha: ALREADY_EMPLOYEE'
 );
 select is(
-  tests.hint_of($$ select public.add_employee_record(
+  tests_0076.hint_of($$ select public.add_employee_record(
     'c7600000-0000-0000-0000-0000000000ff', jsonb_build_object('dni', '90760099')) $$),
   'PROFILE_NOT_FOUND',
   'perfil inexistente: PROFILE_NOT_FOUND'
 );
 select is(
-  tests.hint_of($$ select public.add_employee_record(
+  tests_0076.hint_of($$ select public.add_employee_record(
     'c7600000-0000-0000-0000-000000000009', jsonb_build_object('dni', '90760099')) $$),
   'PROFILE_NOT_FOUND',
   'perfil inactivo: PROFILE_NOT_FOUND'
 );
 select is(
-  tests.hint_of($$ select public.add_employee_record(
+  tests_0076.hint_of($$ select public.add_employee_record(
     'c7600000-0000-0000-0000-000000000006', null) $$),
   'EMPLOYEE_DATA_REQUIRED',
   'sin datos: EMPLOYEE_DATA_REQUIRED'
 );
 select is(
-  tests.hint_of($$ select public.add_employee_record(
+  tests_0076.hint_of($$ select public.add_employee_record(
     'c7600000-0000-0000-0000-000000000006', jsonb_build_object('dni', '90760003')) $$),
   'DNI_IN_USE',
   'DNI repetido: DNI_IN_USE'
 );
 select is(
-  tests.hint_of($$ select public.add_employee_record(
+  tests_0076.hint_of($$ select public.add_employee_record(
     'c7600000-0000-0000-0000-000000000006', jsonb_build_object('dni', '90760006', 'employee_number', 90760003)) $$),
   'EMPLOYEE_NUMBER_IN_USE',
   'legajo repetido: EMPLOYEE_NUMBER_IN_USE'
 );
 select is(
-  tests.hint_of($$ select public.add_employee_record(
+  tests_0076.hint_of($$ select public.add_employee_record(
     'c7600000-0000-0000-0000-000000000006', jsonb_build_object('dni', 'abc')) $$),
   'VALIDATION_ERROR',
   'DNI con letras: VALIDATION_ERROR'
@@ -287,7 +287,7 @@ select is(
   'el dueño completa la ficha de un administrador viejo: legajo = el más alto + 1'
 );
 
-select tests.as_user('test-0076-owner@example.com');
+select tests_0076.as_user('test-0076-owner@example.com');
 select results_eq(
   $$ select dni, cuil, hire_date, notes, status::text, created_by from public.employees
      where profile_id = 'c7600000-0000-0000-0000-000000000006' $$,
@@ -322,7 +322,7 @@ select results_eq(
 
 -- 3. CR-19: un admin edita los datos laborales de un dueño, pero no lo da de baja --------------
 
-select tests.as_user('test-0076-admin@example.com');
+select tests_0076.as_user('test-0076-admin@example.com');
 select is(
   (select count(*)::int from public.v_employees where profile_id in
     ('c7600000-0000-0000-0000-000000000003', 'c7600000-0000-0000-0000-000000000004')),
@@ -352,12 +352,12 @@ select lives_ok(
 -- Sin cambios (0030, DEF-P13): los datos del PERFIL de un dueño o admin (nombre, teléfono, email de
 -- contacto) los edita solo el dueño; CR-19 habla de los datos laborales.
 select is(
-  tests.hint_of($$ update public.profiles set phone = '2477 000111' where id = 'c7600000-0000-0000-0000-000000000003' $$),
+  tests_0076.hint_of($$ update public.profiles set phone = '2477 000111' where id = 'c7600000-0000-0000-0000-000000000003' $$),
   'FORBIDDEN',
   'el admin no edita el perfil (teléfono) de un dueño: regla de 0030, sin cambios'
 );
 
-select tests.as_user('test-0076-owner@example.com');
+select tests_0076.as_user('test-0076-owner@example.com');
 select results_eq(
   $$ select
        (select count(*)::int from public.employee_availability where employee_id = 'c7600000-0000-0000-0000-000000000003'),
@@ -368,52 +368,52 @@ select results_eq(
   'las ediciones del admin quedaron guardadas (disponibilidad, habilitación, licencia y ficha)'
 );
 
-select tests.as_user('test-0076-admin@example.com');
+select tests_0076.as_user('test-0076-admin@example.com');
 select is(
-  tests.hint_of($$ update public.employees set status = 'terminated', terminated_at = '2026-10-28'
+  tests_0076.hint_of($$ update public.employees set status = 'terminated', terminated_at = '2026-10-28'
      where profile_id = 'c7600000-0000-0000-0000-000000000003' $$),
   'FORBIDDEN',
   'el admin no puede dar de baja a un dueño'
 );
 select is(
-  tests.hint_of($$ update public.employees set status = 'terminated', terminated_at = '2026-10-28'
+  tests_0076.hint_of($$ update public.employees set status = 'terminated', terminated_at = '2026-10-28'
      where profile_id = 'c7600000-0000-0000-0000-000000000004' $$),
   'FORBIDDEN',
   'el admin no puede dar de baja a otro admin'
 );
 select is(
-  tests.hint_of($$ update public.employees set terminated_at = '2026-10-28'
+  tests_0076.hint_of($$ update public.employees set terminated_at = '2026-10-28'
      where profile_id = 'c7600000-0000-0000-0000-000000000003' $$),
   'FORBIDDEN',
   'el admin no puede cargar solo la fecha de baja de un dueño'
 );
 select is(
-  tests.hint_of($$ update public.employees set deleted_at = now()
+  tests_0076.hint_of($$ update public.employees set deleted_at = now()
      where profile_id = 'c7600000-0000-0000-0000-000000000003' $$),
   'FORBIDDEN',
   'el admin no puede borrar lógicamente la ficha de un dueño'
 );
 select is(
-  tests.hint_of($$ update public.employees set status = 'terminated', terminated_at = '2026-10-28'
+  tests_0076.hint_of($$ update public.employees set status = 'terminated', terminated_at = '2026-10-28'
      where profile_id = 'c7600000-0000-0000-0000-000000000005' $$),
   'OK',
   'el admin sigue pudiendo dar de baja a un empleado común (sin cambios)'
 );
 select is(
-  tests.hint_of($$ select public.set_user_roles('c7600000-0000-0000-0000-000000000003', array['employee']::public.app_role[]) $$),
+  tests_0076.hint_of($$ select public.set_user_roles('c7600000-0000-0000-0000-000000000003', array['employee']::public.app_role[]) $$),
   'FORBIDDEN',
   'el admin no puede cambiar roles de un dueño'
 );
 
-select tests.as_user('test-0076-owner@example.com');
+select tests_0076.as_user('test-0076-owner@example.com');
 select is(
-  tests.hint_of($$ update public.employees set status = 'terminated', terminated_at = '2026-10-28'
+  tests_0076.hint_of($$ update public.employees set status = 'terminated', terminated_at = '2026-10-28'
      where profile_id = 'c7600000-0000-0000-0000-000000000004' $$),
   'OK',
   'el dueño sí puede dar de baja a un admin'
 );
 select is(
-  tests.hint_of($$ update public.employees set status = 'terminated', terminated_at = '2026-10-28'
+  tests_0076.hint_of($$ update public.employees set status = 'terminated', terminated_at = '2026-10-28'
      where profile_id = 'c7600000-0000-0000-0000-000000000003' $$),
   'OK',
   'el dueño sí puede dar de baja a un dueño'
@@ -421,9 +421,9 @@ select is(
 
 -- 4. set_user_roles: quitar employee deja la fila (historial, P-014) ----------------------------
 
-select tests.as_user('test-0076-owner@example.com');
+select tests_0076.as_user('test-0076-owner@example.com');
 select is(
-  tests.hint_of($$ select public.set_user_roles('c7600000-0000-0000-0000-000000000006', array['admin']::public.app_role[]) $$),
+  tests_0076.hint_of($$ select public.set_user_roles('c7600000-0000-0000-0000-000000000006', array['admin']::public.app_role[]) $$),
   'OK',
   'el dueño le quita employee a un administrador'
 );

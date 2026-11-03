@@ -14,11 +14,7 @@ import { FRANJAS_MOVIL, fichar } from '../../fixtures/movil.ts'
 import { Scenario, sessionClient } from '../../fixtures/scenario.ts'
 import { readId, storageStatePath } from '../../fixtures/sessions.ts'
 import { cubre } from '../../fixtures/trace.ts'
-import {
-  chooseMenuItem,
-  expectNoHorizontalScroll,
-  pickDate,
-} from '../../fixtures/ui.ts'
+import { expectNoHorizontalScroll, pickDate } from '../../fixtures/ui.ts'
 
 // TEST-030 (P21.6, módulo H · evidencia fotográfica), administración en escritorio (1280 px):
 //   - ADM-32 Fotos y videos: lista lo subido, filtra, abre el visor, conserva, descarga una y
@@ -739,7 +735,7 @@ test.describe('eliminar un servicio con evidencia', () => {
   test.use({ storageState: storageStatePath('owner') })
 
   test(
-    'delete_service da SERVICE_HAS_MEDIA, el preview lista SHIFT_MEDIA y la pantalla lo explica en español (P-014)',
+    'delete_service (solo el dueño, 0081) da SERVICE_HAS_MEDIA, el preview lista SHIFT_MEDIA y la pantalla del dueño explica que le quedan turnos (P-014, OD-22)',
     cubre('P-014'),
     async ({ page }) => {
       test.setTimeout(240_000)
@@ -803,21 +799,45 @@ test.describe('eliminar un servicio con evidencia', () => {
           expect(existe ?? []).toHaveLength(1)
         })
 
-        await test.step('en la pantalla: el diálogo explica que hay fotos o videos y ofrece «Dar de baja»', async () => {
+        await test.step('en la pantalla (P27, OD-22/OD-23): el diálogo del dueño dice que al servicio le quedan turnos y no deja confirmar', async () => {
           await page.goto(`/admin/clientes/${cliente.id}?pestana=servicios`)
-          await chooseMenuItem(
-            page,
-            `Acciones para ${servicio.name}`,
-            'Eliminar',
-          )
+          await page
+            .getByRole('button', { name: `Acciones para ${servicio.name}` })
+            .click()
+          await page
+            .getByRole('menuitem', { name: 'Eliminar', exact: true })
+            .click()
           const dialogo = page.getByRole('dialog')
           await expect(
-            dialogo.getByText('Este servicio no se puede eliminar.'),
+            dialogo.getByRole('heading', { name: /^Eliminar el servicio/ }),
           ).toBeVisible()
-          await expect(dialogo.getByText(/fotos o videos/)).toBeVisible()
+          await expect(dialogo).toContainText('No se puede eliminar todavía.')
+          await expect(dialogo).toContainText(/turno/i)
           await expect(
-            dialogo.getByRole('button', { name: 'Dar de baja' }),
-          ).toBeVisible()
+            dialogo.getByRole('button', { name: 'Eliminar', exact: true }),
+          ).toHaveCount(0)
+          await dialogo.getByRole('button', { name: 'Cancelar' }).click()
+        })
+
+        await test.step('«Eliminar turnos sin historia…» saltea el turno con fotos (tiene historia) y no borra nada', async () => {
+          await page
+            .getByRole('button', { name: `Acciones para ${servicio.name}` })
+            .click()
+          await page
+            .getByRole('menuitem', { name: /Eliminar turnos sin historia/ })
+            .click()
+          await page.getByRole('button', { name: 'Continuar' }).click()
+          const dialogo = page.getByRole('dialog')
+          await expect(dialogo).toContainText('Se saltean 1 turno con historia')
+          await expect(dialogo).toContainText(
+            'No hay nada para eliminar con esos datos.',
+          )
+          await dialogo.getByRole('button', { name: 'Cancelar' }).click()
+          const { data } = await sc.db
+            .from('shifts')
+            .select('id')
+            .eq('id', turno)
+          expect(data ?? []).toHaveLength(1)
         })
       } finally {
         expect(await sc.cleanup(), 'limpieza').toEqual([])

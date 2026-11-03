@@ -13,19 +13,24 @@ describe('coordinatorErrorMessage', () => {
     ).toBe(COORDINATOR_ERROR_MESSAGES.WORKDAY_PAUSED)
   })
 
-  it('con un código sin traducción usa el mensaje del servidor (RATINGS_PENDING trae los nombres)', () => {
+  it('con un código sin traducción usa el mensaje del servidor', () => {
     expect(
       coordinatorErrorMessage(
-        new ApiError('Falta calificar a: Ana Pérez.', 'RATINGS_PENDING'),
+        new ApiError('Mensaje del servidor.', 'CODIGO_NUEVO'),
         'respaldo',
       ),
-    ).toBe('Falta calificar a: Ana Pérez.')
+    ).toBe('Mensaje del servidor.')
   })
 
   it('si el error no viene de la API (red caída) usa el texto de respaldo', () => {
     expect(
       coordinatorErrorMessage(new TypeError('fetch failed'), 'respaldo'),
     ).toBe('respaldo')
+  })
+
+  it('ya no traduce los códigos que P27 quitó (OD-09, OD-10)', () => {
+    expect(COORDINATOR_ERROR_MESSAGES.ALREADY_SUPERVISED).toBeUndefined()
+    expect(COORDINATOR_ERROR_MESSAGES.RATINGS_PENDING).toBeUndefined()
   })
 
   it('traduce los códigos de la jornada y de la supervisión', () => {
@@ -35,7 +40,6 @@ describe('coordinatorErrorMessage', () => {
       'WORKDAY_ENDED',
       'SUPERVISION_OPEN',
       'SUPERVISION_ALREADY_OPEN',
-      'ALREADY_SUPERVISED',
       'SUPERVISION_HAS_RATINGS',
       'NOT_TODAY',
     ]) {

@@ -15,10 +15,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0041;
+grant usage on schema tests_0041 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0041.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -29,7 +29,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0041.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -44,7 +44,7 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0041.as_user(text) to authenticated, anon;
 
 select plan(54);
 
@@ -70,8 +70,8 @@ select ok(
 
 -- Fixtures -------------------------------------------------------------------------------------
 
-insert into public.clients (id, legal_name, status) values
-  ('f4100000-0000-0000-0000-000000000001', 'Cliente de asignar al crear', 'active');
+insert into public.clients (id, legal_name, status, calendar_color) values
+  ('f4100000-0000-0000-0000-000000000001', 'Cliente de asignar al crear', 'active', 0);
 
 insert into public.sites (id, client_id, name, address, status) values
   ('f4100000-0000-0000-0000-000000000011', 'f4100000-0000-0000-0000-000000000001', 'Sede de asignar al crear', 'Dirección 1', 'active');
@@ -122,7 +122,7 @@ insert into public.assignments (shift_id, employee_id) values
 
 -- create_shift con empleados ------------------------------------------------------------------
 
-select tests.as_user('test-db041-supervisora@example.com');
+select tests_0041.as_user('test-db041-supervisora@example.com');
 
 prepare create_as_supervisor as
   select public.create_shift(
@@ -132,7 +132,7 @@ prepare create_as_supervisor as
 select throws_ok('create_as_supervisor', 'P0001', 'No tenés permiso para hacer esto.', 'create_shift con empleados: un supervisor no puede (FORBIDDEN)');
 
 set local role postgres;
-select tests.as_user('test-db041-admin@example.com');
+select tests_0041.as_user('test-db041-admin@example.com');
 
 -- Dotación 2; pedimos Ana (libre), Beto (superpuesto), Diego (inactivo), Carla (licencia), Elena (sobra),
 -- y Ana repetida. Esperado (0059: la licencia bloquea): Ana y Elena asignadas; Beto (superposición),
@@ -226,12 +226,12 @@ insert into public.services (id, client_id, site_id, name, weekdays, start_time,
   ('f4100000-0000-0000-0000-000000000031', 'f4100000-0000-0000-0000-000000000001', 'f4100000-0000-0000-0000-000000000011', 'Servicio con fijos',
    array[extract(dow from date '2199-06-07')::smallint], '08:00', '12:00', 3, '2199-06-01', 'active');
 
-select tests.as_user('test-db041-supervisora@example.com');
+select tests_0041.as_user('test-db041-supervisora@example.com');
 prepare fixed_as_supervisor as
   select public.set_service_fixed_employees('f4100000-0000-0000-0000-000000000031', array['f4100000-0000-0000-0000-000000000091']::uuid[]);
 select throws_ok('fixed_as_supervisor', 'P0001', 'No tenés permiso para hacer esto.', 'set_service_fixed_employees: un supervisor no puede (FORBIDDEN)');
 
-select tests.as_user('test-db041-empleado@example.com');
+select tests_0041.as_user('test-db041-empleado@example.com');
 prepare fixed_as_employee as
   select public.set_service_fixed_employees('f4100000-0000-0000-0000-000000000031', array['f4100000-0000-0000-0000-000000000091']::uuid[]);
 select throws_ok('fixed_as_employee', 'P0001', 'No tenés permiso para hacer esto.', 'set_service_fixed_employees: un empleado no puede (FORBIDDEN)');
@@ -242,7 +242,7 @@ prepare fixed_direct_insert_employee as
 select throws_ok('fixed_direct_insert_employee', '42501', null, 'service_fixed_employees: un empleado no inserta directo (RLS)');
 
 set local role postgres;
-select tests.as_user('test-db041-admin@example.com');
+select tests_0041.as_user('test-db041-admin@example.com');
 
 select is(
   (public.set_service_fixed_employees('f4100000-0000-0000-0000-000000000031', array[
@@ -293,17 +293,17 @@ select is(
 
 -- Lectura por rol.
 select ok((select count(*) from public.service_fixed_employees) >= 1, 'RLS: el admin ve los fijos');
-select tests.as_user('test-db041-owner@example.com');
+select tests_0041.as_user('test-db041-owner@example.com');
 select ok((select count(*) from public.service_fixed_employees) >= 1, 'RLS: el owner ve los fijos');
-select tests.as_user('test-db041-supervisora@example.com');
+select tests_0041.as_user('test-db041-supervisora@example.com');
 select is((select count(*)::int from public.service_fixed_employees), 0, 'RLS: el supervisor no ve los fijos');
-select tests.as_user('test-db041-empleado@example.com');
+select tests_0041.as_user('test-db041-empleado@example.com');
 select is((select count(*)::int from public.service_fixed_employees), 0, 'RLS: el empleado no ve los fijos');
 
 -- generate_shifts con fijos -------------------------------------------------------------------
 
 set local role postgres;
-select tests.as_user('test-db041-admin@example.com');
+select tests_0041.as_user('test-db041-admin@example.com');
 
 -- Fijos del servicio: Ana (libre), Beto (superpuesto el 2199-06-07), Carla (licencia 14 al 20 de junio).
 select public.set_service_fixed_employees('f4100000-0000-0000-0000-000000000031', array[
@@ -362,7 +362,7 @@ insert into public.services (id, client_id, site_id, name, weekdays, start_time,
 insert into public.service_fixed_employees (service_id, employee_id) values
   ('f4100000-0000-0000-0000-000000000032', 'f4100000-0000-0000-0000-000000000096');
 
-select tests.as_user('test-db041-admin@example.com');
+select tests_0041.as_user('test-db041-admin@example.com');
 select set_config('t.g3', public.generate_shifts(
   extract(year from date_trunc('month', app.today() - interval '1 month'))::int,
   extract(month from date_trunc('month', app.today() - interval '1 month'))::int)::text, true);
@@ -380,7 +380,7 @@ select is(
 select ok((current_setting('t.g3')::jsonb ->> 'past_without_fixed')::int >= 28, 'generate_shifts: informa past_without_fixed');
 
 -- Permisos de generate_shifts sin cambios.
-select tests.as_user('test-db041-supervisora@example.com');
+select tests_0041.as_user('test-db041-supervisora@example.com');
 prepare generate_as_supervisor as select public.generate_shifts(2199, 7);
 select throws_ok('generate_as_supervisor', 'P0001', 'No tenés permiso para hacer esto.', 'generate_shifts: un supervisor sigue sin poder (FORBIDDEN)');
 

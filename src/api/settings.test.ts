@@ -309,8 +309,41 @@ describe('fetchSecurityEvents', () => {
         actorName: 'Andrea Ríos',
         targetId: 'emp-1',
         targetName: 'Beto Ruiz',
+        details: null,
         createdAt: '2026-09-01T12:00:00Z',
       },
     ])
+  })
+
+  it('P27.7: trae el detalle de un registro eliminado', async () => {
+    const result = {
+      data: [
+        {
+          id: 'e2',
+          event_type: 'record_deleted',
+          actor_id: 'owner-1',
+          target_id: null,
+          created_at: '2026-11-02T12:00:00Z',
+          details: { entity: 'client', name: 'ACME', record_id: 'c1' },
+          actor: { first_name: 'Andrea', last_name: 'Ríos' },
+          target: null,
+        },
+      ],
+      error: null,
+    }
+    const query = {
+      then: (resolve: (value: typeof result) => void) => resolve(result),
+    }
+    fromMock.mockReturnValue({
+      select: () => ({ order: () => ({ limit: () => query }) }),
+    })
+
+    const [event] = await fetchSecurityEvents()
+
+    expect(event?.details).toEqual({
+      entity: 'client',
+      name: 'ACME',
+      record_id: 'c1',
+    })
   })
 })

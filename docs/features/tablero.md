@@ -144,3 +144,5 @@ Especificación: `Docs/Plan_Maestro/modulos/P24_coordinacion_libre_y_jornada.md`
   (`useSupervisorStatusQuery`, ADR-012). El mapa, este bloque y «Asistencia de
   hoy» comparten la misma consulta (misma clave de caché).
 - Tests: `components/SupervisionsTodayBlock.test.tsx`.
+
+> **P27.6 (OD-04):** el bloque «Supervisiones de hoy» ahora muestra una tarjeta por coordinador (`CoordinatorCards`) con «Ver actividad» y «Finalizar jornada». `coordinatorWorkdays.ts` y su agrupación ya no existen. Ver `supervisiones.md`, sección P27.6.

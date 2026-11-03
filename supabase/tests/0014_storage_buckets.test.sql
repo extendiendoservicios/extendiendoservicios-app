@@ -22,10 +22,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0014;
+grant usage on schema tests_0014 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0014.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -36,7 +36,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0014.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -51,7 +51,7 @@ begin
 end;
 $$;
 
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0014.as_user(text) to authenticated, anon;
 
 select plan(19);
 
@@ -97,7 +97,7 @@ insert into public.user_roles (profile_id, role) values
 
 -- avatars: el propio empleado puede subir a su propia carpeta ----------------------------------
 
-select tests.as_user('test-db016-empleado1@example.com');
+select tests_0014.as_user('test-db016-empleado1@example.com');
 
 select lives_ok(
   $$insert into storage.objects (bucket_id, name, owner)
@@ -120,7 +120,7 @@ set local role postgres;
 
 -- avatars: admin puede subir/actualizar en la carpeta de cualquiera -----------------------------
 
-select tests.as_user('test-db016-admin@example.com');
+select tests_0014.as_user('test-db016-admin@example.com');
 
 select lives_ok(
   $$insert into storage.objects (bucket_id, name, owner)
@@ -152,7 +152,7 @@ select is(
 
 set local role postgres;
 
-select tests.as_user('test-db016-empleado2@example.com');
+select tests_0014.as_user('test-db016-empleado2@example.com');
 
 select is(
   (select count(*)::int from storage.objects
@@ -165,7 +165,7 @@ set local role postgres;
 
 -- avatars: el propio dueño puede actualizar su archivo -------------------------------------------
 
-select tests.as_user('test-db016-empleado1@example.com');
+select tests_0014.as_user('test-db016-empleado1@example.com');
 
 select lives_ok(
   $$update storage.objects set name = 'c4100000-0000-0000-0000-000000000083/foto-2.jpg'
@@ -177,7 +177,7 @@ set local role postgres;
 
 -- branding: solo owner/admin escriben ------------------------------------------------------------
 
-select tests.as_user('test-db016-empleado1@example.com');
+select tests_0014.as_user('test-db016-empleado1@example.com');
 
 prepare branding_insert_employee as
   insert into storage.objects (bucket_id, name, owner) values ('branding', 'logo.png', auth.uid());
@@ -189,7 +189,7 @@ select throws_ok(
 
 set local role postgres;
 
-select tests.as_user('test-db016-owner@example.com');
+select tests_0014.as_user('test-db016-owner@example.com');
 
 select lives_ok(
   $$insert into storage.objects (bucket_id, name, owner) values ('branding', 'logo.png', auth.uid())$$,
@@ -198,7 +198,7 @@ select lives_ok(
 
 set local role postgres;
 
-select tests.as_user('test-db016-admin@example.com');
+select tests_0014.as_user('test-db016-admin@example.com');
 
 select lives_ok(
   $$update storage.objects set name = 'logo.png' where bucket_id = 'branding' and name = 'logo.png'$$,

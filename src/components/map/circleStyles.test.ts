@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
 import { circleColor, circlePathOptions } from './circleStyles'
 
@@ -5,7 +6,7 @@ describe('circlePathOptions', () => {
   it('usa color y fillColor explícitos, distintos por variante', () => {
     const ok = circlePathOptions('success')
     const mal = circlePathOptions('danger')
-    expect(ok.color).toBe('#2f9e6b')
+    expect(ok.color).toBe('#2e7d32')
     expect(ok.fillColor).toBe(ok.color)
     expect(mal.color).toBe('#ce4b52')
     expect(mal.color).not.toBe(ok.color)

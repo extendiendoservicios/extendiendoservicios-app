@@ -95,6 +95,7 @@ describe('clientFormValuesToInput', () => {
       longitude: null,
       status: 'active',
       notes: null,
+      categoryId: null,
     })
   })
 
@@ -111,6 +112,21 @@ describe('clientFormValuesToInput', () => {
     })
     expect(input.latitude).toBe(-34.6)
     expect(input.longitude).toBe(-58.4)
+  })
+
+  it('OD-20: la categoría elegida pasa tal cual y «sin categoría» es null', () => {
+    const base = {
+      legalName: 'Limpiadora SRL',
+      coordinates: null,
+      status: 'active' as const,
+    }
+    expect(
+      clientFormValuesToInput({ ...base, categoryId: 'cat-1' }).categoryId,
+    ).toBe('cat-1')
+    expect(
+      clientFormValuesToInput({ ...base, categoryId: 'none' }).categoryId,
+    ).toBeNull()
+    expect(clientFormValuesToInput(base).categoryId).toBeNull()
   })
 })
 

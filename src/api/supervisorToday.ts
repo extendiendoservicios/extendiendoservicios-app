@@ -57,8 +57,6 @@ export interface TodayShift {
   siteLatitude: number | null
   siteLongitude: number | null
   /** Datos útiles de la sede (los mismos de `v_my_day`); `null` si no están cargados. */
-  siteContactName: string | null
-  siteContactPhone: string | null
   accessInstructions: string | null
   buildingHours: string | null
   restrictionsNotes: string | null
@@ -73,7 +71,7 @@ export interface TodayShift {
   isPriority: boolean
   assignedEmployees: TodayShiftEmployee[]
   supervisors: TodayShiftSupervisor[]
-  /** Mi supervisión de este turno (no cancelada), si ya la tomé (CJ-27). */
+  /** Mi supervisión abierta de este turno o, si no hay, la última no cancelada (OD-10); `supervisors` trae todas. */
   mySupervisionId: string | null
   mySupervisionStatus: SupervisionStatus | null
 }
@@ -124,8 +122,6 @@ export function mapTodayShiftRow(row: TodayRawRow): TodayShift {
     siteCity: row.site_city,
     siteLatitude: row.site_latitude,
     siteLongitude: row.site_longitude,
-    siteContactName: row.site_contact_name ?? null,
-    siteContactPhone: row.site_contact_phone ?? null,
     accessInstructions: row.access_instructions ?? null,
     buildingHours: row.building_hours ?? null,
     restrictionsNotes: row.restrictions_notes ?? null,

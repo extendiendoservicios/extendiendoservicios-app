@@ -28,8 +28,8 @@ test.skip(isTooCloseToMidnight(), NEAR_MIDNIGHT_MESSAGE)
 test.use({ storageState: storageStatePath('empleado2') })
 
 test(
-  'el detalle muestra dónde, cuándo y qué hacer: sede, mapa, horario, contacto, tareas previstas y compañeros',
-  cubre('RB-E03', 'RB-E02', 'P-103'),
+  'el detalle muestra dónde, cuándo y qué hacer: sede, mapa, horario, tareas previstas y compañeros, y no muestra el contacto de la sede (OD-24)',
+  cubre('RB-E03', 'RB-E02', 'P-103', 'OD-24'),
   async ({ page }) => {
     const sc = new Scenario()
     let rutaFoto: string | null = null
@@ -106,11 +106,11 @@ test(
         ).toBeVisible()
       })
 
-      await test.step('contacto de la sede: se llama con tel:', async () => {
-        await expect(page.getByText('Contacto E2E')).toBeVisible()
-        await expect(
-          page.getByRole('link', { name: '+541155550000' }),
-        ).toHaveAttribute('href', 'tel:+541155550000')
+      await test.step('OD-24 (P27): el contacto de la sede NO se muestra al empleado, ni nombre ni teléfono ni enlace tel:', async () => {
+        await expect(page.getByText('Contacto E2E')).toHaveCount(0)
+        await expect(page.getByText('+541155550000')).toHaveCount(0)
+        await expect(page.locator('a[href^="tel:"]')).toHaveCount(0)
+        // Y la ubicación, el mapa y las instrucciones siguen (verificado arriba).
       })
 
       await test.step('compañeros del turno (nombre; P-103) sin datos de nadie más', async () => {

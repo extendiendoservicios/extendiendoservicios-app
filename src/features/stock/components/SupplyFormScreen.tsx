@@ -67,7 +67,7 @@ function SupplyFormScreen() {
       <EmptyState
         icon={PackageX}
         title="No tenés permiso para cargar ni editar artículos"
-        description="Pedile a la dueña el permiso «Gestionar stock»."
+        description="Pedile a la dirección el permiso «Gestionar stock»."
         action={
           <Button asChild variant="ghost">
             <Link to="/admin/insumos">Volver a Insumos</Link>

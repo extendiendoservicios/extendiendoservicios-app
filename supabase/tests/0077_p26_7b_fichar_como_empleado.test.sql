@@ -18,10 +18,10 @@ set local search_path = public, extensions, app, pg_temp;
 
 create extension if not exists pgtap with schema extensions;
 
-create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+create schema if not exists tests_0077;
+grant usage on schema tests_0077 to authenticated, anon;
 
-create or replace function tests.as_user(p_email text)
+create or replace function tests_0077.as_user(p_email text)
 returns void
 language plpgsql
 as $$
@@ -32,7 +32,7 @@ begin
   perform set_config('role', 'postgres', true);
   select id into v_user_id from auth.users where email = p_email;
   if v_user_id is null then
-    raise exception 'tests.as_user: no existe auth.users.email = %', p_email;
+    raise exception 'tests_0077.as_user: no existe auth.users.email = %', p_email;
   end if;
   v_claims := (
     app.custom_access_token_hook(
@@ -46,10 +46,10 @@ begin
   perform set_config('request.jwt.claims', v_claims::text, true);
 end;
 $$;
-grant execute on function tests.as_user(text) to authenticated, anon;
+grant execute on function tests_0077.as_user(text) to authenticated, anon;
 
 -- Devuelve el hint (código estable) del error que produce la sentencia, o 'OK' si no falla.
-create or replace function tests.hint_of(p_sql text)
+create or replace function tests_0077.hint_of(p_sql text)
 returns text
 language plpgsql
 as $$
@@ -63,7 +63,7 @@ exception when others then
   return coalesce(nullif(v_hint, ''), 'SQLSTATE ' || sqlstate);
 end;
 $$;
-grant execute on function tests.hint_of(text) to authenticated, anon;
+grant execute on function tests_0077.hint_of(text) to authenticated, anon;
 
 select plan(38);
 
@@ -94,7 +94,7 @@ insert into public.employees (profile_id, employee_number, dni) values
   ('c7700000-0000-0000-0000-000000000002', 90770002, '90770002'),
   ('c7700000-0000-0000-0000-000000000003', 90770003, '90770003');
 
-insert into public.clients (id, legal_name) values ('c7700000-0000-0000-0000-0000000000c1', 'Cliente 0077');
+insert into public.clients (id, legal_name, calendar_color) values ('c7700000-0000-0000-0000-0000000000c1', 'Cliente 0077', 0);
 insert into public.sites (id, client_id, name, address, status) values
   ('c7700000-0000-0000-0000-0000000000a1', 'c7700000-0000-0000-0000-0000000000c1', 'Sede 0077', 'Dirección 1', 'active');
 
@@ -158,7 +158,7 @@ select ok(
 
 -- 1. notify_delay ------------------------------------------------------------------------------
 
-select tests.as_user('test-0077-owner@example.com');
+select tests_0077.as_user('test-0077-owner@example.com');
 select is(
   (public.notify_delay('c7700000-0000-0000-0000-0000000000d1', 15, 'Tráfico')).source::text,
   'employee_app',
@@ -175,26 +175,26 @@ select is(
   'notify_delay: el dueño sobre la asignación de otra persona sigue siendo administración (origen admin)'
 );
 
-select tests.as_user('test-0077-admin-emp@example.com');
+select tests_0077.as_user('test-0077-admin-emp@example.com');
 select is(
   (public.notify_delay('c7700000-0000-0000-0000-0000000000d2', 10)).source::text,
   'employee_app',
   'notify_delay: el administrador sin manage_attendance avisa su propia demora como empleado'
 );
 select is(
-  tests.hint_of($$select public.notify_delay('c7700000-0000-0000-0000-0000000000e3', 10)$$),
+  tests_0077.hint_of($$select public.notify_delay('c7700000-0000-0000-0000-0000000000e3', 10)$$),
   'FORBIDDEN',
   'notify_delay: el mismo administrador sobre la asignación ajena sigue necesitando manage_attendance (FORBIDDEN)'
 );
 
-select tests.as_user('test-0077-empleado@example.com');
+select tests_0077.as_user('test-0077-empleado@example.com');
 select is(
-  tests.hint_of($$select public.notify_delay('c7700000-0000-0000-0000-0000000000d1', 10)$$),
+  tests_0077.hint_of($$select public.notify_delay('c7700000-0000-0000-0000-0000000000d1', 10)$$),
   'NOT_YOUR_ASSIGNMENT',
   'notify_delay: el empleado común sobre la asignación de otra persona -> NOT_YOUR_ASSIGNMENT (sin cambios)'
 );
 
-select tests.as_user('test-0077-admin@example.com');
+select tests_0077.as_user('test-0077-admin@example.com');
 select is(
   (public.notify_delay('c7700000-0000-0000-0000-0000000000e2', 5)).source::text,
   'admin',
@@ -203,14 +203,14 @@ select is(
 
 -- 2. notify_absence ----------------------------------------------------------------------------
 
-select tests.as_user('test-0077-owner@example.com');
+select tests_0077.as_user('test-0077-owner@example.com');
 select is(
-  tests.hint_of($$select public.notify_absence('c7700000-0000-0000-0000-0000000000e1')$$),
+  tests_0077.hint_of($$select public.notify_absence('c7700000-0000-0000-0000-0000000000e1')$$),
   'REASON_REQUIRED',
   'notify_absence: el dueño sobre lo propio sin motivo -> REASON_REQUIRED (validación del empleado)'
 );
 select is(
-  tests.hint_of($$select public.notify_absence('c7700000-0000-0000-0000-0000000000f1', 'illness')$$),
+  tests_0077.hint_of($$select public.notify_absence('c7700000-0000-0000-0000-0000000000f1', 'illness')$$),
   'TOO_LATE_TO_NOTIFY',
   'notify_absence: el dueño sobre su turno ya empezado -> TOO_LATE_TO_NOTIFY (ventana del empleado)'
 );
@@ -232,35 +232,35 @@ select is(
   'notify_absence: el dueño sobre el turno ya empezado de otra persona sigue cargando en nombre (admin, con certificado)'
 );
 select is(
-  tests.hint_of($$select public.notify_absence('c7700000-0000-0000-0000-0000000000e3')$$),
+  tests_0077.hint_of($$select public.notify_absence('c7700000-0000-0000-0000-0000000000e3')$$),
   'CERTIFICATE_REQUIRED',
   'notify_absence: el dueño sobre lo ajeno sin indicar el certificado -> CERTIFICATE_REQUIRED (camino administrativo)'
 );
 
-select tests.as_user('test-0077-admin-emp@example.com');
+select tests_0077.as_user('test-0077-admin-emp@example.com');
 select is(
   (select r.source::text from public.notify_absence('c7700000-0000-0000-0000-0000000000e2', 'personal') r),
   'employee_app',
   'notify_absence: el administrador sin manage_attendance avisa su propia ausencia como empleado'
 );
 select is(
-  tests.hint_of($$select public.notify_absence('c7700000-0000-0000-0000-000000000a06', null, null, false)$$),
+  tests_0077.hint_of($$select public.notify_absence('c7700000-0000-0000-0000-000000000a06', null, null, false)$$),
   'FORBIDDEN',
   'notify_absence: el mismo administrador sobre la asignación ajena sin manage_attendance -> FORBIDDEN'
 );
 
-select tests.as_user('test-0077-empleado@example.com');
+select tests_0077.as_user('test-0077-empleado@example.com');
 select is(
-  tests.hint_of($$select public.notify_absence('c7700000-0000-0000-0000-0000000000e1', 'illness')$$),
+  tests_0077.hint_of($$select public.notify_absence('c7700000-0000-0000-0000-0000000000e1', 'illness')$$),
   'NOT_YOUR_ASSIGNMENT',
   'notify_absence: el empleado común sobre la asignación de otra persona -> NOT_YOUR_ASSIGNMENT (sin cambios)'
 );
 
 -- 3. update_task_status ------------------------------------------------------------------------
 
-select tests.as_user('test-0077-owner@example.com');
+select tests_0077.as_user('test-0077-owner@example.com');
 select is(
-  tests.hint_of($$select public.update_task_status('c7700000-0000-0000-0000-000000000b01', 'done')$$),
+  tests_0077.hint_of($$select public.update_task_status('c7700000-0000-0000-0000-000000000b01', 'done')$$),
   'TASK_LOCKED',
   'update_task_status: el dueño asignado que todavía no empezó -> TASK_LOCKED (ventana del empleado)'
 );
@@ -275,26 +275,26 @@ select is(
   'update_task_status: el dueño en un turno donde no es titular sigue editando como administración'
 );
 select is(
-  tests.hint_of($$select public.update_task_status('c7700000-0000-0000-0000-000000000b02', 'not_done')$$),
+  tests_0077.hint_of($$select public.update_task_status('c7700000-0000-0000-0000-000000000b02', 'not_done')$$),
   'REASON_REQUIRED',
   'update_task_status: not_done sin motivo -> REASON_REQUIRED (sin cambios)'
 );
 
-select tests.as_user('test-0077-admin-emp@example.com');
+select tests_0077.as_user('test-0077-admin-emp@example.com');
 select is(
   (public.update_task_status('c7700000-0000-0000-0000-000000000b01', 'in_progress')).status::text,
   'in_progress',
   'update_task_status: el administrador con rol employee, sin asignación en ese turno, edita como administración'
 );
 
-select tests.as_user('test-0077-empleado@example.com');
+select tests_0077.as_user('test-0077-empleado@example.com');
 select is(
-  tests.hint_of($$select public.update_task_status('c7700000-0000-0000-0000-000000000b03', 'done')$$),
+  tests_0077.hint_of($$select public.update_task_status('c7700000-0000-0000-0000-000000000b03', 'done')$$),
   'TASK_LOCKED',
   'update_task_status: el empleado común sin asignación en el turno -> TASK_LOCKED (sin cambios)'
 );
 
-select tests.as_user('test-0077-admin@example.com');
+select tests_0077.as_user('test-0077-admin@example.com');
 select is(
   (public.update_task_status('c7700000-0000-0000-0000-000000000b01', 'done')).status::text,
   'done',
@@ -303,14 +303,14 @@ select is(
 
 -- 4. set_assignment_notes ----------------------------------------------------------------------
 
-select tests.as_user('test-0077-owner@example.com');
+select tests_0077.as_user('test-0077-owner@example.com');
 select is(
   (public.set_assignment_notes('c7700000-0000-0000-0000-0000000000d1', 'Observación propia')).notes,
   'Observación propia',
   'set_assignment_notes: el dueño sobre su asignación vigente guarda la observación'
 );
 select is(
-  tests.hint_of($$select public.set_assignment_notes('c7700000-0000-0000-0000-000000000a04', 'Tarde')$$),
+  tests_0077.hint_of($$select public.set_assignment_notes('c7700000-0000-0000-0000-000000000a04', 'Tarde')$$),
   'SHIFT_COMPLETED',
   'set_assignment_notes: el dueño sobre su asignación de un turno terminado -> SHIFT_COMPLETED (validación del empleado)'
 );
@@ -320,31 +320,31 @@ select is(
   'set_assignment_notes: el dueño sobre la asignación de otra persona en un turno terminado sigue editando como administración'
 );
 select is(
-  tests.hint_of($$select public.set_assignment_notes('c7700000-0000-0000-0000-000000000a05', repeat('x', 2001))$$),
+  tests_0077.hint_of($$select public.set_assignment_notes('c7700000-0000-0000-0000-000000000a05', repeat('x', 2001))$$),
   'NOTES_TOO_LONG',
   'set_assignment_notes: más de 2000 caracteres -> NOTES_TOO_LONG (sin cambios)'
 );
 
-select tests.as_user('test-0077-admin-emp@example.com');
+select tests_0077.as_user('test-0077-admin-emp@example.com');
 select is(
   (public.set_assignment_notes('c7700000-0000-0000-0000-0000000000d2', 'Obs. del admin-empleado')).notes,
   'Obs. del admin-empleado',
   'set_assignment_notes: el administrador con rol employee sobre su propia asignación guarda la observación'
 );
 select is(
-  tests.hint_of($$select public.set_assignment_notes('c7700000-0000-0000-0000-000000000a04', 'Ajeno')$$),
+  tests_0077.hint_of($$select public.set_assignment_notes('c7700000-0000-0000-0000-000000000a04', 'Ajeno')$$),
   'OK',
   'set_assignment_notes: el mismo administrador sobre la asignación de otra persona sigue editando como administración'
 );
 
-select tests.as_user('test-0077-empleado@example.com');
+select tests_0077.as_user('test-0077-empleado@example.com');
 select is(
-  tests.hint_of($$select public.set_assignment_notes('c7700000-0000-0000-0000-0000000000d1', 'No es mía')$$),
+  tests_0077.hint_of($$select public.set_assignment_notes('c7700000-0000-0000-0000-0000000000d1', 'No es mía')$$),
   'FORBIDDEN',
   'set_assignment_notes: el empleado común sobre la asignación ajena -> FORBIDDEN (sin cambios)'
 );
 select is(
-  tests.hint_of($$select public.set_assignment_notes('c7700000-0000-0000-0000-000000000a05', 'Propia, turno terminado')$$),
+  tests_0077.hint_of($$select public.set_assignment_notes('c7700000-0000-0000-0000-000000000a05', 'Propia, turno terminado')$$),
   'SHIFT_COMPLETED',
   'set_assignment_notes: el empleado común sobre su asignación de un turno terminado -> SHIFT_COMPLETED (sin cambios)'
 );
@@ -354,7 +354,7 @@ select is(
 -- de que la RLS de administración le dejaría ver todo. Las fechas de fixtures están en 2199, fuera de la
 -- ventana de hoy a +7 días, así que se verifica por la definición y por la RLS de assignments.
 
-select tests.as_user('test-0077-owner@example.com');
+select tests_0077.as_user('test-0077-owner@example.com');
 select is(
   (select count(*)::int from public.assignments where employee_id = 'c7700000-0000-0000-0000-000000000001'),
   6,
@@ -369,7 +369,7 @@ select ok(
   'lectura: v_my_day no menciona app.is_admin()'
 );
 
-select tests.as_user('test-0077-empleado@example.com');
+select tests_0077.as_user('test-0077-empleado@example.com');
 select is(
   (select count(*)::int from public.assignments where employee_id = 'c7700000-0000-0000-0000-000000000001'),
   0,
@@ -378,7 +378,7 @@ select is(
 
 -- 6. Auditoría de origen: las avisos del dueño sobre lo propio quedaron como employee_app ------
 
-select tests.as_user('test-0077-owner@example.com');
+select tests_0077.as_user('test-0077-owner@example.com');
 select is(
   (select count(*)::int from public.attendance_notices n
    join public.assignments a on a.id = n.assignment_id
