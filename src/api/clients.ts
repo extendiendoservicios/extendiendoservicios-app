@@ -70,12 +70,17 @@ export interface ClientListRow {
   activeServicesCount: number
   /** Ruta de la foto en `client-photos` (AJ2-06), o `null`. */
   photoPath: string | null
+  /** OD-20: categoría del cliente, o `null` si no tiene. */
+  categoryId: string | null
+  categoryName: string | null
 }
 
 export interface ClientListFilters {
   /** Busca en razón social, fantasía y CUIT. */
   text?: string
   status?: ClientStatus | 'all'
+  /** OD-21: `'all'` o ausente = todas; `'none'` = solo los sin categoría; un id = esa categoría. */
+  categoryId?: string
 }
 
 /**
@@ -92,7 +97,7 @@ export async function fetchClients(
   let query = supabase
     .from('v_clients')
     .select(
-      'id, legal_name, trade_name, cuit, status, sites_count, active_services_count, photo_path',
+      'id, legal_name, trade_name, cuit, status, sites_count, active_services_count, photo_path, category_id, category_name',
     )
     .is('deleted_at', null)
     .order('legal_name', { ascending: true })
@@ -110,6 +115,11 @@ export async function fetchClients(
   if (filters.status && filters.status !== 'all') {
     query = query.eq('status', filters.status)
   }
+  if (filters.categoryId === 'none') {
+    query = query.is('category_id', null)
+  } else if (filters.categoryId && filters.categoryId !== 'all') {
+    query = query.eq('category_id', filters.categoryId)
+  }
 
   const { data, error } = await query
   if (error) {
@@ -125,7 +135,23 @@ export async function fetchClients(
     sitesCount: row.sites_count ?? 0,
     activeServicesCount: row.active_services_count ?? 0,
     photoPath: row.photo_path,
+    categoryId: row.category_id,
+    categoryName: row.category_name,
   }))
+}
+
+/** OD-21: total de clientes activos (sin filtros), para el encabezado del listado y del mapa. */
+export async function fetchActiveClientsCount(): Promise<number> {
+  const { count, error } = await supabase
+    .from('clients')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'active')
+    .is('deleted_at', null)
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return count ?? 0
 }
 
 /**
@@ -171,6 +197,8 @@ export interface ClientDetail {
   photoPath: string | null
   /** P24.8: color en el calendario (0–11). */
   calendarColor: number
+  /** OD-20: categoría (opcional). */
+  categoryId: string | null
   createdAt: string
   updatedAt: string | null
 }
@@ -190,6 +218,7 @@ function mapClientRow(
     notes: row.notes,
     photoPath: row.photo_path,
     calendarColor: row.calendar_color,
+    categoryId: row.category_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -221,6 +250,8 @@ export interface ClientFormInput {
   notes: string | null
   /** P24.8: 0–11. En el alta, `undefined` deja el valor que asigna la base. */
   calendarColor?: number
+  /** OD-20: `null` = sin categoría; `undefined` no la toca. */
+  categoryId?: string | null
 }
 
 /** Alta de ADM-20 (`06` sección 4: "Crear, editar | insert/update"). */
@@ -241,6 +272,9 @@ export async function createClient(
       notes: input.notes,
       ...(input.calendarColor !== undefined
         ? { calendar_color: input.calendarColor }
+        : {}),
+      ...(input.categoryId !== undefined
+        ? { category_id: input.categoryId }
         : {}),
       created_by: createdBy,
     })
@@ -272,6 +306,9 @@ export async function updateClient(
       notes: input.notes,
       ...(input.calendarColor !== undefined
         ? { calendar_color: input.calendarColor }
+        : {}),
+      ...(input.categoryId !== undefined
+        ? { category_id: input.categoryId }
         : {}),
       updated_by: updatedBy,
     })

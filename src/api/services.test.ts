@@ -46,8 +46,8 @@ const {
   fetchServicesBySite,
   fetchServiceFixedEmployees,
   setServiceFixedEmployees,
-  fetchServiceDeletePreview,
-  deleteService,
+  applyServiceFixedEmployees,
+  parseFixedApplyResult,
 } = await import('./services')
 
 beforeEach(() => {
@@ -422,74 +422,77 @@ describe('repetición mensual (AJ3-05)', () => {
   })
 })
 
-describe('eliminar un servicio (AJ3-01)', () => {
-  it('service_delete_preview mapea la respuesta', async () => {
+describe('aplicar los fijos a los turnos (OD-11)', () => {
+  it('llama a la RPC y mapea lo actualizado y lo salteado', async () => {
     rpcMock.mockResolvedValue({
       data: {
         service_id: 's1',
-        service_name: 'Limpieza',
-        shifts_to_delete: 4,
-        assignments_to_delete: 6,
-        blocking_shifts: [
+        from_date: '2026-11-02',
+        updated_count: 1,
+        unchanged_count: 0,
+        skipped_count: 1,
+        assignments_removed: 1,
+        assignments_added: 1,
+        updated: [
           {
             shift_id: 'sh1',
-            shift_date: '2026-10-05',
-            reasons: ['ATTENDANCE_RECORDS'],
+            shift_date: '2026-11-03',
+            removed: [{ employee_id: 'e1', employee_name: 'Ana Gómez' }],
+            added: [{ employee_id: 'e2', employee_name: 'Luis Paz' }],
           },
         ],
-        can_delete: false,
+        skipped: [
+          {
+            scope: 'shift',
+            shift_id: 'sh2',
+            shift_date: '2026-11-04',
+            employee_id: null,
+            employee_name: null,
+            code: 'SHIFT_CANCELLED',
+            message: 'El turno está cancelado.',
+          },
+        ],
       },
       error: null,
     })
-    const preview = await fetchServiceDeletePreview('s1')
-    expect(rpcMock).toHaveBeenCalledWith('service_delete_preview', {
+    const result = await applyServiceFixedEmployees('s1', '2026-11-02')
+    expect(rpcMock).toHaveBeenCalledWith('apply_service_fixed_employees', {
       p_service_id: 's1',
+      p_from_date: '2026-11-02',
     })
-    expect(preview.canDelete).toBe(false)
-    expect(preview.shiftsToDelete).toBe(4)
-    expect(preview.blockingShifts[0]).toEqual({
-      shiftId: 'sh1',
-      shiftDate: '2026-10-05',
-      reasons: ['ATTENDANCE_RECORDS'],
-    })
-  })
-
-  it('delete_service devuelve las cantidades borradas', async () => {
-    rpcMock.mockResolvedValue({
-      data: { service_id: 's1', shifts_deleted: 4, assignments_deleted: 6 },
-      error: null,
-    })
-    expect(await deleteService('s1')).toEqual({
-      serviceId: 's1',
-      shiftsDeleted: 4,
-      assignmentsDeleted: 6,
+    expect(result.updatedCount).toBe(1)
+    expect(result.updated[0]?.added[0]?.employeeName).toBe('Luis Paz')
+    expect(result.skipped[0]).toMatchObject({
+      scope: 'shift',
+      code: 'SHIFT_CANCELLED',
+      message: 'El turno está cancelado.',
     })
   })
 
-  it.each([
-    ['FORBIDDEN', 'Solo la dueña puede'],
-    ['SERVICE_NOT_FOUND', 'No encontramos el servicio'],
-    ['SERVICE_HAS_ATTENDANCE', 'fichajes o avisos de asistencia'],
-    ['SERVICE_HAS_SUPERVISIONS', 'supervisiones'],
-    ['SERVICE_HAS_MEDIA', 'fotos o videos'],
-  ])('mapea el hint %s a un mensaje en español', async (hint, fragment) => {
+  it('tolera listas ausentes', () => {
+    const result = parseFixedApplyResult({
+      from_date: '2026-11-02',
+      updated_count: 0,
+      unchanged_count: 3,
+      skipped_count: 0,
+      assignments_removed: 0,
+      assignments_added: 0,
+    })
+    expect(result.updated).toEqual([])
+    expect(result.skipped).toEqual([])
+  })
+
+  it('traduce el error de la RPC a ApiError', async () => {
     rpcMock.mockResolvedValue({
       data: null,
-      error: { message: 'texto del servidor', code: 'P0001', hint },
+      error: {
+        message: 'No encontramos ese servicio.',
+        hint: 'SERVICE_NOT_FOUND',
+        code: 'P0001',
+      },
     })
-    await expect(deleteService('s1')).rejects.toSatisfy(
-      (error: unknown) =>
-        isApiError(error) &&
-        error.hint === hint &&
-        error.message.includes(fragment),
-    )
-  })
-
-  it('un error sin hint conocido cae en el genérico', async () => {
-    rpcMock.mockResolvedValue({
-      data: null,
-      error: { message: 'boom', code: 'XX000' },
-    })
-    await expect(fetchServiceDeletePreview('s1')).rejects.toSatisfy(isApiError)
+    await expect(
+      applyServiceFixedEmployees('s1', '2026-11-02'),
+    ).rejects.toMatchObject({ hint: 'SERVICE_NOT_FOUND' })
   })
 })

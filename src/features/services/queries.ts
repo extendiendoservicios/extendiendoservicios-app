@@ -25,8 +25,6 @@ export const servicesKeys = {
   detail: (id: string) => [...servicesKeys.all, 'detail', id] as const,
   fixedEmployees: (id: string) =>
     [...servicesKeys.all, 'fixedEmployees', id] as const,
-  deletePreview: (id: string) =>
-    [...servicesKeys.all, 'deletePreview', id] as const,
   labels: (ids: string[]) => [...servicesKeys.all, 'labels', ids] as const,
 }
 
@@ -214,28 +212,25 @@ export function useServiceLabelsQuery(ids: string[]) {
 }
 
 // -------------------------------------------------------------------------
-// Eliminar un servicio (AJ3-01)
+// Aplicar los fijos a los turnos ya creados (OD-11)
 // -------------------------------------------------------------------------
 
-/** Qué pasaría al borrar: siempre fresco, porque depende de fichajes que cambian. */
-export function useServiceDeletePreviewQuery(id: string | undefined) {
-  return useQuery({
-    queryKey: servicesKeys.deletePreview(id ?? ''),
-    queryFn: () => servicesApi.fetchServiceDeletePreview(id as string),
-    enabled: id != null,
-    staleTime: 0,
-    gcTime: 0,
-  })
-}
-
-/** Borra el servicio y sus turnos: invalida servicios, turnos, planificación, asistencia y clientes. */
-export function useDeleteServiceMutation() {
+/**
+ * Aplica los empleados fijos del servicio a sus turnos desde una fecha.
+ * Invalida las consultas de turnos, calendario, asistencia y servicios.
+ */
+export function useApplyServiceFixedEmployeesMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (serviceId: string) => servicesApi.deleteService(serviceId),
+    mutationFn: ({
+      serviceId,
+      fromDate,
+    }: {
+      serviceId: string
+      fromDate: string
+    }) => servicesApi.applyServiceFixedEmployees(serviceId, fromDate),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: servicesKeys.all })
-      void queryClient.invalidateQueries({ queryKey: clientsKeys.all })
       void queryClient.invalidateQueries({ queryKey: shiftsKeys.all })
       void queryClient.invalidateQueries({ queryKey: planningKeys.all })
       void queryClient.invalidateQueries({ queryKey: attendanceKeys.all })

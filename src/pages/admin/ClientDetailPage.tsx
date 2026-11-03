@@ -1,7 +1,7 @@
 import { formatTaxId } from '@/lib/taxId'
 import { useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router'
-import { Building2, Pencil, Plus, RefreshCw } from 'lucide-react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
+import { Building2, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -19,6 +19,9 @@ import { useClientBankDetailsQuery } from '@/features/bank/queries'
 import { ClientServiceSummaryTab } from '@/features/clients/components/ClientServiceSummaryTab'
 import { ClientContactsPanel } from '@/features/clients/components/ClientContactsPanel'
 import { PreferredSupervisorsBlock } from '@/features/supervisions/components/PreferredSupervisorsBlock'
+import { OwnerDeleteDialog } from '@/features/ownerDelete/components/OwnerDeleteDialog'
+import { canOwnerDelete } from '@/features/ownerDelete/matching'
+import { useAuth } from '@/features/auth/AuthProvider'
 import { ChangeClientStatusDialog } from '@/features/clients/components/ChangeClientStatusDialog'
 import { ClientTemplateSummary } from '@/features/checklists/components/ClientTemplateSummary'
 import {
@@ -50,6 +53,9 @@ export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const [isChangeStatusOpen, setChangeStatusOpen] = useState(false)
+  const [isDeleteOpen, setDeleteOpen] = useState(false)
+  const navigate = useNavigate()
+  const auth = useAuth()
 
   const activeTab = isClientDetailTab(searchParams.get('pestana'))
     ? (searchParams.get('pestana') as ClientDetailTab)
@@ -159,6 +165,17 @@ export default function ClientDetailPage() {
           <Button asChild size="sm" icon={Pencil}>
             <Link to={`/admin/clientes/${client.id}/editar`}>Editar</Link>
           </Button>
+          {canOwnerDelete(auth) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={Trash2}
+              className="text-danger"
+              onClick={() => setDeleteOpen(true)}
+            >
+              Eliminar
+            </Button>
+          )}
         </div>
       </div>
 
@@ -250,6 +267,15 @@ export default function ClientDetailPage() {
         open={isChangeStatusOpen}
         onOpenChange={setChangeStatusOpen}
       />
+      {canOwnerDelete(auth) && isDeleteOpen && (
+        <OwnerDeleteDialog
+          kind="client"
+          id={client.id}
+          open={isDeleteOpen}
+          onOpenChange={setDeleteOpen}
+          onDeleted={() => void navigate('/admin/clientes', { replace: true })}
+        />
+      )}
     </div>
   )
 }

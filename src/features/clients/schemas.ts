@@ -35,6 +35,9 @@ const cuitSchema = z
     'El CUIT tiene que tener 11 dígitos.',
   )
 
+/** Valor del desplegable de categoría para «Sin categoría» (Radix no admite `''`). */
+export const NO_CATEGORY_VALUE = 'none'
+
 export const clientFormSchema = z.object({
   legalName: z.string().trim().min(1, 'Falta la razón social.'),
   tradeName: z.string().trim().optional(),
@@ -52,6 +55,8 @@ export const clientFormSchema = z.object({
   notes: z.string().trim().optional(),
   // P24.8: color en el calendario; `null` en el alta = que la base asigne uno.
   calendarColor: z.number().int().min(0).max(11).nullable().optional(),
+  // OD-20: categoría opcional; `'none'` = sin categoría.
+  categoryId: z.string().optional(),
   // AJ2-04: datos bancarios (solo dueño y administrador); se guardan por RPC aparte.
   ...bankFieldsShape,
 })
@@ -70,6 +75,10 @@ export function clientFormValuesToInput(values: ClientFormValues) {
     status: values.status,
     notes: emptyToNull(values.notes),
     calendarColor: values.calendarColor ?? undefined,
+    categoryId:
+      values.categoryId && values.categoryId !== NO_CATEGORY_VALUE
+        ? values.categoryId
+        : null,
   }
 }
 

@@ -20,6 +20,14 @@ import { StatusBadge } from '@/components/status'
 import { MapView, type MapViewMarker } from '@/components/map'
 import type { ClientListRow, ClientStatus } from '@/api/clients'
 import { CLIENT_STATUS_OPTIONS } from '@/features/clients/schemas'
+import {
+  useActiveClientsCountQuery,
+  useClientCategoriesQuery,
+} from '@/features/clients/categoryQueries'
+import {
+  describeActiveClients,
+  groupClientsByCategory,
+} from '@/features/clients/grouping'
 import { UpdatedAgo } from '@/features/clients/components/UpdatedAgo'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import {
@@ -82,21 +90,31 @@ export default function ClientsPage() {
     setSearchParams(next, { replace: true })
   }
 
+  // OD-21: total de clientes activos arriba de la sección (listado y mapa).
+  const activeCountQuery = useActiveClientsCountQuery()
+
   return (
-    <Tabs value={activeTab} onValueChange={handleTabChange}>
-      <TabsList>
-        <TabsTrigger value="listado">Listado</TabsTrigger>
-        <TabsTrigger value="mapa">Mapa</TabsTrigger>
-      </TabsList>
+    <div className="flex flex-col gap-3">
+      {activeCountQuery.data != null && (
+        <p className="text-[13px] font-semibold text-text">
+          {describeActiveClients(activeCountQuery.data)}
+        </p>
+      )}
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
+        <TabsList>
+          <TabsTrigger value="listado">Listado</TabsTrigger>
+          <TabsTrigger value="mapa">Mapa</TabsTrigger>
+        </TabsList>
 
-      <TabsContent value="listado" className="pt-3">
-        <ClientsListTab />
-      </TabsContent>
+        <TabsContent value="listado" className="pt-3">
+          <ClientsListTab />
+        </TabsContent>
 
-      <TabsContent value="mapa" className="pt-3">
-        <ClientsMapTab />
-      </TabsContent>
-    </Tabs>
+        <TabsContent value="mapa" className="pt-3">
+          <ClientsMapTab />
+        </TabsContent>
+      </Tabs>
+    </div>
   )
 }
 
@@ -105,11 +123,14 @@ function ClientsListTab() {
     'active',
   )
   const [textFilter, setTextFilter] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const debouncedText = useDebouncedValue(textFilter)
+  const categoriesQuery = useClientCategoriesQuery()
 
   const clientsQuery = useClientsQuery({
     status: statusFilter,
     text: debouncedText,
+    categoryId: categoryFilter,
   })
   const primaryContactsQuery = usePrimaryContactNamesQuery()
   // AJ-10: horas del mes en curso (del 1 a hoy, hora de Argentina), una sola
@@ -126,6 +147,12 @@ function ClientsListTab() {
       primaryContactName: primaryContactsQuery.data?.get(client.id) ?? null,
     }))
   }, [clientsQuery.data, primaryContactsQuery.data])
+
+  // OD-21: agrupado por categoría, «Sin categoría» al final.
+  const groups = useMemo(
+    () => groupClientsByCategory(rows, categoriesQuery.data ?? []),
+    [rows, categoriesQuery.data],
+  )
 
   const columns: DataTableColumnDef<ClientRowView>[] = [
     {
@@ -249,30 +276,69 @@ function ClientsListTab() {
               ))}
             </SelectContent>
           </Select>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger aria-label="Filtrar por categoría">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las categorías</SelectItem>
+              {(categoriesQuery.data ?? []).map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                  {category.name}
+                </SelectItem>
+              ))}
+              <SelectItem value="none">Sin categoría</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <Button asChild icon={Plus}>
           <Link to="/admin/clientes/nuevo">Nuevo cliente</Link>
         </Button>
       </div>
 
-      <DataTable
-        caption="Clientes"
-        columns={columns}
-        data={rows}
-        getRowId={(row) => row.id}
-        isLoading={clientsQuery.isLoading}
-        emptyState={{
-          icon: Building2,
-          title:
-            debouncedText || statusFilter !== 'all'
-              ? 'No encontramos clientes con esos filtros'
-              : 'Todavía no hay clientes cargados',
-          description:
-            !debouncedText && statusFilter === 'all'
-              ? 'Creá el primero con "Nuevo cliente".'
-              : undefined,
-        }}
-      />
+      {groups.length === 0 ? (
+        <DataTable
+          caption="Clientes"
+          columns={columns}
+          data={rows}
+          getRowId={(row) => row.id}
+          isLoading={clientsQuery.isLoading}
+          emptyState={{
+            icon: Building2,
+            title:
+              debouncedText ||
+              statusFilter !== 'all' ||
+              categoryFilter !== 'all'
+                ? 'No encontramos clientes con esos filtros'
+                : 'Todavía no hay clientes cargados',
+            description:
+              !debouncedText &&
+              statusFilter === 'all' &&
+              categoryFilter === 'all'
+                ? 'Creá el primero con "Nuevo cliente".'
+                : undefined,
+          }}
+        />
+      ) : (
+        groups.map((group) => (
+          <section
+            key={group.categoryId ?? 'none'}
+            aria-label={group.label}
+            className="flex flex-col gap-2"
+          >
+            <h2 className="text-[13px] font-semibold text-text">
+              {`${group.label} (${group.rows.length})`}
+            </h2>
+            <DataTable
+              caption={`Clientes · ${group.label}`}
+              columns={columns}
+              data={group.rows}
+              getRowId={(row) => row.id}
+              isLoading={false}
+            />
+          </section>
+        ))
+      )}
     </div>
   )
 }

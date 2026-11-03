@@ -60,3 +60,39 @@ export const SECURITY_EVENT_TYPES: SecurityEventType[] = [
   'password_changed_by_user',
   'record_deleted',
 ]
+
+/** Etiquetas de la entidad que dejó un `record_deleted` (P27.7, OD-23). */
+const DELETED_ENTITY_LABELS: Record<string, string> = {
+  shift: 'Turno',
+  service: 'Servicio',
+  service_shifts: 'Turnos de un servicio',
+  site: 'Sede',
+  client: 'Cliente',
+  employee: 'Empleado',
+  auth_user: 'Usuario de acceso',
+}
+
+/**
+ * Texto de la columna «Detalle» de ADM-31. Hoy solo `record_deleted` lo
+ * necesita: «Cliente «ACME»». Para el resto devuelve `null` (la celda muestra
+ * un guion).
+ */
+export function describeSecurityEventDetail(event: {
+  eventType: SecurityEventType
+  details: Record<string, unknown> | null
+}): string | null {
+  if (event.eventType !== 'record_deleted' || !event.details) {
+    return null
+  }
+  const entity =
+    typeof event.details.entity === 'string' ? event.details.entity : null
+  const name =
+    typeof event.details.name === 'string' && event.details.name !== ''
+      ? event.details.name
+      : null
+  const label = entity ? (DELETED_ENTITY_LABELS[entity] ?? entity) : null
+  if (label && name) {
+    return `${label} «${name}»`
+  }
+  return label ?? name
+}
