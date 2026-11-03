@@ -1127,6 +1127,13 @@ export type Database = {
             referencedColumns: ["id", "client_id"]
           },
           {
+            foreignKeyName: "checklist_templates_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "v_site_contacts"
+            referencedColumns: ["site_id", "client_id"]
+          },
+          {
             foreignKeyName: "checklist_templates_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -2753,6 +2760,13 @@ export type Database = {
             referencedColumns: ["id", "client_id"]
           },
           {
+            foreignKeyName: "services_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "v_site_contacts"
+            referencedColumns: ["site_id", "client_id"]
+          },
+          {
             foreignKeyName: "services_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -3436,6 +3450,13 @@ export type Database = {
             referencedColumns: ["id", "client_id"]
           },
           {
+            foreignKeyName: "shifts_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "v_site_contacts"
+            referencedColumns: ["site_id", "client_id"]
+          },
+          {
             foreignKeyName: "shifts_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -3920,6 +3941,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "stock_movements_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "v_site_contacts"
+            referencedColumns: ["site_id"]
+          },
+          {
             foreignKeyName: "stock_movements_voided_by_fkey"
             columns: ["voided_by"]
             isOneToOne: false
@@ -4330,6 +4358,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sites"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervisor_priorities_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "v_site_contacts"
+            referencedColumns: ["site_id"]
           },
           {
             foreignKeyName: "supervisor_priorities_supervisor_id_fkey"
@@ -5039,6 +5074,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "supply_shortage_reports_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "v_site_contacts"
+            referencedColumns: ["site_id"]
+          },
+          {
             foreignKeyName: "supply_shortage_reports_supply_id_fkey"
             columns: ["supply_id"]
             isOneToOne: false
@@ -5458,6 +5500,13 @@ export type Database = {
             referencedRelation: "sites"
             referencedColumns: ["id", "client_id"]
           },
+          {
+            foreignKeyName: "shifts_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "v_site_contacts"
+            referencedColumns: ["site_id", "client_id"]
+          },
         ]
       }
       v_clients: {
@@ -5751,8 +5800,6 @@ export type Database = {
           shift_status: Database["public"]["Enums"]["shift_status"] | null
           site_address: string | null
           site_city: string | null
-          site_contact_name: string | null
-          site_contact_phone: string | null
           site_geofence_radius_m: number | null
           site_id: string | null
           site_latitude: number | null
@@ -5800,13 +5847,6 @@ export type Database = {
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_in_recorded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_out_recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -5816,8 +5856,8 @@ export type Database = {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_in_recorded_by"]
             isOneToOne: false
-            referencedRelation: "v_announcement_recipients"
-            referencedColumns: ["profile_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
@@ -5829,13 +5869,20 @@ export type Database = {
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_in_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_out_recorded_by"]
             isOneToOne: false
             referencedRelation: "v_supervisor_status"
             referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_out_recorded_by"]
+            columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "v_supervisor_status"
             referencedColumns: ["supervisor_id"]
@@ -5860,6 +5907,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sites"
             referencedColumns: ["id", "client_id"]
+          },
+          {
+            foreignKeyName: "shifts_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "v_site_contacts"
+            referencedColumns: ["site_id", "client_id"]
           },
         ]
       }
@@ -5932,8 +5986,6 @@ export type Database = {
           shift_status: Database["public"]["Enums"]["shift_status"] | null
           site_address: string | null
           site_city: string | null
-          site_contact_name: string | null
-          site_contact_phone: string | null
           site_geofence_radius_m: number | null
           site_id: string | null
           site_latitude: number | null
@@ -5981,13 +6033,6 @@ export type Database = {
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_out_recorded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -5997,8 +6042,8 @@ export type Database = {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_out_recorded_by"]
             isOneToOne: false
-            referencedRelation: "v_announcement_recipients"
-            referencedColumns: ["profile_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
@@ -6010,13 +6055,20 @@ export type Database = {
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_out_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "v_supervisor_status"
             referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_in_recorded_by"]
+            columns: ["check_out_recorded_by"]
             isOneToOne: false
             referencedRelation: "v_supervisor_status"
             referencedColumns: ["supervisor_id"]
@@ -6041,6 +6093,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sites"
             referencedColumns: ["id", "client_id"]
+          },
+          {
+            foreignKeyName: "shifts_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "v_site_contacts"
+            referencedColumns: ["site_id", "client_id"]
           },
         ]
       }
@@ -6107,8 +6166,6 @@ export type Database = {
           site_address: string | null
           site_building_hours: string | null
           site_city: string | null
-          site_contact_name: string | null
-          site_contact_phone: string | null
           site_geofence_radius_m: number | null
           site_id: string | null
           site_latitude: number | null
@@ -6142,6 +6199,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sites"
             referencedColumns: ["id", "client_id"]
+          },
+          {
+            foreignKeyName: "shifts_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "v_site_contacts"
+            referencedColumns: ["site_id", "client_id"]
           },
           {
             foreignKeyName: "supervisions_shift_id_fkey"
@@ -6491,6 +6555,13 @@ export type Database = {
             referencedRelation: "sites"
             referencedColumns: ["id", "client_id"]
           },
+          {
+            foreignKeyName: "shifts_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "v_site_contacts"
+            referencedColumns: ["site_id", "client_id"]
+          },
         ]
       }
       v_shift_peers: {
@@ -6622,6 +6693,13 @@ export type Database = {
             referencedColumns: ["id", "client_id"]
           },
           {
+            foreignKeyName: "shifts_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "v_site_contacts"
+            referencedColumns: ["site_id", "client_id"]
+          },
+          {
             foreignKeyName: "shifts_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -6641,6 +6719,42 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_supervisor_status"
             referencedColumns: ["supervisor_id"]
+          },
+        ]
+      }
+      v_site_contacts: {
+        Row: {
+          client_id: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          site_id: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          site_id?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          site_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sites_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sites_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clients"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -6898,6 +7012,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "stock_movements_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "v_site_contacts"
+            referencedColumns: ["site_id"]
+          },
+          {
             foreignKeyName: "stock_movements_voided_by_fkey"
             columns: ["voided_by"]
             isOneToOne: false
@@ -7006,6 +7127,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sites"
             referencedColumns: ["id", "client_id"]
+          },
+          {
+            foreignKeyName: "shifts_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "v_site_contacts"
+            referencedColumns: ["site_id", "client_id"]
           },
           {
             foreignKeyName: "supervisions_assigned_by_fkey"
@@ -7145,6 +7273,13 @@ export type Database = {
             referencedRelation: "sites"
             referencedColumns: ["id", "client_id"]
           },
+          {
+            foreignKeyName: "shifts_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "v_site_contacts"
+            referencedColumns: ["site_id", "client_id"]
+          },
         ]
       }
       v_supervisor_today: {
@@ -7175,8 +7310,6 @@ export type Database = {
           shift_status: Database["public"]["Enums"]["shift_status"] | null
           site_address: string | null
           site_city: string | null
-          site_contact_name: string | null
-          site_contact_phone: string | null
           site_id: string | null
           site_latitude: number | null
           site_longitude: number | null
@@ -7305,6 +7438,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sites"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "v_site_contacts"
+            referencedColumns: ["site_id"]
           },
           {
             foreignKeyName: "supplies_category_id_fkey"
@@ -7922,7 +8062,7 @@ export type Database = {
       }
       evidence_cleanup_mark: { Args: { p_ids: string[] }; Returns: number }
       generate_shifts: {
-        Args: { p_month: number; p_year: number }
+        Args: { p_month: number; p_service_id?: string; p_year: number }
         Returns: Json
       }
       geo_distance_m: {

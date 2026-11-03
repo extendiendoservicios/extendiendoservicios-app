@@ -45,7 +45,7 @@ $$;
 
 grant execute on function tests_0044.as_user(text) to authenticated, anon;
 
-select plan(56);
+select plan(57);
 
 -- Estructura -----------------------------------------------------------------------------------
 
@@ -241,6 +241,11 @@ select tests_0044.as_user('test-db044-supervisora@example.com');
 select throws_ok('prev_emp', 'P0001', 'No tenés permiso para hacer esto.', 'preview: un supervisor no puede (FORBIDDEN)');
 select throws_ok('del_emp', 'P0001', 'No tenés permiso para hacer esto.', 'delete_service: un supervisor no puede (FORBIDDEN)');
 
+-- 0081: delete_service es solo del dueño; el administrador (con o sin capacidades) recibe FORBIDDEN.
+set local role postgres;
+select tests_0044.as_user('test-db044-admin@example.com');
+select throws_ok('del_emp', 'P0001', 'No tenés permiso para hacer esto.', 'delete_service: un administrador no puede (FORBIDDEN, solo el dueño, 0081)');
+
 set local role postgres;
 set local role anon;
 select throws_ok('prev_emp', '42501', null, 'preview: anon no tiene permiso de ejecución');
@@ -249,7 +254,7 @@ select throws_ok('del_emp', '42501', null, 'delete_service: anon no tiene permis
 -- Vista previa (admin sin capacidades: editar servicios no exige ninguna) -------------------------
 
 set local role postgres;
-select tests_0044.as_user('test-db044-admin@example.com');
+select tests_0044.as_user('test-db044-owner@example.com');
 
 select is(
   (select public.service_delete_preview('f4400000-0000-0000-0000-000000000031')),
@@ -351,7 +356,7 @@ select is(
 select is(
   (select actor_id from public.security_events
     where event_type = 'service_deleted' and details ->> 'service_id' = 'f4400000-0000-0000-0000-000000000031'),
-  'f4400000-0000-0000-0000-000000000082'::uuid,
+  'f4400000-0000-0000-0000-000000000081'::uuid,
   'delete_service: el evento registra a quien borró'
 );
 
@@ -375,10 +380,10 @@ select is(
   'true',
   'preview: un admin con capacidades puede'
 );
-select is(
-  (select public.delete_service('f4400000-0000-0000-0000-000000000042') ->> 'service_id'),
-  'f4400000-0000-0000-0000-000000000042',
-  'delete_service: un admin con capacidades puede'
+select throws_ok(
+  $$select public.delete_service('f4400000-0000-0000-0000-000000000042')$$,
+  'P0001', 'No tenés permiso para hacer esto.',
+  'delete_service: un admin con capacidades tampoco puede (solo el dueño, 0081)'
 );
 
 select * from finish();

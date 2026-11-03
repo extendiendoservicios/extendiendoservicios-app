@@ -124,8 +124,8 @@ export function mapTodayShiftRow(row: TodayRawRow): TodayShift {
     siteCity: row.site_city,
     siteLatitude: row.site_latitude,
     siteLongitude: row.site_longitude,
-    siteContactName: row.site_contact_name ?? null,
-    siteContactPhone: row.site_contact_phone ?? null,
+    siteContactName: null, // OD-24 (0081): el contacto de la sede ya no llega al celular
+    siteContactPhone: null,
     accessInstructions: row.access_instructions ?? null,
     buildingHours: row.building_hours ?? null,
     restrictionsNotes: row.restrictions_notes ?? null,

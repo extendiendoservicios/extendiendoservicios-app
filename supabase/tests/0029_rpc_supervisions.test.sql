@@ -565,11 +565,7 @@ select ok(
   'v_my_supervisions: assigned_employees incluye check_in_at por empleado ("inicio real", 0029, SUP-03)'
 );
 
-select is(
-  (select site_contact_phone from public.v_my_supervisions where shift_id = 'e2900000-0000-0000-0000-000000000101'),
-  '+54 11 4000-0000',
-  'v_my_supervisions: site_contact_phone (0029, SUP-03)'
-);
+select hasnt_column('public', 'v_my_supervisions', 'site_contact_phone', 'v_my_supervisions: ya no trae el contacto de la sede (0081, OD-24)');
 
 select is(
   (select site_restrictions_notes from public.v_my_supervisions where shift_id = 'e2900000-0000-0000-0000-000000000101'),

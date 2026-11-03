@@ -2843,3 +2843,20 @@ ningún caso rechazado toque el stock.
 `src/lib/database.types.ts` se genera con `pnpm db:types` (`supabase gen types --linked`) contra
 el proyecto vinculado. Se regenera siempre que cambia el esquema público y se commitea junto con
 la migración; el CI falla si queda diferencia (`git diff --exit-code`, DB-021).
+
+## Migración 0081 (P27.1b): contacto de la sede, generar por servicio y borrado solo del dueño
+
+- **OD-24, contacto de la sede (`sites.contact_name`, `sites.contact_phone`)**: solo dueños y administradores.
+  `v_my_day`, `v_my_history`, `v_my_supervisions`, `v_supervisor_today` y `app.supervisor_today()` dejan de devolver
+  `site_contact_name` / `site_contact_phone` (se recrearon con `security_invoker = true` y `select` a `authenticated`).
+  En `sites` se revocó el `select` de tabla a `authenticated` y se concedió por columna todo menos las dos del contacto:
+  empleado y coordinador no lo leen por `select` directo, ni por `select *`, ni por `to_jsonb(sites)`. Como un grant de
+  columna es por rol de base, tampoco lo lee el administrador con `select` directo: dueños y administradores lo leen por la
+  vista `v_site_contacts` (`site_id`, `client_id`, `contact_name`, `contact_phone`), que filtra `app.is_admin()` y queda
+  vacía para el resto. Escribir el contacto sigue por `insert`/`update` sobre `sites` (política `sites_write_admin`).
+  Una columna nueva de `sites` necesita su `grant select (columna)` explícito.
+- **OD-27, `generate_shifts(p_year int, p_month int, p_service_id uuid default null)`**: con `p_service_id` genera solo los
+  turnos de ese servicio (desde su `valid_from`, mismas reglas); sin él, igual que antes. `SERVICE_NOT_FOUND` si no existe.
+  La firma de 2 argumentos se reemplazó (no coexisten); las llamadas con 2 argumentos siguen funcionando.
+- **`delete_service(uuid)`**: solo el dueño (`FORBIDDEN` para administradores). El cuerpo pasó a `app.delete_service_core(uuid)`
+  (no ejecutable por `authenticated`) y `public.delete_service` es un envoltorio con `app.require_role('owner')`.

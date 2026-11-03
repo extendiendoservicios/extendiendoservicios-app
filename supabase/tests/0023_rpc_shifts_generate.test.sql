@@ -53,7 +53,7 @@ grant execute on function tests_0023b.as_user(text) to authenticated, anon;
 
 select plan(17);
 
-select has_function('public', 'generate_shifts', array['int', 'int'], 'existe public.generate_shifts(int, int)');
+select has_function('public', 'generate_shifts', array['int', 'int', 'uuid'], 'existe public.generate_shifts(int, int, uuid)');
 
 -- ---------------------------------------------------------------------------------------------
 -- Fixtures: un cliente activo con dos sedes (una activa, una inactiva), un cliente suspendido;

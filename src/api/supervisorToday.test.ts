@@ -142,8 +142,8 @@ describe('fetchSupervisorToday', () => {
     )
     const shifts = await fetchSupervisorToday()
     expect(shifts[0]).toMatchObject({
-      siteContactName: 'Rosa Pérez',
-      siteContactPhone: '11 5555-1234',
+      siteContactName: null,
+      siteContactPhone: null,
       accessInstructions: 'Timbre 3B',
       buildingHours: 'Lunes a viernes de 7 a 20',
       restrictionsNotes: 'No mover los equipos',

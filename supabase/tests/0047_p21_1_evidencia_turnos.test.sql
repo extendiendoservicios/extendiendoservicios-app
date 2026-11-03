@@ -345,7 +345,7 @@ insert into public.shift_media (id, shift_id, assignment_id, uploaded_by, kind, 
    'f4710000-0000-0000-0000-000000000111/f4710000-0000-0000-0000-0000000000c1.jpg',
    'f4710000-0000-0000-0000-000000000111/f4710000-0000-0000-0000-0000000000c1_thumb.jpg', 1000, now());
 
-select tests_0047b.as_user('test-db0472-admin@example.com');
+select tests_0047b.as_user('test-db0472-owner@example.com');
 select is(
   (select b ->> 'reasons' from jsonb_array_elements(public.service_delete_preview('f4710000-0000-0000-0000-000000000023') -> 'blocking_shifts') as b),
   '["SHIFT_MEDIA"]', 'service_delete_preview: la evidencia bloquea el borrado'
