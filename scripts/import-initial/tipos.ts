@@ -72,6 +72,8 @@ export interface PlanCliente {
   direccion: string | null
   latitud: number | null
   longitud: number | null
+  /** Nombre de la categoría tal como se escribió en la planilla (OD-20); `null` = sin categoría. */
+  categoria: string | null
   estado: EstadoCliente
   notas: string | null
 }
