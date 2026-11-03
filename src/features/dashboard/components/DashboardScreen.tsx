@@ -18,7 +18,6 @@ import {
 } from '@/features/planning/permissions'
 import { useShiftsByDateQuery } from '@/features/shifts/queries'
 import { StorageAlert } from '@/features/media/components/StorageAlert'
-import { useSupervisorStatusQuery } from '@/features/geo/queries'
 import { formatDateOnly } from '@/features/settings/dateOnly'
 import { computeAttention, type AttentionItem } from '../attention'
 import { computeKpis, shiftStartInstant, siteIdsInCurrentWindow } from '../kpis'
@@ -63,7 +62,6 @@ function DashboardScreen() {
 
   const shiftsQuery = useShiftsByDateQuery(today, true)
   const boardQuery = useAttendanceBoardByDateQuery(today, {}, true)
-  const supervisorStatusQuery = useSupervisorStatusQuery()
 
   const shifts = useMemo(() => shiftsQuery.data ?? [], [shiftsQuery.data])
   // `v_assignments_board` solo trae la razón social; el resto del tablero
@@ -194,10 +192,7 @@ function DashboardScreen() {
 
       <PresenceMap siteIdsInWindow={siteIdsInWindow} />
 
-      <SupervisionsTodayBlock
-        rows={supervisorStatusQuery.data ?? []}
-        isLoading={supervisorStatusQuery.isLoading}
-      />
+      <SupervisionsTodayBlock />
 
       {recordTarget && (
         <RecordAttendanceSheet

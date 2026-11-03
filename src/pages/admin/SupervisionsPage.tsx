@@ -6,14 +6,15 @@ import {
 
 /**
  * `/admin/supervisiones` (ADM-13 "Supervisiones · listado", SUP-010, `05`
- * línea 57): pestaña por `?pestana=calificaciones` (`05` sección 5), igual
+ * línea 57): pestaña por `?pestana=calificaciones` o `?pestana=jornadas` (`05` sección 5, OD-05), igual
  * criterio que `EmployeeDetailPage` para `?pestana=`.
  */
 export default function SupervisionsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const pestana = searchParams.get('pestana')
   const tab: SupervisionsAdminTab =
-    searchParams.get('pestana') === 'calificaciones'
-      ? 'calificaciones'
+    pestana === 'calificaciones' || pestana === 'jornadas'
+      ? pestana
       : 'supervisiones'
 
   function handleTabChange(next: SupervisionsAdminTab) {

@@ -10,6 +10,8 @@ import { z } from 'zod'
 
 const reasonSchema = z.string().trim().min(1, 'Escribí el motivo.')
 const MAX_PAUSE_REASON = 200
+/** `admin_correct_workday_event` admite hasta 300 (`REASON_TOO_LONG`). */
+const MAX_CORRECTED_PAUSE_REASON = 300
 
 export const INVALID_RANGE_MESSAGE =
   'El inicio tiene que ser anterior al fin: revisá las horas que elegiste.'
@@ -19,6 +21,15 @@ export const SAME_DAY_MESSAGE =
 /** «Corregir hora» de un evento de la jornada. */
 export const correctWorkdayEventSchema = z.object({
   at: z.string().trim().min(1, 'Indicá la hora nueva.'),
+  /** OD-07: motivo de la pausa (solo si el evento es una pausa); vacío lo borra. */
+  pauseReason: z
+    .string()
+    .trim()
+    .max(
+      MAX_CORRECTED_PAUSE_REASON,
+      `El motivo de la pausa admite hasta ${MAX_CORRECTED_PAUSE_REASON} caracteres.`,
+    )
+    .optional(),
   reason: reasonSchema,
 })
 export type CorrectWorkdayEventFormValues = z.infer<
@@ -79,3 +90,32 @@ export const recordWorkdaySchema = z
     }
   })
 export type RecordWorkdayFormValues = z.infer<typeof recordWorkdaySchema>
+
+/**
+ * «Finalizar jornada» (OD-06) y «Cerrar pausa» (OD-07): la hora (por defecto
+ * ahora; el rango lo valida el diálogo con `workdayTimeBounds`) y el motivo
+ * obligatorio.
+ */
+export const workdayActionSchema = z.object({
+  at: z.string().trim().min(1, 'Indicá la hora.'),
+  reason: reasonSchema,
+})
+export type WorkdayActionFormValues = z.infer<typeof workdayActionSchema>
+
+/**
+ * «Corregir horas» de una supervisión (OD-07): inicio y, si ya tiene fin,
+ * fin, con motivo obligatorio. El fin tiene que ser posterior al inicio.
+ */
+export const correctSupervisionTimeSchema = z
+  .object({
+    startAt: z.string().trim().min(1, 'Indicá la hora de inicio.'),
+    endAt: z.string().trim().optional(),
+    reason: reasonSchema,
+  })
+  .refine((values) => !values.endAt || values.startAt < values.endAt, {
+    path: ['endAt'],
+    message: 'El fin tiene que ser posterior al inicio.',
+  })
+export type CorrectSupervisionTimeFormValues = z.infer<
+  typeof correctSupervisionTimeSchema
+>
