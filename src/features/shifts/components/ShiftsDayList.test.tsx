@@ -23,7 +23,14 @@ vi.mock('@/features/employees/employeeLeaveStatus', () => ({
 vi.mock('@/features/employees/queries', () => ({
   // OD-14: Ana tiene licencia ese día.
   useLeavesInRangeQuery: () => ({
-    data: [{ employeeId: 'e1', startsOn: '2026-10-20', endsOn: '2026-10-22' }],
+    data: [
+      {
+        employeeId: 'e1',
+        startsOn: '2026-10-20',
+        endsOn: '2026-10-22',
+        reason: 'Franco',
+      },
+    ],
   }),
   useEmployeesQuery: () => ({
     data: [{ profileId: 'e1', firstName: 'Ana', lastName: 'Gómez' }],
@@ -153,6 +160,21 @@ describe('ShiftsDayList: filtros, color por estado y licencias (P27.5)', () => {
   it('OD-14: lista a quienes están de licencia ese día', () => {
     renderList()
     expect(screen.getByTestId('day-leaves')).toHaveTextContent('Ana Gómez')
+  })
+
+  it('P27.10b: la licencia del día muestra también el motivo', () => {
+    renderList()
+    expect(screen.getByTestId('day-leaves')).toHaveTextContent(
+      'Ana Gómez (Franco)',
+    )
+  })
+
+  it('P27.10b: el cliente · sede largo se trunca con el texto completo en el título', () => {
+    renderList()
+    const cell = screen.getByTitle(
+      'Cliente con un nombre larguísimo · Sede Central',
+    )
+    expect(cell.className).toContain('truncate')
   })
 
   it('OD-14: con otro empleado filtrado no aparecen las licencias de Ana', () => {

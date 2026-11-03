@@ -84,6 +84,32 @@ const todayWorkday = makeWorkday({
   openPauseEventId: 'e-pause',
 })
 
+describe('CoordinatorCards: sin iniciar (P27.10b)', () => {
+  it('con muchos sin iniciar muestra algunos y «y N más» expande el resto', () => {
+    statusMock.mockReturnValue({
+      data: ['A', 'B', 'C', 'D', 'E', 'F'].map((letter) =>
+        makeStatusRow({
+          supervisorId: letter,
+          firstName: letter,
+          lastName: 'Ruiz',
+          status: 'not_started',
+          startedAt: null,
+          workdayId: null,
+        }),
+      ),
+      isLoading: false,
+    })
+    renderCards(true)
+    const line = screen.getByTestId('coordinators-not-started')
+    expect(line).toHaveTextContent('Sin iniciar (6):')
+    expect(line).not.toHaveTextContent('F Ruiz')
+    fireEvent.click(screen.getByRole('button', { name: 'y 2 más' }))
+    expect(screen.getByTestId('coordinators-not-started')).toHaveTextContent(
+      'F Ruiz',
+    )
+  })
+})
+
 describe('CoordinatorCards (OD-04)', () => {
   it('hoy: una tarjeta por coordinador con estado, inicio, pausa con motivo y horas netas', () => {
     statusMock.mockReturnValue({ data: todayStatus, isLoading: false })
@@ -98,11 +124,13 @@ describe('CoordinatorCards (OD-04)', () => {
     expect(ana).toHaveTextContent('08:00')
     expect(ana).toHaveTextContent('12:00 a 12:30 · Almuerzo')
     expect(ana).toHaveTextContent('2 h 5 min')
-    const carla = screen.getByRole('article', {
-      name: 'Coordinador Carla Luna',
-    })
-    expect(carla).toHaveTextContent('Sin iniciar')
-    expect(carla).toHaveTextContent('De licencia')
+    // P27.10b: quien no inició no tiene tarjeta, va en una línea compacta.
+    expect(
+      screen.queryByRole('article', { name: 'Coordinador Carla Luna' }),
+    ).toBeNull()
+    expect(screen.getByTestId('coordinators-not-started')).toHaveTextContent(
+      'Sin iniciar (1): Carla Luna (de licencia)',
+    )
     expect(
       screen.queryByRole('button', { name: 'Ver actividad de Carla Luna' }),
     ).toBeNull()

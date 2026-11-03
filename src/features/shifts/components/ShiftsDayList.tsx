@@ -43,7 +43,9 @@ import {
   describeCalendarFilters,
   filterShiftsOfDay,
   hasActiveFilters,
+  leaveEntryText,
   visibleLeaves,
+  type LeaveEntry,
 } from '@/features/planning/calendarFilters'
 import { useCalendarFilters } from '@/features/planning/useCalendarFilters'
 import {
@@ -145,20 +147,25 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
 
   // OD-14: quiénes están de licencia ese día.
   const leavesQuery = useLeavesInRangeQuery(date, date)
-  const leaveNames = useMemo(() => {
+  const leaveEntries = useMemo<LeaveEntry[]>(() => {
     const nameOf = new Map(
       (employeeOptions ?? []).map((employee) => [
         employee.profileId,
         `${employee.firstName} ${employee.lastName}`,
       ]),
     )
-    return [
-      ...new Set(
-        visibleLeaves(leavesQuery.data ?? [], filters).map(
-          (leave) => nameOf.get(leave.employeeId) ?? 'Empleado',
-        ),
-      ),
-    ].sort((a, b) => a.localeCompare(b, 'es'))
+    // P27.10b: nombre y motivo; si una persona tiene dos licencias ese día, una sola vez.
+    const seen = new Set<string>()
+    const entries: LeaveEntry[] = []
+    for (const leave of visibleLeaves(leavesQuery.data ?? [], filters)) {
+      if (seen.has(leave.employeeId)) continue
+      seen.add(leave.employeeId)
+      entries.push({
+        name: nameOf.get(leave.employeeId) ?? 'Empleado',
+        reason: leave.reason?.trim() || null,
+      })
+    }
+    return entries.sort((a, b) => a.name.localeCompare(b.name, 'es'))
   }, [leavesQuery.data, filters, employeeOptions])
 
   const columns: DataTableColumnDef<ShiftListRow>[] = [
@@ -194,12 +201,12 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
             status: row.original.displayStatus as BadgeShiftStatus,
           })
           return (
-            <span className="flex items-center gap-1">
+            <span className="flex min-w-0 items-center gap-1">
               <Badge
                 data-testid="status-colored-cell"
                 variant={meta.variant}
                 title={label}
-                className="block min-w-0 truncate rounded px-1.5 py-0.5 text-[12px] font-medium"
+                className="block max-w-full min-w-0 shrink truncate rounded px-1.5 py-0.5 text-[12px] font-medium"
               >
                 <span className="sr-only">{meta.label}: </span>
                 {label}
@@ -209,12 +216,12 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
           )
         }
         return (
-          <span className="flex items-center gap-1">
+          <span className="flex min-w-0 items-center gap-1">
             <span
               className={
                 colors
-                  ? `flex min-w-0 items-center gap-[5px] rounded px-1.5 py-0.5 ${row.original.displayStatus === 'cancelled' ? 'line-through opacity-70' : ''}`
-                  : 'min-w-0 truncate'
+                  ? `flex min-w-0 shrink items-center gap-[5px] overflow-hidden rounded px-1.5 py-0.5 ${row.original.displayStatus === 'cancelled' ? 'line-through opacity-70' : ''}`
+                  : 'block min-w-0 truncate'
               }
               style={
                 colors
@@ -441,7 +448,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
                 supervisorsOfShift={(shiftId) =>
                   peopleOfShift(people, shiftId).supervisors
                 }
-                leaveNames={leaveNames}
+                leaveEntries={leaveEntries}
                 colorBy={colorBy}
               />
             </CalendarPrintButton>
@@ -502,16 +509,18 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
         </div>
       )}
 
-      {leaveNames.length > 0 && (
+      {leaveEntries.length > 0 && (
         <section
           aria-label="De licencia"
           data-testid="day-leaves"
           className="rounded-lg border border-dashed border-border-strong bg-secondary/40 px-3 py-2"
         >
           <h3 className="text-[12.5px] font-semibold text-text-3">
-            De licencia ({leaveNames.length})
+            De licencia ({leaveEntries.length})
           </h3>
-          <p className="text-[13px] text-text-2">{leaveNames.join(', ')}</p>
+          <p className="text-[13px] text-text-2">
+            {leaveEntries.map(leaveEntryText).join(', ')}
+          </p>
         </section>
       )}
 

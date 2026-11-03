@@ -96,7 +96,7 @@ function AllWorkdaysTab() {
               onValueChange={(next) =>
                 setDateFrom(next ? localDateToIsoDate(next) : '')
               }
-              className="w-44"
+              className="w-60 max-w-full"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -107,7 +107,7 @@ function AllWorkdaysTab() {
               onValueChange={(next) =>
                 setDateTo(next ? localDateToIsoDate(next) : '')
               }
-              className="w-44"
+              className="w-60 max-w-full"
             />
           </div>
           <Select value={supervisorId} onValueChange={setSupervisorId}>

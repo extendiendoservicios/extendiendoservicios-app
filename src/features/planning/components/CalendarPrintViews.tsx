@@ -253,7 +253,7 @@ interface DayPrintProps {
   /** Nombres de los asignados por turno. */
   employeesOfShift: (shiftId: string) => string[]
   supervisorsOfShift: (shiftId: string) => string[]
-  leaveNames: string[]
+  leaveEntries: LeaveEntry[]
   colorBy: ColorBy
 }
 
@@ -261,7 +261,7 @@ function DayPrint({
   shifts,
   employeesOfShift,
   supervisorsOfShift,
-  leaveNames,
+  leaveEntries,
   colorBy,
 }: DayPrintProps) {
   return (
@@ -320,9 +320,10 @@ function DayPrint({
           ))}
         </tbody>
       </table>
-      {leaveNames.length > 0 && (
+      {leaveEntries.length > 0 && (
         <p className="text-[9pt]">
-          <strong>De licencia:</strong> {leaveNames.join(', ')}
+          <strong>De licencia:</strong>{' '}
+          {leaveEntries.map(leaveEntryText).join(', ')}
         </p>
       )}
     </div>
