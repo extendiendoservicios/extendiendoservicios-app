@@ -100,7 +100,7 @@ export default function ShiftsGeneratePage() {
       <EmptyState
         icon={CalendarRange}
         title="No tenés permiso para generar turnos"
-        description="Pedile a la dueña o a un administrador con esa capacidad que lo haga."
+        description="Pedile a la dirección o a la administración con esa capacidad que lo haga."
       />
     )
   }

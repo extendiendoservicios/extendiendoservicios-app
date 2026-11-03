@@ -434,7 +434,7 @@ function CreateShiftForm({
       <EmptyState
         icon={CalendarClock}
         title="No tenés permiso para crear turnos"
-        description="Pedile a la dueña o a un administrador que lo haga."
+        description="Pedile a la dirección o a la administración que lo haga."
       />
     )
   }
@@ -1074,7 +1074,7 @@ function EditShiftTimeForm({
       <EmptyState
         icon={CalendarClock}
         title="No tenés permiso para editar turnos"
-        description="Pedile a la dueña o a un administrador que lo haga."
+        description="Pedile a la dirección o a la administración que lo haga."
       />
     )
   }

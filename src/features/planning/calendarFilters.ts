@@ -224,14 +224,47 @@ export function leaveEmployeesByDate(
   return byDate
 }
 
+/** P27.5: quién está de licencia un día y con qué motivo. */
+export interface LeaveEntry {
+  name: string
+  reason: string | null
+}
+
+/** Motivo de la licencia que cubre ese día para ese empleado (vacío = sin motivo). */
+export function leaveReasonOn(
+  leaves: readonly LeaveInRange[],
+  employeeId: string,
+  date: string,
+): string | null {
+  const leave = leaves.find(
+    (item) => item.employeeId === employeeId && leaveCoversDate(item, date),
+  )
+  return leave?.reason?.trim() || null
+}
+
+/** Rótulo de una licencia: su motivo («Franco») o «Licencia» si no tiene. */
+export function leaveReasonLabel(reason: string | null | undefined): string {
+  return reason?.trim() || 'Licencia'
+}
+
+/** Nombre y motivo para un título o listado: `Ana Gómez (Franco)`. */
+export function leaveEntryText(entry: LeaveEntry): string {
+  const reason = entry.reason?.trim()
+  return reason ? `${entry.name} (${reason})` : entry.name
+}
+
 /**
  * Texto corto de las licencias de un día para una celda del mes: con una
- * persona, `Licencia: Ana Gómez`; con varias, `3 licencias` (los nombres van
- * en el título de la celda).
+ * persona, `Franco: Ana Gómez` (o `Licencia: Ana Gómez` si no tiene motivo);
+ * con varias, `3 licencias` (los nombres y motivos van en el título de la
+ * celda).
  */
-export function leaveSummaryLabel(names: readonly string[]): string {
+export function leaveSummaryLabel(
+  names: readonly string[],
+  reasons: readonly (string | null)[] = [],
+): string {
   if (names.length === 1) {
-    return `Licencia: ${names[0]}`
+    return `${leaveReasonLabel(reasons[0])}: ${names[0]}`
   }
   return `${names.length} licencias`
 }

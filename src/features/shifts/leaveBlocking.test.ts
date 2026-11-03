@@ -2,9 +2,19 @@ import { describe, expect, it } from 'vitest'
 import { employeesOnLeaveIn } from './leaveBlocking'
 
 const LEAVES = [
-  { employeeId: 'e1', startsOn: '2026-10-10', endsOn: '2026-10-15' },
-  { employeeId: 'e2', startsOn: '2026-10-20', endsOn: null },
-  { employeeId: 'e3', startsOn: '2026-11-01', endsOn: '2026-11-05' },
+  {
+    employeeId: 'e1',
+    startsOn: '2026-10-10',
+    endsOn: '2026-10-15',
+    reason: null,
+  },
+  { employeeId: 'e2', startsOn: '2026-10-20', endsOn: null, reason: null },
+  {
+    employeeId: 'e3',
+    startsOn: '2026-11-01',
+    endsOn: '2026-11-05',
+    reason: null,
+  },
 ]
 
 describe('employeesOnLeaveIn', () => {

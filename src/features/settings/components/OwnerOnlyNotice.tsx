@@ -12,8 +12,8 @@ function OwnerOnlyNotice() {
   return (
     <EmptyState
       icon={ShieldAlert}
-      title="Esta sección es solo para el dueño de la cuenta"
-      description="Si necesitás algo de acá, pedíselo al dueño."
+      title="Esta sección es solo para la dirección de la cuenta"
+      description="Si necesitás algo de acá, pedíselo a la dirección."
     />
   )
 }

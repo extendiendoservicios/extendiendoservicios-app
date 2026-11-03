@@ -569,10 +569,14 @@ export async function fetchActiveServicesCountForMonth(
 export async function generateShifts(
   year: number,
   month: number,
+  serviceId?: string,
 ): Promise<GenerateShiftsResult> {
+  // OD-27: con `serviceId` se limita la generación a ese servicio
+  // (error `SERVICE_NOT_FOUND` si no existe o no está activo).
   const { data, error } = await supabase.rpc('generate_shifts', {
     p_year: year,
     p_month: month,
+    ...(serviceId ? { p_service_id: serviceId } : {}),
   })
 
   if (error) {

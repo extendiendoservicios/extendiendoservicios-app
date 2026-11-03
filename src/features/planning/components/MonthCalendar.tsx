@@ -25,7 +25,10 @@ import { useColorBy } from '@/features/planning/colorBy'
 import {
   describeCalendarFilters,
   leaveEmployeesByDate,
+  leaveEntryText,
+  leaveReasonOn,
   leaveSummaryLabel,
+  type LeaveEntry,
   toBoardFilters,
   visibleLeaves,
 } from '@/features/planning/calendarFilters'
@@ -130,14 +133,18 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
         `${employee.firstName} ${employee.lastName}`,
       ]),
     )
+    const visible = visibleLeaves(leavesQuery.data ?? [], filters)
     const byDate = leaveEmployeesByDate(
-      visibleLeaves(leavesQuery.data ?? [], filters),
+      visible,
       gridDays.map((day) => day.date),
     )
-    return new Map(
+    return new Map<string, LeaveEntry[]>(
       [...byDate].map(([date, ids]) => [
         date,
-        ids.map((id) => nameOf.get(id) ?? 'Empleado'),
+        ids.map((id) => ({
+          name: nameOf.get(id) ?? 'Empleado',
+          reason: leaveReasonOn(visible, id, date),
+        })),
       ]),
     )
   }, [leavesQuery.data, filters, gridDays, employeeOptions])
@@ -296,10 +303,13 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
                     {dayLeaves.length > 0 && (
                       <span
                         data-testid="leave-chip"
-                        title={`De licencia: ${dayLeaves.join(', ')}`}
+                        title={`De licencia: ${dayLeaves.map(leaveEntryText).join(', ')}`}
                         className="block w-full min-w-0 truncate rounded border border-dashed border-border-strong bg-secondary px-1.5 py-0.5 text-[10.5px] font-medium text-text-2"
                       >
-                        {leaveSummaryLabel(dayLeaves)}
+                        {leaveSummaryLabel(
+                          dayLeaves.map((entry) => entry.name),
+                          dayLeaves.map((entry) => entry.reason),
+                        )}
                       </span>
                     )}
                   </div>
@@ -332,7 +342,10 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
                       {dayShifts.length} turno
                       {dayShifts.length === 1 ? '' : 's'}
                       {dayLeaves.length > 0 &&
-                        ` · ${leaveSummaryLabel(dayLeaves)}`}
+                        ` · ${leaveSummaryLabel(
+                          dayLeaves.map((entry) => entry.name),
+                          dayLeaves.map((entry) => entry.reason),
+                        )}`}
                     </span>
                   </button>
                 </li>

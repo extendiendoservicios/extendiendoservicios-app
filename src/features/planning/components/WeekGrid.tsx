@@ -27,6 +27,8 @@ import { useColorBy } from '@/features/planning/colorBy'
 import {
   describeCalendarFilters,
   leaveEmployeesByDate,
+  leaveReasonLabel,
+  leaveReasonOn,
   toBoardFilters,
   visibleLeaves,
 } from '@/features/planning/calendarFilters'
@@ -185,14 +187,17 @@ function WeekGrid() {
 
   // OD-14: licencias de la semana por día.
   const leavesQuery = useLeavesInRangeQuery(weekDays[0], weekDays[6])
-  const leaveIdsByDate = useMemo(
-    () =>
-      leaveEmployeesByDate(
-        visibleLeaves(leavesQuery.data ?? [], filters),
-        weekDays,
-      ),
-    [leavesQuery.data, filters, weekDays],
+  const shownLeaves = useMemo(
+    () => visibleLeaves(leavesQuery.data ?? [], filters),
+    [leavesQuery.data, filters],
   )
+  const leaveIdsByDate = useMemo(
+    () => leaveEmployeesByDate(shownLeaves, weekDays),
+    [shownLeaves, weekDays],
+  )
+  // P27.5: la licencia muestra su motivo («Franco») en lugar de «Licencia».
+  const leaveReasonOf = (employeeId: string, day: string) =>
+    leaveReasonOn(shownLeaves, employeeId, day)
 
   // Leyenda: todos los clientes de la semana, aunque el filtro deje uno solo.
   const legendQuery = useAssignmentsBoardRangeQuery(
@@ -272,6 +277,7 @@ function WeekGrid() {
                 employees={employees}
                 assignmentsByEmployee={assignmentsByEmployee}
                 leaveIdsByDate={leaveIdsByDate}
+                leaveReasonOf={leaveReasonOf}
                 colorBy={colorBy}
               />
             </CalendarPrintButton>
@@ -362,7 +368,9 @@ function WeekGrid() {
                                 data-testid="leave-cell"
                                 className="mb-1 block truncate rounded border border-dashed border-border-strong bg-secondary px-1 py-0.5 text-[11px] font-medium text-text-2"
                               >
-                                Licencia
+                                {leaveReasonLabel(
+                                  leaveReasonOf(employee.profileId, day),
+                                )}
                               </span>
                             )}
                             {dayAssignments.length === 0 ? (
@@ -493,7 +501,9 @@ function WeekGrid() {
                         data-testid="leave-cell"
                         className="text-[13px] font-medium text-text-2"
                       >
-                        Licencia
+                        {leaveReasonLabel(
+                          leaveReasonOf(mobileEmployee.profileId, day),
+                        )}
                       </p>
                     )}
                     {dayAssignments.length === 0 ? (

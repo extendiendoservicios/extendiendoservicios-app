@@ -6,6 +6,9 @@ import {
   hasActiveFilters,
   leaveCoversDate,
   leaveEmployeesByDate,
+  leaveEntryText,
+  leaveReasonLabel,
+  leaveReasonOn,
   leaveSummaryLabel,
   readCalendarFilters,
   toBoardFilters,
@@ -15,8 +18,13 @@ import {
 } from './calendarFilters'
 
 const LEAVES = [
-  { employeeId: 'e1', startsOn: '2026-10-05', endsOn: '2026-10-07' },
-  { employeeId: 'e2', startsOn: '2026-10-06', endsOn: null },
+  {
+    employeeId: 'e1',
+    startsOn: '2026-10-05',
+    endsOn: '2026-10-07',
+    reason: null,
+  },
+  { employeeId: 'e2', startsOn: '2026-10-06', endsOn: null, reason: 'Franco' },
 ]
 
 describe('filtros en la URL', () => {
@@ -193,6 +201,24 @@ describe('licencias en el calendario (OD-14)', () => {
 
   it('leaveSummaryLabel nombra a uno solo y cuenta a varios', () => {
     expect(leaveSummaryLabel(['Ana Gómez'])).toBe('Licencia: Ana Gómez')
+    expect(leaveSummaryLabel(['Ana Gómez'], ['Franco'])).toBe(
+      'Franco: Ana Gómez',
+    )
     expect(leaveSummaryLabel(['Ana Gómez', 'Luis Díaz'])).toBe('2 licencias')
+  })
+
+  it('leaveReasonOn devuelve el motivo de la licencia de ese día', () => {
+    expect(leaveReasonOn(LEAVES, 'e2', '2026-10-06')).toBe('Franco')
+    expect(leaveReasonOn(LEAVES, 'e1', '2026-10-06')).toBeNull()
+    expect(leaveReasonOn(LEAVES, 'e2', '2026-10-01')).toBeNull()
+  })
+
+  it('leaveReasonLabel y leaveEntryText usan el motivo o «Licencia»', () => {
+    expect(leaveReasonLabel('Franco')).toBe('Franco')
+    expect(leaveReasonLabel(null)).toBe('Licencia')
+    expect(leaveEntryText({ name: 'Ana', reason: 'Franco' })).toBe(
+      'Ana (Franco)',
+    )
+    expect(leaveEntryText({ name: 'Ana', reason: null })).toBe('Ana')
   })
 })

@@ -493,7 +493,7 @@ describe('ADM-32: conservar y eliminar de a varias (P21.8b)', () => {
     const { ApiError } = await import('@/api/errors')
     deleteManyMock.mockRejectedValue(
       new ApiError(
-        'Solo la dueña o un administrador puede hacer esto.',
+        'Solo la dirección o la administración puede hacer esto.',
         'FORBIDDEN',
       ),
     )
@@ -503,7 +503,7 @@ describe('ADM-32: conservar y eliminar de a varias (P21.8b)', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Eliminar' }))
     await waitFor(() =>
       expect(toastError).toHaveBeenCalledWith(
-        'Solo la dueña o un administrador puede hacer esto.',
+        'Solo la dirección o la administración puede hacer esto.',
       ),
     )
   })

@@ -244,8 +244,8 @@ export default function CloseSupervisionPage() {
             <DialogDescription>
               Te falta calificar a:{' '}
               {pending?.map((person) => person.name).join(', ')}. Si cerrás
-              ahora, esas calificaciones quedan sin cargar; si el plazo sigue
-              abierto, después podés calificarlos desde la supervisión.
+              ahora, esas calificaciones quedan sin cargar. Si querés
+              calificarlos más tarde, volvé a supervisar el turno.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-col sm:flex-col">

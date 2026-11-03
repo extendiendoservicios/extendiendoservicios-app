@@ -9,7 +9,12 @@ import { shiftFranjaKey } from '@/features/shifts/grouping'
 import { shiftChipLabel } from '@/features/planning/grouping'
 import { clientChipColors } from '@/features/planning/clientColors'
 import type { ColorBy } from '@/features/planning/colorBy'
-import { leaveSummaryLabel } from '@/features/planning/calendarFilters'
+import {
+  leaveEntryText,
+  leaveReasonLabel,
+  leaveSummaryLabel,
+  type LeaveEntry,
+} from '@/features/planning/calendarFilters'
 
 /**
  * Contenido de la hoja impresa del calendario (OD-15): tablas estáticas, sin
@@ -73,8 +78,8 @@ function PrintLeave({ text }: { text: string }) {
 interface MonthPrintProps {
   gridDays: { date: string; isCurrentMonth: boolean }[]
   shiftsByDate: Map<string, ShiftListRow[]>
-  /** Nombres de quienes están de licencia, por fecha. */
-  leaveNamesByDate: Map<string, string[]>
+  /** Quienes están de licencia (nombre y motivo), por fecha. */
+  leaveNamesByDate: Map<string, LeaveEntry[]>
   holidayDates: ReadonlySet<string>
   colorBy: ColorBy
 }
@@ -133,8 +138,13 @@ function MonthPrint({
                     <PrintLeave
                       text={
                         leaves.length === 1
-                          ? leaveSummaryLabel(leaves)
-                          : `${leaveSummaryLabel(leaves)}: ${leaves.join(', ')}`
+                          ? leaveSummaryLabel(
+                              leaves.map((entry) => entry.name),
+                              leaves.map((entry) => entry.reason),
+                            )
+                          : `${leaves.length} licencias: ${leaves
+                              .map(leaveEntryText)
+                              .join(', ')}`
                       }
                     />
                   )}
@@ -158,6 +168,8 @@ interface WeekPrintProps {
   assignmentsByEmployee: Map<string, Map<string, AssignmentBoardRow[]>>
   /** Fecha → ids de empleados de licencia. */
   leaveIdsByDate: Map<string, string[]>
+  /** Motivo de la licencia de un empleado ese día (P27.5). */
+  leaveReasonOf: (employeeId: string, day: string) => string | null
   colorBy: ColorBy
 }
 
@@ -166,6 +178,7 @@ function WeekPrint({
   employees,
   assignmentsByEmployee,
   leaveIdsByDate,
+  leaveReasonOf,
   colorBy,
 }: WeekPrintProps) {
   return (
@@ -200,7 +213,13 @@ function WeekPrint({
                 )
                 return (
                   <td key={day} className="border border-black p-0.5 align-top">
-                    {onLeave && <PrintLeave text="Licencia" />}
+                    {onLeave && (
+                      <PrintLeave
+                        text={leaveReasonLabel(
+                          leaveReasonOf(employee.profileId, day),
+                        )}
+                      />
+                    )}
                     {assignments.map((assignment) => (
                       <PrintLine
                         key={assignment.id}

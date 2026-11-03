@@ -209,7 +209,9 @@ describe('fetchShiftMediaPage', () => {
     )
     await expect(fetchShiftMediaPage({}, 0)).rejects.toMatchObject({
       hint: 'FORBIDDEN',
-      message: expect.stringContaining('dueña o un administrador') as string,
+      message: expect.stringContaining(
+        'dirección o la administración',
+      ) as string,
     })
   })
 })
@@ -339,7 +341,7 @@ describe('setShiftMediaKeep', () => {
   })
 
   it.each([
-    ['FORBIDDEN', 'dueña o un administrador'],
+    ['FORBIDDEN', 'dirección o la administración'],
     ['KEEP_REQUIRED', 'Falta indicar'],
     ['MEDIA_NOT_FOUND', 'No encontramos el archivo'],
     ['MEDIA_EXPIRED', 'ya venció'],
@@ -488,7 +490,7 @@ describe('conservar y eliminar de a varias (P21.8b)', () => {
       (error) =>
         isApiError(error) &&
         error.hint === 'FORBIDDEN' &&
-        error.message.startsWith('Solo la dueña'),
+        error.message.startsWith('Solo la dirección'),
     )
     expect(
       mapMediaAdminError({ message: 'x', hint: 'MEDIA_TOO_MANY' }).message,

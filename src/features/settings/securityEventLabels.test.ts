@@ -8,7 +8,7 @@ import {
 describe('record_deleted en ADM-31 (OD-23)', () => {
   it('tiene etiqueta y está entre los tipos filtrables', () => {
     expect(SECURITY_EVENT_TYPE_LABELS.record_deleted).toBe(
-      'Registro eliminado por el dueño',
+      'Registro eliminado por la dirección',
     )
     expect(SECURITY_EVENT_TYPES).toContain('record_deleted')
   })

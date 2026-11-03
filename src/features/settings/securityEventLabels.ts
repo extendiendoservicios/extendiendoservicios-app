@@ -31,7 +31,7 @@ export const SECURITY_EVENT_TYPE_LABELS: Record<SecurityEventType, string> = {
   supply_price_changed: 'Precio de insumo modificado',
   credentials_viewed: 'Contraseña consultada por administración',
   password_changed_by_user: 'Contraseña cambiada por la propia persona',
-  record_deleted: 'Registro eliminado por el dueño',
+  record_deleted: 'Registro eliminado por la dirección',
 }
 
 export const SECURITY_EVENT_TYPES: SecurityEventType[] = [

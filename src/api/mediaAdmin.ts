@@ -36,7 +36,7 @@ export const MEDIA_PAGE_SIZE = 48
 // -------------------------------------------------------------------------
 
 const MEDIA_ERROR_MESSAGES: Record<string, string> = {
-  FORBIDDEN: 'Solo la dueña o un administrador puede hacer esto.',
+  FORBIDDEN: 'Solo la dirección o la administración puede hacer esto.',
   KEEP_REQUIRED: 'Falta indicar si el archivo se conserva o no.',
   MEDIA_NOT_FOUND:
     'No encontramos el archivo. Puede que lo haya quitado quien lo subió.',

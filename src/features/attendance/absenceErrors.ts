@@ -16,7 +16,7 @@ export function absenceErrorMessage(error: unknown, fallback: string): string {
     case 'TOO_LATE_TO_NOTIFY':
       return 'Ya no se puede avisar la ausencia de esta asignación.'
     case 'FORBIDDEN':
-      return 'No tenés permiso para registrar ausencias. Pedíselo a la dueña.'
+      return 'No tenés permiso para registrar ausencias. Pedíselo a la dirección.'
     case 'NO_ABSENCE':
       return 'Esta asignación no tiene una ausencia avisada.'
     default:
