@@ -158,7 +158,7 @@ function ClientsListTab() {
     {
       id: 'name',
       header: 'Nombre',
-      meta: { card: 'title' },
+      meta: { card: 'title', width: '26%' },
       cell: ({ row }) => {
         const client = row.original
         const primaryName = client.tradeName ?? client.legalName
@@ -173,10 +173,17 @@ function ClientsListTab() {
               name={primaryName}
               src={client.photoPath ? clientPhotoUrl(client.photoPath) : null}
             />
-            <span className="min-w-0">
+            <span
+              className="block min-w-0 truncate"
+              title={
+                secondaryName
+                  ? `${primaryName} · ${secondaryName}`
+                  : primaryName
+              }
+            >
               {primaryName}
               {secondaryName && (
-                <span className="block text-[11px] font-normal text-text-3">
+                <span className="block truncate text-[11px] font-normal text-text-3">
                   {secondaryName}
                 </span>
               )}
@@ -188,7 +195,7 @@ function ClientsListTab() {
     {
       id: 'cuit',
       header: 'CUIT',
-      meta: { card: 'meta', cardLabel: 'CUIT' },
+      meta: { card: 'meta', cardLabel: 'CUIT', width: '13%' },
       cell: ({ row }) => (
         <span className="whitespace-nowrap">
           {formatTaxId(row.original.cuit) ?? '—'}
@@ -202,27 +209,44 @@ function ClientsListTab() {
       // "Sedes", no "Sedes activas", para no prometer un filtro que la
       // vista no hace (decisión menor, ver el reporte del encargo).
       header: 'Sedes',
-      meta: { card: 'meta', cardLabel: 'Sedes', align: 'end' },
+      meta: { card: 'meta', cardLabel: 'Sedes', align: 'end', width: '7%' },
       cell: ({ row }) => row.original.sitesCount,
     },
     {
       id: 'activeServices',
       header: 'Servicios activos',
-      meta: { card: 'meta', cardLabel: 'Servicios activos', align: 'end' },
+      meta: {
+        card: 'meta',
+        cardLabel: 'Servicios activos',
+        align: 'end',
+        width: '10%',
+      },
       cell: ({ row }) => row.original.activeServicesCount,
     },
     {
       id: 'primaryContact',
       header: 'Contacto principal',
-      meta: { card: 'meta', cardLabel: 'Contacto principal' },
-      cell: ({ row }) => row.original.primaryContactName ?? '—',
+      meta: { card: 'meta', cardLabel: 'Contacto principal', width: '19%' },
+      cell: ({ row }) => (
+        <span
+          className="block truncate"
+          title={row.original.primaryContactName ?? undefined}
+        >
+          {row.original.primaryContactName ?? '—'}
+        </span>
+      ),
     },
     {
       id: 'monthHours',
       header: () => (
         <span title={`${hoursHeader} (del 1 a hoy)`}>Horas (mes)</span>
       ),
-      meta: { card: 'meta', cardLabel: hoursHeader, align: 'end' },
+      meta: {
+        card: 'meta',
+        cardLabel: hoursHeader,
+        align: 'end',
+        width: '11%',
+      },
       cell: ({ row }) => (
         <span
           className="tabular-nums"
@@ -237,7 +261,7 @@ function ClientsListTab() {
     {
       id: 'status',
       header: 'Estado',
-      meta: { card: 'meta', cardLabel: 'Estado' },
+      meta: { card: 'meta', cardLabel: 'Estado', width: '14%' },
       cell: ({ row }) => (
         <StatusBadge domain="client" status={row.original.status} />
       ),
@@ -302,6 +326,7 @@ function ClientsListTab() {
           columns={columns}
           data={rows}
           getRowId={(row) => row.id}
+          fixedLayout
           isLoading={clientsQuery.isLoading}
           emptyState={{
             icon: Building2,
@@ -334,6 +359,7 @@ function ClientsListTab() {
               columns={columns}
               data={group.rows}
               getRowId={(row) => row.id}
+              fixedLayout
               isLoading={false}
             />
           </section>
