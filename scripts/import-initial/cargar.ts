@@ -109,6 +109,11 @@ interface FilaCliente {
   legal_name: string
   deleted_at: string | null
 }
+interface FilaCategoria {
+  id: Id
+  name: string
+  deleted_at: string | null
+}
 interface FilaSede {
   id: Id
   client_id: Id
@@ -152,6 +157,7 @@ interface FilaCriterio {
 
 export interface Existentes {
   clientes: FilaCliente[]
+  categorias: FilaCategoria[]
   sedes: FilaSede[]
   contactos: FilaContacto[]
   empleados: FilaEmpleado[]
@@ -172,6 +178,12 @@ export async function leerExistentes(
       admin,
       'clients',
       'id, cuit, legal_name, deleted_at',
+      'id',
+    ),
+    categorias: await leerTodo<FilaCategoria>(
+      admin,
+      'client_categories',
+      'id, name, deleted_at',
       'id',
     ),
     sedes: await leerTodo<FilaSede>(
@@ -242,6 +254,8 @@ export async function leerExistentes(
 interface Indices {
   clientePorCuit: Map<string, FilaCliente>
   clienteSinCuitPorNombre: Map<string, FilaCliente>
+  /** Categorías vigentes por nombre normalizado (OD-20). */
+  categoriaPorNombre: Map<string, Id>
   sedePorClave: Map<string, FilaSede>
   sedesPorCliente: Map<Id, number>
   contactoPorClave: Set<string>
@@ -278,6 +292,11 @@ function indexar(e: Existentes): Indices {
       e.clientes
         .filter((c) => c.cuit === null && c.deleted_at === null)
         .map((c) => [claveNorm(c.legal_name), c]),
+    ),
+    categoriaPorNombre: new Map(
+      e.categorias
+        .filter((k) => k.deleted_at === null)
+        .map((k) => [claveNorm(k.name), k.id] as const),
     ),
     sedePorClave: new Map(
       e.sedes
@@ -430,9 +449,22 @@ export async function cargar(
           paso.omitidos++
           continue
         }
+        let categoryId: Id | null = null
+        if (c.categoria !== null) {
+          categoryId = ix.categoriaPorNombre.get(claveNorm(c.categoria)) ?? null
+          if (categoryId === null) {
+            fallo(
+              paso,
+              c.fila,
+              `La categoría "${c.categoria}" no existe entre las categorías de clientes vigentes de esta base. Elegí una existente o agregala en Configuración y reintentá con --resume.`,
+            )
+            continue
+          }
+        }
         const { data, error } = await admin
           .from('clients')
           .insert({
+            category_id: categoryId,
             legal_name: c.razonSocial,
             trade_name: c.nombreFantasia,
             cuit: c.cuit,
