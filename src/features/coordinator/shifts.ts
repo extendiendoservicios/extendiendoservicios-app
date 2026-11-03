@@ -4,7 +4,9 @@ import { openSupervisionOf } from './workday'
 
 /**
  * Lógica pura de la lista de turnos del día del coordinador (P24.2, CJ-02,
- * CJ-04, CJ-25) y de las condiciones para tomar un turno (CJ-07, CJ-08, CJ-27).
+ * CJ-04, CJ-25) y de las condiciones para tomar un turno (CJ-07, CJ-08).
+ * Desde P27 (OD-08, OD-10) se puede supervisar cualquier turno del día y
+ * volver al mismo turno más de una vez.
  */
 
 const STATE_RANK: Record<TodayShift['displayState'], number> = {
@@ -113,16 +115,62 @@ export function supervisorsLabels(shift: TodayShift, full = false): string[] {
     (s) => s.status === 'in_progress' && s.checkOutAt == null,
   )
   const done = shift.supervisors.filter((s) => !active.includes(s))
+  // Con varias pasadas del mismo coordinador (OD-10) su nombre sale una vez.
+  const names = (list: TodayShift['supervisors']) =>
+    [...new Set(list.map((s) => personName(s, full)))].join(', ')
   const labels: string[] = []
   if (active.length > 0) {
-    labels.push(
-      `Supervisando: ${active.map((s) => personName(s, full)).join(', ')}`,
-    )
+    labels.push(`Supervisando: ${names(active)}`)
   }
   if (done.length > 0) {
-    labels.push(`Supervisó: ${done.map((s) => personName(s, full)).join(', ')}`)
+    labels.push(`Supervisó: ${names(done)}`)
   }
   return labels
+}
+
+/**
+ * Mis supervisiones anteriores de este turno (OD-10): las que ya no están
+ * abiertas, de la más vieja a la más nueva. La abierta se sigue con «Ir a mi
+ * supervisión».
+ */
+export function myPastSupervisions(
+  shift: TodayShift,
+): TodayShift['supervisors'] {
+  return shift.supervisors
+    .filter(
+      (s) => s.isMe && !(s.status === 'in_progress' && s.checkOutAt == null),
+    )
+    .sort((a, b) => (a.checkInAt ?? '').localeCompare(b.checkInAt ?? ''))
+}
+
+/**
+ * «10:05 a 10:40 · calificaste a 2»: la hora de una pasada anterior y a
+ * cuántos calificó (OD-10). `ratedCount` en `undefined` = todavía cargando.
+ */
+export function pastSupervisionLabel(
+  supervision: Pick<
+    TodayShift['supervisors'][number],
+    'checkInAt' | 'checkOutAt'
+  >,
+  ratedCount: number | undefined,
+  formatTime: (iso: string) => string,
+): string {
+  const start = supervision.checkInAt ? formatTime(supervision.checkInAt) : null
+  const end = supervision.checkOutAt ? formatTime(supervision.checkOutAt) : null
+  const range =
+    start && end
+      ? `${start} a ${end}`
+      : start
+        ? `desde las ${start}`
+        : 'Sin horario'
+  if (ratedCount === undefined) return range
+  const rated =
+    ratedCount === 0
+      ? 'no calificaste a nadie'
+      : ratedCount === 1
+        ? 'calificaste a 1 empleado'
+        : `calificaste a ${ratedCount} empleados`
+  return `${range} · ${rated}`
 }
 
 export const SHIFT_STATE_LABELS: Record<TodayShift['displayState'], string> = {
@@ -132,7 +180,7 @@ export const SHIFT_STATE_LABELS: Record<TodayShift['displayState'], string> = {
 }
 
 /**
- * Por qué no puede tocar «Supervisar» (CJ-07, CJ-08, CJ-27), o `null` si puede.
+ * Por qué no puede tocar «Supervisar» (CJ-07, CJ-08), o `null` si puede.
  * La base vuelve a validar todo (`take_supervision`); esto evita el viaje y
  * deja el motivo a la vista. `workday` en `undefined` = todavía cargando.
  */
@@ -141,10 +189,12 @@ export function takeSupervisionBlock(
   workday: MyWorkday | null | undefined,
 ): string | null {
   if (workday === undefined) return 'Cargando tu jornada…'
-  if (shift.mySupervisionId != null) {
-    return shift.mySupervisionStatus === 'in_progress'
-      ? 'Ya estás supervisando este turno.'
-      : 'Ya supervisaste este turno.'
+  // OD-10: una supervisión ya cerrada de este turno no impide abrir otra.
+  if (
+    shift.mySupervisionId != null &&
+    shift.mySupervisionStatus === 'in_progress'
+  ) {
+    return 'Ya estás supervisando este turno.'
   }
   if (workday === null) return 'Iniciá tu jornada para poder supervisar.'
   if (workday.state === 'ended') {

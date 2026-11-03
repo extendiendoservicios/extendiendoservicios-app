@@ -4,6 +4,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { ActionBar } from '@/app/shells/ActionBar'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { useOnlineStatus } from '@/features/employee/useOnlineStatus'
@@ -24,13 +32,13 @@ import {
 const CLOSED_STATUSES = new Set(['completed', 'not_done', 'cancelled'])
 
 /**
- * SUP-06 · Cerrar supervisión (P24.2, `05` fila SUP-06, CJ-10, CJ-20, CJ-28):
- * nota general opcional y «Cerrar supervisión» (`complete_supervision`), que
- * registra el fin con la posición. Solo se puede cerrar si ya calificó a todos
- * los empleados del turno con inicio registrado: mientras falte alguien, el
- * botón queda deshabilitado y la pantalla lista a quién falta, con un acceso a
- * calificar. Los ausentes no se califican y el propio coordinador, si también
- * está asignado como empleado, queda fuera del requisito.
+ * SUP-06 · Cerrar supervisión (P24.2, `05` fila SUP-06, CJ-20, CJ-28; P27,
+ * OD-09): nota general opcional y «Cerrar supervisión» (`complete_supervision`),
+ * que registra el fin con la posición. Calificar es opcional: si falta calificar
+ * a alguien (empleados del turno con inicio registrado), la pantalla avisa
+ * «Te falta calificar a…» con un acceso a calificar y, al cerrar, pide
+ * confirmación antes de seguir. Los ausentes no se califican y el propio
+ * coordinador, si también está asignado como empleado, no cuenta.
  *
  * Ya no existe «No se pudo realizar» (`mark_supervision_not_done` está
  * revocada, CJ-26): si la empezó por error, la descarta desde SUP-04 (CJ-27).
@@ -58,6 +66,7 @@ export default function CloseSupervisionPage() {
   const [generalNotes, setGeneralNotes] = useState('')
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [consentOpen, setConsentOpen] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   // Al cerrar desde acá, la consulta se revalida con el estado nuevo antes
   // de `navigate('/sup')`: la guarda de abajo no debe mandarla al detalle.
   const [closing, setClosing] = useState(false)
@@ -95,7 +104,8 @@ export default function CloseSupervisionPage() {
       ? pendingRatings(supervision, assignments, ratings, auth.userId)
       : null
   const missing = pending?.length ?? 0
-  const blocked = pending == null || missing > 0
+  // Calificar es opcional (OD-09): solo se espera a tener la lista de quiénes faltan.
+  const blocked = pending == null
   const site =
     supervision.siteLatitude != null && supervision.siteLongitude != null
       ? {
@@ -104,6 +114,15 @@ export default function CloseSupervisionPage() {
           name: supervision.siteName,
         }
       : null
+
+  /** OD-09: si falta calificar a alguien, antes de cerrar se confirma. */
+  function handleCloseClick() {
+    if (missing > 0) {
+      setConfirmOpen(true)
+      return
+    }
+    void handleComplete()
+  }
 
   async function handleComplete() {
     setSubmitError(null)
@@ -149,10 +168,7 @@ export default function CloseSupervisionPage() {
       {pending && missing > 0 && (
         <Alert variant="warn">
           <AlertDescription>
-            <span className="block">
-              Para cerrar tenés que calificar a todos los empleados del turno
-              que iniciaron. Falta:
-            </span>
+            <span className="block">Te falta calificar a:</span>
             <ul className="mt-1 flex flex-col">
               {pending.map((person) => (
                 <li key={person.employeeId}>
@@ -205,7 +221,7 @@ export default function CloseSupervisionPage() {
       <ActionBar>
         <Button
           size="mobile"
-          onClick={() => void handleComplete()}
+          onClick={handleCloseClick}
           loading={complete.isPending}
           disabled={blocked || !online || complete.isPending}
         >
@@ -220,6 +236,38 @@ export default function CloseSupervisionPage() {
           <Link to={backLink}>Volver</Link>
         </Button>
       </ActionBar>
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>¿Cerrar sin calificar a todos?</DialogTitle>
+            <DialogDescription>
+              Te falta calificar a:{' '}
+              {pending?.map((person) => person.name).join(', ')}. Si cerrás
+              ahora, esas calificaciones quedan sin cargar; si el plazo sigue
+              abierto, después podés calificarlos desde la supervisión.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-col">
+            <Button
+              size="mobile"
+              onClick={() => {
+                setConfirmOpen(false)
+                void handleComplete()
+              }}
+            >
+              Cerrar igual
+            </Button>
+            <Button
+              size="mobile"
+              variant="ghost"
+              onClick={() => setConfirmOpen(false)}
+            >
+              Volver
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <LocationConsentGate
         open={consentOpen}

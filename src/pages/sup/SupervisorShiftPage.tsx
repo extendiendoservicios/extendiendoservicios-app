@@ -10,7 +10,10 @@ import { PersonCell } from '@/components/PersonCell'
 import { StatusBadge } from '@/components/status'
 import { formatTime } from '@/lib/format'
 import type { AttendanceGeo } from '@/api/attendanceGeo'
-import { useTakeSupervisionMutation } from '@/api/mySupervisions'
+import {
+  useHistoryRatingsSummaryQuery,
+  useTakeSupervisionMutation,
+} from '@/api/mySupervisions'
 import { useTodayWorkdayQuery } from '@/api/myWorkdays'
 import { useSupervisorTodayQuery } from '@/api/supervisorToday'
 import {
@@ -29,6 +32,8 @@ import { coordinatorErrorMessage } from '@/features/coordinator/errors'
 import {
   SHIFT_STATE_LABELS,
   effectiveShiftState,
+  myPastSupervisions,
+  pastSupervisionLabel,
   supervisorsLabels,
   takeSupervisionBlock,
 } from '@/features/coordinator/shifts'
@@ -44,8 +49,11 @@ const STATE_VARIANTS = {
  * turno y de la sede, empleados asignados, quién más lo supervisa y el botón
  * «Supervisar», que registra el inicio de la supervisión con la posición en un
  * solo paso (`take_supervision`). El botón queda deshabilitado, con su motivo
- * a la vista, si no se cumple CJ-07 (jornada iniciada y sin pausa), CJ-08
- * (una supervisión abierta a la vez) o CJ-27 (una por turno).
+ * a la vista, si no se cumple CJ-07 (jornada iniciada y sin pausa) o CJ-08
+ * (una supervisión abierta a la vez). Desde P27 vale cualquier turno del día
+ * (OD-08) y se puede volver al mismo turno: las pasadas anteriores se listan
+ * con su hora y a cuántos calificó, y el botón pasa a «Supervisar de nuevo»
+ * (OD-10).
  *
  * La posición sigue el flujo de B1: consentimiento primero, panel en vivo con
  * la sede y, si la persona no acepta o no hay señal, el inicio se registra
@@ -82,6 +90,12 @@ export default function SupervisorShiftPage() {
     radiusM: shift?.siteRadiusM ?? null,
     maxAccuracyM: shift?.maxAccuracyM ?? null,
   })
+
+  // OD-10: mis pasadas anteriores por este turno y a cuántos calificó en cada una.
+  const past = shift ? myPastSupervisions(shift) : []
+  const { data: ratingsSummary } = useHistoryRatingsSummaryQuery(
+    past.map((s) => s.supervisionId),
+  )
 
   if (result && shift) {
     return (
@@ -136,7 +150,9 @@ export default function SupervisorShiftPage() {
         }
       : null
   const others = shift.supervisors.filter((s) => !s.isMe)
-  const mine = shift.supervisors.find((s) => s.isMe)
+  const mine = shift.supervisors.find(
+    (s) => s.isMe && s.status === 'in_progress' && s.checkOutAt == null,
+  )
   const myOpenSupervisionId =
     shift.mySupervisionStatus === 'in_progress' ? shift.mySupervisionId : null
 
@@ -267,15 +283,36 @@ export default function SupervisorShiftPage() {
           )}
           {mine && (
             <p className="text-[12px] text-text-3">
-              Vos{' '}
-              {mine.status === 'in_progress'
-                ? 'lo estás supervisando'
-                : 'ya lo supervisaste'}
-              .
+              Vos lo estás supervisando.
             </p>
           )}
         </CardContent>
       </Card>
+
+      {past.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Tus supervisiones de este turno</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col">
+            {past.map((s) => (
+              <Link
+                key={s.supervisionId}
+                to={`/sup/supervisiones/${s.supervisionId}`}
+                className="flex min-h-11 items-center text-[13px] font-semibold text-primary underline-offset-2 hover:underline"
+              >
+                {pastSupervisionLabel(
+                  s,
+                  ratingsSummary?.find(
+                    (r) => r.supervisionId === s.supervisionId,
+                  )?.ratedCount,
+                  formatTime,
+                )}
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {canTake && consent.status === 'granted' && (
         <GeoFichajePanel fichaje={fichaje} site={site} busy={take.isPending} />
@@ -302,7 +339,11 @@ export default function SupervisorShiftPage() {
           disabled={!canTake || !online || take.isPending}
         >
           <PlayCircle aria-hidden="true" />
-          {fichaje.view.poorSignal ? 'Supervisar igual' : 'Supervisar'}
+          {fichaje.view.poorSignal
+            ? 'Supervisar igual'
+            : past.length > 0
+              ? 'Supervisar de nuevo'
+              : 'Supervisar'}
         </Button>
       </ActionBar>
 

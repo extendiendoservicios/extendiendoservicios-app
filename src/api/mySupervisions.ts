@@ -447,7 +447,7 @@ export async function discardSupervision(
 
 // -------------------------------------------------------------------------
 // 4. Calificar y cerrar (SUP-05, SUP-06): `rate_employee` y
-//    `complete_supervision` (desde P24.1 exige calificar a todos y registra el
+//    `complete_supervision` (desde P27, OD-09, no exige calificar y registra el
 //    fin con la posición). `mark_supervision_not_done` está revocada y se quitó.
 // -------------------------------------------------------------------------
 
@@ -492,9 +492,8 @@ export async function rateEmployee(
 }
 
 /**
- * Cierra la supervisión (SUP-06, `complete_supervision`, P24.1): exige haber
- * calificado a todos los empleados con inicio registrado (CJ-10, CJ-28,
- * `RATINGS_PENDING`) y registra el fin con la posición. Nota general opcional.
+ * Cierra la supervisión (SUP-06, `complete_supervision`): desde P27 (OD-09)
+ * no exige calificar a nadie; registra el fin con la posición. Nota general opcional.
  * `coords` `null` = sin ubicación; el cierre se hace igual.
  */
 export async function completeSupervision(

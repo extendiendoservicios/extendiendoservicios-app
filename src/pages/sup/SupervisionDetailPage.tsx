@@ -54,8 +54,8 @@ import { pendingRatings } from '@/features/coordinator/ratings'
  * Esta pantalla ofrece:
  * - «Descartar» (CJ-27) mientras no haya calificado a nadie: queda cancelada y
  *   puede volver a tomar el turno.
- * - «Cerrar supervisión», deshabilitado mientras falte calificar a alguien
- *   (CJ-10, CJ-28), con la lista de los que faltan.
+ * - «Cerrar supervisión», que ya no exige calificar (OD-09): si falta alguien,
+ *   avisa «Te falta calificar a…» y SUP-06 pide confirmación.
  *
  * Los criterios que se muestran son los guardados al iniciar
  * (`criteriaSnapshot`, P-087) o, si todavía no hay, los vigentes ahora -- una
@@ -125,7 +125,6 @@ export default function SupervisionDetailPage() {
       : null
   const canDiscard =
     isOpen && !unclosed && ratings != null && ratings.length === 0
-  const closeBlocked = pending == null || pending.length > 0
 
   async function handleDiscard() {
     setActionError(null)
@@ -303,8 +302,7 @@ export default function SupervisionDetailPage() {
       {isOpen && !unclosed && pending && pending.length > 0 && (
         <Alert variant="warn">
           <AlertDescription>
-            Para cerrar la supervisión falta calificar a:{' '}
-            {pending.map((p) => p.name).join(', ')}.
+            Te falta calificar a: {pending.map((p) => p.name).join(', ')}.
           </AlertDescription>
         </Alert>
       )}
@@ -316,19 +314,12 @@ export default function SupervisionDetailPage() {
 
       {isOpen && !unclosed && (
         <div className="mt-2 flex flex-col gap-[9px]">
-          {closeBlocked ? (
-            <Button size="mobile" disabled>
+          <Button asChild size="mobile">
+            <Link to={`/sup/supervisiones/${supervision.id}/cerrar`}>
               <CheckCircle2 aria-hidden="true" />
               Cerrar supervisión
-            </Button>
-          ) : (
-            <Button asChild size="mobile">
-              <Link to={`/sup/supervisiones/${supervision.id}/cerrar`}>
-                <CheckCircle2 aria-hidden="true" />
-                Cerrar supervisión
-              </Link>
-            </Button>
-          )}
+            </Link>
+          </Button>
           {canDiscard && (
             <Button
               size="mobile"

@@ -71,7 +71,7 @@ export interface TodayShift {
   isPriority: boolean
   assignedEmployees: TodayShiftEmployee[]
   supervisors: TodayShiftSupervisor[]
-  /** Mi supervisión de este turno (no cancelada), si ya la tomé (CJ-27). */
+  /** Mi supervisión abierta de este turno o, si no hay, la última no cancelada (OD-10); `supervisors` trae todas. */
   mySupervisionId: string | null
   mySupervisionStatus: SupervisionStatus | null
 }
