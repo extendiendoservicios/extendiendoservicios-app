@@ -467,7 +467,7 @@ describe('eliminar un servicio (AJ3-01)', () => {
   })
 
   it.each([
-    ['FORBIDDEN', 'dueña o un administrador'],
+    ['FORBIDDEN', 'Solo la dueña puede'],
     ['SERVICE_NOT_FOUND', 'No encontramos el servicio'],
     ['SERVICE_HAS_ATTENDANCE', 'fichajes o avisos de asistencia'],
     ['SERVICE_HAS_SUPERVISIONS', 'supervisiones'],

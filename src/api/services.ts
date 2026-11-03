@@ -509,7 +509,7 @@ export interface ServiceDeletePreview {
 
 /** Mensajes en español de los errores de `service_delete_preview` y `delete_service`. */
 const DELETE_ERROR_MESSAGES: Record<string, string> = {
-  FORBIDDEN: 'Solo la dueña o un administrador puede eliminar servicios.',
+  FORBIDDEN: 'Solo la dueña puede eliminar servicios.',
   SERVICE_NOT_FOUND:
     'No encontramos el servicio. Puede que ya se haya eliminado.',
   SERVICE_HAS_ATTENDANCE:
@@ -576,7 +576,10 @@ export interface ServiceDeleteResult {
   assignmentsDeleted: number
 }
 
-/** Borra el servicio y sus turnos. Dueño y administrador. */
+/**
+ * Borra el servicio y sus turnos. Solo el dueño (0081): para un administrador la RPC
+ * `delete_service` responde FORBIDDEN. La vista previa sigue siendo de dueño y administrador.
+ */
 export async function deleteService(
   serviceId: string,
 ): Promise<ServiceDeleteResult> {
