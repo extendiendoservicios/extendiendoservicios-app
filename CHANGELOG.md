@@ -37,7 +37,6 @@ Observaciones de los dueños de la reunión del 2 nov (P27.1 a P27.10). Migracio
 ### Pruebas y automatización
 
 - pgTAP de las migraciones 0078 a 0081, permisos por API (`99-p27`) y pruebas E2E `p27-*`.
-- Defecto conocido DEF-P27-01: en `App_dev`, `delete_user` responde `UNKNOWN_ACTION` hasta que `deploy-staging` despliegue `admin-users`; la prueba está marcada `it.fails` y hay que sacarla después del deploy.
 
 ## [0.27.0] - 2026-10-28
 
