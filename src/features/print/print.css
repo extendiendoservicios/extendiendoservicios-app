@@ -45,7 +45,8 @@
     background: #fff !important;
   }
 
-  body > *:not(.print-portal) {
+  /* Las dos hojas (esta y la del calendario) conviven: cada una deja a la otra. */
+  body > *:not(.print-portal):not(.calendar-print-portal) {
     display: none !important;
   }
 
