@@ -63,6 +63,11 @@ import {
  * (`router.tsx`), sin un chequeo de rol adicional acá.
  */
 
+// Los encabezados largos se parten en dos líneas en vez de pisar a la
+// columna vecina (la tabla es de ancho fijo y la celda no corta sola).
+const HEADER_WRAP =
+  'inline-block max-w-full align-middle leading-tight break-words whitespace-normal'
+
 const TABS = ['listado', 'mapa'] as const
 type ClientsTab = (typeof TABS)[number]
 
@@ -209,23 +214,23 @@ function ClientsListTab() {
       // "Sedes", no "Sedes activas", para no prometer un filtro que la
       // vista no hace (decisión menor, ver el reporte del encargo).
       header: 'Sedes',
-      meta: { card: 'meta', cardLabel: 'Sedes', align: 'end', width: '7%' },
+      meta: { card: 'meta', cardLabel: 'Sedes', align: 'end', width: '6%' },
       cell: ({ row }) => row.original.sitesCount,
     },
     {
       id: 'activeServices',
-      header: 'Servicios activos',
+      header: () => <span className={HEADER_WRAP}>Servicios activos</span>,
       meta: {
         card: 'meta',
         cardLabel: 'Servicios activos',
         align: 'end',
-        width: '10%',
+        width: '12%',
       },
       cell: ({ row }) => row.original.activeServicesCount,
     },
     {
       id: 'primaryContact',
-      header: 'Contacto principal',
+      header: () => <span className={HEADER_WRAP}>Contacto principal</span>,
       meta: { card: 'meta', cardLabel: 'Contacto principal', width: '19%' },
       cell: ({ row }) => (
         <span
@@ -239,13 +244,15 @@ function ClientsListTab() {
     {
       id: 'monthHours',
       header: () => (
-        <span title={`${hoursHeader} (del 1 a hoy)`}>Horas (mes)</span>
+        <span className={HEADER_WRAP} title={`${hoursHeader} (del 1 a hoy)`}>
+          Horas (mes)
+        </span>
       ),
       meta: {
         card: 'meta',
         cardLabel: hoursHeader,
         align: 'end',
-        width: '11%',
+        width: '10%',
       },
       cell: ({ row }) => (
         <span
