@@ -271,23 +271,23 @@ test.describe('con la geoposición concedida', () => {
           ).toBeVisible()
         })
 
-        await test.step('CJ-10: «Cerrar supervisión» queda bloqueado mientras falte calificar, con la lista de faltantes', async () => {
+        await test.step('OD-09: mientras falte calificar, el detalle avisa a quién falta y «Cerrar supervisión» sigue disponible (P27, reemplaza a CJ-10)', async () => {
           await page.goto(`/sup/supervisiones/${supervisionId}`)
+          await expect(page.getByText(/Te falta calificar a:/)).toContainText(
+            nombreDe('empleado1'),
+          )
+          await expect(page.getByText(/Te falta calificar a:/)).toContainText(
+            nombreDe('empleado2'),
+          )
           await expect(
-            page.getByText(/Para cerrar la supervisión falta calificar a:/),
-          ).toContainText(nombreDe('empleado1'))
-          await expect(
-            page.getByText(/Para cerrar la supervisión falta calificar a:/),
-          ).toContainText(nombreDe('empleado2'))
-          await expect(
-            page.getByRole('button', { name: 'Cerrar supervisión' }),
-          ).toBeDisabled()
+            page.getByRole('link', { name: 'Cerrar supervisión' }),
+          ).toBeVisible()
           await expect(
             page.getByRole('button', { name: 'Descartar' }),
           ).toBeVisible()
         })
 
-        await test.step('CJ-10: calificar a uno no alcanza; al calificar al segundo se habilita el cierre', async () => {
+        await test.step('OD-09: al calificar a uno la lista de faltantes se achica; al calificar al segundo desaparece el aviso', async () => {
           await filaDe(page, nombreDe('empleado1'))
             .getByRole('link', { name: 'Calificar' })
             .click()
@@ -299,11 +299,11 @@ test.describe('con la geoposición concedida', () => {
             new RegExp(`/sup/supervisiones/${supervisionId}$`),
           )
           await expect(
-            page.getByText(/Para cerrar la supervisión falta calificar a:/),
+            page.getByText(/Te falta calificar a:/),
           ).not.toContainText(nombreDe('empleado1'))
           await expect(
-            page.getByRole('button', { name: 'Cerrar supervisión' }),
-          ).toBeDisabled()
+            page.getByRole('link', { name: 'Cerrar supervisión' }),
+          ).toBeVisible()
           // Con una calificación cargada ya no se puede descartar (CJ-27).
           await expect(
             page.getByRole('button', { name: 'Descartar' }),
@@ -353,14 +353,17 @@ test.describe('con la geoposición concedida', () => {
           ])
         })
 
-        await test.step('CJ-27: el turno ya supervisado no se puede volver a tomar', async () => {
+        await test.step('OD-10: el turno ya supervisado se puede volver a tomar (P27, reemplaza a CJ-27): «Supervisar de nuevo» y la pasada anterior en «Tus supervisiones de este turno»', async () => {
           await tarjetaDeTurno(page, sede.name).click()
           await expect(
-            page.getByRole('button', { name: 'Supervisar' }),
-          ).toBeDisabled()
+            page.getByRole('button', { name: 'Supervisar de nuevo' }),
+          ).toBeEnabled()
           await expect(
-            page.getByText('Ya supervisaste este turno.').first(),
+            page.getByText('Tus supervisiones de este turno'),
           ).toBeVisible()
+          await expect(
+            page.getByText('Ya supervisaste este turno.'),
+          ).toHaveCount(0)
           await page.goBack()
         })
 

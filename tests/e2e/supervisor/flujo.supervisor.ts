@@ -145,18 +145,16 @@ test.describe('con la geoposición concedida', () => {
           ])
         })
 
-        await test.step('CJ-10, SUP-06: cerrar con un empleado sin calificar está bloqueado y dice a quién falta', async () => {
+        await test.step('OD-09, SUP-06: cerrar con un empleado sin calificar avisa a quién falta pero deja seguir (P27, reemplaza a CJ-10)', async () => {
           await page.goto(`/sup/supervisiones/${supervision}/cerrar`)
           await expect(page.getByText('Calificaste a 1 de 2')).toBeVisible()
-          await expect(
-            page.getByText('Para cerrar tenés que calificar a todos'),
-          ).toBeVisible()
+          await expect(page.getByText('Te falta calificar a:')).toBeVisible()
           await expect(
             page.getByRole('link', { name: nombreDe('empleado2') }),
           ).toBeVisible()
           await expect(
             page.getByRole('button', { name: 'Cerrar supervisión' }),
-          ).toBeDisabled()
+          ).toBeEnabled()
         })
 
         await test.step('al calificar al que faltaba se cierra con la nota general', async () => {
