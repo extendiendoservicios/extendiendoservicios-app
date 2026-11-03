@@ -121,7 +121,11 @@ test.describe('CB-03: cancelar un turno en curso con un empleado presente', () =
         await test.step('ADM-05 lo muestra como Cancelado y ya no ofrece Cancelar', async () => {
           await page.reload()
           const fila = page.getByRole('row').filter({ hasText: client.name })
-          await expect(fila.getByText('Cancelado')).toBeVisible()
+          // OD-13: la celda coloreada por estado suma un «Cancelado: » solo para lector de pantalla;
+          // la píldora es el texto exacto.
+          await expect(
+            fila.getByText('Cancelado', { exact: true }),
+          ).toBeVisible()
           await expect(
             fila.getByRole('button', { name: 'Cancelar' }),
           ).toHaveCount(0)

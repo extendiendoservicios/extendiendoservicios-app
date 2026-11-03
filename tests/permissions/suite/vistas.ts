@@ -275,6 +275,16 @@ export const VISTAS: VistaSpec[] = [
     ve: ven({ supervisor: ['jornadaSup1'], dual: ['jornadaDual'] }),
   },
   {
+    // P27.1b (0081, OD-24): el contacto de la sede lo ven SOLO dueños y administradores.
+    vista: 'v_site_contacts',
+    // Sin `security_invoker`: filtra por `app.is_admin()`, y la clave de servicio no es admin, así
+    // que no se puede contar con ella (como las vistas de "lo mío").
+    propia: true,
+    clave: 'site_id',
+    filas: (c) => ({ sedeA: c.e.sedeA, sedeB: c.e.sedeB }),
+    ve: ven({ ...admins }),
+  },
+  {
     vista: 'v_search',
     clave: 'id',
     filas: (c) => ({

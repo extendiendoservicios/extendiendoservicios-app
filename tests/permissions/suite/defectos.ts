@@ -43,12 +43,27 @@ export const DEFECTOS_CONOCIDOS: Record<string, Defecto> = {
     resumen:
       '`geo_distance_m` y `geo_evaluate` (0052) las puede llamar una cuenta desactivada con el token vigente (CB-18). Son funciones puras, no leen ni escriben datos: gravedad informativa; confirmar si es por diseño.',
   },
+  // P27.8: la Edge Function desplegada en App_dev es anterior a P27.1.
+  'DEF-P27-01': {
+    id: 'DEF-P27-01',
+    resumen:
+      'La Edge Function `admin-users` desplegada en App_dev no tiene la acción `delete_user` (P27.1, OD-22): responde UNKNOWN_ACTION a todos los perfiles, y el borrado de empleados desde la pantalla no funciona. Hay que desplegarla (`supabase functions deploy admin-users`). Gravedad mayor hasta el despliegue.',
+  },
 }
 
 const PERFILES_DESACTIVADOS = ['empleado', 'supervisor', 'admin'] as const
 
 /** Clave de caso -> defecto que lo hace fallar hoy. */
 export const DEFECTOS: Record<string, Defecto> = Object.fromEntries([
+  ...(
+    ['empleado', 'supervisor', 'dual', 'adminSin', 'admin', 'owner'] as const
+  ).map(
+    (perfil) =>
+      [
+        claveCaso('edge', 'delete_user', perfil),
+        DEFECTOS_CONOCIDOS['DEF-P27-01'],
+      ] as const,
+  ),
   ...PERFILES_DESACTIVADOS.flatMap((perfil) => [
     ...['accept_location_consent', 'revoke_location_consent'].map(
       (rpc) =>

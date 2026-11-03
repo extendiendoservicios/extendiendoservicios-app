@@ -231,6 +231,34 @@ const PRUEBAS: Record<AdminCapability, Prueba[]> = {
         }),
       conCapacidad: 'MINUTES_REQUIRED',
     },
+    // P27.1 (OD-06, OD-07): finalizar la jornada y corregir pausas y supervisiones.
+    {
+      nombre: 'admin_end_workday',
+      ejecutar: (s) =>
+        rpc(s, 'admin_end_workday', {
+          p_workday_id: INEXISTENTE,
+          p_reason: 'e2e-perm',
+        }),
+      conCapacidad: 'WORKDAY_NOT_FOUND',
+    },
+    {
+      nombre: 'admin_close_workday_pause',
+      ejecutar: (s) =>
+        rpc(s, 'admin_close_workday_pause', {
+          p_event_id: INEXISTENTE,
+          p_reason: 'e2e-perm',
+        }),
+      conCapacidad: 'EVENT_NOT_FOUND',
+    },
+    {
+      nombre: 'admin_correct_supervision_time',
+      ejecutar: (s) =>
+        rpc(s, 'admin_correct_supervision_time', {
+          p_supervision_id: INEXISTENTE,
+          p_reason: 'e2e-perm',
+        }),
+      conCapacidad: 'SUPERVISION_NOT_FOUND',
+    },
     {
       nombre: 'notify_absence en nombre de un empleado',
       ejecutar: (s) =>
@@ -247,6 +275,17 @@ const PRUEBAS: Record<AdminCapability, Prueba[]> = {
       // Mes 13: se rechaza después de la puerta y no genera nada.
       ejecutar: (s) => rpc(s, 'generate_shifts', { p_year: 2099, p_month: 13 }),
       conCapacidad: '22008',
+    },
+    // P27.1b (OD-27): limitada a un servicio exige la misma capacidad.
+    {
+      nombre: 'generate_shifts con p_service_id',
+      ejecutar: (s) =>
+        rpc(s, 'generate_shifts', {
+          p_year: 2099,
+          p_month: 1,
+          p_service_id: INEXISTENTE,
+        }),
+      conCapacidad: 'SERVICE_NOT_FOUND',
     },
   ],
   manage_supervisions: [
