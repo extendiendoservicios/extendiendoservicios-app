@@ -121,8 +121,6 @@ export default function SupervisorShiftPage() {
     city: shift.siteCity,
     latitude: shift.siteLatitude,
     longitude: shift.siteLongitude,
-    contactName: shift.siteContactName,
-    contactPhone: shift.siteContactPhone,
     accessInstructions: shift.accessInstructions,
     buildingHours: shift.buildingHours,
     phoneRestricted: shift.phoneRestricted,

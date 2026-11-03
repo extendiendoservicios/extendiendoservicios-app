@@ -83,8 +83,6 @@ export interface MySupervision {
   siteCity: string | null
   siteLatitude: number | null
   siteLongitude: number | null
-  siteContactName: string | null
-  siteContactPhone: string | null
   accessInstructions: string | null
   buildingHours: string | null
   phoneRestricted: boolean
@@ -173,8 +171,6 @@ function mapMySupervisionRow(row: MySupervisionRawRow): MySupervision {
     siteCity: row.site_city,
     siteLatitude: row.site_latitude,
     siteLongitude: row.site_longitude,
-    siteContactName: null, // OD-24 (0081): el contacto de la sede ya no llega al celular
-    siteContactPhone: null,
     accessInstructions: row.site_access_instructions,
     buildingHours: row.site_building_hours,
     phoneRestricted: Boolean(row.site_phone_restricted),

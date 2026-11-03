@@ -96,8 +96,6 @@ const MY_SUPERVISION_ROW = {
   site_city: 'San Isidro',
   site_latitude: -34.47,
   site_longitude: -58.5,
-  site_contact_name: 'Marcela',
-  site_contact_phone: '1122334455',
   site_access_instructions: 'Timbre 3B',
   site_building_hours: '08:00 a 20:00',
   site_phone_restricted: false,

@@ -57,8 +57,6 @@ export interface TodayShift {
   siteLatitude: number | null
   siteLongitude: number | null
   /** Datos útiles de la sede (los mismos de `v_my_day`); `null` si no están cargados. */
-  siteContactName: string | null
-  siteContactPhone: string | null
   accessInstructions: string | null
   buildingHours: string | null
   restrictionsNotes: string | null
@@ -124,8 +122,6 @@ export function mapTodayShiftRow(row: TodayRawRow): TodayShift {
     siteCity: row.site_city,
     siteLatitude: row.site_latitude,
     siteLongitude: row.site_longitude,
-    siteContactName: null, // OD-24 (0081): el contacto de la sede ya no llega al celular
-    siteContactPhone: null,
     accessInstructions: row.access_instructions ?? null,
     buildingHours: row.building_hours ?? null,
     restrictionsNotes: row.restrictions_notes ?? null,

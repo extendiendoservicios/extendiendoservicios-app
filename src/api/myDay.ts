@@ -38,8 +38,6 @@ export interface MyDayAssignment {
   siteId: string
   siteName: string
   siteAddress: string | null
-  siteContactName: string | null
-  siteContactPhone: string | null
   accessInstructions: string | null
   buildingHours: string | null
   phoneRestricted: boolean
@@ -126,8 +124,6 @@ interface MyDayRawRow {
   site_id: string
   site_name: string
   site_address: string | null
-  site_contact_name: string | null
-  site_contact_phone: string | null
   access_instructions: string | null
   building_hours: string | null
   phone_restricted: boolean
@@ -193,8 +189,6 @@ function mapMyDayRow(row: MyDayRawRow): MyDayAssignment {
     siteId: row.site_id,
     siteName: row.site_name,
     siteAddress: row.site_address,
-    siteContactName: row.site_contact_name,
-    siteContactPhone: row.site_contact_phone,
     accessInstructions: row.access_instructions,
     buildingHours: row.building_hours,
     phoneRestricted: row.phone_restricted,

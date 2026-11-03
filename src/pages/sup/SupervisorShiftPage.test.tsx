@@ -128,12 +128,10 @@ describe('SupervisorShiftPage (SUP-03)', () => {
     expect(screen.getByText('Supervisando: Ana Ruiz')).toBeInTheDocument()
   })
 
-  it('muestra los datos útiles de la sede, con el teléfono como enlace', () => {
+  it('muestra los datos útiles de la sede y no muestra el contacto', () => {
     setup({
       shift: makeTodayShift({
         ...SHIFT,
-        siteContactName: 'Rosa Pérez',
-        siteContactPhone: '11 5555-1234',
         accessInstructions: 'Timbre 3B, pedir la llave en recepción',
         buildingHours: 'Lunes a viernes de 7 a 20',
         restrictionsNotes: 'No mover los equipos',
@@ -142,11 +140,7 @@ describe('SupervisorShiftPage (SUP-03)', () => {
     expect(screen.getByText(/Timbre 3B/)).toBeInTheDocument()
     expect(screen.getByText(/Lunes a viernes de 7 a 20/)).toBeInTheDocument()
     expect(screen.getByText('No mover los equipos')).toBeInTheDocument()
-    expect(screen.getByText('Rosa Pérez')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /11 5555-1234/ })).toHaveAttribute(
-      'href',
-      'tel:11 5555-1234',
-    )
+    expect(screen.queryByText('Contacto en la sede')).toBeNull()
   })
 
   it('muestra las marcas «sin celular» y «sin fotos» de la sede', () => {
