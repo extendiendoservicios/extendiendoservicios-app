@@ -10,19 +10,50 @@ import { ApiError } from '@/api/errors'
  * turno ya empezó.
  */
 
-const { updateTimeMock, warningsMock, detailsMock, toastError } = vi.hoisted(
-  () => ({
-    updateTimeMock: vi.fn(),
-    warningsMock: vi.fn(),
-    detailsMock: vi.fn(),
-    toastError: vi.fn(),
-  }),
-)
+const {
+  updateTimeMock,
+  warningsMock,
+  detailsMock,
+  assignMock,
+  toastError,
+  toastWarning,
+} = vi.hoisted(() => ({
+  updateTimeMock: vi.fn(),
+  warningsMock: vi.fn(),
+  detailsMock: vi.fn(),
+  assignMock: vi.fn(),
+  toastError: vi.fn(),
+  toastWarning: vi.fn(),
+}))
 
 let mockShiftData: Record<string, unknown> = {}
+let mockDetailData: Record<string, unknown> | undefined
+let mockLeaves: {
+  employeeId: string
+  startsOn: string
+  endsOn: string | null
+}[] = []
+
+// Radix/cmdk piden `scrollIntoView`, que jsdom no trae.
+if (typeof Element.prototype.scrollIntoView !== 'function') {
+  Element.prototype.scrollIntoView = () => {}
+}
 
 vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), warning: vi.fn(), error: toastError },
+  toast: { success: vi.fn(), warning: toastWarning, error: toastError },
+}))
+
+vi.mock('@/features/employees/queries', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/employees/queries')>()),
+  useActiveEmployeeOptionsQuery: () => ({
+    isLoading: false,
+    data: [
+      { profileId: 'e1', name: 'Ana Gómez', employeeNumber: 1 },
+      { profileId: 'e2', name: 'Luis Díaz', employeeNumber: 2 },
+      { profileId: 'e3', name: 'Marta Ruiz', employeeNumber: 3 },
+    ],
+  }),
+  useLeavesInRangeQuery: () => ({ data: mockLeaves }),
 }))
 
 vi.mock('@/features/auth/AuthProvider', () => ({
@@ -51,6 +82,11 @@ vi.mock('@/features/planning/queries', async (importOriginal) => ({
     mutateAsync: detailsMock,
     isPending: false,
   }),
+  useAssignEmployeeMutation: () => ({
+    mutateAsync: assignMock,
+    isPending: false,
+  }),
+  useShiftDetailQuery: () => ({ data: mockDetailData }),
 }))
 
 vi.mock('@/components/DatePicker', () => ({
@@ -129,6 +165,20 @@ function changeDateAndSave() {
 
 beforeEach(() => {
   mockShiftData = baseShift()
+  mockDetailData = {
+    startsAt: '2099-10-13T11:00:00Z',
+    assignments: [
+      {
+        id: 'a1',
+        employeeId: 'e1',
+        employeeFirstName: 'Ana',
+        employeeLastName: 'Gómez',
+      },
+    ],
+  }
+  mockLeaves = []
+  assignMock.mockReset().mockResolvedValue({ assignment: {}, warnings: [] })
+  toastWarning.mockReset()
   updateTimeMock.mockReset().mockResolvedValue(undefined)
   detailsMock.mockReset().mockResolvedValue(undefined)
   warningsMock
@@ -223,5 +273,86 @@ describe('ShiftFormPage edición: fecha del turno', () => {
     renderPage()
     expect(screen.queryByLabelText('Fecha del turno')).toBeNull()
     expect(screen.getByText(/la fecha no se puede cambiar/)).toBeInTheDocument()
+  })
+})
+
+describe('ShiftFormPage edición: empleados asignados (OD-16)', () => {
+  it('muestra los asignados y no ofrece a quien ya está en el turno', () => {
+    mockShiftData = baseShift({ requiredStaff: 3 })
+    renderPage()
+    const asignados = screen.getByRole('list', {
+      name: 'Empleados ya asignados',
+    })
+    expect(asignados).toHaveTextContent('Ana Gómez')
+
+    fireEvent.click(
+      screen.getByRole('combobox', { name: 'Sumar empleados al turno' }),
+    )
+    expect(screen.queryByRole('option', { name: /Ana Gómez/ })).toBeNull()
+    expect(
+      screen.getByRole('option', { name: /Luis Díaz/ }),
+    ).toBeInTheDocument()
+  })
+
+  it('con la dotación completa no deja sumar a nadie', () => {
+    renderPage()
+    fireEvent.click(
+      screen.getByRole('combobox', { name: 'Sumar empleados al turno' }),
+    )
+    expect(screen.getByRole('option', { name: /Luis Díaz/ })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+  })
+
+  it('quien está de licencia ese día no se puede elegir', () => {
+    mockShiftData = baseShift({ requiredStaff: 3 })
+    mockLeaves = [{ employeeId: 'e2', startsOn: '2030-10-01', endsOn: null }]
+    renderPage()
+    fireEvent.click(
+      screen.getByRole('combobox', { name: 'Sumar empleados al turno' }),
+    )
+    expect(screen.getByRole('option', { name: /Luis Díaz/ })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(screen.getByText('De licencia')).toBeInTheDocument()
+  })
+
+  it('al guardar asigna a los elegidos y avisa lo que el servidor rechaza', async () => {
+    mockShiftData = baseShift({ requiredStaff: 3 })
+    assignMock.mockImplementation((input: { employeeId: string }) =>
+      input.employeeId === 'e3'
+        ? Promise.reject(
+            new ApiError('Marta Ruiz ya tiene un turno.', 'OVERLAP'),
+          )
+        : Promise.resolve({ assignment: {}, warnings: [] }),
+    )
+    renderPage()
+    fireEvent.click(
+      screen.getByRole('combobox', { name: 'Sumar empleados al turno' }),
+    )
+    fireEvent.click(screen.getByRole('option', { name: /Luis Díaz/ }))
+    fireEvent.click(screen.getByRole('option', { name: /Marta Ruiz/ }))
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: 'Escape',
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+
+    await waitFor(() => expect(assignMock).toHaveBeenCalledTimes(2))
+    expect(assignMock).toHaveBeenCalledWith({
+      shiftId: 'sh1',
+      employeeId: 'e2',
+    })
+    expect(updateTimeMock).toHaveBeenCalled()
+    await waitFor(() => expect(toastWarning).toHaveBeenCalled())
+    expect(toastWarning.mock.calls[0]?.[0]).toContain('no se la pudo asignar')
+  })
+
+  it('sin elegir a nadie no llama a assign_employee', async () => {
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(updateTimeMock).toHaveBeenCalled())
+    expect(assignMock).not.toHaveBeenCalled()
   })
 })

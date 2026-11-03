@@ -1,6 +1,6 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { WeekGrid } from './WeekGrid'
 
 /**
@@ -13,6 +13,10 @@ import { WeekGrid } from './WeekGrid'
 vi.mock('@/hooks/useMediaQuery', () => ({ useMediaQuery: () => true }))
 
 vi.mock('@/features/employees/queries', () => ({
+  // OD-14: Ana tiene licencia el miércoles 21/10 de la semana mostrada.
+  useLeavesInRangeQuery: () => ({
+    data: [{ employeeId: 'e1', startsOn: '2026-10-21', endsOn: '2026-10-21' }],
+  }),
   useEmployeesQuery: () => ({
     data: [
       {
@@ -37,6 +41,7 @@ vi.mock('@/features/sites/queries', () => ({
 }))
 
 vi.mock('@/features/planning/queries', () => ({
+  useShiftsBoardRangeQuery: () => ({ data: [] }),
   useAssignmentsBoardRangeQuery: () => ({
     data: [
       {
@@ -67,9 +72,9 @@ vi.mock('@/features/employees/employeeLeaveStatus', () => ({
   todayInBuenosAires: () => '2026-10-20',
 }))
 
-function renderGrid() {
+function renderGrid(url = '/admin/planificacion?vista=semana') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[url]}>
       <WeekGrid />
     </MemoryRouter>,
   )
@@ -153,5 +158,54 @@ describe('WeekGrid (escritorio)', () => {
       expect(line.className).toContain('whitespace-nowrap')
       expect(line.className).not.toContain('truncate')
     }
+  })
+})
+
+describe('WeekGrid: filtros, licencias e impresión (P27.5)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('OD-14: marca «Licencia» el día de licencia de Ana', () => {
+    renderGrid()
+    const cells = screen.getAllByTestId('leave-cell')
+    expect(cells).toHaveLength(1)
+    expect(cells[0]).toHaveTextContent('Licencia')
+    expect(cells[0]?.closest('tr')).toHaveTextContent('Ana Gómez')
+  })
+
+  it('OD-12: el filtro de empleado de la URL deja solo a esa persona', () => {
+    renderGrid('/admin/planificacion?vista=semana&empleado=e2')
+    expect(screen.getByRole('link', { name: /Luis Díaz/ })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Ana Gómez/ })).toBeNull()
+    // Las licencias de Ana no se muestran: se filtra por Luis.
+    expect(screen.queryByTestId('leave-cell')).toBeNull()
+  })
+
+  it('OD-12: con un filtro de cliente no se mezclan las licencias', () => {
+    renderGrid('/admin/planificacion?vista=semana&cliente=c1')
+    expect(screen.queryByTestId('leave-cell')).toBeNull()
+  })
+
+  it('OD-15: «Imprimir calendario» arma la hoja con el encabezado de filtros y llama a imprimir', async () => {
+    const print = vi.spyOn(window, 'print').mockImplementation(() => undefined)
+    renderGrid('/admin/planificacion?vista=semana&empleado=e2')
+    fireEvent.click(screen.getByRole('button', { name: 'Imprimir calendario' }))
+
+    const sheet = await screen.findByTestId('calendar-print')
+    expect(sheet.parentElement).toBe(document.body)
+    expect(screen.getByTestId('calendar-print-filters')).toHaveTextContent(
+      'Empleado: Luis Díaz',
+    )
+    expect(
+      within(sheet).getByText(/Calendario · semana del/),
+    ).toBeInTheDocument()
+    await vi.waitFor(() => expect(print).toHaveBeenCalledTimes(1))
+
+    // Al terminar de imprimir la hoja se desmonta.
+    fireEvent(window, new Event('afterprint'))
+    await vi.waitFor(() =>
+      expect(screen.queryByTestId('calendar-print')).toBeNull(),
+    )
   })
 })

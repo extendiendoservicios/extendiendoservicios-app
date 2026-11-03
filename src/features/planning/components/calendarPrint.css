@@ -1,0 +1,54 @@
+/*
+ * Impresión del calendario de Planificación (OD-15). Hoja propia, aparte de
+ * `features/print/print.css`: usa una página con nombre (`calendario`) para
+ * que sea A4 apaisado sin tocar el `@page` general de las hojas verticales.
+ *
+ * La hoja se dibuja en un portal pegado al <body> (`.calendar-print-portal`)
+ * solo mientras se imprime. En pantalla está oculta. Al imprimir se oculta
+ * todo lo demás que cuelga del <body> y la hoja pasa a ser un bloque normal.
+ */
+@page calendario {
+  size: A4 landscape;
+  margin: 10mm;
+}
+
+.calendar-print-portal {
+  display: none;
+}
+
+@media print {
+  html:has(.calendar-print-portal),
+  body:has(> .calendar-print-portal) {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  body:has(> .calendar-print-portal) > *:not(.calendar-print-portal) {
+    display: none !important;
+  }
+
+  .calendar-print-portal {
+    display: block;
+    page: calendario;
+    color: #111;
+    background: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .calendar-print-portal table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  .calendar-print-portal thead {
+    display: table-header-group;
+  }
+
+  .calendar-print-portal tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

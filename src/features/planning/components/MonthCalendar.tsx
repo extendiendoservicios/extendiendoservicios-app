@@ -1,32 +1,16 @@
 import { useMemo, useState } from 'react'
+import { format } from 'date-fns'
+import { es } from 'date-fns/locale'
 import { Link } from 'react-router'
-import { ChevronLeft, ChevronRight, ListChecks, Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { IconButton } from '@/components/IconButton'
 import { MonthPicker } from '@/components/MonthPicker'
-import { Combobox } from '@/components/Combobox'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { getStatusMeta } from '@/components/status'
 import type { ShiftStatus as BadgeShiftStatus } from '@/components/status'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
-import { useAuth } from '@/features/auth/AuthProvider'
 import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
-import { useEmployeesQuery } from '@/features/employees/queries'
+import { useLeavesInRangeQuery } from '@/features/employees/queries'
 import { useHolidaysQuery } from '@/features/settings/queries'
-import {
-  useClientFilterOptionsQuery,
-  useSitesMapQuery,
-} from '@/features/sites/queries'
-import {
-  canGenerateShifts,
-  canManageShiftTime,
-} from '@/features/shifts/permissions'
 import {
   addMonthsToYearMonth,
   buildMonthGridDays,
@@ -38,6 +22,20 @@ import {
   shiftChipLabel,
 } from '@/features/planning/grouping'
 import { useColorBy } from '@/features/planning/colorBy'
+import {
+  describeCalendarFilters,
+  leaveEmployeesByDate,
+  leaveSummaryLabel,
+  toBoardFilters,
+  visibleLeaves,
+} from '@/features/planning/calendarFilters'
+import { useCalendarFilters } from '@/features/planning/useCalendarFilters'
+import {
+  CalendarFiltersBar,
+  useCalendarFilterOptions,
+} from '@/features/planning/components/CalendarFiltersBar'
+import { CalendarPrintButton } from '@/features/planning/components/CalendarPrintButton'
+import { MonthPrint } from '@/features/planning/components/CalendarPrintViews'
 import { ColorByToggle } from '@/features/planning/components/ColorByToggle'
 import { ShiftChip } from '@/features/planning/components/ShiftChip'
 import {
@@ -64,55 +62,36 @@ const MAX_CHIPS_PER_DAY = 3
 const DESKTOP_QUERY = '(min-width: 1024px)'
 const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
-const STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
-  { value: 'all', label: 'Todos los estados' },
-  { value: 'scheduled', label: 'Programado' },
-  { value: 'assigned', label: 'Asignado' },
-  { value: 'in_progress', label: 'En curso' },
-  { value: 'completed', label: 'Finalizado' },
-  { value: 'cancelled', label: 'Cancelado' },
-  { value: 'uncovered', label: 'Sin cubrir' },
-]
-
 interface MonthCalendarProps {
   /** Navega a ADM-05 con la fecha elegida (lo resuelve `PlanningPage`, dueña de `?vista=`/`?fecha=`). */
   onOpenDay: (date: string) => void
 }
 
 function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
-  const auth = useAuth()
-  const actor = { roles: auth.roles, capabilities: auth.capabilities }
   const isDesktop = useMediaQuery(DESKTOP_QUERY)
 
   const today = todayInBuenosAires()
   const [year, setYear] = useState(() => Number(today.slice(0, 4)))
   const [month, setMonth] = useState(() => Number(today.slice(5, 7)))
 
-  const [clientId, setClientId] = useState<string>('all')
-  const [siteId, setSiteId] = useState<string>('all')
-  const [employeeId, setEmployeeId] = useState<string>('all')
-  const [status, setStatus] = useState<string>('all')
+  // OD-12: los filtros viven en la URL y son los mismos en mes, semana y día.
+  const [filters, setFilters] = useCalendarFilters()
   const [colorBy, setColorBy] = useColorBy()
 
   const { from, to } = useMemo(() => monthRange(year, month), [year, month])
 
-  const shiftsQuery = useShiftsBoardRangeQuery(from, to, {
-    clientId: clientId !== 'all' ? clientId : undefined,
-    siteId: siteId !== 'all' ? siteId : undefined,
-    employeeId: employeeId !== 'all' ? employeeId : undefined,
-    status: status !== 'all' ? status : undefined,
-  })
+  const shiftsQuery = useShiftsBoardRangeQuery(
+    from,
+    to,
+    toBoardFilters(filters),
+  )
   // La leyenda lista todos los clientes del rango aunque el calendario esté
   // filtrado por uno: sin cliente en la clave es la misma consulta de arriba
   // cuando no hay filtro (react-query la comparte) y una aparte si lo hay.
   const legendQuery = useShiftsBoardRangeQuery(
     from,
     to,
-    {
-      siteId: siteId !== 'all' ? siteId : undefined,
-      employeeId: employeeId !== 'all' ? employeeId : undefined,
-      status: status !== 'all' ? status : undefined,
-    },
+    { ...toBoardFilters(filters), clientId: undefined },
     colorBy === 'client',
   )
   const legendClients = useMemo(
@@ -120,9 +99,8 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
     [legendQuery.data],
   )
   const holidaysQuery = useHolidaysQuery(year)
-  const clientOptionsQuery = useClientFilterOptionsQuery()
-  const sitesQuery = useSitesMapQuery({})
-  const employeesQuery = useEmployeesQuery({ role: 'employee' })
+  const { employeeOptions, names: filterNames } =
+    useCalendarFilterOptions(filters)
 
   const holidayDates = useMemo(
     () =>
@@ -139,13 +117,30 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
   )
   const gridDays = useMemo(() => buildMonthGridDays(year, month), [year, month])
 
-  const siteOptions = useMemo(
-    () =>
-      (sitesQuery.data ?? []).filter(
-        (site) => clientId === 'all' || site.clientId === clientId,
-      ),
-    [sitesQuery.data, clientId],
+  // OD-14: licencias del mes en pantalla (incluye los días de las semanas
+  // vecinas que completan la grilla).
+  const leavesQuery = useLeavesInRangeQuery(
+    gridDays[0]?.date,
+    gridDays[gridDays.length - 1]?.date,
   )
+  const leaveNamesByDate = useMemo(() => {
+    const nameOf = new Map(
+      (employeeOptions ?? []).map((employee) => [
+        employee.profileId,
+        `${employee.firstName} ${employee.lastName}`,
+      ]),
+    )
+    const byDate = leaveEmployeesByDate(
+      visibleLeaves(leavesQuery.data ?? [], filters),
+      gridDays.map((day) => day.date),
+    )
+    return new Map(
+      [...byDate].map(([date, ids]) => [
+        date,
+        ids.map((id) => nameOf.get(id) ?? 'Empleado'),
+      ]),
+    )
+  }, [leavesQuery.data, filters, gridDays, employeeOptions])
 
   function goToMonth(nextYear: number, nextMonth: number) {
     setYear(nextYear)
@@ -181,90 +176,36 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
             }}
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {canGenerateShifts(actor) && (
-            <Button asChild variant="ghost" icon={ListChecks}>
-              <Link to="/admin/turnos/generar">Generar turnos del mes</Link>
-            </Button>
-          )}
-          {canManageShiftTime(actor) && (
-            <Button asChild icon={Plus}>
-              <Link to="/admin/turnos/nuevo">Nuevo turno</Link>
-            </Button>
-          )}
-        </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Combobox
-          aria-label="Filtrar por cliente"
-          placeholder="Todos los clientes"
-          className="w-52"
-          value={clientId}
-          onValueChange={(value) => {
-            setClientId(value)
-            setSiteId('all')
-          }}
-          options={[
-            { value: 'all', label: 'Todos los clientes' },
-            ...(clientOptionsQuery.data ?? []).map((option) => ({
-              value: option.id,
-              label: option.name,
-            })),
-          ]}
-        />
-        <Combobox
-          aria-label="Filtrar por sede"
-          placeholder="Todas las sedes"
-          className="w-52"
-          value={siteId}
-          onValueChange={setSiteId}
-          options={[
-            { value: 'all', label: 'Todas las sedes' },
-            ...siteOptions.map((option) => ({
-              value: option.id,
-              label: option.name,
-            })),
-          ]}
-        />
-        <Combobox
-          aria-label="Filtrar por empleado"
-          placeholder="Todos los empleados"
-          className="w-56"
-          value={employeeId}
-          onValueChange={setEmployeeId}
-          options={[
-            { value: 'all', label: 'Todos los empleados' },
-            ...(employeesQuery.data ?? []).map((option) => ({
-              value: option.profileId,
-              label: `${option.firstName} ${option.lastName}`,
-            })),
-          ]}
-        />
-        <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger aria-label="Filtrar por estado" className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {STATUS_FILTER_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <ColorByToggle value={colorBy} onValueChange={setColorBy} />
-      </div>
+      <CalendarFiltersBar
+        filters={filters}
+        onChange={setFilters}
+        trailing={
+          <>
+            <ColorByToggle value={colorBy} onValueChange={setColorBy} />
+            <CalendarPrintButton
+              title={`Calendario · ${format(new Date(year, month - 1, 1), 'MMMM yyyy', { locale: es })}`}
+              filterLines={describeCalendarFilters(filters, filterNames)}
+            >
+              <MonthPrint
+                gridDays={gridDays}
+                shiftsByDate={shiftsByDate}
+                leaveNamesByDate={leaveNamesByDate}
+                holidayDates={holidayDates}
+                colorBy={colorBy}
+              />
+            </CalendarPrintButton>
+          </>
+        }
+      />
 
       {colorBy === 'client' && (
         <ClientLegend
           title="Clientes del mes"
           clients={legendClients}
-          selectedId={clientId !== 'all' ? clientId : null}
-          onSelect={(id) => {
-            setClientId(id ?? 'all')
-            setSiteId('all')
-          }}
+          selectedId={filters.clientId !== 'all' ? filters.clientId : null}
+          onSelect={(id) => setFilters({ clientId: id ?? 'all' })}
         />
       )}
 
@@ -280,6 +221,7 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
           <div className="grid grid-cols-7">
             {gridDays.map((day) => {
               const dayShifts = shiftsByDate.get(day.date) ?? []
+              const dayLeaves = leaveNamesByDate.get(day.date) ?? []
               const isHoliday = holidayDates.has(day.date)
               const isToday = day.date === today
               const visible = dayShifts.slice(0, MAX_CHIPS_PER_DAY)
@@ -351,6 +293,15 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
                         +{hiddenCount} más
                       </button>
                     )}
+                    {dayLeaves.length > 0 && (
+                      <span
+                        data-testid="leave-chip"
+                        title={`De licencia: ${dayLeaves.join(', ')}`}
+                        className="block w-full min-w-0 truncate rounded border border-dashed border-border-strong bg-secondary px-1.5 py-0.5 text-[10.5px] font-medium text-text-2"
+                      >
+                        {leaveSummaryLabel(dayLeaves)}
+                      </span>
+                    )}
                   </div>
                 </div>
               )
@@ -363,6 +314,7 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
             .filter((day) => day.isCurrentMonth)
             .map((day) => {
               const dayShifts = shiftsByDate.get(day.date) ?? []
+              const dayLeaves = leaveNamesByDate.get(day.date) ?? []
               const isHoliday = holidayDates.has(day.date)
               return (
                 <li key={day.date}>
@@ -379,6 +331,8 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
                     <span className="text-[12px] text-text-3">
                       {dayShifts.length} turno
                       {dayShifts.length === 1 ? '' : 's'}
+                      {dayLeaves.length > 0 &&
+                        ` · ${leaveSummaryLabel(dayLeaves)}`}
                     </span>
                   </button>
                 </li>
