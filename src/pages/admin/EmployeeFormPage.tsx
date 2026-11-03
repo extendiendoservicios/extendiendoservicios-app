@@ -81,7 +81,7 @@ const DUPLICATE_FIELD_BY_CODE: Record<
 }
 
 /** CR-19: ayuda de los campos de perfil de un dueño o administrador vistos por un administrador. */
-const PROFILE_READ_ONLY_HELP = 'Solo el dueño puede cambiar estos datos.'
+const PROFILE_READ_ONLY_HELP = 'Solo la dirección puede cambiar estos datos.'
 
 function EmployeeCreateForm() {
   const navigate = useNavigate()

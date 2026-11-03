@@ -52,14 +52,14 @@ select col_type_is('public', 'clients', 'photo_path', 'text', 'clients.photo_pat
 select is(
   (select attname::text from pg_attribute
    where attrelid = 'public.clients'::regclass and attnum > 0 and not attisdropped
-   order by attnum desc limit 1 offset 1),
-  'photo_path', 'clients.photo_path es la última columna (0066 agrega calendar_color después)'
+   order by attnum desc limit 1 offset 2),
+  'photo_path', 'clients.photo_path va antes de calendar_color (0066) y category_id (0078)'
 );
 select is(
   (select attname::text from pg_attribute
    where attrelid = 'public.v_clients'::regclass and attnum > 0 and not attisdropped
-   order by attnum desc limit 1 offset 1),
-  'photo_path', 'v_clients: photo_path al final (0066 agrega calendar_color después)'
+   order by attnum desc limit 1 offset 3),
+  'photo_path', 'v_clients: photo_path va antes de calendar_color (0066), category_id y category_name (0078)'
 );
 select is(
   (select attname::text from pg_attribute

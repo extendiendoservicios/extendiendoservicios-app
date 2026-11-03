@@ -142,7 +142,7 @@ select has_function('public', 'pause_workday', array['text', 'numeric', 'numeric
 select has_function('public', 'resume_workday', array['numeric', 'numeric', 'numeric'], 'resume_workday');
 select has_function('public', 'end_workday', array['numeric', 'numeric', 'numeric'], 'end_workday');
 select has_function('public', 'reopen_workday', array['numeric', 'numeric', 'numeric'], 'reopen_workday');
-select has_function('public', 'admin_correct_workday_event', array['uuid', 'text', 'timestamp with time zone', 'boolean'], 'admin_correct_workday_event');
+select has_function('public', 'admin_correct_workday_event', array['uuid', 'text', 'timestamp with time zone', 'boolean', 'text'], 'admin_correct_workday_event');
 select has_function('public', 'admin_add_workday_pause', array['uuid', 'timestamp with time zone', 'timestamp with time zone', 'text', 'text'], 'admin_add_workday_pause');
 select has_function('public', 'admin_record_workday', array['uuid', 'date', 'timestamp with time zone', 'text', 'timestamp with time zone'], 'admin_record_workday');
 select has_function('public', 'set_supervisor_priority', array['uuid', 'uuid', 'uuid'], 'set_supervisor_priority');

@@ -135,7 +135,24 @@ export async function ejecutarImportacion(
 
   salida.log(`Leyendo ${basename(archivo)}...`)
   const lectura = await leerPlantilla(archivo)
-  const resultado = validar(lectura)
+  // Con base de destino, se lee antes de validar: las categorías de clientes se verifican contra
+  // las vigentes de esa base (OD-20).
+  const admin = conexion
+    ? createClient(conexion.url, conexion.claveServicio, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+    : null
+  const existentes = admin ? await leerExistentes(admin) : null
+  const resultado = validar(
+    lectura,
+    existentes
+      ? {
+          categoriasVigentes: existentes.categorias
+            .filter((k) => k.deleted_at === null)
+            .map((k) => k.name),
+        }
+      : {},
+  )
   const resumen = resumir(resultado)
 
   const meta: MetaInforme = {
@@ -164,7 +181,7 @@ export async function ejecutarImportacion(
     return 1
   }
 
-  if (!conexion) {
+  if (!conexion || !admin || !existentes) {
     salida.log(
       'Simulación terminada: la planilla se puede cargar. No se escribió nada.',
     )
@@ -174,10 +191,6 @@ export async function ejecutarImportacion(
   salida.log(
     `Entorno de destino verificado: ${conexion.entorno} (proyecto ${conexion.ref}).`,
   )
-  const admin = createClient(conexion.url, conexion.claveServicio, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
-  const existentes = await leerExistentes(admin)
   const yaCargado = contarYaCargados(resultado.plan, existentes)
 
   if (dryRun) {

@@ -16,8 +16,8 @@ export interface SiteInfoData {
   city: string | null
   latitude: number | null
   longitude: number | null
-  contactName: string | null
-  contactPhone: string | null
+  contactName?: string | null
+  contactPhone?: string | null
   accessInstructions: string | null
   buildingHours: string | null
   phoneRestricted: boolean

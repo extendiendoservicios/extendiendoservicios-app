@@ -20,6 +20,14 @@ import { StatusBadge } from '@/components/status'
 import { MapView, type MapViewMarker } from '@/components/map'
 import type { ClientListRow, ClientStatus } from '@/api/clients'
 import { CLIENT_STATUS_OPTIONS } from '@/features/clients/schemas'
+import {
+  useActiveClientsCountQuery,
+  useClientCategoriesQuery,
+} from '@/features/clients/categoryQueries'
+import {
+  describeActiveClients,
+  groupClientsByCategory,
+} from '@/features/clients/grouping'
 import { UpdatedAgo } from '@/features/clients/components/UpdatedAgo'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import {
@@ -55,6 +63,11 @@ import {
  * (`router.tsx`), sin un chequeo de rol adicional acá.
  */
 
+// Los encabezados largos se parten en dos líneas en vez de pisar a la
+// columna vecina (la tabla es de ancho fijo y la celda no corta sola).
+const HEADER_WRAP =
+  'inline-block max-w-full align-middle leading-tight break-words whitespace-normal'
+
 const TABS = ['listado', 'mapa'] as const
 type ClientsTab = (typeof TABS)[number]
 
@@ -82,21 +95,31 @@ export default function ClientsPage() {
     setSearchParams(next, { replace: true })
   }
 
+  // OD-21: total de clientes activos arriba de la sección (listado y mapa).
+  const activeCountQuery = useActiveClientsCountQuery()
+
   return (
-    <Tabs value={activeTab} onValueChange={handleTabChange}>
-      <TabsList>
-        <TabsTrigger value="listado">Listado</TabsTrigger>
-        <TabsTrigger value="mapa">Mapa</TabsTrigger>
-      </TabsList>
+    <div className="flex flex-col gap-3">
+      {activeCountQuery.data != null && (
+        <p className="text-[13px] font-semibold text-text">
+          {describeActiveClients(activeCountQuery.data)}
+        </p>
+      )}
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
+        <TabsList>
+          <TabsTrigger value="listado">Listado</TabsTrigger>
+          <TabsTrigger value="mapa">Mapa</TabsTrigger>
+        </TabsList>
 
-      <TabsContent value="listado" className="pt-3">
-        <ClientsListTab />
-      </TabsContent>
+        <TabsContent value="listado" className="pt-3">
+          <ClientsListTab />
+        </TabsContent>
 
-      <TabsContent value="mapa" className="pt-3">
-        <ClientsMapTab />
-      </TabsContent>
-    </Tabs>
+        <TabsContent value="mapa" className="pt-3">
+          <ClientsMapTab />
+        </TabsContent>
+      </Tabs>
+    </div>
   )
 }
 
@@ -105,11 +128,14 @@ function ClientsListTab() {
     'active',
   )
   const [textFilter, setTextFilter] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const debouncedText = useDebouncedValue(textFilter)
+  const categoriesQuery = useClientCategoriesQuery()
 
   const clientsQuery = useClientsQuery({
     status: statusFilter,
     text: debouncedText,
+    categoryId: categoryFilter,
   })
   const primaryContactsQuery = usePrimaryContactNamesQuery()
   // AJ-10: horas del mes en curso (del 1 a hoy, hora de Argentina), una sola
@@ -127,11 +153,17 @@ function ClientsListTab() {
     }))
   }, [clientsQuery.data, primaryContactsQuery.data])
 
+  // OD-21: agrupado por categoría, «Sin categoría» al final.
+  const groups = useMemo(
+    () => groupClientsByCategory(rows, categoriesQuery.data ?? []),
+    [rows, categoriesQuery.data],
+  )
+
   const columns: DataTableColumnDef<ClientRowView>[] = [
     {
       id: 'name',
       header: 'Nombre',
-      meta: { card: 'title' },
+      meta: { card: 'title', width: '24%' },
       cell: ({ row }) => {
         const client = row.original
         const primaryName = client.tradeName ?? client.legalName
@@ -146,10 +178,17 @@ function ClientsListTab() {
               name={primaryName}
               src={client.photoPath ? clientPhotoUrl(client.photoPath) : null}
             />
-            <span className="min-w-0">
+            <span
+              className="block min-w-0 truncate"
+              title={
+                secondaryName
+                  ? `${primaryName} · ${secondaryName}`
+                  : primaryName
+              }
+            >
               {primaryName}
               {secondaryName && (
-                <span className="block text-[11px] font-normal text-text-3">
+                <span className="block truncate text-[11px] font-normal text-text-3">
                   {secondaryName}
                 </span>
               )}
@@ -161,9 +200,9 @@ function ClientsListTab() {
     {
       id: 'cuit',
       header: 'CUIT',
-      meta: { card: 'meta', cardLabel: 'CUIT' },
+      meta: { card: 'meta', cardLabel: 'CUIT', width: '15%' },
       cell: ({ row }) => (
-        <span className="whitespace-nowrap">
+        <span className="whitespace-nowrap pr-4 inline-block">
           {formatTaxId(row.original.cuit) ?? '—'}
         </span>
       ),
@@ -175,27 +214,46 @@ function ClientsListTab() {
       // "Sedes", no "Sedes activas", para no prometer un filtro que la
       // vista no hace (decisión menor, ver el reporte del encargo).
       header: 'Sedes',
-      meta: { card: 'meta', cardLabel: 'Sedes', align: 'end' },
+      meta: { card: 'meta', cardLabel: 'Sedes', align: 'end', width: '6%' },
       cell: ({ row }) => row.original.sitesCount,
     },
     {
       id: 'activeServices',
-      header: 'Servicios activos',
-      meta: { card: 'meta', cardLabel: 'Servicios activos', align: 'end' },
+      header: () => <span className={HEADER_WRAP}>Servicios activos</span>,
+      meta: {
+        card: 'meta',
+        cardLabel: 'Servicios activos',
+        align: 'end',
+        width: '12%',
+      },
       cell: ({ row }) => row.original.activeServicesCount,
     },
     {
       id: 'primaryContact',
-      header: 'Contacto principal',
-      meta: { card: 'meta', cardLabel: 'Contacto principal' },
-      cell: ({ row }) => row.original.primaryContactName ?? '—',
+      header: () => <span className={HEADER_WRAP}>Contacto principal</span>,
+      meta: { card: 'meta', cardLabel: 'Contacto principal', width: '19%' },
+      cell: ({ row }) => (
+        <span
+          className="block truncate"
+          title={row.original.primaryContactName ?? undefined}
+        >
+          {row.original.primaryContactName ?? '—'}
+        </span>
+      ),
     },
     {
       id: 'monthHours',
       header: () => (
-        <span title={`${hoursHeader} (del 1 a hoy)`}>Horas (mes)</span>
+        <span className={HEADER_WRAP} title={`${hoursHeader} (del 1 a hoy)`}>
+          Horas (mes)
+        </span>
       ),
-      meta: { card: 'meta', cardLabel: hoursHeader, align: 'end' },
+      meta: {
+        card: 'meta',
+        cardLabel: hoursHeader,
+        align: 'end',
+        width: '10%',
+      },
       cell: ({ row }) => (
         <span
           className="tabular-nums"
@@ -210,7 +268,7 @@ function ClientsListTab() {
     {
       id: 'status',
       header: 'Estado',
-      meta: { card: 'meta', cardLabel: 'Estado' },
+      meta: { card: 'meta', cardLabel: 'Estado', width: '14%' },
       cell: ({ row }) => (
         <StatusBadge domain="client" status={row.original.status} />
       ),
@@ -249,30 +307,71 @@ function ClientsListTab() {
               ))}
             </SelectContent>
           </Select>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger aria-label="Filtrar por categoría">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las categorías</SelectItem>
+              {(categoriesQuery.data ?? []).map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                  {category.name}
+                </SelectItem>
+              ))}
+              <SelectItem value="none">Sin categoría</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <Button asChild icon={Plus}>
           <Link to="/admin/clientes/nuevo">Nuevo cliente</Link>
         </Button>
       </div>
 
-      <DataTable
-        caption="Clientes"
-        columns={columns}
-        data={rows}
-        getRowId={(row) => row.id}
-        isLoading={clientsQuery.isLoading}
-        emptyState={{
-          icon: Building2,
-          title:
-            debouncedText || statusFilter !== 'all'
-              ? 'No encontramos clientes con esos filtros'
-              : 'Todavía no hay clientes cargados',
-          description:
-            !debouncedText && statusFilter === 'all'
-              ? 'Creá el primero con "Nuevo cliente".'
-              : undefined,
-        }}
-      />
+      {groups.length === 0 ? (
+        <DataTable
+          caption="Clientes"
+          columns={columns}
+          data={rows}
+          getRowId={(row) => row.id}
+          fixedLayout
+          isLoading={clientsQuery.isLoading}
+          emptyState={{
+            icon: Building2,
+            title:
+              debouncedText ||
+              statusFilter !== 'all' ||
+              categoryFilter !== 'all'
+                ? 'No encontramos clientes con esos filtros'
+                : 'Todavía no hay clientes cargados',
+            description:
+              !debouncedText &&
+              statusFilter === 'all' &&
+              categoryFilter === 'all'
+                ? 'Creá el primero con "Nuevo cliente".'
+                : undefined,
+          }}
+        />
+      ) : (
+        groups.map((group) => (
+          <section
+            key={group.categoryId ?? 'none'}
+            aria-label={group.label}
+            className="flex flex-col gap-2"
+          >
+            <h2 className="text-[13px] font-semibold text-text">
+              {`${group.label} (${group.rows.length})`}
+            </h2>
+            <DataTable
+              caption={`Clientes · ${group.label}`}
+              columns={columns}
+              data={group.rows}
+              getRowId={(row) => row.id}
+              fixedLayout
+              isLoading={false}
+            />
+          </section>
+        ))
+      )}
     </div>
   )
 }

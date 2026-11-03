@@ -736,6 +736,8 @@ export interface LeaveInRange {
   employeeId: string
   startsOn: string
   endsOn: string | null
+  /** P27.5: motivo de la licencia (franco, vacaciones…), si se cargó. */
+  reason: string | null
 }
 
 /**
@@ -749,7 +751,7 @@ export async function fetchLeavesInRange(
 ): Promise<LeaveInRange[]> {
   const { data, error } = await supabase
     .from('employee_leaves')
-    .select('employee_id, starts_on, ends_on')
+    .select('employee_id, starts_on, ends_on, reason')
     .is('deleted_at', null)
     .lte('starts_on', to)
     .or(`ends_on.is.null,ends_on.gte.${from}`)
@@ -761,6 +763,7 @@ export async function fetchLeavesInRange(
     employeeId: row.employee_id,
     startsOn: row.starts_on,
     endsOn: row.ends_on,
+    reason: row.reason,
   }))
 }
 

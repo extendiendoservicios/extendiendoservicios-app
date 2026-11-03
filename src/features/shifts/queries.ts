@@ -148,8 +148,16 @@ export function useCreateShiftSeriesMutation() {
 export function useGenerateShiftsMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ year, month }: { year: number; month: number }) =>
-      shiftsApi.generateShifts(year, month),
+    mutationFn: ({
+      year,
+      month,
+      serviceId,
+    }: {
+      year: number
+      month: number
+      /** OD-27: limita la generación a un servicio. */
+      serviceId?: string
+    }) => shiftsApi.generateShifts(year, month, serviceId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: shiftsKeys.all })
       // AJ2-17: la generación asigna los empleados fijos.

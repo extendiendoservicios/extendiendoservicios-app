@@ -75,12 +75,13 @@ cada 30 s para ver rápido quién tomó un turno):
 ## «Supervisar», «Descartar» y «Cerrar»
 
 - **Supervisar** (`take_supervision`): deshabilitado, con el motivo a la vista, si no hay jornada iniciada, si está en pausa o
-  finalizada (CJ-07), si ya tiene otra supervisión abierta (CJ-08) o si ya supervisó ese turno (CJ-27).
+  finalizada (CJ-07), si ya tiene otra supervisión abierta (CJ-08) y en cualquier turno del día, empezado o no, haya llegado o no el empleado (OD-08). Si ya supervisó ese turno puede volver: el botón dice «Supervisar de nuevo» y abre una supervisión nueva (OD-10, ya no existe `ALREADY_SUPERVISED`). SUP-03 y la lista de SUP-02 muestran sus pasadas anteriores del turno con la hora y a cuántos calificó (`v_supervisor_today.supervisors` trae todas; `my_supervision_*` es la abierta o la última no cancelada).
 - **Descartar** (`discard_supervision`, SUP-04): solo mientras no calificó a nadie; queda cancelada y puede volver a tomar el
   turno. Pide confirmación.
-- **Cerrar** (`complete_supervision`): deshabilitado mientras falte calificar a alguien (CJ-10). Cuentan los empleados
-  asignados con inicio registrado; los ausentes no se califican y el propio coordinador, si también es empleado del turno,
-  queda fuera (CJ-28). SUP-04 y SUP-06 listan a quién falta (en SUP-06, con acceso a calificar). Una supervisión «Sin cerrar»
+- **Cerrar** (`complete_supervision`): ya no exige calificar (OD-09, desaparece `RATINGS_PENDING`). Cuentan los
+  empleados asignados con inicio registrado; los ausentes no se califican y el propio coordinador, si también es empleado
+  del turno, queda fuera (CJ-28). SUP-04 y SUP-06 avisan «Te falta calificar a…» (en SUP-06, con acceso a calificar) y SUP-06
+  pide confirmación («Cerrar igual») antes de cerrar. Una supervisión «Sin cerrar»
   por el cierre automático de la jornada solo se ve, no se cierra desde el celular.
 - La ventana de edición de la calificación (P-083) no corre mientras la supervisión sigue abierta; corre desde que se
   registra el fin (`isRatingWindowClosed`).
@@ -89,8 +90,7 @@ cada 30 s para ver rápido quién tomó un turno):
 
 `src/features/coordinator/errors.ts` traduce los `hint` de las RPC a mensajes claros (`coordinatorErrorMessage`, mismo
 patrón que `src/features/geo/errors.ts`): `ON_LEAVE`, `WORKDAY_*`, `SUPERVISION_OPEN`, `SUPERVISION_ALREADY_OPEN`,
-`ALREADY_SUPERVISED`, `NOT_TODAY`, `SUPERVISION_HAS_RATINGS`, etc. `RATINGS_PENDING` usa el mensaje del servidor, que trae
-los nombres.
+`NOT_TODAY`, `SUPERVISION_HAS_RATINGS`, etc. `RATINGS_PENDING` y `ALREADY_SUPERVISED` ya no existen (P27).
 
 ## Archivos
 

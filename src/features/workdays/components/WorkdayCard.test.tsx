@@ -23,6 +23,36 @@ vi.mock('./AddWorkdayPauseDialog', () => ({
     props.open ? <div role="dialog" aria-label="Agregar pausa" /> : null,
 }))
 
+vi.mock('./EndWorkdayDialog', () => ({
+  EndWorkdayDialog: (props: {
+    open: boolean
+    hasOpenPause: boolean
+    hasOpenSupervision: boolean
+  }) =>
+    props.open ? (
+      <div role="dialog" aria-label="Finalizar">
+        pausa:{String(props.hasOpenPause)} supervision:
+        {String(props.hasOpenSupervision)}
+      </div>
+    ) : null,
+}))
+vi.mock('./CloseWorkdayPauseDialog', () => ({
+  CloseWorkdayPauseDialog: (props: { pauseEventId: string }) => (
+    <div role="dialog" aria-label="Cerrar pausa">
+      cerrar:{props.pauseEventId}
+    </div>
+  ),
+}))
+vi.mock('./CorrectSupervisionTimeDialog', () => ({
+  CorrectSupervisionTimeDialog: (props: {
+    supervision: { supervisionId: string }
+  }) => (
+    <div role="dialog" aria-label="Horas de la supervisión">
+      horas:{props.supervision.supervisionId}
+    </div>
+  ),
+}))
+
 function makeWorkday(overrides: Partial<AdminWorkday> = {}): AdminWorkday {
   return {
     id: 'wd1',
@@ -103,6 +133,10 @@ function makeWorkday(overrides: Partial<AdminWorkday> = {}): AdminWorkday {
         removed: false,
       },
     ],
+    listStatus: 'closed',
+    isOpen: false,
+    openPauseEventId: null,
+    openSupervisionId: null,
     ...overrides,
   }
 }
@@ -245,5 +279,82 @@ describe('WorkdayCard', () => {
     })
     expect(link).toHaveAttribute('href', '/admin/supervisiones/sv1')
     expect(within(link.closest('li')!).getByText('Completada')).toBeVisible()
+  })
+
+  it('OD-06: «Finalizar jornada» solo con la jornada abierta y con permiso, y avisa qué se cierra', () => {
+    const open = makeWorkday({
+      isOpen: true,
+      state: 'paused',
+      endedAt: null,
+      openPauseEventId: 'e2',
+      openSupervisionId: 'sv1',
+    })
+    const { unmount } = renderCard(open, true)
+    fireEvent.click(screen.getByRole('button', { name: 'Finalizar jornada' }))
+    expect(screen.getByRole('dialog', { name: 'Finalizar' })).toHaveTextContent(
+      'pausa:true supervision:true',
+    )
+    unmount()
+
+    renderCard(open, false)
+    expect(
+      screen.queryByRole('button', { name: 'Finalizar jornada' }),
+    ).toBeNull()
+  })
+
+  it('una jornada finalizada no ofrece «Finalizar jornada»', () => {
+    renderCard(makeWorkday(), true)
+    expect(
+      screen.queryByRole('button', { name: 'Finalizar jornada' }),
+    ).toBeNull()
+  })
+
+  it('OD-07: «Cerrar pausa» solo en la pausa abierta', () => {
+    renderCard(
+      makeWorkday({ isOpen: true, state: 'paused', openPauseEventId: 'e2' }),
+      true,
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Cerrar la pausa de las 12:00' }),
+    )
+    expect(
+      screen.getByRole('dialog', { name: 'Cerrar pausa' }),
+    ).toHaveTextContent('cerrar:e2')
+  })
+
+  it('OD-07: sin pausa abierta no hay «Cerrar pausa»; la pausa se corrige por hora o motivo', () => {
+    renderCard(makeWorkday(), true)
+    expect(screen.queryByRole('button', { name: /Cerrar la pausa/ })).toBeNull()
+    expect(
+      screen.getByRole('button', { name: /Corregir hora: pausa/ }),
+    ).toHaveTextContent('Corregir hora o motivo')
+  })
+
+  it('OD-07: corrige las horas de una supervisión', () => {
+    renderCard(makeWorkday(), true)
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Corregir las horas de la supervisión en Limpiadora SRL · Sede Centro',
+      }),
+    )
+    expect(
+      screen.getByRole('dialog', { name: 'Horas de la supervisión' }),
+    ).toHaveTextContent('horas:sv1')
+  })
+
+  it('OD-05: con showSupervisor muestra el nombre del coordinador y enlaza a su ficha', () => {
+    render(
+      <MemoryRouter>
+        <WorkdayCard
+          workday={makeWorkday()}
+          canCorrect={false}
+          showSupervisor
+        />
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('link', { name: 'Ana Pérez' })).toHaveAttribute(
+      'href',
+      '/admin/empleados/sup1?pestana=jornadas',
+    )
   })
 })

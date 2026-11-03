@@ -12,6 +12,8 @@ import { SimpleConfirmDialog } from '@/features/settings/components/SimpleConfir
 import { isApiError } from '@/api/errors'
 import type { ServiceStatus } from '@/api/services'
 import { useAuth } from '@/features/auth/AuthProvider'
+import { canGenerateShifts } from '@/features/shifts/permissions'
+import { GenerateServiceShiftsDialog } from './GenerateServiceShiftsDialog'
 import { SERVICE_STATUS_OPTIONS } from '@/features/services/schemas'
 import { useSetServiceStatusMutation } from '@/features/services/queries'
 
@@ -43,6 +45,15 @@ function ChangeServiceStatusDialog({
 }) {
   const auth = useAuth()
   const setServiceStatus = useSetServiceStatusMutation()
+  // OD-27: al reactivar, se ofrece generar los turnos del mes.
+  const [generateFor, setGenerateFor] = useState<{
+    serviceId: string
+    validFrom: string | null
+  } | null>(null)
+  const canGenerate = canGenerateShifts({
+    roles: auth.roles,
+    capabilities: auth.capabilities,
+  })
   // El estado actual no se ofrece: elegirlo no cambiaría nada.
   const statusOptions = SERVICE_STATUS_OPTIONS.filter(
     (option) => option.value !== service.status,
@@ -59,18 +70,32 @@ function ChangeServiceStatusDialog({
 
   async function handleConfirm() {
     try {
-      await setServiceStatus.mutateAsync({
+      const updated = await setServiceStatus.mutateAsync({
         id: service.id,
         status: nextStatus,
         updatedBy: auth.userId as string,
       })
       toast.success('Cambiamos el estado del servicio.')
+      if (nextStatus === 'active' && canGenerate) {
+        setGenerateFor({ serviceId: updated.id, validFrom: updated.validFrom })
+        return
+      }
       onOpenChange(false)
     } catch (error) {
       toast.error(
         isApiError(error) ? error.message : 'No pudimos cambiar el estado.',
       )
     }
+  }
+
+  if (generateFor) {
+    return (
+      <GenerateServiceShiftsDialog
+        serviceId={generateFor.serviceId}
+        validFrom={generateFor.validFrom}
+        onFinish={() => onOpenChange(false)}
+      />
+    )
   }
 
   return (

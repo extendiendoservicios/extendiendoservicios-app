@@ -80,6 +80,8 @@ export interface IdsEscenario {
   correccionE1: string
   criterio: string
   feriado: string
+  /** P27: categoría de clientes plantada (0078, OD-20). */
+  categoriaA: string
   evento: string
   /** P24: turno de HOY del cliente A, sin asignaciones (lo ven los coordinadores en `v_supervisor_today`). */
   turnoHoy: string

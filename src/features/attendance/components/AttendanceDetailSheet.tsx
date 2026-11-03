@@ -71,7 +71,11 @@ function AttendanceDetailSheet({
   const emittedAt = useMemo(() => issuedAt ?? new Date(), [issuedAt])
 
   return (
-    <PrintSheet documentTitle={sheet.documentTitle} onClose={onClose}>
+    <PrintSheet
+      documentTitle={sheet.documentTitle}
+      onClose={onClose}
+      orientation="landscape"
+    >
       <PrintableLetterhead title={sheet.title} issuedAt={emittedAt} />
       <PrintFacts facts={sheet.facts} />
       {sheet.sections.map((section) => (

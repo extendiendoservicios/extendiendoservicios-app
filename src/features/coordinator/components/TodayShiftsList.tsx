@@ -6,11 +6,15 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/EmptyState'
+import { useHistoryRatingsSummaryQuery } from '@/api/mySupervisions'
 import { useSupervisorTodayQuery, type TodayShift } from '@/api/supervisorToday'
+import { formatTime } from '@/lib/format'
 import { formatSupervisionRange } from '@/features/employee/shiftRange'
 import {
   SHIFT_STATE_LABELS,
   effectiveShiftState,
+  myPastSupervisions,
+  pastSupervisionLabel,
   splitTodayShifts,
   supervisorsLabels,
 } from '../shifts'
@@ -43,6 +47,11 @@ export function TodayShiftsList() {
   const nowMs = useNowMs()
   const { data, isLoading, isError } = useSupervisorTodayQuery()
   const [search, setSearch] = useState('')
+  // OD-10: a cuántos califiqué en mis pasadas anteriores, en una sola consulta.
+  const pastIds = (data ?? []).flatMap((shift) =>
+    myPastSupervisions(shift).map((s) => s.supervisionId),
+  )
+  const { data: ratingsSummary } = useHistoryRatingsSummaryQuery(pastIds)
 
   if (isLoading) {
     return (
@@ -78,12 +87,14 @@ export function TodayShiftsList() {
         title="Mis sedes"
         shifts={mine}
         nowMs={nowMs}
+        ratingsSummary={ratingsSummary}
         emptyText="Hoy no hay turnos en tus sedes preferenciales."
       />
       <ShiftsBlock
         title="Otras sedes"
         shifts={others}
         nowMs={nowMs}
+        ratingsSummary={ratingsSummary}
         emptyText={
           searching
             ? 'No encontramos turnos con esa búsqueda.'
@@ -99,12 +110,14 @@ function ShiftsBlock({
   title,
   shifts,
   nowMs,
+  ratingsSummary,
   emptyText,
   search,
 }: {
   title: string
   shifts: TodayShift[]
   nowMs: number
+  ratingsSummary: RatingsSummary
   emptyText: string
   search?: { value: string; onChange: (value: string) => void }
 }) {
@@ -130,16 +143,36 @@ function ShiftsBlock({
         </p>
       ) : (
         shifts.map((shift) => (
-          <ShiftCard key={shift.shiftId} shift={shift} nowMs={nowMs} />
+          <ShiftCard
+            key={shift.shiftId}
+            shift={shift}
+            nowMs={nowMs}
+            ratingsSummary={ratingsSummary}
+          />
         ))
       )}
     </section>
   )
 }
 
-function ShiftCard({ shift, nowMs }: { shift: TodayShift; nowMs: number }) {
+type RatingsSummary = ReturnType<typeof useHistoryRatingsSummaryQuery>['data']
+
+function ShiftCard({
+  shift,
+  nowMs,
+  ratingsSummary,
+}: {
+  shift: TodayShift
+  nowMs: number
+  ratingsSummary: RatingsSummary
+}) {
   const state = effectiveShiftState(shift, nowMs)
-  const supervisors = supervisorsLabels(shift)
+  const past = myPastSupervisions(shift)
+  // Mis pasadas anteriores van en su propio renglón (con hora y calificadas).
+  const supervisors = supervisorsLabels({
+    ...shift,
+    supervisors: shift.supervisors.filter((s) => !past.includes(s)),
+  })
   const employeesCount = shift.assignedEmployees.length
   return (
     <Link to={`/sup/turnos/${shift.shiftId}`} className="block">
@@ -174,6 +207,20 @@ function ShiftCard({ shift, nowMs }: { shift: TodayShift; nowMs: number }) {
               </span>
             </p>
           )}
+          {past.map((s) => (
+            <p
+              key={s.supervisionId}
+              className="text-[11.5px] font-semibold text-info-800"
+            >
+              Supervisaste{' '}
+              {pastSupervisionLabel(
+                s,
+                ratingsSummary?.find((r) => r.supervisionId === s.supervisionId)
+                  ?.ratedCount,
+                formatTime,
+              )}
+            </p>
+          ))}
           {supervisors.map((label) => (
             <p
               key={label}

@@ -47,6 +47,7 @@ import {
 } from '@/features/geo/outsideZone'
 import { UpdatedAgo } from './UpdatedAgo'
 import { WorkedHoursCell } from './WorkedHoursCell'
+import { CheckInCell } from './CheckInCell'
 import { RecordAttendanceSheet } from './RecordAttendanceSheet'
 import { CoordinatorsDaySection } from './CoordinatorsDaySection'
 
@@ -259,10 +260,7 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
         id: 'checkIn',
         header: 'Inicio real',
         meta: { card: 'meta', cardLabel: 'Inicio real' },
-        cell: ({ row }) =>
-          row.original.checkInAt
-            ? `${formatTime(row.original.checkInAt)}${timeCorrectedSuffix(row.original.checkInGeo)}`
-            : '—',
+        cell: ({ row }) => <CheckInCell row={row.original} />,
       },
       {
         id: 'checkOut',

@@ -165,12 +165,19 @@ test(
         ).toBeVisible()
       })
 
-      await test.step('CJ-28, SUP-06: el total a calificar excluye al propio coordinador y el cierre queda bloqueado solo por el compañero', async () => {
+      await test.step('CJ-28, OD-09, SUP-06: el total a calificar excluye al propio coordinador; solo el compañero figura como faltante y el cierre queda habilitado', async () => {
         await page.goto(`/sup/supervisiones/${supervision}/cerrar`)
         await expect(page.getByText('Calificaste a 0 de 1')).toBeVisible()
+        await expect(page.getByText('Te falta calificar a:')).toBeVisible()
+        await expect(
+          page.getByRole('link', { name: nombreDe('empleado1') }),
+        ).toBeVisible()
+        await expect(
+          page.getByRole('link', { name: nombreDe('dual') }),
+        ).toHaveCount(0)
         await expect(
           page.getByRole('button', { name: 'Cerrar supervisión' }),
-        ).toBeDisabled()
+        ).toBeEnabled()
       })
 
       await test.step('entrando por el enlace a calificarse, la pantalla lo impide', async () => {

@@ -23,8 +23,8 @@ export const EMPLOYEE_LEAVE_STATUS_LABELS: Record<
 }
 
 /** Fecha de hoy en Buenos Aires (ADR-019), como `"YYYY-MM-DD"`. */
-export function todayInBuenosAires(): string {
-  return format(new Date(), 'yyyy-MM-dd', { in: tz(BUENOS_AIRES_TIME_ZONE) })
+export function todayInBuenosAires(now: Date = new Date()): string {
+  return format(now, 'yyyy-MM-dd', { in: tz(BUENOS_AIRES_TIME_ZONE) })
 }
 
 /**

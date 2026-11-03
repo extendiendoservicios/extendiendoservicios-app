@@ -122,7 +122,8 @@ describe('EmployeeFormPage · edición de un dueño o administrador (CR-19)', ()
       'readonly',
     )
     expect(
-      screen.getAllByText('Solo el dueño puede cambiar estos datos.').length,
+      screen.getAllByText('Solo la dirección puede cambiar estos datos.')
+        .length,
     ).toBeGreaterThan(0)
     // Los datos laborales siguen editables.
     expect(document.getElementById('employee-dni')).not.toHaveAttribute(
@@ -156,7 +157,7 @@ describe('EmployeeFormPage · edición de un dueño o administrador (CR-19)', ()
     renderPage()
     expect(await waitForForm()).not.toHaveAttribute('readonly')
     expect(
-      screen.queryByText('Solo el dueño puede cambiar estos datos.'),
+      screen.queryByText('Solo la dirección puede cambiar estos datos.'),
     ).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
 

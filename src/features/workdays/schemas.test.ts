@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   addWorkdayPauseSchema,
+  correctSupervisionTimeSchema,
   correctWorkdayEventSchema,
   INVALID_RANGE_MESSAGE,
   recordWorkdaySchema,
   SAME_DAY_MESSAGE,
+  workdayActionSchema,
 } from './schemas'
 
 function firstMessage(result: {
@@ -91,5 +93,66 @@ describe('recordWorkdaySchema', () => {
     expect(recordWorkdaySchema.safeParse({ ...base, reason: '' }).success).toBe(
       false,
     )
+  })
+})
+
+describe('workdayActionSchema (OD-06, OD-07)', () => {
+  it('pide la hora y el motivo', () => {
+    expect(
+      workdayActionSchema.safeParse({ at: '2026-10-21T10:00', reason: '  ' })
+        .success,
+    ).toBe(false)
+    expect(
+      workdayActionSchema.safeParse({ at: '', reason: 'Se trabó' }).success,
+    ).toBe(false)
+    expect(
+      workdayActionSchema.safeParse({
+        at: '2026-10-21T10:00',
+        reason: 'Se trabó la app',
+      }).success,
+    ).toBe(true)
+  })
+})
+
+describe('correctSupervisionTimeSchema (OD-07)', () => {
+  it('el fin tiene que ser posterior al inicio y el motivo es obligatorio', () => {
+    const bad = correctSupervisionTimeSchema.safeParse({
+      startAt: '2026-10-21T10:00',
+      endAt: '2026-10-21T09:00',
+      reason: 'Corrección',
+    })
+    expect(bad.success).toBe(false)
+    expect(
+      correctSupervisionTimeSchema.safeParse({
+        startAt: '2026-10-21T10:00',
+        endAt: '2026-10-21T11:00',
+        reason: '',
+      }).success,
+    ).toBe(false)
+    expect(
+      correctSupervisionTimeSchema.safeParse({
+        startAt: '2026-10-21T10:00',
+        endAt: '2026-10-21T11:00',
+        reason: 'Corrección',
+      }).success,
+    ).toBe(true)
+  })
+})
+
+describe('correctWorkdayEventSchema con motivo de pausa (OD-07)', () => {
+  it('admite hasta 300 caracteres en el motivo de la pausa', () => {
+    const base = { at: '2026-10-21T10:00', reason: 'Corrección' }
+    expect(
+      correctWorkdayEventSchema.safeParse({
+        ...base,
+        pauseReason: 'a'.repeat(300),
+      }).success,
+    ).toBe(true)
+    expect(
+      correctWorkdayEventSchema.safeParse({
+        ...base,
+        pauseReason: 'a'.repeat(301),
+      }).success,
+    ).toBe(false)
   })
 })

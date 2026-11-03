@@ -216,7 +216,7 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
         <Alert variant="info">
           <AlertDescription>
             El turno ya empezó: para asignar o quitar personal hace falta el
-            permiso de asistencia. Pedíselo a la dueña.
+            permiso de asistencia. Pedíselo a la dirección.
           </AlertDescription>
         </Alert>
       )}

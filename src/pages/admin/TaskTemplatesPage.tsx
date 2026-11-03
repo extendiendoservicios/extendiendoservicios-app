@@ -107,7 +107,7 @@ export default function TaskTemplatesPage() {
       {!canEdit && (
         <p className="text-[11.5px] text-text-3">
           No tenés el permiso para editar plantillas de tareas: podés verlas,
-          pero no cambiarlas. Pedíselo a la dueña.
+          pero no cambiarlas. Pedíselo a la dirección.
         </p>
       )}
 

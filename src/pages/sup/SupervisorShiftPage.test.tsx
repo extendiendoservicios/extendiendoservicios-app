@@ -87,11 +87,13 @@ function setup({
     warnings: [],
   }),
   consent = 'declined',
+  ratedCounts = [],
 }: {
   shift?: ReturnType<typeof makeTodayShift> | null
   workday?: ReturnType<typeof makeWorkday> | null | undefined
   mutateAsync?: ReturnType<typeof vi.fn>
   consent?: 'granted' | 'needs-consent' | 'declined'
+  ratedCounts?: { supervisionId: string; ratedCount: number }[]
 } = {}) {
   mockCommonHooks({ consent })
   vi.spyOn(todayModule, 'useSupervisorTodayQuery').mockReturnValue({
@@ -104,6 +106,12 @@ function setup({
     isLoading: false,
     isError: false,
     dataUpdatedAt: Date.now(),
+  } as never)
+  vi.spyOn(
+    mySupervisionsModule,
+    'useHistoryRatingsSummaryQuery',
+  ).mockReturnValue({
+    data: ratedCounts.map((r) => ({ ...r, averageScore: null })),
   } as never)
   vi.spyOn(mySupervisionsModule, 'useTakeSupervisionMutation').mockReturnValue({
     mutateAsync,
@@ -128,12 +136,10 @@ describe('SupervisorShiftPage (SUP-03)', () => {
     expect(screen.getByText('Supervisando: Ana Ruiz')).toBeInTheDocument()
   })
 
-  it('muestra los datos útiles de la sede, con el teléfono como enlace', () => {
+  it('muestra los datos útiles de la sede y no muestra el contacto', () => {
     setup({
       shift: makeTodayShift({
         ...SHIFT,
-        siteContactName: 'Rosa Pérez',
-        siteContactPhone: '11 5555-1234',
         accessInstructions: 'Timbre 3B, pedir la llave en recepción',
         buildingHours: 'Lunes a viernes de 7 a 20',
         restrictionsNotes: 'No mover los equipos',
@@ -142,11 +148,7 @@ describe('SupervisorShiftPage (SUP-03)', () => {
     expect(screen.getByText(/Timbre 3B/)).toBeInTheDocument()
     expect(screen.getByText(/Lunes a viernes de 7 a 20/)).toBeInTheDocument()
     expect(screen.getByText('No mover los equipos')).toBeInTheDocument()
-    expect(screen.getByText('Rosa Pérez')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /11 5555-1234/ })).toHaveAttribute(
-      'href',
-      'tel:11 5555-1234',
-    )
+    expect(screen.queryByText('Contacto en la sede')).toBeNull()
   })
 
   it('muestra las marcas «sin celular» y «sin fotos» de la sede', () => {
@@ -239,18 +241,67 @@ describe('SupervisorShiftPage (SUP-03)', () => {
     ).toHaveAttribute('href', '/sup/supervisiones/sv1')
   })
 
-  it('traduce el error de la base (por ejemplo, el turno ya fue supervisado por vos)', async () => {
+  it('traduce el error de la base (por ejemplo, ya tenés otra supervisión abierta)', async () => {
     setup({
       mutateAsync: vi
         .fn()
-        .mockRejectedValue(new ApiError('crudo', 'ALREADY_SUPERVISED')),
+        .mockRejectedValue(new ApiError('crudo', 'SUPERVISION_ALREADY_OPEN')),
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'Supervisar' }))
 
     expect(
-      await screen.findByText('Ya supervisaste este turno.'),
+      await screen.findByText(
+        'Cerrá o descartá tu supervisión abierta antes de empezar otra.',
+      ),
     ).toBeInTheDocument()
+  })
+
+  it.each(['pending', 'finished'] as const)(
+    'OD-08: un turno %s se puede supervisar',
+    (displayState) => {
+      setup({
+        shift: makeTodayShift({
+          ...SHIFT,
+          displayState,
+          startsAt: null,
+          endsAt: null,
+        }),
+      })
+      expect(screen.getByRole('button', { name: 'Supervisar' })).toBeEnabled()
+    },
+  )
+
+  it('OD-10: con una supervisión propia ya cerrada lista la pasada con su hora y el botón dice «Supervisar de nuevo»', () => {
+    const mine = {
+      supervisionId: 'sv1',
+      supervisorId: 'sup-1',
+      firstName: 'Marta',
+      lastName: 'Ríos',
+      status: 'completed' as const,
+      checkInAt: '2026-10-23T12:00:00Z',
+      checkOutAt: '2026-10-23T12:30:00Z',
+      isMe: true,
+    }
+    setup({
+      shift: makeTodayShift({
+        ...SHIFT,
+        supervisors: [...SHIFT.supervisors, mine],
+        mySupervisionId: 'sv1',
+        mySupervisionStatus: 'completed',
+      }),
+      ratedCounts: [{ supervisionId: 'sv1', ratedCount: 2 }],
+    })
+
+    expect(
+      screen.getByText('Tus supervisiones de este turno'),
+    ).toBeInTheDocument()
+    const link = screen.getByRole('link', { name: /calificaste a 2 empleados/ })
+    expect(link).toHaveAttribute('href', '/sup/supervisiones/sv1')
+    expect(
+      screen.getByRole('button', { name: 'Supervisar de nuevo' }),
+    ).toBeEnabled()
+    expect(screen.queryByText('Ir a mi supervisión')).not.toBeInTheDocument()
   })
 
   it('si falta el consentimiento, lo muestra antes y no registra todavía', async () => {

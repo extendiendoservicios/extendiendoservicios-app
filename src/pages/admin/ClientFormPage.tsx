@@ -43,9 +43,11 @@ import {
   CLIENT_STATUS_OPTIONS,
   clientFormSchema,
   clientFormValuesToInput,
+  NO_CATEGORY_VALUE,
   type ClientFormValues,
 } from '@/features/clients/schemas'
 import { ClientColorPicker } from '@/features/clients/components/ClientColorPicker'
+import { useClientCategoriesQuery } from '@/features/clients/categoryQueries'
 import { useLeaveForm } from '@/app/shells/backNavigation'
 
 /**
@@ -66,6 +68,7 @@ export default function ClientFormPage() {
   const auth = useAuth()
 
   const clientQuery = useClientDetailQuery(id)
+  const categoriesQuery = useClientCategoriesQuery()
   const createClient = useCreateClientMutation()
   const updateClient = useUpdateClientMutation()
   const bankQuery = useClientBankDetailsQuery(id)
@@ -93,6 +96,7 @@ export default function ClientFormPage() {
       status: 'active',
       notes: '',
       calendarColor: null,
+      categoryId: NO_CATEGORY_VALUE,
       bankName: '',
       cbu: '',
       alias: '',
@@ -115,6 +119,7 @@ export default function ClientFormPage() {
             status: clientQuery.data.status,
             notes: clientQuery.data.notes ?? '',
             calendarColor: clientQuery.data.calendarColor,
+            categoryId: clientQuery.data.categoryId ?? NO_CATEGORY_VALUE,
             ...bankDetailsToFormValues(bankQuery.data),
           }
         : undefined,
@@ -343,6 +348,36 @@ export default function ClientFormPage() {
           {errors.adminAddress && (
             <FieldError>{errors.adminAddress.message}</FieldError>
           )}
+        </Field>
+
+        <Field>
+          <FieldLabel htmlFor="client-category">
+            Categoría (opcional)
+          </FieldLabel>
+          <Controller
+            control={control}
+            name="categoryId"
+            render={({ field }) => (
+              <Select
+                value={field.value ?? NO_CATEGORY_VALUE}
+                onValueChange={field.onChange}
+              >
+                <SelectTrigger id="client-category" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_CATEGORY_VALUE}>
+                    Sin categoría
+                  </SelectItem>
+                  {(categoriesQuery.data ?? []).map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
         </Field>
 
         <Field className="sm:col-span-2">

@@ -31,7 +31,9 @@ select columns_are(
     -- 0039 (AJ2-06): foto del cliente.
     'photo_path',
     -- 0066 (P24.8): índice de color del calendario.
-    'calendar_color'
+    'calendar_color',
+    -- 0078 (P27.1, OD-20): categoría del cliente.
+    'category_id'
   ],
   'clients tiene exactamente las columnas de 04 sección 2.2'
 );

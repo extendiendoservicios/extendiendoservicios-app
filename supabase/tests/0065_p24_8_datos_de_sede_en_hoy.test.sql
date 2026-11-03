@@ -84,8 +84,8 @@ insert into public.assignments (shift_id, employee_id, status) values
 -- Estructura
 select has_function('app', 'supervisor_today', 'app.supervisor_today()');
 select has_view('public', 'v_supervisor_today', 'existe v_supervisor_today');
-select col_type_is('public', 'v_supervisor_today', 'site_contact_name', 'text', 'site_contact_name es text');
-select col_type_is('public', 'v_supervisor_today', 'site_contact_phone', 'text', 'site_contact_phone es text');
+select hasnt_column('public', 'v_supervisor_today', 'site_contact_name', 'v_supervisor_today ya no trae site_contact_name (0081, OD-24)');
+select hasnt_column('public', 'v_supervisor_today', 'site_contact_phone', 'v_supervisor_today ya no trae site_contact_phone (0081, OD-24)');
 select col_type_is('public', 'v_supervisor_today', 'access_instructions', 'text', 'access_instructions es text');
 select col_type_is('public', 'v_supervisor_today', 'building_hours', 'text', 'building_hours es text');
 select col_type_is('public', 'v_supervisor_today', 'restrictions_notes', 'text', 'restrictions_notes es text');
@@ -109,15 +109,15 @@ select ok(
 select tests_0065.as_user('test-db065-sup@example.com');
 
 select results_eq(
-  $$select site_contact_name, site_contact_phone, access_instructions, building_hours, restrictions_notes
+  $$select access_instructions, building_hours, restrictions_notes
     from public.v_supervisor_today where shift_id = 'f6500000-0000-0000-0000-000000000041'$$,
-  $$values ('Marta Encargada'::text, '11-5555-0001'::text, 'Entrar por la cochera'::text, 'Lunes a viernes de 7 a 19'::text, 'No mover los equipos'::text)$$,
-  'SUP-03: el coordinador ve contacto, acceso, horario y restricciones de la sede'
+  $$values ('Entrar por la cochera'::text, 'Lunes a viernes de 7 a 19'::text, 'No mover los equipos'::text)$$,
+  'SUP-03: el coordinador ve acceso, horario y restricciones de la sede (sin contacto, 0081)'
 );
 select results_eq(
-  $$select site_contact_name, site_contact_phone, access_instructions, building_hours, restrictions_notes
+  $$select access_instructions, building_hours, restrictions_notes
     from public.v_supervisor_today where shift_id = 'f6500000-0000-0000-0000-000000000042'$$,
-  $$values (null::text, null::text, null::text, null::text, null::text)$$,
+  $$values (null::text, null::text, null::text)$$,
   'SUP-03: una sede sin datos cargados trae nulos'
 );
 

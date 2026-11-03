@@ -46,7 +46,7 @@ export const SUPPLY_IMAGE_URL_TTL_SECONDS = 30 * 60
  */
 export const STOCK_ERROR_MESSAGES: Record<string, string> = {
   FORBIDDEN:
-    'Para hacer esto necesitás el permiso «Gestionar stock». Pedíselo a la dueña.',
+    'Para hacer esto necesitás el permiso «Gestionar stock». Pedíselo a la dirección.',
   INVALID_LINES: 'Agregá al menos un artículo, con su cantidad.',
   INVALID_QTY:
     'Las cantidades tienen que ser números enteros distintos de cero.',

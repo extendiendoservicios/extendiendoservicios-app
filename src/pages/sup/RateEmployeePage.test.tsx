@@ -28,8 +28,6 @@ function supervision(overrides: Partial<MySupervision>): MySupervision {
     siteCity: 'San Isidro',
     siteLatitude: -34.47,
     siteLongitude: -58.5,
-    siteContactName: null,
-    siteContactPhone: null,
     accessInstructions: null,
     buildingHours: null,
     phoneRestricted: false,

@@ -28,6 +28,11 @@
 // acciones: `get_credentials` (la administración ve la contraseña según el rol, CR-02/CR-07/CR-08)
 // y `change_own_password` (cualquier persona con sesión cambia la suya pasando por acá, CR-04).
 // Las contraseñas no se escriben jamás en un log ni en `security_events`.
+//
+// P27.1 (OD-22, OD-23): novena acción, `delete_user` (solo dueño). Borra de verdad a un empleado:
+// primero la RPC `owner_delete_employee` (con el JWT del dueño, para que la base compruebe el rol y
+// la historia y deje el evento `record_deleted` con la copia JSON) y recién después el usuario de
+// Auth con la service_role. Ver `actionDeleteUser`.
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders, getAllowedOrigins } from '../_shared/cors.ts'
 import {
@@ -84,6 +89,7 @@ type AdminUsersEventType =
   | 'admin_action_rejected'
   | 'credentials_viewed'
   | 'password_changed_by_user'
+  | 'record_deleted'
 
 // `credentials_viewed` (CR-10: mostrar la contraseña no cuenta para el límite) y
 // `password_changed_by_user` (es el cambio de la propia persona, no una acción administrativa)
@@ -118,6 +124,11 @@ type ErrorHint =
   | 'VALIDATION_ERROR'
   | 'RATE_LIMITED'
   | 'CREDENTIALS_NOT_CONFIGURED'
+  | 'EMPLOYEE_NOT_FOUND'
+  | 'CONFIRM_NAME_MISMATCH'
+  | 'DELETE_BLOCKED'
+  | 'CANNOT_DELETE_SELF'
+  | 'AUTH_DELETE_FAILED'
   | 'UNKNOWN_ACTION'
   | 'INTERNAL_ERROR'
 
@@ -126,6 +137,9 @@ export class DomainError extends Error {
     public readonly hint: ErrorHint,
     message: string,
     public readonly status: number,
+    // Detalle estructurado opcional que viaja en la respuesta (por ejemplo, los bloqueos de un
+    // borrado). Nunca lleva secretos.
+    public readonly details?: unknown,
   ) {
     super(message)
   }
@@ -194,6 +208,28 @@ const errors = {
       500,
     )
   },
+  employeeNotFound: () =>
+    new DomainError(
+      'EMPLOYEE_NOT_FOUND',
+      'No encontramos a ese empleado.',
+      404,
+    ),
+  confirmNameMismatch: (message: string) =>
+    new DomainError('CONFIRM_NAME_MISMATCH', message, 400),
+  deleteBlocked: (message: string, details?: unknown) =>
+    new DomainError('DELETE_BLOCKED', message, 409, details),
+  cannotDeleteSelf: () =>
+    new DomainError(
+      'CANNOT_DELETE_SELF',
+      'No podés eliminarte a vos mismo.',
+      409,
+    ),
+  authDeleteFailed: () =>
+    new DomainError(
+      'AUTH_DELETE_FAILED',
+      'Se borraron los datos de la persona, pero no pudimos borrar su usuario de acceso. Repetí la acción para terminar de borrarlo.',
+      500,
+    ),
   unknownAction: (action: string) =>
     new DomainError('UNKNOWN_ACTION', `La acción "${action}" no existe.`, 400),
   // El mensaje QUE VE la persona usuaria siempre es el mismo genérico en español (nunca vacío ni
@@ -1404,6 +1440,198 @@ export async function actionChangeOwnPassword(
 }
 
 // ---------------------------------------------------------------------------------------------
+// P27.1 · OD-22, OD-23: borrado físico de un empleado (solo dueño)
+// ---------------------------------------------------------------------------------------------
+
+/** Llamada a una RPC con el JWT del dueño (no con la service_role): la base comprueba el rol. */
+export type RpcAsUser = (
+  jwt: string,
+  fn: string,
+  args: Record<string, unknown>,
+) => Promise<{
+  data: unknown
+  error: {
+    code?: string
+    message?: string
+    hint?: string
+    details?: string
+  } | null
+}>
+
+async function callRpcWithUserJwt(
+  jwt: string,
+  fn: string,
+  args: Record<string, unknown>,
+) {
+  const url = Deno.env.get('SUPABASE_URL')
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
+  if (!url || !anonKey) {
+    throw errors.internal(
+      'Faltan las variables de entorno de la función (SUPABASE_URL / SUPABASE_ANON_KEY).',
+    )
+  }
+  const client = createClient(url, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: { headers: { Authorization: `Bearer ${jwt}` } },
+  })
+  const { data, error } = await client.rpc(fn, args)
+  return { data, error }
+}
+
+/**
+ * Traduce un error de `owner_delete_employee` (errcode P0001 con hint estable) a un DomainError.
+ * Lo que no es un error de dominio conocido se trata como interno.
+ */
+function mapDeleteEmployeeError(error: {
+  code?: string
+  message?: string
+  hint?: string
+  details?: string
+}): DomainError {
+  const message = error.message ?? ''
+  switch (error.hint) {
+    case 'FORBIDDEN':
+      return errors.forbidden()
+    case 'EMPLOYEE_NOT_FOUND':
+      return errors.employeeNotFound()
+    case 'CONFIRM_NAME_MISMATCH':
+      return errors.confirmNameMismatch(message)
+    case 'DELETE_BLOCKED': {
+      let blockers: unknown = undefined
+      try {
+        blockers = error.details ? JSON.parse(error.details) : undefined
+      } catch {
+        // detalle que no es JSON: se omite
+      }
+      return errors.deleteBlocked(message, blockers)
+    }
+    default:
+      return errors.internal(message || error.code || 'error de la RPC')
+  }
+}
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+// OD-22, OD-23: `delete_user` borra de verdad a un empleado, y solo lo puede pedir el dueño.
+//
+// Diseño (el más seguro, en este orden):
+//   1. Solo el dueño (comprobado en vivo con `resolveActor`; además la RPC lo vuelve a comprobar
+//      con el JWT).
+//   2. Primero se llama a `owner_delete_employee` con el JWT del dueño. La base verifica el nombre
+//      escrito, la historia (fichajes, calificaciones, stock, asignaciones en turnos con historia,
+//      otros registros que lo nombren...) y, si no hay bloqueos, borra todo lo de la base en UNA
+//      transacción y deja el evento `record_deleted` con la copia JSON. Si algo bloquea, no se
+//      toca nada y el usuario de Auth sigue intacto: nunca se borra el acceso de alguien cuyos
+//      datos no se pudieron borrar.
+//   3. Recién entonces se borra el usuario de Auth con la service_role y el avatar de Storage
+//      (el archivo, mejor esfuerzo).
+//   4. Si el paso 3 fallara, la persona ya no tiene perfil ni roles (no puede entrar a nada) y se
+//      responde AUTH_DELETE_FAILED: repetir `delete_user` termina el trabajo (un usuario de Auth
+//      sin perfil es un huérfano que solo el dueño puede terminar de borrar). El orden inverso
+//      podría dejar a un empleado con historia sin su usuario.
+export async function actionDeleteUser(
+  admin: SupabaseClient,
+  actor: Actor,
+  body: Record<string, unknown>,
+  ip: string | null,
+  rpcAsUser: RpcAsUser = callRpcWithUserJwt,
+): Promise<Record<string, unknown>> {
+  const { profile_id, confirm_name } = body
+  if (typeof profile_id !== 'string' || !UUID_RE.test(profile_id)) {
+    throw errors.validation('Falta profile_id.')
+  }
+  if (typeof confirm_name !== 'string' || confirm_name.trim() === '') {
+    throw errors.validation('Escribí el nombre de la persona para confirmar.')
+  }
+
+  if (!isOwner(actor)) {
+    throw errors.forbidden()
+  }
+  if (profile_id === actor.id) {
+    throw errors.cannotDeleteSelf()
+  }
+
+  const { data: profile, error: profileError } = await admin
+    .from('profiles')
+    .select('id')
+    .eq('id', profile_id)
+    .maybeSingle()
+  if (profileError) {
+    throw errors.internal(profileError.message)
+  }
+
+  let name: string | null = null
+  let avatarPath: string | null = null
+  let rpcEventId: string | null = null
+  let deleted: unknown = null
+
+  if (profile) {
+    if (!actor.jwt) throw errors.unauthenticated()
+    const { data, error } = await rpcAsUser(
+      actor.jwt,
+      'owner_delete_employee',
+      { p_employee_id: profile_id, p_confirm_name: confirm_name },
+    )
+    if (error) {
+      throw mapDeleteEmployeeError(error)
+    }
+    const res = (data ?? {}) as Record<string, unknown>
+    name = typeof res.name === 'string' ? res.name : null
+    avatarPath = typeof res.avatar_path === 'string' ? res.avatar_path : null
+    rpcEventId = typeof res.event_id === 'string' ? res.event_id : null
+    deleted = res.deleted ?? null
+  } else {
+    // Sin perfil: solo puede ser un usuario de Auth huérfano (un borrado anterior que no llegó a
+    // terminar). Si ni eso existe, no hay nada que borrar.
+    const { data: authUser, error: getError } =
+      await admin.auth.admin.getUserById(profile_id)
+    if (getError || !authUser?.user) {
+      throw errors.profileNotFound()
+    }
+  }
+
+  const { error: authError } = await admin.auth.admin.deleteUser(profile_id)
+  if (authError && authError.code !== 'user_not_found') {
+    console.error(
+      'admin-users: no se pudo borrar el usuario de Auth',
+      authError,
+    )
+    throw errors.authDeleteFailed()
+  }
+
+  if (avatarPath) {
+    const { error: storageError } = await admin.storage
+      .from('avatars')
+      .remove([avatarPath])
+    if (storageError) {
+      // El archivo huérfano no es un riesgo de seguridad ni frena nada: queda en el log.
+      console.error(
+        'admin-users: no se pudo borrar el avatar de Storage',
+        storageError,
+      )
+    }
+  }
+
+  await logEvent(
+    admin,
+    'record_deleted',
+    actor.id,
+    null,
+    {
+      entity: 'auth_user',
+      record_id: profile_id,
+      name,
+      completed_orphan: profile === null,
+      employee_event_id: rpcEventId,
+    },
+    ip,
+  )
+
+  return { profile_id, name, deleted }
+}
+
+// ---------------------------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------------------------
 
@@ -1425,6 +1653,7 @@ const ACTIONS: Record<
   get_credentials: actionGetCredentials,
   get_access_status: actionGetAccessStatus,
   change_own_password: actionChangeOwnPassword,
+  delete_user: actionDeleteUser,
 }
 
 // Rechazos que se registran y cuentan para el límite (SEG-03): todos los que ocurren una vez que
@@ -1541,7 +1770,13 @@ export async function handleRequest(
         )
       }
       return jsonResponse(
-        { error: { message: err.message, hint: err.hint } },
+        {
+          error: {
+            message: err.message,
+            hint: err.hint,
+            ...(err.details !== undefined ? { details: err.details } : {}),
+          },
+        },
         err.status,
         origin,
       )

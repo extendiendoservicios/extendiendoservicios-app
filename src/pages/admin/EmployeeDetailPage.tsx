@@ -1,7 +1,7 @@
 import { formatTaxId } from '@/lib/taxId'
 import { useMemo, useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router'
-import { KeyRound, LogOut, Pencil, User, UserX } from 'lucide-react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
+import { KeyRound, LogOut, Pencil, Trash2, User, UserX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -13,6 +13,8 @@ import { formatCalendarDate } from '@/lib/format'
 import { AccessBlock } from '@/features/users/components/AccessBlock'
 import { canActOnUser, canViewCredentials } from '@/features/users/permissions'
 import { useAuth } from '@/features/auth/AuthProvider'
+import { OwnerDeleteDialog } from '@/features/ownerDelete/components/OwnerDeleteDialog'
+import { canOwnerDelete } from '@/features/ownerDelete/matching'
 import { BankDetailsCard } from '@/features/bank/components/BankDetailsCard'
 import { useEmployeeBankDetailsQuery } from '@/features/bank/queries'
 import { ROLE_LABELS } from '@/features/auth/session'
@@ -23,6 +25,7 @@ import {
   TerminateEmployeeDialog,
 } from '@/features/employees/components/EmployeeAccountDialogs'
 import { EmployeeAvailabilityTab } from '@/features/employees/components/EmployeeAvailabilityTab'
+import { EmployeeCronogramaTab } from '@/features/employees/components/EmployeeCronogramaTab'
 import { EmployeeClientPermissionsTab } from '@/features/employees/components/EmployeeClientPermissionsTab'
 import {
   personSignerLabel,
@@ -46,6 +49,7 @@ import { SupervisorWorkdaysTab } from '@/features/workdays/components/Supervisor
 
 const TABS = [
   'datos',
+  'cronograma',
   'habilitaciones',
   'disponibilidad',
   'licencias',
@@ -64,7 +68,7 @@ function isEmployeeDetailTab(value: string | null): value is EmployeeDetailTab {
 
 /**
  * ADM-17 "Empleado · ficha" (`05` línea 66): cabecera (foto, nombre,
- * legajo, roles, estado efectivo) y las siete pestañas (más dos para quien
+ * legajo, roles, estado efectivo) y las siete pestañas, más «Cronograma» (P27.4, OD-01) después de «Datos» (más dos para quien
  * tiene el rol coordinador, P24.3: «Clientes y sedes preferenciales» y
  * «Jornadas», y «Retiros» de insumos para dueño y administradores, P25.3). Datos, Habilitaciones
  * (EMP-006), Disponibilidad (EMP-007) y Licencias (EMP-008) están completas;
@@ -78,13 +82,14 @@ function isEmployeeDetailTab(value: string | null): value is EmployeeDetailTab {
 export default function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const auth = useAuth()
+  const navigate = useNavigate()
   const actor = useMemo(
     () => ({ roles: auth.roles, capabilities: auth.capabilities }),
     [auth.roles, auth.capabilities],
   )
   const [searchParams, setSearchParams] = useSearchParams()
   const [openDialog, setOpenDialog] = useState<
-    'reset-password' | 'sign-out' | 'terminate' | 'roles' | null
+    'reset-password' | 'sign-out' | 'terminate' | 'roles' | 'delete' | null
   >(null)
 
   const activeTab = isEmployeeDetailTab(searchParams.get('pestana'))
@@ -217,6 +222,17 @@ export default function EmployeeDetailPage() {
                 </Link>
               </Button>
             )}
+            {canOwnerDelete(auth) && employee.profileId !== auth.userId && (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={Trash2}
+                className="text-danger"
+                onClick={() => setOpenDialog('delete')}
+              >
+                Eliminar
+              </Button>
+            )}
           </div>
           {showAccess && (
             <AccessBlock
@@ -232,6 +248,7 @@ export default function EmployeeDetailPage() {
       <Tabs value={visibleTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="datos">Datos</TabsTrigger>
+          <TabsTrigger value="cronograma">Cronograma</TabsTrigger>
           <TabsTrigger value="habilitaciones">Habilitaciones</TabsTrigger>
           <TabsTrigger value="disponibilidad">Disponibilidad</TabsTrigger>
           <TabsTrigger value="licencias">Licencias</TabsTrigger>
@@ -256,6 +273,16 @@ export default function EmployeeDetailPage() {
             employee={employee}
             canEditRoles={canManageAccount}
             onEditRoles={() => setOpenDialog('roles')}
+          />
+        </TabsContent>
+
+        <TabsContent value="cronograma" className="pt-3">
+          <EmployeeCronogramaTab
+            profileId={employee.profileId}
+            person={{
+              employeeNumber: employee.employeeNumber,
+              name: `${employee.firstName} ${employee.lastName}`,
+            }}
           />
         </TabsContent>
 
@@ -356,6 +383,15 @@ export default function EmployeeDetailPage() {
         open={openDialog === 'roles'}
         onOpenChange={(open) => setOpenDialog(open ? 'roles' : null)}
       />
+      {canOwnerDelete(auth) && openDialog === 'delete' && (
+        <OwnerDeleteDialog
+          kind="employee"
+          id={employee.profileId}
+          open={openDialog === 'delete'}
+          onOpenChange={(open) => setOpenDialog(open ? 'delete' : null)}
+          onDeleted={() => void navigate('/admin/empleados', { replace: true })}
+        />
+      )}
     </div>
   )
 }

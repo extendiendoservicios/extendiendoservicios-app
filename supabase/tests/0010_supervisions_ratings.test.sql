@@ -106,7 +106,7 @@ select ok((select relrowsecurity from pg_class where oid = 'public.supervision_a
 select ok((select relrowsecurity from pg_class where oid = 'public.ratings'::regclass), 'ratings tiene RLS habilitada');
 select ok((select relrowsecurity from pg_class where oid = 'public.rating_criteria'::regclass), 'rating_criteria tiene RLS habilitada');
 
-select has_index('public', 'supervisions', 'supervisions_shift_id_supervisor_id_key', 'supervisions: índice único parcial (shift_id, supervisor_id)');
+select hasnt_index('public', 'supervisions', 'supervisions_shift_id_supervisor_id_key', 'supervisions: ya no hay índice único por (shift_id, supervisor_id) (0079, OD-10)');
 select has_index('public', 'supervisions', 'supervisions_supervisor_id_status_idx', 'supervisions: índice (supervisor_id, status)');
 select has_index('public', 'supervisions', 'supervisions_shift_id_idx', 'supervisions: índice (shift_id)');
 select has_index('public', 'ratings', 'ratings_assignment_id_idx', 'ratings: índice (assignment_id)');
@@ -140,15 +140,17 @@ select is(
   'supervisions.status nace en assigned sin indicarlo (04 sección 6.4: "— -> assigned")'
 );
 
--- supervisions: unicidad parcial (shift_id, supervisor_id) entre las no canceladas (P-086) --------
+-- supervisions: sin unicidad por (shift_id, supervisor_id) desde 0079 (OD-10) -------------------------
+-- El coordinador puede volver al mismo turno y abrir una supervisión nueva. Esta fila queda en la
+-- transacción: más abajo la supervisora ve 4 supervisiones propias, no 3.
 
 prepare supervision_duplicate_shift_supervisor as
   insert into public.supervisions (shift_id, supervisor_id)
   values ('50000000-0000-0000-0000-000000000040', '50000000-0000-0000-0000-000000000081');
 
-select throws_ok(
-  'supervision_duplicate_shift_supervisor', '23505', null,
-  'rechaza una segunda supervisión no cancelada del mismo turno y supervisor (P-086, sin supervisión espontánea)'
+select lives_ok(
+  'supervision_duplicate_shift_supervisor',
+  'acepta una segunda supervisión no cancelada del mismo turno y supervisor (0079, OD-10)'
 );
 
 -- supervisions: not_done_reason obligatorio cuando status = not_done -------------------------------
@@ -307,7 +309,7 @@ select is((select count(*)::int from public.ratings), 0, 'ratings: mismo caso, s
 -- Con el rol supervisor agregado al claims (simulando que esta persona sí tiene ese rol vigente,
 -- que es lo que dice su email de fixture "test-db012-supervisora@example.com"), las mismas tres
 -- políticas SÍ muestran lo que le corresponde a esta persona como supervisora de las filas del
--- fixture (04 sección 7.2: "S: propias"): las tres supervisiones de supervisor_id = '..081'
+-- fixture (04 sección 7.2: "S: propias"): las cuatro supervisiones de supervisor_id = '..081'
 -- ('..060' not_done->cancelled, '..061' assigned, '..062' cancelled), los dos registros de
 -- supervision_attendance de la supervisión '..061' (check_in y check_out) y la calificación
 -- '..080' de esa misma supervisión.
@@ -320,7 +322,7 @@ select set_config(
   true
 );
 
-select is((select count(*)::int from public.supervisions), 3, 'supervisions: con el rol supervisor en el claims, la supervisora ve sus 3 supervisiones (04 sección 7.2: "S: propias")');
+select is((select count(*)::int from public.supervisions), 4, 'supervisions: con el rol supervisor en el claims, la supervisora ve sus 4 supervisiones (04 sección 7.2: "S: propias"; una es la segunda del mismo turno, 0079)');
 select is((select count(*)::int from public.supervision_attendance), 2, 'supervision_attendance: con el rol, ve los 2 registros de su supervisión ..061');
 select is((select count(*)::int from public.ratings), 1, 'ratings: con el rol, ve la calificación que hizo en su supervisión ..061');
 

@@ -4,9 +4,8 @@
 --      cancelado, en curso o terminado (CJ-06), de a una (CJ-08), validación de sede (B-07),
 --      dos coordinadores en el mismo turno (CJ-05) y la advertencia SUPERVISES_OWN_SHIFT.
 --   2. Bloqueos de la jornada con una supervisión abierta (CJ-29).
---   3. complete_supervision: calificar a todos los que tienen inicio registrado (CJ-10), los
---      ausentes y las asignaciones quitadas quedan fuera, el propio coordinador queda fuera
---      (CJ-28); registra el fin. Varias calificaciones por empleado (CJ-09).
+--   3. complete_supervision: registra el fin. CJ-10 y CJ-28 (calificar a todos) quedaron sin efecto
+--      con 0079 (OD-09); varias calificaciones por empleado (CJ-09).
 --   4. discard_supervision (CJ-27) y volver a tomar el turno.
 --   5. rate_employee: sin ventana mientras la supervisión está abierta; con ventana desde el fin.
 --   6. Permisos por rol (dueño, administrador, coordinador, empleado) y que el empleado siga sin
@@ -381,23 +380,24 @@ select is(
 -- 2. complete_supervision: CJ-10, CJ-28, CJ-09
 -- ---------------------------------------------------------------------------------------------
 
-select is(
-  tests_0063b.err_hint($$select public.complete_supervision((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000041' and supervisor_id = 'f6301000-0000-0000-0000-000000000091'))$$),
-  'RATINGS_PENDING', 'cerrar sin calificar a nadie -> RATINGS_PENDING (CJ-10)'
+-- Desde 0079 (OD-09) calificar es opcional: complete_supervision ya no exige las calificaciones.
+-- El cierre sin calificar se prueba en 0079_p27_1_coordinacion.test.sql.
+select ok(
+  position('RATINGS_PENDING' in pg_get_functiondef('public.complete_supervision(uuid,text,numeric,numeric,numeric,text)'::regprocedure)) = 0,
+  'complete_supervision ya no exige calificar a todos: no existe RATINGS_PENDING (OD-09, 0079)'
 );
 select ok(
-  (select m ~ 'Ximena Uno' and m ~ 'Yago Dos' and m !~ 'Zoe' and m !~ 'Rita'
-   from (select tests_0063b.err_message($$select public.complete_supervision((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000041' and supervisor_id = 'f6301000-0000-0000-0000-000000000091'))$$) as m) q),
-  'el mensaje nombra a Ximena y a Yago (con inicio), no a Zoe (ausente, CJ-28) ni a Rita (asignación quitada)'
+  position('Falta calificar' in pg_get_functiondef('public.complete_supervision(uuid,text,numeric,numeric,numeric,text)'::regprocedure)) = 0,
+  'complete_supervision ya no arma la lista de quienes faltan calificar (OD-09, 0079)'
 );
 select lives_ok(
   $$select public.rate_employee((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000041' and supervisor_id = 'f6301000-0000-0000-0000-000000000091'), 'f6301000-0000-0000-0000-000000000201', 5, 'Muy bien')$$,
   'Ana califica a Ximena'
 );
 select is(
-  tests_0063b.err_message($$select public.complete_supervision((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000041' and supervisor_id = 'f6301000-0000-0000-0000-000000000091'))$$),
-  'Falta calificar a: Yago Dos.',
-  'con Ximena calificada, falta solo Yago'
+  (select count(*)::integer from public.ratings
+   where supervision_id = (select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000041' and supervisor_id = 'f6301000-0000-0000-0000-000000000091')),
+  1, 'con Ximena calificada, la supervisión tiene una calificación'
 );
 select lives_ok(
   $$select public.rate_employee((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000041' and supervisor_id = 'f6301000-0000-0000-0000-000000000091'), 'f6301000-0000-0000-0000-000000000202', 4, null)$$,
@@ -442,9 +442,9 @@ select is(
   tests_0063b.err_hint($$select public.discard_supervision((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000041' and supervisor_id = 'f6301000-0000-0000-0000-000000000091'))$$),
   'SUPERVISION_NOT_EDITABLE', 'una supervisión cerrada no se descarta'
 );
-select is(
-  tests_0063b.err_hint($$select public.take_supervision('f6301000-0000-0000-0000-000000000041')$$),
-  'ALREADY_SUPERVISED', 'volver a tomar un turno que ya supervisó y cerró -> ALREADY_SUPERVISED (CJ-27)'
+select ok(
+  position('ALREADY_SUPERVISED' in pg_get_functiondef('public.take_supervision(uuid,numeric,numeric,numeric,text)'::regprocedure)) = 0,
+  'take_supervision ya no rechaza volver al mismo turno: no existe ALREADY_SUPERVISED (OD-10, 0079; el caso real se prueba en 0079_p27_1_coordinacion.test.sql)'
 );
 
 -- Cada coordinador califica con su criterio (CJ-09): el mismo empleado, dos calificaciones.
@@ -555,8 +555,9 @@ select is(
   'in_progress', 'Ana toma un turno ya terminado del mismo día (CJ-06)'
 );
 select is(
-  tests_0063b.err_message($$select public.complete_supervision((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000040' and supervisor_id = 'f6301000-0000-0000-0000-000000000091' and status <> 'cancelled'))$$),
-  'Falta calificar a: Walter Cinco.', 'faltan los que tuvieron inicio, también en un turno terminado'
+  (select count(*)::integer from public.ratings
+   where supervision_id = (select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000040' and supervisor_id = 'f6301000-0000-0000-0000-000000000091' and status <> 'cancelled')),
+  0, 'en el turno terminado todavía no hay calificaciones (calificar es opcional, OD-09)'
 );
 select lives_ok(
   $$select public.rate_employee((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000040' and supervisor_id = 'f6301000-0000-0000-0000-000000000091' and status <> 'cancelled'), 'f6301000-0000-0000-0000-000000000207', 5, 'Impecable')$$,
@@ -606,8 +607,9 @@ select is(
   'SELF_RATING_NOT_ALLOWED', 'no se califica a sí misma'
 );
 select is(
-  tests_0063b.err_message($$select public.complete_supervision((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000042' and supervisor_id = 'f6301000-0000-0000-0000-000000000091' and status <> 'cancelled'))$$),
-  'Falta calificar a: Vera Cuatro.', 'ella queda fuera del requisito: solo falta Vera'
+  (select count(*)::integer from public.ratings
+   where supervision_id = (select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000042' and supervisor_id = 'f6301000-0000-0000-0000-000000000091' and status <> 'cancelled')),
+  0, 'sin calificarse a sí misma ni a nadie todavía (CJ-28 sigue: no se califica a sí misma; calificar es opcional, OD-09)'
 );
 select lives_ok(
   $$select public.rate_employee((select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000042' and supervisor_id = 'f6301000-0000-0000-0000-000000000091' and status <> 'cancelled'), 'f6301000-0000-0000-0000-000000000205', 5, null)$$,

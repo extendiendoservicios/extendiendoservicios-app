@@ -487,114 +487,124 @@ export async function fetchServiceLabels(
 }
 
 // -------------------------------------------------------------------------
-// 6. Eliminar un servicio (AJ3-01)
+// 6. Aplicar los empleados fijos a los turnos ya creados (OD-11)
 // -------------------------------------------------------------------------
 
-export type ServiceDeleteBlockReason =
-  'ATTENDANCE_RECORDS' | 'ATTENDANCE_NOTICES' | 'SUPERVISIONS' | 'SHIFT_MEDIA'
-
-export interface ServiceDeletePreview {
-  serviceId: string
-  serviceName: string
-  shiftsToDelete: number
-  assignmentsToDelete: number
-  /** Turnos que impiden borrar, con sus motivos. Vacío = se puede borrar. */
-  blockingShifts: {
-    shiftId: string
-    shiftDate: string
-    reasons: ServiceDeleteBlockReason[]
-  }[]
-  canDelete: boolean
+export interface FixedApplyChange {
+  employeeId: string
+  employeeName: string | null
 }
 
-/** Mensajes en español de los errores de `service_delete_preview` y `delete_service`. */
-const DELETE_ERROR_MESSAGES: Record<string, string> = {
-  FORBIDDEN: 'Solo la dueña o un administrador puede eliminar servicios.',
-  SERVICE_NOT_FOUND:
-    'No encontramos el servicio. Puede que ya se haya eliminado.',
-  SERVICE_HAS_ATTENDANCE:
-    'No se puede eliminar: hay turnos con fichajes o avisos de asistencia. Dalo de baja en su lugar.',
-  SERVICE_HAS_SUPERVISIONS:
-    'No se puede eliminar: hay turnos con supervisiones. Dalo de baja en su lugar.',
-  SERVICE_HAS_MEDIA:
-    'No se puede eliminar: hay turnos con fotos o videos. Dalo de baja en su lugar.',
+export interface FixedApplyUpdatedShift {
+  shiftId: string
+  shiftDate: string
+  removed: FixedApplyChange[]
+  added: FixedApplyChange[]
 }
 
-/** Pasa el error de las RPC de eliminación a `ApiError`, con el mensaje en español de cada `hint`. */
-export function mapServiceDeleteError(error: {
-  code?: string | null
+/** Algo que no se pudo tocar: un turno entero (`scope: 'shift'`) o un empleado en un turno. */
+export interface FixedApplySkipped {
+  scope: 'shift' | 'employee'
+  shiftId: string
+  shiftDate: string
+  employeeId: string | null
+  employeeName: string | null
+  code: string
   message: string
-  hint?: string | null
-}): ApiError {
-  const mapped = error.hint ? DELETE_ERROR_MESSAGES[error.hint] : undefined
-  if (mapped && error.hint) {
-    return new ApiError(mapped, error.hint)
-  }
-  return fromPostgrestError(error)
 }
 
-/** Qué pasaría al borrar (no modifica nada). Dueño y administrador. */
-export async function fetchServiceDeletePreview(
-  serviceId: string,
-): Promise<ServiceDeletePreview> {
-  const { data, error } = await supabase.rpc('service_delete_preview', {
-    p_service_id: serviceId,
-  })
+export interface FixedApplyResult {
+  fromDate: string
+  /** Turnos con cambios. */
+  updatedCount: number
+  unchangedCount: number
+  /** Turnos que no se tocaron (cancelados, empezados, con fichajes o avisos). */
+  skippedCount: number
+  assignmentsRemoved: number
+  assignmentsAdded: number
+  updated: FixedApplyUpdatedShift[]
+  skipped: FixedApplySkipped[]
+}
 
-  if (error) {
-    throw mapServiceDeleteError(error)
-  }
-  const payload = data as {
-    service_id: string
-    service_name: string
-    shifts_to_delete: number
-    assignments_to_delete: number
-    blocking_shifts: {
-      shift_id: string
-      shift_date: string
-      reasons: ServiceDeleteBlockReason[]
-    }[]
-    can_delete: boolean
-  }
+interface RawFixedChange {
+  employee_id: string
+  employee_name: string | null
+}
+
+interface RawFixedApplyResult {
+  from_date: string
+  updated_count: number
+  unchanged_count: number
+  skipped_count: number
+  assignments_removed: number
+  assignments_added: number
+  updated?: {
+    shift_id: string
+    shift_date: string
+    removed?: RawFixedChange[]
+    added?: RawFixedChange[]
+  }[]
+  skipped?: {
+    scope: 'shift' | 'employee'
+    shift_id: string
+    shift_date: string
+    employee_id: string | null
+    employee_name: string | null
+    code: string
+    message: string
+  }[]
+}
+
+/** Pasa la respuesta de `apply_service_fixed_employees` a la forma de la pantalla. */
+export function parseFixedApplyResult(
+  raw: RawFixedApplyResult,
+): FixedApplyResult {
+  const change = (item: RawFixedChange): FixedApplyChange => ({
+    employeeId: item.employee_id,
+    employeeName: item.employee_name,
+  })
   return {
-    serviceId: payload.service_id,
-    serviceName: payload.service_name,
-    shiftsToDelete: payload.shifts_to_delete,
-    assignmentsToDelete: payload.assignments_to_delete,
-    blockingShifts: (payload.blocking_shifts ?? []).map((shift) => ({
+    fromDate: raw.from_date,
+    updatedCount: raw.updated_count,
+    unchangedCount: raw.unchanged_count,
+    skippedCount: raw.skipped_count,
+    assignmentsRemoved: raw.assignments_removed,
+    assignmentsAdded: raw.assignments_added,
+    updated: (raw.updated ?? []).map((shift) => ({
       shiftId: shift.shift_id,
       shiftDate: shift.shift_date,
-      reasons: shift.reasons,
+      removed: (shift.removed ?? []).map(change),
+      added: (shift.added ?? []).map(change),
     })),
-    canDelete: payload.can_delete,
+    skipped: (raw.skipped ?? []).map((item) => ({
+      scope: item.scope,
+      shiftId: item.shift_id,
+      shiftDate: item.shift_date,
+      employeeId: item.employee_id,
+      employeeName: item.employee_name,
+      code: item.code,
+      message: item.message,
+    })),
   }
 }
 
-export interface ServiceDeleteResult {
-  serviceId: string
-  shiftsDeleted: number
-  assignmentsDeleted: number
-}
-
-/** Borra el servicio y sus turnos. Dueño y administrador. */
-export async function deleteService(
+/**
+ * OD-11: en cada turno del servicio desde `fromDate` quita los fijos anteriores
+ * y asigna los nuevos. No toca turnos cancelados, empezados o con fichajes o
+ * avisos, ni a los empleados agregados a mano. Errores: `FROM_DATE_REQUIRED`,
+ * `SERVICE_NOT_FOUND`.
+ */
+export async function applyServiceFixedEmployees(
   serviceId: string,
-): Promise<ServiceDeleteResult> {
-  const { data, error } = await supabase.rpc('delete_service', {
+  fromDate: string,
+): Promise<FixedApplyResult> {
+  const { data, error } = await supabase.rpc('apply_service_fixed_employees', {
     p_service_id: serviceId,
+    p_from_date: fromDate,
   })
 
   if (error) {
-    throw mapServiceDeleteError(error)
+    throw fromPostgrestError(error)
   }
-  const payload = data as {
-    service_id: string
-    shifts_deleted: number
-    assignments_deleted: number
-  }
-  return {
-    serviceId: payload.service_id,
-    shiftsDeleted: payload.shifts_deleted,
-    assignmentsDeleted: payload.assignments_deleted,
-  }
+  return parseFixedApplyResult(data as unknown as RawFixedApplyResult)
 }

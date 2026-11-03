@@ -12,7 +12,7 @@ import { DataTable, type DataTableColumnDef } from '@/components/DataTable'
 import { PersonCell } from '@/components/PersonCell'
 import { StatusBadge } from '@/components/status'
 import { avatarUrl } from '@/lib/avatarUrl'
-import { formatMinutes, formatTime } from '@/lib/format'
+import { formatMinutes } from '@/lib/format'
 import type { AttendanceBoardRow } from '@/api/attendance'
 import {
   getArrivalHint,
@@ -21,7 +21,7 @@ import {
 } from '@/features/attendance/derive'
 import { WorkedHoursCell } from '@/features/attendance/components/WorkedHoursCell'
 import { GeoValidationCell } from '@/features/geo/components/GeoValidationCell'
-import { timeCorrectedSuffix } from '@/features/geo/outsideZone'
+import { CheckInCell } from '@/features/attendance/components/CheckInCell'
 import {
   ALL_DAY_FILTER,
   filterByFranja,
@@ -101,10 +101,7 @@ function ServicesTodayTable({
       id: 'checkIn',
       header: 'Inicio real',
       meta: { card: 'meta', cardLabel: 'Inicio real' },
-      cell: ({ row }) =>
-        row.original.checkInAt
-          ? `${formatTime(row.original.checkInAt)}${timeCorrectedSuffix(row.original.checkInGeo)}`
-          : '—',
+      cell: ({ row }) => <CheckInCell row={row.original} />,
     },
     {
       id: 'geo',

@@ -87,6 +87,7 @@ export async function barrerResiduos(db: AdminDb): Promise<number> {
   // Licencias de una corrida cortada: la siguiente chocaría con `employee_leaves_no_overlap`.
   await db.from('employee_leaves').delete().like('reason', `${PREFIJO}%`)
   await db.from('holidays').delete().like('name', `${PREFIJO}%`)
+  await db.from('client_categories').delete().like('name', `${PREFIJO}%`)
   await db.from('rating_criteria').delete().like('title', `${PREFIJO}%`)
   await db.from('security_events').delete().eq('details->>e2e', 'perm')
   // Eventos que dejan las acciones de la Edge Function sobre la persona inexistente de la matriz.
@@ -447,6 +448,16 @@ export async function plantar(
         .single(),
     )
   ).id
+  const categoriaA = (
+    await ok(
+      'categoría de clientes',
+      db
+        .from('client_categories')
+        .insert({ name: `${PREFIJO}categoria`, sort_order: 9999 })
+        .select('id')
+        .single(),
+    )
+  ).id
   const evento = (
     await ok(
       'evento de seguridad',
@@ -588,6 +599,7 @@ export async function plantar(
     correccionE1,
     criterio,
     feriado,
+    categoriaA,
     evento,
     turnoHoy,
     prioridadSup1,
@@ -620,6 +632,10 @@ export async function limpiar(db: AdminDb, e: IdsEscenario): Promise<string[]> {
     db.from('rating_criteria').delete().eq('id', e.criterio),
   )
   await borrar('feriado', db.from('holidays').delete().eq('id', e.feriado))
+  await borrar(
+    'categoría',
+    db.from('client_categories').delete().eq('id', e.categoriaA),
+  )
   await borrar(
     'evento',
     db.from('security_events').delete().eq('details->>e2e', 'perm'),

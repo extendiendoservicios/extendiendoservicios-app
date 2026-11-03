@@ -69,7 +69,7 @@ describe('escritura de tablas por perfil', () => {
             const c = contexto()
             const res = await tabla(clienteDe(perfil), spec.tabla)
               .insert(spec.insert.fila(c, perfil))
-              .select()
+              .select(spec.columnas ?? '*')
             const creadas = filas(res)
             try {
               if (permitido) {
@@ -121,7 +121,7 @@ describe('escritura de tablas por perfil', () => {
                 const res = await conPk(
                   tabla(clienteDe(perfil), spec.tabla).update(variante.parche),
                   pk,
-                ).select()
+                ).select(spec.columnas ?? '*')
                 if (permitido) {
                   expect(res.error, describir(res)).toBeNull()
                   expect(filas(res).length).toBeGreaterThanOrEqual(1)
@@ -170,7 +170,7 @@ describe('escritura de tablas por perfil', () => {
               const res = await conPk(
                 tabla(clienteDe(perfil), spec.tabla).delete(),
                 pk,
-              ).select()
+              ).select(spec.columnas ?? '*')
               if (permitido) {
                 expect(res.error, describir(res)).toBeNull()
                 expect(filas(res)).toHaveLength(1)

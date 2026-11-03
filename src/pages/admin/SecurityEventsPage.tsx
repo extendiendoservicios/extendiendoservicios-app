@@ -22,6 +22,7 @@ import { useSecurityEventsQuery } from '@/features/settings/queries'
 import {
   SECURITY_EVENT_TYPES,
   SECURITY_EVENT_TYPE_LABELS,
+  describeSecurityEventDetail,
 } from '@/features/settings/securityEventLabels'
 import { formatShortDate, formatTime } from '@/lib/format'
 
@@ -109,6 +110,12 @@ export default function SecurityEventsPage() {
       header: 'Sobre quién',
       meta: { card: 'meta', cardLabel: 'Sobre quién' },
       cell: ({ row }) => row.original.targetName ?? '—',
+    },
+    {
+      id: 'detail',
+      header: 'Detalle',
+      meta: { card: 'meta', cardLabel: 'Detalle' },
+      cell: ({ row }) => describeSecurityEventDetail(row.original) ?? '—',
     },
   ]
 

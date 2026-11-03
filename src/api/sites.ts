@@ -83,6 +83,35 @@ export interface SiteDetail {
   updatedAt: string | null
 }
 
+/**
+ * Columnas de `sites` legibles por `authenticated` (0081): todas menos `contact_name` y
+ * `contact_phone`, que se leen de `v_site_contacts` (solo dueño y administrador).
+ */
+const SITE_DETAIL_SELECT =
+  'id, client_id, name, address, city, latitude, longitude, access_instructions, building_hours, phone_restricted, photos_not_allowed, restrictions_notes, geofence_radius_m, status, created_at, updated_at, clients(legal_name, trade_name, status)'
+
+interface SiteContact {
+  contact_name: string | null
+  contact_phone: string | null
+}
+
+/** Contacto de la sede desde `v_site_contacts`; sin fila (rol sin permiso) queda en `null`. */
+async function fetchSiteContact(siteId: string): Promise<SiteContact> {
+  const { data, error } = await supabase
+    .from('v_site_contacts')
+    .select('contact_name, contact_phone')
+    .eq('site_id', siteId)
+    .maybeSingle()
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return {
+    contact_name: data?.contact_name ?? null,
+    contact_phone: data?.contact_phone ?? null,
+  }
+}
+
 interface SiteRowWithClient {
   id: string
   client_id: string
@@ -91,8 +120,6 @@ interface SiteRowWithClient {
   city: string | null
   latitude: number | null
   longitude: number | null
-  contact_name: string | null
-  contact_phone: string | null
   access_instructions: string | null
   building_hours: string | null
   phone_restricted: boolean
@@ -109,7 +136,10 @@ interface SiteRowWithClient {
   } | null
 }
 
-function mapSiteDetailRow(row: SiteRowWithClient): SiteDetail {
+function mapSiteDetailRow(
+  row: SiteRowWithClient,
+  contact: SiteContact,
+): SiteDetail {
   return {
     id: row.id,
     clientId: row.client_id,
@@ -120,8 +150,8 @@ function mapSiteDetailRow(row: SiteRowWithClient): SiteDetail {
     city: row.city,
     latitude: row.latitude,
     longitude: row.longitude,
-    contactName: row.contact_name,
-    contactPhone: row.contact_phone,
+    contactName: contact.contact_name,
+    contactPhone: contact.contact_phone,
     accessInstructions: row.access_instructions,
     buildingHours: row.building_hours,
     phoneRestricted: row.phone_restricted,
@@ -144,14 +174,14 @@ function mapSiteDetailRow(row: SiteRowWithClient): SiteDetail {
 export async function fetchSiteDetail(id: string): Promise<SiteDetail> {
   const { data, error } = await supabase
     .from('sites')
-    .select('*, clients(legal_name, trade_name, status)')
+    .select(SITE_DETAIL_SELECT)
     .eq('id', id)
     .single()
 
   if (error) {
     throw fromPostgrestError(error)
   }
-  return mapSiteDetailRow(data)
+  return mapSiteDetailRow(data, await fetchSiteContact(id))
 }
 
 export interface SiteFormInput {
@@ -200,13 +230,13 @@ export async function createSite(
       status: input.status,
       created_by: createdBy,
     })
-    .select('*, clients(legal_name, trade_name, status)')
+    .select(SITE_DETAIL_SELECT)
     .single()
 
   if (error) {
     throw mapWriteError(error)
   }
-  return mapSiteDetailRow(data)
+  return mapSiteDetailRow(data, await fetchSiteContact(data.id))
 }
 
 /** Edición de ADM-23. */
@@ -237,13 +267,13 @@ export async function updateSite(
       updated_by: updatedBy,
     })
     .eq('id', id)
-    .select('*, clients(legal_name, trade_name, status)')
+    .select(SITE_DETAIL_SELECT)
     .single()
 
   if (error) {
     throw mapWriteError(error)
   }
-  return mapSiteDetailRow(data)
+  return mapSiteDetailRow(data, await fetchSiteContact(data.id))
 }
 
 /**
@@ -260,13 +290,13 @@ export async function setSiteStatus(
     .from('sites')
     .update({ status, updated_by: updatedBy })
     .eq('id', id)
-    .select('*, clients(legal_name, trade_name, status)')
+    .select(SITE_DETAIL_SELECT)
     .single()
 
   if (error) {
     throw mapWriteError(error)
   }
-  return mapSiteDetailRow(data)
+  return mapSiteDetailRow(data, await fetchSiteContact(data.id))
 }
 
 // -------------------------------------------------------------------------

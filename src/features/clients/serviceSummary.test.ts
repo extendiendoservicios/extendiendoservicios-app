@@ -235,7 +235,8 @@ describe('buildClientSummarySheet (AJ-09)', () => {
       value: '11 h 58 min',
     })
     // Una sola firma: la del responsable de administración.
-    expect(sheet.signers).toEqual(['Responsable (administración)'])
+    expect(sheet.signers).toEqual(['Responsable (administración)', 'Cliente'])
+    expect(sheet.consentText).toMatch(/conformidad/)
   })
 
   it('con DNI, sin turnos sin inicio y con CUIT sin guiones lo formatea', () => {

@@ -33,8 +33,8 @@ vi.mock('@/features/employee/components/LazyShiftMediaSection', () => ({
 /**
  * SUP-04 · Supervisión (P24.2): sede, franja, empleados con su estado e inicio
  * real, tareas en solo lectura y la guía de criterios; «Descartar» (CJ-27) y
- * «Cerrar supervisión» deshabilitado mientras falte calificar a alguien
- * (CJ-10, CJ-28). Por empleado, «Calificar» no se ofrece para el propio
+ * «Cerrar supervisión» siempre disponible: avisa a quién le falta calificar
+ * (OD-09, CJ-28). Por empleado, «Calificar» no se ofrece para el propio
  * coordinador (CB-13) ni fuera del plazo de P-083 (MOB-SUP-011). Mismo patrón
  * de mocks que el resto de la vía: se reemplazan los hooks del módulo de datos.
  */
@@ -99,13 +99,16 @@ describe('SupervisionDetailPage (SUP-04)', () => {
     expect(screen.queryByText(/Registrar (inicio|fin)/)).not.toBeInTheDocument()
   })
 
-  it('«Cerrar supervisión» queda deshabilitado mientras falte calificar y lista a quién (CJ-10)', () => {
+  it('OD-09: aunque falte calificar, «Cerrar supervisión» sigue habilitado y avisa a quién le falta', () => {
     setup(makeMySupervision(), { ratings: [] })
 
+    expect(screen.getByText('Cerrar supervisión').closest('a')).toHaveAttribute(
+      'href',
+      '/sup/supervisiones/sv1/cerrar',
+    )
     expect(
-      screen.getByRole('button', { name: 'Cerrar supervisión' }),
-    ).toBeDisabled()
-    expect(screen.getByText(/falta calificar a: Ana Gómez/)).toBeInTheDocument()
+      screen.getByText(/Te falta calificar a: Ana Gómez/),
+    ).toBeInTheDocument()
   })
 
   it('con todos calificados, «Cerrar supervisión» lleva a cerrar', () => {

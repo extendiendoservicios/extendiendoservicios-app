@@ -83,6 +83,17 @@ Por pedido de la empresa (28 oct 2026), la administración puede ver la contrase
 - **Rastro**: cada consulta deja `credentials_viewed` (quién, a quién, cuándo) en `security_events`, que se ve en ADM-31; cada cambio propio deja `password_changed_by_user`. Ningún evento ni log lleva una contraseña: `logEvent` descarta además cualquier detalle cuya clave parezca una contraseña o un secreto.
 - **Riesgo asumido**: quien entre a la cuenta de un dueño puede ver todas las contraseñas. El registro lo deja a la vista pero no lo evita; se recomienda a los dueños contraseñas largas y propias (y un segundo factor a futuro).
 
+### Borrado físico del dueño (P27.1, OD-22 y OD-23)
+
+Excepción deliberada a P-014 (nada se borra físicamente), pedida por los dueños el 2 nov 2026: turnos, servicios, sedes, clientes y empleados **sin historia**.
+
+- **Solo el dueño**: las RPC `owner_delete_*` y `owner_delete_preview_*` empiezan con `app.require_role('owner')` (un administrador, aunque tenga todas las capacidades, recibe `FORBIDDEN`). `anon` no las ejecuta. La Edge Function repite la comprobación en vivo (`delete_user`).
+- **La historia no se borra**: la base rechaza el borrado con `DELETE_BLOCKED` y el detalle de cada bloqueo (fichajes, avisos, supervisiones, calificaciones, evidencia, tareas trabajadas, stock, faltantes, jornadas, asignaciones en turnos con historia, y cualquier otro registro que nombre a la persona). Además las claves foráneas (sin cascada) frenan el borrado si algo apareciera entre la comprobación y el borrado: la transacción falla entera.
+- **Confirmación por nombre en el servidor**: `p_confirm_name` tiene que coincidir con el nombre del registro (`CONFIRM_NAME_MISMATCH`); la pantalla lo pide, pero no es la única validación.
+- **Rastro**: cada borrado deja `record_deleted` en `security_events` (quién, qué, cuándo y una copia JSON de lo borrado; sin contraseñas ni datos bancarios). Los eventos anteriores de un empleado borrado se conservan desvinculados (`details.actor_deleted` / `target_deleted`).
+- **Empleado y usuario de Auth**: la acción `delete_user` de `admin-users` llama primero a `owner_delete_employee` con el JWT del dueño y solo si salió bien borra el usuario de Auth con la `service_role` (y el avatar). Nunca se borra el acceso de alguien cuyos datos la base no dejó borrar; si Auth fallara después, repetir la acción termina el borrado (`AUTH_DELETE_FAILED`). Un dueño no se puede borrar ni borrarse a sí mismo.
+- Detalle en `docs/database.md`, «Observaciones de los dueños».
+
 ### Evidencia fotográfica (P21.1, módulo H)
 
 - Bucket `evidence` privado: solo URL firmadas de vida corta. Se escribe únicamente en las rutas de una fila `shift_media` pendiente y propia (la crea `begin_shift_media`, que valida rol, relación con el turno, ventana, topes y sede). Lo lee el autor y dueño y administradores; nadie más, ni siquiera el supervisor del mismo turno.

@@ -2,6 +2,7 @@ import { fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TodayShiftsList } from './TodayShiftsList'
 import * as todayModule from '@/api/supervisorToday'
+import * as mySupervisionsModule from '@/api/mySupervisions'
 import { makeTodayShift } from '../fixtures'
 import { renderRoute } from '../testUtils'
 
@@ -169,5 +170,41 @@ describe('TodayShiftsList', () => {
     expect(
       screen.getByText(/No pudimos cargar los turnos de hoy/),
     ).toBeInTheDocument()
+  })
+
+  it('OD-10: muestra mis supervisiones anteriores del turno con la hora y a cuántos califiqué', () => {
+    mockShifts([
+      makeTodayShift({
+        shiftId: 'x',
+        supervisors: [
+          {
+            supervisionId: 'sv1',
+            supervisorId: 'me',
+            firstName: 'Marta',
+            lastName: 'Ríos',
+            status: 'completed',
+            checkInAt: '2026-10-23T12:00:00Z',
+            checkOutAt: '2026-10-23T12:30:00Z',
+            isMe: true,
+          },
+        ],
+        mySupervisionId: 'sv1',
+        mySupervisionStatus: 'completed',
+      }),
+    ])
+    vi.spyOn(
+      mySupervisionsModule,
+      'useHistoryRatingsSummaryQuery',
+    ).mockReturnValue({
+      data: [{ supervisionId: 'sv1', ratedCount: 3, averageScore: 4 }],
+    } as never)
+    renderList()
+
+    expect(
+      screen.getByText(
+        /Supervisaste 09:00 a 09:30 · calificaste a 3 empleados/,
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/Supervisó: Vos/)).not.toBeInTheDocument()
   })
 })

@@ -1179,3 +1179,64 @@ describe('estructura del archivo', () => {
     expect(hojas.indexOf('Clientes')).toBeLessThan(hojas.indexOf('Empleados'))
   })
 })
+
+describe('categoría del cliente (OD-20, P27.9)', () => {
+  const vigentes = ['Edificio', 'Empresa', 'Casa', 'Final de obra']
+
+  async function conCategorias(
+    categorias: (string | null)[],
+    categoriasVigentes: string[] | null = vigentes,
+  ) {
+    const lectura = await leerPlantilla(
+      await crearPlanilla({
+        Clientes: categorias.map((categoria, i) => ({
+          razonSocial: `Test Cliente ${i + 1}`,
+          categoria,
+        })),
+      }),
+    )
+    return validar(lectura, categoriasVigentes ? { categoriasVigentes } : {})
+  }
+
+  it('resuelve el nombre sin distinguir mayúsculas ni espacios de más y guarda el oficial', async () => {
+    const res = await conCategorias(['  edificio ', 'FINAL   DE  OBRA', 'Casa'])
+    expect(de(res, 'error')).toEqual([])
+    expect(res.plan.clientes.map((c) => c.categoria)).toEqual([
+      'Edificio',
+      'Final de obra',
+      'Casa',
+    ])
+  })
+
+  it('la categoría vacía es válida: el cliente queda sin categoría', async () => {
+    const res = await conCategorias([null])
+    expect(de(res, 'error')).toEqual([])
+    expect(res.plan.clientes[0]?.categoria).toBeNull()
+  })
+
+  it('una categoría que no existe es error de la fila, con mensaje en español', async () => {
+    const res = await conCategorias(['Edificio', 'Hospital'])
+    const errores = de(res, 'error', 'Clientes')
+    expect(errores).toHaveLength(1)
+    expect(errores[0]).toMatchObject({
+      columna: 'Categoría',
+      codigo: 'CATEGORIA_INEXISTENTE',
+    })
+    expect(errores[0]?.fila).toBeGreaterThan(0)
+    expect(errores[0]?.mensaje).toContain('La categoría "Hospital" no existe')
+    expect(errores[0]?.mensaje).toContain(
+      'Edificio, Empresa, Casa, Final de obra',
+    )
+  })
+
+  it('una categoría dada de baja (no vigente) se trata como inexistente', async () => {
+    const res = await conCategorias(['Casa'], ['Edificio', 'Empresa'])
+    expect(codigos(res, 'error')).toEqual(['CATEGORIA_INEXISTENTE'])
+  })
+
+  it('sin base para consultar no se puede verificar: queda una advertencia, no un error', async () => {
+    const res = await conCategorias(['Casa', 'Loft'], null)
+    expect(de(res, 'error')).toEqual([])
+    expect(codigos(res, 'advertencia')).toContain('CATEGORIA_SIN_VERIFICAR')
+  })
+})

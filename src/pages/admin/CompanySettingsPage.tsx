@@ -12,6 +12,7 @@ import { useAuth } from '@/features/auth/AuthProvider'
 import { ConfigNav } from '@/features/settings/components/ConfigNav'
 import { LogoUploader } from '@/features/settings/components/LogoUploader'
 import { MediaRetentionSection } from '@/features/media/components/MediaRetentionSection'
+import { ClientCategoriesSection } from '@/features/clients/components/ClientCategoriesSection'
 import {
   canEditCompanyDetails,
   canEditCompanyLogo,
@@ -185,6 +186,9 @@ export default function CompanySettingsPage() {
           )}
         </form>
       )}
+
+      {/* OD-20: categorías de clientes; dueño y administradores. */}
+      <ClientCategoriesSection />
 
       {/* Módulo H: plazos de fotos y videos y medidor; dueño y administradores. */}
       <MediaRetentionSection />

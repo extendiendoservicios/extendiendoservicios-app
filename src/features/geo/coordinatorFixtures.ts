@@ -83,6 +83,10 @@ export function makeWorkday(
     supervisions: [makeWorkdaySupervision()],
     supervisionsCount: 1,
     events: [],
+    listStatus: 'closed',
+    isOpen: false,
+    openPauseEventId: null,
+    openSupervisionId: null,
     ...overrides,
   }
 }

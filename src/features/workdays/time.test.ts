@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  actionTimeBounds,
+  actionTimeToIso,
   formatPauseDuration,
   isWithinWorkdayBounds,
   workdayTimeBounds,
@@ -71,5 +73,29 @@ describe('formatPauseDuration', () => {
         fmt,
       ),
     ).toBe('0 min')
+  })
+})
+
+describe('actionTimeToIso y actionTimeBounds (OD-06, OD-07)', () => {
+  it('deja sin hora (ahora del servidor) si no se tocó el valor por defecto', () => {
+    expect(
+      actionTimeToIso('2026-10-21T10:15', '2026-10-21T10:15'),
+    ).toBeUndefined()
+    expect(actionTimeToIso('2026-10-21T09:00', '2026-10-21T10:15')).toBe(
+      '2026-10-21T09:00:00-03:00',
+    )
+  })
+
+  it('el mínimo es el comienzo si cae el mismo día; el máximo, ahora', () => {
+    const now = new Date('2026-10-21T20:00:00Z') // 17:00 en Argentina
+    expect(actionTimeBounds('2026-10-21', '2026-10-21T11:00:00Z', now)).toEqual(
+      {
+        min: '2026-10-21T08:00',
+        max: '2026-10-21T17:00',
+      },
+    )
+    expect(actionTimeBounds('2026-10-21', null, now).min).toBe(
+      '2026-10-21T00:00',
+    )
   })
 })
