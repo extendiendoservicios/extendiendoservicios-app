@@ -7,6 +7,18 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.28.1] - 2026-11-03
+
+Corrección del calendario impreso. Sin migraciones.
+
+### Corregido
+
+- «Imprimir calendario» salía en blanco si antes se había abierto cualquier informe o cronograma en la misma sesión.
+
+### Pruebas y automatización
+
+- Se sacó el `it.fails` de `delete_user` (defecto DEF-P27-01 resuelto) y se sumó la prueba real de la Edge Function.
+
 ## [0.28.0] - 2026-11-03
 
 Observaciones de los dueños de la reunión del 2 nov (P27.1 a P27.10). Migraciones 0078 a 0081.
