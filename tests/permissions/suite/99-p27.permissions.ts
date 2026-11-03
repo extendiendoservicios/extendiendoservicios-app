@@ -27,7 +27,14 @@ import { anioLejano } from '../../fixtures/accounts.ts'
 import { addDays, daysFromToday } from '../../fixtures/dates.ts'
 import { borrarJornadasDe, deleteClientDeep } from '../../fixtures/scenario.ts'
 import { describir, filas, tabla } from './ayudas.ts'
-import { clienteDe, contexto, servicio, type Db } from './contexto.ts'
+import {
+  clienteDe,
+  contexto,
+  servicio,
+  tokenVigente,
+  type Db,
+} from './contexto.ts'
+import { llamarEdge } from './edge-cliente.ts'
 import { cuitUnico, PREFIJO } from './escenario.ts'
 import { ETIQUETA, type Perfil } from './perfiles.ts'
 
@@ -587,6 +594,92 @@ describe('lote P27: permisos de lo nuevo con datos reales', () => {
         expect((evento.data ?? []).length).toBeGreaterThanOrEqual(1)
       } finally {
         // La base no toca Auth (lo hace `delete_user` de la Edge Function): se limpia el usuario propio.
+        await db().from('employees').delete().eq('profile_id', id)
+        await db().auth.admin.deleteUser(id)
+      }
+    })
+
+    it('[dueño] delete_user de la Edge Function: bloquea por historia, pide el nombre y borra también el usuario de Auth (OD-22, OD-23, RB-A01)', async () => {
+      const alta = await db().auth.admin.createUser({
+        email: `e2e-perm-p27-${sfx()}@example.com`,
+        password: `P27-${sfx()}-${sfx()}-Aa1`,
+        email_confirm: true,
+        user_metadata: { first_name: 'Borrable', last_name: 'Edge' },
+      })
+      if (alta.error || !alta.data.user)
+        throw new Error(`auth: ${alta.error?.message}`)
+      const id = alta.data.user.id
+      try {
+        await db()
+          .from('profiles')
+          .update({ first_name: 'Borrable', last_name: 'Edge' })
+          .eq('id', id)
+        const ficha = await db()
+          .from('employees')
+          .insert({
+            profile_id: id,
+            dni: `96${Date.now().toString().slice(-6)}`,
+            hire_date: '2026-01-05',
+            status: 'active',
+          })
+        expect(ficha.error, ficha.error?.message).toBeNull()
+        const token = await tokenVigente('owner')
+        const cuerpo = (nombre: string) => ({
+          action: 'delete_user',
+          profile_id: id,
+          confirm_name: nombre,
+        })
+
+        // Con historia (una jornada de coordinador): DELETE_BLOCKED y no se toca nada.
+        const fecha = daysFromToday(-40)
+        const jornada = await db()
+          .from('supervisor_workdays')
+          .insert({
+            supervisor_id: id,
+            work_date: fecha,
+            started_at: `${fecha}T08:00:00-03:00`,
+          })
+          .select('id')
+          .single()
+        expect(jornada.error, jornada.error?.message).toBeNull()
+        const bloqueado = await llamarEdge(token, cuerpo('Borrable Edge'))
+        expect(bloqueado.status, JSON.stringify(bloqueado.cuerpo)).toBe(409)
+        expect(bloqueado.hint).toBe('DELETE_BLOCKED')
+        expect((await db().auth.admin.getUserById(id)).data.user).not.toBeNull()
+        await db().from('supervisor_workdays').delete().eq('supervisor_id', id)
+
+        // Nombre mal escrito: CONFIRM_NAME_MISMATCH y todo sigue en pie.
+        const mal = await llamarEdge(token, cuerpo('Otra Persona'))
+        expect(mal.hint, JSON.stringify(mal.cuerpo)).toBe(
+          'CONFIRM_NAME_MISMATCH',
+        )
+        expect((await db().auth.admin.getUserById(id)).data.user).not.toBeNull()
+
+        // Un administrador con todas las capacidades no puede (solo el dueño).
+        const comoAdmin = await llamarEdge(
+          await tokenVigente('admin'),
+          cuerpo('Borrable Edge'),
+        )
+        expect(comoAdmin.hint).toBe('FORBIDDEN')
+
+        // Borrado real: ficha, perfil y usuario de Auth.
+        const ok = await llamarEdge(token, cuerpo('Borrable Edge'))
+        expect(ok.status, JSON.stringify(ok.cuerpo)).toBe(200)
+        expect(ok.hint).toBe('OK')
+        expect(
+          (await db().from('profiles').select('id').eq('id', id)).data,
+        ).toHaveLength(0)
+        expect(
+          (
+            await db()
+              .from('employees')
+              .select('profile_id')
+              .eq('profile_id', id)
+          ).data,
+        ).toHaveLength(0)
+        expect((await db().auth.admin.getUserById(id)).data.user).toBeNull()
+      } finally {
+        await db().from('supervisor_workdays').delete().eq('supervisor_id', id)
         await db().from('employees').delete().eq('profile_id', id)
         await db().auth.admin.deleteUser(id)
       }
