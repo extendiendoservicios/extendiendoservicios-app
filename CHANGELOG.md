@@ -7,6 +7,37 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.28.0] - 2026-11-03
+
+Observaciones de los dueños de la reunión del 2 nov (P27.1 a P27.10). Migraciones 0078 a 0081.
+
+### Agregado
+
+- Ficha del empleado: pestaña «Cronograma», con el formato en papel de la empresa.
+- Calendario: filtros en las vistas de semana y de día, color por estado en la vista de día, licencias con su motivo, «Imprimir calendario» y asignación de empleados desde «Editar turno». Las acciones se ven en las tres vistas.
+- Llegada tarde: se marca desde el Resumen y desde Asistencia de hoy.
+- Coordinadores: tarjetas con «Ver actividad» y pestaña «Jornadas» en Supervisiones, desde donde la administración puede finalizar una jornada y corregir cualquier momento.
+- Servicios: «Aplicar los fijos» a los turnos ya creados, y al crear o reactivar un servicio se ofrece generar los turnos del mes.
+- Clientes: categorías (Configuración > Empresa), listado agrupado por categoría, filtros y total de activos.
+- Eliminar turno, servicio, turnos sin historia, sede, cliente y empleado, con vista previa de lo que se pierde. Se bloquea si hay historia y se confirma escribiendo el nombre.
+- Planilla de carga inicial: columna «Categoría».
+
+### Cambiado
+
+- Informes de asistencia: salen en A4 horizontal, con pie de firma en conformidad y las licencias día por día.
+- Celular del coordinador: supervisa cualquier turno del día, puede cerrar la supervisión sin calificar y puede supervisar de nuevo el mismo turno.
+- El color de «Finalizado» pasa a un verde más oscuro.
+- En los textos, el rol de dueño se nombra en neutro: «la dirección».
+
+### Seguridad
+
+- Eliminar queda reservado a la dirección. Lo controla la base, además de la pantalla.
+- El contacto de la sede lo ven solo la dirección y los administradores. El celular del empleado y del coordinador ya no lo muestra.
+
+### Pruebas y automatización
+
+- pgTAP de las migraciones 0078 a 0081, permisos por API (`99-p27`) y pruebas E2E `p27-*`.
+
 ## [0.27.0] - 2026-10-28
 
 Administradores y dueños como empleados (P26.7 a P26.9). Migraciones 0076 y 0077.

@@ -29,7 +29,7 @@
   }
 
   .calendar-print-portal {
-    display: block;
+    display: block !important;
     page: calendario;
     color: #111;
     background: #fff;
