@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Download, X } from 'lucide-react'
+import { currentIosInstallMode } from '@/lib/iosInstall'
 import {
   Alert,
   AlertActions,
@@ -44,7 +45,9 @@ export function InstallBanner({ className }: { className?: string } = {}) {
     isInstallBannerDismissed(new Date()),
   )
   const [standalone] = useState(isRunningStandalone)
-  const [isIos] = useState(isIosDevice)
+  const [iosMode] = useState(currentIosInstallMode)
+  const [copied, setCopied] = useState(false)
+  const isIos = iosMode !== 'not-ios'
 
   if (standalone || dismissed) {
     return null
@@ -58,6 +61,48 @@ export function InstallBanner({ className }: { className?: string } = {}) {
     setDismissed(true)
   }
 
+  async function handleCopyLink() {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setCopied(true)
+    } catch {
+      // Sin permiso para copiar: no se muestra una confirmación falsa.
+      setCopied(false)
+    }
+  }
+
+  // iPhone con Chrome, Firefox, Edge o el navegador de WhatsApp/Instagram/
+  // Facebook: solo Safari puede agregar la app (OF-09).
+  if (!available && iosMode === 'other-browser') {
+    return (
+      <Alert variant="info" className={className}>
+        <Download aria-hidden="true" />
+        <div className="min-w-0 flex-1">
+          <AlertTitle>Instalá la aplicación</AlertTitle>
+          <AlertDescription>
+            Para instalar la app, abrí este enlace en Safari.
+          </AlertDescription>
+          <AlertActions>
+            <Button size="sm" onClick={() => void handleCopyLink()}>
+              Copiar enlace
+            </Button>
+            {copied && (
+              <span role="status" className="text-xs">
+                Enlace copiado. Pegalo en Safari.
+              </span>
+            )}
+          </AlertActions>
+        </div>
+        <IconButton
+          icon={X}
+          aria-label="Cerrar"
+          onClick={handleDismiss}
+          className="-m-1 shrink-0"
+        />
+      </Alert>
+    )
+  }
+
   return (
     <Alert variant="info" className={className}>
       <Download aria-hidden="true" />
@@ -66,8 +111,19 @@ export function InstallBanner({ className }: { className?: string } = {}) {
         <AlertDescription>
           {available
             ? 'Agregala a tu pantalla de inicio para abrirla más rápido, como cualquier otra aplicación.'
-            : 'Para agregarla a tu pantalla de inicio: tocá "Compartir" y después "Agregar a pantalla de inicio".'}
+            : 'Para agregarla a tu pantalla de inicio, seguí estos pasos:'}
         </AlertDescription>
+        {!available && (
+          <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs">
+            <li>
+              Tocá el botón Compartir{' '}
+              <ShareIcon className="inline-block size-4 align-text-bottom" /> de
+              Safari (abajo en el medio de la pantalla).
+            </li>
+            <li>Deslizá hacia arriba y tocá «Agregar a pantalla de inicio».</li>
+            <li>Tocá «Agregar», arriba a la derecha.</li>
+          </ol>
+        )}
         {available && (
           <AlertActions>
             <Button size="sm" onClick={() => void promptInstall()}>
@@ -99,6 +155,23 @@ function isRunningStandalone(): boolean {
   )
 }
 
-function isIosDevice(): boolean {
-  return /iphone|ipad|ipod/i.test(navigator.userAgent)
+/** Ícono de Compartir de iOS (cuadrado abierto con flecha hacia arriba), dibujado a mano. */
+function ShareIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      role="img"
+      aria-label="Compartir"
+      className={className}
+    >
+      <path d="M12 15V3" />
+      <path d="m8 7 4-4 4 4" />
+      <path d="M8 11H7a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1" />
+    </svg>
+  )
 }
