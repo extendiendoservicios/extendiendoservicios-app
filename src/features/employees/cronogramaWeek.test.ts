@@ -4,6 +4,7 @@ import type { ShiftListRow } from '@/api/shifts'
 import {
   buildWeekBlocks,
   decideScope,
+  filterUncoveredShifts,
   hasScheduleChanged,
   minutesToTime,
   moveBlock,
@@ -340,5 +341,61 @@ describe('turno entero con franja propia (DEF-P28-02)', () => {
       openEnded: false,
       ownTime: { assignmentId: 'a1', start: '09:00', end: '11:00' },
     })
+  })
+})
+
+describe('filtro del panel «Turnos sin cubrir»', () => {
+  const shifts = [
+    shift({
+      id: 'a',
+      siteName: 'Oficina Central',
+      clientName: 'Acme',
+      shiftDate: '2026-11-16',
+    }),
+    shift({
+      id: 'b',
+      siteName: 'Depósito',
+      clientName: 'Ñandú SA',
+      shiftDate: '2026-11-17',
+    }),
+    shift({
+      id: 'c',
+      siteName: 'Oficina Norte',
+      clientName: 'Acme',
+      shiftDate: '2026-11-17',
+    }),
+  ]
+
+  it('sin filtro devuelve todo en el mismo orden', () => {
+    expect(
+      filterUncoveredShifts(shifts, { text: '', date: null }).map((s) => s.id),
+    ).toEqual(['a', 'b', 'c'])
+  })
+
+  it('por texto busca en sede y cliente sin distinguir tildes ni mayúsculas', () => {
+    expect(
+      filterUncoveredShifts(shifts, { text: 'DEPOSITO', date: null }).map(
+        (s) => s.id,
+      ),
+    ).toEqual(['b'])
+    expect(
+      filterUncoveredShifts(shifts, { text: 'nandu', date: null }).map(
+        (s) => s.id,
+      ),
+    ).toEqual(['b'])
+    expect(
+      filterUncoveredShifts(shifts, { text: 'acme', date: null }).map(
+        (s) => s.id,
+      ),
+    ).toEqual(['a', 'c'])
+  })
+
+  it('por día y texto se combinan', () => {
+    expect(
+      filterUncoveredShifts(shifts, {
+        text: 'oficina',
+        date: '2026-11-17',
+      }).map((s) => s.id),
+    ).toEqual(['c'])
   })
 })

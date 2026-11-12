@@ -338,6 +338,29 @@ export function uncoveredShifts(
     )
 }
 
+/** Quita tildes y pasa a minúsculas para comparar textos. */
+function normalizeText(text: string): string {
+  return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+}
+
+/**
+ * Filtro simple del panel «Turnos sin cubrir»: por texto (sede o cliente, sin
+ * distinguir tildes ni mayúsculas) y por día de la semana (fecha `YYYY-MM-DD`;
+ * `null` o vacío = todos). Conserva el orden.
+ */
+export function filterUncoveredShifts(
+  shifts: ShiftListRow[],
+  filter: { text: string; date: string | null },
+): ShiftListRow[] {
+  const text = normalizeText(filter.text)
+  return shifts.filter(
+    (shift) =>
+      (!filter.date || shift.shiftDate === filter.date) &&
+      (!text ||
+        normalizeText(`${shift.siteName} ${shift.clientName}`).includes(text)),
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Deshacer
 // ---------------------------------------------------------------------------

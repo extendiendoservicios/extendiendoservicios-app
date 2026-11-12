@@ -413,8 +413,6 @@ test.describe('cronograma semanal editable (OF-10)', () => {
             .toBe(1)
         })
 
-        // El arrastre desde el panel con el mouse no se automatizó: ver el reporte de P28.7.
-
         await test.step('un turno que se pisa con otro de la persona: mensaje con el choque y «Ver turno»', async () => {
           const item = panel
             .getByRole('listitem')
@@ -437,6 +435,65 @@ test.describe('cronograma semanal editable (OF-10)', () => {
           await ver.click()
           await expect(page).toHaveURL(new RegExp(`/admin/turnos/${ocupado}`))
         })
+      } finally {
+        expect(await sc.cleanup(), 'limpieza').toEqual([])
+      }
+    },
+  )
+
+  test(
+    'panel «Turnos sin cubrir»: se filtra por texto, tiene tope de altura y el arrastre con el mouse no selecciona texto, muestra el globo y asigna (DEF-P28-03)',
+    cubre('RB-A04', 'OF-10'),
+    async ({ page }) => {
+      test.setTimeout(240_000)
+      const sc = new Scenario()
+      try {
+        const cliente = await sc.client('of10d')
+        const sede = await sc.site(cliente.id, 'of10d')
+        const turno = await sc.shift(cliente.id, sede.id, dia(2), {
+          start: '10:00',
+          end: '12:00',
+        })
+        await page.setViewportSize({ width: 1280, height: 1000 })
+        await abrirSemana(page, 'empleado3')
+        const panel = page.getByRole('complementary', {
+          name: 'Turnos sin cubrir de la semana',
+        })
+        await expect(panel).toBeVisible()
+        // Tope de altura: aunque haya muchos turnos, la lista no pasa de 32 rem (512 px).
+        const lista = panel.getByRole('list')
+        expect((await lista.boundingBox())!.height).toBeLessThanOrEqual(520)
+        // Filtro por texto de sede.
+        await panel.getByLabel('Buscar por sede o cliente').fill(sede.name)
+        const item = panel.getByRole('listitem')
+        await expect(item).toHaveCount(1)
+        await expect(item).toContainText(sede.name)
+
+        // Arrastre real con el mouse desde el ítem hasta la grilla.
+        const origen = (await item.boundingBox())!
+        const grilla = (await page
+          .getByTestId('cronograma-semana')
+          .boundingBox())!
+        await page.mouse.move(origen.x + 40, origen.y + 15)
+        await page.mouse.down()
+        await page.mouse.move(origen.x - 60, origen.y + 60, { steps: 5 })
+        await page.mouse.move(grilla.x + 200, grilla.y + 200, { steps: 10 })
+        // Se ve el globo de arrastre y no quedó texto seleccionado.
+        await expect(page.getByText(sede.name).last()).toBeVisible()
+        expect(
+          await page.evaluate(() => window.getSelection()?.toString() ?? ''),
+        ).toBe('')
+        await page.mouse.up()
+        await expect
+          .poll(async () => {
+            const { data } = await sc.db
+              .from('assignments')
+              .select('id')
+              .eq('shift_id', turno)
+              .is('removed_at', null)
+            return data?.length
+          })
+          .toBe(1)
       } finally {
         expect(await sc.cleanup(), 'limpieza').toEqual([])
       }

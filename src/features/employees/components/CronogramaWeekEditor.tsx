@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/IconButton'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TimeInput } from '@/components/TimeInput'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   Dialog,
@@ -59,6 +60,7 @@ import {
 } from '@/features/employees/cronogramaCommands'
 import {
   decideScope,
+  filterUncoveredShifts,
   hasScheduleChanged,
   minutesToTime,
   moveBlock,
@@ -84,6 +86,8 @@ const PX_PER_HOUR = 40
 const DRAG_THRESHOLD_PX = 4
 const SAME_SHIFT = '__mismo__'
 
+/** Valor del filtro de día que no filtra. */
+const ALL_DAYS = 'todos'
 const WEEKDAY_SHORT = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom']
 
 /** Lunes de la semana de una fecha `YYYY-MM-DD`. */
@@ -489,35 +493,15 @@ function CronogramaWeekEditor({
             </div>
           </div>
 
-          <aside
-            className="w-full shrink-0 rounded-md border border-border bg-white p-3 lg:w-64"
-            aria-label="Turnos sin cubrir de la semana"
-          >
-            <h3 className="text-[13px] font-bold">Turnos sin cubrir</h3>
-            <p className="mb-2 text-[11px] text-text-2">
-              Arrastrá uno a la grilla para asignar a {personName}, o usá
-              «Asignar».
-            </p>
-            {uncovered.length === 0 ? (
-              <p className="text-[12px] text-text-2">
-                No hay turnos sin cubrir esta semana.
-              </p>
-            ) : (
-              <ul className="flex flex-col gap-1.5">
-                {uncovered.map((shift) => (
-                  <UncoveredItem
-                    key={shift.id}
-                    shift={shift}
-                    disabled={busy}
-                    gridRef={gridRef}
-                    onDrag={setAssignDrag}
-                    onDrop={assignShift}
-                    onAssign={() => assignShift(shift)}
-                  />
-                ))}
-              </ul>
-            )}
-          </aside>
+          <UncoveredPanel
+            uncovered={uncovered}
+            days={days}
+            personName={personName}
+            busy={busy}
+            gridRef={gridRef}
+            onDrag={setAssignDrag}
+            onAssign={assignShift}
+          />
         </div>
       )}
 
@@ -884,6 +868,129 @@ function WeekBlockView({
 // Panel de turnos sin cubrir
 // ---------------------------------------------------------------------------
 
+/**
+ * Panel «Turnos sin cubrir»: con ~150 turnos en la semana no puede crecer sin
+ * tope. En escritorio tiene altura máxima con scroll propio; en el celular
+ * está plegado hasta que se lo abre. Filtro por texto (sede o cliente) y por
+ * día de la semana.
+ */
+function UncoveredPanel({
+  uncovered,
+  days,
+  personName,
+  busy,
+  gridRef,
+  onDrag,
+  onAssign,
+}: {
+  uncovered: ShiftListRow[]
+  days: string[]
+  personName: string
+  busy: boolean
+  gridRef: React.RefObject<HTMLDivElement | null>
+  onDrag: (
+    state: { shift: ShiftListRow; x: number; y: number; over: boolean } | null,
+  ) => void
+  onAssign: (shift: ShiftListRow) => void
+}) {
+  const [text, setText] = useState('')
+  const [date, setDate] = useState<string>(ALL_DAYS)
+  const [open, setOpen] = useState(false)
+  const filtered = useMemo(
+    () =>
+      filterUncoveredShifts(uncovered, {
+        text,
+        date: date === ALL_DAYS ? null : date,
+      }),
+    [uncovered, text, date],
+  )
+  const filtering = text.trim() !== '' || date !== ALL_DAYS
+
+  return (
+    <aside
+      className="w-full shrink-0 rounded-md border border-border bg-white p-3 lg:w-64"
+      aria-label="Turnos sin cubrir de la semana"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-[13px] font-bold">
+          Turnos sin cubrir ({uncovered.length})
+        </h3>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="lg:hidden"
+          aria-expanded={open}
+          aria-controls="panel-sin-cubrir"
+          onClick={() => setOpen((value) => !value)}
+        >
+          {open ? 'Ocultar' : 'Mostrar'}
+        </Button>
+      </div>
+      <div
+        id="panel-sin-cubrir"
+        className={open ? 'mt-2 block' : 'mt-2 hidden lg:block'}
+      >
+        <p className="mb-2 text-[11px] text-text-2">
+          Arrastrá uno a la grilla para asignar a {personName}, o usá «Asignar».
+        </p>
+        {uncovered.length > 0 && (
+          <div className="mb-2 flex flex-col gap-1.5">
+            <Input
+              aria-label="Buscar por sede o cliente"
+              placeholder="Buscar por sede o cliente"
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+            />
+            <Select value={date} onValueChange={setDate}>
+              <SelectTrigger aria-label="Filtrar por día">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_DAYS}>Todos los días</SelectItem>
+                {days.map((day) => (
+                  <SelectItem key={day} value={day}>
+                    {formatDateOnly(day)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        {uncovered.length === 0 ? (
+          <p className="text-[12px] text-text-2">
+            No hay turnos sin cubrir esta semana.
+          </p>
+        ) : filtered.length === 0 ? (
+          <p className="text-[12px] text-text-2">
+            Ningún turno sin cubrir coincide con el filtro.
+          </p>
+        ) : (
+          <>
+            {filtering && (
+              <p className="mb-1 text-[11px] text-text-2">
+                {filtered.length} de {uncovered.length}
+              </p>
+            )}
+            <ul className="flex max-h-80 flex-col gap-1.5 overflow-y-auto pr-1 lg:max-h-[32rem]">
+              {filtered.map((shift) => (
+                <UncoveredItem
+                  key={shift.id}
+                  shift={shift}
+                  disabled={busy}
+                  gridRef={gridRef}
+                  onDrag={onDrag}
+                  onDrop={onAssign}
+                  onAssign={() => onAssign(shift)}
+                />
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+    </aside>
+  )
+}
+
 function UncoveredItem({
   shift,
   disabled,
@@ -917,7 +1024,7 @@ function UncoveredItem({
   return (
     <li
       data-testid="sin-cubrir"
-      className="flex touch-none items-start gap-1 rounded-md border border-border bg-surface p-1.5 text-[12px]"
+      className="flex touch-pan-y items-start gap-1 rounded-md border border-border bg-surface p-1.5 text-[12px] select-none lg:touch-none"
       onPointerDown={(event) => {
         if (
           disabled ||
@@ -926,6 +1033,9 @@ function UncoveredItem({
         ) {
           return
         }
+        // DEF-P28-03: sin esto, arrastrar con el mouse selecciona texto de la
+        // página y no se ve el globo de arrastre.
+        event.preventDefault()
         event.currentTarget.setPointerCapture?.(event.pointerId)
         state.current = { x: event.clientX, y: event.clientY, active: false }
       }}
