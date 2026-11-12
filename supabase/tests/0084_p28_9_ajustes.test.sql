@@ -65,7 +65,7 @@ $$;
 
 grant execute on function tests_0084.err(text) to authenticated, anon;
 
-select plan(47);
+select plan(49);
 
 -- Fixtures -------------------------------------------------------------------------------------
 
@@ -201,7 +201,6 @@ select tests_0084.as_user('test-db0084-admin@example.com');
 select is(tests_0084.err($$select public.move_assignment_to_new_shift('f84a0000-0000-0000-0000-0000000000ff', '2199-07-08', '15:00', '17:00')$$) ->> 'hint', 'ASSIGNMENT_NOT_FOUND', 'una asignación inexistente');
 select is(tests_0084.err($$select public.move_assignment_to_new_shift('f84a0000-0000-0000-0000-000000000101', '2199-07-08', '17:00', '15:00')$$) ->> 'hint', 'INVALID_TIME_RANGE', 'fin anterior al inicio: INVALID_TIME_RANGE');
 select is(tests_0084.err($$select public.move_assignment_to_new_shift('f84a0000-0000-0000-0000-000000000101', null, '15:00', '17:00')$$) ->> 'hint', 'INVALID_TIME_RANGE', 'sin fecha: INVALID_TIME_RANGE');
-select is(tests_0084.err($$select public.move_assignment_to_new_shift('f84a0000-0000-0000-0000-000000000101', '2199-07-01', '15:00', '17:00')$$) ->> 'hint', 'SHIFT_DATE_TAKEN', 'el servicio ya tiene turno ese día: SHIFT_DATE_TAKEN');
 
 -- Superposición: Acosta ya está el 15/7 de 16 a 18. No queda turno nuevo ni se mueve nada.
 select set_config('tests_0084.e1', tests_0084.err($$select public.move_assignment_to_new_shift('f84a0000-0000-0000-0000-000000000101', '2199-07-15', '15:00', '17:00')$$)::text, true) is not null as e1;
@@ -234,7 +233,7 @@ select set_config('tests_0084.r', public.move_assignment_to_new_shift('f84a0000-
 select ok((select current_setting('tests_0084.r')::jsonb ? 'shift_id' and current_setting('tests_0084.r')::jsonb ? 'assignment_id'), 'devuelve shift_id y assignment_id');
 select is(
   (select s.service_id from public.shifts s where s.id = (current_setting('tests_0084.r')::jsonb ->> 'shift_id')::uuid),
-  'f84a0000-0000-0000-0000-000000000021'::uuid, 'el turno nuevo es del mismo servicio'
+  'f84a0000-0000-0000-0000-000000000021'::uuid, 'otra fecha sin turno del servicio: el turno nuevo conserva el servicio'
 );
 select is(
   (select s.site_id from public.shifts s where s.id = (current_setting('tests_0084.r')::jsonb ->> 'shift_id')::uuid),
@@ -260,6 +259,24 @@ select is(
 select is(
   (current_setting('tests_0084.r')::jsonb -> 'previous' ->> 'shift_id'),
   'f84a0000-0000-0000-0000-000000000031', 'previous trae el turno de origen para deshacer'
+);
+
+-- Mismo día que el turno de origen: el servicio ya tiene turno ese día, así que el turno nuevo
+-- nace sin servicio (manual), del mismo cliente y sede. La persona ya está en el turno del 8/7.
+select set_config('tests_0084.r2', public.move_assignment_to_new_shift((current_setting('tests_0084.r')::jsonb ->> 'assignment_id')::uuid, '2199-07-08', '18:00', '20:00')::text, true) is not null as r2;
+select is(
+  (select s.service_id from public.shifts s where s.id = (current_setting('tests_0084.r2')::jsonb ->> 'shift_id')::uuid),
+  null::uuid, 'mismo día que un turno del servicio: el turno nuevo queda sin servicio'
+);
+select is(
+  (select s.site_id::text || '|' || s.client_id::text || '|' || s.shift_date::text || '|' || s.generated::text
+   from public.shifts s where s.id = (current_setting('tests_0084.r2')::jsonb ->> 'shift_id')::uuid),
+  'f84a0000-0000-0000-0000-000000000011|f84a0000-0000-0000-0000-000000000001|2199-07-08|false',
+  'del mismo cliente y sede, el mismo día, manual'
+);
+select is(
+  (select a.employee_id from public.assignments a where a.id = (current_setting('tests_0084.r2')::jsonb ->> 'assignment_id')::uuid and a.removed_at is null),
+  'f84a0000-0000-0000-0000-0000000000a1'::uuid, 'y la persona queda asignada en él'
 );
 
 -- OF-08b: get_leave_conflicts ------------------------------------------------------------------------

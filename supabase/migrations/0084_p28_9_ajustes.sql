@@ -33,6 +33,8 @@ declare
   v_created jsonb;
   v_new_shift_id uuid;
   v_res jsonb;
+  v_service_taken boolean;
+  v_photos boolean;
 begin
   perform app.require_role('owner', 'admin');
 
@@ -54,20 +56,26 @@ begin
 
   select * into v_old_shift from public.shifts where id = v_old.shift_id;
 
-  begin
-    v_created := app.create_shift_core(
-      v_old_shift.client_id, v_old_shift.site_id, p_date, p_start, p_end, 1::smallint,
-      v_old_shift.service_id, null, false, true, null, null, null
+  -- Un servicio genera a lo sumo un turno vigente por fecha (índice único service_id + shift_date).
+  -- Si ya tiene uno ese día (el caso normal de «Solo a <nombre>» a otro horario el mismo día), el
+  -- turno nuevo es manual, sin servicio, del mismo cliente y sede, con la opción de fotos del
+  -- servicio. Si no tiene, nace con el servicio.
+  if v_old_shift.service_id is not null then
+    v_service_taken := exists (
+      select 1 from public.shifts s
+      where s.service_id = v_old_shift.service_id and s.shift_date = p_date and s.deleted_at is null
     );
-  exception
-    when unique_violation then
-      -- El servicio ya tiene un turno ese día (un servicio genera a lo sumo uno por fecha): para
-      -- pasar a la persona a ese turno se usa move_assignment.
-      raise exception using
-        errcode = 'P0001',
-        message = 'Ese servicio ya tiene un turno en esa fecha.',
-        hint = 'SHIFT_DATE_TAKEN';
-  end;
+    v_photos := (select sv.requires_photos from public.services sv where sv.id = v_old_shift.service_id);
+  else
+    v_service_taken := false;
+    v_photos := v_old_shift.requires_photos;
+  end if;
+
+  v_created := app.create_shift_core(
+    v_old_shift.client_id, v_old_shift.site_id, p_date, p_start, p_end, 1::smallint,
+    case when v_service_taken then null else v_old_shift.service_id end,
+    null, false, true, null, null, v_photos
+  );
 
   v_new_shift_id := (v_created -> 'shift' ->> 'id')::uuid;
 
@@ -83,7 +91,7 @@ end;
 $$;
 
 comment on function public.move_assignment_to_new_shift(uuid, date, time, time) is
-  'Pasa a una persona a un turno nuevo que se crea en el mismo paso (0084, OF-23), en una transacción. O, A. p_assignment_id = la asignación vigente de origen; p_date, p_start y p_end = fecha y horario del turno nuevo, que es del mismo cliente, sede y servicio que el turno actual de la asignación, con dotación 1, sin observación (turno manual: generated = false) y con la opción de fotos del servicio. El pase es el de move_assignment (0082): quita la asignación de origen con motivo «Movido a otro turno» y asigna en el nuevo con todas las validaciones de assign_employee (ON_LEAVE y ASSIGNMENT_OVERLAP con el detail de OF-08, ASSIGNMENT_STARTED, SHIFT_CANCELLED, SHIFT_COMPLETED, SHIFT_STARTED, etc.). Errores propios: ASSIGNMENT_NOT_FOUND, INVALID_TIME_RANGE (fecha u horario faltantes, o fin no posterior al inicio), SHIFT_DATE_TAKEN (el servicio ya tiene un turno vigente esa fecha: usar move_assignment). Si algo falla no queda ni el turno ni el pase. Devuelve el mismo objeto que move_assignment ({assignment, warnings, previous, removed_assignment_id}) más {shift_id (turno nuevo), assignment_id (asignación nueva), shift (fila del turno nuevo), shift_warnings (por ejemplo HOLIDAY)}. Para «Deshacer»: move_assignment(assignment_id, previous.shift_id, previous.start_time, previous.end_time) y después borrar el turno nuevo (shift_id).';
+  'Pasa a una persona a un turno nuevo que se crea en el mismo paso (0084, OF-23), en una transacción. O, A. p_assignment_id = la asignación vigente de origen; p_date, p_start y p_end = fecha y horario del turno nuevo, que es del mismo cliente y sede que el turno actual de la asignación y, si no hay conflicto de fecha, del mismo servicio, con dotación 1, sin observación (turno manual: generated = false) y con la opción de fotos del servicio; si el servicio ya tiene un turno vigente esa fecha (lo normal al pasar a la persona a otro horario el mismo día) el turno nuevo nace SIN servicio (service_id null, manual), del mismo cliente y sede, porque un servicio no puede tener dos turnos el mismo día. El pase es el de move_assignment (0082): quita la asignación de origen con motivo «Movido a otro turno» y asigna en el nuevo con todas las validaciones de assign_employee (ON_LEAVE y ASSIGNMENT_OVERLAP con el detail de OF-08, ASSIGNMENT_STARTED, SHIFT_CANCELLED, SHIFT_COMPLETED, SHIFT_STARTED, etc.). Errores propios: ASSIGNMENT_NOT_FOUND, INVALID_TIME_RANGE (fecha u horario faltantes, o fin no posterior al inicio). Si algo falla no queda ni el turno ni el pase. Devuelve el mismo objeto que move_assignment ({assignment, warnings, previous, removed_assignment_id}) más {shift_id (turno nuevo), assignment_id (asignación nueva), shift (fila del turno nuevo), shift_warnings (por ejemplo HOLIDAY)}. Para «Deshacer»: move_assignment(assignment_id, previous.shift_id, previous.start_time, previous.end_time) y después borrar el turno nuevo (shift_id).';
 
 revoke execute on function public.move_assignment_to_new_shift(uuid, date, time, time) from public, anon;
 grant execute on function public.move_assignment_to_new_shift(uuid, date, time, time) to authenticated;

@@ -2983,8 +2983,9 @@ Corrige el efecto lateral de la 0082: el empleado tiene que seguir viendo el tur
   servicio) con `app.create_shift_core` y pasa a la persona con `move_assignment`: todo en una transacción. Devuelve lo mismo
   que `move_assignment` (`assignment`, `warnings`, `previous`, `removed_assignment_id`) más `shift_id` (turno nuevo),
   `assignment_id` (asignación nueva), `shift` (fila) y `shift_warnings`. Errores propios: `ASSIGNMENT_NOT_FOUND`,
-  `INVALID_TIME_RANGE`, `SHIFT_DATE_TAKEN` (el servicio ya tiene turno ese día: es el índice único `service_id, shift_date`; se
-  usa `move_assignment`); el resto (`ON_LEAVE`, `ASSIGNMENT_OVERLAP` con `detail`, `ASSIGNMENT_STARTED`...) viene de las
+  `INVALID_TIME_RANGE`. Un servicio no puede tener dos turnos vigentes el mismo día (índice único `service_id, shift_date`):
+  si el servicio ya tiene turno en `p_date` (lo normal al pasar a la persona a otro horario el mismo día) el turno nuevo nace
+  sin servicio (`service_id` nulo, manual), con las fotos del servicio; si no, con el servicio. El resto (`ON_LEAVE`, `ASSIGNMENT_OVERLAP` con `detail`, `ASSIGNMENT_STARTED`...) viene de las
   validaciones de `move_assignment`.
 - **OF-08b.** Ayuda interna `app.shift_brief(p_shift_id, p_assignment_id default null)`: `shift_id`, `conflict_shift_id`,
   `conflict_assignment_id`, `client_id`, `client_name`, `site_id`, `site_name`, `service_id`, `service_name`, `shift_date`,
