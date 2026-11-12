@@ -100,6 +100,11 @@ function AttendanceDetailSheet({
           <span className="tabular-nums">{sheet.grandTotal.value}</span>
         </p>
       )}
+      {sheet.notes.map((note) => (
+        <p key={note} className="print-keep-together mb-3 text-[10.5px]">
+          {note}
+        </p>
+      ))}
       <PrintSignatures intro={sheet.consentText} signers={sheet.signers} />
     </PrintSheet>
   )

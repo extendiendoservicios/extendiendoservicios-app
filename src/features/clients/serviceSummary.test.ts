@@ -328,4 +328,32 @@ describe('buildClientSummarySheet (AJ-09)', () => {
     })
     expect(sheet.facts.map((fact) => fact.label)).not.toContain('CUIT')
   })
+
+  it('OF-22: marca con «*» las horas de un cierre automático y agrega la nota', () => {
+    const first = summary.shifts[0]!
+    const auto: ClientServiceSummary = {
+      ...summary,
+      shifts: [
+        {
+          ...first,
+          employees: first.employees.map((employee, index) =>
+            index === 0 ? { ...employee, checkOutAutoClosed: true } : employee,
+          ),
+        },
+      ],
+    }
+    const sheet = buildClientSummarySheet({
+      clientName: 'Cliente',
+      cuit: null,
+      summary: auto,
+    })
+    expect(
+      sheet.rows.filter((row) => String(row.hours).endsWith('*')),
+    ).toHaveLength(1)
+    expect(sheet.notes).toEqual(['* Cierre automático: no se registró el fin.'])
+    expect(
+      buildClientSummarySheet({ clientName: 'Cliente', cuit: null, summary })
+        .notes,
+    ).toEqual([])
+  })
 })

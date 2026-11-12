@@ -19,6 +19,10 @@ import { absenceDetail, isAbsence } from '@/features/attendance/absences'
 import { joinObservations } from '@/features/shifts/observation'
 import { geoPrintText } from '@/features/geo/printText'
 import type { AdminWorkday } from '@/api/workdaysAdmin'
+import {
+  AUTO_CLOSED_NOTE,
+  withAutoClosedStar,
+} from '@/features/print/autoClosed'
 
 /**
  * Detalle de asistencia de una persona (AJ-06, P24.4): lógica sin React que
@@ -135,6 +139,8 @@ export interface AttendanceSheetModel {
   totalMinutes: number
   signers: string[]
   consentText: string
+  /** Notas al pie (OF-22: cierre automático), solo las que corresponden. */
+  notes: string[]
   documentTitle: string
 }
 
@@ -414,6 +420,13 @@ export function buildAttendanceSheet(input: {
     : includeServices
       ? ATTENDANCE_SHEET_TITLE
       : WORKDAYS_SHEET_TITLE
+  // OF-22: hay al menos un fin registrado por el cierre automático en la tabla de turnos.
+  const hasAutoClosed =
+    includeServices &&
+    printableEntries(input.entries, input.now ?? new Date()).some(
+      (entry) =>
+        entryCheckOut(entry) != null && entry.row.checkOutAutoClosed === true,
+    )
   const fullPeriod = `${formatPeriodDate(input.from)} al ${formatPeriodDate(input.to)}`
   return {
     title,
@@ -445,6 +458,7 @@ export function buildAttendanceSheet(input: {
     consentText: includeServices
       ? ATTENDANCE_CONSENT_TEXT
       : WORKDAYS_CONSENT_TEXT,
+    notes: hasAutoClosed ? [AUTO_CLOSED_NOTE] : [],
     documentTitle: `${title} - ${input.person.name} - ${input.from} al ${input.to}`,
   }
 }
@@ -551,7 +565,12 @@ function buildServicesSection(
       site: entry.row.siteName,
       franja: entryFranja(entry),
       start: checkIn ? formatTime(checkIn) : '—',
-      end: checkOut ? formatTime(checkOut) : '—',
+      end: checkOut
+        ? withAutoClosedStar(
+            formatTime(checkOut),
+            entry.row.checkOutAutoClosed === true,
+          )
+        : '—',
       geo: geoPrintText(entry.row.checkInGeo, entry.row.checkOutGeo),
       // AJ2-15: la observación del turno (si tiene tildado «mostrar en la impresión») va junto a la novedad.
       novelty: joinObservations(
