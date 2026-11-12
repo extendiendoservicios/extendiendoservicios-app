@@ -264,6 +264,7 @@ describe('ShiftFormPage edición: fecha del turno', () => {
     await waitFor(() =>
       expect(toastError).toHaveBeenCalledWith(
         'Ana Gómez está de licencia ese día.',
+        undefined,
       ),
     )
   })

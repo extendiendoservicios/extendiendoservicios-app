@@ -38,4 +38,17 @@ describe('createMarkerIcon', () => {
     expect(html(dot)).not.toContain('<img')
     expect(dot.options.iconAnchor).toEqual([13, 13])
   })
+
+  it('las sedes por comenzar y finalizadas llevan un glifo propio, sin isotipo (OF-13)', () => {
+    const upcoming = html(createMarkerIcon('warning', 'site-upcoming'))
+    const finished = html(createMarkerIcon('neutral', 'site-finished'))
+    expect(upcoming).toContain('<svg')
+    expect(upcoming).toContain('bg-warning')
+    expect(upcoming).not.toContain('<img')
+    expect(finished).toContain('<svg')
+    expect(finished).not.toBe(upcoming)
+    expect(
+      createMarkerIcon('neutral', 'site-finished').options.iconSize,
+    ).toEqual([SITE_PIN_WIDTH, SITE_PIN_HEIGHT])
+  })
 })

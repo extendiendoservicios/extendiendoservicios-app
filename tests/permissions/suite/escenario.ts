@@ -84,7 +84,8 @@ export async function barrerResiduos(db: AdminDb): Promise<number> {
   }
   // P24: jornadas y preferencias de las cuentas fijas del conjunto que dejó una corrida cortada.
   await borrarJornadasDelConjunto(db)
-  // Licencias de una corrida cortada: la siguiente chocaría con `employee_leaves_no_overlap`.
+  // Licencias de una corrida cortada: se limpian para no dejar licencias de prueba vigentes (desde
+  // P28, OF-20, las licencias se pueden superponer y ya no existe `employee_leaves_no_overlap`).
   await db.from('employee_leaves').delete().like('reason', `${PREFIJO}%`)
   await db.from('holidays').delete().like('name', `${PREFIJO}%`)
   await db.from('client_categories').delete().like('name', `${PREFIJO}%`)

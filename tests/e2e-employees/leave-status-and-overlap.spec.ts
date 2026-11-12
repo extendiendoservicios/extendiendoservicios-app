@@ -13,9 +13,11 @@ import { loginAs } from './helpers/login.ts'
 import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 // EMP-014/TEST-006 (08_Fases_y_Backlog.md F9, encargo P09.5, punto 5): "una licencia vigente
-// hace que la cabecera muestre 'De licencia'; al darla de baja vuelve a 'Activo'. Una licencia
-// superpuesta muestra el error 'ya tiene una licencia cargada que se superpone'" (EMP-008,
-// `employee_leaves_no_overlap`).
+// hace que la cabecera muestre 'De licencia'; al darla de baja vuelve a 'Activo'."
+//
+// P28 (OF-20): ya NO se rechaza una licencia que se superpone con otra (se quitó
+// `employee_leaves_no_overlap`): se pueden cargar dos que se pisan y las dos quedan listadas. La
+// cabecera vuelve a "Activo" recién cuando se dan de baja todas las vigentes.
 //
 // Fecha "desde" relativa a hoy en hora de Argentina (regla común "Independencia"): `app.today()`
 // (`0011_views.sql`) calcula `effective_status` con `America/Argentina/Buenos_Aires`, así que
@@ -33,7 +35,7 @@ function todayInArgentina(): string {
 }
 
 test.describe('EMP-014: licencias y el estado efectivo de la ficha', () => {
-  test('licencia vigente → "De licencia"; superpuesta → error; dada de baja → "Activo"', async ({
+  test('licencia vigente → "De licencia"; superpuesta → se acepta; dadas de baja → "Activo"', async ({
     page,
   }) => {
     const admin = getAdminClient()
@@ -93,7 +95,7 @@ test.describe('EMP-014: licencias y el estado efectivo de la ficha', () => {
         ).toBeVisible()
       })
 
-      await test.step('una segunda licencia que se superpone con la vigente se rechaza', async () => {
+      await test.step('una segunda licencia que se superpone con la vigente se acepta (OF-20)', async () => {
         await page.getByRole('tab', { name: 'Licencias' }).click()
         await page.getByLabel('Desde').fill(today)
         await page
@@ -101,24 +103,39 @@ test.describe('EMP-014: licencias y el estado efectivo de la ficha', () => {
           .fill('E2E P095: se superpone')
         await page.getByRole('button', { name: 'Agregar licencia' }).click()
         await expect(
-          page.getByText(
-            'Esas fechas se superponen con otra licencia ya cargada de esa persona.',
-          ),
+          page.getByText('Agregamos la licencia.').first(),
         ).toBeVisible()
+        await expect(
+          page
+            .getByRole('listitem')
+            .filter({ hasText: 'E2E P095: licencia vigente' }),
+        ).toHaveCount(1)
+        await expect(
+          page
+            .getByRole('listitem')
+            .filter({ hasText: 'E2E P095: se superpone' }),
+        ).toHaveCount(1)
       })
 
-      await test.step('al dar de baja la licencia vigente, la cabecera vuelve a "Activo"', async () => {
+      await test.step('al dar de baja las dos licencias vigentes, la cabecera vuelve a "Activo"', async () => {
         // Sigue en la pestaña Licencias del paso anterior.
-        await page
-          .getByRole('listitem')
-          .filter({ hasText: 'E2E P095: licencia vigente' })
-          .getByRole('button', { name: 'Dar de baja' })
-          .click()
-        await expect(
-          page.getByRole('heading', { name: 'Dar de baja esta licencia' }),
-        ).toBeVisible()
-        await page.getByRole('button', { name: 'Dar de baja' }).last().click()
-        await expect(page.getByText('Dimos de baja la licencia.')).toBeVisible()
+        for (const motivo of [
+          'E2E P095: licencia vigente',
+          'E2E P095: se superpone',
+        ]) {
+          await page
+            .getByRole('listitem')
+            .filter({ hasText: motivo })
+            .getByRole('button', { name: 'Dar de baja' })
+            .click()
+          await expect(
+            page.getByRole('heading', { name: 'Dar de baja esta licencia' }),
+          ).toBeVisible()
+          await page.getByRole('button', { name: 'Dar de baja' }).last().click()
+          await expect(
+            page.getByText('Dimos de baja la licencia.').first(),
+          ).toBeVisible()
+        }
 
         await page.getByRole('tab', { name: 'Datos' }).click()
         await expect(

@@ -618,24 +618,15 @@ describe('fetchEmployeeLeaves', () => {
 })
 
 describe('createEmployeeLeave', () => {
-  it('traduce la exclusión de solapamiento (23P01) a LEAVE_OVERLAP', async () => {
-    fromMock.mockReturnValue(
-      makeChainable({
-        data: null,
-        error: {
-          message:
-            'conflicting key value violates exclusion constraint "employee_leaves_no_overlap"',
-          code: '23P01',
-        },
-      }),
-    )
+  it('acepta una licencia que se superpone con otra (OF-20)', async () => {
+    fromMock.mockReturnValue(makeChainable({ data: null, error: null }))
     await expect(
       createEmployeeLeave(
         'e1',
-        { startsOn: '2026-01-10', endsOn: null, reason: null },
+        { startsOn: '2026-01-10', endsOn: '2026-01-20', reason: 'Enfermedad' },
         'admin-1',
       ),
-    ).rejects.toMatchObject({ hint: 'LEAVE_OVERLAP' })
+    ).resolves.toBeUndefined()
   })
 
   it('traduce el check de ends_on >= starts_on a un mensaje claro', async () => {
@@ -688,26 +679,6 @@ describe('updateEmployeeLeave (AJ2-08)', () => {
       updated_by: 'admin-1',
     })
     expect(eqSpy).toHaveBeenCalledWith('id', 'l1')
-  })
-
-  it('traduce la superposición con otra licencia a LEAVE_OVERLAP', async () => {
-    fromMock.mockReturnValue(
-      makeChainable({
-        data: null,
-        error: {
-          message:
-            'conflicting key value violates exclusion constraint "employee_leaves_no_overlap"',
-          code: '23P01',
-        },
-      }),
-    )
-    await expect(
-      updateEmployeeLeave(
-        'l1',
-        { startsOn: '2026-01-10', endsOn: null, reason: null },
-        'admin-1',
-      ),
-    ).rejects.toMatchObject({ hint: 'LEAVE_OVERLAP' })
   })
 })
 

@@ -42,12 +42,15 @@ import {
 } from '@/features/attendance/queries'
 import { GeoValidationCell } from '@/features/geo/components/GeoValidationCell'
 import {
+  filterAutoClosed,
   filterOutsideZone,
   timeCorrectedSuffix,
 } from '@/features/geo/outsideZone'
 import { UpdatedAgo } from './UpdatedAgo'
 import { WorkedHoursCell } from './WorkedHoursCell'
 import { CheckInCell } from './CheckInCell'
+import { AutoClosedBadge } from './AutoClosedBadge'
+import { AttendanceTimeButton } from './AttendanceTimeButton'
 import { RecordAttendanceSheet } from './RecordAttendanceSheet'
 import { CoordinatorsDaySection } from './CoordinatorsDaySection'
 
@@ -142,6 +145,8 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
   const [siteFilter, setSiteFilter] = useState('all')
   // B-20: «Solo fuera de zona».
   const [onlyOutside, setOnlyOutside] = useState(false)
+  // OF-11: «Cierre automático».
+  const [onlyAutoClosed, setOnlyAutoClosed] = useState(false)
   const [recordTarget, setRecordTarget] = useState<AttendanceBoardRow | null>(
     null,
   )
@@ -189,7 +194,10 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
       statusFilter === 'all'
         ? rows
         : rows.filter((row) => row.shiftStatus !== 'cancelled')
-    const visible = filterOutsideZone(byStatus, onlyOutside)
+    const visible = filterAutoClosed(
+      filterOutsideZone(byStatus, onlyOutside),
+      onlyAutoClosed,
+    )
     if (!text) {
       return visible
     }
@@ -198,7 +206,7 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
         .toLowerCase()
         .includes(text),
     )
-  }, [rows, debouncedText, statusFilter, onlyOutside])
+  }, [rows, debouncedText, statusFilter, onlyOutside, onlyAutoClosed])
 
   const recordTargetActions = recordTarget
     ? getAvailableAttendanceActions({
@@ -260,16 +268,36 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
         id: 'checkIn',
         header: 'Inicio real',
         meta: { card: 'meta', cardLabel: 'Inicio real' },
-        cell: ({ row }) => <CheckInCell row={row.original} />,
+        cell: ({ row }) => (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <CheckInCell row={row.original} />
+            <AttendanceTimeButton
+              row={row.original}
+              kind="check_in"
+              canManage={canManage}
+            />
+          </div>
+        ),
       },
       {
         id: 'checkOut',
         header: 'Fin real',
         meta: { card: 'meta', cardLabel: 'Fin real' },
-        cell: ({ row }) =>
-          row.original.checkOutAt
-            ? `${formatTime(row.original.checkOutAt)}${timeCorrectedSuffix(row.original.checkOutGeo)}`
-            : '—',
+        cell: ({ row }) => (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>
+              {row.original.checkOutAt
+                ? `${formatTime(row.original.checkOutAt)}${timeCorrectedSuffix(row.original.checkOutGeo)}`
+                : '—'}
+            </span>
+            {row.original.checkOutAutoClosed && <AutoClosedBadge />}
+            <AttendanceTimeButton
+              row={row.original}
+              kind="check_out"
+              canManage={canManage}
+            />
+          </div>
+        ),
       },
       {
         id: 'geo',
@@ -421,6 +449,17 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
           </SelectContent>
         </Select>
         <label
+          htmlFor="attendance-only-auto-closed"
+          className="flex items-center gap-3 text-[13px] font-medium text-text"
+        >
+          Cierre automático
+          <Switch
+            id="attendance-only-auto-closed"
+            checked={onlyAutoClosed}
+            onCheckedChange={setOnlyAutoClosed}
+          />
+        </label>
+        <label
           htmlFor="attendance-only-outside"
           className="flex items-center gap-3 text-[13px] font-medium text-text"
         >
@@ -443,9 +482,11 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
           rowVariant={getAttendanceRowVariant}
           emptyState={{
             icon: Users,
-            title: onlyOutside
-              ? 'Nadie fichó fuera de zona en este día'
-              : 'No hay asignaciones para este día',
+            title: onlyAutoClosed
+              ? 'Ningún fin se cerró automáticamente en este día'
+              : onlyOutside
+                ? 'Nadie fichó fuera de zona en este día'
+                : 'No hay asignaciones para este día',
           }}
         />
       </PhonesContext.Provider>

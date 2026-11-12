@@ -7,7 +7,8 @@ import type { StockItem } from '@/api/stock'
  */
 export function mockViewport(isDesktop: boolean) {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-    matches: isDesktop,
+    // OF-17: las tarjetas son solo para celular táctil (CARD_LAYOUT_QUERY).
+    matches: query.includes('pointer: coarse') ? !isDesktop : isDesktop,
     media: query,
     onchange: null,
     addEventListener: vi.fn(),

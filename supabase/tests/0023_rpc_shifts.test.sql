@@ -302,8 +302,8 @@ prepare update_time_overlap as
   select public.update_shift_time('e2300000-0000-0000-0000-000000000042', '11:00', '17:00');
 
 select throws_ok(
-  'update_time_overlap', 'P0001', 'El empleado ya tiene otro turno en ese horario. Afecta a: Empleado Equis.',
-  'update_shift_time: deja a un empleado con dos asignaciones superpuestas -> ASSIGNMENT_OVERLAP nombrando al empleado (no el 23P01 crudo; 0030, DEF-03)'
+  'update_time_overlap', 'P0001', 'Equis ya está en Sede activa (turno manual) el mar 5/3 de 08:00 a 12:00.',
+  'update_shift_time: deja a un empleado con dos asignaciones superpuestas -> ASSIGNMENT_OVERLAP diciendo con qué choca (no el 23P01 crudo; 0030, DEF-03; mensaje de 0082, OF-08)'
 );
 
 set local role postgres;
@@ -445,7 +445,7 @@ select is(
 select is(
   (select removed_at from public.assignments where shift_id = 'e2300000-0000-0000-0000-000000000051'),
   null::timestamptz,
-  'cancel_shift: la asignación NO se toca -- queda para historia (P-049)'
+  'cancel_shift: la asignación NO se quita, queda vigente para historia (P-049); desde 0083 (OF-04b) queda liberada (released_at)'
 );
 
 -- Ya cancelado -> SHIFT_CANCELLED.

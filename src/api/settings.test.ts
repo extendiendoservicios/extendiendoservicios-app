@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { isApiError } from './errors'
 
 /**
  * `src/api/settings.ts` (USERS-012 a USERS-016): mismo patrón sin red que
@@ -11,14 +10,16 @@ interface PostgrestResult<T> {
   error: { message: string; code?: string; hint?: string } | null
 }
 
-const { fromMock, storageFromMock } = vi.hoisted(() => ({
+const { fromMock, storageFromMock, rpcMock } = vi.hoisted(() => ({
   fromMock: vi.fn(),
   storageFromMock: vi.fn(),
+  rpcMock: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
     from: fromMock,
+    rpc: rpcMock,
     storage: { from: storageFromMock },
   },
 }))
@@ -28,6 +29,8 @@ const {
   updateCompanySettings,
   validateLogoFile,
   createHoliday,
+  fetchHolidayShiftConflicts,
+  removeHolidayShifts,
   deactivateHoliday,
   loadNationalHolidays,
   fetchRatingCriteria,
@@ -40,6 +43,7 @@ const { computeNationalHolidays } =
 beforeEach(() => {
   fromMock.mockReset()
   storageFromMock.mockReset()
+  rpcMock.mockReset()
 })
 
 describe('fetchCompanySettings', () => {
@@ -116,29 +120,120 @@ describe('validateLogoFile', () => {
   })
 })
 
-describe('createHoliday', () => {
-  it('traduce una fecha duplicada (23505) a un mensaje en español', async () => {
-    const insertMock = vi.fn(() =>
-      Promise.resolve({
-        error: {
-          message: 'duplicate key value violates unique constraint',
-          code: '23505',
+describe('createHoliday (upsert_holiday, OF-19)', () => {
+  it('crea o reactiva con la RPC y devuelve la acción', async () => {
+    rpcMock.mockResolvedValue({
+      data: {
+        holiday: {
+          id: 'h1',
+          holiday_date: '2026-11-11',
+          name: 'VI',
+          deleted_at: null,
         },
-      }),
-    )
-    fromMock.mockReturnValue({ insert: insertMock })
-
-    await expect(
-      createHoliday({
-        holidayDate: '2026-01-01',
-        name: 'Año Nuevo',
-        createdBy: 'owner-1',
-      }),
-    ).rejects.toSatisfy((error: unknown) => {
-      expect(isApiError(error)).toBe(true)
-      expect((error as Error).message).toMatch(/Ya existe/)
-      return true
+        action: 'reactivated',
+      },
+      error: null,
     })
+
+    const result = await createHoliday({
+      holidayDate: '2026-11-11',
+      name: 'VI',
+    })
+
+    expect(rpcMock).toHaveBeenCalledWith('upsert_holiday', {
+      p_date: '2026-11-11',
+      p_name: 'VI',
+    })
+    expect(result.action).toBe('reactivated')
+    expect(result.holiday).toEqual({
+      id: 'h1',
+      holidayDate: '2026-11-11',
+      name: 'VI',
+      deletedAt: null,
+    })
+  })
+
+  it('muestra el mensaje del servidor', async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: {
+        message: 'Indicá el nombre del feriado.',
+        code: 'P0001',
+        hint: 'HOLIDAY_NAME_REQUIRED',
+      },
+    })
+    await expect(
+      createHoliday({ holidayDate: '2026-11-11', name: ' ' }),
+    ).rejects.toMatchObject({
+      message: 'Indicá el nombre del feriado.',
+      hint: 'HOLIDAY_NAME_REQUIRED',
+    })
+  })
+})
+
+describe('holiday_shift_conflicts y remove_holiday_shifts (OF-19b)', () => {
+  it('mapea los turnos en conflicto', async () => {
+    rpcMock.mockResolvedValue({
+      data: {
+        date: '2026-11-11',
+        is_holiday: true,
+        deletable_count: 1,
+        with_history_count: 0,
+        shifts: [
+          {
+            shift_id: 's1',
+            shift_date: '2026-11-11',
+            start_time: '08:00:00',
+            end_time: '12:00:00',
+            status: 'assigned',
+            service_id: 'sv1',
+            service_name: 'Limpieza',
+            client_name: 'Cliente',
+            site_name: 'Sede',
+            assignments_count: 2,
+            has_history: false,
+          },
+        ],
+      },
+      error: null,
+    })
+    const result = await fetchHolidayShiftConflicts('2026-11-11')
+    expect(rpcMock).toHaveBeenCalledWith('holiday_shift_conflicts', {
+      p_date: '2026-11-11',
+    })
+    expect(result.deletableCount).toBe(1)
+    expect(result.shifts[0]).toMatchObject({
+      shiftId: 's1',
+      serviceName: 'Limpieza',
+      assignmentsCount: 2,
+      hasHistory: false,
+    })
+  })
+
+  it('informa lo borrado y lo salteado', async () => {
+    rpcMock.mockResolvedValue({
+      data: {
+        date: '2026-11-11',
+        deleted: { shifts: 2, assignments: 3, tasks: 0, observations: 0 },
+        skipped_count: 1,
+        skipped: [
+          {
+            shift_id: 's3',
+            shift_date: '2026-11-11',
+            code: 'HAS_HISTORY',
+            message: 'Tiene fichajes.',
+          },
+        ],
+      },
+      error: null,
+    })
+    const result = await removeHolidayShifts('2026-11-11')
+    expect(rpcMock).toHaveBeenCalledWith('remove_holiday_shifts', {
+      p_date: '2026-11-11',
+    })
+    expect(result.deletedShifts).toBe(2)
+    expect(result.skippedCount).toBe(1)
+    expect(result.skipped[0]?.code).toBe('HAS_HISTORY')
   })
 })
 
@@ -159,7 +254,7 @@ describe('deactivateHoliday', () => {
 })
 
 describe('loadNationalHolidays', () => {
-  it('no duplica fechas activas, reactiva las de baja y crea el resto', async () => {
+  it('saltea las fechas vigentes y carga o reactiva el resto con upsert_holiday', async () => {
     const year = 2026
     const national = computeNationalHolidays(year)
     const alreadyActive = national.at(0)
@@ -170,8 +265,6 @@ describe('loadNationalHolidays', () => {
       )
     }
 
-    // `fetchHolidays` (select) devuelve dos filas existentes: una activa
-    // (se saltea) y una de baja (se reactiva); el resto no existe (se crea).
     const existingRows = [
       {
         id: 'h-active',
@@ -186,11 +279,6 @@ describe('loadNationalHolidays', () => {
         deleted_at: '2025-01-01T00:00:00Z',
       },
     ]
-
-    const insertMock = vi.fn(() => Promise.resolve({ error: null }))
-    const updateEqMock = vi.fn(() => Promise.resolve({ error: null }))
-    const updateMock = vi.fn(() => ({ eq: updateEqMock }))
-
     fromMock.mockImplementation(() => ({
       select: () => ({
         gte: () => ({
@@ -199,20 +287,33 @@ describe('loadNationalHolidays', () => {
           }),
         }),
       }),
-      insert: insertMock,
-      update: updateMock,
     }))
+    rpcMock.mockImplementation((_name: string, args: { p_date: string }) =>
+      Promise.resolve({
+        data: {
+          holiday: {
+            id: 'x',
+            holiday_date: args.p_date,
+            name: 'n',
+            deleted_at: null,
+          },
+          action:
+            args.p_date === alreadyDeleted.date ? 'reactivated' : 'created',
+        },
+        error: null,
+      }),
+    )
 
-    const result = await loadNationalHolidays(year, 'owner-1')
+    const result = await loadNationalHolidays(year)
 
     expect(result.skipped).toBe(1)
     expect(result.reactivated).toBe(1)
     expect(result.created).toBe(national.length - 2)
-    // La reactivación reusa la fila existente (mismo id), no inserta una nueva.
-    expect(updateMock).toHaveBeenCalledWith(
-      expect.objectContaining({ deleted_at: null }),
+    expect(rpcMock).toHaveBeenCalledTimes(national.length - 1)
+    expect(rpcMock).not.toHaveBeenCalledWith(
+      'upsert_holiday',
+      expect.objectContaining({ p_date: alreadyActive.date }),
     )
-    expect(updateEqMock).toHaveBeenCalledWith('id', 'h-deleted')
   })
 })
 

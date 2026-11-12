@@ -2246,6 +2246,7 @@ En F26 (P26.1, credenciales visibles): `0075_p26_1_credenciales.sql` -- ver «Cr
 En F26 (P26.7, personal administrativo): `0076_p26_7_personal_administrativo.sql` -- ver «Personal administrativo».
 En F26 (P26.7b, fichar como empleado): `0077_p26_7b_fichar_como_empleado.sql` -- ver «Fichar como empleado».
 En F27 (P27.1, observaciones de los dueños): `0078_p27_1_categorias_y_borrado_del_dueno.sql`, `0079_p27_1_coordinacion.sql` y `0080_p27_1_fijos_en_lote.sql` -- ver «Observaciones de los dueños».
+En F28 (P28.1, observaciones de la dirección del 11 nov): `0082_p28_1_observaciones_11_nov.sql` -- ver «Migración 0082».
 
 ## Personal administrativo (migración `0076`, P26.7, CR-16 a CR-19)
 
@@ -2860,3 +2861,113 @@ la migración; el CI falla si queda diferencia (`git diff --exit-code`, DB-021).
   La firma de 2 argumentos se reemplazó (no coexisten); las llamadas con 2 argumentos siguen funcionando.
 - **`delete_service(uuid)`**: solo el dueño (`FORBIDDEN` para administradores). El cuerpo pasó a `app.delete_service_core(uuid)`
   (no ejecutable por `authenticated`) y `public.delete_service` es un envoltorio con `app.require_role('owner')`.
+
+## Migración 0082 (P28.1): observaciones de la dirección del 11 nov 2026
+
+Una sola migración con OF-02, OF-04b, OF-05, OF-08, OF-10, OF-11, OF-13, OF-19, OF-19b y OF-20. **OF-18** (la excepción del
+dueño para los bloqueos por horario) no va: espera la respuesta C-04; las marcas `OF-18` en `app.assign_employee_core`,
+`update_assignment_time` y `update_shift_time` indican dónde iría.
+
+### Feriados (OF-19, OF-19b)
+
+- `holidays.holiday_date` ya no es `unique`: el índice único parcial `holidays_holiday_date_active_key` (`where deleted_at is null`)
+  hace la fecha única solo entre los vigentes. Una fecha dada de baja se puede volver a cargar.
+- `upsert_holiday(p_date, p_name)` (solo dueño): crea, reactiva la fila dada de baja o renombra el vigente. Devuelve
+  `{"holiday", "action": "created" | "reactivated" | "updated" | "unchanged"}`. `HOLIDAY_DATE_REQUIRED`, `HOLIDAY_NAME_REQUIRED`.
+- `holiday_shift_conflicts(p_date)` (O, A, solo lectura): turnos generados, no cancelados, de servicios con
+  `works_on_holidays = false` ese día. `{"date", "is_holiday", "deletable_count", "with_history_count", "shifts": [...]}`.
+- `remove_holiday_shifts(p_date)` (O, A con `cancel_shifts`): borra los que no tienen historia (`app.shift_has_history`, 0078) con
+  sus asignaciones, tareas y observación; saltea los que sí. `NOT_A_HOLIDAY` si la fecha no tiene feriado vigente. Deja un
+  evento `record_deleted`.
+
+### Cancelar un turno libera a los empleados (OF-04b)
+
+**Reemplazado por la 0083 (más abajo):** la 0082 quitaba con `removed_at` y el empleado dejaba de ver el turno cancelado; la 0083 libera con `released_at`.
+
+### Licencias superpuestas (OF-20)
+
+Se quitó `employee_leaves_no_overlap` (el índice GiST). Todas las consultas de licencia del esquema usan «existe alguna que cubra
+la fecha» (`exists` o `limit 1`), así que no cambian. Índice nuevo `employee_leaves_employee_id_starts_on_idx`. El front deja de
+mapear el `23P01` a `LEAVE_OVERLAP`.
+
+### Mensajes con el detalle del choque (OF-08)
+
+Ayudas internas (`app`, no ejecutables por `authenticated`): `try_jsonb`, `person_label` (apellido), `fmt_dia`, `fmt_hora`,
+`leave_range_text`, `leave_conflict(empleado, fecha)`, `overlap_conflict(empleado, desde, hasta, except_shift)` y
+`conflicts_detail`. `ASSIGNMENT_OVERLAP` dice «Acosta ya está en YPF RUTA (YPF RUTA TURNO TARDE) el lun 9/11 de 15:00 a 17:00.»
+(un turno sin servicio se nombra «turno manual») y `ON_LEAVE` «Boutter tiene licencia (Vacaciones) del 3 al 10/11.». El campo
+`detail` del error (texto JSON, `error.details` en PostgREST) trae las claves del primer choque más `conflicts` (todos):
+`conflict_shift_id`, `conflict_assignment_id`, `client_name`, `site_id`, `site_name`, `service_id`, `service_name`, `shift_date`,
+`start_time`, `end_time`, `open_ended`, o `leaves` (`leave_id`, `reason`, `starts_on`, `ends_on`) para `ON_LEAVE`. Rige para
+`assign_employee`, `update_assignment_time`, `update_shift_time` (una frase por persona afectada), `create_shift` /
+`create_shift_series` (`rejected[].detail`), `generate_shifts` (`unassigned[].detail`) y `apply_service_fixed_employees`
+(`skipped[].detail`). `generate_shifts` pasó a envolver a `app.generate_shifts_core(año, mes, servicio, desde)`.
+
+### Los cambios del servicio llegan a los turnos (OF-05)
+
+`preview_service_changes(p_service_id, p_from_date, p_previous)` y `apply_service_changes(...)` (O, A). La vista previa corre el
+mismo cuerpo (`app.service_changes_run`) dentro de una subtransacción que se deshace, así que no puede diferir de aplicar.
+Sobre los turnos del servicio con fecha `>= p_from_date`:
+
+1. Borra los turnos generados, sin historia y que no empezaron, que ya no corresponden (`WEEKDAY`, `WEEK_OF_MONTH`, `HOLIDAY`,
+   `OUT_OF_VALIDITY`).
+2. Actualiza horario, dotación y fotos de los que siguen. Al cambiar el horario revalida a los asignados: franja propia fuera
+   del nuevo horario, licencia o superposición con otro turno se quitan (motivo «Cambio de horario del servicio») y se informan.
+3. Genera los turnos que faltan, con los fijos, en los meses (desde el de `p_from_date`) en los que el servicio ya tenía turnos
+   generados, calculados antes de borrar.
+
+«Cambiado a mano»: `p_previous` trae los valores anteriores del servicio (`start_time`, `end_time`, `open_ended`,
+`required_staff`, `requires_photos`); por campo presente solo se actualizan los turnos que todavía lo tienen igual (los demás
+conservan el suyo: `MANUAL_TIME`, `MANUAL_STAFF`, `MANUAL_PHOTOS`); un campo ausente se fuerza en todos. Nunca toca turnos
+cancelados (`SHIFT_CANCELLED`), creados a mano (`MANUAL_SHIFT`), que ya empezaron (`SHIFT_STARTED`), con historia al borrar
+(`HAS_HISTORY`) ni con fichajes o avisos al actualizar (`HAS_ATTENDANCE`, `HAS_NOTICES`). La dotación no baja de los asignados
+(`STAFF_BELOW_ASSIGNED`).
+
+### Avisos de duplicados (OF-02) y cronograma (OF-10)
+
+- `service_overlaps(p_site_id, p_weekdays, p_start, p_end, p_except_id)` y `shift_overlaps_in_site(p_site_id, p_date, p_start,
+p_end, p_except_id)` (O, A, solo lectura).
+- `move_assignment(p_assignment_id, p_target_shift_id, p_start, p_end)` (O, A): quita y asigna en una transacción y devuelve
+  `previous` para deshacer. Mover el turno entero de día u hora es `update_shift_time`.
+
+### Cierre automático de asignaciones (OF-11)
+
+`attendance_records.auto_closed` (con su `grant select (auto_closed)` por columna) y `app.auto_close_assignments(p_now)`: con
+`pg_cron` cada 15 minutos (`auto-close-assignments`, `*/15 * * * *`), cierra las asignaciones con inicio fichado y sin fin cuando
+pasó 1 hora del fin programado de su franja efectiva, solo si ese fin cayó en las últimas 48 horas. Registra el fin con la hora
+programada, `source = admin`, `recorded_by` nulo, `auto_closed = true` y el motivo «Cierre automático: no se registró el fin»;
+deja la asignación `finished` y completa el turno si era la última. No cierra turnos «A terminar» sin fin propio ni asignaciones
+sin inicio fichado. `v_assignments_board.check_out_auto_closed` sirve para filtrar; se corrige con `correct_attendance_time`.
+**En `App` hay que verificar, al aplicar `0082`, que `select * from cron.job where jobname = 'auto-close-assignments'` devuelva
+la tarea** (misma advertencia que `auto-close-workdays`).
+
+### Mapa por estado de la sede (OF-13)
+
+`v_sites_day_status` (`security_invoker`, solo dueño y administradores): una fila por sede con turnos hoy no cancelados, con
+`upcoming_count`, `in_progress_count`, `finished_count`, `shifts_count`, `day_state`, `next_starts_at`, `last_ends_at`,
+`latitude`, `longitude` y `radius_m`.
+
+pgTAP: `0082_p28_1_feriados_cancelacion_licencias`, `0082_p28_1_mensajes_mover_y_avisos`, `0082_p28_1_cambios_del_servicio` y
+`0082_p28_1_cierre_automatico_y_mapa`, más ajustes en `0006`, `0012_rls_policies_employees_writes`, `0015`, `0023_rpc_shifts`,
+`0024`, `0030`, `0033`, `0037`, `0041` y `0059` por las reglas que cambian.
+
+## Migración 0083 (P28.1b): un turno cancelado libera sin quitar (OF-04b, opción b)
+
+Corrige el efecto lateral de la 0082: el empleado tiene que seguir viendo el turno cancelado (DEF-01, P-049).
+
+- `assignments.released_at timestamptz` y `released_by uuid` (check: `released_at` exige `released_by`). «Liberada» = sigue
+  vigente (`removed_at` nulo, así que `v_my_day`, `v_my_history`, `app.my_shift_ids`, `assignments_select_employee`,
+  `app.shares_shift` y `app.clients_basic` la siguen viendo con `shift_status = 'cancelled'`) pero ya no ocupa horario.
+- `assignments_no_overlap` se reconstruye con `where (removed_at is null and released_at is null)` y `app.overlap_conflict`
+  ignora las liberadas; con eso `assign_employee`, `update_shift_time`, `update_assignment_time`, `move_assignment`,
+  `apply_service_changes` y la generación y los fijos en lote (que usan `overlap_conflict` o la restricción) dejan de ver choques
+  con turnos cancelados.
+- `cancel_shift` libera (`released_at`, `released_by`) las asignaciones vigentes sin fichajes; las que tienen fichajes quedan
+  sin liberar (siguen ocupando el horario como historia de asistencia). No existe acción para descancelar un turno.
+- `remove_assignment` y `move_assignment` sobre una liberada responden `SHIFT_CANCELLED` (el turno está cancelado).
+- Corrección de datos idempotente: lo que la 0082 quitó con «Turno cancelado» (sin fichajes, turno cancelado) vuelve a
+  `removed_at = null` con `released_at` = ese momento, y las vivas sin fichajes de turnos cancelados quedan liberadas.
+- Sin cambios en `holiday_shift_conflicts`, `get_leave_conflicts`, `shift_overlaps_in_site`, vistas ni informes: ya excluían los
+  turnos cancelados, y las vistas no exponen `released_at`.
+- Tests: `0083_p28_1b_turno_cancelado_libera` y ajustes en `0007`, `0023`, `0024`, `0030` (DEF-01 vuelve a no necesitar fichaje) y
+  `0082_p28_1_feriados_cancelacion_licencias`.

@@ -65,9 +65,9 @@ select columns_are(
     'created_at', 'updated_at', 'created_by', 'updated_by',
     'shift_date', 'window',
     -- 0080 (P27.1, OD-11): origen fijo de la asignación.
-    'from_fixed'
+    'from_fixed', 'released_at', 'released_by'
   ],
-  'assignments tiene exactamente las columnas de 04 sección 2.3 (más from_fixed, 0080)'
+  'assignments tiene exactamente las columnas de 04 sección 2.3 (más from_fixed, 0080; released_at y released_by, 0083)'
 );
 
 select has_pk('public', 'services', 'services tiene primary key');

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { DataTable, type DataTableColumnDef } from './DataTable'
+import { CARD_LAYOUT_QUERY } from '@/lib/tableMode'
 
 interface DemoRow {
   id: string
@@ -26,10 +27,10 @@ const COLUMNS: DataTableColumnDef<DemoRow>[] = [
   },
 ]
 
-/** Simula el ancho de pantalla: `DataTable` decide tabla vs. `RowCard` con `useMediaQuery`. */
-function mockDesktopViewport(isDesktop: boolean) {
-  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-    matches: isDesktop,
+/** Simula celular táctil (tarjetas) o computadora (tabla): `DataTable` decide con `useMediaQuery(CARD_LAYOUT_QUERY)`. */
+function mockCardViewport(isCards: boolean) {
+  const matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches: isCards,
     media: query,
     onchange: null,
     addEventListener: vi.fn(),
@@ -38,15 +39,17 @@ function mockDesktopViewport(isDesktop: boolean) {
     removeListener: vi.fn(),
     dispatchEvent: vi.fn(),
   }))
+  window.matchMedia = matchMedia
+  return matchMedia
 }
 
 afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('DataTable — 1024 px o más (tabla)', () => {
+describe('DataTable — computadora (tabla)', () => {
   it('ordena al hacer clic en un encabezado', () => {
-    mockDesktopViewport(true)
+    mockCardViewport(false)
     render(<DataTable columns={COLUMNS} data={DATA} caption="Demo" />)
 
     const nameHeader = screen.getByRole('columnheader', { name: /Nombre/ })
@@ -75,7 +78,7 @@ describe('DataTable — 1024 px o más (tabla)', () => {
   })
 
   it('paginación por rango: texto, límites y callback', () => {
-    mockDesktopViewport(true)
+    mockCardViewport(false)
     const onPaginationChange = vi.fn()
     render(
       <DataTable
@@ -101,7 +104,7 @@ describe('DataTable — 1024 px o más (tabla)', () => {
   })
 
   it('deshabilita "Siguiente" en la última página', () => {
-    mockDesktopViewport(true)
+    mockCardViewport(false)
     render(
       <DataTable
         columns={COLUMNS}
@@ -117,7 +120,7 @@ describe('DataTable — 1024 px o más (tabla)', () => {
   })
 
   it('estado de carga: muestra el esqueleto, no la tabla', () => {
-    mockDesktopViewport(true)
+    mockCardViewport(false)
     render(<DataTable columns={COLUMNS} data={DATA} caption="Demo" isLoading />)
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     expect(
@@ -126,7 +129,7 @@ describe('DataTable — 1024 px o más (tabla)', () => {
   })
 
   it('fixedLayout: aplica table-fixed y un colgroup con los anchos de meta.width', () => {
-    mockDesktopViewport(true)
+    mockCardViewport(false)
     const columns: DataTableColumnDef<DemoRow>[] = [
       { accessorKey: 'name', header: 'Nombre', meta: { width: '70%' } },
       { accessorKey: 'hour', header: 'Horario', meta: { width: '30%' } },
@@ -142,7 +145,7 @@ describe('DataTable — 1024 px o más (tabla)', () => {
   })
 
   it('sin fixedLayout: no hay colgroup ni table-fixed', () => {
-    mockDesktopViewport(true)
+    mockCardViewport(false)
     const { container } = render(
       <DataTable columns={COLUMNS} data={DATA} caption="Demo" />,
     )
@@ -151,16 +154,16 @@ describe('DataTable — 1024 px o más (tabla)', () => {
   })
 
   it('estado vacío: muestra EmptyState, no la tabla', () => {
-    mockDesktopViewport(true)
+    mockCardViewport(false)
     render(<DataTable columns={COLUMNS} data={[]} caption="Demo" />)
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     expect(screen.getByText('No hay datos para mostrar.')).toBeInTheDocument()
   })
 })
 
-describe('DataTable — menos de 1024 px (RowCard)', () => {
+describe('DataTable — celular táctil (RowCard)', () => {
   it('no renderiza una tabla ni tiene scroll horizontal (tarjetas apiladas)', () => {
-    mockDesktopViewport(false)
+    mockCardViewport(true)
     render(<DataTable columns={COLUMNS} data={DATA} caption="Demo" />)
 
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
@@ -170,7 +173,7 @@ describe('DataTable — menos de 1024 px (RowCard)', () => {
   })
 
   it("las acciones (`card: 'actions'`) van al pie de la tarjeta, después de los datos", () => {
-    mockDesktopViewport(false)
+    mockCardViewport(true)
     const columns: DataTableColumnDef<DemoRow>[] = [
       ...COLUMNS,
       {
@@ -189,5 +192,39 @@ describe('DataTable — menos de 1024 px (RowCard)', () => {
     expect(
       hour.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
+  })
+})
+
+describe('DataTable — OF-17 (P28.2)', () => {
+  it('la consulta de tarjetas exige puntero táctil y menos de 768 px', () => {
+    expect(CARD_LAYOUT_QUERY).toBe('(pointer: coarse) and (max-width: 767px)')
+  })
+
+  it('pide a matchMedia la consulta táctil, no solo el ancho (zoom de escritorio = tabla)', () => {
+    const matchMedia = mockCardViewport(false)
+    render(<DataTable columns={COLUMNS} data={DATA} caption="Demo" />)
+    expect(matchMedia).toHaveBeenCalledWith(CARD_LAYOUT_QUERY)
+    expect(screen.getByRole('table')).toBeInTheDocument()
+  })
+
+  it('la primera columna queda fija y las columnas tienen ancho mínimo', () => {
+    mockCardViewport(false)
+    render(<DataTable columns={COLUMNS} data={DATA} caption="Demo" />)
+    const headers = screen.getAllByRole('columnheader')
+    expect(headers[0]).toHaveClass('sticky', 'left-0')
+    expect(headers[1]).not.toHaveClass('sticky')
+    expect(headers[1]).toHaveClass('min-w-[7.5rem]')
+    const firstCell = screen.getAllByRole('cell')[0]
+    expect(firstCell).toHaveClass('sticky', 'left-0', 'bg-surface')
+  })
+
+  it('el contenedor de la tabla se desplaza en horizontal', () => {
+    mockCardViewport(false)
+    const { container } = render(
+      <DataTable columns={COLUMNS} data={DATA} caption="Demo" />,
+    )
+    expect(
+      container.querySelector('[data-slot="table-container"]'),
+    ).toHaveClass('overflow-x-auto')
   })
 })

@@ -40,6 +40,7 @@ import {
   localDateToIsoDate,
 } from '@/features/settings/dateOnly'
 import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
+import { AutoClosedBadge } from './AutoClosedBadge'
 import { GeoValidationCell } from '@/features/geo/components/GeoValidationCell'
 import { timeCorrectedSuffix } from '@/features/geo/outsideZone'
 import { AttendanceDetailSheet } from './AttendanceDetailSheet'
@@ -217,9 +218,14 @@ function EmployeeAttendanceHistoryTab({
       meta: { card: 'meta', cardLabel: 'Fin' },
       cell: ({ row }) => {
         const value = entryCheckOut(row.original)
-        return value
-          ? `${formatTime(value)}${timeCorrectedSuffix(row.original.row.checkOutGeo)}`
-          : '—'
+        return (
+          <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+            {value
+              ? `${formatTime(value)}${timeCorrectedSuffix(row.original.row.checkOutGeo)}`
+              : '—'}
+            {row.original.row.checkOutAutoClosed && <AutoClosedBadge />}
+          </span>
+        )
       },
     },
     {

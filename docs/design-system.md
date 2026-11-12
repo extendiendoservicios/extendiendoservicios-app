@@ -446,9 +446,14 @@ class="sr-only">` — **obligatorio**), `getRowId?`, `compact?`
     orden al servidor), es responsabilidad de quien lo usa volver a pedir
     `data` ya ordenada — `DataTable` no tiene forma de distinguir "ordená
     vos esto" de "ya te lo mandé ordenado".
-  - **Por debajo de 1024 px** (`05_Pantallas_y_Navegacion.md` sección 7)
-    se renderiza sola como una lista de `RowCard` en vez de tabla, sin
-    scroll horizontal. Cada columna dice, con `meta.card`, qué lugar
+  - **Celular táctil** (`pointer: coarse` y menos de 768 px, OF-17/P28.2)
+    se renderiza sola como una lista de `RowCard` en vez de tabla. En
+    computadora **siempre hay tabla**, aunque el navegador esté agrandado
+    al 150-200 % (el ancho CSS baja de 1024 px pero el puntero sigue siendo
+    el mouse): contenedor `overflow-x-auto` con barra visible, primera
+    columna fija (`sticky`, con fondo), encabezados en una línea y
+    `min-w-[7.5rem]` por columna (sin `fixedLayout`; con `fixedLayout`,
+    `min-w-[48rem]` en la tabla). Nunca se ocultan columnas por zoom. Cada columna dice, con `meta.card`, qué lugar
     ocupa en la tarjeta: `'title'` (una sola columna; típicamente un
     `PersonCell`), `'subtitle'` (debajo del título), `'trailing'`
     (arriba a la derecha; típicamente un `StatusBadge`), `'meta'` (pares
@@ -456,8 +461,8 @@ class="sr-only">` — **obligatorio**), `getRowId?`, `compact?`
     sale de `meta.cardLabel`) o sin indicar/`'hidden'` (no aparece en la
     tarjeta). `meta.align` (`'start'` default, `'end'`, `'center'`) solo
     afecta la tabla de escritorio.
-  - El quiebre lo decide `useMediaQuery('(min-width: 1024px)')`
-    (`src/hooks/useMediaQuery.ts`, nuevo: hook mínimo sobre
+  - El quiebre lo decide `useMediaQuery(CARD_LAYOUT_QUERY)`
+    (`src/lib/tableMode.ts`; `src/hooks/useMediaQuery.ts`: hook mínimo sobre
     `window.matchMedia` con `useSyncExternalStore`, reutilizable para
     cualquier otro componente que necesite reaccionar a un breakpoint).
   - `DataTableColumnDef<TData>`/`DataTableColumnMeta` se exportan del
@@ -2175,3 +2180,14 @@ Especificación: `Docs/Plan_Maestro/modulos/B_asistencia_avanzada.md` (B-03, B-0
 - **`MapView`**: por marcador, `radiusM`/`circleVariant` (círculo), `variant` (`success`, `danger`, `neutral` para verde, rojo y gris), `shape: 'supervisor'` (rombo) y `data` para `renderPopup(marker)` (popup con contenido React).
 - Los círculos se pintan con clases de Tailwind sobre el `<path>` (`stroke-success`, `fill-danger`, etc.), sin colores sueltos.
 - Todo se ve en `/dev/design`, sección «Geolocalización».
+
+### Pantalla completa en `MapView` (OF-13b, P28.2)
+
+Todos los `MapView` traen un botón de 44 px abajo a la izquierda:
+**Ampliar mapa** / **Salir de pantalla completa** (ícono + `aria-label`).
+Usa la Fullscreen API sobre el contenedor del mapa
+(`src/components/map/useMapFullscreen.ts`); donde no existe (iPhone Safari) o
+el navegador la rechaza, cae a una alternativa CSS (`position: fixed` a
+pantalla completa, con Esc y bloqueo del desplazamiento de la página). Al
+cambiar el tamaño se llama a `invalidateSize()` de Leaflet. Prop
+`allowFullscreen` (`true` por omisión) para ocultar el botón.

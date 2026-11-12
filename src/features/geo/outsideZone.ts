@@ -25,6 +25,13 @@ export function filterOutsideZone<
   return onlyOutside ? rows.filter(hasOutsideZone) : rows
 }
 
+/** Filtro «Cierre automático» de la planilla de asistencia (OF-11): el fin lo cerró el proceso automático. */
+export function filterAutoClosed<
+  T extends Pick<AttendanceBoardRow, 'checkOutAutoClosed'>,
+>(rows: T[], onlyAutoClosed: boolean): T[] {
+  return onlyAutoClosed ? rows.filter((row) => row.checkOutAutoClosed) : rows
+}
+
 /** Marca « (corregido)» junto a una hora que la administración corrigió (B-28). */
 export function timeCorrectedSuffix(
   geo: Pick<BoardAttendanceGeo, 'timeCorrected'> | null | undefined,

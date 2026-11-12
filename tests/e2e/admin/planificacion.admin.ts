@@ -216,7 +216,8 @@ test.describe('asignar con advertencias (ADM-08, ADM-04)', () => {
             p_shift_id: shiftId,
             p_employee_id: readId('empleado3'),
           })
-          expect(error?.message).toContain('de licencia')
+          // OF-08 (0082): el mensaje dice quién, el motivo y las fechas de la licencia.
+          expect(error?.message).toMatch(/tiene licencia \(.*\) el /)
         })
 
         await test.step('asigna al no habilitado: se asigna igual y avisa', async () => {
@@ -302,7 +303,8 @@ test.describe('cambiar la franja de un turno con asignaciones (ADM-07)', () => {
         const { turnoB } = await armar(sc)
         await intentarSolapar(page, turnoB)
         await expect(
-          page.getByText('El empleado ya tiene otro turno en ese horario.'),
+          // OF-08 (0082): el mensaje dice con qué turno choca (sede, fecha y horario).
+          page.getByText(/Empleado1 ya está en .* el .* de 14:00 a 16:00\./),
         ).toBeVisible()
         await expect(page).toHaveURL(
           new RegExp(`/admin/turnos/${turnoB}/editar`),
@@ -332,9 +334,8 @@ test.describe('cambiar la franja de un turno con asignaciones (ADM-07)', () => {
         await intentarSolapar(page, turnoB)
         await expect(
           page.getByText(
-            new RegExp(
-              `El empleado ya tiene otro turno en ese horario[.] Afecta a: ${reNombreDe('empleado1').source}`,
-            ),
+            // OF-08 (0082): el mensaje nombra a la persona y el turno con el que choca.
+            /Empleado1 ya está en .* de 14:00 a 16:00\./,
           ),
         ).toBeVisible({ timeout: 5_000 })
       } finally {

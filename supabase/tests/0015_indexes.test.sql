@@ -35,7 +35,7 @@ select has_index('public', 'ratings', 'ratings_assignment_id_idx', 'ratings.assi
 
 select has_index('public', 'sites', 'sites_client_id_idx', 'sites.client_id');
 
-select has_index('public', 'employee_leaves', 'employee_leaves_no_overlap', 'employee_leaves: gist de exclusión');
+select has_index('public', 'employee_leaves', 'employee_leaves_employee_id_starts_on_idx', 'employee_leaves: índice por empleado y desde (0082, OF-20: ya no hay exclusión)');
 
 select has_index('public', 'security_events', 'security_events_created_at_idx', 'security_events.created_at desc');
 select has_index('public', 'security_events', 'security_events_actor_id_idx', 'security_events.actor_id');

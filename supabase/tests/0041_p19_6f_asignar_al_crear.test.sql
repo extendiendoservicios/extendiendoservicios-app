@@ -162,13 +162,13 @@ select is(
 );
 select is(
   current_setting('t.c1')::jsonb -> 'rejected' -> 0 ->> 'message',
-  'El empleado ya tiene otro turno en ese horario.',
-  'create_shift: cada rechazado trae el mensaje de la misma validación que la asignación manual'
+  'Ocupado ya está en Sede de asignar al crear (turno manual) el sáb 4/5 de 10:00 a 14:00.',
+  'create_shift: cada rechazado trae el mensaje de la misma validación que la asignación manual (con el choque desde 0082, OF-08)'
 );
 select is(
   current_setting('t.c1')::jsonb -> 'rejected' -> 2 ->> 'message',
-  'El empleado está de licencia ese día.',
-  'create_shift: la licencia bloquea (0059) igual que en assign_employee'
+  'Licencia tiene licencia (Licencia de prueba 0041) del 1 al 31/5.',
+  'create_shift: la licencia bloquea (0059) igual que en assign_employee (mensaje con motivo y rango desde 0082, OF-08)'
 );
 select is(
   current_setting('t.c1')::jsonb -> 'shift' ->> 'status',

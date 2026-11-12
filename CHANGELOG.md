@@ -7,6 +7,40 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.29.0] - 2026-11-12
+
+Observaciones de la dirección del 11 nov (P28.1 a P28.8). Migraciones 0082 y 0083.
+
+### Agregado
+
+- Ficha del empleado: vista semanal del cronograma con arrastre para mover o estirar turnos, panel de turnos sin cubrir, quitar del turno, deshacer y manejo con teclado.
+- Servicios: al editar uno, se ofrece aplicar los cambios a los turnos desde una fecha, con vista previa; botón «Actualizar turnos desde…».
+- Servicios: la lista muestra los fijos, el turno de hoy o el próximo con sus asignados, y «Sin cubrir» o «Faltan N de M».
+- Aviso de servicio o turno duplicado en la misma sede.
+- Feriados: al cargar uno sobre turnos de servicios que no trabajan feriados, se ofrece eliminarlos.
+- Cierre automático: una hora después del fin programado se registra el fin de las asignaciones con inicio y sin fin. Asistencia lo marca y permite filtrarlo.
+- Asistencia: «Corregir» y «Registrar» junto a cada hora.
+- Mapa del Resumen con las sedes por comenzar, en curso y finalizadas, y pantalla completa.
+- Avisos de choque con el turno en conflicto y el enlace «Ver turno».
+- Instalación de la app en iPhone.
+
+### Cambiado
+
+- Cancelar un turno libera a los asignados; el empleado lo sigue viendo como cancelado.
+- Se permiten varias licencias el mismo día; cronograma, calendario y hoja de licencias las muestran todas y cuentan una vez los días superpuestos.
+- Cargar un feriado en una fecha que ya tiene uno lo actualiza en lugar de fallar.
+- Insumos: costo y venta arrancan en 0 y dejan de ser obligatorios. Un admin sin «Gestionar stock» ve cómo pedirla.
+- Tablas anchas con desplazamiento horizontal y primera columna fija.
+
+### Corregido
+
+- Los avisos con botón responden aunque haya una hoja o un diálogo abierto.
+- Al entrar a una pantalla nueva, la página empieza arriba.
+
+### Pruebas y automatización
+
+- pgTAP de 0082 y 0083 (y pruebas viejas ajustadas a las columnas nuevas), permisos por API (`100-p28`) y pruebas E2E `p28-*`.
+
 ## [0.28.1] - 2026-11-03
 
 Corrección del calendario impreso. Sin migraciones.

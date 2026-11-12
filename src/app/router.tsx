@@ -3,6 +3,7 @@ import {
   createBrowserRouter,
   Navigate,
   Outlet,
+  ScrollRestoration,
   useLocation,
   type RouteObject,
 } from 'react-router'
@@ -58,6 +59,8 @@ function RootLayout() {
     <>
       <StagingBanner />
       <Outlet />
+      {/* Navegación nueva: arriba; volver atrás: restaura el desplazamiento. */}
+      <ScrollRestoration />
     </>
   )
 }

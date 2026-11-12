@@ -162,6 +162,88 @@ export async function fetchPresenceToday(): Promise<PresenceRow[]> {
     .filter((row): row is PresenceRow => row !== null)
 }
 
+/** Estado de hoy de una sede (OF-13): `in_progress` si algún turno está en curso, si no `upcoming`, si no `finished`. */
+export type SiteDayState = 'upcoming' | 'in_progress' | 'finished'
+
+/** Una fila de `v_sites_day_status` (una por sede con turnos hoy), en camelCase. */
+export interface SiteDayStatusRow {
+  siteId: string
+  clientId: string | null
+  clientLegalName: string | null
+  clientTradeName: string | null
+  siteName: string | null
+  latitude: number | null
+  longitude: number | null
+  radiusM: number | null
+  upcomingCount: number
+  inProgressCount: number
+  finishedCount: number
+  shiftsCount: number
+  dayState: SiteDayState
+  /** Inicio del próximo turno por comenzar (ISO), si hay. */
+  nextStartsAt: string | null
+  lastEndsAt: string | null
+}
+
+interface SiteDayStatusRaw {
+  site_id: string | null
+  client_id: string | null
+  client_legal_name: string | null
+  client_trade_name: string | null
+  site_name: string | null
+  latitude: number | string | null
+  longitude: number | string | null
+  radius_m: number | string | null
+  upcoming_count: number | null
+  in_progress_count: number | null
+  finished_count: number | null
+  shifts_count: number | null
+  day_state: string | null
+  next_starts_at: string | null
+  last_ends_at: string | null
+}
+
+export function mapSiteDayStatusRow(
+  row: SiteDayStatusRaw,
+): SiteDayStatusRow | null {
+  if (
+    !row.site_id ||
+    (row.day_state !== 'upcoming' &&
+      row.day_state !== 'in_progress' &&
+      row.day_state !== 'finished')
+  ) {
+    return null
+  }
+  return {
+    siteId: row.site_id,
+    clientId: row.client_id,
+    clientLegalName: row.client_legal_name,
+    clientTradeName: row.client_trade_name,
+    siteName: row.site_name,
+    latitude: toNumberOrNull(row.latitude),
+    longitude: toNumberOrNull(row.longitude),
+    radiusM: toNumberOrNull(row.radius_m),
+    upcomingCount: row.upcoming_count ?? 0,
+    inProgressCount: row.in_progress_count ?? 0,
+    finishedCount: row.finished_count ?? 0,
+    shiftsCount: row.shifts_count ?? 0,
+    dayState: row.day_state,
+    nextStartsAt: row.next_starts_at,
+    lastEndsAt: row.last_ends_at,
+  }
+}
+
+/** Estado de hoy de cada sede con turnos (`v_sites_day_status`, solo dueño y administradores). */
+export async function fetchSitesDayStatus(): Promise<SiteDayStatusRow[]> {
+  const { data, error } = await supabase.from('v_sites_day_status').select('*')
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data ?? [])
+    .map((row) => mapSiteDayStatusRow(row as unknown as SiteDayStatusRaw))
+    .filter((row): row is SiteDayStatusRow => row !== null)
+}
+
 // -------------------------------------------------------------------------
 // 2. Posición de un fichaje para el mini mapa (ADM-06 / ADM-15)
 // -------------------------------------------------------------------------

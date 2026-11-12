@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 import { AssignEmployeeSheet, WARNING_MESSAGES } from './AssignEmployeeSheet'
 
@@ -32,16 +33,18 @@ vi.mock('@/features/planning/queries', () => ({
 describe('AssignEmployeeSheet', () => {
   it('el candidato de licencia queda deshabilitado y marcado; los demás se eligen', () => {
     render(
-      <AssignEmployeeSheet
-        shiftId="sh1"
-        clientId="c1"
-        shiftDate="2026-10-21"
-        shiftStartTime="08:00:00"
-        shiftEndTime="12:00:00"
-        excludeEmployeeIds={[]}
-        open
-        onOpenChange={() => {}}
-      />,
+      <MemoryRouter>
+        <AssignEmployeeSheet
+          shiftId="sh1"
+          clientId="c1"
+          shiftDate="2026-10-21"
+          shiftStartTime="08:00:00"
+          shiftEndTime="12:00:00"
+          excludeEmployeeIds={[]}
+          open
+          onOpenChange={() => {}}
+        />
+      </MemoryRouter>,
     )
     const [ana, luis] = screen.getAllByTestId('assign-candidate') as [
       HTMLElement,

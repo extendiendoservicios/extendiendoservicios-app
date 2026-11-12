@@ -14,8 +14,12 @@ import {
 } from '@/components/ui/dialog'
 import { DatePicker } from '@/components/DatePicker'
 import { isApiError } from '@/api/errors'
+import type { HolidayShiftConflicts } from '@/api/settings'
 import { localDateToIsoDate } from '@/features/settings/dateOnly'
-import { useCreateHolidayMutation } from '@/features/settings/queries'
+import {
+  useCreateHolidayMutation,
+  useHolidayShiftConflictsMutation,
+} from '@/features/settings/queries'
 import {
   createHolidaySchema,
   type CreateHolidayFormValues,
@@ -28,16 +32,18 @@ import {
  */
 function HolidayFormDialog({
   year,
-  createdBy,
   open,
   onOpenChange,
+  onConflicts,
 }: {
   year: number
-  createdBy: string
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** OF-19b: se llama si el feriado nuevo tiene turnos que se pueden eliminar. */
+  onConflicts?: (conflicts: HolidayShiftConflicts) => void
 }) {
   const createHoliday = useCreateHolidayMutation(year)
+  const findConflicts = useHolidayShiftConflictsMutation()
   const {
     control,
     register,
@@ -62,10 +68,18 @@ function HolidayFormDialog({
       await createHoliday.mutateAsync({
         holidayDate: values.holidayDate,
         name: values.name,
-        createdBy,
       })
       toast.success('Agregamos el feriado.')
       onOpenChange(false)
+      // OF-19b: el feriado ya está; si falla la consulta de turnos no lo deshace.
+      try {
+        const conflicts = await findConflicts.mutateAsync(values.holidayDate)
+        if (conflicts.deletableCount > 0) {
+          onConflicts?.(conflicts)
+        }
+      } catch {
+        // Aviso opcional: sin la lista, el feriado igual quedó cargado.
+      }
     } catch (error) {
       toast.error(
         isApiError(error) ? error.message : 'No pudimos agregar el feriado.',

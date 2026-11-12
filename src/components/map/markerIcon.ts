@@ -36,7 +36,8 @@ export const SITE_PIN_HEIGHT = 38
  * Forma del marcador: `dot` (círculo, por omisión) o `supervisor` (rombo con
  * un punto blanco). La forma distinta evita depender solo del color (B-12).
  */
-export type MarkerShape = 'dot' | 'supervisor' | 'site'
+export type MarkerShape =
+  'dot' | 'supervisor' | 'site' | 'site-upcoming' | 'site-finished'
 
 /**
  * Isotipo blanco original de la marca (los mismos recortes que usa la
@@ -46,16 +47,36 @@ const SITE_ISOTYPE_SRC = '/icons/isotipo_blanco_34px@2x.png'
 const SITE_ISOTYPE_SRCSET =
   '/icons/isotipo_blanco_34px@2x.png 2x, /icons/isotipo_blanco_34px@3x.png 3x'
 
+/**
+ * Glifo blanco de las sedes por estado del día (OF-13): reloj para «por
+ * comenzar» y tilde para «finalizada». Con la gota cambia el dibujo y no solo
+ * el color, para no depender de él.
+ */
+const SITE_GLYPH_SVG: Record<'site-upcoming' | 'site-finished', string> = {
+  'site-upcoming':
+    '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  'site-finished':
+    '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="white" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+}
+
 /** Ícono de pin coloreado por `variant` (`07` sección 3: mismas variantes que `StatusBadge`). */
 export function createMarkerIcon(
   variant: BadgeVariant = 'primary',
   shape: MarkerShape = 'dot',
 ): L.DivIcon {
   const bgClass = VARIANT_BG_CLASS[variant]
-  if (shape === 'site') {
+  if (
+    shape === 'site' ||
+    shape === 'site-upcoming' ||
+    shape === 'site-finished'
+  ) {
     // Gota con la punta hacia abajo: un cuadrado con tres esquinas redondas
     // girado -45°. El isotipo va aparte, sin girar, centrado en la cabeza.
-    const html = `<span class="relative block size-full" aria-hidden="true"><span class="absolute left-px top-0.5 block size-7 -rotate-45 rounded-[50%_50%_50%_0] border-2 border-white shadow-[0_1px_4px_rgba(19,21,30,0.35)] ${bgClass}"></span><img src="${SITE_ISOTYPE_SRC}" srcset="${SITE_ISOTYPE_SRCSET}" alt="" aria-hidden="true" class="absolute left-1/2 top-4 h-[17px] w-auto -translate-x-1/2 -translate-y-1/2" /></span>`
+    const inner =
+      shape === 'site'
+        ? `<img src="${SITE_ISOTYPE_SRC}" srcset="${SITE_ISOTYPE_SRCSET}" alt="" aria-hidden="true" class="absolute left-1/2 top-4 h-[17px] w-auto -translate-x-1/2 -translate-y-1/2" />`
+        : `<span class="absolute left-1/2 top-4 flex -translate-x-1/2 -translate-y-1/2" aria-hidden="true">${SITE_GLYPH_SVG[shape]}</span>`
+    const html = `<span class="relative block size-full" aria-hidden="true"><span class="absolute left-px top-0.5 block size-7 -rotate-45 rounded-[50%_50%_50%_0] border-2 border-white shadow-[0_1px_4px_rgba(19,21,30,0.35)] ${bgClass}"></span>${inner}</span>`
     return L.divIcon({
       className: 'es-map-marker',
       html,

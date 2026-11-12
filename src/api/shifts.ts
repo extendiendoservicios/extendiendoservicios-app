@@ -1,7 +1,11 @@
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
 import { serviceHasDateInMonth } from '@/features/services/weeksOfMonth'
-import { fromPostgrestError } from './errors'
+import {
+  fromPostgrestError,
+  parseConflictDetail,
+  type ConflictDetail,
+} from './errors'
 
 /** Con «A terminar» la base ignora `p_end` (AJ2-10); el tipo generado lo pide igual. */
 const OPEN_ENDED_WIRE_END = '23:59:00'
@@ -263,6 +267,8 @@ export interface CreateShiftRejected {
   code: string
   /** Texto en español del servidor: se muestra tal cual. */
   message: string
+  /** OF-08: con qué choca (`conflictShiftId` para «Ver turno»), o `null`. */
+  detail: ConflictDetail | null
 }
 
 export interface CreateShiftResult {
@@ -316,6 +322,7 @@ export async function createShift(
       employee_name: string
       code: string
       message: string
+      detail?: unknown
     }>
   }
   return {
@@ -331,6 +338,7 @@ export async function createShift(
       employeeName: item.employee_name,
       code: item.code,
       message: item.message,
+      detail: parseConflictDetail(item.detail),
     })),
   }
 }
@@ -463,6 +471,7 @@ export async function createShiftSeries(
         employee_name: string
         code: string
         message: string
+        detail?: unknown
       }>
     }>
     holidays_skipped?: string[]
@@ -483,6 +492,7 @@ export async function createShiftSeries(
         employeeName: r.employee_name,
         code: r.code,
         message: r.message,
+        detail: parseConflictDetail(r.detail),
       })),
     })),
     holidaysSkipped: payload.holidays_skipped ?? [],
@@ -503,6 +513,8 @@ export interface GenerateUnassigned {
   /** `ON_LEAVE`, `OUTSIDE_AVAILABILITY`, `ASSIGNMENT_OVERLAP`, `EMPLOYEE_NOT_ACTIVE` o `SHIFT_FULL`. */
   code: string
   message: string
+  /** OF-08: con qué choca (`conflictShiftId` para «Ver turno»), o `null`. */
+  detail: ConflictDetail | null
 }
 
 export interface GenerateShiftsResult {
@@ -596,6 +608,7 @@ export async function generateShifts(
       employee_name: string
       code: string
       message: string
+      detail?: unknown
     }>
     past_without_fixed?: number
   }
@@ -612,6 +625,7 @@ export async function generateShifts(
       employeeName: item.employee_name,
       code: item.code,
       message: item.message,
+      detail: parseConflictDetail(item.detail),
     })),
     pastWithoutFixed: payload.past_without_fixed ?? 0,
   }

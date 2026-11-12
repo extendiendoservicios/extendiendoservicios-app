@@ -14,12 +14,17 @@ import {
  * plantilla de shadcn/ui, acá no hay que leer el tema del sistema
  * operativo/navegador. Se saca `next-themes` (quedó sin otro uso en el
  * repo, ver CHANGELOG) y se fija `theme="light"` siempre.
+ *
+ * `pointer-events-auto` (DEF-P28-01): Radix pone `pointer-events: none` en el
+ * `body` mientras hay una hoja o un diálogo modal abierto, y el Toaster (hijo
+ * del `body`) lo heredaba: los toques caían en la hoja y botones del aviso
+ * como «Ver turno» no respondían.
  */
 const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
       theme="light"
-      className="toaster group"
+      className="toaster group pointer-events-auto"
       icons={{
         success: <CircleCheckIcon className="size-4" />,
         info: <InfoIcon className="size-4" />,

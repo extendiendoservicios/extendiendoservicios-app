@@ -74,6 +74,7 @@ describe('avisos al crear el turno', () => {
           employeeName: 'Beto Gómez',
           code: 'ASSIGNMENT_OVERLAP',
           message: 'Ya tiene otro turno en ese horario.',
+          detail: null,
         },
       ]),
     ).toEqual(['Beto Gómez: Ya tiene otro turno en ese horario.'])
@@ -127,6 +128,7 @@ describe('resumen de la generación', () => {
         employeeName: 'Zoe Ruiz',
         code: 'ON_LEAVE',
         message: 'Tiene licencia.',
+        detail: null,
       },
       {
         shiftId: 's1',
@@ -136,6 +138,7 @@ describe('resumen de la generación', () => {
         employeeName: 'Ana Pérez',
         code: 'ASSIGNMENT_OVERLAP',
         message: 'Ya tiene otro turno en ese horario.',
+        detail: null,
       },
     ],
   }
