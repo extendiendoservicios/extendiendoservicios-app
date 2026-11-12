@@ -151,6 +151,17 @@ export const VISTAS: VistaSpec[] = [
     ve: ven({ ...admins }),
   },
   {
+    // Nueva en 0082 (OF-13): estado de hoy de cada sede con turnos, para el mapa del Resumen; solo
+    // dueño y administradores (`app.is_admin()` en la definición). Como `v_presence_today`, no
+    // depende de lo que haya hoy en `App_dev`: la lectura con datos reales de hoy está en
+    // `100-p28.permissions.ts`. Los demás perfiles tienen que obtener cero filas.
+    vista: 'v_sites_day_status',
+    propia: true,
+    clave: 'site_id',
+    filas: () => ({}),
+    ve: ven({ ...admins }),
+  },
+  {
     vista: 'v_supervisions_admin',
     clave: 'id',
     filas: (c) => ({ supA: c.e.supA, supB: c.e.supB, supD: c.e.supD }),
