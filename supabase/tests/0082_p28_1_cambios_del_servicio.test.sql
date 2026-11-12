@@ -68,12 +68,12 @@ select plan(47);
 
 -- Estructura -----------------------------------------------------------------------------------
 
-select has_function('public', 'preview_service_changes', array['uuid', 'date', 'jsonb'], 'preview_service_changes');
-select has_function('public', 'apply_service_changes', array['uuid', 'date', 'jsonb'], 'apply_service_changes');
+select has_function('public', 'preview_service_changes', array['uuid', 'date', 'jsonb', 'boolean'], 'preview_service_changes');
+select has_function('public', 'apply_service_changes', array['uuid', 'date', 'jsonb', 'boolean'], 'apply_service_changes');
 select ok(
-  not has_function_privilege('anon', 'public.apply_service_changes(uuid, date, jsonb)', 'execute')
-  and has_function_privilege('authenticated', 'public.apply_service_changes(uuid, date, jsonb)', 'execute')
-  and not has_function_privilege('authenticated', 'app.service_changes_run(uuid, date, jsonb)', 'execute'),
+  not has_function_privilege('anon', 'public.apply_service_changes(uuid, date, jsonb, boolean)', 'execute')
+  and has_function_privilege('authenticated', 'public.apply_service_changes(uuid, date, jsonb, boolean)', 'execute')
+  and not has_function_privilege('authenticated', 'app.service_changes_run(uuid, date, jsonb, boolean)', 'execute'),
   'grants: authenticated sí, anon no; el cuerpo interno no es de nadie'
 );
 
