@@ -618,28 +618,17 @@ test.describe('choque de asignación con mensaje y «Ver turno» (OF-08)', () =>
     'DEF-P28-01: «Ver turno» del aviso lleva al turno de choque aun con la hoja «Asignar empleado» abierta',
     {
       ...cubre('RB-A04', 'CB-02', 'OF-08'),
-      annotation: [
-        {
-          type: 'defecto',
-          description:
-            'DEF-P28-01: con la hoja modal abierta, el aviso (Sonner) no recibe el toque (pointer-events) y el toque cae en «Asignar» de la hoja; ver el reporte de P28.7',
-        },
-      ],
     },
     async ({ page }) => {
-      test.fail()
       test.setTimeout(120_000)
       const sc = new Scenario()
       try {
         const { turnoA } = await armarChoque(sc, page)
         const ver = page.getByRole('button', { name: 'Ver turno' }).first()
         await expect(ver).toBeVisible()
-        // Un toque real (mouse) en el centro del botón del aviso, como lo haría la persona.
-        const caja = (await ver.boundingBox())!
-        await page.mouse.click(
-          caja.x + caja.width / 2,
-          caja.y + caja.height / 2,
-        )
+        // `click()` espera a que el aviso termine de entrar y verifica que el toque le llegue al
+        // botón (si la hoja lo tapara, falla por «intercepts pointer events»).
+        await ver.click({ timeout: 5_000 })
         await expect(page).toHaveURL(new RegExp(`/admin/turnos/${turnoA}`), {
           timeout: 5_000,
         })

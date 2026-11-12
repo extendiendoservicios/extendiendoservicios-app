@@ -170,7 +170,11 @@ function AssignEmployeeSheet({
     } catch (error) {
       toast.error(
         isApiError(error) ? error.message : 'No pudimos asignar al empleado.',
-        conflictToastOptions(error, (path) => void navigate(path)),
+        conflictToastOptions(error, (path) => {
+          // DEF-P28-01: se cierra la hoja y se va al turno de choque.
+          onOpenChange(false)
+          void navigate(path)
+        }),
       )
     }
   }
