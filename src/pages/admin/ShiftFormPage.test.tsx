@@ -14,6 +14,7 @@ const {
   createShiftSeriesMock,
   previewShiftSeriesMock,
   shiftOverlapsMock,
+  datesOverlapsMock,
   toastSuccess,
   toastWarning,
   toastError,
@@ -22,6 +23,7 @@ const {
   createShiftSeriesMock: vi.fn(),
   previewShiftSeriesMock: vi.fn(),
   shiftOverlapsMock: vi.fn(),
+  datesOverlapsMock: vi.fn(),
   toastSuccess: vi.fn(),
   toastWarning: vi.fn(),
   toastError: vi.fn(),
@@ -40,6 +42,7 @@ vi.mock('@/api/shifts', async (importOriginal) => ({
 
 vi.mock('@/api/overlaps', () => ({
   fetchShiftOverlapsInSite: shiftOverlapsMock,
+  fetchShiftOverlapsForDates: datesOverlapsMock,
   fetchServiceOverlaps: vi.fn(),
 }))
 
@@ -189,6 +192,7 @@ beforeEach(() => {
     count: 2,
   })
   shiftOverlapsMock.mockReset().mockResolvedValue([])
+  datesOverlapsMock.mockReset().mockResolvedValue([])
   toastSuccess.mockReset()
   toastWarning.mockReset()
   toastError.mockReset()
@@ -475,5 +479,86 @@ describe('ShiftFormPage — aviso de turno superpuesto en la sede (OF-02)', () =
     fillBasics()
     fireEvent.click(screen.getByRole('button', { name: 'Crear turno' }))
     await waitFor(() => expect(createShiftMock).toHaveBeenCalledTimes(1))
+  })
+})
+
+describe('ShiftFormPage — repetir el turno avisa duplicados (OF-21)', () => {
+  const DUP = [
+    {
+      date: '2026-10-20',
+      overlaps: [
+        {
+          shiftId: 'x',
+          serviceName: 'Limpieza mañana',
+          shiftDate: '2026-10-20',
+          startTime: '08:00:00',
+          endTime: '12:00:00',
+          openEnded: false,
+        },
+      ],
+    },
+  ]
+
+  async function repetir() {
+    renderPage()
+    fillBasics()
+    fireEvent.click(screen.getByRole('switch', { name: 'Repetir este turno' }))
+    fireEvent.change(screen.getByLabelText('Repetir hasta'), {
+      target: { value: '2026-11-17' },
+    })
+    await screen.findByText('Se van a crear 2 turnos.')
+    fireEvent.click(screen.getByRole('button', { name: 'Crear turnos' }))
+  }
+
+  it('sin coincidencias sigue como siempre', async () => {
+    await repetir()
+    await waitFor(() => expect(createShiftSeriesMock).toHaveBeenCalledTimes(1))
+    expect(datesOverlapsMock).toHaveBeenCalledWith({
+      siteId: 's1',
+      dates: ['2026-10-13', '2026-10-20'],
+      start: '08:00',
+      end: '12:00',
+    })
+  })
+
+  it('con coincidencias las lista y «Repetir igual» crea toda la serie', async () => {
+    datesOverlapsMock.mockResolvedValue(DUP)
+    await repetir()
+    expect(
+      await screen.findByText(
+        'El mar 20/10 ya hay “Limpieza mañana” de 08:00 a 12:00',
+      ),
+    ).toBeInTheDocument()
+    expect(createShiftSeriesMock).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Repetir igual' }))
+    await waitFor(() => expect(createShiftSeriesMock).toHaveBeenCalledTimes(1))
+    expect(createShiftSeriesMock.mock.calls[0]?.[0]).toMatchObject({
+      from: '2026-10-13',
+      to: '2026-11-17',
+    })
+  })
+
+  it('«Sacar esas fechas» crea los tramos que no incluyen esas fechas', async () => {
+    datesOverlapsMock.mockResolvedValue(DUP)
+    await repetir()
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Sacar esas fechas' }),
+    )
+    await waitFor(() => expect(createShiftSeriesMock).toHaveBeenCalledTimes(2))
+    expect(createShiftSeriesMock.mock.calls[0]?.[0]).toMatchObject({
+      from: '2026-10-13',
+      to: '2026-10-19',
+    })
+    expect(createShiftSeriesMock.mock.calls[1]?.[0]).toMatchObject({
+      from: '2026-10-21',
+      to: '2026-11-17',
+    })
+  })
+
+  it('«Cancelar» no crea nada', async () => {
+    datesOverlapsMock.mockResolvedValue(DUP)
+    await repetir()
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancelar' }))
+    expect(createShiftSeriesMock).not.toHaveBeenCalled()
   })
 })

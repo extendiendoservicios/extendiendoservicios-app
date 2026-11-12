@@ -1,4 +1,12 @@
-import type { CreateShiftSeriesCreated, ShiftSeriesPreview } from '@/api/shifts'
+import { addDays, format, parseISO } from 'date-fns'
+import { es } from 'date-fns/locale'
+import type { DateShiftOverlaps } from '@/api/overlaps'
+import type {
+  CreateShiftSeriesCreated,
+  ShiftSeriesPreview,
+  ShiftSeriesRule,
+} from '@/api/shifts'
+import { timeRangeText } from '@/features/services/serviceChanges'
 import { formatDateOnly } from '@/features/settings/dateOnly'
 import { conflictShiftIdOf } from '@/features/shifts/conflictLink'
 import {
@@ -126,4 +134,52 @@ export function seriesIssuesTitle(
   return hasRejected
     ? `${created}, pero a algunas personas no se las pudo asignar:`
     : `${created} y se asignó, con advertencias:`
+}
+
+/** «mar 18/11» a partir de `AAAA-MM-DD`. */
+function shortDayMonth(isoDate: string): string {
+  return format(parseISO(isoDate), 'EEE d/M', { locale: es })
+}
+
+/**
+ * OF-21: una línea por coincidencia de «Repetir este turno»:
+ * «El mar 18/11 ya hay “X” de 08:00 a 12:00» (sin servicio: «un turno cargado a mano»).
+ */
+export function seriesDuplicateLines(items: DateShiftOverlaps[]): string[] {
+  return items.flatMap((item) =>
+    item.overlaps.map((overlap) => {
+      const what = overlap.serviceName
+        ? `“${overlap.serviceName}”`
+        : 'un turno cargado a mano'
+      return `El ${shortDayMonth(item.date)} ya hay ${what} ${timeRangeText(overlap.startTime, overlap.endTime, overlap.openEnded)}`
+    }),
+  )
+}
+
+/**
+ * OF-21, «Sacar esas fechas»: `create_shift_series` no recibe fechas
+ * excluidas, así que la regla se parte en tramos de calendario que dejan
+ * afuera cada fecha a sacar. Las demás condiciones (días, semanas del mes,
+ * feriados) las sigue aplicando el servidor sobre cada tramo.
+ */
+export function splitRuleAroundDates(
+  rule: ShiftSeriesRule,
+  excludedDates: string[],
+): ShiftSeriesRule[] {
+  const excluded = [...new Set(excludedDates)]
+    .filter((date) => date >= rule.from && date <= rule.to)
+    .sort()
+  const ranges: ShiftSeriesRule[] = []
+  let from = rule.from
+  for (const date of excluded) {
+    const before = format(addDays(parseISO(date), -1), 'yyyy-MM-dd')
+    if (from <= before) {
+      ranges.push({ ...rule, from, to: before })
+    }
+    from = format(addDays(parseISO(date), 1), 'yyyy-MM-dd')
+  }
+  if (from <= rule.to) {
+    ranges.push({ ...rule, from, to: rule.to })
+  }
+  return ranges
 }
