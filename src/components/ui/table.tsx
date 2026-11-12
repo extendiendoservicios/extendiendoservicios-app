@@ -9,14 +9,17 @@ import { cn } from 'cn'
  * th`/`.tbl tbody td`, `Mockup/assets/ds.css`). `05` sección 7: con scroll
  * horizontal con la sidebar en pantalla (1024 px o más, completa de 236 px o
  * contraída a íconos por la persona) cuando la tabla no entra — por eso el
- * contenedor sigue siendo `overflow-x-auto` (por debajo de 1024 px,
- * `DataTable` ni siquiera renderiza esta tabla: usa `RowCard`).
+ * contenedor es `overflow-x-auto` con la barra siempre visible (OF-17,
+ * P28.2: en computadora no hay tarjetas, la tabla se desplaza en horizontal
+ * aunque el navegador esté agrandado; `DataTable` usa `RowCard` solo en
+ * celular táctil). Las ancho mínimo de columnas y el `min-w-max` los pone
+ * `DataTable`.
  */
 function Table({ className, ...props }: React.ComponentProps<'table'>) {
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      className="relative w-full overflow-x-auto [scrollbar-width:auto]"
     >
       <table
         data-slot="table"

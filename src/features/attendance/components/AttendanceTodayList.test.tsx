@@ -67,7 +67,8 @@ beforeEach(() => {
   boardMock.mockReset().mockReturnValue({ data: rows, isLoading: false })
   phonesMock.mockReset().mockReturnValue({ data: undefined })
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-    matches: false,
+    // Celular táctil: tarjetas (OF-17).
+    matches: query.includes('pointer: coarse'),
     media: query,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),

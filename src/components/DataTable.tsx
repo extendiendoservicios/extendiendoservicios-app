@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/table'
 import { EmptyState } from '@/components/EmptyState'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { CARD_LAYOUT_QUERY } from '@/lib/tableMode'
 import { TABLE_ROW_CLASS_NAME, type TableRowVariant } from '@/components/status'
 
 /**
@@ -42,8 +43,10 @@ import { TABLE_ROW_CLASS_NAME, type TableRowVariant } from '@/components/status'
  *   exactamente lo que hay que mostrar en la página actual (ya recortado
  *   por quien lo usa, típicamente el servidor) — `DataTable` nunca corta
  *   `data` sola.
- * - Por debajo de 1024 px (`05` sección 7) se renderiza como una lista de
- *   tarjetas (`RowCard`) en vez de una tabla: cada columna dice, con
+ * - En celular real (táctil y de menos de 768 px, `CARD_LAYOUT_QUERY`, OF-17)
+ *   se renderiza como una lista de tarjetas (`RowCard`) en vez de una tabla;
+ *   en computadora siempre hay tabla, con desplazamiento horizontal aunque
+ *   el navegador esté agrandado. Cada columna dice, con
  *   `meta.card`, qué parte de la tarjeta ocupa (`title`, `subtitle`,
  *   `trailing`, `meta` o `hidden` — default si no se indica).
  *
@@ -59,13 +62,11 @@ import { TABLE_ROW_CLASS_NAME, type TableRowVariant } from '@/components/status'
  * opcionales), así que no hace falta ningún casteo ni en `columns` (la
  * entrada) ni en `getColumnMeta` (la lectura).
  */
-const DESKTOP_QUERY = '(min-width: 1024px)'
-
 interface DataTableColumnMeta {
   /** Alineación de la celda en la tabla de escritorio. Default `'start'`. */
   align?: 'start' | 'end' | 'center'
   /**
-   * Qué lugar ocupa esta columna en la tarjeta `RowCard` (< 1024 px).
+   * Qué lugar ocupa esta columna en la tarjeta `RowCard` (celular táctil).
    * Sin indicar (o `'hidden'`), la columna no aparece en la tarjeta.
    * `'trailing'` es para algo corto al lado del título (un estado, un
    * botón); `'actions'` va en una fila propia al pie, para varios botones.
@@ -128,6 +129,12 @@ interface DataTableProps<TData> {
   className?: string
 }
 
+/** Ancho mínimo por columna: las celdas no se parten en letras con zoom alto. */
+const MIN_COLUMN_WIDTH = 'min-w-[7.5rem]'
+/** Primera columna fija al desplazar en horizontal (con fondo opaco). */
+const STICKY_HEAD = 'sticky left-0 z-[1] bg-[var(--table-header-bg)]'
+const STICKY_CELL = 'sticky left-0 z-[1] bg-surface'
+
 function getColumnMeta<TData>(
   columnDef: DataTableColumnDef<TData>,
 ): DataTableColumnMeta | undefined {
@@ -163,7 +170,7 @@ function DataTable<TData>({
   fixedLayout = false,
   className,
 }: DataTableProps<TData>) {
-  const isDesktop = useMediaQuery(DESKTOP_QUERY)
+  const showCards = useMediaQuery(CARD_LAYOUT_QUERY)
   const [internalSorting, setInternalSorting] = React.useState<SortingState>([])
   const sorting = controlledSorting ?? internalSorting
   const handleSortingChange = onSortingChange ?? setInternalSorting
@@ -211,7 +218,7 @@ function DataTable<TData>({
     />
   )
 
-  if (!isDesktop) {
+  if (showCards) {
     return (
       <div className={cn('flex flex-col gap-2', className)}>
         <span className="sr-only">{caption}</span>
@@ -229,7 +236,9 @@ function DataTable<TData>({
 
   return (
     <div className={className}>
-      <Table className={fixedLayout ? 'table-fixed' : undefined}>
+      <Table
+        className={fixedLayout ? 'table-fixed min-w-[48rem]' : 'min-w-max'}
+      >
         <TableCaption>{caption}</TableCaption>
         {fixedLayout && (
           <colgroup>
@@ -263,6 +272,8 @@ function DataTable<TData>({
                     className={cn(
                       compact && 'px-[10px] py-[8px]',
                       getAlignClassName(align),
+                      !fixedLayout && !header.isPlaceholder && MIN_COLUMN_WIDTH,
+                      header.index === 0 && STICKY_HEAD,
                     )}
                   >
                     {header.isPlaceholder ? null : canSort ? (
@@ -309,11 +320,16 @@ function DataTable<TData>({
                 key={row.id}
                 className={variant ? TABLE_ROW_CLASS_NAME[variant] : undefined}
               >
-                {row.getVisibleCells().map((cell) => (
+                {row.getVisibleCells().map((cell, cellIndex) => (
                   <TableCell
                     key={cell.id}
                     className={cn(
                       compact && 'px-[10px] py-[8px]',
+                      !fixedLayout && MIN_COLUMN_WIDTH,
+                      cellIndex === 0 && STICKY_CELL,
+                      cellIndex === 0 &&
+                        variant &&
+                        TABLE_ROW_CLASS_NAME[variant],
                       getAlignClassName(
                         getColumnMeta(cell.column.columnDef)?.align,
                       ),

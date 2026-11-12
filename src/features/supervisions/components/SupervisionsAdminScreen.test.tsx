@@ -59,7 +59,8 @@ function row(overrides: Partial<SupervisionListRow>): SupervisionListRow {
 beforeEach(() => {
   // Escritorio: `DataTable` decide tabla o tarjetas con `useMediaQuery`.
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-    matches: true,
+    // Escritorio: ni la consulta de tarjetas (táctil, OF-17) ni nada más angosto.
+    matches: !query.includes('pointer: coarse'),
     media: query,
     onchange: null,
     addEventListener: vi.fn(),

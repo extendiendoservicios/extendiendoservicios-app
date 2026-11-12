@@ -9,7 +9,7 @@ import {
   useMap,
   ZoomControl,
 } from 'react-leaflet'
-import { MapPin } from 'lucide-react'
+import { Maximize2, MapPin, Minimize2 } from 'lucide-react'
 import { cn } from 'cn'
 import { EmptyState } from '@/components/EmptyState'
 import type { BadgeVariant } from '@/components/status'
@@ -21,6 +21,7 @@ import {
 import { circlePathOptions } from './circleStyles'
 import { createMarkerIcon, type MarkerShape } from './markerIcon'
 import { BaseLayerToggle, BaseTileLayer, useBaseLayer } from './baseLayers'
+import { useMapFullscreen } from './useMapFullscreen'
 
 /** Un punto del mapa: una sede, en el uso principal de `MapView` (SITE-005, ADM-24). */
 export interface MapViewMarker {
@@ -68,6 +69,12 @@ export interface MapViewProps {
    * sigue desplazando la página.
    */
   scrollWheelZoom?: boolean
+  /**
+   * Botón «Ampliar mapa» / «Salir de pantalla completa» (OF-13b). `true` por
+   * omisión; `false` lo oculta (p. ej. un mapa miniatura dentro de otra
+   * pantalla que ya es de tamaño completo).
+   */
+  allowFullscreen?: boolean
 }
 
 const SINGLE_MARKER_ZOOM = 15
@@ -107,6 +114,29 @@ function FitToMarkers({ markers }: { markers: MapViewMarker[] }) {
 }
 
 /**
+ * Recalcula el tamaño del mapa cuando su contenedor cambia (pantalla
+ * completa o cualquier otro redimensionado): sin esto Leaflet deja franjas
+ * grises sin tiles (OF-13b).
+ */
+function InvalidateOnResize({ fullscreen }: { fullscreen: boolean }) {
+  const map = useMap()
+
+  React.useEffect(() => {
+    const timer = window.setTimeout(() => map.invalidateSize(), 60)
+    return () => window.clearTimeout(timer)
+  }, [fullscreen, map])
+
+  React.useEffect(() => {
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => map.invalidateSize())
+    observer.observe(map.getContainer())
+    return () => observer.disconnect()
+  }, [map])
+
+  return null
+}
+
+/**
  * MapView (SITE-005): mapa de solo lectura con tiles de OpenStreetMap y un
  * marcador por punto (`07` sección 2.4). Implementación real de Leaflet —
  * se carga diferida desde `MapView.tsx`, que es lo que importa el resto de
@@ -122,8 +152,18 @@ function MapView({
   emptyTitle = 'Sin ubicaciones para mostrar',
   emptyDescription = 'Todavía no hay coordenadas cargadas.',
   scrollWheelZoom = true,
+  allowFullscreen = true,
 }: MapViewProps) {
   const [baseLayer, setBaseLayer] = useBaseLayer()
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const {
+    active: fullscreen,
+    overlayActive,
+    toggle,
+  } = useMapFullscreen(containerRef)
+  const fullscreenLabel = fullscreen
+    ? 'Salir de pantalla completa'
+    : 'Ampliar mapa'
   if (markers.length === 0) {
     return (
       <div
@@ -144,11 +184,13 @@ function MapView({
 
   return (
     <div
+      ref={containerRef}
       className={cn(
-        'relative isolate overflow-hidden rounded-lg border border-border',
+        'relative isolate overflow-hidden rounded-lg border border-border bg-surface',
         className,
+        overlayActive && 'fixed inset-0 z-[2000] rounded-none border-0',
       )}
-      style={{ height }}
+      style={{ height: fullscreen ? '100%' : height }}
     >
       <MapContainer
         center={[defaultCenter.lat, defaultCenter.lng]}
@@ -160,6 +202,7 @@ function MapView({
         <BaseTileLayer kind={baseLayer} />
         <ZoomControl zoomInTitle="Acercar" zoomOutTitle="Alejar" />
         <FitToMarkers markers={markers} />
+        <InvalidateOnResize fullscreen={fullscreen} />
         {markers.map((marker) => {
           const popup =
             marker.popup ?? (renderPopup ? renderPopup(marker) : null)
@@ -193,6 +236,21 @@ function MapView({
         })}
       </MapContainer>
       <BaseLayerToggle value={baseLayer} onChange={setBaseLayer} />
+      {allowFullscreen && (
+        <button
+          type="button"
+          onClick={() => void toggle()}
+          aria-label={fullscreenLabel}
+          title={fullscreenLabel}
+          className="absolute bottom-6 left-2.5 z-[1000] flex size-11 items-center justify-center rounded-md border border-border-strong bg-surface text-text shadow-card hover:bg-bg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        >
+          {fullscreen ? (
+            <Minimize2 aria-hidden="true" className="size-5" />
+          ) : (
+            <Maximize2 aria-hidden="true" className="size-5" />
+          )}
+        </button>
+      )}
     </div>
   )
 }

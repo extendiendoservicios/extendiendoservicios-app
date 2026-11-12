@@ -22,6 +22,12 @@
     <!-- Mismo teal de marca que el `theme_color` del manifest: este `index.html` lo
          sirven todas las rutas, y las cabeceras de los shells son teal. -->
     <meta name="theme-color" content="#569EA4" />
+    <!-- iPhone (OF-09): al agregarla a la pantalla de inicio se abre como app,
+         con su nombre y sin la barra de Safari. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Extendiendo Servicios" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <!-- Alto contraste (AJ2-02): aplica el último valor guardado antes de que
          cargue React, para que no parpadee. La clave es la misma de
          src/lib/contrast.ts; el perfil de la persona corrige después. -->
