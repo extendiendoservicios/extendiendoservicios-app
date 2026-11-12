@@ -12,6 +12,8 @@ import { avatarUrl } from '@/lib/avatarUrl'
 import { formatCalendarDate } from '@/lib/format'
 import { AccessBlock } from '@/features/users/components/AccessBlock'
 import { canActOnUser, canViewCredentials } from '@/features/users/permissions'
+import { canManageAssignments } from '@/features/planning/permissions'
+import { canManageShiftTime } from '@/features/shifts/permissions'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { OwnerDeleteDialog } from '@/features/ownerDelete/components/OwnerDeleteDialog'
 import { canOwnerDelete } from '@/features/ownerDelete/matching'
@@ -279,6 +281,7 @@ export default function EmployeeDetailPage() {
         <TabsContent value="cronograma" className="pt-3">
           <EmployeeCronogramaTab
             profileId={employee.profileId}
+            canEdit={canManageAssignments(actor) && canManageShiftTime(actor)}
             person={{
               employeeNumber: employee.employeeNumber,
               name: `${employee.firstName} ${employee.lastName}`,

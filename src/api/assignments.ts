@@ -374,6 +374,59 @@ export async function assignEmployee(
   }
 }
 
+export interface MoveAssignmentResult {
+  assignment: AssignmentRow
+  warnings: AssignEmployeeWarning[]
+  /** Estado anterior, para «Deshacer» (0082, OF-10). */
+  previous: {
+    assignment_id: string
+    shift_id: string
+    shift_date: string
+    employee_id: string
+    start_time: string | null
+    end_time: string | null
+    from_fixed: boolean
+  }
+  removedAssignmentId: string
+}
+
+/**
+ * Pasa a una persona de un turno a otro en una sola transacción (`0082`,
+ * OF-10: `move_assignment`). `start` y `end` son la franja propia opcional
+ * en el turno de destino. Para «Deshacer» se vuelve a llamar con el turno y
+ * el horario de `previous`.
+ */
+export async function moveAssignment(input: {
+  assignmentId: string
+  targetShiftId: string
+  start?: string | null
+  end?: string | null
+}): Promise<MoveAssignmentResult> {
+  const { data, error } = await supabase.rpc('move_assignment', {
+    p_assignment_id: input.assignmentId,
+    p_target_shift_id: input.targetShiftId,
+    p_start: input.start ?? undefined,
+    p_end: input.end ?? undefined,
+  })
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+
+  const payload = data as unknown as {
+    assignment: Parameters<typeof mapAssignmentRow>[0]
+    warnings: AssignEmployeeWarning[] | null
+    previous: MoveAssignmentResult['previous']
+    removed_assignment_id: string
+  }
+  return {
+    assignment: mapAssignmentRow(payload.assignment),
+    warnings: payload.warnings ?? [],
+    previous: payload.previous,
+    removedAssignmentId: payload.removed_assignment_id,
+  }
+}
+
 // -------------------------------------------------------------------------
 // 4. remove_assignment (con motivo obligatorio, usada desde ADM-06, P11.3)
 // -------------------------------------------------------------------------
