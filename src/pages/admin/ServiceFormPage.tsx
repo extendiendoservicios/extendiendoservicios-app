@@ -455,6 +455,7 @@ export default function ServiceFormPage() {
               type="button"
               variant="ghost"
               size="sm"
+              className="shrink-0 border-primary text-primary-800 hover:bg-primary-100"
               disabled={isDirty || isSaving}
               title={
                 isDirty
@@ -567,8 +568,8 @@ export default function ServiceFormPage() {
       <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-5">
         <h2 className="text-[14px] font-semibold text-text">Empleados fijos</h2>
         <p className="text-[12.5px] text-text-3">
-          Se asignan solos en cada turno que se genere. No cambia los turnos ya
-          generados.
+          Se asignan solos en cada turno que se genere. Al guardar, la app te
+          pregunta si también se aplican a los turnos desde una fecha.
         </p>
         <EmployeeMultiPicker
           aria-label="Empleados fijos"
@@ -700,7 +701,7 @@ export default function ServiceFormPage() {
               id="service-requires-photos"
               checked={field.value}
               onCheckedChange={field.onChange}
-              hint="Los turnos que se generen piden fotos. Si quien limpia termina sin sacar ninguna, la app se lo advierte y lo deja seguir. Cambiarlo no modifica los turnos ya generados."
+              hint="Los turnos que se generen piden fotos. Si quien limpia termina sin sacar ninguna, la app se lo advierte y lo deja seguir. Al guardar, la app te pregunta si también se aplica a los turnos desde una fecha."
             />
           )}
         />

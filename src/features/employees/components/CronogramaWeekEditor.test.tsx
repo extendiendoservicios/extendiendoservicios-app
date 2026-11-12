@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AssignmentBoardRow } from '@/api/assignments'
 import type { ShiftListRow } from '@/api/shifts'
 import { ApiError, type ConflictDetail } from '@/api/errors'
@@ -112,6 +112,10 @@ function moveWithKeyboard() {
   fireEvent.keyDown(block, { key: 'Enter' })
 }
 
+afterEach(() => {
+  vi.useRealTimers()
+})
+
 beforeEach(() => {
   vi.clearAllMocks()
   state.assignments = [assignmentRow({})]
@@ -216,6 +220,9 @@ describe('CronogramaWeekEditor', () => {
   })
 
   it('el panel lista los turnos sin cubrir y «Asignar» asigna', async () => {
+    // Lunes de la semana a las 07:00 (Buenos Aires): el turno de 08 a 12 no terminó.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(`${monday}T10:00:00Z`))
     state.shifts = [
       shiftRow({}),
       shiftRow({

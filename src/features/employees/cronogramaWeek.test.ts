@@ -204,6 +204,47 @@ describe('bloques y turnos sin cubrir', () => {
       uncoveredShifts(shifts, new Set(['ya-esta'])).map((s) => s.id),
     ).toEqual(['falta'])
   })
+
+  it('con la hora actual, deja solo los turnos que todavía no terminaron', () => {
+    // Martes 17 nov 2026, 10:00 en Buenos Aires (13:00 UTC).
+    const now = new Date('2026-11-17T13:00:00Z')
+    const base = { assignedCount: 0 }
+    const shifts = [
+      shift({ ...base, id: 'lunes', shiftDate: '2026-11-16' }),
+      shift({
+        ...base,
+        id: 'hoy-termino',
+        endTime: '09:30:00',
+        shiftDate: '2026-11-17',
+      }),
+      shift({
+        ...base,
+        id: 'hoy-en-curso',
+        endTime: '12:00:00',
+        shiftDate: '2026-11-17',
+      }),
+      shift({
+        ...base,
+        id: 'hoy-abierto',
+        openEnded: true,
+        shiftDate: '2026-11-17',
+      }),
+      shift({ ...base, id: 'futuro', shiftDate: '2026-11-19' }),
+      shift({
+        ...base,
+        id: 'anoche',
+        startTime: '22:00:00',
+        endTime: '11:00:00',
+        shiftDate: '2026-11-16',
+      }),
+    ]
+    expect(uncoveredShifts(shifts, new Set(), now).map((s) => s.id)).toEqual([
+      'anoche',
+      'hoy-en-curso',
+      'hoy-abierto',
+      'futuro',
+    ])
+  })
 })
 
 describe('armado del deshacer', () => {

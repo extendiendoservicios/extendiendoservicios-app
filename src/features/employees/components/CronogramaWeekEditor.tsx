@@ -158,7 +158,11 @@ function CronogramaWeekEditor({
   )
   const uncovered = useMemo(
     () =>
-      uncoveredShifts(allShifts, new Set(blocks.map((block) => block.shiftId))),
+      uncoveredShifts(
+        allShifts,
+        new Set(blocks.map((block) => block.shiftId)),
+        new Date(),
+      ),
     [allShifts, blocks],
   )
   const { startHour, endHour } = visibleHourRange(blocks)

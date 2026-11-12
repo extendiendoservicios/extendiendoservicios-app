@@ -315,17 +315,65 @@ export function targetShiftCandidates(
     .sort((a, b) => a.startTime.localeCompare(b.startTime))
 }
 
+/** Fecha (`YYYY-MM-DD`) y minutos desde la medianoche en Buenos Aires. */
+function buenosAiresNow(now: Date): { date: string; minutes: number } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(now)
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '0'
+  return {
+    date: `${get('year')}-${get('month')}-${get('day')}`,
+    minutes: Number(get('hour')) * 60 + Number(get('minute')),
+  }
+}
+
+/**
+ * El turno todavía no terminó a la hora `now` (hora de Buenos Aires): es de
+ * una fecha futura, o es de hoy y su hora de fin no pasó. Un turno sin hora
+ * de fin (`openEnded`) de hoy cuenta como no terminado; uno que cruza la
+ * medianoche termina al día siguiente.
+ */
+export function shiftNotEndedYet(shift: ShiftListRow, now: Date): boolean {
+  const { date, minutes } = buenosAiresNow(now)
+  if (shift.shiftDate > date) return true
+  if (shift.shiftDate < date) {
+    // Cruza la medianoche: terminó hoy a la hora de fin, no antes.
+    if (shift.openEnded || shift.endTime >= shift.startTime) return false
+    return (
+      addDaysToIsoDate(shift.shiftDate, 1) === date &&
+      toMinutes(shift.endTime) > minutes
+    )
+  }
+  if (shift.openEnded) return true
+  if (shift.endTime <= shift.startTime) return true
+  return toMinutes(shift.endTime) > minutes
+}
+
+function toMinutes(time: string): number {
+  const [h = 0, m = 0] = time.split(':').map(Number)
+  return h * 60 + m
+}
+
 /**
  * Turnos sin cubrir de la semana: faltan asignados respecto de la dotación,
- * no están cancelados ni finalizados y la persona no está ya en ellos.
+ * no están cancelados ni finalizados, la persona no está ya en ellos y,
+ * si se pasa `now`, todavía no terminaron (los ya pasados no se muestran).
  */
 export function uncoveredShifts(
   shifts: ShiftListRow[],
   assignedShiftIds: ReadonlySet<string>,
+  now?: Date,
 ): ShiftListRow[] {
   return shifts
     .filter(
       (shift) =>
+        (!now || shiftNotEndedYet(shift, now)) &&
         shift.status !== 'cancelled' &&
         shift.status !== 'completed' &&
         shift.assignedCount < shift.requiredStaff &&
