@@ -812,6 +812,7 @@ export type Database = {
         Row: {
           accuracy_m: number | null
           assignment_id: string
+          auto_closed: boolean
           created_at: string
           geo_override_at: string | null
           geo_override_by: string | null
@@ -836,6 +837,7 @@ export type Database = {
         Insert: {
           accuracy_m?: number | null
           assignment_id: string
+          auto_closed?: boolean
           created_at?: string
           geo_override_at?: string | null
           geo_override_by?: string | null
@@ -860,6 +862,7 @@ export type Database = {
         Update: {
           accuracy_m?: number | null
           assignment_id?: string
+          auto_closed?: boolean
           created_at?: string
           geo_override_at?: string | null
           geo_override_by?: string | null
@@ -1131,6 +1134,13 @@ export type Database = {
             columns: ["site_id", "client_id"]
             isOneToOne: false
             referencedRelation: "v_site_contacts"
+            referencedColumns: ["site_id", "client_id"]
+          },
+          {
+            foreignKeyName: "checklist_templates_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "v_sites_day_status"
             referencedColumns: ["site_id", "client_id"]
           },
           {
@@ -2767,6 +2777,13 @@ export type Database = {
             referencedColumns: ["site_id", "client_id"]
           },
           {
+            foreignKeyName: "services_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "v_sites_day_status"
+            referencedColumns: ["site_id", "client_id"]
+          },
+          {
             foreignKeyName: "services_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -3457,6 +3474,13 @@ export type Database = {
             referencedColumns: ["site_id", "client_id"]
           },
           {
+            foreignKeyName: "shifts_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "v_sites_day_status"
+            referencedColumns: ["site_id", "client_id"]
+          },
+          {
             foreignKeyName: "shifts_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -3948,6 +3972,13 @@ export type Database = {
             referencedColumns: ["site_id"]
           },
           {
+            foreignKeyName: "stock_movements_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "v_sites_day_status"
+            referencedColumns: ["site_id"]
+          },
+          {
             foreignKeyName: "stock_movements_voided_by_fkey"
             columns: ["voided_by"]
             isOneToOne: false
@@ -4364,6 +4395,13 @@ export type Database = {
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "v_site_contacts"
+            referencedColumns: ["site_id"]
+          },
+          {
+            foreignKeyName: "supervisor_priorities_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "v_sites_day_status"
             referencedColumns: ["site_id"]
           },
           {
@@ -5081,6 +5119,13 @@ export type Database = {
             referencedColumns: ["site_id"]
           },
           {
+            foreignKeyName: "supply_shortage_reports_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "v_sites_day_status"
+            referencedColumns: ["site_id"]
+          },
+          {
             foreignKeyName: "supply_shortage_reports_supply_id_fkey"
             columns: ["supply_id"]
             isOneToOne: false
@@ -5255,6 +5300,7 @@ export type Database = {
           check_in_time_corrected: boolean | null
           check_out_accuracy_m: number | null
           check_out_at: string | null
+          check_out_auto_closed: boolean | null
           check_out_distance_m: number | null
           check_out_geo_overridden: boolean | null
           check_out_geo_reason:
@@ -5505,6 +5551,13 @@ export type Database = {
             columns: ["site_id", "client_id"]
             isOneToOne: false
             referencedRelation: "v_site_contacts"
+            referencedColumns: ["site_id", "client_id"]
+          },
+          {
+            foreignKeyName: "shifts_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "v_sites_day_status"
             referencedColumns: ["site_id", "client_id"]
           },
         ]
@@ -5915,6 +5968,13 @@ export type Database = {
             referencedRelation: "v_site_contacts"
             referencedColumns: ["site_id", "client_id"]
           },
+          {
+            foreignKeyName: "shifts_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "v_sites_day_status"
+            referencedColumns: ["site_id", "client_id"]
+          },
         ]
       }
       v_my_history: {
@@ -6101,6 +6161,13 @@ export type Database = {
             referencedRelation: "v_site_contacts"
             referencedColumns: ["site_id", "client_id"]
           },
+          {
+            foreignKeyName: "shifts_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "v_sites_day_status"
+            referencedColumns: ["site_id", "client_id"]
+          },
         ]
       }
       v_my_shortage_reports: {
@@ -6205,6 +6272,13 @@ export type Database = {
             columns: ["site_id", "client_id"]
             isOneToOne: false
             referencedRelation: "v_site_contacts"
+            referencedColumns: ["site_id", "client_id"]
+          },
+          {
+            foreignKeyName: "shifts_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "v_sites_day_status"
             referencedColumns: ["site_id", "client_id"]
           },
           {
@@ -6562,6 +6636,13 @@ export type Database = {
             referencedRelation: "v_site_contacts"
             referencedColumns: ["site_id", "client_id"]
           },
+          {
+            foreignKeyName: "shifts_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "v_sites_day_status"
+            referencedColumns: ["site_id", "client_id"]
+          },
         ]
       }
       v_shift_peers: {
@@ -6700,6 +6781,13 @@ export type Database = {
             referencedColumns: ["site_id", "client_id"]
           },
           {
+            foreignKeyName: "shifts_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "v_sites_day_status"
+            referencedColumns: ["site_id", "client_id"]
+          },
+          {
             foreignKeyName: "shifts_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -6740,6 +6828,41 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           site_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sites_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sites_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_sites_day_status: {
+        Row: {
+          client_id: string | null
+          client_legal_name: string | null
+          client_trade_name: string | null
+          day_state: string | null
+          finished_count: number | null
+          in_progress_count: number | null
+          last_ends_at: string | null
+          latitude: number | null
+          longitude: number | null
+          next_starts_at: string | null
+          radius_m: number | null
+          shifts_count: number | null
+          site_id: string | null
+          site_name: string | null
+          upcoming_count: number | null
         }
         Relationships: [
           {
@@ -7019,6 +7142,13 @@ export type Database = {
             referencedColumns: ["site_id"]
           },
           {
+            foreignKeyName: "stock_movements_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "v_sites_day_status"
+            referencedColumns: ["site_id"]
+          },
+          {
             foreignKeyName: "stock_movements_voided_by_fkey"
             columns: ["voided_by"]
             isOneToOne: false
@@ -7133,6 +7263,13 @@ export type Database = {
             columns: ["site_id", "client_id"]
             isOneToOne: false
             referencedRelation: "v_site_contacts"
+            referencedColumns: ["site_id", "client_id"]
+          },
+          {
+            foreignKeyName: "shifts_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "v_sites_day_status"
             referencedColumns: ["site_id", "client_id"]
           },
           {
@@ -7278,6 +7415,13 @@ export type Database = {
             columns: ["site_id", "client_id"]
             isOneToOne: false
             referencedRelation: "v_site_contacts"
+            referencedColumns: ["site_id", "client_id"]
+          },
+          {
+            foreignKeyName: "shifts_site_id_client_id_fkey"
+            columns: ["site_id", "client_id"]
+            isOneToOne: false
+            referencedRelation: "v_sites_day_status"
             referencedColumns: ["site_id", "client_id"]
           },
         ]
@@ -7444,6 +7588,13 @@ export type Database = {
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "v_site_contacts"
+            referencedColumns: ["site_id"]
+          },
+          {
+            foreignKeyName: "stock_movements_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "v_sites_day_status"
             referencedColumns: ["site_id"]
           },
           {
@@ -7627,6 +7778,7 @@ export type Database = {
         Returns: {
           accuracy_m: number | null
           assignment_id: string
+          auto_closed: boolean
           created_at: string
           geo_override_at: string | null
           geo_override_by: string | null
@@ -7668,6 +7820,10 @@ export type Database = {
       admin_revoke_user_sessions: {
         Args: { p_profile_id: string }
         Returns: undefined
+      }
+      apply_service_changes: {
+        Args: { p_from_date: string; p_previous?: Json; p_service_id: string }
+        Returns: Json
       }
       apply_service_fixed_employees: {
         Args: { p_from_date: string; p_service_id: string }
@@ -7822,6 +7978,7 @@ export type Database = {
         Returns: {
           accuracy_m: number | null
           assignment_id: string
+          auto_closed: boolean
           created_at: string
           geo_override_at: string | null
           geo_override_by: string | null
@@ -7925,6 +8082,7 @@ export type Database = {
         Returns: {
           accuracy_m: number | null
           assignment_id: string
+          auto_closed: boolean
           created_at: string
           geo_override_at: string | null
           geo_override_by: string | null
@@ -8115,6 +8273,7 @@ export type Database = {
         Returns: Json
       }
       get_stock_summary: { Args: never; Returns: Json }
+      holiday_shift_conflicts: { Args: { p_date: string }; Returns: Json }
       mark_changes_seen: {
         Args: never
         Returns: {
@@ -8166,6 +8325,15 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      move_assignment: {
+        Args: {
+          p_assignment_id: string
+          p_end?: string
+          p_start?: string
+          p_target_shift_id: string
+        }
+        Returns: Json
       }
       notify_absence: {
         Args: {
@@ -8316,6 +8484,10 @@ export type Database = {
         }
         Returns: Json
       }
+      preview_service_changes: {
+        Args: { p_from_date: string; p_previous?: Json; p_service_id: string }
+        Returns: Json
+      }
       preview_shift_series: {
         Args: {
           p_from: string
@@ -8362,6 +8534,7 @@ export type Database = {
         Returns: {
           accuracy_m: number | null
           assignment_id: string
+          auto_closed: boolean
           created_at: string
           geo_override_at: string | null
           geo_override_by: string | null
@@ -8401,6 +8574,7 @@ export type Database = {
         Returns: {
           accuracy_m: number | null
           assignment_id: string
+          auto_closed: boolean
           created_at: string
           geo_override_at: string | null
           geo_override_by: string | null
@@ -8513,6 +8687,7 @@ export type Database = {
         }
       }
       remove_client_category: { Args: { p_id: string }; Returns: Json }
+      remove_holiday_shifts: { Args: { p_date: string }; Returns: Json }
       remove_shift_media: {
         Args: { p_media_id: string }
         Returns: {
@@ -8656,6 +8831,30 @@ export type Database = {
       }
       revoke_location_consent: { Args: never; Returns: undefined }
       service_delete_preview: { Args: { p_service_id: string }; Returns: Json }
+      service_overlaps: {
+        Args: {
+          p_end: string
+          p_except_id?: string
+          p_site_id: string
+          p_start: string
+          p_weekdays: number[]
+        }
+        Returns: {
+          client_id: string
+          common_weekdays: number[]
+          end_time: string
+          open_ended: boolean
+          required_staff: number
+          service_id: string
+          service_name: string
+          site_id: string
+          start_time: string
+          valid_from: string
+          valid_to: string
+          weekdays: number[]
+          weeks_of_month: number[]
+        }[]
+      }
       set_absence_certificate: {
         Args: { p_assignment_id: string; p_has_certificate: boolean }
         Returns: {
@@ -8958,6 +9157,29 @@ export type Database = {
           p_roles: Database["public"]["Enums"]["app_role"][]
         }
         Returns: Database["public"]["Enums"]["app_role"][]
+      }
+      shift_overlaps_in_site: {
+        Args: {
+          p_date: string
+          p_end: string
+          p_except_id?: string
+          p_site_id: string
+          p_start: string
+        }
+        Returns: {
+          assigned_count: number
+          client_id: string
+          end_time: string
+          generated: boolean
+          open_ended: boolean
+          required_staff: number
+          service_id: string
+          service_name: string
+          shift_date: string
+          shift_id: string
+          start_time: string
+          status: Database["public"]["Enums"]["shift_status"]
+        }[]
       }
       start_workday: {
         Args: { p_accuracy?: number; p_lat?: number; p_lng?: number }
@@ -9263,6 +9485,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      upsert_holiday: {
+        Args: { p_date: string; p_name: string }
+        Returns: Json
       }
       upsert_supply: {
         Args: {

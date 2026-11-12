@@ -83,12 +83,12 @@ select ok(
 );
 
 select ok(
-  exists (
+  not exists (
     select 1 from pg_constraint
     where conrelid = 'public.employee_leaves'::regclass
       and contype = 'x'
   ),
-  'employee_leaves tiene una restricción de exclusión'
+  'employee_leaves ya no tiene restricción de exclusión (0082, OF-20: las licencias pueden superponerse)'
 );
 
 -- Triggers --------------------------------------------------------------------------------------
@@ -232,20 +232,15 @@ select lives_ok(
   'permite una licencia abierta (ends_on nulo)'
 );
 
--- employee_leaves: exclusión de licencias superpuestas del mismo empleado --------------------------
+-- employee_leaves: licencias superpuestas del mismo empleado (desde 0082, OF-20, se permiten) ------
 
 insert into public.employee_leaves (id, employee_id, starts_on, ends_on)
 values ('e0000000-0000-0000-0000-000000000030', 'e0000000-0000-0000-0000-000000000001', '2026-01-10', '2026-01-20');
 
-prepare leave_overlap_same_employee as
-  insert into public.employee_leaves (employee_id, starts_on, ends_on)
-  values ('e0000000-0000-0000-0000-000000000001', '2026-01-15', '2026-01-25');
-
-select throws_ok(
-  'leave_overlap_same_employee',
-  '23P01',
-  null,
-  'rechaza dos licencias superpuestas del mismo empleado'
+select lives_ok(
+  $$insert into public.employee_leaves (employee_id, starts_on, ends_on)
+    values ('e0000000-0000-0000-0000-000000000001', '2026-01-15', '2026-01-25')$$,
+  'permite dos licencias superpuestas del mismo empleado (0082, OF-20)'
 );
 
 select lives_ok(

@@ -228,8 +228,8 @@ select is(
 select throws_ok(
   $$select public.assign_employee('e2400000-0000-0000-0000-000000000044', 'e2400000-0000-0000-0000-000000000094')$$,
   'P0001',
-  'El empleado está de licencia ese día.',
-  'assign_employee: empleado de licencia vigente el día del turno -> error ON_LEAVE (P-033, bloquea desde 0059)'
+  'Licencia tiene licencia (Licencia de prueba 0024) desde el 1/1.',
+  'assign_employee: empleado de licencia vigente el día del turno -> error ON_LEAVE (P-033, bloquea desde 0059; mensaje con motivo y rango desde 0082, OF-08)'
 );
 
 set local role postgres;
@@ -246,7 +246,7 @@ select public.assign_employee('e2400000-0000-0000-0000-000000000045', 'e2400000-
 prepare assign_overlap as
   select public.assign_employee('e2400000-0000-0000-0000-000000000046', 'e2400000-0000-0000-0000-000000000098');
 
-select throws_ok('assign_overlap', 'P0001', 'El empleado ya tiene otro turno en ese horario.', 'assign_employee: dos turnos que se pisan para el mismo empleado -> ASSIGNMENT_OVERLAP');
+select throws_ok('assign_overlap', 'P0001', 'Lap ya está en Sede de asignaciones (turno manual) el mié 3/4 de 08:00 a 12:00.', 'assign_employee: dos turnos que se pisan para el mismo empleado -> ASSIGNMENT_OVERLAP (mensaje con el choque desde 0082, OF-08)');
 
 set local role postgres;
 
@@ -376,7 +376,7 @@ select isnt(
 
 set local role postgres;
 
--- Un turno cancelado conserva sus asignaciones (cancel_shift, 0023, no las toca): verificado acá
+-- Un turno cancelado libera a sus empleados sin fichajes (cancel_shift, 0082, OF-04b): verificado acá
 -- en el flujo completo de asignar -> cancelar.
 insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_time, required_staff, status) values
   ('e2400000-0000-0000-0000-000000000053', 'e2400000-0000-0000-0000-000000000001', 'e2400000-0000-0000-0000-000000000011', '2199-04-06', '08:00', '12:00', 1, 'scheduled');
@@ -389,10 +389,17 @@ select public.cancel_shift('e2400000-0000-0000-0000-000000000053', 'Motivo de ca
 set local role postgres;
 
 select is(
-  (select removed_at from public.assignments where shift_id = 'e2400000-0000-0000-0000-000000000053'),
-  null::timestamptz,
-  'cancel_shift + assign_employee: un turno cancelado conserva su asignación (no se toca, P-049)'
+  (select removed_reason from public.assignments where shift_id = 'e2400000-0000-0000-0000-000000000053'),
+  'Turno cancelado',
+  'cancel_shift + assign_employee: la asignación sin fichajes de un turno cancelado se quita con el motivo «Turno cancelado» (0082, OF-04b)'
 );
+
+-- Las pruebas siguientes de remove_assignment y update_assignment_time sobre un turno cancelado
+-- necesitan una asignación viva en un turno cancelado: estado que ya no produce cancel_shift (una
+-- asignación con fichajes sí lo conserva), así que se restablece a mano.
+update public.assignments
+set removed_at = null, removed_by = null, removed_reason = null
+where shift_id = 'e2400000-0000-0000-0000-000000000053';
 
 -- ---------------------------------------------------------------------------------------------
 -- update_assignment_time -----------------------------------------------------------------------
@@ -456,7 +463,7 @@ prepare update_assignment_time_overlap as
     '11:00', '13:00'
   );
 
-select throws_ok('update_assignment_time_overlap', 'P0001', 'El empleado ya tiene otro turno en ese horario.', 'update_assignment_time: nueva franja pisa otra asignación del mismo empleado -> ASSIGNMENT_OVERLAP');
+select throws_ok('update_assignment_time_overlap', 'P0001', 'Restricciones ya está en Sede de asignaciones (turno manual) el dom 7/4 de 12:00 a 14:00.', 'update_assignment_time: nueva franja pisa otra asignación del mismo empleado -> ASSIGNMENT_OVERLAP (mensaje con el choque desde 0082, OF-08)');
 
 set local role postgres;
 
