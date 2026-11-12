@@ -36,6 +36,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { isApiError } from '@/api/errors'
+import { useAuth } from '@/features/auth/AuthProvider'
 import type { ShiftListRow } from '@/api/shifts'
 import { clientChipColors } from '@/features/planning/clientColors'
 import {
@@ -85,6 +86,8 @@ const PX_PER_HOUR = 40
 /** Desde esta distancia (px) un toque o clic pasa a ser un arrastre. */
 const DRAG_THRESHOLD_PX = 4
 const SAME_SHIFT = '__mismo__'
+/** OF-23: «Crear un turno nuevo y pasar a la persona». */
+const NEW_SHIFT = '__nuevo__'
 
 /** Valor del filtro de día que no filtra. */
 const ALL_DAYS = 'todos'
@@ -110,13 +113,31 @@ interface PendingChange {
   resizeOnly: boolean
 }
 
+/** Advertencias de la creación de un turno (OF-23). */
+const SHIFT_WARNING_MESSAGES: Record<string, string> = {
+  HOLIDAY: 'La fecha del turno nuevo es feriado.',
+}
+
 function describeWarnings(warnings: string[]): string {
   return warnings
     .map(
       (warning) =>
-        WARNING_MESSAGES[warning as keyof typeof WARNING_MESSAGES] ?? warning,
+        WARNING_MESSAGES[warning as keyof typeof WARNING_MESSAGES] ??
+        SHIFT_WARNING_MESSAGES[warning] ??
+        warning,
     )
     .join(' ')
+}
+
+/** Texto de la opción que crea el turno destino (OF-23). */
+export function newShiftOptionLabel(
+  siteName: string,
+  date: string,
+  startMin: number,
+  endMin: number,
+  personName: string,
+): string {
+  return `Crear un turno nuevo en ${siteName} el ${formatDateOnly(date)} de ${minutesToTime(startMin)} a ${minutesToTime(endMin)} y pasar a ${personName}`
 }
 
 /**
@@ -135,6 +156,8 @@ function CronogramaWeekEditor({
 }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  // Borrar turnos es solo de la dirección (P27): sin eso, «Solo a» con turno nuevo no se puede deshacer.
+  const canDeleteShifts = useAuth().roles.includes('owner')
   const openPath = (path: string) => void navigate(path)
   const [weekStart, setWeekStart] = useState(() =>
     mondayOfDate(localDateToIsoDate(new Date())),
@@ -198,7 +221,10 @@ function CronogramaWeekEditor({
     try {
       const result = await runCronogramaCommand(command, block)
       refresh()
-      const warning = describeWarnings(result.warnings)
+      const warning = describeWarnings([
+        ...result.warnings,
+        ...(result.shiftWarnings ?? []),
+      ])
       const options = result.undo
         ? {
             action: {
@@ -296,6 +322,20 @@ function CronogramaWeekEditor({
         },
         block,
         `Cambiamos el horario de ${personName} en este turno.`,
+      )
+    }
+    if (targetShiftId === NEW_SHIFT) {
+      return execute(
+        {
+          kind: 'move_new_shift',
+          assignmentId: block.assignmentId,
+          date: next.date,
+          start,
+          end,
+          canUndo: canDeleteShifts,
+        },
+        block,
+        `Creamos un turno nuevo en ${block.siteName} y pasamos a ${personName}.`,
       )
     }
     return execute(
@@ -1139,6 +1179,17 @@ function ScopeDialog({
       value: shift.id,
       label: `Turno de ${formatShiftRange(shift.startTime, shift.endTime, shift.openEnded)}`,
     })),
+    // OF-23: siempre se puede crear el turno destino (no hay otro ese día, o como opción más).
+    {
+      value: NEW_SHIFT,
+      label: newShiftOptionLabel(
+        block.siteName,
+        next.date,
+        next.startMin,
+        next.endMin,
+        personName,
+      ),
+    },
   ]
   const [target, setTarget] = useState(options[0]?.value ?? '')
 
@@ -1156,29 +1207,21 @@ function ScopeDialog({
             {previewLabel(next, block.openEnded)}.
           </DialogDescription>
         </DialogHeader>
-        {options.length > 0 ? (
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="destino-solo">Si pasás solo a {personName}</Label>
-            <Select value={target} onValueChange={setTarget}>
-              <SelectTrigger id="destino-solo">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {options.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        ) : (
-          <p className="text-[12px] text-text-2">
-            No hay otro turno de esa sede ese día al que pasar solo a{' '}
-            {personName}. Podés mover el turno para todos o crear antes el turno
-            en Turnos.
-          </p>
-        )}
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="destino-solo">Si pasás solo a {personName}</Label>
+          <Select value={target} onValueChange={setTarget}>
+            <SelectTrigger id="destino-solo">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {options.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose} disabled={busy}>
             Cancelar
@@ -1188,7 +1231,7 @@ function ScopeDialog({
           </Button>
           <Button
             onClick={() => onOnlyPerson(target)}
-            disabled={busy || options.length === 0 || !target}
+            disabled={busy || !target}
           >
             Solo a {personName}
           </Button>

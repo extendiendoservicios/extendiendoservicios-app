@@ -1,10 +1,12 @@
 import * as assignmentsApi from '@/api/assignments'
 import type { AssignEmployeeWarning } from '@/api/assignments'
 import * as shiftsApi from '@/api/shifts'
+import { ownerDelete } from '@/api/ownerDelete'
 import {
   undoForAssign,
   undoForAssignmentTime,
   undoForMove,
+  undoForMoveToNewShift,
   undoForShiftTime,
   type UndoAction,
   type WeekBlock,
@@ -18,11 +20,23 @@ import {
  */
 export type CronogramaCommand =
   | UndoAction
+  | {
+      /** OF-23: pasa a la persona a un turno nuevo que se crea en el mismo paso. */
+      kind: 'move_new_shift'
+      assignmentId: string
+      date: string
+      start: string
+      end: string
+      /** Solo la dirección borra turnos (P27): sin esto no hay «Deshacer». */
+      canUndo: boolean
+    }
   | { kind: 'assign'; shiftId: string; employeeId: string }
   | { kind: 'unassign'; assignmentId: string; reason?: string }
 
 export interface CommandResult {
   warnings: AssignEmployeeWarning[]
+  /** OF-23: advertencias de la creación del turno nuevo (por ejemplo `HOLIDAY`). */
+  shiftWarnings?: string[]
   /** `null` si el cambio no se puede deshacer (quitar). */
   undo: UndoAction | null
 }
@@ -81,6 +95,40 @@ export async function runCronogramaCommand(
         warnings: result.warnings,
         undo: undoForMove(result.assignment.id, result.previous),
       }
+    }
+    case 'move_new_shift': {
+      const result = await assignmentsApi.moveAssignmentToNewShift({
+        assignmentId: command.assignmentId,
+        date: command.date,
+        start: command.start,
+        end: command.end,
+      })
+      return {
+        warnings: result.warnings,
+        shiftWarnings: result.shiftWarnings,
+        undo: command.canUndo
+          ? undoForMoveToNewShift(
+              result.assignmentId,
+              result.shiftId,
+              result.previous,
+            )
+          : null,
+      }
+    }
+    case 'move_back_delete_shift': {
+      // Primero se devuelve a la persona (el turno nuevo queda vacío) y después se borra.
+      await assignmentsApi.moveAssignment({
+        assignmentId: command.assignmentId,
+        targetShiftId: command.targetShiftId,
+        start: command.start,
+        end: command.end,
+      })
+      await ownerDelete({
+        kind: 'shift',
+        id: command.deleteShiftId,
+        confirmName: '',
+      })
+      return { warnings: [], undo: null }
     }
     case 'assign': {
       const result = await assignmentsApi.assignEmployee({
