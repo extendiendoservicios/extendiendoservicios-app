@@ -20,6 +20,7 @@ import {
   getAttendanceRowBadge,
 } from '@/features/attendance/derive'
 import { WorkedHoursCell } from '@/features/attendance/components/WorkedHoursCell'
+import { AutoClosedBadge } from '@/features/attendance/components/AutoClosedBadge'
 import { GeoValidationCell } from '@/features/geo/components/GeoValidationCell'
 import { CheckInCell } from '@/features/attendance/components/CheckInCell'
 import {
@@ -123,6 +124,7 @@ function ServicesTodayTable({
         return (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <StatusBadge {...getAttendanceRowBadge(row.original)} />
+            {row.original.checkOutAutoClosed && <AutoClosedBadge />}
             {arrival && (
               <span className="text-[12px] text-text-2">{arrival}</span>
             )}

@@ -28,6 +28,7 @@ export const geoKeys = {
   all: ['geo'] as const,
   supervisorStatus: () => [...geoKeys.all, 'supervisorStatus'] as const,
   presence: () => [...geoKeys.all, 'presence'] as const,
+  sitesDayStatus: () => [...geoKeys.all, 'sitesDayStatus'] as const,
   location: (recordType: GeoRecordType, recordId: string) =>
     [...geoKeys.all, 'location', recordType, recordId] as const,
   corrections: (recordIds: string[]) =>
@@ -39,6 +40,17 @@ export function usePresenceTodayQuery() {
   return useQuery({
     queryKey: geoKeys.presence(),
     queryFn: geoApi.fetchPresenceToday,
+    staleTime: PRESENCE_POLLING_MS,
+    refetchInterval: PRESENCE_POLLING_MS,
+    refetchOnWindowFocus: true,
+  })
+}
+
+/** Estado de hoy de cada sede (OF-13): mismo ritmo que el mapa de presencia. */
+export function useSitesDayStatusQuery() {
+  return useQuery({
+    queryKey: geoKeys.sitesDayStatus(),
+    queryFn: geoApi.fetchSitesDayStatus,
     staleTime: PRESENCE_POLLING_MS,
     refetchInterval: PRESENCE_POLLING_MS,
     refetchOnWindowFocus: true,

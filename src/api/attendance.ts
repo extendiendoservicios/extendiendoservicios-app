@@ -311,6 +311,8 @@ export interface AttendanceBoardRow {
   checkOutGeo?: BoardAttendanceGeo | null
   /** B1, B-21: algún fichaje de la asignación quedó «Fuera de zona» sin corregir. */
   hasOutsideGeo?: boolean
+  /** OF-11: el fin lo registró el cierre automático (el empleado no fichó el fin). La marca queda aunque se corrija la hora. */
+  checkOutAutoClosed?: boolean
 }
 
 /** Todas las columnas de `v_assignments_board` que usa esta pantalla (`06` sección 10, P14.1). */
@@ -328,7 +330,7 @@ const ATTENDANCE_BOARD_SELECT = `
   check_in_accuracy_m, check_in_outside_reason, check_in_geo_overridden, check_in_time_corrected,
   check_out_record_id, check_out_geo_status, check_out_geo_reason, check_out_distance_m, check_out_geofence_radius_m,
   check_out_accuracy_m, check_out_outside_reason, check_out_geo_overridden, check_out_time_corrected,
-  has_outside_geo
+  has_outside_geo, check_out_auto_closed
 `
 
 interface AttendanceBoardRawRow {
@@ -391,6 +393,7 @@ interface AttendanceBoardRawRow {
   check_out_outside_reason: string | null
   check_out_geo_overridden: boolean | null
   check_out_time_corrected: boolean | null
+  check_out_auto_closed?: boolean | null
   has_outside_geo: boolean | null
 }
 
@@ -495,6 +498,7 @@ function mapAttendanceBoardRow(row: AttendanceBoardRawRow): AttendanceBoardRow {
       },
     ),
     hasOutsideGeo: row.has_outside_geo ?? false,
+    checkOutAutoClosed: row.check_out_auto_closed ?? false,
   }
 }
 

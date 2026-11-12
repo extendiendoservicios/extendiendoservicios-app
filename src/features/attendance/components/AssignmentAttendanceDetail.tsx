@@ -16,6 +16,8 @@ import { useAttendanceCorrectionsQuery } from '@/features/geo/queries'
 import { AbsenceCertificateDialog } from './AbsenceCertificateDialog'
 import { MarkAbsentDialog } from './MarkAbsentDialog'
 import { RecordAttendanceSheet } from './RecordAttendanceSheet'
+import { AutoClosedBadge } from './AutoClosedBadge'
+import { AttendanceTimeButton } from './AttendanceTimeButton'
 
 /**
  * Inicio y fin reales, quién y cómo se registraron, y la línea de tiempo de
@@ -147,26 +149,45 @@ function AssignmentAttendanceDetail({
       <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11.5px] text-text-3">
         <div>
           <dt className="font-semibold text-text-2">Inicio real</dt>
-          <dd>
-            {attendance?.checkInAt
-              ? `${formatTime(attendance.checkInAt)} · ${whoRecorded(
-                  attendance.checkInSource ?? 'employee_app',
-                  attendance.checkInRecordedBy,
-                  peopleNames,
-                )}`
-              : 'Sin registro'}
+          <dd className="flex flex-wrap items-center gap-x-2">
+            <span>
+              {attendance?.checkInAt
+                ? `${formatTime(attendance.checkInAt)} · ${whoRecorded(
+                    attendance.checkInSource ?? 'employee_app',
+                    attendance.checkInRecordedBy,
+                    peopleNames,
+                  )}`
+                : 'Sin registro'}
+            </span>
+            {attendance && (
+              <AttendanceTimeButton
+                row={attendance}
+                kind="check_in"
+                canManage={canManage}
+              />
+            )}
           </dd>
         </div>
         <div>
           <dt className="font-semibold text-text-2">Fin real</dt>
-          <dd>
-            {attendance?.checkOutAt
-              ? `${formatTime(attendance.checkOutAt)} · ${whoRecorded(
-                  attendance.checkOutSource ?? 'employee_app',
-                  attendance.checkOutRecordedBy,
-                  peopleNames,
-                )}`
-              : 'Sin registro'}
+          <dd className="flex flex-wrap items-center gap-x-2">
+            <span>
+              {attendance?.checkOutAt
+                ? `${formatTime(attendance.checkOutAt)} · ${whoRecorded(
+                    attendance.checkOutSource ?? 'employee_app',
+                    attendance.checkOutRecordedBy,
+                    peopleNames,
+                  )}`
+                : 'Sin registro'}
+            </span>
+            {attendance?.checkOutAutoClosed && <AutoClosedBadge />}
+            {attendance && (
+              <AttendanceTimeButton
+                row={attendance}
+                kind="check_out"
+                canManage={canManage}
+              />
+            )}
           </dd>
         </div>
       </dl>

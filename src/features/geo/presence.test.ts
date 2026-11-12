@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { PresenceRow } from '@/api/geo'
+import type { PresenceRow, SiteDayStatusRow } from '@/api/geo'
 import {
   buildPresenceMarkers,
   presenceClientName,
@@ -38,6 +38,29 @@ function row(overrides: Partial<PresenceRow> = {}): PresenceRow {
     siteLatitude: -34.6037,
     siteLongitude: -58.3816,
     siteRadiusM: 150,
+    ...overrides,
+  }
+}
+
+function siteStatus(
+  overrides: Partial<SiteDayStatusRow> = {},
+): SiteDayStatusRow {
+  return {
+    siteId: 'site1',
+    clientId: 'c1',
+    clientLegalName: 'Cliente SA',
+    clientTradeName: 'Cliente',
+    siteName: 'Sede Uno',
+    latitude: -34.6037,
+    longitude: -58.3816,
+    radiusM: 150,
+    upcomingCount: 0,
+    inProgressCount: 1,
+    finishedCount: 0,
+    shiftsCount: 1,
+    dayState: 'in_progress',
+    nextStartsAt: null,
+    lastEndsAt: null,
     ...overrides,
   }
 }
@@ -213,102 +236,108 @@ describe('buildPresenceMarkers', () => {
     expect(model.peopleOnMap).toBe(0)
   })
 
-  it('las sedes llevan su círculo con el radio vigente y sin color de alarma (B-14)', () => {
-    const model = buildPresenceMarkers([siteRow({ siteRadiusM: 220 }), row()], {
+  it('las sedes llevan su círculo con el radio vigente (B-14)', () => {
+    const model = buildPresenceMarkers([], {
       showFinished: false,
+      sites: [siteStatus({ radiusM: 220 })],
     })
     expect(model.sitesOnMap).toBe(1)
     const site = model.markers[0]
     expect(site?.id).toBe('site-site1')
     expect(site?.radiusM).toBe(220)
-    expect(site?.circleVariant).toBe('primary')
-    expect(site?.variant).toBe('primary')
   })
 
-  it('el pin de sede usa la forma `site`', () => {
-    const model = buildPresenceMarkers([siteRow(), row()], {
-      showFinished: false,
+  it('OF-13: por comenzar en amarillo con reloj, en curso con el color de siempre y finalizada en gris con tilde', () => {
+    const model = buildPresenceMarkers([], {
+      showFinished: true,
+      sites: [
+        siteStatus({ siteId: 'u', dayState: 'upcoming' }),
+        siteStatus({ siteId: 'p', dayState: 'in_progress' }),
+        siteStatus({ siteId: 'f', dayState: 'finished' }),
+      ],
     })
-    expect(model.markers[0]?.shape).toBe('site')
-  })
-
-  it('una sede sin nadie no se dibuja', () => {
-    const model = buildPresenceMarkers([siteRow()], { showFinished: false })
-    expect(model.markers).toEqual([])
-    expect(model.sitesOnMap).toBe(0)
-  })
-
-  it('una sede en su franja horaria se dibuja aunque nadie haya fichado', () => {
-    const model = buildPresenceMarkers([siteRow()], {
-      showFinished: false,
-      siteIdsInWindow: new Set(['site1']),
+    const byId = Object.fromEntries(model.markers.map((m) => [m.id, m]))
+    expect(byId['site-u']).toMatchObject({
+      variant: 'warning',
+      circleVariant: 'warning',
+      shape: 'site-upcoming',
     })
-    expect(model.sitesOnMap).toBe(1)
-    expect(model.peopleOnMap).toBe(0)
-  })
-
-  it('una sede fuera de su franja y sin nadie en curso no se dibuja', () => {
-    const model = buildPresenceMarkers([siteRow()], {
-      showFinished: false,
-      siteIdsInWindow: new Set(['otra']),
+    expect(byId['site-p']).toMatchObject({ variant: 'primary', shape: 'site' })
+    expect(byId['site-f']).toMatchObject({
+      variant: 'neutral',
+      shape: 'site-finished',
     })
-    expect(model.sitesOnMap).toBe(0)
   })
 
-  it('una sede de otra gente no aparece si su propia gente no está', () => {
-    const model = buildPresenceMarkers(
-      [siteRow({ recordId: 'site2' }), row({ siteId: 'site1' })],
-      { showFinished: false },
-    )
-    expect(model.markers.map((marker) => marker.id)).toEqual(['employee-a1'])
-  })
-
-  it('una sede con solo finalizados aparece únicamente con «Mostrar finalizados»', () => {
-    const rows = [
-      siteRow(),
-      row({ inProgress: false, checkOutAt: '2026-10-14T15:00:00Z' }),
+  it('OF-13: por omisión se ven por comenzar y en curso, y no las finalizadas', () => {
+    const sites = [
+      siteStatus({ siteId: 'u', dayState: 'upcoming' }),
+      siteStatus({ siteId: 'p', dayState: 'in_progress' }),
+      siteStatus({ siteId: 'f', dayState: 'finished' }),
     ]
-    expect(buildPresenceMarkers(rows, { showFinished: false }).sitesOnMap).toBe(
-      0,
-    )
-    expect(buildPresenceMarkers(rows, { showFinished: true }).sitesOnMap).toBe(
-      1,
-    )
+    const model = buildPresenceMarkers([], { showFinished: false, sites })
+    expect(model.markers.map((m) => m.id)).toEqual(['site-u', 'site-p'])
   })
 
-  it('quien trabaja sin ubicación también hace que se muestre su sede', () => {
-    const model = buildPresenceMarkers(
-      [siteRow(), row({ latitude: null, longitude: null })],
-      { showFinished: false },
-    )
-    expect(model.sitesOnMap).toBe(1)
-    expect(model.peopleOnMap).toBe(0)
+  it('OF-13: cada conmutador apaga su estado', () => {
+    const sites = [
+      siteStatus({ siteId: 'u', dayState: 'upcoming' }),
+      siteStatus({ siteId: 'p', dayState: 'in_progress' }),
+      siteStatus({ siteId: 'f', dayState: 'finished' }),
+    ]
+    const ids = (options: {
+      showUpcoming?: boolean
+      showInProgress?: boolean
+    }) =>
+      buildPresenceMarkers([], {
+        showFinished: true,
+        sites,
+        ...options,
+      }).markers.map((m) => m.id)
+    expect(ids({ showUpcoming: false })).toEqual(['site-p', 'site-f'])
+    expect(ids({ showInProgress: false })).toEqual(['site-u', 'site-f'])
   })
 
-  it('una supervisión en curso ya no activa la sede: el coordinador sale de su estado', () => {
-    const model = buildPresenceMarkers(
-      [siteRow(), row({ kind: 'supervisor', recordId: 'sv1' })],
-      { showFinished: false },
-    )
-    expect(model.sitesOnMap).toBe(0)
+  it('«En curso» apagado oculta también a los empleados en curso, y «Finalizados» a los que ya cerraron', () => {
+    const rows = [
+      row({ recordId: 'curso' }),
+      row({ recordId: 'fin', inProgress: false }),
+    ]
+    expect(
+      buildPresenceMarkers(rows, {
+        showFinished: true,
+        showInProgress: false,
+      }).markers.map((m) => m.id),
+    ).toEqual(['employee-fin'])
+    expect(
+      buildPresenceMarkers(rows, { showFinished: false }).markers.map(
+        (m) => m.id,
+      ),
+    ).toEqual(['employee-curso'])
+  })
+
+  it('una sede sin coordenadas no se dibuja', () => {
+    const model = buildPresenceMarkers([], {
+      showFinished: false,
+      sites: [siteStatus({ latitude: null, longitude: null })],
+    })
+    expect(model.markers).toEqual([])
+  })
+
+  it('las filas `site` de v_presence_today ya no dibujan sedes', () => {
+    const model = buildPresenceMarkers([siteRow()], { showFinished: true })
+    expect(model.markers).toEqual([])
   })
 
   it('las sedes van primero y los puntos de personas encima', () => {
-    const model = buildPresenceMarkers([row(), siteRow()], {
+    const model = buildPresenceMarkers([row()], {
       showFinished: false,
+      sites: [siteStatus()],
     })
     expect(model.markers.map((marker) => marker.id)).toEqual([
       'site-site1',
       'employee-a1',
     ])
-  })
-
-  it('una sede sin coordenadas no se dibuja', () => {
-    const model = buildPresenceMarkers(
-      [siteRow({ siteLatitude: null, siteLongitude: null })],
-      { showFinished: false },
-    )
-    expect(model.markers).toEqual([])
   })
 
   it('guarda la fila en `data` para armar el popup', () => {
