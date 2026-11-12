@@ -651,6 +651,8 @@ test.describe('licencias superpuestas (OF-20)', () => {
         await page.goto(`/admin/empleados/${readId('empleado4')}`)
         await page.getByRole('tab', { name: 'Licencias' }).click()
         const desde = daysFromToday(60)
+        // Motivos únicos por corrida: la ficha también lista las licencias dadas de baja de corridas anteriores.
+        const marca = Date.now()
         const alta = async (
           hasta: string,
           motivo: string,
@@ -661,15 +663,19 @@ test.describe('licencias superpuestas (OF-20)', () => {
           await page.getByLabel('Motivo (opcional)').fill(`E2E-P1911 ${motivo}`)
           await page.getByRole('button', { name: 'Agregar licencia' }).click()
         }
-        await alta(addDays(desde, 9), 'vacaciones-of20')
+        await alta(addDays(desde, 9), `vacaciones-of20-${marca}`)
         await expect(page.getByText('Agregamos la licencia.')).toBeVisible()
         // La segunda empieza dentro de la primera: antes daba LEAVE_OVERLAP.
-        await alta(addDays(desde, 12), 'enfermedad-of20', addDays(desde, 4))
+        await alta(
+          addDays(desde, 12),
+          `enfermedad-of20-${marca}`,
+          addDays(desde, 4),
+        )
         await expect(
           page.getByText('Agregamos la licencia.').first(),
         ).toBeVisible()
-        await expect(page.getByText('vacaciones-of20')).toBeVisible()
-        await expect(page.getByText('enfermedad-of20')).toBeVisible()
+        await expect(page.getByText(`vacaciones-of20-${marca}`)).toBeVisible()
+        await expect(page.getByText(`enfermedad-of20-${marca}`)).toBeVisible()
       } finally {
         expect(await darDeBajaLicencias('empleado4'), 'bajas').toEqual([])
         void crearLicencia
