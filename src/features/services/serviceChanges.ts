@@ -70,6 +70,33 @@ export function serviceChangesAffectShifts(
 }
 
 /**
+ * OF-05b: ¿el cambio puede agregar días con turno? Solo si cambiaron los días,
+ * las semanas del mes, «trabaja feriados» o la vigencia (desde/hasta). Si no
+ * (por ejemplo, solo la dotación o el horario) la pantalla manda
+ * `p_create_missing = false`: se actualizan los turnos que existen y no se
+ * genera ninguno, para no recrear turnos borrados a propósito.
+ */
+export function serviceChangesCanAddShifts(
+  before: ServiceDetail,
+  after: ServiceFormInput,
+): boolean {
+  const beforeWeeks = normalizeWeeks(before.weeksOfMonth)
+  const afterWeeks = normalizeWeeks(after.weeksOfMonth)
+  const weeksChanged =
+    (beforeWeeks === null) !== (afterWeeks === null) ||
+    (beforeWeeks !== null &&
+      afterWeeks !== null &&
+      !sameNumbers(beforeWeeks, afterWeeks))
+  return (
+    !sameNumbers(before.weekdays, after.weekdays) ||
+    weeksChanged ||
+    before.worksOnHolidays !== after.worksOnHolidays ||
+    before.validFrom !== after.validFrom ||
+    (before.validTo ?? null) !== (after.validTo ?? null)
+  )
+}
+
+/**
  * OF-02: ¿conviene revisar duplicados al guardar? Siempre en el alta; en la
  * edición solo si cambió la sede, los días, el horario o si el servicio vuelve
  * a estar activo (así un duplicado que ya existe no molesta en cada edición).
