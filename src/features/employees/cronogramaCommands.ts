@@ -47,6 +47,15 @@ export async function runCronogramaCommand(
         command.openEnded,
         command.date,
       )
+      // La franja propia de la persona acompaña al turno (DEF-P28-02); va
+      // después para que ya quede dentro del horario nuevo del turno.
+      if (command.ownTime) {
+        await assignmentsApi.updateAssignmentTime(
+          command.ownTime.assignmentId,
+          command.ownTime.start,
+          command.ownTime.end,
+        )
+      }
       return {
         warnings: [],
         undo: block ? undoForShiftTime(block) : null,

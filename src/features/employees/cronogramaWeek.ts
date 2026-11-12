@@ -180,6 +180,97 @@ export function decideScope(assignedCount: number): 'whole' | 'ask' {
   return assignedCount <= 1 ? 'whole' : 'ask'
 }
 
+/**
+ * `true` si la persona tiene una franja propia distinta de la del turno (el
+ * bloque dibuja la franja propia). Un turno «A terminar» no tiene franja propia
+ * a efectos del cronograma: su fin dibujado es solo una convención.
+ */
+export function hasOwnTime(
+  block: Pick<
+    WeekBlock,
+    'startMin' | 'endMin' | 'shiftStartMin' | 'shiftEndMin' | 'openEnded'
+  >,
+): boolean {
+  return (
+    !block.openEnded &&
+    (block.startMin !== block.shiftStartMin ||
+      block.endMin !== block.shiftEndMin)
+  )
+}
+
+export interface WholeShiftChange {
+  startMin: number
+  endMin: number
+  /** Franja propia de la persona después del cambio; `null` si no tiene. */
+  ownTime: BlockTimes | null
+}
+
+/**
+ * DEF-P28-02: horario del TURNO ENTERO para un cambio hecho sobre un bloque.
+ * El bloque puede dibujar la franja propia de la persona, que no es la del
+ * turno; por eso no se copia el horario del bloque al turno: se calcula cuánto
+ * se movió cada borde (`next` contra el bloque) y se aplica ese mismo corrimiento
+ * al horario del turno, con los límites del día y los 15 minutos mínimos.
+ *
+ * La franja propia de la persona acompaña el mismo corrimiento (efectivo, ya
+ * con los límites): así sigue dentro del turno y se ve igual que lo que la
+ * persona arrastró. Si no tiene franja propia, `ownTime` es `null`.
+ */
+export function wholeShiftChange(
+  block: WeekBlock,
+  next: Pick<ScheduleChange, 'startMin' | 'endMin'>,
+): WholeShiftChange {
+  const deltaStart = next.startMin - block.startMin
+  const deltaEnd = block.openEnded ? 0 : next.endMin - block.endMin
+  let appliedStart: number
+  let appliedEnd: number
+  if (block.openEnded) {
+    appliedStart = clamp(
+      deltaStart,
+      -block.shiftStartMin,
+      DAY_MINUTES - MIN_BLOCK_MINUTES - block.shiftStartMin,
+    )
+    appliedEnd = 0
+  } else if (deltaStart === deltaEnd) {
+    // Mover: el turno entero se corre lo mismo, sin salirse del día.
+    const delta = clamp(
+      deltaStart,
+      -block.shiftStartMin,
+      DAY_MINUTES - block.shiftEndMin,
+    )
+    appliedStart = delta
+    appliedEnd = delta
+  } else {
+    // Estirar un borde: el turno no baja de 15 minutos ni se sale del día.
+    appliedStart =
+      deltaStart === 0
+        ? 0
+        : clamp(
+            deltaStart,
+            -block.shiftStartMin,
+            block.shiftEndMin - MIN_BLOCK_MINUTES - block.shiftStartMin,
+          )
+    appliedEnd =
+      deltaEnd === 0
+        ? 0
+        : clamp(
+            deltaEnd,
+            block.shiftStartMin + MIN_BLOCK_MINUTES - block.shiftEndMin,
+            DAY_MINUTES - block.shiftEndMin,
+          )
+  }
+  return {
+    startMin: block.shiftStartMin + appliedStart,
+    endMin: block.shiftEndMin + appliedEnd,
+    ownTime: hasOwnTime(block)
+      ? {
+          startMin: block.startMin + appliedStart,
+          endMin: block.endMin + appliedEnd,
+        }
+      : null,
+  }
+}
+
 export interface ScheduleChange {
   date: string
   startMin: number
@@ -251,6 +342,13 @@ export function uncoveredShifts(
 // Deshacer
 // ---------------------------------------------------------------------------
 
+/** Franja propia de una asignación que acompaña a un cambio de horario del turno. */
+export interface OwnTimeChange {
+  assignmentId: string
+  start: string
+  end: string
+}
+
 export type UndoAction =
   | {
       kind: 'shift_time'
@@ -259,6 +357,8 @@ export type UndoAction =
       start: string
       end: string
       openEnded: boolean
+      /** Franja propia de la persona que se acomoda junto con el turno. */
+      ownTime?: OwnTimeChange
     }
   | {
       kind: 'assignment_time'
@@ -285,6 +385,13 @@ export interface MovePrevious {
 }
 
 export function undoForShiftTime(block: WeekBlock): UndoAction {
+  const ownTime = hasOwnTime(block)
+    ? {
+        assignmentId: block.assignmentId,
+        start: minutesToTime(block.startMin),
+        end: minutesToTime(block.endMin),
+      }
+    : undefined
   return {
     kind: 'shift_time',
     shiftId: block.shiftId,
@@ -292,6 +399,7 @@ export function undoForShiftTime(block: WeekBlock): UndoAction {
     start: minutesToTime(block.shiftStartMin),
     end: minutesToTime(block.shiftEndMin),
     openEnded: block.openEnded,
+    ...(ownTime ? { ownTime } : {}),
   }
 }
 

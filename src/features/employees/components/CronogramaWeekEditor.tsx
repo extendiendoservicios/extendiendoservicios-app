@@ -70,6 +70,7 @@ import {
   buildWeekBlocks,
   uncoveredShifts,
   visibleHourRange,
+  wholeShiftChange,
   pxToMinutes,
   type BlockPosition,
   type ScheduleChange,
@@ -244,14 +245,26 @@ function CronogramaWeekEditor({
   }
 
   function applyWhole(block: WeekBlock, next: ScheduleChange) {
+    // DEF-P28-02: se desplaza el horario del TURNO (no se copia el del bloque,
+    // que puede ser la franja propia de la persona).
+    const whole = wholeShiftChange(block, next)
     return execute(
       {
         kind: 'shift_time',
         shiftId: block.shiftId,
         date: next.date,
-        start: minutesToTime(next.startMin),
-        end: minutesToTime(next.endMin),
+        start: minutesToTime(whole.startMin),
+        end: minutesToTime(whole.endMin),
         openEnded: block.openEnded,
+        ...(whole.ownTime
+          ? {
+              ownTime: {
+                assignmentId: block.assignmentId,
+                start: minutesToTime(whole.ownTime.startMin),
+                end: minutesToTime(whole.ownTime.endMin),
+              },
+            }
+          : {}),
       },
       block,
       'Cambiamos el horario del turno.',

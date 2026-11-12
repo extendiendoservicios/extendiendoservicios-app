@@ -19,6 +19,7 @@ import {
   undoForMove,
   undoForShiftTime,
   visibleHourRange,
+  wholeShiftChange,
 } from '@/features/employees/cronogramaWeek'
 
 function shift(over: Partial<ShiftListRow>): ShiftListRow {
@@ -240,5 +241,104 @@ describe('armado del deshacer', () => {
 
   it('asignar: se deshace quitando', () => {
     expect(undoForAssign('x')).toEqual({ kind: 'unassign', assignmentId: 'x' })
+  })
+})
+
+describe('turno entero con franja propia (DEF-P28-02)', () => {
+  // Turno 08:00–12:00; la persona trabaja de 09:00 a 11:00.
+  const propio = buildWeekBlocks(
+    [assignment({ startTime: '09:00:00', endTime: '11:00:00' })],
+    [shift({ id: 's1' })],
+  )[0]!
+  const sinPropio = buildWeekBlocks([assignment({})], [shift({ id: 's1' })])[0]!
+  const dia = '2026-11-16'
+
+  it('mover solo de día conserva el horario del turno y la franja propia', () => {
+    const cambio = wholeShiftChange(propio, {
+      startMin: propio.startMin,
+      endMin: propio.endMin,
+    })
+    expect(cambio.startMin).toBe(8 * 60)
+    expect(cambio.endMin).toBe(12 * 60)
+    expect(cambio.ownTime).toEqual({ startMin: 9 * 60, endMin: 11 * 60 })
+  })
+
+  it('mover el bloque 1 hora corre el turno 1 hora y la franja propia acompaña', () => {
+    const cambio = wholeShiftChange(propio, {
+      startMin: 10 * 60,
+      endMin: 12 * 60,
+    })
+    expect(cambio.startMin).toBe(9 * 60)
+    expect(cambio.endMin).toBe(13 * 60)
+    expect(cambio.ownTime).toEqual({ startMin: 10 * 60, endMin: 12 * 60 })
+  })
+
+  it('estirar el borde final suma el corrimiento al fin del turno', () => {
+    const cambio = wholeShiftChange(propio, {
+      startMin: 9 * 60,
+      endMin: 11 * 60 + 30,
+    })
+    expect(cambio.startMin).toBe(8 * 60)
+    expect(cambio.endMin).toBe(12 * 60 + 30)
+    expect(cambio.ownTime).toEqual({ startMin: 9 * 60, endMin: 11 * 60 + 30 })
+  })
+
+  it('estirar el borde inicial suma el corrimiento al inicio del turno', () => {
+    const cambio = wholeShiftChange(propio, {
+      startMin: 8 * 60 + 30,
+      endMin: 11 * 60,
+    })
+    expect(cambio.startMin).toBe(7 * 60 + 30)
+    expect(cambio.endMin).toBe(12 * 60)
+  })
+
+  it('sin franja propia el bloque es el turno y no hay franja que acompañar', () => {
+    const cambio = wholeShiftChange(sinPropio, {
+      startMin: 9 * 60,
+      endMin: 13 * 60,
+    })
+    expect(cambio).toEqual({ startMin: 9 * 60, endMin: 13 * 60, ownTime: null })
+  })
+
+  it('no se sale del día aunque el turno sea más largo que el bloque', () => {
+    const cambio = wholeShiftChange(propio, {
+      startMin: 22 * 60,
+      endMin: 24 * 60,
+    })
+    // El turno termina a las 24:00 como mucho: corre 12 horas, no 13.
+    expect(cambio.endMin).toBe(24 * 60)
+    expect(cambio.startMin).toBe(20 * 60)
+    expect(cambio.ownTime).toEqual({ startMin: 21 * 60, endMin: 23 * 60 })
+  })
+
+  it('un turno «A terminar» corre solo el inicio y no tiene franja propia', () => {
+    const abierto = buildWeekBlocks(
+      [
+        assignment({
+          startTime: '08:00:00',
+          endTime: '23:59:00',
+          openEnded: true,
+        }),
+      ],
+      [shift({ id: 's1', endTime: '23:59:00', openEnded: true })],
+    )[0]!
+    const cambio = wholeShiftChange(abierto, {
+      startMin: 9 * 60,
+      endMin: 10 * 60,
+    })
+    expect(cambio.startMin).toBe(9 * 60)
+    expect(cambio.ownTime).toBeNull()
+  })
+
+  it('el deshacer vuelve el turno y también la franja propia', () => {
+    expect(undoForShiftTime(propio)).toEqual({
+      kind: 'shift_time',
+      shiftId: 's1',
+      date: dia,
+      start: '08:00',
+      end: '12:00',
+      openEnded: false,
+      ownTime: { assignmentId: 'a1', start: '09:00', end: '11:00' },
+    })
   })
 })

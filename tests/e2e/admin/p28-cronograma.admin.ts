@@ -307,16 +307,8 @@ test.describe('cronograma semanal editable (OF-10)', () => {
     'DEF-P28-02: una persona con horario propio distinto del turno y mover el turno entero conserva el horario del turno',
     {
       ...cubre('RB-A04', 'OF-10'),
-      annotation: [
-        {
-          type: 'defecto',
-          description:
-            'DEF-P28-02: con un solo asignado con franja propia, mover el bloque llama a update_shift_time con el horario del bloque (la franja propia) y achica el turno; ver el reporte de P28.7',
-        },
-      ],
     },
     async ({ page }) => {
-      test.fail()
       test.setTimeout(180_000)
       const sc = new Scenario()
       try {
@@ -348,6 +340,13 @@ test.describe('cronograma semanal editable (OF-10)', () => {
           { inicio: despues.inicio, fin: despues.fin },
           'mover el turno de día no debería achicar su horario al de la franja propia del bloque',
         ).toEqual({ inicio: '08:00', fin: '12:00' })
+        // La franja propia de la persona sigue siendo 09:00–11:00.
+        const { data } = await sc.db
+          .from('assignments')
+          .select('start_time, end_time')
+          .eq('shift_id', turno)
+          .is('removed_at', null)
+        expect(data).toEqual([{ start_time: '09:00:00', end_time: '11:00:00' }])
       } finally {
         expect(await sc.cleanup(), 'limpieza').toEqual([])
       }
