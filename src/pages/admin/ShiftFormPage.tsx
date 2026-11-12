@@ -53,6 +53,7 @@ import {
   shiftDateErrorMessage,
 } from '@/features/shifts/dateChange'
 import { employeesOnLeaveIn } from '@/features/shifts/leaveBlocking'
+import { shiftOverlapsMessage } from '@/features/services/serviceChanges'
 import { SimpleConfirmDialog } from '@/features/settings/components/SimpleConfirmDialog'
 import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
 import { useHolidaysQuery } from '@/features/settings/queries'
@@ -67,6 +68,7 @@ import {
   useShiftForEditQuery,
   useShiftSeriesPreviewQuery,
   useShiftDateWarningsMutation,
+  useShiftOverlapsInSiteMutation,
   useUpdateShiftTimeMutation,
 } from '@/features/shifts/queries'
 import {
@@ -160,6 +162,12 @@ function CreateShiftForm({
   const leaveForm = useLeaveForm()
   const createShift = useCreateShiftMutation()
   const createShiftSeries = useCreateShiftSeriesMutation()
+  // OF-02: aviso de turno superpuesto en la misma sede (no bloquea).
+  const checkShiftOverlaps = useShiftOverlapsInSiteMutation()
+  const [overlapPrompt, setOverlapPrompt] = useState<{
+    values: ShiftFormValues
+    message: string
+  } | null>(null)
   const employeeOptionsQuery = useActiveEmployeeOptionsQuery()
   // AJ2-17: empleados que quedan asignados al crear el turno.
   const [pickedEmployeeIds, setPickedEmployeeIds] = useState<string[]>([])
@@ -377,11 +385,34 @@ function CreateShiftForm({
     }
   }
 
+  /**
+   * OF-02: en el alta de un turno suelto se revisa si la sede ya tiene un turno
+   * ese día que se superpone en horario; si hay, se avisa y se deja crear igual.
+   * Si la consulta falla no se bloquea. La repetición (serie) no se revisa.
+   */
   async function onSubmit(values: ShiftFormValues) {
     if (values.repeat) {
       await onSubmitSeries(values)
       return
     }
+    try {
+      const overlaps = await checkShiftOverlaps.mutateAsync({
+        siteId: values.siteId,
+        date: values.date,
+        start: values.startTime,
+        end: values.openEnded ? null : values.endTime,
+      })
+      if (overlaps.length > 0) {
+        setOverlapPrompt({ values, message: shiftOverlapsMessage(overlaps) })
+        return
+      }
+    } catch {
+      // Sin el aviso se crea igual; el servidor valida lo que corresponde.
+    }
+    await createSingleShift(values)
+  }
+
+  async function createSingleShift(values: ShiftFormValues) {
     const input = {
       ...shiftFormValuesToCreateInput(values),
       employeeIds,
@@ -806,6 +837,26 @@ function CreateShiftForm({
           Cancelar
         </Button>
       </div>
+
+      {overlapPrompt && (
+        <SimpleConfirmDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setOverlapPrompt(null)
+            }
+          }}
+          title="Posible turno duplicado"
+          description={overlapPrompt.message}
+          confirmLabel="Crear igual"
+          cancelLabel="Volver"
+          onConfirm={() => {
+            const pending = overlapPrompt.values
+            setOverlapPrompt(null)
+            void createSingleShift(pending)
+          }}
+        />
+      )}
     </form>
   )
 }

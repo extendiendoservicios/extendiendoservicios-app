@@ -3,7 +3,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
-import { CalendarClock } from 'lucide-react'
+import { CalendarClock, RefreshCw } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,6 +44,7 @@ import {
   useServiceDetailQuery,
   useServiceFixedEmployeesQuery,
   useSetServiceFixedEmployeesMutation,
+  useServiceOverlapsMutation,
   useUpdateServiceMutation,
 } from '@/features/services/queries'
 import {
@@ -55,6 +56,16 @@ import {
 } from '@/features/services/schemas'
 import { RepeatFields } from '@/features/services/components/RepeatFields'
 import { ApplyFixedEmployeesDialog } from '@/features/services/components/ApplyFixedEmployeesDialog'
+import { ApplyServiceChangesDialog } from '@/features/services/components/ApplyServiceChangesDialog'
+import {
+  buildServicePrevious,
+  serviceChangesAffectShifts,
+  serviceOverlapsMessage,
+  describeServiceOverlap,
+  shouldCheckServiceOverlaps,
+} from '@/features/services/serviceChanges'
+import type { ServicePrevious } from '@/api/services'
+import { SimpleConfirmDialog } from '@/features/settings/components/SimpleConfirmDialog'
 import { GenerateServiceShiftsDialog } from '@/features/services/components/GenerateServiceShiftsDialog'
 import { canGenerateShifts } from '@/features/shifts/permissions'
 import { useLeaveForm } from '@/app/shells/backNavigation'
@@ -113,6 +124,23 @@ export default function ServiceFormPage() {
     destination: string
     mode: 'create' | 'edit'
   } | null>(null)
+  // OF-05: servicio editado con cambios que llegan a los turnos (y, si además
+  // cambiaron los fijos, también se aplican en el mismo diálogo).
+  const [changesPrompt, setChangesPrompt] = useState<{
+    serviceId: string
+    previous: ServicePrevious
+    includeFixed: boolean
+    destination: string
+  } | null>(null)
+  // OF-05: acción «Actualizar turnos desde…» (fuerza los valores del servicio).
+  const [repairOpen, setRepairOpen] = useState(false)
+  // OF-02: aviso de servicio duplicado antes de guardar (no bloquea).
+  const [overlapPrompt, setOverlapPrompt] = useState<{
+    values: ServiceFormValues
+    message: string
+    lines: string[]
+  } | null>(null)
+  const checkOverlaps = useServiceOverlapsMutation()
   const canGenerate = canGenerateShifts({
     roles: auth.roles,
     capabilities: auth.capabilities,
@@ -161,7 +189,7 @@ export default function ServiceFormPage() {
     handleSubmit,
     setValue,
     watch,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<ServiceFormValues>({
     resolver: zodResolver(serviceFormSchema),
     defaultValues,
@@ -227,6 +255,11 @@ export default function ServiceFormPage() {
     setValue('siteId', '', { shouldValidate: true, shouldDirty: true })
   }
 
+  /**
+   * OF-02: antes de guardar se revisa si la sede ya tiene un servicio activo
+   * que coincide en día y horario; si hay, se avisa y se deja guardar igual.
+   * Si la consulta falla no se bloquea el guardado: el aviso es solo ayuda.
+   */
   async function onSubmit(values: ServiceFormValues) {
     const input = serviceFormValuesToInput(values)
     if (fixedEmployeesError(fixedIds.length, input.requiredStaff)) {
@@ -234,6 +267,33 @@ export default function ServiceFormPage() {
       toast.error('Revisá los empleados fijos: son más que la dotación.')
       return
     }
+    if (shouldCheckServiceOverlaps(serviceQuery.data, input)) {
+      try {
+        const overlaps = await checkOverlaps.mutateAsync({
+          siteId: input.siteId,
+          weekdays: input.weekdays,
+          start: input.startTime,
+          end: input.openEnded ? null : input.endTime,
+          exceptServiceId: isEditMode ? id : null,
+        })
+        if (overlaps.length > 0) {
+          setOverlapPrompt({
+            values,
+            message: serviceOverlapsMessage(overlaps),
+            lines:
+              overlaps.length > 1 ? overlaps.map(describeServiceOverlap) : [],
+          })
+          return
+        }
+      } catch {
+        // Sin el aviso se guarda igual; el servidor valida lo que corresponde.
+      }
+    }
+    await saveService(values)
+  }
+
+  async function saveService(values: ServiceFormValues) {
+    const input = serviceFormValuesToInput(values)
     // En edición solo se llama a la RPC si la lista cambió; sin lista cargada
     // (falló la lectura) no se toca, para no pisar nada.
     const mustSaveFixed = isEditMode
@@ -245,6 +305,7 @@ export default function ServiceFormPage() {
         // Si la dotación baja, primero se achica la lista de fijos (el
         // servidor no deja bajarla por debajo de los fijos); si sube, primero
         // el servicio, así entran más fijos.
+        const before = serviceQuery.data
         const lowersStaff =
           serviceQuery.data != null &&
           input.requiredStaff < serviceQuery.data.requiredStaff
@@ -278,7 +339,24 @@ export default function ServiceFormPage() {
             mode: 'edit',
           })
         }
-        // El diálogo de fijos va primero; al cerrarlo sigue el de generar.
+        // OF-05: un solo diálogo para los cambios del servicio y los fijos.
+        // Orden: primero los cambios del servicio (horario, dotación, días...)
+        // y después los fijos, para que se validen contra el horario nuevo.
+        // Al cerrarlo sigue, si corresponde, el de generar el mes.
+        if (
+          before &&
+          service.status === 'active' &&
+          serviceChangesAffectShifts(before, input)
+        ) {
+          setChangesPrompt({
+            serviceId: service.id,
+            previous: buildServicePrevious(before),
+            includeFixed: mustSaveFixed,
+            destination,
+          })
+          return
+        }
+        // Solo cambiaron los fijos (OD-11): su propio diálogo.
         if (mustSaveFixed) {
           setApplyPrompt({ serviceId: service.id, destination })
           return
@@ -366,9 +444,28 @@ export default function ServiceFormPage() {
     >
       {isEditMode && (
         <Alert>
-          <AlertDescription>
-            Los turnos ya generados no cambian. Si hace falta, generá el mes de
-            nuevo para crear los que falten con los datos actualizados.
+          <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <span>
+              Al guardar, si cambian los días, el horario, la dotación, los
+              feriados, la vigencia o las fotos, te preguntamos si los cambios
+              se aplican a los turnos desde una fecha. Si algún turno quedó con
+              datos viejos, podés actualizarlos desde acá.
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={isDirty || isSaving}
+              title={
+                isDirty
+                  ? 'Guardá los cambios antes de actualizar los turnos.'
+                  : undefined
+              }
+              onClick={() => setRepairOpen(true)}
+            >
+              <RefreshCw aria-hidden />
+              Actualizar turnos desde…
+            </Button>
           </AlertDescription>
         </Alert>
       )}
@@ -705,6 +802,58 @@ export default function ServiceFormPage() {
         </Button>
       </div>
 
+      {overlapPrompt && (
+        <SimpleConfirmDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setOverlapPrompt(null)
+            }
+          }}
+          title="Posible servicio duplicado"
+          description={overlapPrompt.message}
+          confirmLabel="Guardar igual"
+          cancelLabel="Volver"
+          onConfirm={() => {
+            const pending = overlapPrompt.values
+            setOverlapPrompt(null)
+            void saveService(pending)
+          }}
+        >
+          {overlapPrompt.lines.length > 0 && (
+            <ul className="list-disc pl-4 text-[12.5px] text-text-2">
+              {overlapPrompt.lines.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          )}
+        </SimpleConfirmDialog>
+      )}
+
+      {changesPrompt && (
+        <ApplyServiceChangesDialog
+          serviceId={changesPrompt.serviceId}
+          previous={changesPrompt.previous}
+          includeFixed={changesPrompt.includeFixed}
+          onFinish={() => {
+            // OD-27: si además se reactivó, sigue la pregunta de generar.
+            if (generatePrompt) {
+              setChangesPrompt(null)
+              return
+            }
+            leaveForm(changesPrompt.destination, 'edit')
+          }}
+        />
+      )}
+
+      {repairOpen && id && (
+        <ApplyServiceChangesDialog
+          serviceId={id}
+          previous={null}
+          onFinish={() => setRepairOpen(false)}
+        />
+      )}
+
       {applyPrompt && (
         <ApplyFixedEmployeesDialog
           serviceId={applyPrompt.serviceId}
@@ -719,7 +868,7 @@ export default function ServiceFormPage() {
         />
       )}
 
-      {generatePrompt && !applyPrompt && (
+      {generatePrompt && !applyPrompt && !changesPrompt && (
         <GenerateServiceShiftsDialog
           serviceId={generatePrompt.serviceId}
           validFrom={generatePrompt.validFrom}

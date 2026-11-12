@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as shiftsApi from '@/api/shifts'
+import * as overlapsApi from '@/api/overlaps'
 import * as attendanceApi from '@/api/attendance'
 import * as supervisionsApi from '@/api/supervisions'
 import { groupShiftPeople } from '@/features/shifts/shiftPeople'
@@ -236,5 +237,14 @@ export function useCancelShiftMutation(date: string) {
         queryKey: shiftsKeys.edit(variables.shiftId),
       })
     },
+  })
+}
+
+/** OF-02: turnos de la misma sede, ese día, que se superponen con el que se está creando. */
+export function useShiftOverlapsInSiteMutation() {
+  return useMutation({
+    mutationFn: (
+      input: Parameters<typeof overlapsApi.fetchShiftOverlapsInSite>[0],
+    ) => overlapsApi.fetchShiftOverlapsInSite(input),
   })
 }

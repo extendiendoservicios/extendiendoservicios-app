@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as servicesApi from '@/api/services'
-import type { ServiceFormInput, ServiceStatus } from '@/api/services'
+import * as overlapsApi from '@/api/overlaps'
+import type {
+  ServiceFormInput,
+  ServicePrevious,
+  ServiceStatus,
+} from '@/api/services'
 import { clientsKeys } from '@/features/clients/queries'
 import { shiftsKeys } from '@/features/shifts/queries'
 import { planningKeys } from '@/features/planning/queries'
@@ -26,6 +31,11 @@ export const servicesKeys = {
   fixedEmployees: (id: string) =>
     [...servicesKeys.all, 'fixedEmployees', id] as const,
   labels: (ids: string[]) => [...servicesKeys.all, 'labels', ids] as const,
+  changesPreview: (
+    id: string,
+    fromDate: string,
+    previous: ServicePrevious | null,
+  ) => [...servicesKeys.all, 'changesPreview', id, fromDate, previous] as const,
 }
 
 // -------------------------------------------------------------------------
@@ -235,5 +245,56 @@ export function useApplyServiceFixedEmployeesMutation() {
       void queryClient.invalidateQueries({ queryKey: planningKeys.all })
       void queryClient.invalidateQueries({ queryKey: attendanceKeys.all })
     },
+  })
+}
+
+/**
+ * OF-05: vista previa de los cambios del servicio sobre los turnos desde una
+ * fecha. Siempre se vuelve a pedir (`gcTime` 0): depende del estado de los
+ * turnos en el momento. Sin polling: es un diálogo.
+ */
+export function useServiceChangesPreviewQuery(
+  serviceId: string,
+  fromDate: string,
+  previous: ServicePrevious | null,
+) {
+  return useQuery({
+    queryKey: servicesKeys.changesPreview(serviceId, fromDate, previous),
+    queryFn: () =>
+      servicesApi.previewServiceChanges(serviceId, fromDate, previous),
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
+  })
+}
+
+/** OF-05: aplica los cambios del servicio a los turnos. Invalida turnos, calendario y asistencia. */
+export function useApplyServiceChangesMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      serviceId,
+      fromDate,
+      previous,
+    }: {
+      serviceId: string
+      fromDate: string
+      previous: ServicePrevious | null
+    }) => servicesApi.applyServiceChanges(serviceId, fromDate, previous),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: servicesKeys.all })
+      void queryClient.invalidateQueries({ queryKey: shiftsKeys.all })
+      void queryClient.invalidateQueries({ queryKey: planningKeys.all })
+      void queryClient.invalidateQueries({ queryKey: attendanceKeys.all })
+    },
+  })
+}
+
+/** OF-02: servicios de la misma sede que se pisan con el que se está guardando. */
+export function useServiceOverlapsMutation() {
+  return useMutation({
+    mutationFn: (
+      input: Parameters<typeof overlapsApi.fetchServiceOverlaps>[0],
+    ) => overlapsApi.fetchServiceOverlaps(input),
   })
 }

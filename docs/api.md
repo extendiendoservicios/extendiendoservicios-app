@@ -450,6 +450,17 @@ Base: migraciones `0078` y `0080` y la acción `delete_user` de `admin-users`. C
 | `owner_delete_shift`, `_service`, `_service_shifts`, `_site`, `_client`                      | RPC           | Solo el dueño. Piden `p_confirm_name` (salvo el turno). `DELETE_BLOCKED`, `CONFIRM_NAME_MISMATCH`. El cliente devuelve `photo_path` para borrarlo de Storage.                                                                                     |
 | `admin-users` → `delete_user` (`profile_id`, `confirm_name`)                                 | Edge Function | Solo el dueño. Borra la base y después Auth. `AUTH_DELETE_FAILED`: repetir la llamada termina el trabajo.                                                                                                                                         |
 
+### Cambios del servicio en los turnos y aviso de duplicados (P28.4 — OF-05, OF-02)
+
+Base: migración `0082`. Cliente: `src/api/services.ts` (`previewServiceChanges`, `applyServiceChanges`) y `src/api/overlaps.ts`.
+
+| Función                                                                  | Canal | Notas                                                                                                                                                                                                                                                                             |
+| ------------------------------------------------------------------------ | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `preview_service_changes(p_service_id, p_from_date, p_previous)`         | RPC   | O, A. Vista previa de `apply_service_changes` con los valores ya guardados del servicio; no escribe nada. `FROM_DATE_REQUIRED`, `SERVICE_NOT_FOUND`, `INVALID_PREVIOUS`.                                                                                                          |
+| `apply_service_changes(p_service_id, p_from_date, p_previous)`           | RPC   | O, A. Borra los turnos generados que ya no corresponden, actualiza los que siguen y genera los que faltan. `p_previous` = valores antes de guardar; sin él fuerza los del servicio. Devuelve conteos y listas `deleted`, `updated`, `created`, `skipped`, `unassigned`, `months`. |
+| `service_overlaps(p_site_id, p_weekdays, p_start, p_end, p_except_id)`   | RPC   | O, A. Servicios activos de la sede que coinciden en día y horario. Solo lectura.                                                                                                                                                                                                  |
+| `shift_overlaps_in_site(p_site_id, p_date, p_start, p_end, p_except_id)` | RPC   | O, A. Turnos no cancelados de la sede ese día que se superponen. Solo lectura.                                                                                                                                                                                                    |
+
 ### Turno suelto repetido (P19.7 paquete R — AJ3-08)
 
 Base: migración `0046`. Detalle en `docs/database.md`. Solo dueño y administrador. Los errores llegan como `ApiError` con el `message` del servidor y el `hint` en mayúsculas.
