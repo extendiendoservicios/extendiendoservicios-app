@@ -2882,11 +2882,7 @@ dueño para los bloqueos por horario) no va: espera la respuesta C-04; las marca
 
 ### Cancelar un turno libera a los empleados (OF-04b)
 
-`cancel_shift` quita (`removed_at`, `removed_by`, motivo «Turno cancelado») las asignaciones del turno que no tienen fichajes; las
-que tienen alguno se conservan. La migración corrige de la misma forma las asignaciones vivas de turnos que ya estaban
-cancelados (idempotente). **Efecto lateral**: como `v_my_day`, `v_my_history` y las políticas del empleado solo leen asignaciones
-vigentes, un empleado deja de ver en «Hoy» el turno cancelado en el que no había fichado (DEF-01 solo se mantiene si hubo
-fichaje).
+**Reemplazado por la 0083 (más abajo):** la 0082 quitaba con `removed_at` y el empleado dejaba de ver el turno cancelado; la 0083 libera con `released_at`.
 
 ### Licencias superpuestas (OF-20)
 
@@ -2954,3 +2950,24 @@ la tarea** (misma advertencia que `auto-close-workdays`).
 pgTAP: `0082_p28_1_feriados_cancelacion_licencias`, `0082_p28_1_mensajes_mover_y_avisos`, `0082_p28_1_cambios_del_servicio` y
 `0082_p28_1_cierre_automatico_y_mapa`, más ajustes en `0006`, `0012_rls_policies_employees_writes`, `0015`, `0023_rpc_shifts`,
 `0024`, `0030`, `0033`, `0037`, `0041` y `0059` por las reglas que cambian.
+
+## Migración 0083 (P28.1b): un turno cancelado libera sin quitar (OF-04b, opción b)
+
+Corrige el efecto lateral de la 0082: el empleado tiene que seguir viendo el turno cancelado (DEF-01, P-049).
+
+- `assignments.released_at timestamptz` y `released_by uuid` (check: `released_at` exige `released_by`). «Liberada» = sigue
+  vigente (`removed_at` nulo, así que `v_my_day`, `v_my_history`, `app.my_shift_ids`, `assignments_select_employee`,
+  `app.shares_shift` y `app.clients_basic` la siguen viendo con `shift_status = 'cancelled'`) pero ya no ocupa horario.
+- `assignments_no_overlap` se reconstruye con `where (removed_at is null and released_at is null)` y `app.overlap_conflict`
+  ignora las liberadas; con eso `assign_employee`, `update_shift_time`, `update_assignment_time`, `move_assignment`,
+  `apply_service_changes` y la generación y los fijos en lote (que usan `overlap_conflict` o la restricción) dejan de ver choques
+  con turnos cancelados.
+- `cancel_shift` libera (`released_at`, `released_by`) las asignaciones vigentes sin fichajes; las que tienen fichajes quedan
+  sin liberar (siguen ocupando el horario como historia de asistencia). No existe acción para descancelar un turno.
+- `remove_assignment` y `move_assignment` sobre una liberada responden `SHIFT_CANCELLED` (el turno está cancelado).
+- Corrección de datos idempotente: lo que la 0082 quitó con «Turno cancelado» (sin fichajes, turno cancelado) vuelve a
+  `removed_at = null` con `released_at` = ese momento, y las vivas sin fichajes de turnos cancelados quedan liberadas.
+- Sin cambios en `holiday_shift_conflicts`, `get_leave_conflicts`, `shift_overlaps_in_site`, vistas ni informes: ya excluían los
+  turnos cancelados, y las vistas no exponen `released_at`.
+- Tests: `0083_p28_1b_turno_cancelado_libera` y ajustes en `0007`, `0023`, `0024`, `0030` (DEF-01 vuelve a no necesitar fichaje) y
+  `0082_p28_1_feriados_cancelacion_licencias`.

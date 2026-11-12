@@ -443,9 +443,9 @@ select is(
 );
 
 select is(
-  (select removed_reason from public.assignments where shift_id = 'e2300000-0000-0000-0000-000000000051'),
-  'Turno cancelado',
-  'cancel_shift: desde 0082 (OF-04b) la asignación sin fichajes se quita con el motivo «Turno cancelado» (queda en la tabla, dada de baja)'
+  (select removed_at from public.assignments where shift_id = 'e2300000-0000-0000-0000-000000000051'),
+  null::timestamptz,
+  'cancel_shift: la asignación NO se quita, queda vigente para historia (P-049); desde 0083 (OF-04b) queda liberada (released_at)'
 );
 
 -- Ya cancelado -> SHIFT_CANCELLED.

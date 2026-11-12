@@ -1,7 +1,7 @@
 -- pgTAP de la migración 0082_p28_1_observaciones_11_nov.sql (P28.1), parte 1:
 --   OF-19  feriados: unicidad solo entre los vigentes y upsert_holiday (reactiva una fecha dada de baja).
 --   OF-19b holiday_shift_conflicts y remove_holiday_shifts.
---   OF-04b cancel_shift libera a los empleados sin fichajes (y la corrección de los datos existentes).
+--   OF-04b cancel_shift libera a los empleados sin fichajes (desde 0083 con released_at; la corrección de datos está en 0083_p28_1b_turno_cancelado_libera.test.sql).
 --   OF-20  licencias superpuestas permitidas y app.leave_conflict (motivo y rango).
 --
 -- Convención (ver supabase/tests/README.md): transacción que termina en `rollback`. Prefijo de
@@ -240,16 +240,16 @@ select lives_ok(
 
 set local role postgres;
 select is(
-  (select removed_reason from public.assignments where id = 'f82a0000-0000-0000-0000-000000000111'),
-  'Turno cancelado', 'la asignación sin fichajes se quitó con el motivo «Turno cancelado»'
+  (select released_at is not null and removed_at is null from public.assignments where id = 'f82a0000-0000-0000-0000-000000000111'),
+  true, 'la asignación sin fichajes queda liberada (released_at, 0083) y sigue vigente (removed_at nulo)'
 );
 select is(
-  (select removed_by from public.assignments where id = 'f82a0000-0000-0000-0000-000000000111'),
-  'f82a0000-0000-0000-0000-000000000082'::uuid, 'quedó registrado quién'
+  (select released_by from public.assignments where id = 'f82a0000-0000-0000-0000-000000000111'),
+  'f82a0000-0000-0000-0000-000000000082'::uuid, 'quedó registrado quién la liberó'
 );
 select is(
   (select removed_at is null from public.assignments where id = 'f82a0000-0000-0000-0000-000000000112'),
-  true, 'la asignación con fichaje se conserva como historia'
+  true, 'la asignación con fichaje se conserva como historia (sin liberar)'
 );
 
 select tests_0082a.as_user('test-db0082a-admin@example.com');
@@ -258,7 +258,7 @@ select lives_ok(
   'el empleado liberado se puede asignar a otro turno en el mismo horario'
 );
 
--- La corrección de los datos de la migración es idempotente: se vuelve a correr la misma sentencia.
+-- La corrección de los datos (0083) es idempotente: se vuelve a correr la misma sentencia.
 set local role postgres;
 insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_time, required_staff, status, cancelled_at, cancelled_by, cancel_reason) values
   ('f82a0000-0000-0000-0000-000000000043', 'f82a0000-0000-0000-0000-000000000001', 'f82a0000-0000-0000-0000-000000000011', '2199-07-22', '09:00', '11:00', 1, 'cancelled', now(), 'f82a0000-0000-0000-0000-000000000081', 'Cancelado antes');
@@ -266,17 +266,18 @@ insert into public.assignments (id, shift_id, employee_id) values
   ('f82a0000-0000-0000-0000-000000000113', 'f82a0000-0000-0000-0000-000000000043', 'f82a0000-0000-0000-0000-0000000000a1');
 
 update public.assignments a
-set removed_at = now(), removed_by = sh.cancelled_by, removed_reason = 'Turno cancelado'
+set released_at = now(), released_by = sh.cancelled_by
 from public.shifts sh
 where sh.id = a.shift_id
   and sh.status = 'cancelled'
   and sh.cancelled_by is not null
   and a.removed_at is null
+  and a.released_at is null
   and not exists (select 1 from public.attendance_records ar where ar.assignment_id = a.id);
 
 select is(
-  (select removed_reason from public.assignments where id = 'f82a0000-0000-0000-0000-000000000113'),
-  'Turno cancelado', 'la asignación viva de un turno ya cancelado se quita'
+  (select released_at is not null and removed_at is null from public.assignments where id = 'f82a0000-0000-0000-0000-000000000113'),
+  true, 'la asignación viva de un turno ya cancelado queda liberada'
 );
 
 -- Licencias superpuestas (OF-20) ------------------------------------------------------------------

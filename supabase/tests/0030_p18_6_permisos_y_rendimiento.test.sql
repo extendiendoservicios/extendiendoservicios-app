@@ -177,13 +177,6 @@ select ok(
   'DEF-01: sin cambios ajenos, el indicador de cambios está apagado'
 );
 
--- Desde 0082 (OF-04b) cancel_shift quita las asignaciones sin fichajes (el empleado queda libre en ese
--- horario) y conserva las que tienen algún fichaje. Para que el empleado siga viendo el turno cancelado
--- en Hoy (DEF-01) su asignación tiene un inicio fichado.
-set local role postgres;
-insert into public.attendance_records (assignment_id, kind, recorded_at, source)
-values ('e3000000-0000-0000-0000-000000000303', 'check_in', now(), 'employee_app');
-
 select tests_0030.as_user('test-db030-owner@example.com');
 select lives_ok(
   $$select public.cancel_shift('e3000000-0000-0000-0000-000000000202', 'Cancelado por la prueba de P18.6')$$,

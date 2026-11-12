@@ -433,6 +433,8 @@ export type Database = {
           from_fixed: boolean
           id: string
           notes: string | null
+          released_at: string | null
+          released_by: string | null
           removed_at: string | null
           removed_by: string | null
           removed_reason: string | null
@@ -452,6 +454,8 @@ export type Database = {
           from_fixed?: boolean
           id?: string
           notes?: string | null
+          released_at?: string | null
+          released_by?: string | null
           removed_at?: string | null
           removed_by?: string | null
           removed_reason?: string | null
@@ -471,6 +475,8 @@ export type Database = {
           from_fixed?: boolean
           id?: string
           notes?: string | null
+          released_at?: string | null
+          released_by?: string | null
           removed_at?: string | null
           removed_by?: string | null
           removed_reason?: string | null
@@ -524,6 +530,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_employees"
             referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "assignments_released_by_fkey"
+            columns: ["released_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_released_by_fkey"
+            columns: ["released_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "assignments_released_by_fkey"
+            columns: ["released_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "assignments_removed_by_fkey"
@@ -8668,6 +8695,8 @@ export type Database = {
           from_fixed: boolean
           id: string
           notes: string | null
+          released_at: string | null
+          released_by: string | null
           removed_at: string | null
           removed_by: string | null
           removed_reason: string | null
@@ -8912,6 +8941,8 @@ export type Database = {
           from_fixed: boolean
           id: string
           notes: string | null
+          released_at: string | null
+          released_by: string | null
           removed_at: string | null
           removed_by: string | null
           removed_reason: string | null
@@ -9306,6 +9337,8 @@ export type Database = {
           from_fixed: boolean
           id: string
           notes: string | null
+          released_at: string | null
+          released_by: string | null
           removed_at: string | null
           removed_by: string | null
           removed_reason: string | null

@@ -49,7 +49,7 @@ $$;
 
 grant execute on function tests_0024.as_user(text) to authenticated, anon;
 
-select plan(48);
+select plan(49);
 
 -- Existencia y firma --------------------------------------------------------------------------
 
@@ -376,7 +376,7 @@ select isnt(
 
 set local role postgres;
 
--- Un turno cancelado libera a sus empleados sin fichajes (cancel_shift, 0082, OF-04b): verificado acá
+-- Un turno cancelado conserva sus asignaciones vigentes y las libera (cancel_shift, 0083, OF-04b): verificado acá
 -- en el flujo completo de asignar -> cancelar.
 insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_time, required_staff, status) values
   ('e2400000-0000-0000-0000-000000000053', 'e2400000-0000-0000-0000-000000000001', 'e2400000-0000-0000-0000-000000000011', '2199-04-06', '08:00', '12:00', 1, 'scheduled');
@@ -389,17 +389,16 @@ select public.cancel_shift('e2400000-0000-0000-0000-000000000053', 'Motivo de ca
 set local role postgres;
 
 select is(
-  (select removed_reason from public.assignments where shift_id = 'e2400000-0000-0000-0000-000000000053'),
-  'Turno cancelado',
-  'cancel_shift + assign_employee: la asignación sin fichajes de un turno cancelado se quita con el motivo «Turno cancelado» (0082, OF-04b)'
+  (select removed_at from public.assignments where shift_id = 'e2400000-0000-0000-0000-000000000053'),
+  null::timestamptz,
+  'cancel_shift + assign_employee: la asignación de un turno cancelado sigue vigente (removed_at nulo, P-049; 0083: queda liberada)'
 );
 
--- Las pruebas siguientes de remove_assignment y update_assignment_time sobre un turno cancelado
--- necesitan una asignación viva en un turno cancelado: estado que ya no produce cancel_shift (una
--- asignación con fichajes sí lo conserva), así que se restablece a mano.
-update public.assignments
-set removed_at = null, removed_by = null, removed_reason = null
-where shift_id = 'e2400000-0000-0000-0000-000000000053';
+select isnt(
+  (select released_at from public.assignments where shift_id = 'e2400000-0000-0000-0000-000000000053'),
+  null::timestamptz,
+  'cancel_shift: la asignación sin fichajes queda liberada (released_at, 0083, OF-04b)'
+);
 
 -- ---------------------------------------------------------------------------------------------
 -- update_assignment_time -----------------------------------------------------------------------
