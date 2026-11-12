@@ -90,7 +90,7 @@ test.describe('el dueño o un administrador mira el Resumen', () => {
   test.use({ storageState: storageStatePath('admin') })
 
   test(
-    'ADM-02: puntos verde, rojo y rombo de supervisor, sede con su círculo, «Mostrar finalizados de hoy», «Trabajando sin ubicación» y «Ver turno»',
+    'ADM-02: puntos verde, rojo y rombo de supervisor, sede con su círculo, «Finalizados», «Trabajando sin ubicación» y «Ver turno»',
     cubre(
       'RB-A06',
       'RB-A07',
@@ -160,8 +160,8 @@ test.describe('el dueño o un administrador mira el Resumen', () => {
           ).toHaveCount(0)
         })
 
-        await test.step('la sede con turno hoy, con su radio y sin color de alarma (B-14)', async () => {
-          const sede = punto(page, `Sede ${t.sede.name}`)
+        await test.step('la sede con turno hoy (OF-13: "en curso"), con su radio y sin color de alarma (B-14)', async () => {
+          const sede = punto(page, `Sede ${t.sede.name} (en curso)`)
           await expect(sede).toBeVisible()
           await expect(sede.locator('span.bg-primary')).toHaveCount(1)
           // Solo las sedes llevan círculo: hay tantos trazos como sedes (en `App_dev` hay otras
@@ -227,7 +227,7 @@ test.describe('el dueño o un administrador mira el Resumen', () => {
           await expect(page).toHaveURL(new RegExp(`/admin/turnos/${t.turno}$`))
         })
 
-        await test.step('«Mostrar finalizados de hoy»: suma al que ya ficho el fin; apagado, desaparece (B-12)', async () => {
+        await test.step('«Finalizados»: suma al que ya ficho el fin; apagado, desaparece (B-12)', async () => {
           await page.goto('/admin')
           const etiqueta = `Empleado ${nombre('empleado4')} (finalizó)`
           await expect(
@@ -235,7 +235,7 @@ test.describe('el dueño o un administrador mira el Resumen', () => {
           ).toBeVisible()
           await expect(punto(page, etiqueta)).toHaveCount(0)
           const interruptor = mapa(page).getByRole('switch', {
-            name: 'Mostrar finalizados de hoy',
+            name: 'Finalizados',
           })
           await interruptor.click()
           await expect(punto(page, etiqueta)).toBeVisible()
