@@ -1,7 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router'
+import { MemoryRouter, useLocation } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { EmployeeLeavesTab } from './EmployeeLeavesTab'
+
+function Ruta() {
+  return <p>Ruta: {useLocation().pathname}</p>
+}
 
 const { updateMutateAsync, createMutateAsync, conflictsMutateAsync } =
   vi.hoisted(() => ({
@@ -123,11 +127,15 @@ describe('EmployeeLeavesTab: turnos asignados dentro de la licencia (P19.11d)', 
         clientName: 'Limpia Ya',
         siteName: 'Sede Centro',
         shiftStatus: 'assigned',
+        serviceId: 'sv1',
+        serviceName: 'Limpieza mañana',
+        message: 'Acosta ya está en Sede Centro.',
       },
     ])
     render(
       <MemoryRouter>
         <EmployeeLeavesTab profileId="e1" canEdit />
+        <Ruta />
       </MemoryRouter>,
     )
     fireEvent.change(screen.getByLabelText('Desde'), {
@@ -149,10 +157,12 @@ describe('EmployeeLeavesTab: turnos asignados dentro de la licencia (P19.11d)', 
     ).toBeInTheDocument()
     expect(screen.getByText(/Limpia Ya · Sede Centro/)).toBeInTheDocument()
     expect(screen.getByText('08:00–12:00')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Abrir turno' })).toHaveAttribute(
-      'href',
-      '/admin/turnos/sh1',
-    )
+    // OF-08b: el servicio y «Ver turno» por fila.
+    expect(screen.getByText('Limpieza mañana')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Ver turno' }))
+    expect(
+      await screen.findByText('Ruta: /admin/turnos/sh1'),
+    ).toBeInTheDocument()
   })
 
   it('sin turnos asignados no muestra ningún aviso', async () => {
