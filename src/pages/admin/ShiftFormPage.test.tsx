@@ -13,6 +13,7 @@ const {
   createShiftMock,
   createShiftSeriesMock,
   previewShiftSeriesMock,
+  shiftOverlapsMock,
   toastSuccess,
   toastWarning,
   toastError,
@@ -20,6 +21,7 @@ const {
   createShiftMock: vi.fn(),
   createShiftSeriesMock: vi.fn(),
   previewShiftSeriesMock: vi.fn(),
+  shiftOverlapsMock: vi.fn(),
   toastSuccess: vi.fn(),
   toastWarning: vi.fn(),
   toastError: vi.fn(),
@@ -34,6 +36,11 @@ vi.mock('@/api/shifts', async (importOriginal) => ({
   createShift: createShiftMock,
   createShiftSeries: createShiftSeriesMock,
   previewShiftSeries: previewShiftSeriesMock,
+}))
+
+vi.mock('@/api/overlaps', () => ({
+  fetchShiftOverlapsInSite: shiftOverlapsMock,
+  fetchServiceOverlaps: vi.fn(),
 }))
 
 vi.mock('@/features/auth/AuthProvider', () => ({
@@ -181,6 +188,7 @@ beforeEach(() => {
     holidaysSkipped: [],
     count: 2,
   })
+  shiftOverlapsMock.mockReset().mockResolvedValue([])
   toastSuccess.mockReset()
   toastWarning.mockReset()
   toastError.mockReset()
@@ -405,5 +413,67 @@ describe('ShiftFormPage: casilla «Pide fotos» (módulo H)', () => {
     expect(createShiftSeriesMock.mock.calls[0]?.[0]).toMatchObject({
       requiresPhotos: true,
     })
+  })
+})
+
+describe('ShiftFormPage — aviso de turno superpuesto en la sede (OF-02)', () => {
+  const OVERLAP = {
+    shiftId: 'x1',
+    serviceName: 'Limpieza almuerzo',
+    shiftDate: '2026-10-13',
+    startTime: '12:30:00',
+    endTime: '14:30:00',
+    openEnded: false,
+  }
+
+  it('avisa, no crea hasta que se confirma y entonces crea', async () => {
+    shiftOverlapsMock.mockResolvedValue([OVERLAP])
+    renderPage()
+    fillBasics()
+    fireEvent.click(screen.getByRole('button', { name: 'Crear turno' }))
+
+    expect(
+      await screen.findByText(
+        'Esta sede ya tiene el turno “Limpieza almuerzo” ese día de 12:30 a 14:30. ¿Crear igual?',
+      ),
+    ).toBeInTheDocument()
+    expect(shiftOverlapsMock).toHaveBeenCalledWith({
+      siteId: 's1',
+      date: '2026-10-13',
+      start: '08:00',
+      end: '12:00',
+    })
+    expect(createShiftMock).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Crear igual' }))
+    await waitFor(() => expect(createShiftMock).toHaveBeenCalledTimes(1))
+  })
+
+  it('«Volver» deja el formulario sin crear nada', async () => {
+    shiftOverlapsMock.mockResolvedValue([OVERLAP])
+    renderPage()
+    fillBasics()
+    fireEvent.click(screen.getByRole('button', { name: 'Crear turno' }))
+    await screen.findByText(/¿Crear igual\?/)
+    fireEvent.click(screen.getByRole('button', { name: 'Volver' }))
+    await waitFor(() =>
+      expect(screen.queryByText(/¿Crear igual\?/)).not.toBeInTheDocument(),
+    )
+    expect(createShiftMock).not.toHaveBeenCalled()
+  })
+
+  it('si no hay superposición crea directo', async () => {
+    renderPage()
+    fillBasics()
+    fireEvent.click(screen.getByRole('button', { name: 'Crear turno' }))
+    await waitFor(() => expect(createShiftMock).toHaveBeenCalledTimes(1))
+  })
+
+  it('con la consulta caída igual crea el turno', async () => {
+    shiftOverlapsMock.mockRejectedValue(new Error('sin red'))
+    renderPage()
+    fillBasics()
+    fireEvent.click(screen.getByRole('button', { name: 'Crear turno' }))
+    await waitFor(() => expect(createShiftMock).toHaveBeenCalledTimes(1))
   })
 })

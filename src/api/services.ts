@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import type { Database } from '@/lib/database.types'
+import type { Database, Json } from '@/lib/database.types'
 import { ApiError, fromPostgrestError } from './errors'
 
 /**
@@ -607,4 +607,269 @@ export async function applyServiceFixedEmployees(
     throw fromPostgrestError(error)
   }
   return parseFixedApplyResult(data as unknown as RawFixedApplyResult)
+}
+
+// -------------------------------------------------------------------------
+// 7. Los cambios del servicio llegan a los turnos (OF-05, migración 0082)
+// -------------------------------------------------------------------------
+
+/**
+ * Valores del servicio ANTES de guardarlo (`p_previous` de
+ * `preview_service_changes` y `apply_service_changes`). Por cada campo
+ * presente, el servidor solo actualiza los turnos que todavía tienen ese
+ * valor (los demás se consideran cambiados a mano). Sin `p_previous` fuerza
+ * los valores del servicio en todos los turnos que siguen.
+ */
+export interface ServicePrevious {
+  start_time: string
+  end_time: string
+  open_ended: boolean
+  required_staff: number
+  requires_photos: boolean
+}
+
+export interface ServiceChangesTime {
+  startTime: string
+  endTime: string
+  openEnded: boolean
+}
+
+export interface ServiceChangesDeleted {
+  shiftId: string
+  shiftDate: string
+  /** `WEEKDAY`, `WEEK_OF_MONTH`, `HOLIDAY` u `OUT_OF_VALIDITY`. */
+  reason: string
+  message: string
+  assignments: number
+}
+
+export interface ServiceChangesRemoved {
+  assignmentId: string
+  code: string
+  employeeId: string | null
+  employeeName: string | null
+  message: string
+}
+
+export interface ServiceChangesUpdated {
+  shiftId: string
+  shiftDate: string
+  time: { from: ServiceChangesTime; to: ServiceChangesTime } | null
+  requiredStaff: { from: number; to: number } | null
+  requiresPhotos: { from: boolean; to: boolean } | null
+  removed: ServiceChangesRemoved[]
+  kept: { code: string; message: string }[]
+}
+
+export interface ServiceChangesSkipped {
+  scope: 'shift' | 'field'
+  shiftId: string
+  shiftDate: string
+  code: string
+  message: string
+  wanted: 'delete' | 'update' | null
+}
+
+export interface ServiceChangesUnassigned {
+  shiftId: string
+  shiftDate: string
+  employeeId: string | null
+  employeeName: string | null
+  code: string
+  message: string
+}
+
+export interface ServiceChangesResult {
+  preview: boolean
+  fromDate: string
+  deletedCount: number
+  updatedCount: number
+  createdCount: number
+  unchangedCount: number
+  /** Turnos que no se tocaron (cancelados, a mano, empezados, con historia...). */
+  skippedCount: number
+  assignmentsRemoved: number
+  assignmentsAdded: number
+  deleted: ServiceChangesDeleted[]
+  updated: ServiceChangesUpdated[]
+  created: { shiftId: string; shiftDate: string }[]
+  skipped: ServiceChangesSkipped[]
+  unassigned: ServiceChangesUnassigned[]
+  months: { year: number; month: number; created: number }[]
+}
+
+interface RawTime {
+  start_time: string
+  end_time: string
+  open_ended: boolean
+}
+
+interface RawServiceChangesResult {
+  preview?: boolean
+  from_date: string
+  deleted_count: number
+  updated_count: number
+  created_count: number
+  unchanged_count: number
+  skipped_count: number
+  assignments_removed: number
+  assignments_added: number
+  deleted?: {
+    shift_id: string
+    shift_date: string
+    reason: string
+    message: string
+    assignments?: number
+  }[]
+  updated?: {
+    shift_id: string
+    shift_date: string
+    changes?: {
+      time?: { from: RawTime; to: RawTime }
+      required_staff?: { from: number; to: number }
+      requires_photos?: { from: boolean; to: boolean }
+    }
+    removed?: {
+      assignment_id: string
+      code: string
+      employee_id?: string | null
+      employee_name?: string | null
+      message: string
+    }[]
+    kept?: { code: string; message: string }[]
+  }[]
+  created?: { shift_id: string; shift_date: string }[]
+  skipped?: {
+    scope: 'shift' | 'field'
+    shift_id: string
+    shift_date: string
+    code: string
+    message: string
+    wanted?: 'delete' | 'update' | null
+  }[]
+  unassigned?: {
+    shift_id: string
+    shift_date: string
+    employee_id?: string | null
+    employee_name?: string | null
+    code: string
+    message: string
+  }[]
+  months?: { year: number; month: number; created: number }[]
+}
+
+function mapRawTime(raw: RawTime): ServiceChangesTime {
+  return {
+    startTime: raw.start_time,
+    endTime: raw.end_time,
+    openEnded: raw.open_ended,
+  }
+}
+
+/** Pasa la respuesta de `preview_service_changes` / `apply_service_changes` a la forma de la pantalla. */
+export function parseServiceChangesResult(
+  raw: RawServiceChangesResult,
+): ServiceChangesResult {
+  return {
+    preview: raw.preview ?? false,
+    fromDate: raw.from_date,
+    deletedCount: raw.deleted_count,
+    updatedCount: raw.updated_count,
+    createdCount: raw.created_count,
+    unchangedCount: raw.unchanged_count,
+    skippedCount: raw.skipped_count,
+    assignmentsRemoved: raw.assignments_removed,
+    assignmentsAdded: raw.assignments_added,
+    deleted: (raw.deleted ?? []).map((item) => ({
+      shiftId: item.shift_id,
+      shiftDate: item.shift_date,
+      reason: item.reason,
+      message: item.message,
+      assignments: item.assignments ?? 0,
+    })),
+    updated: (raw.updated ?? []).map((item) => ({
+      shiftId: item.shift_id,
+      shiftDate: item.shift_date,
+      time: item.changes?.time
+        ? {
+            from: mapRawTime(item.changes.time.from),
+            to: mapRawTime(item.changes.time.to),
+          }
+        : null,
+      requiredStaff: item.changes?.required_staff ?? null,
+      requiresPhotos: item.changes?.requires_photos ?? null,
+      removed: (item.removed ?? []).map((removed) => ({
+        assignmentId: removed.assignment_id,
+        code: removed.code,
+        employeeId: removed.employee_id ?? null,
+        employeeName: removed.employee_name ?? null,
+        message: removed.message,
+      })),
+      kept: item.kept ?? [],
+    })),
+    created: (raw.created ?? []).map((item) => ({
+      shiftId: item.shift_id,
+      shiftDate: item.shift_date,
+    })),
+    skipped: (raw.skipped ?? []).map((item) => ({
+      scope: item.scope,
+      shiftId: item.shift_id,
+      shiftDate: item.shift_date,
+      code: item.code,
+      message: item.message,
+      wanted: item.wanted ?? null,
+    })),
+    unassigned: (raw.unassigned ?? []).map((item) => ({
+      shiftId: item.shift_id,
+      shiftDate: item.shift_date,
+      employeeId: item.employee_id ?? null,
+      employeeName: item.employee_name ?? null,
+      code: item.code,
+      message: item.message,
+    })),
+    months: raw.months ?? [],
+  }
+}
+
+/**
+ * OF-05: vista previa de lo que haría `applyServiceChanges` con los valores que
+ * el servicio YA tiene guardados (no escribe nada). Solo dueño y administrador.
+ * Errores: `FROM_DATE_REQUIRED`, `SERVICE_NOT_FOUND`, `INVALID_PREVIOUS`.
+ */
+export async function previewServiceChanges(
+  serviceId: string,
+  fromDate: string,
+  previous: ServicePrevious | null,
+): Promise<ServiceChangesResult> {
+  const { data, error } = await supabase.rpc('preview_service_changes', {
+    p_service_id: serviceId,
+    p_from_date: fromDate,
+    p_previous: (previous ?? undefined) as Json | undefined,
+  })
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return parseServiceChangesResult(data as unknown as RawServiceChangesResult)
+}
+
+/**
+ * OF-05: aplica a los turnos desde `fromDate` los cambios del servicio: borra los
+ * que ya no corresponden, actualiza los que siguen y genera los que faltan.
+ * `previous` = valores del servicio antes de guardarlo; `null` fuerza los
+ * valores del servicio (acción «Actualizar turnos desde…»).
+ */
+export async function applyServiceChanges(
+  serviceId: string,
+  fromDate: string,
+  previous: ServicePrevious | null,
+): Promise<ServiceChangesResult> {
+  const { data, error } = await supabase.rpc('apply_service_changes', {
+    p_service_id: serviceId,
+    p_from_date: fromDate,
+    p_previous: (previous ?? undefined) as Json | undefined,
+  })
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return parseServiceChangesResult(data as unknown as RawServiceChangesResult)
 }
