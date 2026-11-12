@@ -106,7 +106,7 @@ export function leaveLabel(leave: Pick<EmployeeLeave, 'reason'>): string {
  * Arma el mes. Los turnos son los del empleado cargados en el calendario,
  * futuros incluidos; se descartan los de turnos cancelados. Las asignaciones
  * quitadas ya vienen filtradas de la consulta. Una licencia abierta (sin fin)
- * llega hasta el final del mes. Si un día tiene licencia, manda la licencia.
+ * llega hasta el final del mes. Si un día tiene licencia, manda la licencia; con más de una el mismo día se muestran todas (`VACACIONES / ENFERMEDAD`, OF-20).
  */
 export function buildCronogramaMonth(input: {
   year: number
@@ -145,8 +145,9 @@ export function buildCronogramaMonth(input: {
       .map((holiday) => holiday.holidayDate),
   )
   const activeLeaves = input.leaves.filter((leave) => leave.deletedAt == null)
-  function leaveOn(date: string): EmployeeLeave | undefined {
-    return activeLeaves.find(
+  // OF-20: pueden superponerse varias licencias; se listan todas las del día.
+  function leavesOn(date: string): EmployeeLeave[] {
+    return activeLeaves.filter(
       (leave) =>
         leave.startsOn <= date &&
         (leave.endsOn == null || leave.endsOn >= date),
@@ -167,11 +168,11 @@ export function buildCronogramaMonth(input: {
         shifts: [],
       }
       if (inMonth) {
-        const leave = leaveOn(date)
+        const dayLeaves = leavesOn(date)
         const shifts = shiftsByDate.get(date) ?? []
-        if (leave) {
+        if (dayLeaves.length > 0) {
           day.kind = 'leave'
-          day.label = leaveLabel(leave)
+          day.label = Array.from(new Set(dayLeaves.map(leaveLabel))).join(' / ')
         } else if (shifts.length > 0) {
           day.kind = 'shifts'
           day.shifts = shifts

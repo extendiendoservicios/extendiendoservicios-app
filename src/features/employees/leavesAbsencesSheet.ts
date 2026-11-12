@@ -94,6 +94,39 @@ export function leaveDaysInPeriod(
   return dayNumber(clippedEnd) - dayNumber(clippedStart) + 1
 }
 
+/**
+ * Días distintos cubiertos por un conjunto de licencias dentro del período
+ * (OF-20): si dos licencias se superponen, el día común se cuenta una sola vez.
+ * Mismas reglas que `leaveDaysInPeriod` para las abiertas.
+ */
+export function totalLeaveDaysInPeriod(
+  leaves: Pick<EmployeeLeave, 'startsOn' | 'endsOn'>[],
+  from: string,
+  to: string,
+  today: string,
+): number {
+  const ranges: [number, number][] = []
+  for (const leave of leaves) {
+    if (leaveDaysInPeriod(leave, from, to, today) == null) continue
+    if (!leaveOverlapsPeriod(leave, from, to)) continue
+    const open = leave.endsOn ?? (today < to ? today : to)
+    const start = leave.startsOn > from ? leave.startsOn : from
+    const end = open < to ? open : to
+    if (end >= start) ranges.push([dayNumber(start), dayNumber(end)])
+  }
+  ranges.sort((a, b) => a[0] - b[0])
+  let total = 0
+  let currentEnd = -Infinity
+  for (const [start, end] of ranges) {
+    const from0 = Math.max(start, currentEnd + 1)
+    if (end >= from0) {
+      total += end - from0 + 1
+      currentEnd = end
+    }
+  }
+  return total
+}
+
 /** Texto de días: «5 días», «1 día». */
 export function daysText(days: number): string {
   return days === 1 ? '1 día' : `${days} días`
@@ -191,10 +224,7 @@ export function buildLeavesAbsencesSheet(input: {
       days: days == null ? '—' : daysText(days),
     }
   })
-  const totalLeaveDays = leaves.reduce(
-    (total, leave) => total + (leaveDaysInPeriod(leave, from, to, today) ?? 0),
-    0,
-  )
+  const totalLeaveDays = totalLeaveDaysInPeriod(leaves, from, to, today)
 
   const absences = absenceRowsOf(input.attendance)
   const absenceRows: PrintRowData[] = absences.map((row) => ({

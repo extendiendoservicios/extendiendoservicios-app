@@ -8,7 +8,9 @@ import { Field, FieldLabel } from '@/components/ui/field'
 import { MonthPicker } from '@/components/MonthPicker'
 import { isApiError } from '@/api/errors'
 import type { GenerateShiftsResult } from '@/api/shifts'
+import { useNavigate } from 'react-router'
 import { useAuth } from '@/features/auth/AuthProvider'
+import { ConflictShiftLink } from '@/features/shifts/conflictLink'
 import { useHolidaysQuery } from '@/features/settings/queries'
 import { useServiceLabelsQuery } from '@/features/services/queries'
 import {
@@ -57,6 +59,7 @@ export default function ShiftsGeneratePage() {
   ).length
 
   const generateShifts = useGenerateShiftsMutation()
+  const navigate = useNavigate()
 
   // AJ2-17: para rotular «sin asignar» con cliente, sede y servicio.
   const unassignedServiceIds = useMemo(
@@ -197,6 +200,10 @@ export default function ShiftsGeneratePage() {
                   <li key={row.key}>
                     <span className="font-semibold">{row.date}</span> ·{' '}
                     {row.serviceLabel} · {row.employeeName}: {row.reason}
+                    <ConflictShiftLink
+                      detail={row.detail}
+                      onOpen={(path) => void navigate(path)}
+                    />
                   </li>
                 ))}
               </ul>

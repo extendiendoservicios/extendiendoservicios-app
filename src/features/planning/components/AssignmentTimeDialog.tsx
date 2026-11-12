@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
@@ -14,6 +15,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { isApiError } from '@/api/errors'
+import { conflictToastOptions } from '@/features/shifts/conflictLink'
 import { useUpdateAssignmentTimeMutation } from '@/features/planning/queries'
 import {
   buildAssignmentTimeSchema,
@@ -46,6 +48,7 @@ function AssignmentTimeDialog({
   onOpenChange,
 }: AssignmentTimeDialogProps) {
   const updateAssignmentTime = useUpdateAssignmentTimeMutation()
+  const navigate = useNavigate()
 
   const {
     register,
@@ -83,6 +86,7 @@ function AssignmentTimeDialog({
     } catch (error) {
       toast.error(
         isApiError(error) ? error.message : 'No pudimos actualizar la franja.',
+        conflictToastOptions(error, (path) => void navigate(path)),
       )
     }
   }

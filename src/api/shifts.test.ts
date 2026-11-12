@@ -314,6 +314,7 @@ describe('createShift', () => {
             employee_name: 'Beto Gómez',
             code: 'ASSIGNMENT_OVERLAP',
             message: 'Ya tiene otro turno en ese horario.',
+            detail: { conflict_shift_id: 'sh-7', site_name: 'YPF RUTA' },
           },
         ],
       },
@@ -341,12 +342,13 @@ describe('createShift', () => {
         warnings: ['OUTSIDE_AVAILABILITY'],
       },
     ])
-    expect(result.rejected).toEqual([
+    expect(result.rejected).toMatchObject([
       {
         employeeId: 'e2',
         employeeName: 'Beto Gómez',
         code: 'ASSIGNMENT_OVERLAP',
         message: 'Ya tiene otro turno en ese horario.',
+        detail: { conflictShiftId: 'sh-7', siteName: 'YPF RUTA' },
       },
     ])
   })
@@ -485,6 +487,7 @@ describe('generateShifts', () => {
         employeeName: 'Ana Pérez',
         code: 'ON_LEAVE',
         message: 'Tiene licencia.',
+        detail: null,
       },
     ])
   })
@@ -725,6 +728,7 @@ describe('previewShiftSeries y createShiftSeries (AJ3-08)', () => {
       employeeName: 'Ana Gómez',
       code: 'SHIFT_FULL',
       message: 'El turno ya está completo.',
+      detail: null,
     })
   })
 

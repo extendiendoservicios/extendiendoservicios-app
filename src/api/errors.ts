@@ -16,11 +16,96 @@
  */
 export class ApiError extends Error {
   readonly hint: string | null
+  /**
+   * OF-08: con `ASSIGNMENT_OVERLAP` y `ON_LEAVE` el servidor manda en el campo
+   * `detail` con qué choca (turno, sede, servicio, fecha y horario) o qué
+   * licencias tiene. `null` si no vino.
+   */
+  readonly detail: ConflictDetail | null
 
-  constructor(message: string, hint: string | null = null) {
+  constructor(
+    message: string,
+    hint: string | null = null,
+    detail: ConflictDetail | null = null,
+  ) {
     super(message)
     this.name = 'ApiError'
     this.hint = hint
+    this.detail = detail
+  }
+}
+
+/** Una licencia que impide asignar (`ON_LEAVE`). */
+export interface ConflictLeave {
+  leaveId: string | null
+  reason: string | null
+  startsOn: string | null
+  endsOn: string | null
+}
+
+/**
+ * Detalle de un choque de asignación (OF-08, `0082`). Con `ASSIGNMENT_OVERLAP`
+ * trae el turno con el que se pisa; con `ON_LEAVE`, las licencias.
+ */
+export interface ConflictDetail {
+  /** Turno con el que choca; sirve para el enlace «Ver turno». */
+  conflictShiftId: string | null
+  conflictAssignmentId: string | null
+  clientName: string | null
+  siteId: string | null
+  siteName: string | null
+  serviceId: string | null
+  serviceName: string | null
+  shiftDate: string | null
+  startTime: string | null
+  endTime: string | null
+  openEnded: boolean
+  leaves: ConflictLeave[]
+}
+
+function textOrNull(value: unknown): string | null {
+  return typeof value === 'string' && value !== '' ? value : null
+}
+
+/**
+ * Pasa el `detail` del servidor (objeto, o texto JSON cuando viene en
+ * `error.details`) a `ConflictDetail`. Devuelve `null` si no es un objeto.
+ */
+export function parseConflictDetail(raw: unknown): ConflictDetail | null {
+  let value: unknown = raw
+  if (typeof raw === 'string') {
+    try {
+      value = JSON.parse(raw)
+    } catch {
+      return null
+    }
+  }
+  if (value == null || typeof value !== 'object' || Array.isArray(value)) {
+    return null
+  }
+  const source = value as Record<string, unknown>
+  const leaves = Array.isArray(source.leaves) ? source.leaves : []
+  return {
+    conflictShiftId: textOrNull(source.conflict_shift_id),
+    conflictAssignmentId: textOrNull(source.conflict_assignment_id),
+    clientName: textOrNull(source.client_name),
+    siteId: textOrNull(source.site_id),
+    siteName: textOrNull(source.site_name),
+    serviceId: textOrNull(source.service_id),
+    serviceName: textOrNull(source.service_name),
+    shiftDate: textOrNull(source.shift_date),
+    startTime: textOrNull(source.start_time),
+    endTime: textOrNull(source.end_time),
+    openEnded: source.open_ended === true,
+    leaves: leaves.map((leave) => {
+      const item = (leave ?? {}) as Record<string, unknown>
+      return {
+        leaveId: textOrNull(item.leave_id),
+        reason: textOrNull(item.reason),
+        startsOn: textOrNull(item.starts_on),
+        endsOn: textOrNull(item.ends_on),
+      }
+    }),
   }
 }
 
@@ -47,9 +132,14 @@ export function fromPostgrestError(error: {
   code?: string | null
   message: string
   hint?: string | null
+  details?: string | null
 }): ApiError {
   if (error.hint && DOMAIN_HINT.test(error.hint)) {
-    return new ApiError(error.message, error.hint)
+    return new ApiError(
+      error.message,
+      error.hint,
+      parseConflictDetail(error.details),
+    )
   }
   const known = error.code ? POSTGRES_CODES[error.code] : undefined
   if (known) {

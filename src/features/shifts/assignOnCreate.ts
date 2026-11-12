@@ -4,6 +4,7 @@ import type {
   GenerateShiftsResult,
   GenerateUnassigned,
 } from '@/api/shifts'
+import type { ConflictDetail } from '@/api/errors'
 
 /**
  * AJ2-17: lógica pura de asignar empleados al crear un turno suelto y de los
@@ -122,6 +123,8 @@ export interface UnassignedRow {
   serviceLabel: string
   employeeName: string
   reason: string
+  /** OF-08: con qué choca (`conflictShiftId` para «Ver turno»), o `null`. */
+  detail: ConflictDetail | null
 }
 
 /** Filas de «no se pudieron asignar», ordenadas por fecha y nombre. `labels`: id de servicio → «Cliente · Sede · Servicio». */
@@ -141,6 +144,7 @@ export function unassignedRows(
       serviceLabel: labels[item.serviceId] ?? 'Servicio',
       employeeName: item.employeeName,
       reason: item.message,
+      detail: item.detail,
     }))
 }
 

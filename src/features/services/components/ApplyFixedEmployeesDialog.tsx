@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -19,6 +20,7 @@ import {
   summarizeFixedApply,
 } from '@/features/services/fixedApply'
 import { localDateToIsoDate } from '@/features/settings/dateOnly'
+import { ConflictShiftLink } from '@/features/shifts/conflictLink'
 
 /** Cuántas líneas de «salteados» se muestran como máximo. */
 const MAX_SKIPPED_SHOWN = 12
@@ -42,6 +44,7 @@ function ApplyFixedEmployeesDialog({
   )
   const [result, setResult] = useState<FixedApplyResult | null>(null)
   const apply = useApplyServiceFixedEmployeesMutation()
+  const navigate = useNavigate()
 
   async function handleApply() {
     try {
@@ -105,6 +108,10 @@ function ApplyFixedEmployeesDialog({
                   {skipped.map((item) => (
                     <li key={`${item.shiftId}-${item.employeeId ?? 'turno'}`}>
                       {describeSkipped(item)}
+                      <ConflictShiftLink
+                        detail={item.detail}
+                        onOpen={(path) => void navigate(path)}
+                      />
                     </li>
                   ))}
                 </ul>

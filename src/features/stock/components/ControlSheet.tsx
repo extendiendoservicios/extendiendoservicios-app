@@ -124,7 +124,13 @@ function ControlSheet({
   ]
 
   return (
-    <div data-testid="control-sheet">
+    // OF-17: en pantalla, con el navegador angosto o ampliado, la planilla
+    // (columnas en mm) se desplaza en horizontal en vez de salirse de la
+    // ventana. En papel no cambia nada (`print:overflow-visible`).
+    <div
+      data-testid="control-sheet"
+      className="overflow-x-auto print:overflow-visible"
+    >
       <PrintableLetterhead
         title="Planilla de control de stock"
         issuedAt={issuedAt}

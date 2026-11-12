@@ -43,8 +43,8 @@ const EMPTY_CREATE_VALUES: SupplyCreateFormValues = {
   presentation: '',
   categoryId: '',
   minQty: '',
-  costPrice: '',
-  salePrice: '',
+  costPrice: '0',
+  salePrice: '0',
   notes: '',
 }
 

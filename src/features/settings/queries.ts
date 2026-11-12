@@ -95,6 +95,24 @@ export function useCreateHolidayMutation(year: number) {
   })
 }
 
+/** Turnos de un feriado recién creado que habría que sacar (OF-19b); solo lectura, se consulta a pedido. */
+export function useHolidayShiftConflictsMutation() {
+  return useMutation({
+    mutationFn: (date: string) => settingsApi.fetchHolidayShiftConflicts(date),
+  })
+}
+
+/** `remove_holiday_shifts`: borra los turnos sin historia del feriado y refresca todo lo que los muestra. */
+export function useRemoveHolidayShiftsMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (date: string) => settingsApi.removeHolidayShifts(date),
+    onSuccess: () => {
+      void queryClient.invalidateQueries()
+    },
+  })
+}
+
 export function useDeactivateHolidayMutation(year: number) {
   const invalidate = useInvalidateHolidays(year)
   return useMutation({
@@ -107,8 +125,9 @@ export function useDeactivateHolidayMutation(year: number) {
 export function useLoadNationalHolidaysMutation(year: number) {
   const invalidate = useInvalidateHolidays(year)
   return useMutation({
-    mutationFn: ({ createdBy }: { createdBy: string }) =>
-      settingsApi.loadNationalHolidays(year, createdBy),
+    // `createdBy` ya no viaja: `upsert_holiday` lo completa con `auth.uid()`.
+    mutationFn: (_variables: { createdBy: string }) =>
+      settingsApi.loadNationalHolidays(year),
     onSuccess: invalidate,
   })
 }
