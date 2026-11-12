@@ -30,8 +30,8 @@ select has_table('public', 'attendance_notices', 'existe public.attendance_notic
 select columns_are(
   'public', 'attendance_records',
   array['id', 'assignment_id', 'kind', 'recorded_at', 'latitude', 'longitude', 'accuracy_m', 'source', 'recorded_by', 'reason', 'created_at',
-    'geo_status', 'geo_unvalidated_reason', 'site_distance_m', 'geofence_radius_m', 'outside_reason', 'geo_override_by', 'geo_override_at', 'geo_override_reason', 'time_corrected_at'],
-  'attendance_records tiene exactamente las columnas de 04 sección 2.3 (más la validación por ubicación y las correcciones, 0052)'
+    'geo_status', 'geo_unvalidated_reason', 'site_distance_m', 'geofence_radius_m', 'outside_reason', 'geo_override_by', 'geo_override_at', 'geo_override_reason', 'time_corrected_at', 'auto_closed'],
+  'attendance_records tiene exactamente las columnas de 04 sección 2.3 (más la validación por ubicación y las correcciones, 0052, y el cierre automático, 0082)'
 );
 
 select columns_are(
