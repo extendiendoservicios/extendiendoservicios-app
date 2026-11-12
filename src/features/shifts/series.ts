@@ -1,5 +1,6 @@
 import type { CreateShiftSeriesCreated, ShiftSeriesPreview } from '@/api/shifts'
 import { formatDateOnly } from '@/features/settings/dateOnly'
+import { conflictShiftIdOf } from '@/features/shifts/conflictLink'
 import {
   assignedWarningLines,
   rejectedLines,
@@ -84,6 +85,8 @@ export interface SeriesDateIssue {
   /** Fecha del turno (`AAAA-MM-DD`). */
   date: string
   lines: string[]
+  /** OF-08: turnos con los que chocó alguna persona rechazada («Ver turno»). */
+  conflictShiftIds: string[]
 }
 
 /**
@@ -105,6 +108,10 @@ export function seriesIssuesByDate(
           (line) => `${line.employeeName}: ${line.messages.join(' ')}`,
         ),
       ],
+      conflictShiftIds: item.rejected.flatMap((rejected) => {
+        const shiftId = conflictShiftIdOf(rejected.detail)
+        return shiftId ? [shiftId] : []
+      }),
     }))
     .filter((issue) => issue.lines.length > 0)
 }

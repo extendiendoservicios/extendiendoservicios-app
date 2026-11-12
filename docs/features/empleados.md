@@ -144,15 +144,15 @@ vez de borrar la fila, aunque la política de la base permitiría el borrado
 físico (ver "Pendiente" del reporte del encargo P09.4 — se prefirió no
 ofrecerlo desde la pantalla). Las licencias dadas de baja se siguen
 mostrando en la lista, atenuadas, para conservar el historial; dejan de
-contar para "de licencia" y liberan el rango de fechas que ocupaban (la
-exclusión de solapamiento filtra `where deleted_at is null`,
-`employee_leaves_no_overlap`).
+contar para "de licencia".
 
-**`LEAVE_OVERLAP`**: la exclusión de solapamiento vive en una tabla que se
-escribe directo por PostgREST (sin RPC), así que llega como un `23P01` crudo
-de Postgres, no como un `raise exception` con `hint` propio — `mapWriteError`
-(`src/api/employees.ts`) lo traduce a un mensaje en español con ese `hint`
-(`06` sección 3: "Solapamiento bloqueado por exclusión → LEAVE_OVERLAP").
+**Licencias superpuestas (OF-20, desde `0082`):** ya no existe
+`employee_leaves_no_overlap`: una persona puede tener dos licencias que se
+pisan (vacaciones y enfermedad, por ejemplo). `LEAVE_OVERLAP` dejó de
+mapearse en `src/api/employees.ts`. Si hay más de una el mismo día, el
+cronograma muestra todas en la celda (`VACACIONES / ENFERMEDAD`), el
+calendario junta los motivos de la persona y la hoja de licencias y ausencias
+cuenta una sola vez los días comunes.
 
 ### Próximos turnos (EMP-009) y Calificaciones (EMP-010)
 

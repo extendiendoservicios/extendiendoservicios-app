@@ -136,8 +136,11 @@ lo que evita una pantalla rota si no lo vio.
 Reglas:
 
 - **Dos variantes.** Si el navegador ofreció la instalación (Chrome en Android), el banner tiene un
-  botón **Instalar**, que abre el diálogo nativo, y **Ahora no**. En Safari de iPhone y iPad muestra un
-  texto con los pasos manuales y una "X" para cerrarlo.
+  botón **Instalar**, que abre el diálogo nativo, y **Ahora no**. En Safari de iPhone y iPad muestra los
+  pasos numerados con el ícono de Compartir dibujado (SVG propio) y una "X" para cerrarlo. En iPhone con
+  otro navegador (Chrome `CriOS`, Firefox `FxiOS`, Edge `EdgiOS`) o con el navegador embebido de
+  WhatsApp, Instagram o Facebook muestra «Para instalar la app, abrí este enlace en Safari» y un
+  botón **Copiar enlace** (OF-09, P28.2). La detección está en `src/lib/iosInstall.ts`.
 - **No aparece** si la app ya corre instalada (`display-mode: standalone`, o `navigator.standalone` en
   iOS), ni en un navegador de escritorio que no ofrezca la instalación.
 - **Si se cierra**, no vuelve a aparecer durante 7 días (`src/lib/installBannerDismiss.ts`, en
@@ -159,6 +162,11 @@ Reglas:
    barra del navegador.
 
 ### Safari en iPhone y iPad (iOS 16.4 o superior)
+
+`index.html` trae las metas `apple-mobile-web-app-capable`, `apple-mobile-web-app-title`
+(«Extendiendo Servicios») y `apple-mobile-web-app-status-bar-style` (`default`), para que la app
+agregada a la pantalla de inicio se abra a pantalla completa y con su nombre. Hoja para los
+empleados: `docs/instalar-en-iphone.md`.
 
 Safari **no dispara `beforeinstallprompt`**, así que no hay botón "Instalar": el banner solo explica
 los pasos y hay que hacerlos a mano. Solo funciona desde Safari (no desde Chrome ni otros navegadores

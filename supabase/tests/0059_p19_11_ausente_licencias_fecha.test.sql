@@ -340,8 +340,8 @@ select is(
 );
 select is(
   tests_0059.err_message($$select public.assign_employee('f5900000-0000-0000-0000-000000000042', 'f5900000-0000-0000-0000-000000000093')$$),
-  'El empleado está de licencia ese día.',
-  'assign_employee: mensaje en español con voseo'
+  'Licencia tiene licencia (Licencia de prueba 0059) del 10 al 20/7.',
+  'assign_employee: mensaje en español con el motivo y el rango de la licencia (0082, OF-08)'
 );
 select is(
   (select count(*)::int from public.assignments where shift_id = 'f5900000-0000-0000-0000-000000000042'),
@@ -496,8 +496,8 @@ select is(
   'update_shift_time: un asignado de licencia en la fecha nueva -> ON_LEAVE'
 );
 select ok(
-  tests_0059.err_message($$select public.update_shift_time('f5900000-0000-0000-0000-000000000064', time '08:00', time '12:00', false, date '2199-09-11')$$) like '%Carla Licencia%',
-  'update_shift_time: ON_LEAVE nombra a quien está de licencia'
+  tests_0059.err_message($$select public.update_shift_time('f5900000-0000-0000-0000-000000000064', time '08:00', time '12:00', false, date '2199-09-11')$$) like 'Licencia tiene licencia (%',
+  'update_shift_time: ON_LEAVE nombra a quien está de licencia y dice el motivo y el rango (0082, OF-08)'
 );
 
 -- Turno que ya empezó: hay un fichaje.

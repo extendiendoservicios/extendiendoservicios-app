@@ -282,15 +282,10 @@ select lives_ok(
   'employee_leaves: el admin puede editar una licencia'
 );
 
-prepare employee_leave_overlap as
-  insert into public.employee_leaves (employee_id, starts_on, ends_on)
-  values ('c2302000-0000-0000-0000-000000000084', current_date + 2, current_date + 8);
-
-select throws_ok(
-  'employee_leave_overlap',
-  '23P01',
-  null,
-  'employee_leaves: no se puede registrar, ni siquiera como admin, una licencia que se superpone con otra vigente del mismo empleado (exclusión de 0006, ahora probada también con RLS activa)'
+select lives_ok(
+  $$insert into public.employee_leaves (employee_id, starts_on, ends_on)
+    values ('c2302000-0000-0000-0000-000000000084', current_date + 2, current_date + 8)$$,
+  'employee_leaves: el admin puede registrar una licencia que se superpone con otra vigente del mismo empleado (0082, OF-20: se quitó la exclusión de 0006)'
 );
 
 select lives_ok(

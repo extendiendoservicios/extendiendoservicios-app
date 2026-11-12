@@ -77,7 +77,7 @@ beforeEach(() => {
 })
 
 describe('SupplyFormScreen: nuevo artículo', () => {
-  it('pide código, nombre, categoría y los dos precios', async () => {
+  it('pide código, nombre y categoría; los precios son opcionales (OF-01)', async () => {
     renderForm('/admin/insumos/nuevo')
     fireEvent.click(screen.getByRole('button', { name: 'Cargar artículo' }))
     expect(
@@ -87,8 +87,7 @@ describe('SupplyFormScreen: nuevo artículo', () => {
       screen.getByText('Indicá el nombre del artículo.'),
     ).toBeInTheDocument()
     expect(screen.getByText('Elegí una categoría.')).toBeInTheDocument()
-    expect(screen.getByText('Indicá el precio de costo.')).toBeInTheDocument()
-    expect(screen.getByText('Indicá el precio de venta.')).toBeInTheDocument()
+    expect(screen.queryByText(/Indicá el precio/)).not.toBeInTheDocument()
     expect(saveMock).not.toHaveBeenCalled()
   })
 

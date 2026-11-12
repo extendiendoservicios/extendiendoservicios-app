@@ -1,4 +1,6 @@
 import { useSearchParams } from 'react-router'
+import { useAuth } from '@/features/auth/AuthProvider'
+import { canManageStock } from '@/features/stock/permissions'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   resolveStockTab,
@@ -12,6 +14,10 @@ import {
  */
 function StockScreen() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const auth = useAuth()
+  // OF-14: un administrador sin `manage_stock` ve todo pero no puede cargar.
+  const showCapabilityNotice =
+    auth.roles.includes('admin') && !canManageStock(auth)
   const tabs = visibleStockTabs(STOCK_TABS)
   const activeTab = resolveStockTab(searchParams.get('pestana'))
 
@@ -29,6 +35,15 @@ function StockScreen() {
 
   return (
     <Tabs value={activeTab} onValueChange={handleTabChange}>
+      {showCapabilityNotice && (
+        <p
+          role="note"
+          className="mb-3 rounded-md border bg-muted px-3 py-2 text-sm text-muted-foreground"
+        >
+          Para cargar o modificar insumos, pedile a la dirección la capacidad
+          Gestionar stock.
+        </p>
+      )}
       <TabsList>
         {tabs.map((tab) => (
           <TabsTrigger key={tab.value} value={tab.value}>

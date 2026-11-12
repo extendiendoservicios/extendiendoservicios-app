@@ -855,6 +855,67 @@ export const CASOS_RPC: CasoRpc[] = [
     conCapacidad('SUPERVISION_NOT_FOUND'),
     { cubre: ['RB-A07', 'RB-X02', 'CB-17', 'OD-07'] },
   ),
+  // --- P28 (0082, 0083): feriados, cambios del servicio en los turnos, duplicados, cronograma.
+  // `upsert_holiday` es solo del dueño (igual que la política de escritura de `holidays`); con la
+  // fecha vacía el dueño pasa la puerta y recibe HOLIDAY_DATE_REQUIRED sin escribir nada.
+  caso(
+    'upsert_holiday',
+    () => ({ p_date: null, p_name: 'e2e-perm' }),
+    { owner: 'HOLIDAY_DATE_REQUIRED' },
+    { cubre: ['RB-A04', 'P-050', 'RB-X02', 'CB-17', 'OF-19'] },
+  ),
+  caso(
+    'holiday_shift_conflicts',
+    () => ({ p_date: null }),
+    admins('HOLIDAY_DATE_REQUIRED'),
+    { cubre: ['RB-A04', 'P-050', 'RB-X02', 'OF-19b'] },
+  ),
+  caso(
+    'remove_holiday_shifts',
+    () => ({ p_date: '2099-01-01' }),
+    conCapacidad('NOT_A_HOLIDAY'),
+    { cubre: ['RB-A04', 'RB-X02', 'CB-17', 'OF-19b'] },
+  ),
+  caso(
+    'preview_service_changes',
+    () => ({ p_service_id: U, p_from_date: '2099-01-01' }),
+    admins('SERVICE_NOT_FOUND'),
+    { cubre: ['RB-A04', 'RB-X02', 'OF-05'] },
+  ),
+  caso(
+    'apply_service_changes',
+    () => ({ p_service_id: U, p_from_date: '2099-01-01' }),
+    admins('SERVICE_NOT_FOUND'),
+    { cubre: ['RB-A04', 'RB-X02', 'OF-05'] },
+  ),
+  caso(
+    'service_overlaps',
+    () => ({
+      p_site_id: U,
+      p_weekdays: [1],
+      p_start: '10:00',
+      p_end: '09:00',
+    }),
+    admins('INVALID_TIME_RANGE'),
+    { cubre: ['RB-A04', 'RB-X02', 'OF-02'] },
+  ),
+  caso(
+    'shift_overlaps_in_site',
+    () => ({
+      p_site_id: U,
+      p_date: '2099-01-01',
+      p_start: '10:00',
+      p_end: '09:00',
+    }),
+    admins('INVALID_TIME_RANGE'),
+    { cubre: ['RB-A04', 'RB-X02', 'OF-02'] },
+  ),
+  caso(
+    'move_assignment',
+    () => ({ p_assignment_id: U, p_target_shift_id: U }),
+    admins('ASSIGNMENT_NOT_FOUND'),
+    { cubre: ['RB-A06', 'RB-X02', 'OF-10'] },
+  ),
   // --- P27.1b (OD-27): `generate_shifts` limitado a un servicio exige la misma capacidad.
   caso(
     'generate_shifts',

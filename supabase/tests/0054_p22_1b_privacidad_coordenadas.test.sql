@@ -346,9 +346,9 @@ select throws_ok(
   '42501', null, 'administrador: la lectura directa de latitude también está cerrada (se lee por la RPC o la vista)'
 );
 select is(
-  (select count(*)::int from public.attendance_corrections),
+  (select count(*)::int from public.attendance_corrections where id = 'e5400000-0000-0000-0000-000000000701'),
   1,
-  'administrador: ve attendance_corrections'
+  'administrador: ve attendance_corrections (la del caso; App_dev puede tener otras)'
 );
 select is(
   (select reason from public.attendance_corrections where id = 'e5400000-0000-0000-0000-000000000701'),

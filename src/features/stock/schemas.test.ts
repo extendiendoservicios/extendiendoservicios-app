@@ -92,13 +92,21 @@ describe('supplyCreateSchema', () => {
     ).toBe(false)
   })
 
-  it.each(['', '-5', '1,234', 'abc', '10,5,5'])(
+  it.each(['-5', '1,234', 'abc', '10,5,5'])(
     'rechaza el precio de costo %s',
     (costPrice) => {
       const result = supplyCreateSchema.safeParse({ ...validCreate, costPrice })
       expect(result.success).toBe(false)
     },
   )
+
+  it('acepta los precios vacíos y los guarda como 0 (OF-01)', () => {
+    const values = { ...validCreate, costPrice: '', salePrice: '' }
+    expect(supplyCreateSchema.safeParse(values).success).toBe(true)
+    const input = supplyValuesToInput(values)
+    expect(input.costPrice).toBe(0)
+    expect(input.salePrice).toBe(0)
+  })
 
   it('acepta precio cero (mayor o igual a cero, IS-34)', () => {
     expect(

@@ -3,8 +3,9 @@
 //
 // Alta de un servicio recurrente desde ADM-25 (`?cliente=` desde la pestaña "Servicios" de
 // ADM-21), validaciones del formulario (`04_Modelo_de_Datos.md` sección 2.3:
-// `services_weekdays_check`, `services_time_range_check`) y edición (con el aviso "los turnos
-// ya generados no cambian"). Corre con fechas de vigencia cercanas a hoy (crear o editar un
+// `services_weekdays_check`, `services_time_range_check`) y edición (desde P28, OF-05, el cambio
+// del servicio llega a los turnos y ya no hay aviso de que "los turnos ya generados no cambian").
+// Corre con fechas de vigencia cercanas a hoy (crear o editar un
 // servicio NO llama a `generate_shifts`: no hace falta el mes lejano reservado de
 // `helpers/farDate.ts`, que es solo para los specs que sí generan turnos).
 //
@@ -69,6 +70,8 @@ test.describe('SERVICE-007: alta y edición de servicio (ADM-25)', () => {
         await page.getByRole('button', { name: /^(Today|Hoy),/ }).click()
         await page.getByRole('button', { name: 'Crear servicio' }).click()
         await expect(page.getByText('Creamos el servicio.')).toBeVisible()
+        // Un servicio activo ofrece generar los turnos del mes: acá no hace falta.
+        await page.getByRole('button', { name: 'Ahora no' }).click()
         await expect(page).toHaveURL(
           new RegExp(`/admin/clientes/${client.id}\\?pestana=servicios`),
         )
@@ -84,13 +87,12 @@ test.describe('SERVICE-007: alta y edición de servicio (ADM-25)', () => {
       const serviceId = created!.id as string
       serviceIds.push(serviceId)
 
-      await test.step('edición: aviso de "los turnos no cambian" y guarda el nuevo nombre', async () => {
+      await test.step('edición: guarda el nuevo nombre (OF-05: ya no hay aviso de turnos generados)', async () => {
         await page.goto(`/admin/servicios/${serviceId}/editar`)
+        await expect(page.getByLabel('Nombre')).toBeVisible()
         await expect(
-          page.getByText(
-            'Los turnos ya generados no cambian. Si hace falta, generá el mes de',
-          ),
-        ).toBeVisible()
+          page.getByText('Los turnos ya generados no cambian'),
+        ).toHaveCount(0)
         const editedName = `${createdName} (editado)`
         await page.getByLabel('Nombre').fill(editedName)
         await page.getByRole('button', { name: 'Guardar cambios' }).click()

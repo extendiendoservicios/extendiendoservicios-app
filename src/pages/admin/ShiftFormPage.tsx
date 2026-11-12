@@ -21,7 +21,11 @@ import { EmptyState } from '@/components/EmptyState'
 import { Combobox } from '@/components/Combobox'
 import { DatePicker } from '@/components/DatePicker'
 import { StatusBadge } from '@/components/status'
-import { isApiError } from '@/api/errors'
+import { isApiError, type ConflictDetail } from '@/api/errors'
+import {
+  ConflictShiftLink,
+  conflictToastOptions,
+} from '@/features/shifts/conflictLink'
 import { useAuth } from '@/features/auth/AuthProvider'
 import {
   newClientPickerOptions,
@@ -40,7 +44,6 @@ import { WARNING_MESSAGES } from '@/features/planning/components/AssignEmployeeS
 import {
   assignedWarningLines,
   clampSelection,
-  rejectedLines,
   rejectedTitle,
 } from '@/features/shifts/assignOnCreate'
 import {
@@ -50,6 +53,7 @@ import {
   shiftDateErrorMessage,
 } from '@/features/shifts/dateChange'
 import { employeesOnLeaveIn } from '@/features/shifts/leaveBlocking'
+import { shiftOverlapsMessage } from '@/features/services/serviceChanges'
 import { SimpleConfirmDialog } from '@/features/settings/components/SimpleConfirmDialog'
 import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
 import { useHolidaysQuery } from '@/features/settings/queries'
@@ -64,6 +68,7 @@ import {
   useShiftForEditQuery,
   useShiftSeriesPreviewQuery,
   useShiftDateWarningsMutation,
+  useShiftOverlapsInSiteMutation,
   useUpdateShiftTimeMutation,
 } from '@/features/shifts/queries'
 import {
@@ -157,6 +162,12 @@ function CreateShiftForm({
   const leaveForm = useLeaveForm()
   const createShift = useCreateShiftMutation()
   const createShiftSeries = useCreateShiftSeriesMutation()
+  // OF-02: aviso de turno superpuesto en la misma sede (no bloquea).
+  const checkShiftOverlaps = useShiftOverlapsInSiteMutation()
+  const [overlapPrompt, setOverlapPrompt] = useState<{
+    values: ShiftFormValues
+    message: string
+  } | null>(null)
   const employeeOptionsQuery = useActiveEmployeeOptionsQuery()
   // AJ2-17: empleados que quedan asignados al crear el turno.
   const [pickedEmployeeIds, setPickedEmployeeIds] = useState<string[]>([])
@@ -342,6 +353,13 @@ function CreateShiftForm({
               {issues.map((issue) => (
                 <li key={issue.date}>
                   {formatDateOnly(issue.date)}: {issue.lines.join(' · ')}
+                  {issue.conflictShiftIds.map((shiftId) => (
+                    <ConflictShiftLink
+                      key={shiftId}
+                      detail={{ conflictShiftId: shiftId } as ConflictDetail}
+                      onOpen={(path) => void navigate(path)}
+                    />
+                  ))}
                 </li>
               ))}
             </ul>
@@ -367,11 +385,34 @@ function CreateShiftForm({
     }
   }
 
+  /**
+   * OF-02: en el alta de un turno suelto se revisa si la sede ya tiene un turno
+   * ese día que se superpone en horario; si hay, se avisa y se deja crear igual.
+   * Si la consulta falla no se bloquea. La repetición (serie) no se revisa.
+   */
   async function onSubmit(values: ShiftFormValues) {
     if (values.repeat) {
       await onSubmitSeries(values)
       return
     }
+    try {
+      const overlaps = await checkShiftOverlaps.mutateAsync({
+        siteId: values.siteId,
+        date: values.date,
+        start: values.startTime,
+        end: values.openEnded ? null : values.endTime,
+      })
+      if (overlaps.length > 0) {
+        setOverlapPrompt({ values, message: shiftOverlapsMessage(overlaps) })
+        return
+      }
+    } catch {
+      // Sin el aviso se crea igual; el servidor valida lo que corresponde.
+    }
+    await createSingleShift(values)
+  }
+
+  async function createSingleShift(values: ShiftFormValues) {
     const input = {
       ...shiftFormValuesToCreateInput(values),
       employeeIds,
@@ -400,8 +441,14 @@ function CreateShiftForm({
             duration: 20_000,
             description: (
               <ul className="list-disc pl-4">
-                {rejectedLines(result.rejected).map((line) => (
-                  <li key={line}>{line}</li>
+                {result.rejected.map((item) => (
+                  <li key={item.employeeId}>
+                    {item.employeeName}: {item.message}
+                    <ConflictShiftLink
+                      detail={item.detail}
+                      onOpen={(path) => void navigate(path)}
+                    />
+                  </li>
                 ))}
                 {warningLines.map((line) => (
                   <li key={line.employeeId}>
@@ -790,6 +837,26 @@ function CreateShiftForm({
           Cancelar
         </Button>
       </div>
+
+      {overlapPrompt && (
+        <SimpleConfirmDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setOverlapPrompt(null)
+            }
+          }}
+          title="Posible turno duplicado"
+          description={overlapPrompt.message}
+          confirmLabel="Crear igual"
+          cancelLabel="Volver"
+          onConfirm={() => {
+            const pending = overlapPrompt.values
+            setOverlapPrompt(null)
+            void createSingleShift(pending)
+          }}
+        />
+      )}
     </form>
   )
 }
@@ -911,6 +978,7 @@ function EditShiftTimeForm({
             error,
             'No pudimos revisar la fecha nueva. Probá de nuevo.',
           ),
+          conflictToastOptions(error, (path) => void navigate(path)),
         )
         return
       }
@@ -949,19 +1017,25 @@ function EditShiftTimeForm({
               )
               .join(' ')}`,
         )
-      const rejectedLinesText = result.rejected.map(
-        (item) => `${names[item.employeeId] ?? 'Empleado'}: ${item.message}`,
-      )
-      if (rejectedLinesText.length > 0 || warningLines.length > 0) {
+      if (result.rejected.length > 0 || warningLines.length > 0) {
         toast.warning(
-          rejectedLinesText.length > 0
-            ? rejectedTitleOnEdit(rejectedLinesText.length)
+          result.rejected.length > 0
+            ? rejectedTitleOnEdit(result.rejected.length)
             : 'Asignamos a los empleados, con advertencias:',
           {
             duration: 20_000,
             description: (
               <ul className="list-disc pl-4">
-                {[...rejectedLinesText, ...warningLines].map((line) => (
+                {result.rejected.map((item) => (
+                  <li key={item.employeeId}>
+                    {names[item.employeeId] ?? 'Empleado'}: {item.message}
+                    <ConflictShiftLink
+                      detail={item.detail}
+                      onOpen={(path) => void navigate(path)}
+                    />
+                  </li>
+                ))}
+                {warningLines.map((line) => (
                   <li key={line}>{line}</li>
                 ))}
               </ul>
@@ -1026,6 +1100,7 @@ function EditShiftTimeForm({
       setPendingDateSave(null)
       toast.error(
         shiftDateErrorMessage(error, 'No pudimos actualizar el turno.'),
+        conflictToastOptions(error, (path) => void navigate(path)),
       )
     }
   }

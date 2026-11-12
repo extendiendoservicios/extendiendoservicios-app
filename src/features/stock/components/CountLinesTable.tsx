@@ -16,8 +16,10 @@ function CountLinesTable({
   caption: string
 }) {
   return (
+    // OF-17: ancho mínimo para que las columnas no se aprieten; si no entra,
+    // el contenedor se desplaza en horizontal.
     <div className="overflow-x-auto">
-      <table className="w-full text-[13px]">
+      <table className="w-full min-w-[480px] text-[13px]">
         <caption className="sr-only">{caption}</caption>
         <thead>
           <tr className="border-b border-border text-left text-[10px] tracking-wide text-text-3 uppercase">

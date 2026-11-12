@@ -1,19 +1,30 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { MapPinOff } from 'lucide-react'
+import { Check, Clock, MapPinOff } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { MapView, type MapViewMarker } from '@/components/map'
 import { GeoStatusBadge } from '@/components/status'
 import { formatDistanceM } from '@/lib/geo'
 import { formatMinutes, formatTime } from '@/lib/format'
-import type { PresenceRow } from '@/api/geo'
+import type { PresenceRow, SiteDayStatusRow } from '@/api/geo'
+import { useAuth } from '@/features/auth/AuthProvider'
 import type { SupervisorStatusRow } from '@/api/supervisorStatus'
 import { UpdatedAgo } from '@/features/attendance/components/UpdatedAgo'
-import { usePresenceTodayQuery, useSupervisorStatusQuery } from '../queries'
+import {
+  usePresenceTodayQuery,
+  useSitesDayStatusQuery,
+  useSupervisorStatusQuery,
+} from '../queries'
+import {
+  readPresenceFilters,
+  writePresenceFilters,
+  type PresenceFilters,
+} from '../presencePreference'
 import {
   buildPresenceMarkers,
   presenceClientName,
   presencePersonName,
+  SITE_STATE_LABEL,
 } from '../presence'
 import {
   coordinatorName,
@@ -32,22 +43,37 @@ function scheduleLabel(row: PresenceRow): string {
   return end ? `${start} a ${end}` : start
 }
 
+/** Popup de la sede (OF-13): cuántos turnos por comenzar, en curso y finalizados, y la hora del próximo. */
+function SitePopup({ site }: { site: SiteDayStatusRow }) {
+  const client = site.clientTradeName ?? site.clientLegalName ?? ''
+  return (
+    <div className="flex min-w-48 flex-col gap-1 text-[12px]">
+      <p className="font-semibold text-text">{client}</p>
+      <p className="text-text-2">{site.siteName}</p>
+      <p className="font-medium text-text">
+        Hoy: {SITE_STATE_LABEL[site.dayState]}
+      </p>
+      <ul className="text-text-3">
+        <li>Por comenzar: {site.upcomingCount}</li>
+        <li>En curso: {site.inProgressCount}</li>
+        <li>Finalizados: {site.finishedCount}</li>
+      </ul>
+      {site.nextStartsAt && (
+        <p className="text-text-3">
+          Próximo turno: {formatTime(site.nextStartsAt)}
+        </p>
+      )}
+      {site.radiusM != null && (
+        <p className="text-text-3">
+          Radio de validación: {formatDistanceM(site.radiusM)}
+        </p>
+      )}
+    </div>
+  )
+}
+
 /** Popup del punto (B-15): quién, dónde, horario, inicio, distancia, precisión, estado y «Ver turno». */
 function PresencePopup({ row }: { row: PresenceRow }) {
-  if (row.kind === 'site') {
-    return (
-      <div className="flex min-w-44 flex-col gap-1 text-[12px]">
-        <p className="font-semibold text-text">{presenceClientName(row)}</p>
-        <p className="text-text-2">{row.siteName}</p>
-        {row.siteRadiusM != null && (
-          <p className="text-text-3">
-            Radio de validación: {formatDistanceM(row.siteRadiusM)}
-          </p>
-        )}
-      </div>
-    )
-  }
-
   return (
     <div className="flex min-w-52 flex-col gap-1 text-[12px]">
       <p className="font-semibold text-text">
@@ -145,34 +171,48 @@ const LEGEND_BG: Record<string, string> = {
  * están trabajando, en la posición de su fichaje de inicio, coloreados por la
  * validación (B-03); los coordinadores en la posición de su último evento,
  * con un color por estado y el filtro «Coordinadores»; las sedes con un turno
- * en la franja actual con su círculo; el interruptor «Mostrar finalizados de
- * hoy»; y debajo, «Trabajando sin ubicación» y «Coordinadores sin ubicación».
+ * en la franja actual con su círculo; los conmutadores
+ * «Por comenzar», «En curso» y «Finalizados» (OF-13); y debajo, «Trabajando sin ubicación» y «Coordinadores sin ubicación».
  * Los empleados se actualizan cada 45 s (B-39) y los coordinadores cada 60 s
  * (ADR-012), también al volver a la pestaña, sin Realtime.
  */
-function PresenceMap({
-  siteIdsInWindow,
-}: {
-  /** Sedes con un turno en la franja de la hora actual: se marcan aunque nadie haya fichado. */
-  siteIdsInWindow: ReadonlySet<string>
-}) {
+function PresenceMap() {
+  const { userId } = useAuth()
   const query = usePresenceTodayQuery()
+  const sitesQuery = useSitesDayStatusQuery()
   const coordinatorsQuery = useSupervisorStatusQuery()
-  const [showFinished, setShowFinished] = useState(false)
-  const [showCoordinators, setShowCoordinators] = useState(true)
+  const [filters, setFilters] = useState<PresenceFilters>(() =>
+    readPresenceFilters(userId),
+  )
+  const { showUpcoming, showInProgress, showFinished, showCoordinators } =
+    filters
+
+  // La elección se recuerda por persona en este navegador (OF-13): el mapa
+  // vive dentro de la sesión, así que `userId` ya está al montar.
+  function setFilter(key: keyof PresenceFilters, value: boolean) {
+    setFilters((current) => {
+      const next = { ...current, [key]: value }
+      writePresenceFilters(userId, next)
+      return next
+    })
+  }
 
   const model = useMemo(
     () =>
       buildPresenceMarkers(query.data ?? [], {
         showFinished,
-        siteIdsInWindow,
+        showInProgress,
+        showUpcoming,
+        sites: sitesQuery.data ?? [],
         coordinators: coordinatorsQuery.data ?? [],
         showCoordinators,
       }),
     [
       query.data,
       showFinished,
-      siteIdsInWindow,
+      showInProgress,
+      showUpcoming,
+      sitesQuery.data,
       coordinatorsQuery.data,
       showCoordinators,
     ],
@@ -183,11 +223,15 @@ function PresenceMap({
       const coordinator = marker.data as SupervisorStatusRow | undefined
       return coordinator ? <CoordinatorPopup row={coordinator} /> : null
     }
+    if (marker.id.startsWith('site-')) {
+      const site = marker.data as SiteDayStatusRow | undefined
+      return site ? <SitePopup site={site} /> : null
+    }
     const row = marker.data as PresenceRow | undefined
     return row ? <PresencePopup row={row} /> : null
   }
 
-  const loadError = query.error ?? coordinatorsQuery.error
+  const loadError = query.error ?? sitesQuery.error ?? coordinatorsQuery.error
 
   return (
     <section
@@ -205,6 +249,39 @@ function PresenceMap({
         </div>
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <label
+            htmlFor="presence-show-upcoming"
+            className="flex items-center gap-3 text-[13px] font-medium text-text"
+          >
+            Por comenzar
+            <Switch
+              id="presence-show-upcoming"
+              checked={showUpcoming}
+              onCheckedChange={(value) => setFilter('showUpcoming', value)}
+            />
+          </label>
+          <label
+            htmlFor="presence-show-in-progress"
+            className="flex items-center gap-3 text-[13px] font-medium text-text"
+          >
+            En curso
+            <Switch
+              id="presence-show-in-progress"
+              checked={showInProgress}
+              onCheckedChange={(value) => setFilter('showInProgress', value)}
+            />
+          </label>
+          <label
+            htmlFor="presence-show-finished"
+            className="flex items-center gap-3 text-[13px] font-medium text-text"
+          >
+            Finalizados
+            <Switch
+              id="presence-show-finished"
+              checked={showFinished}
+              onCheckedChange={(value) => setFilter('showFinished', value)}
+            />
+          </label>
+          <label
             htmlFor="presence-show-coordinators"
             className="flex items-center gap-3 text-[13px] font-medium text-text"
           >
@@ -212,18 +289,7 @@ function PresenceMap({
             <Switch
               id="presence-show-coordinators"
               checked={showCoordinators}
-              onCheckedChange={setShowCoordinators}
-            />
-          </label>
-          <label
-            htmlFor="presence-show-finished"
-            className="flex items-center gap-3 text-[13px] font-medium text-text"
-          >
-            Mostrar finalizados de hoy
-            <Switch
-              id="presence-show-finished"
-              checked={showFinished}
-              onCheckedChange={setShowFinished}
+              onCheckedChange={(value) => setFilter('showCoordinators', value)}
             />
           </label>
         </div>
@@ -241,11 +307,11 @@ function PresenceMap({
         className="w-full"
         renderPopup={renderPopup}
         emptyTitle={
-          query.isLoading
+          query.isLoading || sitesQuery.isLoading
             ? 'Cargando el mapa…'
-            : 'Nadie con ubicación por ahora'
+            : 'Nada para mostrar con estos filtros'
         }
-        emptyDescription="Cuando alguien fiche el inicio con ubicación, aparece acá."
+        emptyDescription="Prendé «Por comenzar», «En curso» o «Finalizados», o esperá a que alguien fiche el inicio con ubicación."
       />
 
       <ul
@@ -282,7 +348,21 @@ function PresenceMap({
             aria-hidden="true"
             className="box-content h-2.5 w-auto rounded-full bg-primary p-1"
           />
-          Sede con su radio
+          Sede en curso
+        </li>
+        <li className="flex items-center gap-1.5">
+          <Clock
+            aria-hidden="true"
+            className="box-content size-2.5 rounded-full bg-warning p-1 text-white"
+          />
+          Sede con turnos por comenzar
+        </li>
+        <li className="flex items-center gap-1.5">
+          <Check
+            aria-hidden="true"
+            className="box-content size-2.5 rounded-full bg-text-3 p-1 text-white"
+          />
+          Sede finalizada
         </li>
       </ul>
 

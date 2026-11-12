@@ -1,6 +1,6 @@
 import type { BadgeVariant } from '@/components/status'
-import type { MapViewMarker } from '@/components/map'
-import type { PresenceRow } from '@/api/geo'
+import type { MapViewMarker, MarkerShape } from '@/components/map'
+import type { PresenceRow, SiteDayState, SiteDayStatusRow } from '@/api/geo'
 import type { SupervisorStatusRow } from '@/api/supervisorStatus'
 import { buildCoordinatorMarkers } from './coordinators'
 
@@ -16,12 +16,10 @@ import { buildCoordinatorMarkers } from './coordinators'
  *   `coordinators.ts`), con un rombo por estado. Las filas `kind = supervisor`
  *   de `v_presence_today` (la supervisión en curso) se ignoran acá para no
  *   dibujar dos puntos de la misma persona.
- * - Sedes (`kind = site`): su pin y su círculo con el radio vigente, sin color
- *   de alarma (B-14). Se dibujan las que tienen un turno en la franja de la
- *   hora actual (`siteIdsInWindow`), hayan fichado o no: sin ningún punto al
- *   lado, todavía nadie registró el inicio. Además, las de alguien que sigue
- *   en curso pasada su franja (o finalizado, con «Mostrar finalizados»), para
- *   que ningún punto quede sin su sede.
+ * - Sedes (OF-13): salen de `v_sites_day_status` con su pin y su círculo con el
+ *   radio vigente, por estado del día: amarillo y reloj las que tienen turnos
+ *   por comenzar, el color de siempre y el isotipo las que están en curso, gris
+ *   y tilde las que ya terminaron. Cada estado tiene su conmutador.
  * - Quienes trabajan sin posición no tienen punto: van a la lista de «Trabajando
  *   sin ubicación» (B-13). Solo cuenta a los que están en curso.
  */
@@ -42,10 +40,14 @@ export interface PresenceMapModel {
 }
 
 export interface PresenceOptions {
-  /** Interruptor «Mostrar finalizados de hoy». */
+  /** Conmutador «Finalizados»: sedes terminadas y empleados que ya ficharon el fin. */
   showFinished: boolean
-  /** Sedes con un turno cuya franja incluye la hora actual. */
-  siteIdsInWindow?: ReadonlySet<string>
+  /** Conmutador «En curso» (por omisión, encendido). */
+  showInProgress?: boolean
+  /** Conmutador «Por comenzar» (por omisión, encendido). */
+  showUpcoming?: boolean
+  /** Estado de hoy de las sedes (`v_sites_day_status`). */
+  sites?: SiteDayStatusRow[]
   /** Estado de hoy de los coordinadores (`v_supervisor_status`). */
   coordinators?: SupervisorStatusRow[]
   /** Filtro «Coordinadores» (por omisión, encendido). */
@@ -76,6 +78,22 @@ export function presenceClientName(row: PresenceRow): string {
   return row.clientTradeName ?? row.clientLegalName ?? ''
 }
 
+/** Color y forma de la sede según su estado del día (OF-13): el color no es lo único que cambia. */
+export const SITE_STATE_STYLE: Record<
+  SiteDayState,
+  { variant: BadgeVariant; shape: MarkerShape }
+> = {
+  upcoming: { variant: 'warning', shape: 'site-upcoming' },
+  in_progress: { variant: 'primary', shape: 'site' },
+  finished: { variant: 'neutral', shape: 'site-finished' },
+}
+
+export const SITE_STATE_LABEL: Record<SiteDayState, string> = {
+  upcoming: 'por comenzar',
+  in_progress: 'en curso',
+  finished: 'finalizada',
+}
+
 function hasPosition(row: PresenceRow): boolean {
   return row.latitude != null && row.longitude != null
 }
@@ -88,43 +106,39 @@ export function buildPresenceMarkers(
   const personMarkers: MapViewMarker[] = []
   const withoutLocation: PresenceRow[] = []
 
-  // Sedes en su franja horaria, más las de alguien que se dibuja o se lista
-  // ahora (P22.6b), aunque ya haya pasado su franja.
-  const activeSiteIds = new Set<string>(options.siteIdsInWindow)
-  for (const row of rows) {
-    if (row.kind !== 'employee' || !row.siteId) continue
-    if (row.inProgress || options.showFinished) {
-      activeSiteIds.add(row.siteId)
+  const showInProgress = options.showInProgress ?? true
+  const showUpcoming = options.showUpcoming ?? true
+
+  for (const site of options.sites ?? []) {
+    if (site.latitude == null || site.longitude == null) continue
+    if (
+      (site.dayState === 'upcoming' && !showUpcoming) ||
+      (site.dayState === 'in_progress' && !showInProgress) ||
+      (site.dayState === 'finished' && !options.showFinished)
+    ) {
+      continue
     }
+    const style = SITE_STATE_STYLE[site.dayState]
+    siteMarkers.push({
+      id: `site-${site.siteId}`,
+      position: { lat: site.latitude, lng: site.longitude },
+      variant: style.variant,
+      shape: style.shape,
+      radiusM: site.radiusM,
+      circleVariant: style.variant,
+      label:
+        `Sede ${site.siteName ?? ''} (${SITE_STATE_LABEL[site.dayState]})`.trim(),
+      data: site,
+    })
   }
 
   for (const row of rows) {
-    if (row.kind === 'site') {
-      if (
-        row.siteLatitude != null &&
-        row.siteLongitude != null &&
-        activeSiteIds.has(row.recordId)
-      ) {
-        siteMarkers.push({
-          id: `site-${row.recordId}`,
-          position: { lat: row.siteLatitude, lng: row.siteLongitude },
-          variant: 'primary',
-          shape: 'site',
-          radiusM: row.siteRadiusM,
-          circleVariant: 'primary',
-          label: `Sede ${row.siteName ?? ''}`.trim(),
-          data: row,
-        })
-      }
+    // Las sedes salen de `v_sites_day_status`; los coordinadores, de `v_supervisor_status`.
+    if (row.kind !== 'employee') {
       continue
     }
 
-    // Los coordinadores salen de `v_supervisor_status`, no de este listado.
-    if (row.kind === 'supervisor') {
-      continue
-    }
-
-    if (!row.inProgress && !options.showFinished) {
+    if (row.inProgress ? !showInProgress : !options.showFinished) {
       continue
     }
 

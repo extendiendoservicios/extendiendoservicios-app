@@ -650,21 +650,10 @@ describe.skipIf(CERCA_DE_MEDIANOCHE)(
         }
       })
 
-      it('cerrar exige calificar a todos los empleados con inicio (RATINGS_PENDING con los nombres, CJ-10, CJ-28) y cada coordinador califica con su criterio (CJ-09, CJ-11)', async () => {
-        const pendiente = await llamar(sup(), 'complete_supervision', {
-          p_supervision_id: supervisionSup1,
-        })
-        expect(codigo(pendiente)).toBe('RATINGS_PENDING')
-        expect(pendiente.error?.message).toMatch(/^Falta calificar a: /)
-        const { data: empleado } = await servicio()
-          .from('profiles')
-          .select('first_name, last_name')
-          .eq('id', c().ids.empleado1)
-          .single()
-        expect(pendiente.error?.message).toContain(
-          `${empleado!.first_name} ${empleado!.last_name}`,
-        )
-
+      it('cada coordinador califica con su criterio, dos filas por turno (CJ-09, CJ-11); cerrar ya no exige calificar (OD-09, 0079)', async () => {
+        // Desde 0079 (OD-09) RATINGS_PENDING desapareció: cerrar sin calificar es válido y la
+        // pantalla solo avisa quiénes faltan. Acá no se cierra sin notas para no consumir la
+        // supervisión que usan las pruebas siguientes.
         // Cada coordinador califica al mismo empleado con su criterio: dos filas, una por supervisión.
         const nota1 = await llamar(sup(), 'rate_employee', {
           p_supervision_id: supervisionSup1,
@@ -708,7 +697,7 @@ describe.skipIf(CERCA_DE_MEDIANOCHE)(
         expect(filas(todas)).toHaveLength(2)
       })
 
-      it('cerrar con todo calificado registra el fin; descartar solo antes de cerrar y volver a tomar el turno (CJ-26, CJ-27)', async () => {
+      it('cerrar con todo calificado registra el fin; descartar solo antes de cerrar y volver a tomar el turno (CJ-26, CJ-27, OD-10)', async () => {
         const cierre = await llamar(sup(), 'complete_supervision', {
           p_supervision_id: supervisionSup1,
           p_general_notes: 'e2e-perm: nota',
@@ -738,14 +727,23 @@ describe.skipIf(CERCA_DE_MEDIANOCHE)(
             }),
           ),
         ).toBe('SUPERVISION_NOT_EDITABLE')
-        // Una por coordinador y por turno: no se vuelve a tomar.
+        // Desde 0079 (OD-10) se quitó la unicidad por coordinador y turno: ALREADY_SUPERVISED
+        // desapareció y el coordinador puede volver al mismo turno (nueva pasada, otra supervisión).
+        const nuevaPasada = await llamar(sup(), 'take_supervision', {
+          p_shift_id: c().e.turnoHoy,
+        })
+        expect(nuevaPasada.error, describir(nuevaPasada as never)).toBeNull()
+        const pasadaId = (nuevaPasada.data as { supervision: { id: string } })
+          .supervision.id
+        expect(pasadaId).not.toBe(supervisionSup1)
+        // Sin calificaciones se puede descartar: no queda abierta para lo que sigue.
         expect(
           codigo(
-            await llamar(sup(), 'take_supervision', {
-              p_shift_id: c().e.turnoHoy,
+            await llamar(sup(), 'discard_supervision', {
+              p_supervision_id: pasadaId,
             }),
           ),
-        ).toBe('ALREADY_SUPERVISED')
+        ).toBe('OK')
 
         // Descartar una empezada por error (sin calificar): queda cancelada y se puede volver a tomar.
         const toma = await llamar(sup(), 'take_supervision', {

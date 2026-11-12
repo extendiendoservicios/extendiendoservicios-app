@@ -205,11 +205,10 @@ select is(
 
 select tests_0030.as_user('test-db030-admin-full@example.com');
 prepare p30_overlap as select public.update_shift_time('e3000000-0000-0000-0000-000000000203', '10:30'::time, '13:00'::time);
-select throws_ok(
+select throws_like(
   'p30_overlap',
-  'P0001',
-  'El empleado ya tiene otro turno en ese horario. Afecta a: Emp Uno.',
-  'DEF-03: update_shift_time que pisa otro turno nombra al empleado afectado'
+  'Uno ya está en Sede P18.6 (turno manual) el % de 10:00 a 11:00.',
+  'DEF-03: update_shift_time que pisa otro turno nombra al empleado afectado y dice con qué choca (mensaje de 0082, OF-08)'
 );
 select is(
   (select start_time::text from public.shifts where id = 'e3000000-0000-0000-0000-000000000203'),

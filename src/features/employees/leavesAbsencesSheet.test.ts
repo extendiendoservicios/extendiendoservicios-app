@@ -10,6 +10,7 @@ import {
   daysText,
   LEAVES_ABSENCES_CONSENT_TEXT,
   leaveDaysInPeriod,
+  totalLeaveDaysInPeriod,
 } from './leavesAbsencesSheet'
 
 const PERSON = {
@@ -175,6 +176,35 @@ describe('absenceRowsOf', () => {
       absence({ id: 'sin-aviso', status: 'expected', lastNoticeKind: null }),
     ])
     expect(rows.map((row) => row.id)).toEqual(['ok'])
+  })
+})
+
+describe('totalLeaveDaysInPeriod (OF-20)', () => {
+  it('cuenta una sola vez los días de licencias superpuestas', () => {
+    const total = totalLeaveDaysInPeriod(
+      [
+        leave({ startsOn: '2026-03-02', endsOn: '2026-03-06' }),
+        leave({ id: 'l2', startsOn: '2026-03-05', endsOn: '2026-03-10' }),
+      ],
+      '2026-01-01',
+      '2026-12-31',
+      '2026-06-01',
+    )
+    expect(total).toBe(9)
+  })
+
+  it('suma los tramos separados', () => {
+    expect(
+      totalLeaveDaysInPeriod(
+        [
+          leave({ startsOn: '2026-03-02', endsOn: '2026-03-03' }),
+          leave({ id: 'l2', startsOn: '2026-03-10', endsOn: '2026-03-10' }),
+        ],
+        '2026-01-01',
+        '2026-12-31',
+        '2026-06-01',
+      ),
+    ).toBe(3)
   })
 })
 

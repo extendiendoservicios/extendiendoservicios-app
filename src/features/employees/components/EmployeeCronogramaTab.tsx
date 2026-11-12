@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react'
 import { Printer } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MonthPicker } from '@/components/MonthPicker'
+import { SegmentedControl } from '@/components/SegmentedControl'
 import { Skeleton } from '@/components/ui/skeleton'
+import { CronogramaWeekEditor } from '@/features/employees/components/CronogramaWeekEditor'
 import { PrintSheet } from '@/features/print/PrintSheet'
 import { clientChipColors } from '@/features/planning/clientColors'
 import { useEmployeeUpcomingAssignmentsQuery } from '@/features/planning/queries'
@@ -153,13 +155,22 @@ function CronogramaGrid({
  * los futuros), sus licencias y los feriados, con el modelo en papel de la
  * empresa. «Imprimir» abre la misma hoja en A4 horizontal.
  */
+const VIEW_OPTIONS = [
+  { value: 'mes', label: 'Mes' },
+  { value: 'semana', label: 'Semana (editar)' },
+] as const
+
 function EmployeeCronogramaTab({
   profileId,
   person,
+  canEdit = false,
 }: {
   profileId: string
   person: CronogramaPerson
+  /** OF-10: dueño o administrador; habilita la vista semana editable. */
+  canEdit?: boolean
 }) {
+  const [view, setView] = useState<'mes' | 'semana'>('mes')
   const [monthDate, setMonthDate] = useState(
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   )
@@ -204,9 +215,32 @@ function EmployeeCronogramaTab({
   const hasError =
     assignmentsQuery.isError || leavesQuery.isError || holidaysQuery.isError
 
+  if (canEdit && view === 'semana') {
+    return (
+      <div className="flex flex-col gap-3">
+        <SegmentedControl
+          aria-label="Vista del cronograma"
+          options={VIEW_OPTIONS}
+          value={view}
+          onValueChange={setView}
+          className="self-start"
+        />
+        <CronogramaWeekEditor profileId={profileId} personName={person.name} />
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
+        {canEdit && (
+          <SegmentedControl
+            aria-label="Vista del cronograma"
+            options={VIEW_OPTIONS}
+            value={view}
+            onValueChange={setView}
+          />
+        )}
         <MonthPicker
           value={monthDate}
           onValueChange={setMonthDate}

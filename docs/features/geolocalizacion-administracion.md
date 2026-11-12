@@ -100,3 +100,25 @@ de ADM-02 y la vista `v_supervisor_status` solo la leen ellos).
   etiquetas, marcadores y lista), `presence.ts` (`buildPresenceMarkers` recibe
   `coordinators` y `showCoordinators`) y `components/PresenceMap.tsx`. Tests:
   `coordinators.test.ts`, `presence.test.ts`, `src/api/supervisorStatus.test.ts`.
+
+## P28.5: sedes por estado en el mapa del Resumen (OF-13)
+
+El mapa «Dónde está el equipo» pinta las sedes del día con la vista `v_sites_day_status` (una fila por sede con turnos de hoy; `fetchSitesDayStatus` en `src/api/geo.ts`, `useSitesDayStatusQuery` con polling de 45 s). Las filas `kind = site` de `v_presence_today` ya no dibujan sedes.
+
+| `day_state`               | Color                           | Forma del pin       | Conmutador     |
+| ------------------------- | ------------------------------- | ------------------- | -------------- |
+| `upcoming` (por comenzar) | amarillo (`warning`)            | gota con un reloj   | «Por comenzar» |
+| `in_progress` (en curso)  | el color de siempre (`primary`) | gota con el isotipo | «En curso»     |
+| `finished` (finalizada)   | gris (`neutral`)                | gota con un tilde   | «Finalizados»  |
+
+- La forma distinta (reloj, isotipo, tilde) evita depender solo del color. Los glifos son blancos sobre fondos con contraste de 3:1 o más (criterio AA para elementos gráficos). Para eso `MarkerShape` suma `site-upcoming` y `site-finished` en `src/components/map/markerIcon.ts`.
+- «Finalizados» reemplaza al viejo «Mostrar finalizados de hoy»: gobierna a la vez las sedes finalizadas y los empleados que ya ficharon el fin. «En curso» gobierna las sedes en curso y a los empleados en curso. Por omisión: por comenzar y en curso prendidos, finalizados apagado, coordinadores prendido.
+- La elección de los cuatro conmutadores se recuerda por persona en este navegador (`es.presenceMap.<userId>`, `presencePreference.ts`), igual que la barra lateral. No se guarda en la base.
+- El popup de la sede dice cuántos turnos hay por comenzar, en curso y finalizados, y la hora del próximo (`next_starts_at`).
+- La pantalla completa del mapa viene de P28.2 (`MapView`), sin cambios acá.
+
+## P28.5: cierre automático y botones «Corregir» y «Registrar» (OF-11, OF-06, OF-07)
+
+- `v_assignments_board.check_out_auto_closed` llega como `AttendanceBoardRow.checkOutAutoClosed`. El fin cerrado por el proceso automático lleva la píldora «Cierre automático» (`AutoClosedBadge`, el mismo `Badge` con punto de las demás píldoras) en Asistencia de hoy, en el estado de Servicios de hoy del Resumen, en el detalle de la asignación y en el historial de asistencia del empleado. La marca queda aunque se corrija la hora (la hora corregida lleva además «Corregido»).
+- Asistencia de hoy suma el conmutador «Cierre automático» (`filterAutoClosed`), que deja solo esas filas.
+- `AttendanceTimeButton` va junto a la hora de inicio y de fin en Asistencia de hoy y en el detalle de la asignación: «Corregir» (abre `CorrectTimeDialog`, `correct_attendance_time`) si hay fichaje, «Registrar» (abre `RecordAttendanceSheet` con esa acción elegida) si falta. Solo con `manage_attendance` (la dirección siempre). No se ofrece «Registrar» el fin sin inicio ni en un turno cancelado; las reglas las sigue poniendo el servidor.

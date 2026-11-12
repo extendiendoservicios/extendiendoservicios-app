@@ -67,7 +67,8 @@ beforeEach(() => {
   boardMock.mockReset().mockReturnValue({ data: rows, isLoading: false })
   phonesMock.mockReset().mockReturnValue({ data: undefined })
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-    matches: false,
+    // Celular táctil: tarjetas (OF-17).
+    matches: query.includes('pointer: coarse'),
     media: query,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
@@ -98,6 +99,72 @@ describe('AttendanceTodayList: celda de acciones estable', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Registrar en nombre' }))
     expect(
       screen.getByRole('dialog', { name: /Registrar/i }),
+    ).toBeInTheDocument()
+  })
+})
+
+describe('AttendanceTodayList: cierre automático (OF-11)', () => {
+  const auto = makeAssignment({
+    id: 'a2',
+    employeeId: 'e2',
+    employeeFirstName: 'Beto',
+    employeeLastName: 'Ruiz',
+    shiftStatus: 'completed',
+    status: 'finished',
+    displayStatus: 'finished',
+    checkInAt: '2026-09-30T08:00:00-03:00',
+    checkOutAt: '2026-09-30T12:00:00-03:00',
+    checkOutAutoClosed: true,
+  })
+
+  it('el fin cerrado automáticamente lleva la píldora y el filtro deja solo esas filas', () => {
+    boardMock.mockReturnValue({ data: [...rows, auto], isLoading: false })
+    renderList()
+    expect(screen.getAllByText('Cierre automático')).toHaveLength(2) // filtro + píldora
+    expect(screen.queryAllByText('Ana Gómez').length).toBeGreaterThan(0)
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Cierre automático' }))
+    expect(screen.queryAllByText('Ana Gómez')).toHaveLength(0)
+    expect(screen.queryAllByText('Beto Ruiz').length).toBeGreaterThan(0)
+  })
+
+  it('en la fila con fichaje y fin hay «Corregir» para el inicio y el fin', () => {
+    boardMock.mockReturnValue({
+      data: [
+        {
+          ...auto,
+          checkInGeo: {
+            recordId: 'r1',
+            status: 'valid',
+            reason: null,
+            distanceM: null,
+            radiusM: null,
+            accuracyM: null,
+            outsideReason: null,
+            overridden: false,
+            timeCorrected: false,
+          },
+          checkOutGeo: {
+            recordId: 'r2',
+            status: 'valid',
+            reason: null,
+            distanceM: null,
+            radiusM: null,
+            accuracyM: null,
+            outsideReason: null,
+            overridden: false,
+            timeCorrected: false,
+          },
+        },
+      ],
+      isLoading: false,
+    })
+    renderList()
+    expect(
+      screen.getByRole('button', { name: /Corregir inicio de Beto/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Corregir fin de Beto/ }),
     ).toBeInTheDocument()
   })
 })

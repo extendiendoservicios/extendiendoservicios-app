@@ -22,12 +22,14 @@ import { parseMoney, parseWholeNumber } from './money'
 
 const optionalText = z.string().trim()
 
-/** Precio: obligatorio, mayor o igual a cero, hasta dos decimales (IS-34). */
-const priceField = (what: string) =>
+/**
+ * Precio: opcional (vacío = 0, OF-01), mayor o igual a cero, hasta dos
+ * decimales (IS-34).
+ */
+const priceField = () =>
   z
     .string()
     .trim()
-    .min(1, `Indicá el precio de ${what}.`)
     .refine(
       (value) => value === '' || parseMoney(value) !== null,
       'Escribí un monto válido, con hasta dos decimales (por ejemplo 1.250,50).',
@@ -89,8 +91,8 @@ const supplyBaseShape = {
 /** Alta: lleva los precios (en la edición se cambian con su propio diálogo). */
 export const supplyCreateSchema = z.object({
   ...supplyBaseShape,
-  costPrice: priceField('costo'),
-  salePrice: priceField('venta'),
+  costPrice: priceField(),
+  salePrice: priceField(),
 })
 
 export const supplyEditSchema = z.object(supplyBaseShape)
@@ -137,8 +139,8 @@ export function supplyToFormValues(item: StockItem): SupplyEditFormValues {
 // -------------------------------------------------------------------------
 
 export const supplyPricesSchema = z.object({
-  costPrice: priceField('costo'),
-  salePrice: priceField('venta'),
+  costPrice: priceField(),
+  salePrice: priceField(),
 })
 
 export type SupplyPricesFormValues = z.infer<typeof supplyPricesSchema>

@@ -3,6 +3,7 @@ import { cn } from 'cn'
 import { Dialog as DialogPrimitive } from 'radix-ui'
 
 import { Button } from '@/components/ui/button'
+import { ignoreToasterInteraction } from '@/components/ui/outside-toaster'
 import { XIcon } from 'lucide-react'
 
 function Dialog({
@@ -63,6 +64,10 @@ function DialogContent({
           className,
         )}
         {...props}
+        onInteractOutside={(event) => {
+          ignoreToasterInteraction(event)
+          props.onInteractOutside?.(event)
+        }}
       >
         {children}
         {showCloseButton && (
