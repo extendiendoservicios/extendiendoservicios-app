@@ -6,9 +6,10 @@ import { DataTable, type DataTableColumnDef } from '@/components/DataTable'
 import { IconButton } from '@/components/IconButton'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { isApiError } from '@/api/errors'
-import type { Holiday } from '@/api/settings'
+import type { Holiday, HolidayShiftConflicts } from '@/api/settings'
 import { ConfigNav } from '@/features/settings/components/ConfigNav'
 import { HolidayFormDialog } from '@/features/settings/components/HolidayFormDialog'
+import { HolidayShiftConflictsDialog } from '@/features/settings/components/HolidayShiftConflictsDialog'
 import { OwnerOnlyNotice } from '@/features/settings/components/OwnerOnlyNotice'
 import { SimpleConfirmDialog } from '@/features/settings/components/SimpleConfirmDialog'
 import { YearPicker } from '@/features/settings/components/YearPicker'
@@ -37,6 +38,7 @@ export default function HolidaysPage() {
   const loadNationalHolidays = useLoadNationalHolidaysMutation(year)
 
   const [isNewHolidayOpen, setNewHolidayOpen] = useState(false)
+  const [conflicts, setConflicts] = useState<HolidayShiftConflicts | null>(null)
   const [holidayToDeactivate, setHolidayToDeactivate] =
     useState<Holiday | null>(null)
 
@@ -162,9 +164,14 @@ export default function HolidaysPage() {
 
           <HolidayFormDialog
             year={year}
-            createdBy={auth.userId as string}
             open={isNewHolidayOpen}
             onOpenChange={setNewHolidayOpen}
+            onConflicts={setConflicts}
+          />
+
+          <HolidayShiftConflictsDialog
+            conflicts={conflicts}
+            onOpenChange={(open) => !open && setConflicts(null)}
           />
 
           <SimpleConfirmDialog

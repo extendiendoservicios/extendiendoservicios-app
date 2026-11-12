@@ -34,7 +34,7 @@ describe('assignEmployeesOnEdit', () => {
       .mockResolvedValueOnce({ assignment: {}, warnings: [] })
     const result = await assignEmployeesOnEdit('s1', ['e1', 'e2'], assign)
     expect(result.rejected).toEqual([
-      { employeeId: 'e1', message: 'Está de licencia.' },
+      { employeeId: 'e1', message: 'Está de licencia.', detail: null },
     ])
     expect(result.assigned).toEqual([{ employeeId: 'e2', warnings: [] }])
   })

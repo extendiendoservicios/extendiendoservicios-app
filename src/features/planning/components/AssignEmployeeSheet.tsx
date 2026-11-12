@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
@@ -18,6 +19,7 @@ import {
 import { EmptyState } from '@/components/EmptyState'
 import { PersonCell } from '@/components/PersonCell'
 import { isApiError } from '@/api/errors'
+import { conflictToastOptions } from '@/features/shifts/conflictLink'
 import type { AssignEmployeeWarning } from '@/api/assignments'
 import {
   useAssignCandidatesQuery,
@@ -89,6 +91,7 @@ function AssignEmployeeSheet({
       : undefined,
   )
   const assignEmployee = useAssignEmployeeMutation()
+  const navigate = useNavigate()
 
   const {
     register,
@@ -167,6 +170,7 @@ function AssignEmployeeSheet({
     } catch (error) {
       toast.error(
         isApiError(error) ? error.message : 'No pudimos asignar al empleado.',
+        conflictToastOptions(error, (path) => void navigate(path)),
       )
     }
   }

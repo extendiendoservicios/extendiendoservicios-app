@@ -225,6 +225,7 @@ describe('resultado de la creación', () => {
               employeeName: 'Ana Gómez',
               code: 'ASSIGNMENT_OVERLAP',
               message: 'Ya tiene otro turno en ese horario.',
+              detail: null,
             },
           ],
         },
@@ -239,6 +240,7 @@ describe('resultado de la creación', () => {
           'Ana Gómez: Ya tiene otro turno en ese horario.',
           'Luis Pérez: Está de licencia.',
         ],
+        conflictShiftIds: [],
       },
     ])
   })

@@ -3,6 +3,12 @@ import { MemoryRouter, useLocation } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 import { StockScreen } from './StockScreen'
 
+const authState: { roles: string[]; capabilities: string[] } = {
+  roles: ['owner'],
+  capabilities: [],
+}
+vi.mock('@/features/auth/AuthProvider', () => ({ useAuth: () => authState }))
+
 vi.mock('./StockTab', () => ({ StockTab: () => <p>Contenido de Stock</p> }))
 vi.mock('./CategoriesTab', () => ({
   CategoriesTab: () => <p>Contenido de Categorías</p>,
@@ -35,6 +41,29 @@ function renderScreen(entry = '/admin/insumos') {
 }
 
 describe('StockScreen (IS-33)', () => {
+  it('avisa a un administrador sin Gestionar stock (OF-14)', () => {
+    authState.roles = ['admin']
+    authState.capabilities = []
+    renderScreen()
+    expect(
+      screen.getByText(
+        'Para cargar o modificar insumos, pedile a la dirección la capacidad Gestionar stock.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('no avisa a la dirección ni a un administrador con Gestionar stock', () => {
+    authState.roles = ['admin']
+    authState.capabilities = ['manage_stock']
+    const { unmount } = renderScreen()
+    expect(screen.queryByRole('note')).not.toBeInTheDocument()
+    unmount()
+    authState.roles = ['owner']
+    authState.capabilities = []
+    renderScreen()
+    expect(screen.queryByRole('note')).not.toBeInTheDocument()
+  })
+
   it('muestra las seis pestañas en el orden de la especificación, y entra por Stock', () => {
     renderScreen()
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([

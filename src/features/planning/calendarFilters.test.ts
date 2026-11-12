@@ -213,6 +213,27 @@ describe('licencias en el calendario (OD-14)', () => {
     expect(leaveReasonOn(LEAVES, 'e2', '2026-10-01')).toBeNull()
   })
 
+  it('leaveReasonOn junta los motivos si hay licencias superpuestas (OF-20)', () => {
+    const overlapped = [
+      {
+        employeeId: 'e1',
+        startsOn: '2026-10-05',
+        endsOn: '2026-10-09',
+        reason: 'Vacaciones',
+      },
+      {
+        employeeId: 'e1',
+        startsOn: '2026-10-07',
+        endsOn: '2026-10-08',
+        reason: 'Enfermedad',
+      },
+    ] as unknown as typeof LEAVES
+    expect(leaveReasonOn(overlapped, 'e1', '2026-10-06')).toBe('Vacaciones')
+    expect(leaveReasonOn(overlapped, 'e1', '2026-10-07')).toBe(
+      'Vacaciones / Enfermedad',
+    )
+  })
+
   it('leaveReasonLabel y leaveEntryText usan el motivo o «Licencia»', () => {
     expect(leaveReasonLabel('Franco')).toBe('Franco')
     expect(leaveReasonLabel(null)).toBe('Licencia')

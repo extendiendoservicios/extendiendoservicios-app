@@ -21,7 +21,11 @@ import { EmptyState } from '@/components/EmptyState'
 import { Combobox } from '@/components/Combobox'
 import { DatePicker } from '@/components/DatePicker'
 import { StatusBadge } from '@/components/status'
-import { isApiError } from '@/api/errors'
+import { isApiError, type ConflictDetail } from '@/api/errors'
+import {
+  ConflictShiftLink,
+  conflictToastOptions,
+} from '@/features/shifts/conflictLink'
 import { useAuth } from '@/features/auth/AuthProvider'
 import {
   newClientPickerOptions,
@@ -40,7 +44,6 @@ import { WARNING_MESSAGES } from '@/features/planning/components/AssignEmployeeS
 import {
   assignedWarningLines,
   clampSelection,
-  rejectedLines,
   rejectedTitle,
 } from '@/features/shifts/assignOnCreate'
 import {
@@ -342,6 +345,13 @@ function CreateShiftForm({
               {issues.map((issue) => (
                 <li key={issue.date}>
                   {formatDateOnly(issue.date)}: {issue.lines.join(' · ')}
+                  {issue.conflictShiftIds.map((shiftId) => (
+                    <ConflictShiftLink
+                      key={shiftId}
+                      detail={{ conflictShiftId: shiftId } as ConflictDetail}
+                      onOpen={(path) => void navigate(path)}
+                    />
+                  ))}
                 </li>
               ))}
             </ul>
@@ -400,8 +410,14 @@ function CreateShiftForm({
             duration: 20_000,
             description: (
               <ul className="list-disc pl-4">
-                {rejectedLines(result.rejected).map((line) => (
-                  <li key={line}>{line}</li>
+                {result.rejected.map((item) => (
+                  <li key={item.employeeId}>
+                    {item.employeeName}: {item.message}
+                    <ConflictShiftLink
+                      detail={item.detail}
+                      onOpen={(path) => void navigate(path)}
+                    />
+                  </li>
                 ))}
                 {warningLines.map((line) => (
                   <li key={line.employeeId}>
@@ -911,6 +927,7 @@ function EditShiftTimeForm({
             error,
             'No pudimos revisar la fecha nueva. Probá de nuevo.',
           ),
+          conflictToastOptions(error, (path) => void navigate(path)),
         )
         return
       }
@@ -949,19 +966,25 @@ function EditShiftTimeForm({
               )
               .join(' ')}`,
         )
-      const rejectedLinesText = result.rejected.map(
-        (item) => `${names[item.employeeId] ?? 'Empleado'}: ${item.message}`,
-      )
-      if (rejectedLinesText.length > 0 || warningLines.length > 0) {
+      if (result.rejected.length > 0 || warningLines.length > 0) {
         toast.warning(
-          rejectedLinesText.length > 0
-            ? rejectedTitleOnEdit(rejectedLinesText.length)
+          result.rejected.length > 0
+            ? rejectedTitleOnEdit(result.rejected.length)
             : 'Asignamos a los empleados, con advertencias:',
           {
             duration: 20_000,
             description: (
               <ul className="list-disc pl-4">
-                {[...rejectedLinesText, ...warningLines].map((line) => (
+                {result.rejected.map((item) => (
+                  <li key={item.employeeId}>
+                    {names[item.employeeId] ?? 'Empleado'}: {item.message}
+                    <ConflictShiftLink
+                      detail={item.detail}
+                      onOpen={(path) => void navigate(path)}
+                    />
+                  </li>
+                ))}
+                {warningLines.map((line) => (
                   <li key={line}>{line}</li>
                 ))}
               </ul>
@@ -1026,6 +1049,7 @@ function EditShiftTimeForm({
       setPendingDateSave(null)
       toast.error(
         shiftDateErrorMessage(error, 'No pudimos actualizar el turno.'),
+        conflictToastOptions(error, (path) => void navigate(path)),
       )
     }
   }

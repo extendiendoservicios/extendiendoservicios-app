@@ -236,10 +236,18 @@ export function leaveReasonOn(
   employeeId: string,
   date: string,
 ): string | null {
-  const leave = leaves.find(
-    (item) => item.employeeId === employeeId && leaveCoversDate(item, date),
-  )
-  return leave?.reason?.trim() || null
+  // OF-20: una persona puede tener más de una licencia el mismo día; se muestran todas.
+  const reasons: string[] = []
+  for (const item of leaves) {
+    if (item.employeeId !== employeeId || !leaveCoversDate(item, date)) {
+      continue
+    }
+    const reason = item.reason?.trim()
+    if (reason && !reasons.includes(reason)) {
+      reasons.push(reason)
+    }
+  }
+  return reasons.length > 0 ? reasons.join(' / ') : null
 }
 
 /** Rótulo de una licencia: su motivo («Franco») o «Licencia» si no tiene. */

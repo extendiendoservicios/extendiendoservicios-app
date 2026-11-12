@@ -2,7 +2,7 @@ import type {
   AssignEmployeeInput,
   AssignEmployeeResult,
 } from '@/api/assignments'
-import { isApiError } from '@/api/errors'
+import { isApiError, type ConflictDetail } from '@/api/errors'
 
 /**
  * P27.5 (OD-16): asignar empleados desde «Editar turno». Lógica sin React:
@@ -20,6 +20,8 @@ export interface AssignedOnEdit {
 export interface RejectedOnEdit {
   employeeId: string
   message: string
+  /** OF-08: con qué choca (`conflictShiftId` para «Ver turno»). */
+  detail: ConflictDetail | null
 }
 
 export interface AssignOnEditResult {
@@ -43,6 +45,7 @@ export async function assignEmployeesOnEdit(
         message: isApiError(error)
           ? error.message
           : 'No pudimos asignar a esta persona.',
+        detail: isApiError(error) ? error.detail : null,
       })
     }
   }

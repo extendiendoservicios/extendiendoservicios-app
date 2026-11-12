@@ -46,6 +46,7 @@ describe('summarizeFixedApply', () => {
         employeeName: 'Ana Gómez',
         code: 'ON_LEAVE',
         message: 'Tiene una licencia ese día.',
+        detail: null,
       },
     ]
     expect(
@@ -65,6 +66,7 @@ describe('describeSkipped', () => {
         employeeName: null,
         code: 'SHIFT_STARTED',
         message: 'El turno ya empezó.',
+        detail: null,
       }),
     ).toBe('mié 4 nov: El turno ya empezó.')
   })
@@ -79,6 +81,7 @@ describe('describeSkipped', () => {
         employeeName: 'Ana Gómez',
         code: 'ON_LEAVE',
         message: 'Tiene una licencia ese día.',
+        detail: null,
       }),
     ).toBe('mar 3 nov · Ana Gómez: Tiene una licencia ese día.')
   })

@@ -73,19 +73,6 @@ function mapWriteError(error: {
       )
     }
   }
-  // Exclusión de solapamiento de licencias (`employee_leaves_no_overlap`,
-  // `0006_employees.sql`): a diferencia de `ASSIGNMENT_OVERLAP` o
-  // `SHIFT_OVERLAP`, esta restricción vive en una tabla que se escribe
-  // directo por PostgREST (sin RPC), así que llega como un 23P01 crudo de
-  // Postgres, no como un `raise exception` con `hint` propio -- se traduce
-  // acá, mismo criterio que el resto de este mapeador (06 sección 3:
-  // "Solapamiento bloqueado por exclusión → LEAVE_OVERLAP").
-  if (error.code === '23P01' && error.message.includes('employee_leaves')) {
-    return new ApiError(
-      'Esas fechas se superponen con otra licencia ya cargada de esa persona.',
-      'LEAVE_OVERLAP',
-    )
-  }
   return fromPostgrestError(error)
 }
 
@@ -841,7 +828,7 @@ export interface EmployeeLeaveInput {
   reason: string | null
 }
 
-/** Alta de una licencia. Errores posibles: `LEAVE_OVERLAP` (exclusión de solapamiento, `06` sección 3). */
+/** Alta de una licencia. Desde `0082` (OF-20) las licencias de una persona pueden superponerse. */
 export async function createEmployeeLeave(
   employeeId: string,
   input: EmployeeLeaveInput,
@@ -861,9 +848,7 @@ export async function createEmployeeLeave(
 
 /**
  * Edición de una licencia (AJ2-08): fechas y motivo, con el mismo formulario
- * del alta. Es un update de la misma fila, así que la exclusión de
- * solapamiento no la compara consigo misma; sí choca contra otras licencias
- * vigentes (`LEAVE_OVERLAP`).
+ * del alta. Puede superponerse con otras licencias (OF-20).
  */
 export async function updateEmployeeLeave(
   id: string,
@@ -887,10 +872,7 @@ export async function updateEmployeeLeave(
 /**
  * Baja lógica de una licencia (EMP-008, "no ofrezcas borrar físicamente,
  * aunque la política de la base lo permita" -- ver el reporte del encargo).
- * Libera el rango de fechas que ocupaba para la exclusión de solapamiento
- * (`employee_leaves_no_overlap` filtra `where deleted_at is null`), así que
- * después se puede cargar otra licencia superpuesta si hacía falta corregir
- * una carga errónea.
+ * La licencia deja de contar para todo (cronograma, calendario, asignaciones).
  */
 export async function deactivateEmployeeLeave(
   id: string,

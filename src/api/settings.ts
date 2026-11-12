@@ -13,8 +13,8 @@ import { ApiError, fromPostgrestError } from './errors'
  * A diferencia de `users.ts`, ninguna de estas cuatro pantallas tiene una
  * RPC propia (`06_API.md` sección 9: "upsert_rating_criteria(...),
  * upsert_holiday(...) | O | Mantenimiento simple (**o inserts directos con
- * RLS**)" — el backend ya construido optó por la segunda opción, no hay
- * `upsert_holiday`/`upsert_rating_criteria` en las migraciones): todas las
+ * RLS**)" — el backend optó por la segunda opción; la excepción es el
+ * alta de feriados, que desde `0082` (OF-19) usa la RPC `upsert_holiday`): todas las
  * escrituras acá son `.from('tabla').insert/update(...)` directas, protegidas
  * solo por RLS. Dos consecuencias que no aparecen en `users.ts`:
  *
@@ -265,19 +265,50 @@ export async function fetchHolidays(year: number): Promise<Holiday[]> {
 export interface CreateHolidayInput {
   holidayDate: string
   name: string
-  createdBy: string
 }
 
-/** Alta manual de un feriado (dueño). */
-export async function createHoliday(input: CreateHolidayInput): Promise<void> {
-  const { error } = await supabase.from('holidays').insert({
-    holiday_date: input.holidayDate,
-    name: input.name,
-    created_by: input.createdBy,
+export type HolidayUpsertAction =
+  'created' | 'reactivated' | 'updated' | 'unchanged'
+
+export interface HolidayUpsertResult {
+  holiday: Holiday
+  action: HolidayUpsertAction
+}
+
+/**
+ * Alta de un feriado con `upsert_holiday` (OF-19, solo dueño): crea, reactiva
+ * uno dado de baja o actualiza el nombre del vigente. La unicidad de la fecha
+ * es solo entre los vigentes, así que una fecha dada de baja ya no queda
+ * trabada.
+ */
+export async function createHoliday(
+  input: CreateHolidayInput,
+): Promise<HolidayUpsertResult> {
+  const { data, error } = await supabase.rpc('upsert_holiday', {
+    p_date: input.holidayDate,
+    p_name: input.name,
   })
 
   if (error) {
-    throw mapWriteError(error)
+    throw fromPostgrestError(error)
+  }
+  const payload = data as unknown as {
+    holiday: {
+      id: string
+      holiday_date: string
+      name: string | null
+      deleted_at: string | null
+    }
+    action: HolidayUpsertAction
+  }
+  return {
+    holiday: {
+      id: payload.holiday.id,
+      holidayDate: payload.holiday.holiday_date,
+      name: payload.holiday.name,
+      deletedAt: payload.holiday.deleted_at,
+    },
+    action: payload.action,
   }
 }
 
@@ -289,27 +320,6 @@ export async function deactivateHoliday(
   const { error } = await supabase
     .from('holidays')
     .update({ deleted_at: new Date().toISOString(), updated_by: updatedBy })
-    .eq('id', id)
-
-  if (error) {
-    throw mapWriteError(error)
-  }
-}
-
-/**
- * Reactiva un feriado dado de baja, reusando la fila existente en vez de
- * insertar una nueva (evita el choque con `holiday_date unique` -- ver el
- * comentario de `fetchHolidays`). Solo la usa `loadNationalHolidays` cuando
- * la fecha nacional coincide con un feriado que ya estaba borrado.
- */
-async function reactivateHoliday(
-  id: string,
-  name: string,
-  updatedBy: string,
-): Promise<void> {
-  const { error } = await supabase
-    .from('holidays')
-    .update({ deleted_at: null, name, updated_by: updatedBy })
     .eq('id', id)
 
   if (error) {
@@ -334,12 +344,13 @@ export interface LoadNationalHolidaysResult {
  */
 export async function loadNationalHolidays(
   year: number,
-  createdBy: string,
 ): Promise<LoadNationalHolidaysResult> {
   const nationalHolidays = computeNationalHolidays(year)
   const existing = await fetchHolidays(year)
-  const existingByDate = new Map(
-    existing.map((holiday) => [holiday.holidayDate, holiday]),
+  const activeDates = new Set(
+    existing
+      .filter((holiday) => holiday.deletedAt == null)
+      .map((holiday) => holiday.holidayDate),
   )
 
   let created = 0
@@ -347,25 +358,149 @@ export async function loadNationalHolidays(
   let skipped = 0
 
   for (const holiday of nationalHolidays) {
-    const existingHoliday = existingByDate.get(holiday.date)
-    if (!existingHoliday) {
-      await createHoliday({
-        holidayDate: holiday.date,
-        name: holiday.name,
-        createdBy,
-      })
-      created += 1
+    if (activeDates.has(holiday.date)) {
+      skipped += 1
       continue
     }
-    if (existingHoliday.deletedAt) {
-      await reactivateHoliday(existingHoliday.id, holiday.name, createdBy)
+    const { action } = await createHoliday({
+      holidayDate: holiday.date,
+      name: holiday.name,
+    })
+    if (action === 'reactivated') {
       reactivated += 1
-      continue
+    } else {
+      created += 1
     }
-    skipped += 1
   }
 
   return { created, reactivated, skipped }
+}
+
+// -------------------------------------------------------------------------
+// 2b. Turnos de un feriado nuevo (OF-19b)
+// -------------------------------------------------------------------------
+
+export interface HolidayConflictShift {
+  shiftId: string
+  shiftDate: string
+  startTime: string
+  endTime: string
+  status: string
+  serviceId: string
+  serviceName: string
+  clientName: string
+  siteName: string
+  assignmentsCount: number
+  hasHistory: boolean
+}
+
+export interface HolidayShiftConflicts {
+  date: string
+  isHoliday: boolean
+  /** Turnos sin historia: los que `remove_holiday_shifts` puede borrar. */
+  deletableCount: number
+  withHistoryCount: number
+  shifts: HolidayConflictShift[]
+}
+
+interface HolidayConflictShiftRaw {
+  shift_id: string
+  shift_date: string
+  start_time: string
+  end_time: string
+  status: string
+  service_id: string
+  service_name: string
+  client_name: string
+  site_name: string
+  assignments_count: number
+  has_history: boolean
+}
+
+/** Turnos generados de ese día de servicios que no trabajan feriados (`holiday_shift_conflicts`, O y A). Solo lectura. */
+export async function fetchHolidayShiftConflicts(
+  date: string,
+): Promise<HolidayShiftConflicts> {
+  const { data, error } = await supabase.rpc('holiday_shift_conflicts', {
+    p_date: date,
+  })
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  const payload = data as unknown as {
+    date: string
+    is_holiday: boolean
+    deletable_count: number
+    with_history_count: number
+    shifts: HolidayConflictShiftRaw[]
+  }
+  return {
+    date: payload.date,
+    isHoliday: payload.is_holiday,
+    deletableCount: payload.deletable_count,
+    withHistoryCount: payload.with_history_count,
+    shifts: (payload.shifts ?? []).map((shift) => ({
+      shiftId: shift.shift_id,
+      shiftDate: shift.shift_date,
+      startTime: shift.start_time,
+      endTime: shift.end_time,
+      status: shift.status,
+      serviceId: shift.service_id,
+      serviceName: shift.service_name,
+      clientName: shift.client_name,
+      siteName: shift.site_name,
+      assignmentsCount: shift.assignments_count,
+      hasHistory: shift.has_history,
+    })),
+  }
+}
+
+export interface RemoveHolidayShiftsResult {
+  date: string
+  deletedShifts: number
+  deletedAssignments: number
+  skippedCount: number
+  skipped: {
+    shiftId: string
+    shiftDate: string
+    code: string
+    message: string
+  }[]
+}
+
+/** Borra los turnos sin historia de ese feriado (`remove_holiday_shifts`; requiere `cancel_shifts`). */
+export async function removeHolidayShifts(
+  date: string,
+): Promise<RemoveHolidayShiftsResult> {
+  const { data, error } = await supabase.rpc('remove_holiday_shifts', {
+    p_date: date,
+  })
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  const payload = data as unknown as {
+    date: string
+    deleted: { shifts: number; assignments: number }
+    skipped_count: number
+    skipped: {
+      shift_id: string
+      shift_date: string
+      code: string
+      message: string
+    }[]
+  }
+  return {
+    date: payload.date,
+    deletedShifts: payload.deleted.shifts,
+    deletedAssignments: payload.deleted.assignments,
+    skippedCount: payload.skipped_count,
+    skipped: (payload.skipped ?? []).map((s) => ({
+      shiftId: s.shift_id,
+      shiftDate: s.shift_date,
+      code: s.code,
+      message: s.message,
+    })),
+  }
 }
 
 // -------------------------------------------------------------------------

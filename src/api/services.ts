@@ -1,6 +1,11 @@
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
-import { ApiError, fromPostgrestError } from './errors'
+import {
+  ApiError,
+  fromPostgrestError,
+  parseConflictDetail,
+  type ConflictDetail,
+} from './errors'
 
 /**
  * `src/api/services.ts` (SERVICE-001, mismo patrón que `src/api/clients.ts`
@@ -511,6 +516,8 @@ export interface FixedApplySkipped {
   employeeName: string | null
   code: string
   message: string
+  /** OF-08: con qué choca (`conflictShiftId` para «Ver turno»), o `null`. */
+  detail: ConflictDetail | null
 }
 
 export interface FixedApplyResult {
@@ -552,6 +559,7 @@ interface RawFixedApplyResult {
     employee_name: string | null
     code: string
     message: string
+    detail?: unknown
   }[]
 }
 
@@ -584,6 +592,7 @@ export function parseFixedApplyResult(
       employeeName: item.employee_name,
       code: item.code,
       message: item.message,
+      detail: parseConflictDetail(item.detail),
     })),
   }
 }

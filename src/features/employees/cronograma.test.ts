@@ -42,6 +42,33 @@ const base = {
   holidays: [],
 }
 
+describe('cronograma: licencias superpuestas (OF-20)', () => {
+  it('muestra todas las licencias del mismo día', () => {
+    const month = buildCronogramaMonth({
+      ...base,
+      leaves: [
+        {
+          id: 'l1',
+          startsOn: '2026-11-02',
+          endsOn: '2026-11-06',
+          reason: 'Vacaciones',
+          deletedAt: null,
+        },
+        {
+          id: 'l2',
+          startsOn: '2026-11-04',
+          endsOn: '2026-11-05',
+          reason: 'Enfermedad',
+          deletedAt: null,
+        },
+      ],
+    })
+    expect(dayOf(month, '2026-11-03').label).toBe('VACACIONES')
+    expect(dayOf(month, '2026-11-04').label).toBe('VACACIONES / ENFERMEDAD')
+    expect(dayOf(month, '2026-11-04').kind).toBe('leave')
+  })
+})
+
 describe('cronograma: estructura del mes', () => {
   it('título, rango y semanas de lunes a domingo', () => {
     expect(cronogramaTitle(2026, 11)).toBe('MES DE NOVIEMBRE 2026')
