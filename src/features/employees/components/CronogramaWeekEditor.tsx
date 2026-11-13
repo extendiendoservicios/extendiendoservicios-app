@@ -1207,10 +1207,13 @@ function ScopeDialog({
             {previewLabel(next, block.openEnded)}.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-1.5">
+        <div className="flex min-w-0 flex-col gap-1.5">
           <Label htmlFor="destino-solo">Si pasás solo a {personName}</Label>
           <Select value={target} onValueChange={setTarget}>
-            <SelectTrigger id="destino-solo">
+            <SelectTrigger
+              id="destino-solo"
+              className="w-full min-w-0 whitespace-normal text-left *:data-[slot=select-value]:line-clamp-2"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
