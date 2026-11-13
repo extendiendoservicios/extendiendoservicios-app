@@ -480,52 +480,65 @@ test.describe('mapa del Resumen (OF-13, OF-13b)', () => {
     'pantalla completa: «Ampliar mapa» lo expande al viewport y Esc o el mismo botón lo cierran',
     cubre('RB-A07', 'OF-13b'),
     async ({ page }) => {
-      await interceptMapRequests(page)
-      await page.goto('/admin')
-      const region = mapa(page)
-      await expect(
-        region.getByRole('heading', { name: 'Dónde está el equipo' }),
-      ).toBeVisible()
-      const ampliar = region.getByRole('button', { name: 'Ampliar mapa' })
-      await expect(ampliar).toBeVisible()
-      const caja = await ampliar.boundingBox()
-      expect(caja!.width, 'objetivo táctil de 44 px').toBeGreaterThanOrEqual(40)
-      await ampliar.click()
-      const salir = page.getByRole('button', {
-        name: 'Salir de pantalla completa',
-      })
-      await expect(salir).toBeVisible()
-      const viewport = page.viewportSize()!
-      await expect
-        .poll(async () => {
-          const box = await page.locator('.leaflet-container').boundingBox()
-          return Math.round(box?.width ?? 0)
+      test.setTimeout(240_000)
+      // P28.9c: el mapa solo se dibuja (y trae «Ampliar mapa») si hay alguna sede para mostrar; antes
+      // dependía de datos ajenos de App_dev y de la hora (de noche no queda nadie «en curso»). Se arma
+      // una sede ubicable con un turno de todo el día de hoy.
+      const sc = new Scenario()
+      try {
+        const cliente = await sc.client('of13b')
+        const sede = await sedeGeo(sc, cliente, 'of13b', { radio: 100 })
+        await sc.shift(cliente.id, sede.id, sc.today, {
+          start: '00:00',
+          end: '23:59',
         })
-        .toBeGreaterThanOrEqual(viewport.width - 4)
-      // Esc: en Chromium sin pantalla (Playwright) la tecla no llega al navegador, así que se
-      // simula lo que éste hace con ella (salir de la pantalla completa) y la app tiene que enterarse.
-      await page.keyboard.press('Escape')
-      await page.evaluate(async () => {
-        if (document.fullscreenElement) await document.exitFullscreen()
-      })
-      await expect(
-        page.getByRole('button', { name: 'Ampliar mapa' }),
-      ).toBeVisible()
-      await expect
-        .poll(async () => {
-          const box = await page.locator('.leaflet-container').boundingBox()
-          return Math.round(box?.width ?? 0)
-        })
-        .toBeLessThan(viewport.width - 40)
-      // Y con el mismo botón.
-      await page.getByRole('button', { name: 'Ampliar mapa' }).click()
-      await page
-        .getByRole('button', { name: 'Salir de pantalla completa' })
-        .click()
-      await expect(
-        page.getByRole('button', { name: 'Ampliar mapa' }),
-      ).toBeVisible()
-      await expectNoHorizontalScroll(page)
+        await pantallaCompleta(page)
+      } finally {
+        expect(await sc.cleanup(), 'limpieza').toEqual([])
+      }
     },
   )
 })
+
+async function pantallaCompleta(page: Page) {
+  await interceptMapRequests(page)
+  await page.goto('/admin')
+  const region = mapa(page)
+  await expect(
+    region.getByRole('heading', { name: 'Dónde está el equipo' }),
+  ).toBeVisible()
+  const ampliar = region.getByRole('button', { name: 'Ampliar mapa' })
+  await expect(ampliar).toBeVisible()
+  const caja = await ampliar.boundingBox()
+  expect(caja!.width, 'objetivo táctil de 44 px').toBeGreaterThanOrEqual(40)
+  await ampliar.click()
+  const salir = page.getByRole('button', {
+    name: 'Salir de pantalla completa',
+  })
+  await expect(salir).toBeVisible()
+  const viewport = page.viewportSize()!
+  await expect
+    .poll(async () => {
+      const box = await page.locator('.leaflet-container').boundingBox()
+      return Math.round(box?.width ?? 0)
+    })
+    .toBeGreaterThanOrEqual(viewport.width - 4)
+  // Esc: en Chromium sin pantalla (Playwright) la tecla no llega al navegador, así que se
+  // simula lo que éste hace con ella (salir de la pantalla completa) y la app tiene que enterarse.
+  await page.keyboard.press('Escape')
+  await page.evaluate(async () => {
+    if (document.fullscreenElement) await document.exitFullscreen()
+  })
+  await expect(page.getByRole('button', { name: 'Ampliar mapa' })).toBeVisible()
+  await expect
+    .poll(async () => {
+      const box = await page.locator('.leaflet-container').boundingBox()
+      return Math.round(box?.width ?? 0)
+    })
+    .toBeLessThan(viewport.width - 40)
+  // Y con el mismo botón.
+  await page.getByRole('button', { name: 'Ampliar mapa' }).click()
+  await page.getByRole('button', { name: 'Salir de pantalla completa' }).click()
+  await expect(page.getByRole('button', { name: 'Ampliar mapa' })).toBeVisible()
+  await expectNoHorizontalScroll(page)
+}
