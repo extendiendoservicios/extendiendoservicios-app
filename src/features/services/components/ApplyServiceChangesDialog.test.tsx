@@ -99,6 +99,7 @@ const WITH_CHANGES: ServiceChangesResult = {
 function renderDialog(props: {
   previous?: ServicePrevious | null
   includeFixed?: boolean
+  createMissing?: boolean
   onFinish?: () => void
 }) {
   const onFinish = props.onFinish ?? vi.fn()
@@ -111,6 +112,7 @@ function renderDialog(props: {
         serviceId="svc-1"
         previous={props.previous === undefined ? PREVIOUS : props.previous}
         includeFixed={props.includeFixed}
+        createMissing={props.createMissing}
         onFinish={onFinish}
       />
     </QueryClientProvider>,
@@ -147,7 +149,12 @@ describe('ApplyServiceChangesDialog (OF-05)', () => {
         'Se borran 2 turnos; se actualiza 1 turno; se crean 3 turnos; se saltea 1 turno.',
       ),
     ).toBeInTheDocument()
-    expect(previewMock).toHaveBeenCalledWith('svc-1', '2026-11-12', PREVIOUS)
+    expect(previewMock).toHaveBeenCalledWith(
+      'svc-1',
+      '2026-11-12',
+      PREVIOUS,
+      true,
+    )
     // Detalle con los motivos en lenguaje claro.
     expect(
       screen.getByText(/Es feriado y el servicio no trabaja feriados\./),
@@ -166,7 +173,12 @@ describe('ApplyServiceChangesDialog (OF-05)', () => {
     await screen.findByText(/Se borran 2 turnos/)
     fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
     await waitFor(() =>
-      expect(applyMock).toHaveBeenCalledWith('svc-1', '2026-11-12', PREVIOUS),
+      expect(applyMock).toHaveBeenCalledWith(
+        'svc-1',
+        '2026-11-12',
+        PREVIOUS,
+        true,
+      ),
     )
     expect(
       await screen.findByText(
@@ -262,7 +274,7 @@ describe('ApplyServiceChangesDialog (OF-05)', () => {
     previewMock.mockResolvedValue(BASE)
     const onFinish = renderDialog({ previous: null })
     await screen.findByText(/ya están al día/)
-    expect(previewMock).toHaveBeenCalledWith('svc-1', '2026-11-12', null)
+    expect(previewMock).toHaveBeenCalledWith('svc-1', '2026-11-12', null, true)
     expect(onFinish).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'Aplicar' })).toBeDisabled()
   })
@@ -272,7 +284,28 @@ describe('ApplyServiceChangesDialog (OF-05)', () => {
     await screen.findByText(/Se borran 2 turnos/)
     fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
     await waitFor(() =>
-      expect(applyMock).toHaveBeenCalledWith('svc-1', '2026-11-12', null),
+      expect(applyMock).toHaveBeenCalledWith('svc-1', '2026-11-12', null, true),
+    )
+  })
+  it('OF-05b: sin días nuevos manda p_create_missing en falso y no promete turnos nuevos', async () => {
+    renderDialog({ createMissing: false })
+    await screen.findByText(/Se borran 2 turnos/)
+    expect(previewMock).toHaveBeenCalledWith(
+      'svc-1',
+      '2026-11-12',
+      PREVIOUS,
+      false,
+    )
+    expect(screen.getByText(/No se crean turnos nuevos\./)).toBeInTheDocument()
+    expect(screen.queryByText(/y se crean los que faltan/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+    await waitFor(() =>
+      expect(applyMock).toHaveBeenCalledWith(
+        'svc-1',
+        '2026-11-12',
+        PREVIOUS,
+        false,
+      ),
     )
   })
 })

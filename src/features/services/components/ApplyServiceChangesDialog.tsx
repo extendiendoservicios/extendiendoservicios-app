@@ -159,18 +159,30 @@ function ApplyServiceChangesDialog({
   serviceId,
   previous,
   includeFixed = false,
+  createMissing = true,
   onFinish,
 }: {
   serviceId: string
   previous: ServicePrevious | null
   includeFixed?: boolean
+  /**
+   * OF-05b: `false` cuando el cambio no puede agregar días (no cambiaron días,
+   * semanas del mes, feriados ni vigencia): no se crean turnos nuevos.
+   * «Actualizar turnos desde…» (sin cambios conocidos) lo deja en `true`.
+   */
+  createMissing?: boolean
   onFinish: () => void
 }) {
   const [date, setDate] = useState<Date>(
     () => new Date(`${todayInBuenosAires()}T00:00:00`),
   )
   const fromDate = localDateToIsoDate(date)
-  const preview = useServiceChangesPreviewQuery(serviceId, fromDate, previous)
+  const preview = useServiceChangesPreviewQuery(
+    serviceId,
+    fromDate,
+    previous,
+    createMissing,
+  )
   const applyChanges = useApplyServiceChangesMutation()
   const applyFixed = useApplyServiceFixedEmployeesMutation()
   const [result, setResult] = useState<ServiceChangesResult | null>(null)
@@ -200,6 +212,7 @@ function ApplyServiceChangesDialog({
         serviceId,
         fromDate,
         previous,
+        createMissing,
       })
       setResult(changes)
     } catch {
@@ -238,7 +251,9 @@ function ApplyServiceChangesDialog({
           <DialogDescription>
             {result
               ? summarizeServiceChanges(result, true)
-              : 'Se borran los turnos que ya no corresponden, se actualizan los que siguen (horario, dotación y fotos) y se crean los que faltan en los meses que ya tenían turnos. No se tocan los turnos cancelados, los cambiados a mano, los que ya empezaron ni los que tienen historia.'}
+              : createMissing
+                ? 'Se borran los turnos que ya no corresponden, se actualizan los que siguen (horario, dotación y fotos) y se crean los que faltan en los meses que ya tenían turnos. No se tocan los turnos cancelados, los cambiados a mano, los que ya empezaron ni los que tienen historia.'
+                : 'Se actualizan los turnos que ya existen (horario, dotación y fotos) y se borran los que ya no corresponden. No se crean turnos nuevos. No se tocan los turnos cancelados, los cambiados a mano, los que ya empezaron ni los que tienen historia.'}
           </DialogDescription>
         </DialogHeader>
 

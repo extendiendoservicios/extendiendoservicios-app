@@ -84,3 +84,53 @@ export async function fetchShiftOverlapsInSite(input: {
     openEnded: row.open_ended,
   }))
 }
+
+/** Fechas consultadas a la vez como máximo (la RPC trae un solo día por llamada). */
+export const OVERLAP_PARALLEL_LIMIT = 6
+
+export interface DateShiftOverlaps {
+  date: string
+  overlaps: ShiftOverlap[]
+}
+
+/**
+ * OF-21: turnos de la sede que se superponen, fecha por fecha (para «Repetir
+ * este turno»). `shift_overlaps_in_site` recibe un solo día, así que se hacen
+ * consultas en paralelo de a `OVERLAP_PARALLEL_LIMIT`. Devuelve solo las fechas
+ * con coincidencias, en orden. Si una consulta falla no bloquea: esa fecha se
+ * toma como sin coincidencias (el servidor valida lo que corresponde).
+ */
+export async function fetchShiftOverlapsForDates(input: {
+  siteId: string
+  dates: string[]
+  start: string
+  /** `null` = turno «A terminar». */
+  end: string | null
+}): Promise<DateShiftOverlaps[]> {
+  const results = new Array<DateShiftOverlaps>(input.dates.length)
+  let next = 0
+  async function worker() {
+    while (next < input.dates.length) {
+      const index = next++
+      const date = input.dates[index] as string
+      try {
+        const overlaps = await fetchShiftOverlapsInSite({
+          siteId: input.siteId,
+          date,
+          start: input.start,
+          end: input.end,
+        })
+        results[index] = { date, overlaps }
+      } catch {
+        results[index] = { date, overlaps: [] }
+      }
+    }
+  }
+  await Promise.all(
+    Array.from(
+      { length: Math.min(OVERLAP_PARALLEL_LIMIT, input.dates.length) },
+      worker,
+    ),
+  )
+  return results.filter((item) => item.overlaps.length > 0)
+}

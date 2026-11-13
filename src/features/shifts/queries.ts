@@ -131,6 +131,31 @@ export function useShiftSeriesPreviewQuery(rule: ShiftSeriesRule | null) {
   })
 }
 
+/**
+ * OF-21: fechas que generaría la repetición y las que ya tienen un turno que
+ * se superpone en la sede. Trae las fechas con `preview_shift_series` y
+ * consulta `shift_overlaps_in_site` por fecha (en paralelo, acotado).
+ */
+export function useSeriesDuplicatesMutation() {
+  return useMutation({
+    mutationFn: async (input: {
+      rule: ShiftSeriesRule
+      siteId: string
+      start: string
+      end: string | null
+    }) => {
+      const preview = await shiftsApi.previewShiftSeries(input.rule)
+      const duplicates = await overlapsApi.fetchShiftOverlapsForDates({
+        siteId: input.siteId,
+        dates: preview.dates,
+        start: input.start,
+        end: input.end,
+      })
+      return { dates: preview.dates, duplicates }
+    },
+  })
+}
+
 /** Alta repetida de ADM-07 (AJ3-08): invalida turnos, planificación (incluye el tablero) y asistencia. */
 export function useCreateShiftSeriesMutation() {
   const queryClient = useQueryClient()

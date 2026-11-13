@@ -461,6 +461,8 @@ Base: migración `0082`. Cliente: `src/api/services.ts` (`previewServiceChanges`
 | `service_overlaps(p_site_id, p_weekdays, p_start, p_end, p_except_id)`   | RPC   | O, A. Servicios activos de la sede que coinciden en día y horario. Solo lectura.                                                                                                                                                                                                  |
 | `shift_overlaps_in_site(p_site_id, p_date, p_start, p_end, p_except_id)` | RPC   | O, A. Turnos no cancelados de la sede ese día que se superponen. Solo lectura.                                                                                                                                                                                                    |
 
+Desde `0084` (P28.9, detalle en `docs/features/p28-9-ajustes.md`): `previewServiceChanges` y `applyServiceChanges` reciben `createMissing` (`p_create_missing`, por defecto `true`); `fetchShiftOverlapsForDates` (`src/api/overlaps.ts`) consulta `shift_overlaps_in_site` fecha por fecha, en paralelo y acotado, para «Repetir este turno»; `moveAssignmentToNewShift` (`src/api/assignments.ts`, RPC `move_assignment_to_new_shift`, O, A) pasa a una persona a un turno nuevo que se crea en el mismo paso; `fetchLeaveConflicts` suma `serviceId`, `serviceName` y `message`.
+
 ### Turno suelto repetido (P19.7 paquete R — AJ3-08)
 
 Base: migración `0046`. Detalle en `docs/database.md`. Solo dueño y administrador. Los errores llegan como `ApiError` con el `message` del servidor y el `hint` en mayúsculas.

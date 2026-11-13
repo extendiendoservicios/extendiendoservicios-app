@@ -46,6 +46,7 @@ const {
   fetchAssignmentsBoardByRange,
   assignEmployee,
   removeAssignment,
+  moveAssignmentToNewShift,
   updateAssignmentTime,
   updateShiftDetails,
   fetchShiftDetail,
@@ -767,5 +768,76 @@ describe('fetchAssignCandidates', () => {
     await expect(fetchAssignCandidates(BASE_PARAMS)).rejects.toSatisfy(
       (error: unknown) => isApiError(error) && error.hint === 'FORBIDDEN',
     )
+  })
+})
+
+describe('moveAssignmentToNewShift (OF-23)', () => {
+  it('llama move_assignment_to_new_shift y arma el resultado con el turno nuevo', async () => {
+    rpcMock.mockResolvedValue({
+      data: {
+        assignment: {
+          id: 'a2',
+          shift_id: 'sh2',
+          employee_id: 'emp1',
+          start_time: '14:00:00',
+          end_time: '18:00:00',
+          status: 'expected',
+          notes: null,
+        },
+        warnings: ['OUTSIDE_AVAILABILITY'],
+        previous: {
+          assignment_id: 'a1',
+          shift_id: 'sh1',
+          shift_date: '2026-11-18',
+          employee_id: 'emp1',
+          start_time: null,
+          end_time: null,
+          from_fixed: false,
+        },
+        removed_assignment_id: 'a1',
+        shift_id: 'sh2',
+        assignment_id: 'a2',
+        shift: { id: 'sh2', service_id: null },
+        shift_warnings: ['HOLIDAY'],
+      },
+      error: null,
+    })
+
+    const result = await moveAssignmentToNewShift({
+      assignmentId: 'a1',
+      date: '2026-11-18',
+      start: '14:00',
+      end: '18:00',
+    })
+
+    expect(rpcMock).toHaveBeenCalledWith('move_assignment_to_new_shift', {
+      p_assignment_id: 'a1',
+      p_date: '2026-11-18',
+      p_start: '14:00',
+      p_end: '18:00',
+    })
+    expect(result).toMatchObject({
+      shiftId: 'sh2',
+      assignmentId: 'a2',
+      warnings: ['OUTSIDE_AVAILABILITY'],
+      shiftWarnings: ['HOLIDAY'],
+      removedAssignmentId: 'a1',
+    })
+    expect(result.previous.shift_id).toBe('sh1')
+  })
+
+  it('traduce el error del servidor con su hint', async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: { message: 'Está de licencia.', hint: 'ON_LEAVE' },
+    })
+    await expect(
+      moveAssignmentToNewShift({
+        assignmentId: 'a1',
+        date: '2026-11-18',
+        start: '14:00',
+        end: '18:00',
+      }),
+    ).rejects.toMatchObject({ hint: 'ON_LEAVE', message: 'Está de licencia.' })
   })
 })

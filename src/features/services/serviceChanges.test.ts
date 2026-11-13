@@ -7,6 +7,7 @@ import {
   isServiceChangesEmpty,
   pluralWeekdays,
   serviceChangesAffectShifts,
+  serviceChangesCanAddShifts,
   serviceOverlapsMessage,
   shiftOverlapsMessage,
   shouldCheckServiceOverlaps,
@@ -254,6 +255,37 @@ describe('summarizeServiceChanges', () => {
           },
         ],
       }),
+    ).toBe(false)
+  })
+})
+
+describe('serviceChangesCanAddShifts (OF-05b)', () => {
+  it.each<[string, Partial<ServiceFormInput>]>([
+    ['dotación', { requiredStaff: 3 }],
+    ['hora de inicio', { startTime: '15:30' }],
+    ['fotos', { requiresPhotos: true }],
+    ['A terminar', { openEnded: true, endTime: null }],
+  ])('cambiar solo %s no puede agregar turnos', (_label, change) => {
+    expect(serviceChangesCanAddShifts(BEFORE, { ...SAME, ...change })).toBe(
+      false,
+    )
+  })
+
+  it.each<[string, Partial<ServiceFormInput>]>([
+    ['días', { weekdays: [1, 2, 3] }],
+    ['semanas del mes', { weeksOfMonth: [1, 3] }],
+    ['trabaja feriados', { worksOnHolidays: false }],
+    ['vigencia desde', { validFrom: '2026-03-01' }],
+    ['vigencia hasta', { validTo: '2026-12-31' }],
+  ])('cambiar %s sí puede agregar turnos', (_label, change) => {
+    expect(serviceChangesCanAddShifts(BEFORE, { ...SAME, ...change })).toBe(
+      true,
+    )
+  })
+
+  it('semanas del mes: [] y null son lo mismo', () => {
+    expect(
+      serviceChangesCanAddShifts(BEFORE, { ...SAME, weeksOfMonth: [] }),
     ).toBe(false)
   })
 })

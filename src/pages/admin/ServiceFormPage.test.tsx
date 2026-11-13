@@ -238,13 +238,20 @@ describe('ServiceFormPage (OF-05)', () => {
       required_staff: 1,
       requires_photos: false,
     }
-    expect(previewMock).toHaveBeenCalledWith('svc-1', '2026-11-12', previous)
+    // OF-05b: solo cambió el horario, no puede agregar días: no se crean turnos.
+    expect(previewMock).toHaveBeenCalledWith(
+      'svc-1',
+      '2026-11-12',
+      previous,
+      false,
+    )
     fireEvent.click(await screen.findByRole('button', { name: 'Aplicar' }))
     await waitFor(() =>
       expect(applyChangesMock).toHaveBeenCalledWith(
         'svc-1',
         '2026-11-12',
         previous,
+        false,
       ),
     )
     expect(applyFixedMock).not.toHaveBeenCalled()
@@ -311,7 +318,13 @@ describe('ServiceFormPage (OF-05)', () => {
     await waitFor(() => expect(button).toBeEnabled())
     fireEvent.click(button)
     await waitFor(() =>
-      expect(previewMock).toHaveBeenCalledWith('svc-1', '2026-11-12', null),
+      // OF-05b: sin cambios conocidos se deja crear los turnos que faltan.
+      expect(previewMock).toHaveBeenCalledWith(
+        'svc-1',
+        '2026-11-12',
+        null,
+        true,
+      ),
     )
     fireEvent.click(await screen.findByRole('button', { name: 'Aplicar' }))
     await waitFor(() =>
@@ -319,6 +332,7 @@ describe('ServiceFormPage (OF-05)', () => {
         'svc-1',
         '2026-11-12',
         null,
+        true,
       ),
     )
   })

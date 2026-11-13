@@ -571,6 +571,8 @@ export interface ClientSummaryEmployee {
   status: string
   checkInAt: string | null
   checkOutAt: string | null
+  /** OF-22 (0084): el fin lo registró el cierre automático (nadie fichó el fin). */
+  checkOutAutoClosed?: boolean
   /** `null` en una asignación «A terminar»: no hay franja prevista y no suma a las previstas (AJ2-10). */
   plannedMinutes: number | null
   workedMinutes: number | null
@@ -648,6 +650,7 @@ interface ClientServiceSummaryRaw {
       status: string
       check_in_at: string | null
       check_out_at: string | null
+      check_out_auto_closed?: boolean | null
       planned_minutes: number | null
       worked_minutes: number | null
       open_ended?: boolean
@@ -714,6 +717,7 @@ export function mapClientServiceSummary(
         status: employee.status,
         checkInAt: employee.check_in_at,
         checkOutAt: employee.check_out_at,
+        checkOutAutoClosed: employee.check_out_auto_closed ?? false,
         plannedMinutes: employee.planned_minutes,
         workedMinutes: employee.worked_minutes,
         openEnded: employee.open_ended ?? false,

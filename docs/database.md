@@ -2971,3 +2971,31 @@ Corrige el efecto lateral de la 0082: el empleado tiene que seguir viendo el tur
   turnos cancelados, y las vistas no exponen `released_at`.
 - Tests: `0083_p28_1b_turno_cancelado_libera` y ajustes en `0007`, `0023`, `0024`, `0030` (DEF-01 vuelve a no necesitar fichaje) y
   `0082_p28_1_feriados_cancelacion_licencias`.
+
+## Migración 0084 (P28.9a): ajustes después del pase (OF-05b, OF-23, OF-08b, OF-22)
+
+- **OF-05b.** `preview_service_changes` y `apply_service_changes` reciben `p_create_missing boolean default true` como cuarto
+  parámetro (y `app.service_changes_run` también). En falso no se genera ningún turno faltante (paso 3): solo se actualizan y
+  borran los existentes; `created_count = 0` y `created`, `unassigned` y `months` quedan vacíos. Se reemplazaron las firmas de
+  la 0082 (sin sobrecargas); llamarlas con tres argumentos sigue funcionando por el default.
+- **OF-23.** `public.move_assignment_to_new_shift(p_assignment_id, p_date, p_start, p_end) returns jsonb`. O, A. Crea un turno
+  manual del mismo cliente, sede y servicio que el turno actual de la asignación (dotación 1, sin observación, fotos del
+  servicio) con `app.create_shift_core` y pasa a la persona con `move_assignment`: todo en una transacción. Devuelve lo mismo
+  que `move_assignment` (`assignment`, `warnings`, `previous`, `removed_assignment_id`) más `shift_id` (turno nuevo),
+  `assignment_id` (asignación nueva), `shift` (fila) y `shift_warnings`. Errores propios: `ASSIGNMENT_NOT_FOUND`,
+  `INVALID_TIME_RANGE`. Un servicio no puede tener dos turnos vigentes el mismo día (índice único `service_id, shift_date`):
+  si el servicio ya tiene turno en `p_date` (lo normal al pasar a la persona a otro horario el mismo día) el turno nuevo nace
+  sin servicio (`service_id` nulo, manual), con las fotos del servicio; si no, con el servicio. El resto (`ON_LEAVE`, `ASSIGNMENT_OVERLAP` con `detail`, `ASSIGNMENT_STARTED`...) viene de las
+  validaciones de `move_assignment`.
+- **OF-08b.** Ayuda interna `app.shift_brief(p_shift_id, p_assignment_id default null)`: `shift_id`, `conflict_shift_id`,
+  `conflict_assignment_id`, `client_id`, `client_name`, `site_id`, `site_name`, `service_id`, `service_name`, `shift_date`,
+  `start_time`, `end_time`, `open_ended`.
+  - `get_leave_conflicts` (se reemplaza por cambio de tipo de retorno) suma al final `service_id`, `service_name` y
+    `detail jsonb` = `shift_brief` + `code = 'SHIFT_IN_LEAVE'`, `employee_id`, `employee_name` y `message` («Acosta ya está en
+    YPF RUTA (YPF RUTA TURNO TARDE) el lun 9/11 de 15:00 a 17:00.»). Las columnas anteriores no cambian.
+  - `assign_supervision` (sigue sin `execute` para `authenticated`, 0063): el `ON_LEAVE` dice la licencia en el `message` y su
+    `detail` trae la licencia (`leaves`) y los datos del turno (`shift_brief`) más `conflicts`.
+- **OF-22.** La fuente de la hoja imprimible de asistencia es `client_service_summary` (jsonb): cada empleado suma al final
+  `check_out_auto_closed` (boolean). `v_assignments_board` ya traía `check_out_auto_closed` (0082) y no se tocó.
+- Tests: `0084_p28_9_ajustes` y ajuste de las firmas en `0082_p28_1_cambios_del_servicio`.
+- **OF-21.** `preview_shift_series` y `create_shift_series` reciben `p_exclude_dates date[] default null` como último parámetro (se reemplazaron las firmas, sin sobrecargas). Las fechas excluidas no se crean ni se informan; si no queda ninguna, `SERIES_EMPTY`. La vista previa las saca de `dates` y `holidays_skipped`.

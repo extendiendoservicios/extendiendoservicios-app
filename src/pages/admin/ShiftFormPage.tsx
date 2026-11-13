@@ -7,6 +7,14 @@ import { CalendarClock, TriangleAlert } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { RepeatFields } from '@/features/services/components/RepeatFields'
@@ -69,11 +77,13 @@ import {
   useShiftSeriesPreviewQuery,
   useShiftDateWarningsMutation,
   useShiftOverlapsInSiteMutation,
+  useSeriesDuplicatesMutation,
   useUpdateShiftTimeMutation,
 } from '@/features/shifts/queries'
 import {
   describeSeriesPreview,
   seriesIssuesByDate,
+  seriesDuplicateLines,
   seriesIssuesTitle,
   seriesSuccessMessage,
 } from '@/features/shifts/series'
@@ -167,6 +177,15 @@ function CreateShiftForm({
   const [overlapPrompt, setOverlapPrompt] = useState<{
     values: ShiftFormValues
     message: string
+  } | null>(null)
+  // OF-21: aviso de fechas repetidas que ya tienen turno (no bloquea).
+  const checkSeriesDuplicates = useSeriesDuplicatesMutation()
+  const [seriesPrompt, setSeriesPrompt] = useState<{
+    values: ShiftFormValues
+    lines: string[]
+    dates: string[]
+    /** Todas las fechas de la repetición ya tienen turno: no hay qué crear si se sacan. */
+    allDuplicated: boolean
   } | null>(null)
   const employeeOptionsQuery = useActiveEmployeeOptionsQuery()
   // AJ2-17: empleados que quedan asignados al crear el turno.
@@ -320,7 +339,43 @@ function CreateShiftForm({
     }
   }
 
-  async function onSubmitSeries(values: ShiftFormValues) {
+  /**
+   * OF-21: antes de repetir se revisa cada fecha con `shift_overlaps_in_site`;
+   * si alguna ya tiene un turno que se pisa en la sede, se listan y se elige
+   * entre repetir igual o sacar esas fechas. Si la consulta falla no se bloquea.
+   */
+  async function checkAndSubmitSeries(values: ShiftFormValues) {
+    const rule = shiftFormValuesToSeriesRule(values)
+    if (!rule) {
+      toast.error('Revisá los días y la fecha «hasta» de la repetición.')
+      return
+    }
+    try {
+      const found = await checkSeriesDuplicates.mutateAsync({
+        rule,
+        siteId: values.siteId,
+        start: values.startTime,
+        end: values.openEnded ? null : values.endTime,
+      })
+      if (found.duplicates.length > 0) {
+        setSeriesPrompt({
+          values,
+          lines: seriesDuplicateLines(found.duplicates),
+          dates: found.duplicates.map((item) => item.date),
+          allDuplicated: found.duplicates.length >= found.dates.length,
+        })
+        return
+      }
+    } catch {
+      // Sin el aviso se repite igual; el servidor valida lo que corresponde.
+    }
+    await onSubmitSeries(values)
+  }
+
+  async function onSubmitSeries(
+    values: ShiftFormValues,
+    excludedDates: string[] = [],
+  ) {
     const rule = shiftFormValuesToSeriesRule(values)
     if (!rule) {
       toast.error('Revisá los días y la fecha «hasta» de la repetición.')
@@ -328,11 +383,18 @@ function CreateShiftForm({
     }
     const { date: _date, ...single } = shiftFormValuesToCreateInput(values)
     try {
+      // OF-21: las fechas sacadas viajan en `p_exclude_dates`; todo en una transacción.
       const result = await createShiftSeries.mutateAsync({
         ...single,
         ...rule,
+        ...(excludedDates.length > 0 ? { excludeDates: excludedDates } : {}),
         employeeIds,
       })
+      if (result.created.length === 0) {
+        toast.warning('No se creó ningún turno: esas fechas ya tenían uno.')
+        leaveForm('/admin/planificacion', 'create')
+        return
+      }
       const names: Record<string, string> = Object.fromEntries(
         (employeeOptionsQuery.data ?? []).map((option) => [
           option.profileId,
@@ -392,7 +454,7 @@ function CreateShiftForm({
    */
   async function onSubmit(values: ShiftFormValues) {
     if (values.repeat) {
-      await onSubmitSeries(values)
+      await checkAndSubmitSeries(values)
       return
     }
     try {
@@ -837,6 +899,62 @@ function CreateShiftForm({
           Cancelar
         </Button>
       </div>
+
+      {seriesPrompt && (
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setSeriesPrompt(null)
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Posibles turnos duplicados</DialogTitle>
+              <DialogDescription>
+                Algunas fechas ya tienen un turno que se superpone en esta sede.
+              </DialogDescription>
+            </DialogHeader>
+            <ul className="max-h-60 list-disc overflow-y-auto pl-5 text-sm">
+              {seriesPrompt.lines.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setSeriesPrompt(null)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                variant="dark"
+                disabled={seriesPrompt.allDuplicated}
+                onClick={() => {
+                  const pending = seriesPrompt
+                  setSeriesPrompt(null)
+                  void onSubmitSeries(pending.values, pending.dates)
+                }}
+              >
+                Sacar esas fechas
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  const pending = seriesPrompt.values
+                  setSeriesPrompt(null)
+                  void onSubmitSeries(pending)
+                }}
+              >
+                Repetir igual
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {overlapPrompt && (
         <SimpleConfirmDialog

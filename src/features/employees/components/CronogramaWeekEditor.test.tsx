@@ -22,6 +22,9 @@ const { state, run, toastApi } = vi.hoisted(() => ({
 }))
 
 vi.mock('sonner', () => ({ toast: toastApi }))
+vi.mock('@/features/auth/AuthProvider', () => ({
+  useAuth: () => ({ roles: ['owner'], capabilities: [] }),
+}))
 vi.mock('@/features/employees/cronogramaCommands', () => ({
   runCronogramaCommand: run,
 }))
@@ -205,6 +208,37 @@ describe('CronogramaWeekEditor', () => {
       kind: 'assignment_time',
       assignmentId: 'a1',
       start: '08:15',
+    })
+  })
+
+  it('OF-23: sin otro turno ese día ofrece crear el turno nuevo y pasar a la persona', async () => {
+    state.shifts = [shiftRow({ assignedCount: 2, requiredStaff: 2 })]
+    renderEditor()
+    moveWithKeyboard()
+    await screen.findByText(
+      '¿Mover el turno para todos o pasar solo a Ana Prueba a otro horario?',
+    )
+    // jsdom no implementa estas APIs que usa el Select de Radix.
+    Element.prototype.scrollIntoView = vi.fn()
+    Element.prototype.hasPointerCapture = vi.fn(() => false)
+    Element.prototype.releasePointerCapture = vi.fn()
+    fireEvent.keyDown(screen.getByLabelText('Si pasás solo a Ana Prueba'), {
+      key: 'Enter',
+    })
+    fireEvent.click(
+      await screen.findByRole('option', {
+        name: /Crear un turno nuevo en Sede Central el .* de 08:15 a 12:15 y pasar a Ana Prueba/,
+      }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Solo a Ana Prueba' }))
+    await waitFor(() => expect(run).toHaveBeenCalled())
+    expect(run.mock.calls[0]?.[0]).toMatchObject({
+      kind: 'move_new_shift',
+      assignmentId: 'a1',
+      date: monday,
+      start: '08:15',
+      end: '12:15',
+      canUndo: true,
     })
   })
 

@@ -60,6 +60,7 @@ import { ApplyServiceChangesDialog } from '@/features/services/components/ApplyS
 import {
   buildServicePrevious,
   serviceChangesAffectShifts,
+  serviceChangesCanAddShifts,
   serviceOverlapsMessage,
   describeServiceOverlap,
   shouldCheckServiceOverlaps,
@@ -130,6 +131,8 @@ export default function ServiceFormPage() {
     serviceId: string
     previous: ServicePrevious
     includeFixed: boolean
+    /** OF-05b: false si el cambio no puede agregar días (no se crean turnos). */
+    createMissing: boolean
     destination: string
   } | null>(null)
   // OF-05: acción «Actualizar turnos desde…» (fuerza los valores del servicio).
@@ -352,6 +355,7 @@ export default function ServiceFormPage() {
             serviceId: service.id,
             previous: buildServicePrevious(before),
             includeFixed: mustSaveFixed,
+            createMissing: serviceChangesCanAddShifts(before, input),
             destination,
           })
           return
@@ -836,6 +840,7 @@ export default function ServiceFormPage() {
           serviceId={changesPrompt.serviceId}
           previous={changesPrompt.previous}
           includeFixed={changesPrompt.includeFixed}
+          createMissing={changesPrompt.createMissing}
           onFinish={() => {
             // OD-27: si además se reactivó, sigue la pregunta de generar.
             if (generatePrompt) {

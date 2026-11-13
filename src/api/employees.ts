@@ -765,6 +765,11 @@ export interface LeaveConflict {
   clientName: string
   siteName: string
   shiftStatus: Database['public']['Enums']['shift_status']
+  /** OF-08b (0084): servicio del turno; `null` = turno cargado a mano. */
+  serviceId: string | null
+  serviceName: string | null
+  /** OF-08b: texto del servidor («Acosta ya está en… el lun 9/11 de 15:00 a 17:00.»); `null` si no vino. */
+  message: string | null
 }
 
 /**
@@ -797,6 +802,12 @@ export async function fetchLeaveConflicts(
     clientName: row.client_name,
     siteName: row.site_name,
     shiftStatus: row.shift_status,
+    serviceId: row.service_id ?? null,
+    serviceName: row.service_name ?? null,
+    message:
+      typeof (row.detail as { message?: unknown } | null)?.message === 'string'
+        ? (row.detail as { message: string }).message
+        : null,
   }))
 }
 

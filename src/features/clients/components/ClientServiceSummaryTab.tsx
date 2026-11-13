@@ -339,6 +339,11 @@ function ClientSummarySheet({
         footer={sheet.footer}
         emptyText="No hubo turnos realizados ni inasistencias en este período."
       />
+      {sheet.notes.map((note) => (
+        <p key={note} className="print-keep-together mb-3 text-[10.5px]">
+          {note}
+        </p>
+      ))}
       <PrintSignatures intro={sheet.consentText} signers={sheet.signers} />
     </PrintSheet>
   )

@@ -427,6 +427,60 @@ export async function moveAssignment(input: {
   }
 }
 
+export interface MoveAssignmentToNewShiftResult extends MoveAssignmentResult {
+  /** Turno nuevo que se creó en el mismo paso (puede ser un turno manual, sin servicio). */
+  shiftId: string
+  /** Asignación nueva de la persona en el turno nuevo. */
+  assignmentId: string
+  /** Advertencias de la creación del turno (por ejemplo `HOLIDAY`). */
+  shiftWarnings: string[]
+}
+
+/**
+ * Pasa a una persona a un turno nuevo que se crea en el mismo paso (`0084`,
+ * OF-23: `move_assignment_to_new_shift`). El turno nuevo es de la misma sede
+ * y cliente; si el servicio ya tiene un turno ese día nace SIN servicio, así
+ * que no hay que asumir `service_id`. Todo va en una transacción: si el pase
+ * falla no queda el turno. Errores: los de `move_assignment` (con el `detail`
+ * de OF-08), más `ASSIGNMENT_NOT_FOUND` e `INVALID_TIME_RANGE`.
+ */
+export async function moveAssignmentToNewShift(input: {
+  assignmentId: string
+  date: string
+  start: string
+  end: string
+}): Promise<MoveAssignmentToNewShiftResult> {
+  const { data, error } = await supabase.rpc('move_assignment_to_new_shift', {
+    p_assignment_id: input.assignmentId,
+    p_date: input.date,
+    p_start: input.start,
+    p_end: input.end,
+  })
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+
+  const payload = data as unknown as {
+    assignment: Parameters<typeof mapAssignmentRow>[0]
+    warnings: AssignEmployeeWarning[] | null
+    previous: MoveAssignmentResult['previous']
+    removed_assignment_id: string
+    shift_id: string
+    assignment_id: string
+    shift_warnings: string[] | null
+  }
+  return {
+    assignment: mapAssignmentRow(payload.assignment),
+    warnings: payload.warnings ?? [],
+    previous: payload.previous,
+    removedAssignmentId: payload.removed_assignment_id,
+    shiftId: payload.shift_id,
+    assignmentId: payload.assignment_id,
+    shiftWarnings: payload.shift_warnings ?? [],
+  }
+}
+
 // -------------------------------------------------------------------------
 // 4. remove_assignment (con motivo obligatorio, usada desde ADM-06, P11.3)
 // -------------------------------------------------------------------------

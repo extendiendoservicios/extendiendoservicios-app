@@ -362,3 +362,42 @@ describe('printableEntries / personSignerLabel', () => {
     expect(personSignerLabel([])).toBe('Persona')
   })
 })
+
+describe('OF-22: cierre automático en la hoja', () => {
+  const person = {
+    name: 'Carlos Medina',
+    dni: '30111222',
+    employeeNumber: 19,
+    roleLabels: ['Empleado'],
+    signerLabel: 'Empleado',
+  }
+
+  it('marca con «*» el fin del cierre automático y agrega la nota al pie', () => {
+    const entries = buildAttendanceEntries([
+      { ...worked('a1', '2026-09-28', 238), checkOutAutoClosed: true },
+      worked('a2', '2026-09-30', 240),
+    ])
+    const sheet = buildAttendanceSheet({
+      person,
+      from: '2026-09-01',
+      to: '2026-09-30',
+      entries,
+    })
+    const ends = services(sheet).rows.map((row) => row.end)
+    expect(ends.filter((end) => String(end).endsWith('*'))).toHaveLength(1)
+    expect(sheet.notes).toEqual(['* Cierre automático: no se registró el fin.'])
+  })
+
+  it('sin cierres automáticos no hay marca ni nota', () => {
+    const sheet = buildAttendanceSheet({
+      person,
+      from: '2026-09-01',
+      to: '2026-09-30',
+      entries: buildAttendanceEntries([worked('a1', '2026-09-28', 238)]),
+    })
+    expect(
+      services(sheet).rows.some((row) => String(row.end).endsWith('*')),
+    ).toBe(false)
+    expect(sheet.notes).toEqual([])
+  })
+})

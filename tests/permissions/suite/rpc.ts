@@ -916,6 +916,30 @@ export const CASOS_RPC: CasoRpc[] = [
     admins('ASSIGNMENT_NOT_FOUND'),
     { cubre: ['RB-A06', 'RB-X02', 'OF-10'] },
   ),
+  // --- P28.9 (0084, OF-23): igual que `move_assignment`, pero crea el turno destino.
+  caso(
+    'move_assignment_to_new_shift',
+    () => ({
+      p_assignment_id: U,
+      p_date: '2099-01-01',
+      p_start: '08:00',
+      p_end: '10:00',
+    }),
+    admins('ASSIGNMENT_NOT_FOUND'),
+    { cubre: ['RB-A06', 'RB-X02', 'OF-23'] },
+  ),
+  // --- P28.9 (0084, OF-23): igual que `move_assignment`, pero crea el turno destino.
+  caso(
+    'move_assignment_to_new_shift',
+    () => ({
+      p_assignment_id: U,
+      p_date: '2099-01-01',
+      p_start: '08:00',
+      p_end: '10:00',
+    }),
+    admins('ASSIGNMENT_NOT_FOUND'),
+    { cubre: ['RB-A06', 'RB-X02', 'OF-23'] },
+  ),
   // --- P27.1b (OD-27): `generate_shifts` limitado a un servicio exige la misma capacidad.
   caso(
     'generate_shifts',
