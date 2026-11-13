@@ -22,7 +22,7 @@ import {
 
 // P19.11g · Las licencias bloquean (0059, 0061 y P19.11d, punto 4 de la reunión del 19 oct) y el
 // imprimible «Licencias y ausencias» (punto 2).
-//   - Al guardar una licencia sobre un turno ya asignado aparece el aviso con «Abrir turno»; no se
+//   - Al guardar una licencia sobre un turno ya asignado aparece el aviso con «Ver turno»; no se
 //     desasigna nada.
 //   - En «Nuevo turno» y en «Asignar empleado» la persona de licencia sale deshabilitada con «De
 //     licencia»; el servidor la rechaza con ON_LEAVE.
@@ -39,7 +39,7 @@ test.use({ storageState: storageStatePath('admin') })
 
 test.describe('licencias que bloquean (ADM-17, ADM-07, ADM-08, SUP-02)', () => {
   test(
-    'al guardar una licencia sobre un turno asignado aparece el aviso con «Abrir turno» y no se desasigna a nadie',
+    'al guardar una licencia sobre un turno asignado aparece el aviso con «Ver turno» y no se desasigna a nadie',
     cubre('RB-A04', 'RB-A03', 'CB-25', 'P-033'),
     async ({ page }) => {
       const sc = new Scenario()
@@ -66,7 +66,7 @@ test.describe('licencias que bloquean (ADM-17, ADM-07, ADM-08, SUP-02)', () => {
           ).toHaveCount(0)
         })
 
-        await test.step('una licencia sobre el turno asignado avisa y deja abrir el turno', async () => {
+        await test.step('una licencia sobre el turno asignado avisa y deja ver el turno', async () => {
           await page.getByLabel('Desde').fill(daysFromToday(5))
           await page.getByLabel('Hasta (opcional)').fill(daysFromToday(7))
           await page
@@ -82,8 +82,10 @@ test.describe('licencias que bloquean (ADM-17, ADM-07, ADM-08, SUP-02)', () => {
             page.getByText(cliente.name, { exact: false }),
           ).toBeVisible()
           await expect(page.getByText('08:00–12:00')).toBeVisible()
-          const abrir = page.getByRole('link', { name: 'Abrir turno' })
-          await expect(abrir).toHaveAttribute('href', `/admin/turnos/${turno}`)
+          // P28.9 (OF-08b): «Abrir turno» pasó a ser el botón «Ver turno» y la fila dice el servicio.
+          const abrir = page.getByRole('button', { name: 'Ver turno' })
+          await expect(abrir).toHaveCount(1)
+          await expect(page.getByText('Turno cargado a mano')).toBeVisible()
 
           // No se desasignó nada.
           const { data } = await sc.db
