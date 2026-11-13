@@ -359,6 +359,8 @@ export interface ShiftSeriesRule {
   weeksOfMonth: number[] | null
   /** Si es `false`, las fechas feriadas se saltean. */
   worksOnHolidays: boolean
+  /** OF-21 (0084): fechas que no se crean (`AAAA-MM-DD`); `SERIES_EMPTY` si no queda ninguna. */
+  excludeDates?: string[]
 }
 
 export interface ShiftSeriesPreview {
@@ -444,6 +446,10 @@ export async function createShiftSeries(
     p_weekdays: input.weekdays,
     p_weeks_of_month: input.weeksOfMonth ?? undefined,
     p_works_on_holidays: input.worksOnHolidays,
+    p_exclude_dates:
+      input.excludeDates && input.excludeDates.length > 0
+        ? input.excludeDates
+        : undefined,
     p_notes: input.notes ?? undefined,
     p_show_in_print: input.showInPrint ?? true,
     p_requires_photos: input.requiresPhotos ?? undefined,

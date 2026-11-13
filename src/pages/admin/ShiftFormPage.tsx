@@ -85,7 +85,6 @@ import {
   seriesIssuesByDate,
   seriesDuplicateLines,
   seriesIssuesTitle,
-  splitRuleAroundDates,
   seriesSuccessMessage,
 } from '@/features/shifts/series'
 import {
@@ -384,40 +383,13 @@ function CreateShiftForm({
     }
     const { date: _date, ...single } = shiftFormValuesToCreateInput(values)
     try {
-      // Con fechas sacadas, la regla se parte en tramos que las dejan afuera.
-      const ranges =
-        excludedDates.length > 0
-          ? splitRuleAroundDates(rule, excludedDates)
-          : [rule]
-      const result: Awaited<ReturnType<typeof createShiftSeries.mutateAsync>> =
-        { seriesId: '', created: [], holidaysSkipped: [] }
-      for (const range of ranges) {
-        try {
-          const part = await createShiftSeries.mutateAsync({
-            ...single,
-            ...range,
-            employeeIds,
-          })
-          result.seriesId ||= part.seriesId
-          result.created.push(...part.created)
-          result.holidaysSkipped.push(...part.holidaysSkipped)
-        } catch (error) {
-          // Un tramo sin fechas (todas sacadas o feriados) no es un error.
-          if (
-            excludedDates.length > 0 &&
-            isApiError(error) &&
-            error.hint === 'SERIES_EMPTY'
-          ) {
-            continue
-          }
-          if (result.created.length > 0) {
-            toast.warning(
-              `Se crearon ${result.created.length} turnos antes de que fallara uno: revisá el calendario.`,
-            )
-          }
-          throw error
-        }
-      }
+      // OF-21: las fechas sacadas viajan en `p_exclude_dates`; todo en una transacción.
+      const result = await createShiftSeries.mutateAsync({
+        ...single,
+        ...rule,
+        ...(excludedDates.length > 0 ? { excludeDates: excludedDates } : {}),
+        employeeIds,
+      })
       if (result.created.length === 0) {
         toast.warning('No se creó ningún turno: esas fechas ya tenían uno.')
         leaveForm('/admin/planificacion', 'create')

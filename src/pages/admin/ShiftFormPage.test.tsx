@@ -538,20 +538,17 @@ describe('ShiftFormPage — repetir el turno avisa duplicados (OF-21)', () => {
     })
   })
 
-  it('«Sacar esas fechas» crea los tramos que no incluyen esas fechas', async () => {
+  it('«Sacar esas fechas» crea la serie en una sola llamada con excludeDates', async () => {
     datesOverlapsMock.mockResolvedValue(DUP)
     await repetir()
     fireEvent.click(
       await screen.findByRole('button', { name: 'Sacar esas fechas' }),
     )
-    await waitFor(() => expect(createShiftSeriesMock).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(createShiftSeriesMock).toHaveBeenCalledTimes(1))
     expect(createShiftSeriesMock.mock.calls[0]?.[0]).toMatchObject({
       from: '2026-10-13',
-      to: '2026-10-19',
-    })
-    expect(createShiftSeriesMock.mock.calls[1]?.[0]).toMatchObject({
-      from: '2026-10-21',
       to: '2026-11-17',
+      excludeDates: ['2026-10-20'],
     })
   })
 

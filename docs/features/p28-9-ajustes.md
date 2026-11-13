@@ -9,7 +9,7 @@ Al crear la repetición (`ShiftFormPage`), antes de llamar a `create_shift_serie
 Con coincidencias se abre «Posibles turnos duplicados» con una línea por turno («El mar 18/11 ya hay “X” de 08:00 a 12:00»; sin servicio: «un turno cargado a mano») y tres salidas:
 
 - **Repetir igual**: crea toda la serie, como siempre.
-- **Sacar esas fechas**: `create_shift_series` no recibe fechas excluidas, así que la regla se parte en tramos de calendario que dejan afuera esas fechas (`splitRuleAroundDates`) y se llama una vez por tramo; un tramo sin fechas (`SERIES_EMPTY`) se ignora. Los tramos no son una sola transacción: si uno falla, los anteriores ya quedaron creados y se avisa. Se deshabilita si todas las fechas están duplicadas.
+- **Sacar esas fechas**: una sola llamada a `create_shift_series` con `p_exclude_dates` (las fechas con coincidencias; `excludeDates` en `ShiftSeriesRule`), todo en una transacción. Se deshabilita si todas las fechas están duplicadas.
 - **Cancelar**: no crea nada.
 
 Sin coincidencias, sigue como antes.
