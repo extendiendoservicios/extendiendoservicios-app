@@ -10,6 +10,7 @@ import {
   formatSeriesDates,
   seriesIssuesByDate,
   seriesSuccessMessage,
+  seriesDuplicateLines,
 } from './series'
 
 /** AJ3-08: «Repetir este turno», lógica sin React ni red. */
@@ -242,6 +243,39 @@ describe('resultado de la creación', () => {
         ],
         conflictShiftIds: [],
       },
+    ])
+  })
+})
+
+describe('OF-21: duplicados al repetir', () => {
+  it('arma la línea de cada coincidencia', () => {
+    expect(
+      seriesDuplicateLines([
+        {
+          date: '2026-11-18',
+          overlaps: [
+            {
+              shiftId: 'a',
+              serviceName: 'Oficina',
+              shiftDate: '2026-11-18',
+              startTime: '08:00:00',
+              endTime: '12:00:00',
+              openEnded: false,
+            },
+            {
+              shiftId: 'b',
+              serviceName: null,
+              shiftDate: '2026-11-18',
+              startTime: '09:00:00',
+              endTime: '23:59:00',
+              openEnded: true,
+            },
+          ],
+        },
+      ]),
+    ).toEqual([
+      'El mié 18/11 ya hay “Oficina” de 08:00 a 12:00',
+      'El mié 18/11 ya hay un turno cargado a mano desde las 09:00 (a terminar)',
     ])
   })
 })

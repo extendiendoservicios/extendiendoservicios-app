@@ -35,7 +35,16 @@ export const servicesKeys = {
     id: string,
     fromDate: string,
     previous: ServicePrevious | null,
-  ) => [...servicesKeys.all, 'changesPreview', id, fromDate, previous] as const,
+    createMissing: boolean,
+  ) =>
+    [
+      ...servicesKeys.all,
+      'changesPreview',
+      id,
+      fromDate,
+      previous,
+      createMissing,
+    ] as const,
 }
 
 // -------------------------------------------------------------------------
@@ -257,11 +266,22 @@ export function useServiceChangesPreviewQuery(
   serviceId: string,
   fromDate: string,
   previous: ServicePrevious | null,
+  createMissing = true,
 ) {
   return useQuery({
-    queryKey: servicesKeys.changesPreview(serviceId, fromDate, previous),
+    queryKey: servicesKeys.changesPreview(
+      serviceId,
+      fromDate,
+      previous,
+      createMissing,
+    ),
     queryFn: () =>
-      servicesApi.previewServiceChanges(serviceId, fromDate, previous),
+      servicesApi.previewServiceChanges(
+        serviceId,
+        fromDate,
+        previous,
+        createMissing,
+      ),
     staleTime: 0,
     gcTime: 0,
     retry: false,
@@ -276,11 +296,19 @@ export function useApplyServiceChangesMutation() {
       serviceId,
       fromDate,
       previous,
+      createMissing = true,
     }: {
       serviceId: string
       fromDate: string
       previous: ServicePrevious | null
-    }) => servicesApi.applyServiceChanges(serviceId, fromDate, previous),
+      createMissing?: boolean
+    }) =>
+      servicesApi.applyServiceChanges(
+        serviceId,
+        fromDate,
+        previous,
+        createMissing,
+      ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: servicesKeys.all })
       void queryClient.invalidateQueries({ queryKey: shiftsKeys.all })

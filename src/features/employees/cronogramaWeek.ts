@@ -445,6 +445,20 @@ export type UndoAction =
       start: string | null
       end: string | null
     }
+  | {
+      /**
+       * OF-23: deshace «Solo a <nombre>» con turno nuevo: devuelve a la
+       * persona al turno anterior y borra el turno creado (solo la dirección).
+       */
+      kind: 'move_back_delete_shift'
+      /** Asignación nueva (en el turno creado). */
+      assignmentId: string
+      targetShiftId: string
+      start: string | null
+      end: string | null
+      /** Turno creado, que se borra después de devolver a la persona. */
+      deleteShiftId: string
+    }
   | { kind: 'unassign'; assignmentId: string; reason?: string }
 
 /** `previous` de `move_assignment` (claves tal cual las manda el servidor). */
@@ -493,6 +507,22 @@ export function undoForMove(
     targetShiftId: previous.shift_id,
     start: previous.start_time ? previous.start_time.slice(0, 5) : null,
     end: previous.end_time ? previous.end_time.slice(0, 5) : null,
+  }
+}
+
+/** OF-23: deshacer del pase a un turno nuevo (devolver y borrar el turno creado). */
+export function undoForMoveToNewShift(
+  newAssignmentId: string,
+  newShiftId: string,
+  previous: MovePrevious,
+): UndoAction {
+  return {
+    kind: 'move_back_delete_shift',
+    assignmentId: newAssignmentId,
+    targetShiftId: previous.shift_id,
+    start: previous.start_time ? previous.start_time.slice(0, 5) : null,
+    end: previous.end_time ? previous.end_time.slice(0, 5) : null,
+    deleteShiftId: newShiftId,
   }
 }
 

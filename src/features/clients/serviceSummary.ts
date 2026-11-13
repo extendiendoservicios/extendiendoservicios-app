@@ -7,6 +7,10 @@ import { absenceDetail, isAbsence } from '@/features/attendance/absences'
 import { joinObservations } from '@/features/shifts/observation'
 import type { PrintColumn, PrintRowData } from '@/features/print/PrintTable'
 import { geoPrintText } from '@/features/geo/printText'
+import {
+  AUTO_CLOSED_NOTE,
+  withAutoClosedStar,
+} from '@/features/print/autoClosed'
 import { formatCalendarDate, formatMinutes } from '@/lib/format'
 import {
   formatShiftRange,
@@ -51,6 +55,8 @@ export interface ClientSummarySheetModel {
   footer: { label: string; value: string }
   signers: string[]
   consentText: string
+  /** Notas al pie (OF-22: cierre automático), solo las que corresponden. */
+  notes: string[]
   documentTitle: string
 }
 
@@ -97,6 +103,8 @@ interface SheetLine {
   novelty: string
   geo: string
   hours: string
+  /** OF-22: el fin lo registró el cierre automático. */
+  autoClosed: boolean
 }
 
 /**
@@ -165,6 +173,8 @@ export function buildClientSummarySheet(input: {
           : employee.workedMinutes != null
             ? formatMinutes(employee.workedMinutes)
             : '—',
+        autoClosed:
+          employee.checkOutAt != null && employee.checkOutAutoClosed === true,
       })
     }
   }
@@ -182,6 +192,7 @@ export function buildClientSummarySheet(input: {
       novelty: joinObservations(absenceDetail(row), row.shiftObservation),
       geo: '—',
       hours: '—',
+      autoClosed: false,
     })
   }
   lines.sort(
@@ -203,7 +214,8 @@ export function buildClientSummarySheet(input: {
     dni: dnis.get(line.employeeId) ?? '—',
     novelty: line.novelty,
     geo: line.geo,
-    hours: line.hours,
+    // OF-22: la hoja no imprime la hora de fin; la marca va en las horas, que dependen de ella.
+    hours: withAutoClosedStar(line.hours, line.autoClosed),
   }))
 
   return {
@@ -245,6 +257,7 @@ export function buildClientSummarySheet(input: {
     },
     signers: ['Responsable (administración)', 'Cliente'],
     consentText: CLIENT_SUMMARY_CONSENT_TEXT,
+    notes: lines.some((line) => line.autoClosed) ? [AUTO_CLOSED_NOTE] : [],
     documentTitle: `Resumen de servicios - ${input.clientName} - ${summary.from} al ${summary.to}`,
   }
 }

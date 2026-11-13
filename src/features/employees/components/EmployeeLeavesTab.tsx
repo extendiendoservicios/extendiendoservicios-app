@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
-import { Link } from 'react-router'
+import { useNavigate } from 'react-router'
 import { CalendarOff, Pencil, Plus, Save, TriangleAlert } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -14,7 +14,8 @@ import { EmptyState } from '@/components/EmptyState'
 import { LeavesAbsencesPrintAction } from '@/features/employees/components/LeavesAbsencesPrintAction'
 import type { LeavesAbsencesPerson } from '@/features/employees/leavesAbsencesSheet'
 import { SimpleConfirmDialog } from '@/features/settings/components/SimpleConfirmDialog'
-import { isApiError } from '@/api/errors'
+import { isApiError, type ConflictDetail } from '@/api/errors'
+import { ConflictShiftLink } from '@/features/shifts/conflictLink'
 import type { EmployeeLeave, LeaveConflict } from '@/api/employees'
 import { formatCalendarDate } from '@/lib/format'
 import { formatDateOnly } from '@/features/settings/dateOnly'
@@ -279,12 +280,8 @@ function EmployeeLeavesTab({
                   <span>
                     {conflict.clientName} · {conflict.siteName}
                   </span>
-                  <Link
-                    to={`/admin/turnos/${conflict.shiftId}`}
-                    className="font-semibold underline"
-                  >
-                    Abrir turno
-                  </Link>
+                  <span>{conflict.serviceName ?? 'Turno cargado a mano'}</span>
+                  <SeeShiftLink shiftId={conflict.shiftId} />
                 </li>
               ))}
             </ul>
@@ -387,6 +384,17 @@ function EmployeeLeavesTab({
         onConfirm={() => void handleEndLeave()}
       />
     </div>
+  )
+}
+
+/** «Ver turno» (OF-08b); el router se usa solo cuando hay turnos en la lista. */
+function SeeShiftLink({ shiftId }: { shiftId: string }) {
+  const navigate = useNavigate()
+  return (
+    <ConflictShiftLink
+      detail={{ conflictShiftId: shiftId } as ConflictDetail}
+      onOpen={(path) => void navigate(path)}
+    />
   )
 }
 

@@ -844,16 +844,19 @@ export function parseServiceChangesResult(
  * OF-05: vista previa de lo que haría `applyServiceChanges` con los valores que
  * el servicio YA tiene guardados (no escribe nada). Solo dueño y administrador.
  * Errores: `FROM_DATE_REQUIRED`, `SERVICE_NOT_FOUND`, `INVALID_PREVIOUS`.
+ * `createMissing` (OF-05b, 0084): con `false` no cuenta turnos nuevos.
  */
 export async function previewServiceChanges(
   serviceId: string,
   fromDate: string,
   previous: ServicePrevious | null,
+  createMissing = true,
 ): Promise<ServiceChangesResult> {
   const { data, error } = await supabase.rpc('preview_service_changes', {
     p_service_id: serviceId,
     p_from_date: fromDate,
     p_previous: (previous ?? undefined) as Json | undefined,
+    p_create_missing: createMissing,
   })
   if (error) {
     throw fromPostgrestError(error)
@@ -866,16 +869,20 @@ export async function previewServiceChanges(
  * que ya no corresponden, actualiza los que siguen y genera los que faltan.
  * `previous` = valores del servicio antes de guardarlo; `null` fuerza los
  * valores del servicio (acción «Actualizar turnos desde…»).
+ * `createMissing` (OF-05b, 0084): con `false` no genera turnos faltantes, solo
+ * borra y actualiza los existentes (para no recrear turnos borrados a propósito).
  */
 export async function applyServiceChanges(
   serviceId: string,
   fromDate: string,
   previous: ServicePrevious | null,
+  createMissing = true,
 ): Promise<ServiceChangesResult> {
   const { data, error } = await supabase.rpc('apply_service_changes', {
     p_service_id: serviceId,
     p_from_date: fromDate,
     p_previous: (previous ?? undefined) as Json | undefined,
+    p_create_missing: createMissing,
   })
   if (error) {
     throw fromPostgrestError(error)

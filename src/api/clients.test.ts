@@ -347,6 +347,7 @@ describe('fetchClientServiceSummary (AJ-09)', () => {
                 status: 'finished',
                 check_in_at: '2026-10-05T11:01:00Z',
                 check_out_at: '2026-10-05T15:00:00Z',
+                check_out_auto_closed: true,
                 planned_minutes: 240,
                 worked_minutes: 239,
                 open_ended: true,
@@ -391,6 +392,7 @@ describe('fetchClientServiceSummary (AJ-09)', () => {
       workedMinutes: 239,
       openEnded: true,
       noCheckout: false,
+      checkOutAutoClosed: true,
       checkInGeo: {
         status: 'valid',
         reason: null,

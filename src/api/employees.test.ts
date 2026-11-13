@@ -701,3 +701,58 @@ describe('fetchEmployeeDnisByIds (AJ2-16)', () => {
     expect(result.get('e2')).toBe('28999888')
   })
 })
+
+describe('fetchLeaveConflicts (OF-08b)', () => {
+  it('mapea el servicio y el mensaje del detail', async () => {
+    const { fetchLeaveConflicts } = await import('./employees')
+    rpcMock.mockResolvedValue({
+      data: [
+        {
+          assignment_id: 'as1',
+          shift_id: 'sh1',
+          shift_date: '2026-11-09',
+          start_time: '15:00:00',
+          end_time: '17:00:00',
+          open_ended: false,
+          client_id: 'c1',
+          client_name: 'YPF',
+          site_id: 'si1',
+          site_name: 'Ruta',
+          shift_status: 'assigned',
+          service_id: 'sv1',
+          service_name: 'Turno tarde',
+          detail: { shift_id: 'sh1', message: 'Acosta ya está en Ruta.' },
+        },
+        {
+          assignment_id: 'as2',
+          shift_id: 'sh2',
+          shift_date: '2026-11-10',
+          start_time: '08:00:00',
+          end_time: '12:00:00',
+          open_ended: false,
+          client_id: 'c1',
+          client_name: 'YPF',
+          site_id: 'si1',
+          site_name: 'Ruta',
+          shift_status: 'assigned',
+          service_id: null,
+          service_name: null,
+          detail: null,
+        },
+      ],
+      error: null,
+    })
+    const rows = await fetchLeaveConflicts('e1', '2026-11-09', null)
+    expect(rows[0]).toMatchObject({
+      shiftId: 'sh1',
+      serviceId: 'sv1',
+      serviceName: 'Turno tarde',
+      message: 'Acosta ya está en Ruta.',
+    })
+    expect(rows[1]).toMatchObject({
+      serviceId: null,
+      serviceName: null,
+      message: null,
+    })
+  })
+})

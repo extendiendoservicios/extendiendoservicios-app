@@ -1,4 +1,8 @@
+import { format, parseISO } from 'date-fns'
+import { es } from 'date-fns/locale'
+import type { DateShiftOverlaps } from '@/api/overlaps'
 import type { CreateShiftSeriesCreated, ShiftSeriesPreview } from '@/api/shifts'
+import { timeRangeText } from '@/features/services/serviceChanges'
 import { formatDateOnly } from '@/features/settings/dateOnly'
 import { conflictShiftIdOf } from '@/features/shifts/conflictLink'
 import {
@@ -126,4 +130,24 @@ export function seriesIssuesTitle(
   return hasRejected
     ? `${created}, pero a algunas personas no se las pudo asignar:`
     : `${created} y se asignó, con advertencias:`
+}
+
+/** «mar 18/11» a partir de `AAAA-MM-DD`. */
+function shortDayMonth(isoDate: string): string {
+  return format(parseISO(isoDate), 'EEE d/M', { locale: es })
+}
+
+/**
+ * OF-21: una línea por coincidencia de «Repetir este turno»:
+ * «El mar 18/11 ya hay “X” de 08:00 a 12:00» (sin servicio: «un turno cargado a mano»).
+ */
+export function seriesDuplicateLines(items: DateShiftOverlaps[]): string[] {
+  return items.flatMap((item) =>
+    item.overlaps.map((overlap) => {
+      const what = overlap.serviceName
+        ? `“${overlap.serviceName}”`
+        : 'un turno cargado a mano'
+      return `El ${shortDayMonth(item.date)} ya hay ${what} ${timeRangeText(overlap.startTime, overlap.endTime, overlap.openEnded)}`
+    }),
+  )
 }

@@ -7849,7 +7849,12 @@ export type Database = {
         Returns: undefined
       }
       apply_service_changes: {
-        Args: { p_from_date: string; p_previous?: Json; p_service_id: string }
+        Args: {
+          p_create_missing?: boolean
+          p_from_date: string
+          p_previous?: Json
+          p_service_id: string
+        }
         Returns: Json
       }
       apply_service_fixed_employees: {
@@ -8189,6 +8194,7 @@ export type Database = {
           p_client_id: string
           p_employee_ids?: string[]
           p_end: string
+          p_exclude_dates?: string[]
           p_from: string
           p_notes?: string
           p_open_ended?: boolean
@@ -8280,8 +8286,11 @@ export type Database = {
           assignment_id: string
           client_id: string
           client_name: string
+          detail: Json
           end_time: string
           open_ended: boolean
+          service_id: string
+          service_name: string
           shift_date: string
           shift_id: string
           shift_status: Database["public"]["Enums"]["shift_status"]
@@ -8359,6 +8368,15 @@ export type Database = {
           p_end?: string
           p_start?: string
           p_target_shift_id: string
+        }
+        Returns: Json
+      }
+      move_assignment_to_new_shift: {
+        Args: {
+          p_assignment_id: string
+          p_date: string
+          p_end: string
+          p_start: string
         }
         Returns: Json
       }
@@ -8512,11 +8530,17 @@ export type Database = {
         Returns: Json
       }
       preview_service_changes: {
-        Args: { p_from_date: string; p_previous?: Json; p_service_id: string }
+        Args: {
+          p_create_missing?: boolean
+          p_from_date: string
+          p_previous?: Json
+          p_service_id: string
+        }
         Returns: Json
       }
       preview_shift_series: {
         Args: {
+          p_exclude_dates?: string[]
           p_from: string
           p_to: string
           p_weekdays: number[]
