@@ -65,7 +65,7 @@ $$;
 
 grant execute on function tests_0084.err(text) to authenticated, anon;
 
-select plan(49);
+select plan(55);
 
 -- Fixtures -------------------------------------------------------------------------------------
 
@@ -329,6 +329,32 @@ select is(
 select is(
   (select ((current_setting('tests_0084.s')::jsonb ->> 'detail')::jsonb) -> 'leaves' -> 0 ->> 'reason'),
   'Estudio', 'y la licencia'
+);
+
+-- OF-21: p_exclude_dates ---------------------------------------------------------------------------
+
+select tests_0084.as_user('test-db0084-admin@example.com');
+select hasnt_function('public', 'create_shift_series', array['uuid', 'uuid', 'time without time zone', 'time without time zone', 'smallint', 'date', 'date', 'smallint[]', 'smallint[]', 'boolean', 'text', 'boolean', 'boolean', 'uuid[]', 'boolean'], 'no queda la firma vieja de create_shift_series');
+select hasnt_function('public', 'preview_shift_series', array['date', 'date', 'smallint[]', 'smallint[]', 'boolean'], 'no queda la firma vieja de preview_shift_series');
+select is(
+  (select public.preview_shift_series('2199-09-01', '2199-09-30', array[1]::smallint[], null, true, array['2199-09-09', '2199-09-23']::date[]) -> 'dates'),
+  '["2199-09-02", "2199-09-16", "2199-09-30"]'::jsonb, 'la vista previa saca las fechas excluidas'
+);
+select set_config('tests_0084.ser', public.create_shift_series(
+  'f84a0000-0000-0000-0000-000000000001', 'f84a0000-0000-0000-0000-000000000011', '06:00', '07:00', 1::smallint,
+  '2199-09-01', '2199-09-30', array[1]::smallint[], null, true, null, false, true, null, false, array['2199-09-09', '2199-09-23']::date[]
+)::text, true) is not null as ser;
+select is(
+  (select jsonb_array_length(current_setting('tests_0084.ser')::jsonb -> 'created')),
+  3, 'create_shift_series con p_exclude_dates: crea 3 de 5'
+);
+select is(
+  (select count(*)::int from public.shifts where series_id = (current_setting('tests_0084.ser')::jsonb ->> 'series_id')::uuid and shift_date in ('2199-09-09', '2199-09-23')),
+  0, 'las fechas excluidas no se crean'
+);
+select is(
+  tests_0084.err($$select public.create_shift_series('f84a0000-0000-0000-0000-000000000001', 'f84a0000-0000-0000-0000-000000000011', '06:00', '07:00', 1::smallint, '2199-10-07', '2199-10-07', array[1]::smallint[], null, true, null, false, true, null, false, array['2199-10-07']::date[])$$) ->> 'hint',
+  'SERIES_EMPTY', 'si al excluir no queda ninguna fecha: SERIES_EMPTY'
 );
 
 -- OF-22: client_service_summary -------------------------------------------------------------------------

@@ -8194,6 +8194,7 @@ export type Database = {
           p_client_id: string
           p_employee_ids?: string[]
           p_end: string
+          p_exclude_dates?: string[]
           p_from: string
           p_notes?: string
           p_open_ended?: boolean
@@ -8539,6 +8540,7 @@ export type Database = {
       }
       preview_shift_series: {
         Args: {
+          p_exclude_dates?: string[]
           p_from: string
           p_to: string
           p_weekdays: number[]

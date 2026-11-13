@@ -95,7 +95,7 @@ select ok(
 select ok(
   has_function_privilege('authenticated', 'public.create_shift(uuid, uuid, date, time, time, smallint, uuid, text, boolean, boolean, uuid[], boolean)', 'execute')
     and has_function_privilege('authenticated', 'public.update_shift_details(uuid, smallint, text, boolean, boolean)', 'execute')
-    and has_function_privilege('authenticated', 'public.create_shift_series(uuid, uuid, time, time, smallint, date, date, smallint[], smallint[], boolean, text, boolean, boolean, uuid[], boolean)', 'execute')
+    and has_function_privilege('authenticated', 'public.create_shift_series(uuid, uuid, time, time, smallint, date, date, smallint[], smallint[], boolean, text, boolean, boolean, uuid[], boolean, date[])', 'execute')
     and has_function_privilege('authenticated', 'public.set_media_retention(integer, integer)', 'execute')
     and not has_function_privilege('authenticated', 'app.create_shift_core(uuid, uuid, date, time, time, smallint, uuid, text, boolean, boolean, uuid[], uuid, boolean)', 'execute'),
   'grants: las RPC de turnos con requires_photos para authenticated; el helper interno no'

@@ -2998,3 +2998,4 @@ Corrige el efecto lateral de la 0082: el empleado tiene que seguir viendo el tur
 - **OF-22.** La fuente de la hoja imprimible de asistencia es `client_service_summary` (jsonb): cada empleado suma al final
   `check_out_auto_closed` (boolean). `v_assignments_board` ya traía `check_out_auto_closed` (0082) y no se tocó.
 - Tests: `0084_p28_9_ajustes` y ajuste de las firmas en `0082_p28_1_cambios_del_servicio`.
+- **OF-21.** `preview_shift_series` y `create_shift_series` reciben `p_exclude_dates date[] default null` como último parámetro (se reemplazaron las firmas, sin sobrecargas). Las fechas excluidas no se crean ni se informan; si no queda ninguna, `SERIES_EMPTY`. La vista previa las saca de `dates` y `holidays_skipped`.

@@ -1049,3 +1049,146 @@ $$;
 
 comment on function public.client_service_summary(uuid, date, date) is
   'Resumen de servicios de un cliente en un período, para la hoja imprimible (0033, P19.5a). O, A (quien ve clientes, clients_select_admin); FORBIDDEN si no; INVALID_DATE_RANGE (fechas nulas o desde > hasta), CLIENT_NOT_FOUND. "Turno realizado": vigente, no cancelado, completed o con al menos un inicio registrado, con shift_date entre p_from y p_to. Devuelve jsonb { client_id, from, to, totals { shifts_done, employees_count (distintos con inicio), worked_minutes, planned_minutes, open_ended_shifts (0037) }, shifts [ { shift_id, shift_date, site_id, site_name, start_time, end_time, status, worked_minutes, planned_minutes, open_ended (0037), observation (0040, AJ2-15: solo si tiene tildada «mostrar en la impresión»), employees [ { assignment_id, employee_id, first_name, last_name, status, check_in_at, check_out_at, planned_minutes, worked_minutes, open_ended, no_checkout, check_in_geo_status, check_in_geo_reason, check_in_distance_m, check_in_geo_overridden, check_out_geo_status, check_out_geo_reason, check_out_distance_m, check_out_geo_overridden, check_out_auto_closed (0084, OF-22) } ] } ] } ordenado por fecha, hora y sede. worked_minutes cuenta solo la parte del fichaje dentro de la franja efectiva (app.capped_worked_minutes); las asignaciones «A terminar» tienen planned_minutes null. Desde 0056 (P22.4b, B-20, B-40) cada empleado trae la validación por ubicación del inicio y del fin (estado, motivo de «Sin validar», distancia a la sede en metros y si un administrador la corrigió); null si no hay fichaje. Nunca trae coordenadas ni precisión. Desde 0084 (OF-22) cada empleado trae al final check_out_auto_closed (boolean): true si el fin lo registró el cierre automático (el empleado no fichó el fin); las hojas imprimibles marcan esa hora con «*».';
+
+-- ---------------------------------------------------------------------------------------------
+-- 5. OF-21: p_exclude_dates en preview_shift_series y create_shift_series («Sacar esas fechas»)
+-- ---------------------------------------------------------------------------------------------
+
+drop function public.preview_shift_series(date, date, smallint[], smallint[], boolean);
+drop function public.create_shift_series(uuid, uuid, time, time, smallint, date, date, smallint[], smallint[], boolean, text, boolean, boolean, uuid[], boolean);
+
+create function public.preview_shift_series(
+  p_from date,
+  p_to date,
+  p_weekdays smallint[],
+  p_weeks_of_month smallint[] default null,
+  p_works_on_holidays boolean default false,
+  p_exclude_dates date[] default null
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public, app, pg_temp
+as $$
+declare
+  v_dates jsonb;
+  v_skipped jsonb;
+begin
+  perform app.require_role('owner', 'admin');
+
+  select
+    coalesce(jsonb_agg(d.shift_date order by d.shift_date)
+      filter (where (coalesce(p_works_on_holidays, false) or not d.is_holiday)
+        and not (p_exclude_dates is not null and d.shift_date = any(p_exclude_dates))), '[]'::jsonb),
+    coalesce(jsonb_agg(d.shift_date order by d.shift_date)
+      filter (where d.is_holiday and not coalesce(p_works_on_holidays, false)
+        and not (p_exclude_dates is not null and d.shift_date = any(p_exclude_dates))), '[]'::jsonb)
+  into v_dates, v_skipped
+  from app.shift_series_dates(p_from, p_to, p_weekdays, p_weeks_of_month) d;
+
+  return jsonb_build_object(
+    'dates', v_dates,
+    'holidays_skipped', v_skipped,
+    'count', jsonb_array_length(v_dates)
+  );
+end;
+$$;
+
+comment on function public.preview_shift_series(date, date, smallint[], smallint[], boolean, date[]) is
+  'Vista previa de create_shift_series (0046, AJ3-08): no escribe nada. O, A. Mismas validaciones de rango y de regla: SERIES_RANGE_INVALID, SERIES_RANGE_TOO_LONG, INVALID_WEEKDAYS, INVALID_WEEKS_OF_MONTH. Devuelve {"dates": [fechas que se crearían], "holidays_skipped": [feriados salteados], "count"}. Si ninguna fecha cumple devuelve count 0 (no es error; create_shift_series sí falla con SERIES_EMPTY). Desde 0084 (OF-21) p_exclude_dates (date[], por defecto null) saca esas fechas de dates y de holidays_skipped.';
+
+revoke execute on function public.preview_shift_series(date, date, smallint[], smallint[], boolean, date[]) from public, anon;
+grant execute on function public.preview_shift_series(date, date, smallint[], smallint[], boolean, date[]) to authenticated;
+
+create function public.create_shift_series(
+  p_client_id uuid,
+  p_site_id uuid,
+  p_start time,
+  p_end time,
+  p_required_staff smallint,
+  p_from date,
+  p_to date,
+  p_weekdays smallint[],
+  p_weeks_of_month smallint[] default null,
+  p_works_on_holidays boolean default false,
+  p_notes text default null,
+  p_open_ended boolean default false,
+  p_show_in_print boolean default true,
+  p_employee_ids uuid[] default null,
+  p_requires_photos boolean default false,
+  p_exclude_dates date[] default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, app, pg_temp
+as $$
+declare
+  v_series_id uuid := gen_random_uuid();
+  v_rec record;
+  v_res jsonb;
+  v_created jsonb := '[]'::jsonb;
+  v_skipped jsonb := '[]'::jsonb;
+  v_code text;
+  v_msg text;
+begin
+  perform app.require_role('owner', 'admin');
+
+  for v_rec in
+    select d.shift_date, d.is_holiday from app.shift_series_dates(p_from, p_to, p_weekdays, p_weeks_of_month) d
+  loop
+    -- 0084 (OF-21): las fechas excluidas no se crean ni se informan como feriados salteados.
+    if p_exclude_dates is not null and v_rec.shift_date = any(p_exclude_dates) then
+      continue;
+    end if;
+
+    if v_rec.is_holiday and not coalesce(p_works_on_holidays, false) then
+      v_skipped := v_skipped || to_jsonb(v_rec.shift_date);
+      continue;
+    end if;
+
+    begin
+      v_res := app.create_shift_core(
+        p_client_id, p_site_id, v_rec.shift_date, p_start, p_end, p_required_staff, null,
+        p_notes, p_open_ended, p_show_in_print, p_employee_ids, v_series_id, coalesce(p_requires_photos, false)
+      );
+    exception
+      when sqlstate 'P0001' then
+        -- Falla todo (la transacción se revierte) y el mensaje indica la fecha que falló.
+        get stacked diagnostics v_code = pg_exception_hint, v_msg = message_text;
+        raise exception using
+          errcode = 'P0001',
+          message = v_msg || ' (turno del ' || to_char(v_rec.shift_date, 'DD/MM/YYYY') || ')',
+          hint = v_code;
+    end;
+
+    v_created := v_created || jsonb_build_array(jsonb_build_object(
+      'shift_id', v_res -> 'shift' ->> 'id',
+      'shift_date', v_rec.shift_date,
+      'warnings', v_res -> 'warnings',
+      'assigned', v_res -> 'assigned',
+      'rejected', v_res -> 'rejected'
+    ));
+  end loop;
+
+  if jsonb_array_length(v_created) = 0 then
+    raise exception using
+      errcode = 'P0001',
+      message = 'Ninguna fecha del período cumple la regla elegida (o todas son feriados).',
+      hint = 'SERIES_EMPTY';
+  end if;
+
+  return jsonb_build_object(
+    'series_id', v_series_id,
+    'created', v_created,
+    'holidays_skipped', v_skipped
+  );
+end;
+$$;
+
+comment on function public.create_shift_series(uuid, uuid, time, time, smallint, date, date, smallint[], smallint[], boolean, text, boolean, boolean, uuid[], boolean, date[]) is
+  'Repite un turno suelto (0046, AJ3-08). O, A (igual que create_shift). Crea un turno por cada fecha entre p_from y p_to (hasta <= desde + 3 meses) que cae en p_weekdays y en p_weeks_of_month (null = todas; 1 a 4 y 5 = última, como services). Si p_works_on_holidays es false, las fechas feriadas se saltean y se informan. Cada turno es independiente y comparte shifts.series_id; copia el checklist y asigna a p_employee_ids como create_shift. Todo en una transacción: si el turno de una fecha falla por una validación (INVALID_TIME_RANGE, CLIENT_NOT_ACTIVE, SITE_NOT_ACTIVE...) falla todo y el mensaje indica la fecha; las asignaciones rechazadas no frenan y se informan por fecha. Errores propios: SERIES_RANGE_INVALID, SERIES_RANGE_TOO_LONG, SERIES_EMPTY, INVALID_WEEKDAYS, INVALID_WEEKS_OF_MONTH. Desde 0047 (H-07) p_requires_photos (por defecto false) marca todos los turnos creados. Devuelve {"series_id", "created": [{shift_id, shift_date, warnings, assigned, rejected}], "holidays_skipped": [fechas]}. Desde 0084 (OF-21) p_exclude_dates (date[], por defecto null): las fechas excluidas no se crean (ni se informan); si después de excluir no queda ninguna, SERIES_EMPTY.';
+
+revoke execute on function public.create_shift_series(uuid, uuid, time, time, smallint, date, date, smallint[], smallint[], boolean, text, boolean, boolean, uuid[], boolean, date[]) from public, anon;
+grant execute on function public.create_shift_series(uuid, uuid, time, time, smallint, date, date, smallint[], smallint[], boolean, text, boolean, boolean, uuid[], boolean, date[]) to authenticated;
