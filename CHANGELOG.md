@@ -7,6 +7,30 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.29.1] - 2026-11-13
+
+Ajustes después del pase de P28 (P28.9), con las respuestas de la dirección del 13 nov. Migración 0084.
+
+### Agregado
+
+- Repetir un turno: antes de crear la repetición, avisa las fechas que ya tienen un turno que se superpone en la sede y ofrece «Repetir igual», «Sacar esas fechas» o «Cancelar».
+- Cronograma semanal: «Solo a <nombre>» puede crear un turno nuevo para esa persona. La dirección puede deshacerlo. Si el servicio ya tiene un turno ese día, el nuevo queda como turno manual en la misma sede.
+- Hojas impresas de asistencia del empleado y resumen de servicios del cliente: los cierres automáticos salen marcados con «*» y una nota al pie.
+- Avisos de licencia: cada turno en conflicto muestra el servicio (o «Turno cargado a mano») y el botón «Ver turno».
+
+### Cambiado
+
+- Al editar un servicio cambiando solo la dotación, la vista previa no crea turnos nuevos y solo ajusta los que ya existen.
+- Mensaje más claro al asignar una supervisión a alguien de licencia.
+
+### Corregido
+
+- El cartel «Solo a…» ya no se ensancha con la opción larga ni deja el botón fuera de vista.
+
+### Pruebas y automatización
+
+- pgTAP de 0084, permisos por API (`101-p28-9`) y pruebas E2E `p28-9-*` en escritorio y celular.
+
 ## [0.29.0] - 2026-11-12
 
 Observaciones de la dirección del 11 nov (P28.1 a P28.8). Migraciones 0082 y 0083.
