@@ -1,5 +1,6 @@
 import { Fragment } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router'
+import { LayoutDashboard } from 'lucide-react'
 import { cn } from 'cn'
 import { Avatar } from '@/components/Avatar'
 import { Fab } from '@/components/Fab'
@@ -8,6 +9,7 @@ import { useEditingField } from '@/hooks/useEditingField'
 import { formatShortDate } from '@/lib/format'
 import { avatarUrl } from '@/lib/avatarUrl'
 import { useAuth } from '@/features/auth/AuthProvider'
+import { useHasRole } from '@/features/auth/useHasRole'
 import { useRouteHandle } from '@/app/routes/placeholder'
 import { BackButton } from './BackButton'
 import { useGoBack } from './backNavigation'
@@ -62,6 +64,8 @@ export function MobileShell({ variant }: { variant: MobileShellVariant }) {
   const goBack = useGoBack(variant === 'employee' ? '/app' : '/sup')
   // Teclado virtual abierto (RESP-008): la tabbar se oculta mientras se escribe.
   const editing = useEditingField()
+  // OG-08: quien además administra vuelve al panel con un botón fijo.
+  const canReturnToPanel = useHasRole('owner', 'admin')
 
   const rootPath = variant === 'employee' ? '/app' : '/sup'
   const tabItems =
@@ -73,6 +77,7 @@ export function MobileShell({ variant }: { variant: MobileShellVariant }) {
     <div className="flex min-h-dvh justify-center bg-bg">
       <div className="flex min-h-dvh w-full flex-col bg-surface md:max-w-[480px] md:shadow-card">
         <MobileBrandBar />
+        {canReturnToPanel && <BackToPanelBar />}
         {isGreeting ? (
           <MobileGreetingHeader
             displayName={displayName}
@@ -121,6 +126,24 @@ export function MobileShell({ variant }: { variant: MobileShellVariant }) {
           </>
         )}
       </div>
+    </div>
+  )
+}
+
+/**
+ * «Volver al panel» (OG-08): siempre lleva a `/admin`, sin `navigate(-1)`,
+ * así no hay bucle con el historial ni con la PWA. Va como enlace.
+ */
+function BackToPanelBar() {
+  return (
+    <div className="shrink-0 bg-primary px-4 pb-2 text-white">
+      <Link
+        to="/admin"
+        className="relative inline-flex min-h-11 items-center gap-2 rounded-full bg-white/16 px-4 text-[13px] font-semibold outline-none hover:bg-white/24 focus-visible:ring-3 focus-visible:ring-white/80"
+      >
+        <LayoutDashboard aria-hidden="true" className="size-4" />
+        Volver al panel
+      </Link>
     </div>
   )
 }
