@@ -114,6 +114,7 @@ export function makeMySupervision(
     assignedAt: '2026-10-23T10:00:00Z',
     notDoneReason: null,
     cancelReason: null,
+    shiftNotes: null,
     generalNotes: null,
     criteriaSnapshot: null,
     checkInAt: '2026-10-23T11:00:00Z',

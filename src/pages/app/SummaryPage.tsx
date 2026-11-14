@@ -1,4 +1,5 @@
 import { Link, useParams, useSearchParams } from 'react-router'
+import { OfficeMessage } from '@/features/employee/components/OfficeMessage'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -159,6 +160,8 @@ export default function SummaryPage() {
             : undefined
         }
       />
+
+      <OfficeMessage text={assignment.shiftNotes} />
 
       <Card>
         <CardHeader>

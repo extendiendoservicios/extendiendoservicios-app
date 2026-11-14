@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { StatusBadge } from '@/components/status'
 import { formatCalendarDate } from '@/lib/format'
 import { useMySupervisionsPendingQuery } from '@/api/mySupervisions'
+import { OfficeMessage } from '@/features/employee/components/OfficeMessage'
 import { formatSupervisionRange } from '@/features/employee/shiftRange'
 
 /**
@@ -68,6 +69,7 @@ export default function SupervisionsPage() {
                 {formatCalendarDate(supervision.shiftDate)} ·{' '}
                 {formatSupervisionRange(supervision)}
               </p>
+              <OfficeMessage text={supervision.shiftNotes} clamp />
             </CardContent>
           </Card>
         </Link>

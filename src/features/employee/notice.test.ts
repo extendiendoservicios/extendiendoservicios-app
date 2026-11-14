@@ -32,6 +32,7 @@ function baseAssignment(
     status: 'expected',
     shiftStatus: 'scheduled',
     notes: null,
+    shiftNotes: null,
     tasksTotal: 0,
     tasksDone: 0,
     changedSinceLastSeen: false,
