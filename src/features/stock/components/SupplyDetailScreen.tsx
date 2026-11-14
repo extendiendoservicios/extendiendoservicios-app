@@ -23,6 +23,7 @@ import {
 import { canManageStock } from '@/features/stock/permissions'
 import { supplyLabel } from '@/features/stock/filters'
 import { formatMoney, formatQty } from '@/features/stock/money'
+import { StockActionButton, StockPermissionNotice } from './StockActionButton'
 import { AdjustStockDialog } from './AdjustStockDialog'
 import { DeactivateSupplyDialog } from './DeactivateSupplyDialog'
 import { PriceHistorySection } from './PriceHistorySection'
@@ -167,52 +168,61 @@ function SupplyDetailScreen() {
           </div>
         </div>
 
-        {canManage && (
+        {(canManage || item.active) && (
           <div className="flex shrink-0 flex-wrap gap-2">
             {item.active && (
-              <Button
+              <StockActionButton
+                allowed={canManage}
                 variant="ghost"
                 size="sm"
                 icon={SlidersHorizontal}
                 onClick={() => setAdjustOpen(true)}
               >
                 Ajustar
-              </Button>
+              </StockActionButton>
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={Tag}
-              onClick={() => setPricesOpen(true)}
-            >
-              Cambiar precios
-            </Button>
-            {item.active ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={Power}
-                onClick={() => setDeactivateOpen(true)}
-              >
-                Desactivar
-              </Button>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={Power}
-                loading={setActive.isPending}
-                onClick={() => void handleActivate()}
-              >
-                Activar
-              </Button>
+            {canManage && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={Tag}
+                  onClick={() => setPricesOpen(true)}
+                >
+                  Cambiar precios
+                </Button>
+                {item.active ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={Power}
+                    onClick={() => setDeactivateOpen(true)}
+                  >
+                    Desactivar
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={Power}
+                    loading={setActive.isPending}
+                    onClick={() => void handleActivate()}
+                  >
+                    Activar
+                  </Button>
+                )}
+                <Button asChild size="sm" icon={Pencil}>
+                  <Link to={`/admin/insumos/${item.id}/editar`}>Editar</Link>
+                </Button>
+              </>
             )}
-            <Button asChild size="sm" icon={Pencil}>
-              <Link to={`/admin/insumos/${item.id}/editar`}>Editar</Link>
-            </Button>
           </div>
         )}
       </div>
+
+      {!canManage && item.active && (
+        <StockPermissionNotice className="text-[12px] text-text-3" />
+      )}
 
       <PriceHistorySection supplyId={item.id} />
       <SupplyMovementsSection supplyId={item.id} />

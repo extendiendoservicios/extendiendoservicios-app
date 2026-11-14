@@ -186,3 +186,17 @@ Pesos con dos decimales y separadores argentinos (`$ 1.234,50`, `src/features/st
 - «Retiro en nombre de» y «Cargar control» tienen pantalla propia (páginas, no drawers, P-094). «Cargar control» no pide una confirmación aparte: el botón «Confirmar control» es la confirmación y el resultado se muestra enseguida.
 - El revisor «persona de la app» se elige entre los usuarios activos (dueño, administradores, coordinadores y empleados) y no tiene valor por defecto, para no atribuir un control a quien lo carga sin querer.
 - «Retiro en nombre de» usa las vistas `_admin` (IS-35, P25.5): ofrecen siempre los turnos de -30 a +7 días y todas las sedes activas, sin importar si quien carga además es empleado o coordinador. Las vistas sin `_admin` quedan para el celular.
+
+## Botones deshabilitados sin «Gestionar stock» (OG-11, P29.4)
+
+Un administrador sin la capacidad `manage_stock` (la dirección siempre la
+tiene) ya no deja de ver los botones que fallarían: **Ingreso**, **Retiro en
+nombre de**, **Cargar control**, **Ajustar** (en la lista y en la ficha) y
+**Anular** (Movimientos) se muestran deshabilitados, con un tooltip en
+escritorio y el texto visible en pantalla (también en el celular): "Necesitás
+el permiso «Gestionar stock». Pedíselo a la dirección." Lo resuelve
+`StockActionButton` (`src/features/stock/components/StockActionButton.tsx`)
+con `canManageStock`. El alta y edición de artículos, precios, activar o
+desactivar, categorías y la planilla de control siguen ocultos sin la
+capacidad. El aviso fijo de `StockScreen` usa ahora el mismo texto. El
+servidor vuelve a verificar.

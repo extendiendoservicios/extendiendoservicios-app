@@ -17,10 +17,19 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { MapPicker } from '@/components/map'
 import { ClientPhotoUpload } from '@/components/ClientPhotoUpload'
 import { PendingPhotoPicker } from '@/components/PendingPhotoPicker'
 import { savePhoto } from '@/api/photos'
+import { findClientsByCuit, type ClientCuitMatch } from '@/api/clients'
 import { isApiError } from '@/api/errors'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { BankDetailsFields } from '@/features/bank/components/BankDetailsFields'
@@ -78,6 +87,11 @@ export default function ClientFormPage() {
   const queryClient = useQueryClient()
   // AJ2-07: foto elegida en el alta; se sube después de crear el cliente.
   const [pendingPhoto, setPendingPhoto] = useState<Blob | null>(null)
+  // OG-04: otros clientes con el mismo CUIT; el aviso no bloquea (Guardar igual).
+  const [cuitConflict, setCuitConflict] = useState<{
+    values: ClientFormValues
+    matches: ClientCuitMatch[]
+  } | null>(null)
 
   const {
     control,
@@ -169,7 +183,25 @@ export default function ClientFormPage() {
     }
   }
 
+  // OG-04: antes de escribir, avisa si otro cliente tiene el mismo CUIT. Si la
+  // consulta falla no se frena el guardado (el aviso es solo informativo).
   async function onSubmit(values: ClientFormValues) {
+    const input = clientFormValuesToInput(values)
+    if (input.cuit) {
+      try {
+        const matches = await findClientsByCuit(input.cuit, id)
+        if (matches.length > 0) {
+          setCuitConflict({ values, matches })
+          return
+        }
+      } catch {
+        // sin aviso: se guarda igual
+      }
+    }
+    await saveClient(values)
+  }
+
+  async function saveClient(values: ClientFormValues) {
     const input = clientFormValuesToInput(values)
     try {
       if (isEditMode) {
@@ -444,6 +476,45 @@ export default function ClientFormPage() {
           )}
         />
       </div>
+
+      <Dialog
+        open={cuitConflict !== null}
+        onOpenChange={(open) => {
+          if (!open) setCuitConflict(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>CUIT repetido</DialogTitle>
+            <DialogDescription>
+              Ya hay otro cliente con este CUIT:{' '}
+              {(cuitConflict?.matches ?? [])
+                .map((match) => match.tradeName ?? match.legalName)
+                .join(', ')}
+              . ¿Guardar igual?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setCuitConflict(null)}
+            >
+              Volver
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                const pending = cuitConflict
+                setCuitConflict(null)
+                if (pending) void saveClient(pending.values)
+              }}
+            >
+              Guardar igual
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex gap-2">
         <Button type="submit" loading={isSaving}>

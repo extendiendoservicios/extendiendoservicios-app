@@ -23,6 +23,8 @@ export const usersKeys = {
   all: ['users'] as const,
   list: () => [...usersKeys.all, 'list'] as const,
   lastSignIns: () => [...usersKeys.all, 'lastSignIns'] as const,
+  /** OG-12: legajo, DNI y email del listado. */
+  directory: () => [...usersKeys.all, 'directory'] as const,
   /** P26.2b: estado del acceso (sin contraseña) de una persona. */
   accessStatus: (profileId: string) =>
     [...usersKeys.all, 'accessStatus', profileId] as const,
@@ -58,6 +60,17 @@ export function useLastSignInsQuery(enabled: boolean) {
   })
 }
 
+/** OG-12: legajo, DNI y email por persona; si falla, el listado sigue sin esas columnas. */
+export function useUsersDirectoryQuery() {
+  return useQuery({
+    queryKey: usersKeys.directory(),
+    queryFn: usersApi.fetchUsersDirectory,
+    staleTime: LIST_POLLING_MS,
+    refetchInterval: LIST_POLLING_MS,
+    retry: false,
+  })
+}
+
 /** USERS-010: capacidades de un administrador puntual (panel del dueño). */
 export function useAdminCapabilitiesQuery(
   profileId: string | null,
@@ -75,6 +88,7 @@ function useInvalidateUsers() {
   return () => {
     void queryClient.invalidateQueries({ queryKey: usersKeys.list() })
     void queryClient.invalidateQueries({ queryKey: usersKeys.lastSignIns() })
+    void queryClient.invalidateQueries({ queryKey: usersKeys.directory() })
   }
 }
 

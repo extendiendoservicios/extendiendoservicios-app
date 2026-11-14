@@ -66,7 +66,7 @@ Los textos entre comillas son los que muestra la app, tal cual.
 - **Por qué pasa:** la persona fue dada de baja, o su usuario se quedó sin rol.
 - **Lo resolvés vos:** llamá a Administración (si está cargado, el teléfono aparece en la misma pantalla).
 - **Lo resuelve Administración:**
-  - Si la persona tiene que volver a trabajar: el **dueño** va a **Configuración**, **Usuarios**, activa **Mostrar desactivados**, abre el menú de la persona y elige **Reactivar**. Reactivar es solo del dueño.
+  - Si la persona tiene que volver a trabajar: el **dueño** va a **Configuración**, **Usuarios**, elige el estado **Desactivados**, abre el menú de la persona y elige **Reactivar**. Reactivar es solo del dueño.
   - Si le falta el rol: el **dueño** abre el menú de la persona, **Editar roles y capacidades**, marca el rol y **Guardar roles**.
 
 ### 1.6. "Hiciste demasiados intentos. Esperá un momento y probá de nuevo."

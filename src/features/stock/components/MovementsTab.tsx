@@ -45,6 +45,7 @@ import {
   type MovementFiltersState,
   type MovementGroup,
 } from '@/features/stock/movements'
+import { StockActionButton } from './StockActionButton'
 import { canManageStock } from '@/features/stock/permissions'
 import { VOID_REASON_MAX } from '@/features/stock/schemas'
 import { supplyLabel } from '@/features/stock/filters'
@@ -192,7 +193,7 @@ function MovementsTab() {
             <MovementCard
               key={movement.movementId}
               movement={movement}
-              canVoid={canVoidMovement(movement, canManage)}
+              canVoid={canManage}
               onVoid={() => setVoiding(movement)}
             />
           ))}
@@ -272,8 +273,9 @@ function MovementCard({
               : ''}
           </p>
         </div>
-        {canVoid && (
-          <Button
+        {canVoidMovement(movement, true) && (
+          <StockActionButton
+            allowed={canVoid}
             variant="ghost"
             size="sm"
             icon={Ban}
@@ -281,7 +283,7 @@ function MovementCard({
             aria-label={`Anular ${MOVEMENT_KIND_LABELS[movement.kind].toLowerCase()} del ${formatDateTime(movement.recordedAt)}`}
           >
             Anular
-          </Button>
+          </StockActionButton>
         )}
       </div>
 

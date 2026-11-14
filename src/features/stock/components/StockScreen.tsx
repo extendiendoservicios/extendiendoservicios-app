@@ -1,5 +1,6 @@
 import { useSearchParams } from 'react-router'
 import { useAuth } from '@/features/auth/AuthProvider'
+import { StockPermissionNotice } from './StockActionButton'
 import { canManageStock } from '@/features/stock/permissions'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
@@ -35,15 +36,7 @@ function StockScreen() {
 
   return (
     <Tabs value={activeTab} onValueChange={handleTabChange}>
-      {showCapabilityNotice && (
-        <p
-          role="note"
-          className="mb-3 rounded-md border bg-muted px-3 py-2 text-sm text-muted-foreground"
-        >
-          Para cargar o modificar insumos, pedile a la dirección la capacidad
-          Gestionar stock.
-        </p>
-      )}
+      {showCapabilityNotice && <StockPermissionNotice />}
       <TabsList>
         {tabs.map((tab) => (
           <TabsTrigger key={tab.value} value={tab.value}>

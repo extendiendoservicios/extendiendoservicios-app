@@ -19,9 +19,21 @@ function Harness({ initial = true }: { initial?: boolean }) {
 }
 
 describe('ShiftObservationField (AJ2-15)', () => {
-  it('muestra «Observación» y la casilla «Mostrar en la impresión» tildada', () => {
+  it('OG-05: la etiqueta avisa que la ven los empleados y hay una ayuda', () => {
     render(<Harness />)
-    expect(screen.getByLabelText('Observación')).toBeInTheDocument()
+    expect(
+      screen.getByLabelText('Observación (la ven los empleados asignados)'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Sirve para mandarles un recado. Si la cambiás, les aparece como novedad.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('muestra la observación y la casilla «Mostrar en la impresión» tildada', () => {
+    render(<Harness />)
+    expect(screen.getByLabelText(/^Observación/)).toBeInTheDocument()
     expect(
       screen.getByRole('checkbox', { name: 'Mostrar en la impresión' }),
     ).toBeChecked()
