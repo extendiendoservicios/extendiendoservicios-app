@@ -22,7 +22,9 @@ describe('ShiftObservationSection (AJ3-06)', () => {
         showInPrint={null}
       />,
     )
-    const field = screen.getByLabelText('Observación')
+    const field = screen.getByLabelText(
+      'Observación (la ven los empleados asignados)',
+    )
     expect(field).toHaveValue('')
     expect(field).toHaveAttribute('placeholder')
     expect(
@@ -40,9 +42,12 @@ describe('ShiftObservationSection (AJ3-06)', () => {
         showInPrint
       />,
     )
-    fireEvent.change(screen.getByLabelText('Observación'), {
-      target: { value: '  Llevar llaves  ' },
-    })
+    fireEvent.change(
+      screen.getByLabelText('Observación (la ven los empleados asignados)'),
+      {
+        target: { value: '  Llevar llaves  ' },
+      },
+    )
     fireEvent.click(
       screen.getByRole('checkbox', { name: 'Mostrar en la impresión' }),
     )

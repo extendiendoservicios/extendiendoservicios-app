@@ -16,12 +16,11 @@ import { ApiError, fromPostgrestError } from './errors'
  * `0012_rls_policies.sql`). Dos consecuencias, mismo criterio que
  * `settings.ts`:
  *
- * 1. `mapWriteError` traduce a mano el único código de error que documenta
- *    `06` sección 15 para este dominio (`CUIT_IN_USE`, restricción
- *    `clients.cuit unique`); el resto de los `23505` (por ejemplo, dos
- *    contactos principales del mismo cliente — no debería pasar, ver
- *    `setPrimaryClientContact`) caen en el `DUPLICATE` genérico de
- *    `fromPostgrestError`.
+ * 1. `mapWriteError` traduce a mano los `23505` a un `DUPLICATE` genérico
+ *    (por ejemplo, dos contactos principales del mismo cliente — no debería
+ *    pasar, ver `setPrimaryClientContact`). Desde la 0085 (OG-04) el CUIT ya
+ *    no es único: el aviso de CUIT repetido se arma antes de guardar con
+ *    `findClientsByCuit`.
  * 2. `created_by`/`updated_by` no los completa un trigger (`0005_clients_
  *    sites.sql` solo dispara `app.set_updated_at`, que toca `updated_at`):
  *    cada función que escribe acá recibe el `profileId` de quien está
@@ -47,12 +46,44 @@ function mapWriteError(error: {
   hint?: string | null
 }): ApiError {
   if (error.code === '23505') {
-    if (error.message.includes('cuit')) {
-      return new ApiError('Ese CUIT ya está registrado.', 'CUIT_IN_USE')
-    }
     return new ApiError('Ya existe un registro con esos datos.', 'DUPLICATE')
   }
   return fromPostgrestError(error)
+}
+
+/** OG-04: otro cliente que comparte el CUIT. */
+export interface ClientCuitMatch {
+  id: string
+  legalName: string
+  tradeName: string | null
+  cuit: string
+}
+
+/**
+ * OG-04: clientes que ya tienen este CUIT (RPC `find_clients_by_cuit`). Sin
+ * CUIT no consulta. `excludeClientId` deja afuera al cliente que se edita.
+ */
+export async function findClientsByCuit(
+  cuit: string | null | undefined,
+  excludeClientId?: string,
+): Promise<ClientCuitMatch[]> {
+  const clean = cleanTaxId(cuit ?? '')
+  if (!clean) {
+    return []
+  }
+  const { data, error } = await supabase.rpc('find_clients_by_cuit', {
+    p_cuit: clean,
+    ...(excludeClientId ? { p_exclude_client_id: excludeClientId } : {}),
+  })
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    legalName: row.legal_name,
+    tradeName: row.trade_name,
+    cuit: row.cuit,
+  }))
 }
 
 // -------------------------------------------------------------------------

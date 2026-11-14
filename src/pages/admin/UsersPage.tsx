@@ -1,8 +1,30 @@
-import { useId, useMemo, useState } from 'react'
-import { Link } from 'react-router'
-import { UserPlus, Users as UsersIcon } from 'lucide-react'
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
+import { Link, useSearchParams } from 'react-router'
+import {
+  ChevronDown,
+  ChevronUp,
+  ChevronsUpDown,
+  Search,
+  UserPlus,
+  Users as UsersIcon,
+} from 'lucide-react'
+import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { SegmentedControl } from '@/components/SegmentedControl'
 import { DataTable, type DataTableColumnDef } from '@/components/DataTable'
 import { PersonCell } from '@/components/PersonCell'
 import { StatusBadge } from '@/components/status'
@@ -18,8 +40,24 @@ import {
   canCreateAdminUser,
   type UsersScreenActor,
 } from '@/features/users/permissions'
-import { useLastSignInsQuery, useUsersQuery } from '@/features/users/queries'
-import { filterUsersByStatus } from '@/features/users/userListFilters'
+import {
+  useLastSignInsQuery,
+  useUsersDirectoryQuery,
+  useUsersQuery,
+} from '@/features/users/queries'
+import {
+  applyUserList,
+  buildUserListParams,
+  parseUserListParams,
+  USER_FILTER_ROLES,
+  USER_SORT_LABELS,
+  USER_STATUS_OPTIONS,
+  type UserListRow,
+  type UserListState,
+  type UserSortDirection,
+  type UserSortKey,
+} from '@/features/users/userListFilters'
+import type { Role } from '@/api/users'
 import { avatarUrl } from '@/lib/avatarUrl'
 import { userDetailPath } from '@/features/users/userNavigation'
 import { formatShortDate, formatTime } from '@/lib/format'
@@ -31,8 +69,71 @@ import { formatShortDate, formatTime } from '@/lib/format'
  * en su topbar, mismo criterio que `ProfilePage`.
  */
 
-interface UserRowView extends AdminUserRow {
-  lastSignInAt: string | null
+interface UserRowView extends AdminUserRow, UserListRow {}
+
+/** Orden actual: lo leen los encabezados sin tener que rehacer las columnas. */
+const SortContext = createContext<{
+  sortKey: UserSortKey
+  sortDirection: UserSortDirection
+  onSort: (key: UserSortKey) => void
+}>({ sortKey: 'legajo', sortDirection: 'asc', onSort: () => undefined })
+
+/** Encabezado ordenable (OG-12): Nombre, Legajo y Último ingreso. */
+function SortHeader({
+  columnKey,
+  label,
+}: {
+  columnKey: UserSortKey
+  label: string
+}) {
+  const { sortKey, sortDirection, onSort } = useContext(SortContext)
+  const active = sortKey === columnKey
+  const Icon = !active
+    ? ChevronsUpDown
+    : sortDirection === 'asc'
+      ? ChevronUp
+      : ChevronDown
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(columnKey)}
+      aria-label={`Ordenar por ${label.toLowerCase()}`}
+      className="inline-flex items-center gap-[3px] text-inherit uppercase hover:text-text-2"
+    >
+      {label}
+      <Icon
+        aria-hidden="true"
+        className={cn('size-3', !active && 'text-text-3/70')}
+      />
+    </button>
+  )
+}
+
+/** Filtro de un toque (rol, «Sin ficha laboral»); `aria-pressed` para lectores de pantalla. */
+function FilterChip({
+  pressed,
+  onClick,
+  children,
+}: {
+  pressed: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={pressed}
+      onClick={onClick}
+      className={cn(
+        'inline-flex min-h-8 items-center rounded-full border px-3 text-[12.5px] font-medium transition-colors max-md:min-h-11',
+        pressed
+          ? 'border-primary bg-primary-50 text-primary-800'
+          : 'border-border bg-surface text-text-2 hover:bg-muted',
+      )}
+    >
+      {children}
+    </button>
+  )
 }
 
 export default function UsersPage() {
@@ -47,29 +148,76 @@ export default function UsersPage() {
 
   const usersQuery = useUsersQuery()
   const lastSignInsQuery = useLastSignInsQuery(isOwnerViewer)
+  // OG-12: legajo, DNI y email en una query aparte; si falla, el listado
+  // se muestra igual, sin esas columnas.
+  const directoryQuery = useUsersDirectoryQuery()
+
+  // OG-12: búsqueda, filtros y orden viven en la URL para no perderlos al volver de una ficha.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const parsedState = useMemo(
+    () => parseUserListParams(searchParams),
+    [searchParams],
+  )
+  // «Último ingreso» solo lo ve la dirección: para otros, vuelve al orden por legajo.
+  const listState = useMemo<UserListState>(
+    () =>
+      !isOwnerViewer && parsedState.sortKey === 'lastSignIn'
+        ? { ...parsedState, sortKey: 'legajo', sortDirection: 'asc' }
+        : parsedState,
+    [parsedState, isOwnerViewer],
+  )
+
+  function updateListState(patch: Partial<UserListState>) {
+    setSearchParams(
+      buildUserListParams({ ...listState, ...patch }, searchParams),
+      {
+        replace: true,
+      },
+    )
+  }
+
+  function handleSort(key: UserSortKey) {
+    updateListState(
+      key === listState.sortKey
+        ? { sortDirection: listState.sortDirection === 'asc' ? 'desc' : 'asc' }
+        : {
+            sortKey: key,
+            sortDirection: key === 'lastSignIn' ? 'desc' : 'asc',
+          },
+    )
+  }
+
+  function toggleRole(role: Role) {
+    updateListState({
+      roles: listState.roles.includes(role)
+        ? listState.roles.filter((value) => value !== role)
+        : [...listState.roles, role],
+    })
+  }
 
   const [isNewUserOpen, setNewUserOpen] = useState(false)
   const [rolesUserId, setRolesUserId] = useState<string | null>(null)
   const [isRolesSheetOpen, setRolesSheetOpen] = useState(false)
-  // USERS-008: por defecto solo activos (decisión de Mike del 23 sep 2026).
-  // Solo dura mientras la pantalla está abierta, no hace falta persistirlo.
-  const [showDeactivated, setShowDeactivated] = useState(false)
-  const showDeactivatedId = useId()
 
   const allRows = useMemo<UserRowView[]>(() => {
     const users = usersQuery.data ?? []
-    return users.map((user) => ({
-      ...user,
-      lastSignInAt: lastSignInsQuery.data?.get(user.profileId) ?? null,
-    }))
-  }, [usersQuery.data, lastSignInsQuery.data])
+    return users.map((user) => {
+      const entry = directoryQuery.data?.get(user.profileId)
+      return {
+        ...user,
+        employeeNumber: entry?.employeeNumber ?? null,
+        dni: entry?.dni ?? null,
+        email: entry?.email ?? null,
+        lastSignInAt: lastSignInsQuery.data?.get(user.profileId) ?? null,
+      }
+    })
+  }, [usersQuery.data, lastSignInsQuery.data, directoryQuery.data])
 
-  // El filtro se aplica en el cliente sobre la lista ya cargada (ver el
-  // comentario de `filterUsersByStatus`): no hace falta una segunda
-  // consulta al servidor por este interruptor.
+  // Búsqueda, filtros y orden se aplican en el cliente sobre la lista ya
+  // cargada (ver `userListFilters.ts`).
   const rows = useMemo(
-    () => filterUsersByStatus(allRows, showDeactivated),
-    [allRows, showDeactivated],
+    () => applyUserList(allRows, listState),
+    [allRows, listState],
   )
 
   // Se deriva de `allRows` (no de `rows`, ya filtradas por el interruptor, ni
@@ -92,7 +240,8 @@ export default function UsersPage() {
     () => [
       {
         id: 'name',
-        header: 'Nombre',
+        header: () => <SortHeader columnKey="name" label="Nombre" />,
+        enableSorting: false,
         meta: { card: 'title' },
         cell: ({ row }) => {
           // AJ2-11 y AJ2-12: foto de la persona y clic que abre su ficha.
@@ -125,6 +274,18 @@ export default function UsersPage() {
         },
       },
       {
+        id: 'legajo',
+        header: () => <SortHeader columnKey="legajo" label="Legajo" />,
+        enableSorting: false,
+        meta: { card: 'meta', cardLabel: 'Legajo' },
+        cell: ({ row }) =>
+          row.original.employeeNumber != null ? (
+            <span className="tabular-nums">{row.original.employeeNumber}</span>
+          ) : (
+            <span className="text-text-3">—</span>
+          ),
+      },
+      {
         id: 'status',
         header: 'Estado',
         meta: { card: 'meta', cardLabel: 'Estado' },
@@ -141,7 +302,10 @@ export default function UsersPage() {
         ? [
             {
               id: 'lastSignIn',
-              header: 'Último ingreso',
+              header: () => (
+                <SortHeader columnKey="lastSignIn" label="Último ingreso" />
+              ),
+              enableSorting: false,
               meta: { card: 'meta', cardLabel: 'Último ingreso' },
               cell: ({ row }) => {
                 const value = row.original.lastSignInAt
@@ -185,17 +349,6 @@ export default function UsersPage() {
           {usersQuery.dataUpdatedAt > 0 && (
             <UpdatedAgo dataUpdatedAt={usersQuery.dataUpdatedAt} />
           )}
-          <label
-            htmlFor={showDeactivatedId}
-            className="flex items-center gap-2 text-[13px] font-medium text-text"
-          >
-            Mostrar desactivados
-            <Switch
-              id={showDeactivatedId}
-              checked={showDeactivated}
-              onCheckedChange={setShowDeactivated}
-            />
-          </label>
         </div>
         {canCreateAdminUser(actor) && (
           <Button icon={UserPlus} onClick={() => setNewUserOpen(true)}>
@@ -204,29 +357,125 @@ export default function UsersPage() {
         )}
       </div>
 
-      <DataTable
-        caption="Usuarios y roles"
-        columns={columns}
-        data={rows}
-        getRowId={(row) => row.profileId}
-        isLoading={usersQuery.isLoading}
-        emptyState={
-          allRows.length === 0
-            ? {
-                icon: UsersIcon,
-                title: 'Todavía no hay usuarios',
-                description: canCreateAdminUser(actor)
-                  ? 'Creá el primer administrador con "Nuevo administrador".'
-                  : undefined,
+      <div className="flex flex-col gap-3" role="search">
+        <div className="relative">
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-3"
+          />
+          <Input
+            type="search"
+            value={listState.search}
+            onChange={(event) =>
+              updateListState({ search: event.target.value })
+            }
+            placeholder="Buscar por nombre, apellido, legajo, DNI o email"
+            aria-label="Buscar usuarios"
+            className="pl-9"
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <SegmentedControl
+            aria-label="Estado"
+            options={USER_STATUS_OPTIONS}
+            value={listState.status}
+            onValueChange={(status) => updateListState({ status })}
+          />
+          <div
+            role="group"
+            aria-label="Filtrar por rol"
+            className="flex flex-wrap gap-2"
+          >
+            {USER_FILTER_ROLES.map((role) => (
+              <FilterChip
+                key={role.value}
+                pressed={listState.roles.includes(role.value)}
+                onClick={() => toggleRole(role.value)}
+              >
+                {role.label}
+              </FilterChip>
+            ))}
+          </div>
+          <FilterChip
+            pressed={listState.noEmployeeRecord}
+            onClick={() =>
+              updateListState({ noEmployeeRecord: !listState.noEmployeeRecord })
+            }
+          >
+            Sin ficha laboral
+          </FilterChip>
+          {/* En el celular las tarjetas no tienen encabezados: el orden se elige acá. */}
+          <div className="flex items-center gap-2 md:hidden">
+            <Select
+              value={listState.sortKey}
+              onValueChange={(value) => handleSort(value as UserSortKey)}
+            >
+              <SelectTrigger aria-label="Ordenar por" className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(USER_SORT_LABELS) as UserSortKey[])
+                  .filter((key) => key !== 'lastSignIn' || isOwnerViewer)
+                  .map((key) => (
+                    <SelectItem key={key} value={key}>
+                      {USER_SORT_LABELS[key]}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-label={
+                listState.sortDirection === 'asc'
+                  ? 'Orden ascendente'
+                  : 'Orden descendente'
               }
-            : {
-                icon: UsersIcon,
-                title: 'No hay usuarios activos',
-                description:
-                  'Todos los usuarios cargados están desactivados. Activá "Mostrar desactivados" para verlos.',
-              }
-        }
-      />
+              onClick={() => handleSort(listState.sortKey)}
+            >
+              {listState.sortDirection === 'asc' ? 'A→Z' : 'Z→A'}
+            </Button>
+          </div>
+        </div>
+        {!usersQuery.isLoading && (
+          <p className="text-[12px] text-text-3" aria-live="polite">
+            {rows.length} de {allRows.length} usuarios
+          </p>
+        )}
+      </div>
+
+      <SortContext.Provider
+        value={{
+          sortKey: listState.sortKey,
+          sortDirection: listState.sortDirection,
+          onSort: handleSort,
+        }}
+      >
+        <DataTable
+          caption="Usuarios y roles"
+          columns={columns}
+          data={rows}
+          getRowId={(row) => row.profileId}
+          isLoading={usersQuery.isLoading}
+          emptyState={
+            allRows.length === 0
+              ? {
+                  icon: UsersIcon,
+                  title: 'Todavía no hay usuarios',
+                  description: canCreateAdminUser(actor)
+                    ? 'Creá el primer administrador con "Nuevo administrador".'
+                    : undefined,
+                }
+              : {
+                  icon: UsersIcon,
+                  title: 'No hay usuarios con esos filtros',
+                  description:
+                    'Probá con otra búsqueda o cambiá los filtros de arriba.',
+                }
+          }
+        />
+      </SortContext.Provider>
 
       <NewAdminUserSheet open={isNewUserOpen} onOpenChange={setNewUserOpen} />
 

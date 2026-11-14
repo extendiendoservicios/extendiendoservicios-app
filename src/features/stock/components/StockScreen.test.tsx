@@ -47,7 +47,7 @@ describe('StockScreen (IS-33)', () => {
     renderScreen()
     expect(
       screen.getByText(
-        'Para cargar o modificar insumos, pedile a la dirección la capacidad Gestionar stock.',
+        'Necesitás el permiso «Gestionar stock». Pedíselo a la dirección.',
       ),
     ).toBeInTheDocument()
   })

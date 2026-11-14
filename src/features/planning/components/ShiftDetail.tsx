@@ -1,3 +1,4 @@
+import { SHIFT_OBSERVATION_LABEL } from '@/features/shifts/components/ShiftObservationField'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import {
@@ -233,7 +234,9 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
         shift.notes && (
           // Turno terminado o cancelado: la RPC ya no deja editarla, se muestra de solo lectura.
           <section className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-5">
-            <h3 className="text-[13px] font-semibold text-text">Observación</h3>
+            <h3 className="text-[13px] font-semibold text-text">
+              {SHIFT_OBSERVATION_LABEL}
+            </h3>
             <p className="text-[12.5px] whitespace-pre-wrap text-text-2">
               {shift.notes}
             </p>
