@@ -19,7 +19,18 @@ import {
 import { useShiftsByDateQuery } from '@/features/shifts/queries'
 import { StorageAlert } from '@/features/media/components/StorageAlert'
 import { formatDateOnly } from '@/features/settings/dateOnly'
-import { computeAttention, type AttentionItem } from '../attention'
+import {
+  applyDismissals,
+  computeAttention,
+  type AttentionItem,
+} from '../attention'
+import {
+  useAttentionDismissalsQuery,
+  useDismissAttentionMutation,
+  useDismissersQuery,
+  useReopenAttentionMutation,
+} from '../queries'
+import { MyShiftCard } from './MyShiftCard'
 import { computeKpis, shiftStartInstant } from '../kpis'
 import { AttentionBlock } from './AttentionBlock'
 import { DashboardKpis } from './DashboardKpis'
@@ -91,6 +102,27 @@ function DashboardScreen() {
     () => computeAttention(shifts, assignments, now),
     [shifts, assignments, now],
   )
+  const dismissalsQuery = useAttentionDismissalsQuery()
+  const { open: openAttention, closed: closedAttention } = useMemo(
+    () => applyDismissals(attention, dismissalsQuery.data ?? []),
+    [attention, dismissalsQuery.data],
+  )
+  const dismissersQuery = useDismissersQuery(
+    closedAttention.map(({ dismissal }) => dismissal.dismissedBy),
+  )
+  const dismisserNames = useMemo(
+    () =>
+      new Map(
+        Array.from(dismissersQuery.data ?? []).map(([id, person]) => [
+          id,
+          `${person.firstName} ${person.lastName}`.trim(),
+        ]),
+      ),
+    [dismissersQuery.data],
+  )
+  const dismissMutation = useDismissAttentionMutation()
+  const reopenMutation = useReopenAttentionMutation()
+  const [attentionError, setAttentionError] = useState<string | null>(null)
   const shiftById = useMemo(
     () => new Map(shifts.map((shift) => [shift.id, shift])),
     [shifts],
@@ -128,6 +160,25 @@ function DashboardScreen() {
     return started ? canAssignAfterStart : canAssignBeforeStart
   }
 
+  function handleDismiss(item: AttentionItem) {
+    setAttentionError(null)
+    dismissMutation.mutate(
+      {
+        kind: item.kind,
+        shiftId: item.shiftId,
+        assignmentId: item.assignment?.id,
+      },
+      { onError: (error) => setAttentionError(error.message) },
+    )
+  }
+
+  function handleReopen(dismissalId: string) {
+    setAttentionError(null)
+    reopenMutation.mutate(dismissalId, {
+      onError: (error) => setAttentionError(error.message),
+    })
+  }
+
   function handleAssign(shiftId: string) {
     const shift = shiftById.get(shiftId)
     if (shift) {
@@ -160,12 +211,25 @@ function DashboardScreen() {
 
       <StorageAlert />
 
+      <MyShiftCard />
+
       <DashboardKpis kpis={kpis} />
 
       <StockCards />
 
+      {attentionError && (
+        <p role="alert" className="text-[13px] text-danger-800">
+          {attentionError}
+        </p>
+      )}
+
       <AttentionBlock
-        items={attention}
+        items={openAttention}
+        closed={closedAttention}
+        onDismiss={handleDismiss}
+        onReopen={handleReopen}
+        dismisserNames={dismisserNames}
+        isBusy={dismissMutation.isPending || reopenMutation.isPending}
         isLoading={isLoading}
         phones={phonesQuery.data}
         canRecord={(item: AttentionItem) =>

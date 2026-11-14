@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeAttention } from './attention'
+import { applyDismissals, computeAttention } from './attention'
 import { NOW, at, makeAssignment, makeShift } from './fixtures'
 import { ALL_DAY_FILTER, filterByFranja, listFranjas } from './servicesToday'
 
@@ -378,5 +378,118 @@ describe('computeAttention · «Fuera de zona» (B-21)', () => {
       'outsideGeo',
       'late',
     ])
+  })
+})
+
+describe('demoras avisadas (OG-03)', () => {
+  const shifts = [makeShift({ id: 's1' })]
+  // Inicio 08:00 y aviso de 20 min: hora estimada 08:20.
+  const delayed = (overrides = {}) =>
+    makeAssignment({
+      id: 'a-delay',
+      status: 'delay_notified',
+      displayStatus: 'no_record',
+      lastNoticeKind: 'delay',
+      lastNoticeMinutesLate: 20,
+      lastNoticeAt: at('07:50'),
+      ...overrides,
+    })
+
+  it('hasta la hora estimada entra como delayNotified y no como no registró', () => {
+    const items = computeAttention(shifts, [delayed()], new Date(at('08:10')))
+    expect(items.map((item) => item.kind)).toEqual(['delayNotified'])
+    expect(items[0]?.minutesSince).toBe(20)
+  })
+
+  it('pasada la hora estimada vuelve a no registró el inicio', () => {
+    const items = computeAttention(shifts, [delayed()], new Date(at('08:21')))
+    expect(items.map((item) => item.kind)).toEqual(['noRecord'])
+  })
+
+  it('con el inicio fichado desaparece', () => {
+    const items = computeAttention(
+      shifts,
+      [
+        delayed({
+          status: 'present',
+          displayStatus: 'present',
+          checkInAt: at('08:05'),
+        }),
+      ],
+      new Date(at('08:10')),
+    )
+    expect(items.map((item) => item.kind)).not.toContain('delayNotified')
+  })
+
+  it('En camino sigue siendo informativo', () => {
+    const items = computeAttention(
+      shifts,
+      [
+        makeAssignment({
+          displayStatus: 'on_the_way',
+          lastNoticeKind: 'on_the_way',
+        }),
+      ],
+      new Date(at('08:10')),
+    )
+    expect(items).toEqual([])
+  })
+})
+
+describe('applyDismissals (OG-02)', () => {
+  const shifts = [makeShift({ id: 's1' })]
+  const assignments = [
+    makeAssignment({
+      id: 'a1',
+      status: 'expected',
+      displayStatus: 'no_record',
+    }),
+  ]
+  const items = computeAttention(shifts, assignments, NOW)
+  const dismissal = (overrides = {}) => ({
+    id: 'd1',
+    kind: 'noRecord',
+    shiftId: 's1',
+    assignmentId: 'a1',
+    dismissedBy: 'admin1',
+    dismissedAt: at('10:00'),
+    ...overrides,
+  })
+
+  it('sin cierres, todo queda abierto', () => {
+    const result = applyDismissals(items, [])
+    expect(result.open).toHaveLength(1)
+    expect(result.closed).toHaveLength(0)
+  })
+
+  it('un cierre de la misma situación lo pasa a cerrados', () => {
+    const result = applyDismissals(items, [dismissal()])
+    expect(result.open).toHaveLength(0)
+    expect(result.closed.map((c) => c.dismissal.id)).toEqual(['d1'])
+  })
+
+  it('el cierre de otro tipo de aviso de la misma asignación no lo afecta', () => {
+    const result = applyDismissals(items, [
+      dismissal({ kind: 'delayNotified' }),
+    ])
+    expect(result.open).toHaveLength(1)
+  })
+
+  it('un cierre sin situación vigente no suma a cerrados', () => {
+    const result = applyDismissals(items, [dismissal({ assignmentId: 'otra' })])
+    expect(result.closed).toHaveLength(0)
+  })
+
+  it('Turno sin cubrir se cierra por turno', () => {
+    const uncovered = computeAttention(
+      [makeShift({ id: 's9', displayStatus: 'uncovered', assignedCount: 0 })],
+      [],
+      NOW,
+    )
+    const result = applyDismissals(uncovered, [
+      dismissal({ kind: 'uncovered', shiftId: 's9', assignmentId: null }),
+    ])
+    expect(result.open).toHaveLength(0)
+    expect(result.closed).toHaveLength(1)
   })
 })
