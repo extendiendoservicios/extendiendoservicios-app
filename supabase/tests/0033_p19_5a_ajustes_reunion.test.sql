@@ -176,8 +176,8 @@ select is(
   (select array_agg(attname::text order by attnum) from pg_attribute
    where attrelid = 'public.v_my_day'::regclass and attnum > 0 and not attisdropped
    and attnum >= (select attnum from pg_attribute where attrelid = 'public.v_my_day'::regclass and attname = 'last_notice_estimated_arrival_at')),
-  array['last_notice_estimated_arrival_at', 'on_the_way_expires_at', 'effective_open_ended', 'no_checkout', 'requires_photos', 'my_photos_count', 'my_videos_count', 'site_geofence_radius_m', 'geofence_max_accuracy_m', 'check_in_geo_status', 'check_in_geo_reason', 'check_in_distance_m', 'check_in_geofence_radius_m', 'check_in_geo_overridden', 'check_in_time_corrected', 'check_out_geo_status', 'check_out_geo_reason', 'check_out_distance_m', 'check_out_geofence_radius_m', 'check_out_geo_overridden', 'check_out_time_corrected', 'last_notice_has_certificate'],
-  'v_my_day: last_notice_estimated_arrival_at conserva su lugar (0034 agrega on_the_way_expires_at y 0037 effective_open_ended y no_checkout, 0047 requires_photos y los contadores de medios, 0052 la validación después)'
+  array['last_notice_estimated_arrival_at', 'on_the_way_expires_at', 'effective_open_ended', 'no_checkout', 'requires_photos', 'my_photos_count', 'my_videos_count', 'site_geofence_radius_m', 'geofence_max_accuracy_m', 'check_in_geo_status', 'check_in_geo_reason', 'check_in_distance_m', 'check_in_geofence_radius_m', 'check_in_geo_overridden', 'check_in_time_corrected', 'check_out_geo_status', 'check_out_geo_reason', 'check_out_distance_m', 'check_out_geofence_radius_m', 'check_out_geo_overridden', 'check_out_time_corrected', 'last_notice_has_certificate', 'shift_notes'],
+  'v_my_day: last_notice_estimated_arrival_at conserva su lugar (0034 agrega on_the_way_expires_at y 0037 effective_open_ended y no_checkout, 0047 requires_photos y los contadores de medios, 0052 la validación después, 0085 shift_notes al final)'
 );
 select is(
   (select array_agg(attname::text order by attnum) from pg_attribute
