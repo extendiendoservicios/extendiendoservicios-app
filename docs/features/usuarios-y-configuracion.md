@@ -34,6 +34,31 @@ como "solo dueño" para ADM-27 en particular — esa vía más amplia queda
 para las pantallas de empleados (ADM-17/ADM-18, otro paquete), no para
 acá. Decisión documentada en `src/features/users/permissions.ts`.
 
+### Buscador, orden y filtros del listado (OG-12, P29.4)
+
+Reemplazan al interruptor "Mostrar desactivados" (lo que sigue de este bloque
+describe cómo nació el filtro de estado; hoy es el selector **Activos /
+Desactivados / Todos**, con "Activos" por defecto).
+
+- **Datos:** `fetchUsers` se combina por `profile_id` con la RPC
+  `admin_users_directory()` (`legajo`, `dni`, `email`; el email viene nulo si
+  quien mira no puede verlo) en una query aparte (`useUsersDirectoryQuery`).
+  Si la RPC falla, el listado se muestra igual, sin legajo, DNI ni email.
+- **Buscador propio** arriba del listado: filtra mientras se escribe por
+  nombre, apellido, legajo, DNI o email, sin tildes ni mayúsculas y sin abrir
+  ninguna ficha (no es el buscador global).
+- **Orden:** por defecto legajo ascendente; quien no tiene legajo va al final,
+  por apellido. Se puede ordenar por Nombre, Legajo y Último ingreso (este
+  último solo para la dirección) tocando el encabezado; en el celular, con el
+  selector "Ordenar por".
+- **Filtros:** rol (Dirección, Administración, Coordinación, Empleado; varios a
+  la vez), estado y "Sin ficha laboral". Contador "N de M usuarios".
+- **URL:** búsqueda, orden y filtros viven en los parámetros de la página
+  (`q`, `roles`, `estado`, `sinficha`, `orden`, `dir`; lo que vale el default
+  no se escribe) para no perderlos al volver de una ficha.
+- La lógica es pura y está en `src/features/users/userListFilters.ts`
+  (testeada en `userListFilters.test.ts`).
+
 ### Decisiones tomadas en este paquete
 
 - **Por defecto la lista solo muestra usuarios activos** (P07.7, decisión de

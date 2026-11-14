@@ -645,7 +645,7 @@ Reúne cinco pantallas, con pestañas arriba: **Usuarios**, **Empresa**, **Feria
 
 ### Usuarios y roles
 
-Lista a todas las personas con acceso, con su rol y su estado (**Activo** o desactivado). Por omisión muestra solo las activas: activá **Mostrar desactivados** para ver también las demás. **Solo dueño:** la columna **Último ingreso**.
+Lista a todas las personas con acceso, con su rol y su estado (**Activo** o desactivado). Por omisión muestra solo las activas: elegí **Desactivados** o **Todos** en el selector de estado para ver también las demás. Arriba hay un buscador (nombre, apellido, legajo, DNI o email), filtros por rol y **Sin ficha laboral**, y el orden por defecto es por legajo; tocá el encabezado para ordenar por nombre o por último ingreso. **Solo dueño:** la columna **Último ingreso**.
 
 En la fila de cada persona, el botón de los tres puntos abre las acciones:
 

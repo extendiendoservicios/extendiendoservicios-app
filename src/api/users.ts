@@ -92,6 +92,39 @@ export async function fetchUsers(): Promise<AdminUserRow[]> {
   }))
 }
 
+/** OG-12: legajo, DNI y email de una persona (`admin_users_directory`). */
+export interface UserDirectoryEntry {
+  employeeNumber: number | null
+  dni: string | null
+  /** `null` si quien mira no puede verlo. */
+  email: string | null
+}
+
+/**
+ * Directorio de usuarios para el listado de Configuración → Usuarios
+ * (`admin_users_directory()`, 0085): legajo, DNI y email por `profile_id`.
+ * Va en una consulta aparte de `fetchUsers`: si falla, el listado se muestra
+ * igual sin esas columnas.
+ */
+export async function fetchUsersDirectory(): Promise<
+  Map<string, UserDirectoryEntry>
+> {
+  const { data, error } = await supabase.rpc('admin_users_directory')
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return new Map(
+    (data ?? []).map((row) => [
+      row.profile_id,
+      {
+        employeeNumber: row.employee_number ?? null,
+        dni: row.dni ?? null,
+        email: row.email ?? null,
+      },
+    ]),
+  )
+}
+
 /**
  * Cambia nombre y apellido de una persona (AJ-01, `update_person_name`): el
  * dueño a cualquiera (incluido él mismo), cualquier persona activa a sí

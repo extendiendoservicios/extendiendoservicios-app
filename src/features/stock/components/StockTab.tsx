@@ -37,6 +37,7 @@ import {
   totalStockValue,
   type StockFilters,
 } from '@/features/stock/filters'
+import { StockActionButton } from './StockActionButton'
 import { canManageStock } from '@/features/stock/permissions'
 import { formatMoney, formatQty } from '@/features/stock/money'
 import { AdjustStockDialog } from './AdjustStockDialog'
@@ -216,8 +217,9 @@ function StockTab() {
         const item = row.original
         return (
           <div className="flex flex-wrap items-center justify-end gap-2">
-            {canManage && item.active && (
-              <Button
+            {item.active && (
+              <StockActionButton
+                allowed={canManage}
                 variant="ghost"
                 size="sm"
                 icon={SlidersHorizontal}
@@ -225,7 +227,7 @@ function StockTab() {
                 aria-label={`Ajustar el stock de ${item.name}${item.presentation ? ` ${item.presentation}` : ''}`}
               >
                 Ajustar
-              </Button>
+              </StockActionButton>
             )}
             <Button asChild variant="ghost" size="sm">
               <Link
@@ -304,27 +306,45 @@ function StockTab() {
             Incluir inactivos
           </label>
         </div>
-        {canManage && (
-          <div className="flex flex-wrap items-center gap-2">
-            <Button asChild variant="ghost" icon={PackagePlus}>
-              <Link to="/admin/insumos/ingreso">Ingreso</Link>
-            </Button>
-            <Button asChild variant="ghost" icon={PackageMinus}>
-              <Link to="/admin/insumos/retiro">Retiro en nombre de</Link>
-            </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* OG-11: sin «Gestionar stock» se muestran deshabilitados, con la explicación. */}
+          <StockActionButton
+            allowed={canManage}
+            to="/admin/insumos/ingreso"
+            variant="ghost"
+            icon={PackagePlus}
+          >
+            Ingreso
+          </StockActionButton>
+          <StockActionButton
+            allowed={canManage}
+            to="/admin/insumos/retiro"
+            variant="ghost"
+            icon={PackageMinus}
+          >
+            Retiro en nombre de
+          </StockActionButton>
+          {canManage && (
             <ControlSheetAction
               items={itemsQuery.data ?? []}
               categories={categoriesQuery.data ?? []}
               defaultCategoryId={filters.categoryId}
             />
-            <Button asChild variant="ghost" icon={ClipboardCheck}>
-              <Link to="/admin/insumos/control">Cargar control</Link>
-            </Button>
+          )}
+          <StockActionButton
+            allowed={canManage}
+            to="/admin/insumos/control"
+            variant="ghost"
+            icon={ClipboardCheck}
+          >
+            Cargar control
+          </StockActionButton>
+          {canManage && (
             <Button asChild icon={Plus}>
               <Link to="/admin/insumos/nuevo">Nuevo artículo</Link>
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <DataTable
