@@ -39,6 +39,7 @@ function supervision(overrides: Partial<MySupervision>): MySupervision {
     assignedAt: '2026-09-20T10:00:00Z',
     notDoneReason: null,
     cancelReason: null,
+    shiftNotes: null,
     generalNotes: null,
     criteriaSnapshot: null,
     checkInAt: null,
@@ -92,5 +93,23 @@ describe('SupervisionsPage (SUP-07)', () => {
 
     const link = screen.getByText('Limpiadora SRL').closest('a')
     expect(link).toHaveAttribute('href', '/sup/supervisiones/sv1')
+  })
+  it('P29 OG-05: muestra el mensaje de la oficina del turno solo si hay', () => {
+    vi.spyOn(
+      mySupervisionsModule,
+      'useMySupervisionsPendingQuery',
+    ).mockReturnValue({
+      data: [
+        supervision({ shiftNotes: 'Hoy entran por la cochera' }),
+        supervision({ id: 'sv2', shiftNotes: null }),
+      ],
+      isLoading: false,
+      isError: false,
+    } as never)
+
+    renderPage()
+
+    expect(screen.getAllByTestId('office-message')).toHaveLength(1)
+    expect(screen.getByText('Hoy entran por la cochera')).toBeInTheDocument()
   })
 })

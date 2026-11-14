@@ -35,6 +35,7 @@ function assignment(overrides: Partial<MyDayAssignment>): MyDayAssignment {
     status: 'present',
     shiftStatus: 'in_progress',
     notes: null,
+    shiftNotes: null,
     tasksTotal: 0,
     tasksDone: 0,
     changedSinceLastSeen: false,

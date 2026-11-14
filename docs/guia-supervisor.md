@@ -177,6 +177,8 @@ En cada bloque, el orden es:
 
 Cada turno muestra el cliente, la sede, el horario y, si ya hay otro coordinador, **quién lo supervisa o lo supervisó** (por ejemplo "Supervisando: Ana"), para que no se pisen.
 
+Cuando tomás un turno, si la oficina dejó un recado para ese turno lo ves como **Mensaje de la oficina** en tu lista de supervisiones (tocá **Ver más** si es largo) y completo en el detalle de la supervisión.
+
 Las sedes preferenciales **solo ordenan la lista**: no te limitan. Podés tomar cualquier turno de la lista.
 
 ### Qué turnos podés tomar

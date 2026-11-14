@@ -6,6 +6,7 @@ import { getNoticeMessage } from '@/features/employee/notice'
 import { useNow } from '@/features/employee/useNow'
 import { formatAssignmentRange } from '@/features/employee/shiftRange'
 import { AssignmentStatusBadge } from './AssignmentStatusBadge'
+import { OfficeMessage } from './OfficeMessage'
 
 /**
  * Tarjeta de un servicio de hoy (EMP-03): cliente, sede, dirección, franja,
@@ -47,6 +48,7 @@ export function ServiceCard({
           <p className="text-[13px] font-semibold text-text-2">
             {formatAssignmentRange(assignment)}
           </p>
+          <OfficeMessage text={assignment.shiftNotes} clamp />
           {notice && (
             <p className="text-[11.5px] font-semibold text-warning-800">
               {notice.text}
