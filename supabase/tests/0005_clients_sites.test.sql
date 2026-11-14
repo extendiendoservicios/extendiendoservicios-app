@@ -155,7 +155,7 @@ select is(
   'clients.status nace en active sin indicarlo'
 );
 
--- clients: unicidad de CUIT -----------------------------------------------------------------------
+-- clients: CUIT repetido (desde 0085 ya no es único) -----------------------------------------------------------------------
 
 -- CUIT de fixture con prefijo "999" a propósito (DB-019, P04.6): los CUIT reales que carga
 -- `supabase/seed.sql` en App_dev empiezan todos con "307" o "273" (Grupo Norte, Clínica del
@@ -168,11 +168,9 @@ insert into public.clients (id, legal_name, calendar_color) values ('d0000000-00
 prepare client_duplicate_cuit as
   update public.clients set cuit = '99911112223' where id = 'd0000000-0000-0000-0000-000000000002';
 
-select throws_ok(
+select lives_ok(
   'client_duplicate_cuit',
-  '23505',
-  null,
-  'rechaza dos clientes con el mismo CUIT'
+  'permite dos clientes con el mismo CUIT (0085, OG-04: se quitó la unicidad)'
 );
 
 update public.clients set cuit = '30798765432' where id = 'd0000000-0000-0000-0000-000000000002';
