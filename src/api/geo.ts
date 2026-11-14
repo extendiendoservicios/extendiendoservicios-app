@@ -483,3 +483,82 @@ export async function fetchCompanyGeofence(): Promise<CompanyGeofence> {
     locationConsentUpdatedAt: data.location_consent_updated_at,
   }
 }
+
+// -------------------------------------------------------------------------
+// Mapa «Todos los clientes» del Resumen (P29.3, OG-01)
+// -------------------------------------------------------------------------
+
+/** Un servicio activo de una sede, como lo resume `map_active_sites()`. */
+export interface ActiveSiteService {
+  name: string
+  /** Días de la semana (0 = domingo ... 6 = sábado), si el servicio los tiene. */
+  weekdays: number[]
+  /** Semanas del mes (1 a 5), o `null` si es todas. */
+  weeksOfMonth: number[] | null
+  startTime: string | null
+  endTime: string | null
+  openEnded: boolean
+}
+
+/** Una sede con ubicación de un cliente activo con servicios activos (`map_active_sites`). */
+export interface ActiveSiteRow {
+  clientId: string
+  clientLegalName: string
+  clientTradeName: string
+  /** Índice 0 a 11 de la paleta del calendario (P24.8). */
+  clientCalendarColor: number
+  siteId: string
+  siteName: string
+  siteCity: string | null
+  latitude: number
+  longitude: number
+  services: ActiveSiteService[]
+}
+
+function toNumberList(value: unknown): number[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is number => typeof item === 'number')
+    : []
+}
+
+/** Normaliza `services` (jsonb): id, name, weekdays, weeks_of_month, start_time, end_time y open_ended. */
+export function parseActiveSiteServices(raw: unknown): ActiveSiteService[] {
+  if (!Array.isArray(raw)) {
+    return []
+  }
+  return raw.map((entry) => {
+    const item = (entry ?? {}) as Record<string, unknown>
+    const text = (value: unknown) =>
+      typeof value === 'string' && value !== '' ? value : null
+    return {
+      name: text(item.name) ?? 'Servicio',
+      weekdays: toNumberList(item.weekdays),
+      weeksOfMonth: item.weeks_of_month
+        ? toNumberList(item.weeks_of_month)
+        : null,
+      startTime: text(item.start_time),
+      endTime: text(item.end_time),
+      openEnded: item.open_ended === true,
+    }
+  })
+}
+
+/** `map_active_sites()` (solo dueño y administradores): sedes de la cartera con ubicación. */
+export async function fetchActiveSites(): Promise<ActiveSiteRow[]> {
+  const { data, error } = await supabase.rpc('map_active_sites')
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data ?? []).map((row) => ({
+    clientId: row.client_id,
+    clientLegalName: row.client_legal_name,
+    clientTradeName: row.client_trade_name,
+    clientCalendarColor: row.client_calendar_color,
+    siteId: row.site_id,
+    siteName: row.site_name,
+    siteCity: row.site_city,
+    latitude: row.site_latitude,
+    longitude: row.site_longitude,
+    services: parseActiveSiteServices(row.services),
+  }))
+}
