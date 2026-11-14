@@ -130,8 +130,8 @@ select plan(32);
 select col_type_is('public', 'v_my_day', 'on_the_way_expires_at', 'timestamp with time zone', 'v_my_day.on_the_way_expires_at existe (timestamptz)');
 select is(
   (select a.attname::text from pg_attribute a where a.attrelid = 'public.v_my_day'::regclass and a.attnum > 0 and not a.attisdropped order by a.attnum desc limit 1),
-  'last_notice_has_certificate',
-  'v_my_day: on_the_way_expires_at conserva su lugar (0037 agrega effective_open_ended y no_checkout, 0047 requires_photos y los contadores de medios, 0052 la validación al final)'
+  'shift_notes',
+  'v_my_day: on_the_way_expires_at conserva su lugar (0037 agrega effective_open_ended y no_checkout, 0047 requires_photos y los contadores de medios, 0052 la validación, 0085 shift_notes al final)'
 );
 select is(
   (select a.attname::text from pg_attribute a where a.attrelid = 'public.v_assignments_board'::regclass and a.attnum > 0 and not a.attisdropped order by a.attnum desc limit 1 offset 2),
