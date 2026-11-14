@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { PersonCell } from '@/components/PersonCell'
+import { OfficeMessage } from '@/features/employee/components/OfficeMessage'
 import { StarRating } from '@/components/StarRating'
 import { TaskList } from '@/components/TaskList'
 import { StatusBadge } from '@/components/status'
@@ -185,6 +186,8 @@ export default function SupervisionDetailPage() {
           />
         </CardContent>
       </Card>
+
+      <OfficeMessage text={supervision.shiftNotes} />
 
       <Card>
         <CardHeader>

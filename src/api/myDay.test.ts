@@ -101,6 +101,42 @@ const MY_DAY_ROW = {
   on_the_way_expires_at: null,
 }
 
+describe('shiftNotes (P29 OG-05)', () => {
+  async function mapped(extra: Record<string, unknown>) {
+    fromMock.mockReturnValue(
+      makeChainable({ data: [{ ...MY_DAY_ROW, ...extra }], error: null }),
+    )
+    const rows = await fetchMyDay()
+    return rows[0] as NonNullable<(typeof rows)[number]>
+  }
+
+  it('expone shift_notes como shiftNotes y deja notes como la observación propia', async () => {
+    const row = await mapped({
+      shift_notes: 'Llevar llaves',
+      notes: 'Mi nota',
+    })
+    expect(row.shiftNotes).toBe('Llevar llaves')
+    expect(row.notes).toBe('Mi nota')
+  })
+
+  it('es null si viene nulo, vacío, solo espacios o ausente', async () => {
+    expect((await mapped({ shift_notes: null })).shiftNotes).toBeNull()
+    expect((await mapped({ shift_notes: '' })).shiftNotes).toBeNull()
+    expect((await mapped({ shift_notes: '   ' })).shiftNotes).toBeNull()
+    expect((await mapped({})).shiftNotes).toBeNull()
+  })
+
+  it('el historial usa el mismo mapeo', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: { ...MY_DAY_ROW, shift_notes: 'Pasó algo' },
+        error: null,
+      }),
+    )
+    expect((await fetchMyHistoryAssignment('a1'))?.shiftNotes).toBe('Pasó algo')
+  })
+})
+
 describe('fetchMyDay', () => {
   it('arma MyDayAssignment[] a partir de v_my_day, con el nombre de fantasía primero', async () => {
     fromMock.mockReturnValue(makeChainable({ data: [MY_DAY_ROW], error: null }))
@@ -299,6 +335,7 @@ function baseAssignment() {
     status: 'expected' as const,
     shiftStatus: 'scheduled' as const,
     notes: null,
+    shiftNotes: null,
     tasksTotal: 0,
     tasksDone: 0,
     changedSinceLastSeen: false,

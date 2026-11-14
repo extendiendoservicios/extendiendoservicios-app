@@ -25,6 +25,7 @@ import {
   useShiftTasksReadOnlyQuery,
 } from '@/features/employee/queries'
 import { formatAssignmentRange } from '@/features/employee/shiftRange'
+import { OfficeMessage } from '@/features/employee/components/OfficeMessage'
 
 /**
  * EMP-04 · Detalle del servicio (MOB-EMP-004, `05` fila EMP-04): cliente,
@@ -233,6 +234,8 @@ export default function ServiceDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      <OfficeMessage text={assignment.shiftNotes} />
 
       {assignment.notes && (
         <Card>

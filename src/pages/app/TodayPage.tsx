@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { AlertTriangle, Bell, CalendarX } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -16,6 +16,10 @@ import { OnTheWayAction } from '@/features/employee/components/OnTheWayAction'
 import { InstallBanner } from '@/components/InstallBanner'
 import { AnnouncementsBanner } from '@/features/announcements/mobile/AnnouncementsBanner'
 import { formatAssignmentRange } from '@/features/employee/shiftRange'
+import {
+  isNewOfficeMessage,
+  rememberOfficeMessages,
+} from '@/features/employee/officeMessageSeen'
 
 /**
  * EMP-03 · Hoy (MOB-EMP-002, MOB-EMP-003, `06` sección 10, P-092, P-093):
@@ -33,10 +37,23 @@ export default function TodayPage() {
   const { data, isLoading, isError } = useMyDayQuery()
   const markChangesSeen = useMarkChangesSeenMutation()
   const markedRef = useRef(false)
+  // P29 OG-05: turnos cuyo mensaje de la oficina es nuevo o cambió (se calcula
+  // una sola vez, antes de guardar lo visto, y no cambia con el polling).
+  const [newMessageIds, setNewMessageIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  )
 
   useEffect(() => {
     if (data && !markedRef.current) {
       markedRef.current = true
+      setNewMessageIds(
+        new Set(
+          data
+            .filter((a) => isRelevantChange(a) && isNewOfficeMessage(a))
+            .map((a) => a.assignmentId),
+        ),
+      )
+      rememberOfficeMessages(data)
       markChangesSeen.mutate()
     }
     // Solo depende de `data` (una vez que la primera lectura llegó): no
@@ -70,7 +87,9 @@ export default function TodayPage() {
     <div className="flex flex-col gap-4">
       <AnnouncementsBanner />
       <InstallBanner />
-      {changes.length > 0 && <ChangesBlock changes={changes} />}
+      {changes.length > 0 && (
+        <ChangesBlock changes={changes} newMessageIds={newMessageIds} />
+      )}
 
       {/* EMP-12 (MOB-EMP-020): acceso desde Hoy, visible mientras haya al
           menos un servicio que todavía se pueda avisar (sin inicio
@@ -148,7 +167,13 @@ export function pickFeatured(
   return active[active.length - 1]
 }
 
-function ChangesBlock({ changes }: { changes: MyDayAssignment[] }) {
+function ChangesBlock({
+  changes,
+  newMessageIds,
+}: {
+  changes: MyDayAssignment[]
+  newMessageIds: ReadonlySet<string>
+}) {
   return (
     <Alert variant="info">
       <Bell aria-hidden="true" />
@@ -160,6 +185,8 @@ function ChangesBlock({ changes }: { changes: MyDayAssignment[] }) {
               <li key={assignment.assignmentId}>
                 {assignment.siteName} ·{' '}
                 {formatCalendarDate(assignment.shiftDate)}
+                {newMessageIds.has(assignment.assignmentId) &&
+                  ' · Nuevo mensaje de la oficina'}
               </li>
             ))}
           </ul>

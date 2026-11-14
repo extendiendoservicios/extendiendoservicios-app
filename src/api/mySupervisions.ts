@@ -103,6 +103,8 @@ export interface MySupervision {
   assignedAt: string | null
   notDoneReason: string | null
   cancelReason: string | null
+  /** P29 OG-05: «Mensaje de la oficina» (observación del turno, `shifts.notes`); `null` si está vacía. */
+  shiftNotes: string | null
   generalNotes: string | null
   /** `null` hasta que se registra el inicio (`supervision_check_in` la completa, P-087). */
   criteriaSnapshot: RatingCriterion[] | null
@@ -188,6 +190,7 @@ function mapMySupervisionRow(row: MySupervisionRawRow): MySupervision {
     assignedAt: row.assigned_at,
     notDoneReason: row.not_done_reason,
     cancelReason: row.cancel_reason,
+    shiftNotes: row.shift_notes?.trim() ? row.shift_notes : null,
     generalNotes: row.general_notes,
     criteriaSnapshot: mapCriteriaSnapshot(row.criteria_snapshot),
     checkInAt: row.check_in_at,

@@ -93,6 +93,21 @@ describe('SupervisionDetailPage (SUP-04)', () => {
     expect(screen.getByText('Inicio: 08:05')).toBeInTheDocument()
   })
 
+  it('P29 OG-05: muestra el mensaje de la oficina completo, sin «Ver más»', () => {
+    const long = 'Línea uno\nLínea dos\nLínea tres '.repeat(5)
+    setup(makeMySupervision({ shiftNotes: long }))
+
+    expect(screen.getByText('Mensaje de la oficina')).toBeInTheDocument()
+    expect(screen.getByTestId('office-message')).toHaveTextContent('Línea uno')
+    expect(screen.queryByText('Ver más')).not.toBeInTheDocument()
+  })
+
+  it('P29 OG-05: sin mensaje no hay bloque', () => {
+    setup(makeMySupervision({ shiftNotes: null }))
+
+    expect(screen.queryByText('Mensaje de la oficina')).not.toBeInTheDocument()
+  })
+
   it('ya no ofrece registrar inicio ni fin: eso lo hacen «Supervisar» y «Cerrar»', () => {
     setup(makeMySupervision())
 

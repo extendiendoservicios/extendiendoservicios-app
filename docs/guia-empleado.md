@@ -95,6 +95,7 @@ Tocá una tarjeta para ver todo lo que necesitás saber antes de ir.
 - **Sede:** la dirección (tocá **Abrir en el mapa** para que te lleve el teléfono), el horario del edificio y las instrucciones de acceso.
 - **Restricciones de la sede:** por ejemplo "No se permiten fotos" o "No usar el teléfono en la sede". Son avisos para que los tengas en cuenta.
 - **Contacto en la sede:** tocá el número para llamar.
+- **Mensaje de la oficina:** si la dirección o Administración dejó un recado para ese turno, lo ves en un recuadro destacado, también en la tarjeta de Hoy (tocá **Ver más** si es largo). Si cambia, el turno aparece en **Cambios desde tu última visita** con la leyenda «Nuevo mensaje de la oficina». No es lo mismo que **Tu observación**, que es la que cargás vos.
 - **Compañeros de este servicio:** con quién trabajás.
 - **Tareas previstas:** la lista de lo que hay que hacer. Las que dicen **Opcional** no son obligatorias.
 
