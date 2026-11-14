@@ -16,7 +16,7 @@ import { ApiError, UNKNOWN_ERROR_MESSAGE, fromPostgrestError } from './errors'
 export type Role = Database['public']['Enums']['app_role']
 export type AdminCapability = Database['public']['Enums']['admin_capability']
 
-/** Las siete capacidades activables por administrador (04 sección 2.1). */
+/** Las ocho capacidades activables por administrador (04 sección 2.1; `manage_stock` desde 0069). */
 export const ALL_ADMIN_CAPABILITIES: AdminCapability[] = [
   'manage_users',
   'cancel_shifts',
@@ -25,6 +25,7 @@ export const ALL_ADMIN_CAPABILITIES: AdminCapability[] = [
   'manage_attendance',
   'generate_shifts',
   'manage_supervisions',
+  'manage_stock',
 ]
 
 // -------------------------------------------------------------------------
