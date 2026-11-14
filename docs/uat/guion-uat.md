@@ -1571,7 +1571,7 @@ Se hace **a la vez** que UAT-EMP-05.
 1. Abrí la ficha de esa persona y tocá **Dar de baja**. Leé el mensaje y confirmá.
 2. En el celular de esa persona, que tenía la sesión abierta, abrí la app o tocá cualquier pantalla.
 3. Probá ingresar de nuevo con su email y su contraseña.
-4. En la administración, mirá **Empleados** y **Configuración**, **Usuarios** (con **Mostrar desactivados**).
+4. En la administración, mirá **Empleados** y **Configuración**, **Usuarios** (con el estado **Todos**).
 
 **Resultado esperado**
 

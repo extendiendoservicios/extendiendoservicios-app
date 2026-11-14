@@ -150,14 +150,14 @@ celular, deja elegir la app de mapas instalada.
 
 ## Decisiones tomadas en P08.3 (clientes)
 
-- **`CUIT_IN_USE` se arma a mano en el cliente**, no en el servidor: igual
-  que `settings.ts` (ADM-28 a ADM-31, P07.3), no hay una RPC propia para
-  clientes (`06_API.md` sección 4: todo "insert/update" directo por
-  PostgREST) — `clients.cuit unique` solo da un `23505` genérico de
-  Postgres. `mapWriteError` en `src/api/clients.ts` lo traduce al mensaje y
-  al código exacto de `06` sección 15 ("Ese CUIT ya está registrado.",
-  `CUIT_IN_USE`) cuando el texto de la restricción menciona `cuit`; el
-  resto de los `23505` caen en un `DUPLICATE` genérico.
+- **CUIT repetido permitido (OG-04, P29.4):** desde la 0085 `clients.cuit`
+  ya no es único (sigue el control de 11 dígitos), así que `CUIT_IN_USE` y su
+  traducción en `mapWriteError` se quitaron. Al guardar un cliente (alta y
+  edición), si el CUIT no está vacío, `ClientFormPage` consulta la RPC
+  `find_clients_by_cuit(p_cuit, p_exclude_client_id)` (`findClientsByCuit`,
+  `src/api/clients.ts`); si devuelve filas, muestra una confirmación que no
+  bloquea: "Ya hay otro cliente con este CUIT: <nombre>. ¿Guardar igual?", con
+  "Guardar igual" y "Volver". Si la consulta falla, se guarda sin avisar.
 - **`created_by`/`updated_by` no los completa un trigger**: igual que
   `settings.ts`, `0005_clients_sites.sql` solo dispara `app.set_updated_at`
   (toca `updated_at`), así que cada función de escritura de

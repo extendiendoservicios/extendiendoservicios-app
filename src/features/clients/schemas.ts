@@ -7,7 +7,7 @@ import { bankFieldsShape } from '@/features/bank/schemas'
 /**
  * Esquemas zod de ADM-20 y del panel de contactos de ADM-21 (CLIENT-001):
  * repiten las restricciones que ya exige el servidor (`04_Modelo_de_Datos.md`
- * sección 2.2: `cuit` de 11 dígitos, `clients.cuit unique`, un solo contacto
+ * sección 2.2: `cuit` de 11 dígitos (repetido permitido desde la 0085, OG-04), un solo contacto
  * principal por cliente), no las reemplazan — `clients_write_admin` y el
  * índice único parcial de `client_contacts` vuelven a validar todo esto.
  */
@@ -25,7 +25,7 @@ function emptyToNull(value: string | undefined): string | null {
   return trimmed.length > 0 ? trimmed : null
 }
 
-/** `04` sección 2.2: "cuit unique | 11 dígitos", igual check que aplica `0016_hardening.sql`. */
+/** `04` sección 2.2: "cuit | 11 dígitos", igual check que aplica `0016_hardening.sql`. */
 const cuitSchema = z
   .string()
   .trim()

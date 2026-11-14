@@ -67,14 +67,23 @@ describe('StockTab: botones de P25.3 y permisos (IS-17, IS-21)', () => {
     }
   })
 
-  it('un administrador sin «Gestionar stock» ve el stock pero ninguno de esos botones', () => {
+  it('un administrador sin «Gestionar stock» ve esos botones deshabilitados (OG-11) o ausentes', () => {
     authState.roles = ['admin']
     authState.capabilities = []
     renderTab()
     expect(screen.getByText('Lavandina')).toBeInTheDocument()
+    // Nunca como enlace: no se puede entrar a las pantallas que fallarían.
     for (const { role, name } of MANAGE_ONLY) {
-      expect(screen.queryByRole(role, { name })).toBeNull()
+      if (role === 'link') {
+        expect(screen.queryByRole('link', { name })).toBeNull()
+      }
     }
-    expect(screen.queryByRole('button', { name: /^Ajustar/ })).toBeNull()
+    for (const name of ['Ingreso', 'Retiro en nombre de', 'Cargar control']) {
+      expect(screen.getByRole('button', { name })).toBeDisabled()
+    }
+    expect(
+      screen.queryByRole('button', { name: 'Imprimir planilla' }),
+    ).toBeNull()
+    expect(screen.getByRole('button', { name: /^Ajustar/ })).toBeDisabled()
   })
 })

@@ -75,8 +75,7 @@ function ShiftObservationSection({
         textareaProps={{
           value: text,
           onChange: (event) => setText(event.target.value),
-          placeholder:
-            'Escribí una observación para este turno (solo la ve la administración).',
+          placeholder: 'Escribí una observación para este turno.',
         }}
         showInPrint={show}
         onShowInPrintChange={setShow}
