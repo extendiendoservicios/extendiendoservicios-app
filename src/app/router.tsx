@@ -13,7 +13,6 @@ import { StagingBanner } from '@/components/StagingBanner'
 import { RequireRole } from '@/features/auth/RequireRole'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { homePathForRoles } from '@/features/auth/session'
-import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { LazyAdminShell, LazyMobileShell } from '@/app/shells/lazyShells'
 import { RouteFallback } from './routes/RouteFallback'
 import { adminRoutes } from './routes/adminRoutes'
@@ -70,13 +69,11 @@ function RootLayout() {
  * reemplaza a la portada `ConstructionPage` de F5 (borrada en este
  * paquete, junto con el e2e que la probaba — ver el reporte del encargo
  * P06.3). Sin sesión → `/ingresar` (COM-01); con sesión, la vía de sus
- * roles (`homePathForRoles`, con el mismo ancho "de escritorio" que usa
- * `LoginPage` — 1024 px, `05` sección 7) o `/sin-acceso` si no tiene
- * ninguno.
+ * roles (`homePathForRoles`, igual en computadora y en celular, OG-06) o
+ * `/sin-acceso` si no tiene ninguno.
  */
 function RootRedirect() {
   const { status, roles } = useAuth()
-  const isDesktop = useMediaQuery('(min-width: 1024px)')
 
   if (status === 'loading') {
     return <RouteFallback />
@@ -84,12 +81,7 @@ function RootRedirect() {
   if (status === 'unauthenticated') {
     return <Navigate to="/ingresar" replace />
   }
-  return (
-    <Navigate
-      to={homePathForRoles(roles, isDesktop) ?? '/sin-acceso'}
-      replace
-    />
-  )
+  return <Navigate to={homePathForRoles(roles) ?? '/sin-acceso'} replace />
 }
 
 // DS-015: rutas de `05_Pantallas_y_Navegacion.md` sección 5, como

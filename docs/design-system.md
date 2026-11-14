@@ -1341,7 +1341,7 @@ reporte del encargo). Teléfono de soporte solo si está cargado, con
 router**: mientras `status !== 'authenticated'` la pantalla se queda
 quieta; en cuanto `AuthProvider` confirma la sesión (el mismo
 `onAuthStateChange` que ya dispara `signInWithPassword`), el mismo render
-calcula `homePathForRoles(roles, isDesktop)` y redirige con `<Navigate>` —
+calcula `homePathForRoles(roles)` y redirige con `<Navigate>` —
 cubre "acabo de loguearme" y "ya tenía sesión y entré a `/ingresar` por
 las mías" con una sola rama.
 
@@ -1364,25 +1364,25 @@ mapa de errores para `over_request_rate_limit`, `user_banned` (no puede
 pasar hoy, la desactivación es F7, pero el código ya existe en
 `@supabase/auth-js`) y `email_address_invalid`.
 
-### `homePathForRoles(roles, isDesktopWidth)`: el quiebre de ancho (`session.ts`)
+### `homePathForRoles(roles)`: la administración entra siempre al panel (`session.ts`, P29.2)
 
-`05` sección 3, fila COM-01, tiene CINCO casos, no cuatro: "owner o admin y
-el ancho es de escritorio → ADM-02" y, por separado, "admin en móvil →
-ADM-02 responsive" son el MISMO destino contado dos veces para dejar
-explícito que owner/admin sin otro rol también entra por acá en el
-celular — el ancho no cambia el destino de un owner/admin "puro". Donde sí
-importa: alguien que además de owner/admin tiene un rol con experiencia
-mobile-first propia (empleado o supervisor) entra por esa vía en el
-celular, no por el `AdminShell` colapsado — un administrador que abre la
-app desde el teléfono para fichar su propio turno cae en `/app`, no en
-`/admin`. En escritorio, owner/admin sigue ganando siempre. El parámetro
-tiene un valor por omisión (`true`, el comportamiento de siempre) para no
-tocar `RequireRole` (que sigue sin el caso del ancho: eso es "al entrar",
-no la protección general de rutas) — decisión menor, ver el reporte.
+OG-06 (confirmado en C-03): quien tiene `owner` o `admin` entra SIEMPRE a
+`/admin`, en computadora y en celular, aunque además tenga `employee` o
+`supervisor`. Antes (P06.3) el ancho decidía: en ventanas de menos de
+1024 px un administrador con rol de empleado caía en `/app`; ese
+parámetro de ancho se eliminó. El resto: solo `employee` (o `employee` +
+`supervisor`) → `/app`, solo `supervisor` → `/sup`, sin roles → `null`
+(`/sin-acceso`). `RequireRole` de `/app` y `/sup` deja entrar a quien
+tiene esos roles aunque también administre: pasa de modo a propósito.
 
-Verificado en vivo (no solo en el test unitario): `andrea.rios@…`
-(admin) en escritorio (1440 px) cae en `/admin`; `maria.gomez@…`
-(employee) en el MISMO ancho de escritorio cae en `/app`.
+**Cambiar de modo (OG-08).** En el menú de usuario del `AdminShell`
+(escritorio y celular), `ModeSwitchMenuItems` agrega «Ir a mi app de
+empleado» (`/app`, si tiene `employee`) e «Ir a mi app de coordinador»
+(`/sup`, si tiene `supervisor`). En el `MobileShell`, quien además tiene
+`owner` o `admin` ve arriba el botón «Volver al panel»: es un enlace fijo
+a `/admin` (no `navigate(-1)`), así que no hay bucle con `useGoBack` ni
+con la PWA. `useHasRole(...roles)` (`src/features/auth/useHasRole.ts`)
+es el hook reutilizable para preguntar por roles en pantallas.
 
 ### COM-02 · Recuperar (`ForgotPasswordPage.tsx`, AUTH-005)
 

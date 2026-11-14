@@ -28,39 +28,25 @@ export const ROLE_LABELS: Record<Role, string> = {
 /**
  * Vía de inicio de quien tiene estos roles (`05_Pantallas_y_Navegacion.md`
  * sección 5, fila COM-01): la usa `RequireRole` para mandar a quien entra a
- * una vía que no le corresponde a su propia vía, y AUTH-004 (`LoginPage`,
- * `router.tsx`) para el redirect al entrar y para `/`. Con empleado y
- * supervisor a la vez gana `/app`, igual que en `ProfileLayout`
- * (`commonRoutes.tsx`): el acceso a la supervisión está en EMP-13 ("Más").
- * Sin ningún rol, `null` (COM-05, `/sin-acceso`).
+ * una vía que no le corresponde, y AUTH-004 (`LoginPage`, `router.tsx`) para
+ * el redirect al entrar y para `/`. Sin ningún rol, `null` (COM-05,
+ * `/sin-acceso`).
  *
- * `isDesktopWidth` (por omisión `true`, el comportamiento de siempre):
- * la fila de COM-01 tiene CINCO casos, no cuatro — "owner o admin y el
- * ancho es de escritorio → ADM-02" Y, por separado, "admin en móvil →
- * ADM-02 responsive" son el MISMO destino (`/admin`, una sola ruta
- * responsive, `05` sección 7) contado dos veces para dejar explícito que
- * owner/admin sin otro rol también entra por acá en el celular. El ancho
- * sólo importa para alguien que además de owner/admin tiene un rol con
- * experiencia mobile-first propia (empleado o supervisor, sin sidebar
- * responsiva): en el celular, esos roles ganan por sobre owner/admin (un
- * administrador que abre la app desde el teléfono para fichar su propio
- * turno entra por `/app`, no por el `AdminShell` colapsado); en
- * escritorio, owner/admin sigue ganando siempre (regla explícita del
- * primer caso). Por eso el orden de las comprobaciones cambia con
- * `isDesktopWidth` en vez de ser fijo. `RequireRole` no pasa este
- * parámetro (sigue devolviendo `/admin` fijo para owner/admin, ver su
- * comentario): esta regla de ancho es específica de "al entrar" (COM-01,
- * AUTH-004), no de la protección general de rutas — decisión menor, ver
- * el reporte del encargo P06.3.
+ * P29.2 (OG-06, confirmado en C-03): quien tiene `owner` o `admin` entra
+ * SIEMPRE a `/admin`, en computadora y en celular, aunque además tenga
+ * `employee` o `supervisor` (antes, en ventanas angostas, ganaba `/app` o
+ * `/sup`). Para fichar o ver su jornada entra a propósito desde el menú de
+ * usuario del panel («Ir a mi app de empleado», OG-08); `RequireRole` de
+ * `/app` y `/sup` lo deja pasar porque tiene esos roles. Sin ancho como
+ * parámetro: el resultado ya no depende del dispositivo.
+ *
+ * Con empleado y supervisor a la vez gana `/app`, igual que en
+ * `ProfileLayout` (`commonRoutes.tsx`): el acceso a la supervisión está en
+ * EMP-13 ("Más").
  */
-export function homePathForRoles(
-  roles: Role[],
-  isDesktopWidth = true,
-): string | null {
-  const isAdmin = roles.includes('owner') || roles.includes('admin')
-  if (isAdmin && isDesktopWidth) return '/admin'
+export function homePathForRoles(roles: Role[]): string | null {
+  if (roles.includes('owner') || roles.includes('admin')) return '/admin'
   if (roles.includes('employee')) return '/app'
   if (roles.includes('supervisor')) return '/sup'
-  if (isAdmin) return '/admin'
   return null
 }

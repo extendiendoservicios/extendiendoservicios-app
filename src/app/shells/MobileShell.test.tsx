@@ -1,14 +1,16 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MobileShell } from './MobileShell'
+
+const rolesMock = vi.hoisted(() => ({ current: ['employee'] as string[] }))
 
 vi.mock('@/features/auth/AuthProvider', () => ({
   useAuth: () => ({
     status: 'authenticated',
     userId: 'user-1',
     email: 'ana@extendiendoservicios.com',
-    roles: ['employee'],
+    roles: rolesMock.current,
     capabilities: [],
     profile: null,
     displayName: 'Ana Pérez',
@@ -134,5 +136,37 @@ describe('MobileShell (P17.8)', () => {
     expect(
       within(nav).queryByRole('button', { name: 'Fichar' }),
     ).not.toBeInTheDocument()
+  })
+})
+
+describe('MobileShell: «Volver al panel» (P29.2, OG-08)', () => {
+  afterEach(() => {
+    rolesMock.current = ['employee']
+  })
+
+  it('quien solo es empleado no ve el botón', () => {
+    renderShell(['/app'])
+    expect(
+      screen.queryByRole('link', { name: 'Volver al panel' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it.each([['admin'], ['owner']])(
+    'con rol %s además de empleado, el botón lleva siempre a /admin',
+    (role) => {
+      rolesMock.current = ['employee', role]
+      renderShell(['/app'])
+      expect(
+        screen.getByRole('link', { name: 'Volver al panel' }),
+      ).toHaveAttribute('href', '/admin')
+    },
+  )
+
+  it('el botón también está en subpáginas y en la vía de coordinador', () => {
+    rolesMock.current = ['admin', 'supervisor']
+    renderShell(['/sup', '/sup/insumos'], 'supervisor')
+    expect(
+      screen.getByRole('link', { name: 'Volver al panel' }),
+    ).toHaveAttribute('href', '/admin')
   })
 })
