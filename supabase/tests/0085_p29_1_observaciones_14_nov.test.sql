@@ -1,7 +1,7 @@
 -- pgTAP de la migración 0085_p29_1_observaciones_14_nov.sql (P29.1), solo de lo que toca:
 --   OG-04  CUIT repetido permitido (se mantiene el check de 11 dígitos) y find_clients_by_cuit.
 --   OG-02  attention_dismissals, dismiss_attention, reopen_attention y la limpieza de 30 días.
---   OG-05  shift_notes en v_my_day, v_my_history y v_my_supervisions (solo del asignado).
+--   OG-05  shift_notes en v_my_day, v_my_history y v_my_supervisions (solo del asignado; corregido en 0086: sale de shift_observations).
 --   OG-01  map_active_sites().
 --   OG-12  admin_users_directory() (legajo, DNI y email según CR-07).
 --
@@ -63,7 +63,7 @@ $$;
 
 grant execute on function tests_0085.hint_of(text) to authenticated, anon;
 
-select plan(78);
+select plan(83);
 
 -- Fixtures -------------------------------------------------------------------------------------
 
@@ -122,11 +122,18 @@ insert into public.services (id, client_id, site_id, name, weekdays, start_time,
 -- Turnos: hoy (con observación) con Acosta y Boutter; ayer (con observación) con Acosta; hoy con
 -- observación en blanco con Acosta; hoy supervisado por Supervisora; uno sin cubrir (aviso «uncovered»).
 insert into public.shifts (id, client_id, site_id, shift_date, start_time, end_time, required_staff, status, generated, notes) values
-  ('f8500000-0000-0000-0000-000000000031', 'f8500000-0000-0000-0000-000000000001', 'f8500000-0000-0000-0000-000000000011', app.today(), '08:00', '09:00', 2, 'assigned', false, '  Traer las llaves de la oficina  '),
-  ('f8500000-0000-0000-0000-000000000032', 'f8500000-0000-0000-0000-000000000001', 'f8500000-0000-0000-0000-000000000011', app.today() - 1, '08:00', '09:00', 1, 'completed', false, 'Observación de ayer'),
-  ('f8500000-0000-0000-0000-000000000033', 'f8500000-0000-0000-0000-000000000001', 'f8500000-0000-0000-0000-000000000011', app.today(), '10:00', '11:00', 1, 'assigned', false, '   '),
-  ('f8500000-0000-0000-0000-000000000034', 'f8500000-0000-0000-0000-000000000001', 'f8500000-0000-0000-0000-000000000011', app.today(), '12:00', '13:00', 1, 'scheduled', false, 'Nota del turno supervisado'),
+  ('f8500000-0000-0000-0000-000000000031', 'f8500000-0000-0000-0000-000000000001', 'f8500000-0000-0000-0000-000000000011', app.today(), '08:00', '09:00', 2, 'assigned', false, null),
+  ('f8500000-0000-0000-0000-000000000032', 'f8500000-0000-0000-0000-000000000001', 'f8500000-0000-0000-0000-000000000011', app.today() - 1, '08:00', '09:00', 1, 'completed', false, null),
+  ('f8500000-0000-0000-0000-000000000033', 'f8500000-0000-0000-0000-000000000001', 'f8500000-0000-0000-0000-000000000011', app.today(), '10:00', '11:00', 1, 'assigned', false, null),
+  ('f8500000-0000-0000-0000-000000000034', 'f8500000-0000-0000-0000-000000000001', 'f8500000-0000-0000-0000-000000000011', app.today(), '12:00', '13:00', 1, 'scheduled', false, null),
   ('f8500000-0000-0000-0000-000000000035', 'f8500000-0000-0000-0000-000000000001', 'f8500000-0000-0000-0000-000000000011', app.today(), '14:00', '15:00', 1, 'scheduled', false, null);
+
+-- La observación vive en shift_observations (0040), no en shifts.notes (como create_shift_core).
+insert into public.shift_observations (shift_id, observation, show_in_print) values
+  ('f8500000-0000-0000-0000-000000000031', '  Traer las llaves de la oficina  ', true),
+  ('f8500000-0000-0000-0000-000000000032', 'Observación de ayer', true),
+  ('f8500000-0000-0000-0000-000000000033', '   ', true),
+  ('f8500000-0000-0000-0000-000000000034', 'Nota del turno supervisado', true);
 
 insert into public.assignments (id, shift_id, employee_id) values
   ('f8500000-0000-0000-0000-000000000101', 'f8500000-0000-0000-0000-000000000031', 'f8500000-0000-0000-0000-0000000000a1'),
@@ -345,17 +352,20 @@ select is(
   'v_my_supervisions: otro coordinador no ve ese turno'
 );
 
--- Un cambio de shifts.notes mueve updated_at y enciende changed_since_last_seen (P-092).
+-- Un cambio de la observación (update_shift_details) mueve updated_at y enciende changed_since_last_seen (P-092).
 select set_config('role', 'postgres', true);
 -- sin sesión de la app: el trigger de profiles mira auth.uid()
 select set_config('request.jwt.claims', '', true);
 update public.profiles set last_seen_changes_at = date_trunc('day', now()) - interval '1 day'
   where id = 'f8500000-0000-0000-0000-0000000000a1';
-update public.shifts set notes = 'Cambio de la oficina', updated_by = 'f8500000-0000-0000-0000-000000000082'
+-- Como update_shift_details: escribe la observación y toca shifts (trigger set_updated_at).
+update public.shift_observations set observation = 'Cambio de la oficina'
+  where shift_id = 'f8500000-0000-0000-0000-000000000031';
+update public.shifts set updated_by = 'f8500000-0000-0000-0000-000000000082'
   where id = 'f8500000-0000-0000-0000-000000000031';
 select ok(
   (select updated_at is not null from public.shifts where id = 'f8500000-0000-0000-0000-000000000031'),
-  'cambiar shifts.notes mueve shifts.updated_at (trigger set_updated_at)'
+  'tocar shifts al cambiar la observación mueve shifts.updated_at (trigger set_updated_at)'
 );
 select tests_0085.as_user('test-db0085-a1@example.com');
 select ok(
@@ -366,6 +376,35 @@ select is(
   (select shift_notes from public.v_my_day where assignment_id = 'f8500000-0000-0000-0000-000000000101'),
   'Cambio de la oficina',
   'v_my_day: trae la observación nueva'
+);
+
+-- 0086: app.shift_office_message solo entrega la observación al asignado o al coordinador del turno.
+select is(
+  app.shift_office_message('f8500000-0000-0000-0000-000000000034'),
+  null,
+  'shift_office_message: empleado no asignado al turno no recibe la observación'
+);
+select tests_0085.as_user('test-db0085-sup@example.com');
+select is(
+  app.shift_office_message('f8500000-0000-0000-0000-000000000031'),
+  null,
+  'shift_office_message: el coordinador de otro turno no recibe la observación de un turno que no supervisa'
+);
+select is(
+  app.shift_office_message('f8500000-0000-0000-0000-000000000034'),
+  'Nota del turno supervisado',
+  'shift_office_message: el coordinador del turno la recibe'
+);
+select tests_0085.as_user('test-db0085-a2@example.com');
+select is(
+  app.shift_office_message('f8500000-0000-0000-0000-000000000032'),
+  null,
+  'shift_office_message: empleado asignado a otro turno no ve el historial ajeno'
+);
+select is(
+  (select count(*)::int from public.shift_observations where shift_id::text like 'f8500000-%'),
+  0,
+  'shift_observations sigue cerrada para el empleado (RLS)'
 );
 
 -- OG-01: mapa «Todos los clientes» -----------------------------------------------------------------

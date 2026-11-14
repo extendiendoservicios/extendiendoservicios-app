@@ -3028,7 +3028,8 @@ Corrige el efecto lateral de la 0082: el empleado tiene que seguir viendo el tur
 - **OG-03 · Demoras avisadas.** `v_assignments_board` ya trae el último aviso vigente (`last_notice_kind`, `last_notice_minutes_late`,
   `last_notice_reason_text`, `last_notice_at`, `last_notice_estimated_arrival_at`) y `AttendanceBoardRow` ya los mapea: no se tocó.
   Una demora avisada es `last_notice_kind = 'notify_delay'` con `status = 'delay_notified'`.
-- **OG-05 · Observación del turno.** `shift_notes` (`nullif(btrim(shifts.notes), '')`) al final de `v_my_day`, `v_my_history` y
+- **OG-05 · Observación del turno.** _(Corregido en `0086`, ver la sección siguiente: `0085` leía `shifts.notes`, que está en desuso
+  y siempre null.)_ `shift_notes` (`nullif(btrim(shifts.notes), '')`) al final de `v_my_day`, `v_my_history` y
   `v_my_supervisions` (`create or replace`; el resto de la definición es la de `0081`, mismos grants). El empleado solo ve filas de
   sus asignaciones y el coordinador las de sus supervisiones. `changed_since_last_seen` no se tocó: ya compara `sh.updated_at`, que el
   trigger `set_updated_at` mueve al cambiar `shifts.notes` (ver `0085_*.test.sql`).
@@ -3043,3 +3044,22 @@ Corrige el efecto lateral de la 0082: el empleado tiene que seguir viendo el tur
 - **OG-11b (solo verificación).** `set_admin_capability(p_profile_id, p_capability admin_capability, p_enabled)` acepta `manage_stock`
   desde `0069` (el enum lo tiene) y la Edge Function `admin-users` también. Falta solo en `ALL_ADMIN_CAPABILITIES` del front.
 - Tests: `0085_p29_1_observaciones_14_nov` y ajuste de `0005_clients_sites` (el CUIT repetido ahora se permite).
+
+## Migración 0086 (P29.1b): el «Mensaje de la oficina» sale de `shift_observations` (OG-05)
+
+- **Causa.** `0085` agregó `shift_notes` como `nullif(btrim(shifts.notes), '')`. Desde `0040` (AJ2-15) `shifts.notes` está en desuso
+  (siempre null) y la observación del turno vive en `shift_observations` (la escriben `create_shift_core` y `update_shift_details`;
+  el panel la lee de ahí). Por eso el mensaje nunca aparecía.
+- **Fuente.** `shift_observations.observation`, con `nullif(btrim(...), '')`: es la misma que muestra el panel. No hay otra ruta que
+  escriba `shifts.notes`.
+- **RLS.** `shift_observations` solo la lee administración (`shift_observations_select_admin`) y sigue así (también para
+  `show_in_print`). Como las vistas son `security_invoker`, un join directo daría siempre null al empleado y al coordinador. Se agrega
+  `app.shift_office_message(p_shift_id uuid) returns text` (`stable`, `security definer`, `search_path = public, app, pg_temp`), que
+  devuelve la observación de **un** turno solo si `auth.uid()` tiene una asignación vigente en él o lo supervisa; si no, null. Las
+  tres vistas la llaman: `app.shift_office_message(sh.id) as shift_notes`. Ejecutable por `authenticated` y `service_role` (las vistas corren con quien consulta; el test 0050 las lee todas con `service_role`), sin acceso a `anon` ni
+  `public`.
+- `v_my_day`, `v_my_history` y `v_my_supervisions` se redefinen con `create or replace`: mismas columnas, orden y tipos que en `0085`
+  (`shift_notes` sigue al final), mismos grants (`select` a `authenticated`) y comentarios de columna actualizados.
+  `changed_since_last_seen` no cambia: `update_shift_details` siempre actualiza `shifts` (trigger `set_updated_at`).
+- Tipos: `database.types.ts` no cambia (`shift_notes` ya estaba como `string | null` y `app` no se expone).
+- Tests: `0085_p29_1_observaciones_14_nov` ahora carga la observación en `shift_observations` y prueba `app.shift_office_message`.
