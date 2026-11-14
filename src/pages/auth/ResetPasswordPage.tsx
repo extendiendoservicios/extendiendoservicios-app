@@ -12,7 +12,6 @@ import { isApiError } from '@/api/errors'
 import { changeOwnPassword } from '@/api/ownPassword'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { homePathForRoles } from '@/features/auth/session'
-import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { RouteFallback } from '@/app/routes/RouteFallback'
 import { AuthScreenLayout } from './AuthScreenLayout'
 
@@ -85,7 +84,6 @@ type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>
 
 export default function ResetPasswordPage() {
   const auth = useAuth()
-  const isDesktop = useMediaQuery('(min-width: 1024px)')
   const [justUpdated, setJustUpdated] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -105,10 +103,7 @@ export default function ResetPasswordPage() {
   // a: Según rol").
   if (justUpdated) {
     return (
-      <Navigate
-        to={homePathForRoles(auth.roles, isDesktop) ?? '/sin-acceso'}
-        replace
-      />
+      <Navigate to={homePathForRoles(auth.roles) ?? '/sin-acceso'} replace />
     )
   }
 
