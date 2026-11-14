@@ -205,7 +205,7 @@ describe('fetchAdminCapabilities', () => {
 
     expect(capabilities.manage_users).toBe(true)
     expect(capabilities.cancel_shifts).toBe(false)
-    expect(Object.keys(capabilities)).toHaveLength(7)
+    expect(Object.keys(capabilities)).toHaveLength(8)
   })
 })
 

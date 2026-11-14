@@ -7,6 +7,21 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.29.2] - 2026-11-14
+
+Arreglo de «Gestionar stock» y base de las observaciones de la dirección del 14 nov (P29.1). Migración 0085. Las pantallas de P29 salen en 0.30.0.
+
+### Corregido
+
+- Configuración → Usuarios → «Roles y capacidades»: aparece «Gestionar stock», que faltaba desde 0.25.0. Sin esa capacidad, un administrador ve Insumos pero no puede cargar ni ajustar nada.
+
+### Base de datos (0085, sin cambios visibles todavía)
+
+- Se permite cargar dos clientes con el mismo CUIT (sigue el control de 11 dígitos).
+- Cierre compartido de los avisos de «Requiere atención», con limpieza diaria de los de más de 30 días.
+- La observación del turno queda disponible para la app del empleado y del coordinador.
+- Datos para el mapa con todos los clientes activos y para el listado de usuarios (legajo, DNI y email).
+
 ## [0.29.1] - 2026-11-13
 
 Ajustes después del pase de P28 (P28.9), con las respuestas de la dirección del 13 nov. Migración 0084.

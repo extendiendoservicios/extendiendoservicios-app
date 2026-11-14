@@ -29,19 +29,16 @@ describe('homePathForRoles', () => {
     expect(homePathForRoles(['employee', 'supervisor'])).toBe('/app')
   })
 
-  it('admin además de empleado, en escritorio: gana /admin (primer caso, explícito)', () => {
-    expect(homePathForRoles(['admin', 'employee'], true)).toBe('/admin')
+  it('owner o admin además de empleado: siempre /admin, también en celular (OG-06)', () => {
+    expect(homePathForRoles(['admin', 'employee'])).toBe('/admin')
+    expect(homePathForRoles(['owner', 'employee'])).toBe('/admin')
   })
 
-  it('admin además de empleado, en celular: gana /app (el ancho decide)', () => {
-    expect(homePathForRoles(['admin', 'employee'], false)).toBe('/app')
+  it('admin además de coordinador: /admin', () => {
+    expect(homePathForRoles(['admin', 'supervisor'])).toBe('/admin')
   })
 
-  it('admin sin ningún otro rol, en celular: igual va a /admin (no tiene otra vía)', () => {
-    expect(homePathForRoles(['admin'], false)).toBe('/admin')
-  })
-
-  it('admin además de supervisor, en celular: gana /sup', () => {
-    expect(homePathForRoles(['admin', 'supervisor'], false)).toBe('/sup')
+  it('owner con los tres roles: /admin', () => {
+    expect(homePathForRoles(['owner', 'employee', 'supervisor'])).toBe('/admin')
   })
 })

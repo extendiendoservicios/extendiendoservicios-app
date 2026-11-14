@@ -42,6 +42,7 @@ import { useRouteHandle } from '@/app/routes/placeholder'
 import { BackButton } from './BackButton'
 import { isAdminRootPath, useGoBack } from './backNavigation'
 import { MobileBrandBar } from './MobileBrandBar'
+import { ModeSwitchMenuItems } from './ModeSwitchMenuItems'
 import { NavBadge } from './NavBadge'
 import {
   readSidebarPreference,
@@ -195,6 +196,7 @@ export function AdminShell({
                     <User /> Mi perfil
                   </Link>
                 </DropdownMenuItem>
+                <ModeSwitchMenuItems />
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => void handleSignOut()}>
                   <LogOut /> Cerrar sesión
