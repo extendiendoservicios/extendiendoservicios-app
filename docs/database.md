@@ -2999,3 +2999,47 @@ Corrige el efecto lateral de la 0082: el empleado tiene que seguir viendo el tur
   `check_out_auto_closed` (boolean). `v_assignments_board` ya traía `check_out_auto_closed` (0082) y no se tocó.
 - Tests: `0084_p28_9_ajustes` y ajuste de las firmas en `0082_p28_1_cambios_del_servicio`.
 - **OF-21.** `preview_shift_series` y `create_shift_series` reciben `p_exclude_dates date[] default null` como último parámetro (se reemplazaron las firmas, sin sobrecargas). Las fechas excluidas no se crean ni se informan; si no queda ninguna, `SERIES_EMPTY`. La vista previa las saca de `dates` y `holidays_skipped`.
+
+## Migración 0085 (P29.1): observaciones de la dirección del 14 nov (OG-01, OG-02, OG-03, OG-04, OG-05, OG-12)
+
+- **OG-04 · CUIT repetido.** Se borra `clients_cuit_key` (queda `clients_cuit_format_check`, 11 dígitos) y se crea el índice común
+  `clients_cuit_idx` (parcial, `cuit is not null`). Ninguna RPC capturaba el `23505`: las altas y ediciones de clientes escriben
+  directo a la tabla, y la traducción «Ese CUIT ya está registrado» (`mapWriteError`, `src/api/clients.ts`) es del front.
+  `find_clients_by_cuit(p_cuit text, p_exclude_client_id uuid default null)` devuelve `id, legal_name, trade_name, cuit` de los
+  clientes **activos** (`status = 'active'`, sin baja lógica) con ese CUIT (acepta guiones y puntos), sin contar al excluido.
+  Solo `owner` y `admin` (`FORBIDDEN`).
+- **OG-02 · Cierre de avisos.** Tabla `attention_dismissals` (`id`, `kind`, `shift_id`, `assignment_id`, `dismissed_by`,
+  `dismissed_at`). `kind` tiene un `check` con los `AttentionKind` de `src/features/dashboard/attention.ts` más `delayNotified`
+  (`absence`, `uncovered`, `noRecord`, `noCheckout`, `overdue`, `outsideGeo`, `late`, `delayNotified`). `uncovered` va sin
+  `assignment_id`; los demás lo exigen (check). Única por situación: `unique nulls not distinct (kind, shift_id, assignment_id)`.
+  FK con `on delete cascade` a `shifts` y `assignments` (la regeneración de turnos puede borrar turnos). RLS: lectura solo para
+  `app.is_admin()`; `authenticated` solo tiene `select`, se escribe únicamente con las RPC. El cierre vale para toda la dirección
+  y la administración (C-01).
+  - `dismiss_attention(p_kind text, p_shift_id uuid, p_assignment_id uuid default null) returns attention_dismissals`: `owner` y
+    `admin` (cualquier admin, sin capacidad). Idempotente (si ya estaba cerrado devuelve el cierre existente, con quién y cuándo
+    lo cerró primero). Errores: `FORBIDDEN`, `INVALID_ATTENTION_KIND`, `SHIFT_NOT_FOUND`, `INVALID_ATTENTION_TARGET`,
+    `ASSIGNMENT_NOT_FOUND`.
+  - `reopen_attention(p_id uuid) returns attention_dismissals`: borra el cierre y devuelve la fila borrada. Errores: `FORBIDDEN`,
+    `DISMISSAL_NOT_FOUND`.
+  - Limpieza de más de 30 días: `app.purge_attention_dismissals()` (sin `execute` para `anon` ni `authenticated`), programada con
+    `pg_cron` a diario (`purge-attention-dismissals`, `10 6 * * *` UTC, 03:10 de Argentina) y además la llama `dismiss_attention`
+    (limpieza oportunista), así que no depende solo de la extensión. **En `App` hay que verificar, al aplicar `0085`, que
+    `select * from cron.job where jobname = 'purge-attention-dismissals'` devuelva la tarea** (misma advertencia que `0082`).
+- **OG-03 · Demoras avisadas.** `v_assignments_board` ya trae el último aviso vigente (`last_notice_kind`, `last_notice_minutes_late`,
+  `last_notice_reason_text`, `last_notice_at`, `last_notice_estimated_arrival_at`) y `AttendanceBoardRow` ya los mapea: no se tocó.
+  Una demora avisada es `last_notice_kind = 'notify_delay'` con `status = 'delay_notified'`.
+- **OG-05 · Observación del turno.** `shift_notes` (`nullif(btrim(shifts.notes), '')`) al final de `v_my_day`, `v_my_history` y
+  `v_my_supervisions` (`create or replace`; el resto de la definición es la de `0081`, mismos grants). El empleado solo ve filas de
+  sus asignaciones y el coordinador las de sus supervisiones. `changed_since_last_seen` no se tocó: ya compara `sh.updated_at`, que el
+  trigger `set_updated_at` mueve al cambiar `shifts.notes` (ver `0085_*.test.sql`).
+- **OG-01 · Mapa.** `map_active_sites()` (`owner` y `admin`): una fila por sede activa con latitud y longitud, de clientes activos con
+  al menos un servicio activo (`status = 'active'`, sin baja lógica, `valid_to` nulo o futuro). Columnas: `client_id`,
+  `client_legal_name`, `client_trade_name`, `client_calendar_color`, `site_id`, `site_name`, `site_city`, `site_latitude`,
+  `site_longitude`, `services` (json: `id`, `name`, `weekdays`, `weeks_of_month`, `start_time`, `end_time`, `open_ended`).
+- **OG-12 · Usuarios.** `admin_users_directory()` (`owner` y `admin`) devuelve por persona `profile_id`, `employee_number` (legajo),
+  `dni` y `email` de login; se combina en el front con `fetchUsers` por `profile_id` (la consulta actual no cambia). Legajo y DNI los
+  ve cualquier dueño o admin; el email sigue CR-07: el dueño ve todos; el admin con `manage_users` ve el de quien no es dueño ni
+  admin y el propio; en el resto, `null`.
+- **OG-11b (solo verificación).** `set_admin_capability(p_profile_id, p_capability admin_capability, p_enabled)` acepta `manage_stock`
+  desde `0069` (el enum lo tiene) y la Edge Function `admin-users` también. Falta solo en `ALL_ADMIN_CAPABILITIES` del front.
+- Tests: `0085_p29_1_observaciones_14_nov` y ajuste de `0005_clients_sites` (el CUIT repetido ahora se permite).
