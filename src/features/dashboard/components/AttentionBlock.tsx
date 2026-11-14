@@ -1,14 +1,18 @@
 import { useState } from 'react'
-import { AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, X } from 'lucide-react'
 import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
-import { formatMinutes } from '@/lib/format'
+import { formatMinutes, formatTime } from '@/lib/format'
 import { formatDistanceM } from '@/lib/geo'
 import type { AttendanceBoardRow } from '@/api/attendance'
 import { formatShiftRange } from '@/features/shifts/openEnded'
 import { shiftFranjaLabel } from '../labels'
-import type { AttentionItem, AttentionKind } from '../attention'
+import type {
+  AttentionItem,
+  AttentionKind,
+  ClosedAttentionItem,
+} from '../attention'
 import { RowActions } from './RowActions'
 
 /** Título de cada categoría (`05` línea 36) y gravedad visual (`07` sección 3). */
@@ -32,6 +36,8 @@ const KIND_META: Record<
     title: 'llegó tarde: todavía no registró el inicio',
     severity: 'warn',
   },
+  // OG-03: el texto lleva los minutos avisados, se arma en `describeItem`.
+  delayNotified: { title: 'avisó una demora', severity: 'warn' },
 }
 
 /**
@@ -61,9 +67,15 @@ function describeItem(item: AttentionItem): { title: string; detail: string } {
   if (row) {
     const name = `${row.employeeFirstName} ${row.employeeLastName}`
     const outside = item.kind === 'outsideGeo' ? outsideDistanceLabel(row) : ''
+    // OG-03: «Pérez avisó que llega 20 min tarde», con el motivo si lo escribió.
+    const delayTitle = `avisó que llega ${row.lastNoticeMinutesLate ?? ''} min tarde`
+    const reason =
+      item.kind === 'delayNotified' && row.lastNoticeReasonText
+        ? ` · «${row.lastNoticeReasonText}»`
+        : ''
     return {
-      title: `${name} ${meta.title}`,
-      detail: `${row.clientName} · ${row.siteName} · ${formatShiftRange(row.startTime, row.endTime, row.openEnded)}${since}${outside}`,
+      title: `${name} ${item.kind === 'delayNotified' ? delayTitle : meta.title}`,
+      detail: `${row.clientName} · ${row.siteName} · ${formatShiftRange(row.startTime, row.endTime, row.openEnded)}${since}${outside}${reason}`,
     }
   }
   const shift = item.shift
@@ -83,6 +95,16 @@ interface AttentionBlockProps {
   canAssign: (shiftId: string) => boolean
   onRecord: (item: AttentionItem) => void
   onAssign: (item: AttentionItem) => void
+  /** OG-02: avisos cerrados todavía vigentes, para «Ver cerrados (N)». */
+  closed?: ClosedAttentionItem[]
+  /** Cierra un aviso para toda la administración; sin esta función no hay ✕. */
+  onDismiss?: (item: AttentionItem) => void
+  /** Reabre un cierre (id de `attention_dismissals`). */
+  onReopen?: (dismissalId: string) => void
+  /** Nombre de quien cerró cada aviso, por id de perfil. */
+  dismisserNames?: Map<string, string>
+  /** Hay un cierre o reapertura en curso: se deshabilitan los botones. */
+  isBusy?: boolean
 }
 
 /**
@@ -97,9 +119,15 @@ function AttentionBlock({
   canAssign,
   onRecord,
   onAssign,
+  closed = [],
+  onDismiss,
+  onReopen,
+  dismisserNames,
+  isBusy = false,
 }: AttentionBlockProps) {
   const isDesktop = useMediaQuery('(min-width: 1024px)')
   const [isExpanded, setIsExpanded] = useState(false)
+  const [showClosed, setShowClosed] = useState(false)
   const isCollapsible = !isDesktop && items.length > MOBILE_VISIBLE_ITEMS
   const visibleItems =
     isCollapsible && !isExpanded ? items.slice(0, MOBILE_VISIBLE_ITEMS) : items
@@ -169,10 +197,22 @@ function AttentionBlock({
                       aria-hidden="true"
                       className="mt-[2px] size-4 shrink-0"
                     />
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-semibold">{title}</p>
                       <p className="text-[12px] text-text-2">{detail}</p>
                     </div>
+                    {onDismiss && (
+                      <button
+                        type="button"
+                        aria-label={`Cerrar aviso: ${title}`}
+                        title="Cerrar aviso"
+                        disabled={isBusy}
+                        onClick={() => onDismiss(item)}
+                        className="-mr-1 -mt-1 inline-flex size-7 shrink-0 items-center justify-center rounded-md text-text-3 hover:bg-black/5 hover:text-text focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50"
+                      >
+                        <X aria-hidden="true" className="size-4" />
+                      </button>
+                    )}
                   </div>
                   <RowActions
                     shiftId={item.shiftId}
@@ -203,6 +243,59 @@ function AttentionBlock({
             </Button>
           )}
         </>
+      )}
+
+      {!isLoading && closed.length > 0 && (
+        <div className="mt-3 border-t border-border pt-3">
+          <button
+            type="button"
+            aria-expanded={showClosed}
+            onClick={() => setShowClosed((value) => !value)}
+            className="text-[12.5px] font-semibold text-primary-800 hover:underline"
+          >
+            {showClosed
+              ? `Ocultar cerrados (${closed.length})`
+              : `Ver cerrados (${closed.length})`}
+          </button>
+          {showClosed && (
+            <ul
+              aria-label="Avisos cerrados"
+              className="mt-2 flex flex-col gap-2"
+            >
+              {closed.map(({ item, dismissal }) => {
+                const { title, detail } = describeItem(item)
+                const by = dismisserNames?.get(dismissal.dismissedBy)
+                return (
+                  <li
+                    key={dismissal.id}
+                    className="flex items-start justify-between gap-2 rounded-lg border border-border bg-bg p-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-semibold text-text-2">
+                        {title}
+                      </p>
+                      <p className="text-[12px] text-text-3">{detail}</p>
+                      <p className="text-[11.5px] text-text-3">
+                        Cerrado{by ? ` por ${by}` : ''} a las{' '}
+                        {formatTime(dismissal.dismissedAt)}
+                      </p>
+                    </div>
+                    {onReopen && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={isBusy}
+                        onClick={() => onReopen(dismissal.id)}
+                      >
+                        Reabrir
+                      </Button>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
       )}
     </section>
   )
