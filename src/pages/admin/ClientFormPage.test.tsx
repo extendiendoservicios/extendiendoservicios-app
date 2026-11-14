@@ -11,12 +11,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
   createClientMock,
+  findByCuitMock,
   savePhotoMock,
   toastSuccess,
   toastWarning,
   toastError,
 } = vi.hoisted(() => ({
   createClientMock: vi.fn(),
+  findByCuitMock: vi.fn(),
   savePhotoMock: vi.fn(),
   toastSuccess: vi.fn(),
   toastWarning: vi.fn(),
@@ -30,6 +32,7 @@ vi.mock('sonner', () => ({
 vi.mock('@/api/clients', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api/clients')>()),
   createClient: createClientMock,
+  findClientsByCuit: findByCuitMock,
 }))
 
 vi.mock('@/api/photos', () => ({
@@ -83,6 +86,7 @@ function renderPage() {
 }
 
 beforeEach(() => {
+  findByCuitMock.mockReset().mockResolvedValue([])
   createClientMock.mockReset().mockResolvedValue({ id: 'cli-nuevo' })
   savePhotoMock.mockReset().mockResolvedValue('cli-nuevo/foto.jpg')
   toastSuccess.mockReset()
@@ -178,5 +182,66 @@ describe('ClientFormPage — color en el calendario', () => {
       (createClientMock.mock.calls[0]?.[0] as { calendarColor?: number })
         .calendarColor,
     ).toBe(2)
+  })
+})
+
+describe('ClientFormPage — CUIT repetido (OG-04)', () => {
+  function fillAndSubmit(cuit: string) {
+    renderPage()
+    fireEvent.change(screen.getByLabelText('Razón social'), {
+      target: { value: 'Limpiolux SA' },
+    })
+    if (cuit) {
+      fireEvent.change(screen.getByLabelText('CUIT'), {
+        target: { value: cuit },
+      })
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Crear cliente' }))
+  }
+
+  it('con CUIT repetido pide confirmación y "Guardar igual" crea el cliente', async () => {
+    findByCuitMock.mockResolvedValue([
+      {
+        id: 'c9',
+        legalName: 'Lutova S.A.',
+        tradeName: null,
+        cuit: '20123456786',
+      },
+    ])
+    fillAndSubmit('20123456786')
+
+    expect(
+      await screen.findByText(
+        /Ya hay otro cliente con este CUIT: Lutova S\.A\./,
+      ),
+    ).toBeInTheDocument()
+    expect(createClientMock).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar igual' }))
+    expect(await screen.findByText('Ficha del cliente')).toBeInTheDocument()
+    expect(createClientMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('"Volver" no guarda nada', async () => {
+    findByCuitMock.mockResolvedValue([
+      {
+        id: 'c9',
+        legalName: 'Lutova S.A.',
+        tradeName: 'Lutova',
+        cuit: '20123456786',
+      },
+    ])
+    fillAndSubmit('20123456786')
+    fireEvent.click(await screen.findByRole('button', { name: 'Volver' }))
+    await waitFor(() =>
+      expect(screen.queryByText(/Ya hay otro cliente/)).not.toBeInTheDocument(),
+    )
+    expect(createClientMock).not.toHaveBeenCalled()
+  })
+
+  it('con el CUIT vacío no consulta', async () => {
+    fillAndSubmit('')
+    expect(await screen.findByText('Ficha del cliente')).toBeInTheDocument()
+    expect(findByCuitMock).not.toHaveBeenCalled()
   })
 })

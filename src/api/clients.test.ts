@@ -54,6 +54,7 @@ const {
   createClientContact,
   setPrimaryClientContact,
   deactivateClientContact,
+  findClientsByCuit,
 } = await import('./clients')
 
 beforeEach(() => {
@@ -114,7 +115,7 @@ describe('createClient', () => {
     expect(result.id).toBe('c1')
   })
 
-  it('CUIT repetido -> ApiError con hint CUIT_IN_USE y mensaje en español', async () => {
+  it('un 23505 que menciona el CUIT ya no se traduce a CUIT_IN_USE (OG-04)', async () => {
     fromMock.mockReturnValue(
       makeChainable({
         data: null,
@@ -139,10 +140,41 @@ describe('createClient', () => {
         },
         'owner-1',
       ),
-    ).rejects.toMatchObject({
-      message: 'Ese CUIT ya está registrado.',
-      hint: 'CUIT_IN_USE',
+    ).rejects.toMatchObject({ hint: 'DUPLICATE' })
+  })
+
+  it('findClientsByCuit llama a la RPC con el CUIT limpio y excluye al cliente editado', async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'c9',
+          legal_name: 'Lutova S.A.',
+          trade_name: null,
+          cuit: '20123456786',
+        },
+      ],
+      error: null,
     })
+    const result = await findClientsByCuit('20-12345678-6', 'c1')
+    expect(rpcMock).toHaveBeenCalledWith('find_clients_by_cuit', {
+      p_cuit: '20123456786',
+      p_exclude_client_id: 'c1',
+    })
+    expect(result).toEqual([
+      {
+        id: 'c9',
+        legalName: 'Lutova S.A.',
+        tradeName: null,
+        cuit: '20123456786',
+      },
+    ])
+  })
+
+  it('findClientsByCuit sin CUIT no consulta', async () => {
+    rpcMock.mockClear()
+    expect(await findClientsByCuit('')).toEqual([])
+    expect(await findClientsByCuit(null)).toEqual([])
+    expect(rpcMock).not.toHaveBeenCalled()
   })
 
   it('otra violación de unicidad -> ApiError genérico DUPLICATE', async () => {
