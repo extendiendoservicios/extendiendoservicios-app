@@ -97,8 +97,14 @@ describe('SupplyDetailScreen: ficha', () => {
     ).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Editar' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Cambiar precios' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Ajustar' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Desactivar' })).toBeNull()
+    // OG-11: «Ajustar» se muestra deshabilitado, con la explicación visible.
+    expect(screen.getByRole('button', { name: 'Ajustar' })).toBeDisabled()
+    expect(
+      screen.getByText(
+        'Necesitás el permiso «Gestionar stock». Pedíselo a la dirección.',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('un artículo inactivo ofrece «Activar» y no «Ajustar»', async () => {

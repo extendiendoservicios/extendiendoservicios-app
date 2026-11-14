@@ -413,3 +413,11 @@ fecha pasa a llamarse **«Desde»**.
 - **Archivos:** `src/api/shifts.ts` (`previewShiftSeries`,
   `createShiftSeries`), `src/features/shifts/{schemas,series,queries}.ts`,
   `src/pages/admin/ShiftFormPage.tsx`.
+
+## Observación del turno (OG-05, P29.4)
+
+El campo `shifts.notes` del panel (alta y edición del turno, detalle del turno)
+se llama ahora **"Observación (la ven los empleados asignados)"**, con la
+ayuda "Sirve para mandarles un recado. Si la cambiás, les aparece como
+novedad." (`ShiftObservationField`). El guardado no cambió; lo que ven los
+empleados lo resuelve la vía móvil (P29.5).

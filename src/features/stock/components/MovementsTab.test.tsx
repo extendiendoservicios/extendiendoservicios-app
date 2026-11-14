@@ -271,13 +271,21 @@ describe('MovementsTab: «Anular» (IS-21, IS-27)', () => {
     expect(screen.getAllByRole('button', { name: /^Anular/ })).toHaveLength(3)
   })
 
-  it('un administrador sin «Gestionar stock» ve los movimientos pero no «Anular»', () => {
+  it('un administrador sin «Gestionar stock» ve «Anular» deshabilitado con la explicación (OG-11)', () => {
     seedOneOfEachKind()
     authState.roles = ['admin']
     authState.capabilities = []
     renderTab()
     expect(screen.getAllByTestId('movement-card')).toHaveLength(7)
-    expect(screen.queryByRole('button', { name: /^Anular/ })).toBeNull()
+    const buttons = screen.getAllByRole('button', { name: /^Anular/ })
+    expect(buttons).toHaveLength(3)
+    for (const button of buttons) {
+      expect(button).toBeDisabled()
+      expect(button).toHaveAttribute(
+        'title',
+        'Necesitás el permiso «Gestionar stock». Pedíselo a la dirección.',
+      )
+    }
   })
 
   it('pide un motivo obligatorio y anula con ese motivo', async () => {

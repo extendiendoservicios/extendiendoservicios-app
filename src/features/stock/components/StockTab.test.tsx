@@ -241,9 +241,15 @@ describe('StockTab: permisos (IS-21)', () => {
     expect(screen.getByTestId('stock-total')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Ingreso' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Nuevo artículo' })).toBeNull()
-    expect(
-      screen.queryByRole('button', { name: /^Ajustar el stock/ }),
-    ).toBeNull()
+    // OG-11: cargar, retirar en nombre de, controlar y ajustar quedan deshabilitados.
+    for (const name of ['Ingreso', 'Retiro en nombre de', 'Cargar control']) {
+      expect(screen.getByRole('button', { name })).toBeDisabled()
+    }
+    for (const button of screen.getAllByRole('button', {
+      name: /^Ajustar el stock/,
+    })) {
+      expect(button).toBeDisabled()
+    }
     // La ficha sí se puede abrir.
     expect(
       screen.getAllByRole('link', { name: /Abrir la ficha de/ }).length,

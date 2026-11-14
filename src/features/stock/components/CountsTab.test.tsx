@@ -118,6 +118,10 @@ describe('CountsTab: historial de controles (IS-16, IS-31)', () => {
     countsState.data = [count()]
     renderTab()
     expect(screen.queryByRole('link', { name: 'Cargar control' })).toBeNull()
+    // OG-11: en su lugar, el botón deshabilitado.
+    expect(
+      screen.getByRole('button', { name: 'Cargar control' }),
+    ).toBeDisabled()
     // Igual ve el historial.
     expect(screen.getByTestId('count-card')).toBeInTheDocument()
   })
