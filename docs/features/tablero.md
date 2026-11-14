@@ -146,3 +146,31 @@ Especificación: `Docs/Plan_Maestro/modulos/P24_coordinacion_libre_y_jornada.md`
 - Tests: `components/SupervisionsTodayBlock.test.tsx`.
 
 > **P27.6 (OD-04):** el bloque «Supervisiones de hoy» ahora muestra una tarjeta por coordinador (`CoordinatorCards`) con «Ver actividad» y «Finalizar jornada». `coordinatorWorkdays.ts` y su agrupación ya no existen. Ver `supervisiones.md`, sección P27.6.
+
+## P29.3: cerrar avisos, demoras avisadas y «Mi turno» (OG-02, OG-03, OG-07)
+
+Usa la migración `0085` (P29.1): tabla `attention_dismissals` y RPC `dismiss_attention` y `reopen_attention`. Sin migraciones nuevas.
+
+### Cerrar avisos (OG-02)
+
+- Cada aviso de «Requiere atención» lleva una ✕ («Cerrar aviso»). Al cerrarlo desaparece **para toda la dirección y la administración**: es un registro compartido en la base, no una preferencia del navegador. No cambia nada del turno ni de la asistencia.
+- Al pie del bloque, «Ver cerrados (N)» despliega los avisos cerrados que **siguen ocurriendo**, con quién los cerró y a qué hora, y un botón «Reabrir».
+- El cierre vale para una **situación**: tipo de aviso, turno y asignación (`attentionSituationKey`). Si la misma asignación pasa a otro aviso (por ejemplo de «avisó una demora» a «no registró el inicio»), el nuevo aparece abierto. «Turno sin cubrir» se cierra por turno (sin asignación).
+- Código: `src/api/attention.ts` (`fetchAttentionDismissals`, `dismissAttention`, `reopenAttention`), `src/features/dashboard/queries.ts` (clave `['attention', 'dismissals']`, polling de 30 s para que el cierre de otra persona se vea sin recargar) y `applyDismissals` en `attention.ts` (separa abiertos y cerrados; solo cuenta un cierre si la situación sigue vigente).
+- La insignia del título cuenta solo los avisos abiertos.
+
+### Demoras avisadas (OG-03)
+
+- Tipo nuevo `delayNotified`, en amarillo: «Pérez avisó que llega 20 min tarde», con cliente, sede, horario, «hace n min» desde el aviso y el motivo si lo escribió (`last_notice_reason_text`).
+- Entra si la asignación está en «Demora avisada», todavía no hay inicio fichado y no pasó la hora estimada (inicio de la franja + minutos avisados, `isDelayNoticeOpen`). Desaparece sola al fichar el inicio. Pasada la hora estimada se reemplaza por «no registró el inicio» (o «llegó tarde») como antes.
+- «Estoy en camino» (AJ-02) sigue siendo solo informativo y no entra.
+- Va última en el orden, junto a «llegó tarde».
+
+### «Mi turno» (OG-07)
+
+- `MyShiftCard`: si la persona que entró al panel tiene también el rol `employee` y tiene un servicio hoy, el Resumen muestra arriba la tarjeta «Mi turno» (cliente, sede, horario y estado) con el botón de la huella. Sin rol `employee` o sin servicio hoy, no aparece.
+- No duplica el fichaje: «Registrar inicio» lleva a `/app/fichar?asignacion=<id>` (la pantalla de fichar de la app del empleado, con consentimiento, ubicación, validación de zona y resultado) y «Registrar fin» a `/app/en-curso/<id>/finalizar`. «Abrir mi servicio» abre `/app/en-curso/<id>`. Desde ahí, «Volver al panel» (P29.2).
+- Qué botón corresponde sale de `myShiftAction` (`myShift.ts`), con el mismo criterio que `ClockTabPage`: sin inicio y sin ausencia avisada, inicio; con inicio y sin fin (y sin «Sin salida»), fin. Usa `useMyDayQuery` (polling de 30 s).
+- Queda pendiente el «Mi jornada» y «Mis supervisiones» del rol coordinador (la spec lo menciona en OG-07; no estaba en el encargo de P29.3).
+
+Tests: `attention.test.ts` (demoras, cierres), `components/AttentionBlock.test.tsx` (✕, cerrados, reabrir, demora), `myShift.test.ts`.

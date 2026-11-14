@@ -122,3 +122,14 @@ El mapa «Dónde está el equipo» pinta las sedes del día con la vista `v_site
 - `v_assignments_board.check_out_auto_closed` llega como `AttendanceBoardRow.checkOutAutoClosed`. El fin cerrado por el proceso automático lleva la píldora «Cierre automático» (`AutoClosedBadge`, el mismo `Badge` con punto de las demás píldoras) en Asistencia de hoy, en el estado de Servicios de hoy del Resumen, en el detalle de la asignación y en el historial de asistencia del empleado. La marca queda aunque se corrija la hora (la hora corregida lleva además «Corregido»).
 - Asistencia de hoy suma el conmutador «Cierre automático» (`filterAutoClosed`), que deja solo esas filas.
 - `AttendanceTimeButton` va junto a la hora de inicio y de fin en Asistencia de hoy y en el detalle de la asignación: «Corregir» (abre `CorrectTimeDialog`, `correct_attendance_time`) si hay fichaje, «Registrar» (abre `RecordAttendanceSheet` con esa acción elegida) si falta. Solo con `manage_attendance` (la dirección siempre). No se ofrece «Registrar» el fin sin inicio ni en un turno cancelado; las reglas las sigue poniendo el servidor.
+
+## P29.3: «Todos los clientes» en el mapa del Resumen (OG-01)
+
+El mapa del Resumen suma un selector «Hoy / Todos los clientes» (`SegmentedControl`).
+
+- **Hoy** es el mapa de siempre (presencia, sedes por estado, coordinadores).
+- **Todos los clientes** pinta todas las sedes con ubicación de los clientes activos que tienen al menos un servicio activo, con el **color del cliente** (el del calendario, P24.8; `clientColors.ts`). Arriba, el contador «N clientes · M sedes». Al tocar un pin: cliente, sede, servicios activos (nombre, días y horario) y «Ver sede» (`/admin/sedes/:id`). Los conmutadores del día (OF-13) y de coordinadores, las listas «sin ubicación» y la leyenda de estados se ocultan en este modo.
+- Los datos salen de `map_active_sites()` (solo dueño y administradores): `fetchActiveSites` en `src/api/geo.ts`, `useActiveSitesQuery` (solo se pide en este modo, sin polling, `staleTime` de 5 min). La lógica de pines y textos es `src/features/geo/activeSites.ts`.
+- El modo elegido se recuerda por persona en este navegador (`es.presenceMapMode.<userId>`, `presencePreference.ts`); por omisión, «Hoy».
+- `MapViewMarker` suma `color` (hex) y `createMarkerIcon` un tercer parámetro: si está, reemplaza el color de la variante. Solo se usa con la paleta fija de clientes.
+- Tests: `activeSites.test.ts`.

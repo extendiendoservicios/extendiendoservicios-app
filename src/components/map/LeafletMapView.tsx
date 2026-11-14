@@ -35,6 +35,8 @@ export interface MapViewMarker {
   variant?: BadgeVariant
   /** Forma: `dot` (por omisión) o `supervisor` (rombo, B-12). */
   shape?: MarkerShape
+  /** Tono propio (hex de la paleta de clientes); si está, reemplaza al de `variant`. */
+  color?: string
   /** Círculo alrededor del punto, en metros (radio de la sede, B-14). */
   radiusM?: number | null
   /** Variante del círculo. Por omisión, `primary` (sin color de alarma). */
@@ -220,7 +222,11 @@ function MapView({
               ) : null}
               <Marker
                 position={[marker.position.lat, marker.position.lng]}
-                icon={createMarkerIcon(marker.variant, marker.shape)}
+                icon={createMarkerIcon(
+                  marker.variant,
+                  marker.shape,
+                  marker.color,
+                )}
                 alt={marker.label}
                 title={marker.label}
               >

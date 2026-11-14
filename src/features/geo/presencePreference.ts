@@ -68,3 +68,35 @@ export function writePresenceFilters(
     // Sin storage la elección vale solo para esta sesión.
   }
 }
+
+/**
+ * Modo del mapa del Resumen (P29.3, OG-01): «Hoy» (lo de siempre) o «Todos los
+ * clientes» (toda la cartera activa). Se recuerda por persona en este
+ * navegador; por omisión, «Hoy».
+ */
+export type MapMode = 'today' | 'all'
+
+export const DEFAULT_MAP_MODE: MapMode = 'today'
+
+export function mapModeKey(userId: string): string {
+  return `es.presenceMapMode.${userId}`
+}
+
+export function readMapMode(userId: string | null): MapMode {
+  if (!userId) return DEFAULT_MAP_MODE
+  try {
+    const raw = window.localStorage.getItem(mapModeKey(userId))
+    return raw === 'all' || raw === 'today' ? raw : DEFAULT_MAP_MODE
+  } catch {
+    return DEFAULT_MAP_MODE
+  }
+}
+
+export function writeMapMode(userId: string | null, mode: MapMode): void {
+  if (!userId) return
+  try {
+    window.localStorage.setItem(mapModeKey(userId), mode)
+  } catch {
+    // Sin storage la elección vale solo para esta sesión.
+  }
+}
