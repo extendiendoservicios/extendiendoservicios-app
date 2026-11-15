@@ -634,3 +634,27 @@ Resultado de la matriz completa con P24.5: **2.893 casos** (12 expected fail de 
 - **Datos de Insumos de App_dev:** 10 de los 17 artículos del seed no tienen el stock del seed (quedaron movimientos del 27 oct sin nota, hechos fuera de las pruebas con prefijo `e2e-`). Se corrige volviendo a correr `pnpm db:seed:insumos` (idempotente); no se hizo porque el permiso se denegó.
 - **Orquestación:** el alta con `statement timeout` y las corridas lentas se debieron al cruce con otras corridas sobre App_dev. Además, la purga lanza `supabase db query` con un `timeout` de 120 s que mata al envoltorio pero no siempre al proceso hijo: quedaron 7 procesos huérfanos (se cerraron a mano).
 - **Edge y `dueno-config`** de la corrida completa: se corrieron aparte, no encadenados. Edge de Insumos corrió una sola vez (no tres).
+
+## 15. P29.6: observaciones de la dirección del 14 nov (OG-01 a OG-12)
+
+### 15.1 Qué hay
+
+| Decisión            | Dónde                                                              | Notas                                                                                                                                                                                                                                                |
+| ------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OG-06, OG-08        | `e2e/admin/p29-modo-panel.admin.ts` y `.movil.admin.ts`            | Administración + empleado (`adminOperativo`) entra a `/admin` en 1280 y en 390 px, va a «Ir a mi app de empleado» y vuelve con «Volver al panel»; `admin` sin rol de empleado no ve la opción; empleado común sigue en `/app`, coordinador en `/sup` |
+| OG-07               | ídem                                                               | «Mi turno» lleva a fichar, con el inicio registrado ofrece «Registrar fin», sin turno no hay tarjeta, quien no es empleado nunca la ve                                                                                                               |
+| OG-01, OG-02, OG-03 | `e2e/admin/p29-resumen.admin.ts`                                   | Contador «N clientes · M sedes» contra `map_active_sites`; ✕, «Ver cerrados (N)», «Reabrir» y cierre visto desde la sesión del dueño; demora avisada es alerta amarilla y «Estoy en camino» no                                                       |
+| OG-04, OG-11        | `e2e/admin/p29-clientes-insumos.admin.ts`                          | «CUIT repetido» (volver, guardar igual, edición, buscador general); botones de Insumos deshabilitados con la explicación                                                                                                                             |
+| OG-12               | `e2e/admin/p29-usuarios.admin.ts` y `.movil.admin.ts`              | Buscador, orden por legajo, filtros en la dirección; el test de tipeo rápido está en `fixme` por DEF-P29-01                                                                                                                                          |
+| OG-05               | `e2e/empleado/p29.empleado.ts`, `e2e/supervisor/p29.supervisor.ts` | Mensaje de la oficina en Hoy, detalle y supervisión; no asignado no lo ve; «Nuevo mensaje de la oficina»                                                                                                                                             |
+| Permisos            | `permissions/suite/102-p29.permissions.ts`                         | 6 objetos nuevos por API directa; `cobertura.ts` y `inventario.ts` (reconoce `create table if not exists`)                                                                                                                                           |
+
+### 15.2 Tests viejos ajustados
+
+`insumos.admin.ts` (IS-21: los botones se deshabilitan, ya no se ocultan; el chequeo anterior de «enlaces = 0» pasaba sin probar nada), `p28-insumos.admin.ts` (nuevo texto del aviso) y `e2e-clients-sites/client-full-signup.spec.ts` (el CUIT repetido ya no se rechaza).
+
+### 15.3 Defectos y observaciones
+
+- **DEF-P29-01 (mayor):** el buscador de Configuración → Usuarios pierde letras al escribir y, si se toca un filtro y se escribe enseguida, pierde ese filtro de la dirección.
+- **Observación (menor):** «Nuevo artículo» e «Imprimir planilla» siguen ocultos sin «Gestionar stock»; OG-11 pide deshabilitados solo para los botones que fallaban.
+- **Estado de App_dev:** el dueño del seed tiene los roles owner, admin, supervisor y employee; 29 casos `[dueño]` de la matriz vieja (30, 20, 11, 90, 91, 93, 94, 95) fallan por eso y no por P29.
