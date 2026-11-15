@@ -1854,16 +1854,24 @@ test.describe('administrador sin «Gestionar stock» (IS-21)', () => {
         await expect(fila).toBeVisible()
         await expect(fila).toContainText('$ 40,00')
         await expect(fila).toContainText('$ 60,00')
+        // P29.4 (OG-11): las acciones que mueven stock ya no se ocultan, se muestran
+        // deshabilitadas (y nunca como enlaces) con la explicación de qué permiso falta.
         for (const nombre of [
           'Ingreso',
           'Retiro en nombre de',
           'Cargar control',
-          'Nuevo artículo',
         ]) {
           await expect(page.getByRole('link', { name: nombre })).toHaveCount(0)
+          await expect(
+            page.getByRole('button', { name: nombre }),
+          ).toBeDisabled()
         }
         await expect(
           page.getByRole('button', { name: /^Ajustar el stock de / }),
+        ).toBeDisabled()
+        // «Nuevo artículo» e «Imprimir planilla» siguen sin mostrarse a quien no puede usarlos.
+        await expect(
+          page.getByRole('link', { name: 'Nuevo artículo' }),
         ).toHaveCount(0)
         await expect(
           page.getByRole('button', { name: /Imprimir planilla/ }),
@@ -1881,11 +1889,16 @@ test.describe('administrador sin «Gestionar stock» (IS-21)', () => {
           }
         })
 
-        await test.step('Movimientos se ve, pero sin «Anular»', async () => {
+        await test.step('Movimientos se ve, pero «Anular» está deshabilitado en todos (P29.4, OG-11)', async () => {
           await page.goto('/admin/insumos?pestana=movimientos')
           await expect(page.getByTestId('movement-card').first()).toBeVisible()
           await expect(
-            page.getByRole('button', { name: /^Anular / }),
+            page
+              .getByRole('button', { name: /^Anular /, disabled: true })
+              .first(),
+          ).toBeVisible()
+          await expect(
+            page.getByRole('button', { name: /^Anular /, disabled: false }),
           ).toHaveCount(0)
         })
 

@@ -62,7 +62,7 @@ test.describe('OG-02 · cerrar avisos de «Requiere atención»', () => {
 
   test(
     'la ✕ cierra el aviso para toda la administración, queda en «Ver cerrados (N)» con quién y cuándo, y se reabre',
-    cubre('RB-A06', 'RB-A07', 'CB-05', 'OG-02'),
+    cubre('RB-A06', 'RB-A07', 'OG-02'),
     async ({ page, browser }, testInfo) => {
       test.setTimeout(240_000)
       const sc = new Scenario()
