@@ -202,8 +202,8 @@ montaje hasta esa fase.
 
 ## Mensaje de la oficina (P29.5, OG-05)
 
-La observación del turno que carga la dirección o la administración (`shifts.notes`) llega en `shift_notes`
-(`v_my_day`, `v_my_history`, `v_my_supervisions`, migración 0085) y se muestra como «Mensaje de la oficina»:
+La observación del turno que carga la dirección o la administración (`shift_observations.observation`, la misma que
+ve el panel) llega en `shift_notes` (`v_my_day`, `v_my_history`, `v_my_supervisions`, migraciones 0085 y 0086) y se muestra como «Mensaje de la oficina»:
 
 - `src/features/employee/components/OfficeMessage.tsx`: bloque con ícono y token informativo, distinto de «Tu observación»
   (la propia del empleado, `assignments.notes`). Respeta saltos de línea. En la tarjeta de Hoy (`ServiceCard`) se resume a
