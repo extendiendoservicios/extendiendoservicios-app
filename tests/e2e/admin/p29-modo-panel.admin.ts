@@ -11,6 +11,7 @@ import {
   coordinadorSigueEnSuApp,
   empleadoSigueEnSuApp,
   ingresaPorPantallaYVaAlPanel,
+  miTurnoEnCursoRegistraFin,
   miTurnoLlevaAlFichaje,
   sinTurnoNoHayTarjeta,
   soloAdminNoVeMiTurno,
@@ -97,6 +98,15 @@ test.describe('OG-07 · «Mi turno» en el Resumen (escritorio)', () => {
       async ({ page }) => {
         test.setTimeout(240_000)
         await miTurnoLlevaAlFichaje(page)
+      },
+    )
+
+    test(
+      'con el inicio registrado, «Mi turno» ofrece «Registrar fin» y «Abrir mi servicio»',
+      cubre('RB-E04', 'OG-07'),
+      async ({ page }) => {
+        test.setTimeout(240_000)
+        await miTurnoEnCursoRegistraFin(page)
       },
     )
 

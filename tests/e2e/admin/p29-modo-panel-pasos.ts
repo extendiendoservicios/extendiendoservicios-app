@@ -8,7 +8,7 @@
 
 import { expect, type Page } from '@playwright/test'
 import { FRANJAS } from '../../fixtures/dates.ts'
-import { FRANJAS_MOVIL } from '../../fixtures/movil.ts'
+import { fichar, FRANJAS_MOVIL } from '../../fixtures/movil.ts'
 import { Scenario } from '../../fixtures/scenario.ts'
 import { emailOf } from '../../fixtures/sessions.ts'
 import {
@@ -122,6 +122,43 @@ export async function miTurnoLlevaAlFichaje(page: Page): Promise<void> {
     await page.getByRole('link', { name: 'Volver al panel' }).click()
     await expect(page).toHaveURL(/\/admin$/)
     await expect(page.getByRole('region', { name: 'Mi turno' })).toBeVisible()
+  } finally {
+    expect(await sc.cleanup(), 'limpieza').toEqual([])
+  }
+}
+
+/** Con el inicio ya registrado, «Mi turno» ofrece «Registrar fin» y «Abrir mi servicio» (OG-07). */
+export async function miTurnoEnCursoRegistraFin(page: Page): Promise<void> {
+  const sc = new Scenario()
+  try {
+    const cliente = await sc.client('mi-turno-fin')
+    const sede = await sc.site(cliente.id, 'mi-turno-fin')
+    const turno = await sc.shift(
+      cliente.id,
+      sede.id,
+      sc.today,
+      FRANJAS_MOVIL.diaCompleto,
+    )
+    const asignacion = await sc.assign(turno, 'adminOperativo')
+    await fichar('adminOperativo', asignacion, 'inicio')
+
+    await page.goto('/admin')
+    const tarjeta = page.getByRole('region', { name: 'Mi turno' })
+    await expect(tarjeta).toContainText(sede.name)
+    await expect(
+      tarjeta.getByRole('link', { name: 'Registrar inicio' }),
+    ).toHaveCount(0)
+    await expect(
+      tarjeta.getByRole('link', { name: 'Abrir mi servicio' }),
+    ).toHaveAttribute('href', `/app/en-curso/${asignacion}`)
+    await tarjeta.getByRole('link', { name: 'Registrar fin' }).click()
+    await expect(page).toHaveURL(
+      new RegExp(`/app/en-curso/${asignacion}/finalizar$`),
+    )
+    await expect(
+      page.getByRole('link', { name: 'Volver al panel' }),
+    ).toBeVisible()
+    await expectNoHorizontalScroll(page)
   } finally {
     expect(await sc.cleanup(), 'limpieza').toEqual([])
   }
