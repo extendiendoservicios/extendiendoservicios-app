@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
-import { MemoryRouter } from 'react-router'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { MemoryRouter, useLocation } from 'react-router'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import UsersPage from './UsersPage'
 
 vi.mock('@/features/auth/AuthProvider', () => ({
@@ -209,5 +209,66 @@ describe('UsersPage: buscador, orden y filtros (OG-12)', () => {
     renderAt()
     fireEvent.click(screen.getByRole('button', { name: 'Ordenar por legajo' }))
     expect(names()).toEqual(['Ana Gómez', 'Beto Ruiz', 'Cuenta Técnica'])
+  })
+
+  describe('buscador con la URL (DEF-P29-01)', () => {
+    function Url() {
+      const { search } = useLocation()
+      return <output data-testid="url">{search}</output>
+    }
+    function renderWithUrl(url = '/') {
+      return render(
+        <MemoryRouter initialEntries={[url]}>
+          <UsersPage />
+          <Url />
+        </MemoryRouter>,
+      )
+    }
+    const urlText = () => screen.getByTestId('url').textContent
+
+    beforeEach(() => vi.useFakeTimers())
+    afterEach(() => vi.useRealTimers())
+
+    it('el tipeo rápido conserva el texto completo', () => {
+      renderWithUrl()
+      const input = screen.getByRole('searchbox', { name: 'Buscar usuarios' })
+      for (const text of ['b', 'be', 'bet', 'beto']) {
+        fireEvent.change(input, { target: { value: text } })
+        act(() => {
+          vi.advanceTimersByTime(20)
+        })
+        expect(input).toHaveValue(text)
+      }
+      expect(names()).toEqual(['Beto Ruiz'])
+      act(() => {
+        vi.advanceTimersByTime(300)
+      })
+      expect(input).toHaveValue('beto')
+      expect(urlText()).toBe('?q=beto')
+    })
+
+    it('cambiar Estado y tipear enseguida deja ambos en la URL', () => {
+      renderWithUrl()
+      fireEvent.click(screen.getByRole('radio', { name: 'Todos' }))
+      fireEvent.change(
+        screen.getByRole('searchbox', { name: 'Buscar usuarios' }),
+        { target: { value: 'cami' } },
+      )
+      act(() => {
+        vi.advanceTimersByTime(400)
+      })
+      const params = new URLSearchParams(urlText() ?? '')
+      expect(params.get('estado')).toBe('todos')
+      expect(params.get('q')).toBe('cami')
+    })
+
+    it('recargar con ?q=…&estado=todos restaura ambos', () => {
+      renderWithUrl('/?q=cami&estado=todos')
+      expect(
+        screen.getByRole('searchbox', { name: 'Buscar usuarios' }),
+      ).toHaveValue('cami')
+      expect(names()).toEqual(['Cami Alvarez'])
+      expect(screen.getByRole('radio', { name: 'Todos' })).toBeChecked()
+    })
   })
 })

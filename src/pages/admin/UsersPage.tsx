@@ -1,7 +1,9 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -68,6 +70,9 @@ import { formatShortDate, formatTime } from '@/lib/format'
  * título/subtítulo de la ruta (`configuracion/usuarios` en `adminRoutes.tsx`)
  * en su topbar, mismo criterio que `ProfilePage`.
  */
+
+/** Espera antes de reflejar el texto del buscador en la URL. */
+const SEARCH_URL_DEBOUNCE_MS = 300
 
 interface UserRowView extends AdminUserRow, UserListRow {}
 
@@ -158,21 +163,50 @@ export default function UsersPage() {
     () => parseUserListParams(searchParams),
     [searchParams],
   )
-  // «Último ingreso» solo lo ve la dirección: para otros, vuelve al orden por legajo.
-  const listState = useMemo<UserListState>(
-    () =>
-      !isOwnerViewer && parsedState.sortKey === 'lastSignIn'
-        ? { ...parsedState, sortKey: 'legajo', sortDirection: 'asc' }
-        : parsedState,
-    [parsedState, isOwnerViewer],
-  )
+  // El texto del buscador vive en estado local: el campo responde de inmediato
+  // y la URL se actualiza con antirrebote (DEF-P29-01).
+  const urlSearch = parsedState.search
+  const [searchText, setSearchText] = useState(urlSearch)
+  // Último valor de `q` que escribió este componente: sirve para distinguir un
+  // cambio de la URL hecho desde afuera (atrás/adelante) de nuestro propio eco.
+  const lastWrittenSearch = useRef(urlSearch)
+  useEffect(() => {
+    if (urlSearch !== lastWrittenSearch.current) {
+      lastWrittenSearch.current = urlSearch
+      setSearchText(urlSearch)
+    }
+  }, [urlSearch])
+  useEffect(() => {
+    if (searchText === lastWrittenSearch.current) return
+    const timeoutId = setTimeout(() => {
+      lastWrittenSearch.current = searchText
+      setSearchParams(
+        (prev) =>
+          buildUserListParams(
+            { ...parseUserListParams(prev), search: searchText },
+            prev,
+          ),
+        { replace: true },
+      )
+    }, SEARCH_URL_DEBOUNCE_MS)
+    return () => clearTimeout(timeoutId)
+  }, [searchText, setSearchParams])
 
+  // «Último ingreso» solo lo ve la dirección: para otros, vuelve al orden por legajo.
+  const listState = useMemo<UserListState>(() => {
+    const state = { ...parsedState, search: searchText }
+    return !isOwnerViewer && state.sortKey === 'lastSignIn'
+      ? { ...state, sortKey: 'legajo', sortDirection: 'asc' }
+      : state
+  }, [parsedState, isOwnerViewer, searchText])
+
+  // Parte siempre de la URL vigente: dos cambios seguidos no se pisan.
   function updateListState(patch: Partial<UserListState>) {
+    if (patch.search !== undefined) setSearchText(patch.search)
     setSearchParams(
-      buildUserListParams({ ...listState, ...patch }, searchParams),
-      {
-        replace: true,
-      },
+      (prev) =>
+        buildUserListParams({ ...parseUserListParams(prev), ...patch }, prev),
+      { replace: true },
     )
   }
 
@@ -365,10 +399,8 @@ export default function UsersPage() {
           />
           <Input
             type="search"
-            value={listState.search}
-            onChange={(event) =>
-              updateListState({ search: event.target.value })
-            }
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
             placeholder="Buscar por nombre, apellido, legajo, DNI o email"
             aria-label="Buscar usuarios"
             className="pl-9"
