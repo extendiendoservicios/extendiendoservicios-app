@@ -59,7 +59,10 @@ export interface MyDayAssignment {
   noCheckout: boolean
   status: AssignmentStatus
   shiftStatus: ShiftStatus
+  /** Observación propia del empleado (`assignments.notes`). NO es el mensaje de la oficina. */
   notes: string | null
+  /** P29 OG-05: «Mensaje de la oficina» = observación del turno (`shifts.notes`), la ven todos los asignados. `null` si está vacía. */
+  shiftNotes: string | null
   tasksTotal: number
   tasksDone: number
   /**
@@ -141,6 +144,7 @@ interface MyDayRawRow {
   status: AssignmentStatus
   shift_status: ShiftStatus
   notes: string | null
+  shift_notes?: string | null
   tasks_total: number
   tasks_done: number
   changed_since_last_seen: boolean
@@ -206,6 +210,7 @@ function mapMyDayRow(row: MyDayRawRow): MyDayAssignment {
     status: row.status,
     shiftStatus: row.shift_status,
     notes: row.notes,
+    shiftNotes: row.shift_notes?.trim() ? row.shift_notes : null,
     tasksTotal: row.tasks_total,
     tasksDone: row.tasks_done,
     changedSinceLastSeen: row.changed_since_last_seen,

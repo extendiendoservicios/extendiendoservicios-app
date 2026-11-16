@@ -500,6 +500,8 @@ En **Resumen**, el mapa de presencia («Dónde está el equipo») suma a los coo
 - Si el último evento no trajo posición, el coordinador no tiene punto: figura debajo del mapa, en **Coordinadores sin ubicación**, con su estado.
 - Se actualiza cada 60 segundos.
 
+**Hoy / Todos los clientes.** Arriba del mapa hay un selector. **Hoy** es lo que se describe acá. **Todos los clientes** muestra todas las sedes con ubicación de los clientes activos que tienen algún servicio activo, cada una con el **color de su cliente** (el mismo del calendario), y arriba cuenta «N clientes · M sedes». Al tocar un pin ves el cliente, la sede, sus servicios activos con días y horario, y **Ver sede**. En este modo no están los interruptores del día ni los coordinadores. El mapa recuerda cuál elegiste.
+
 ![Mapa de presencia con coordinadores](guias/img/adm-resumen-mapa.png)
 
 Debajo del mapa, el bloque **Supervisiones de hoy** muestra las **Jornadas abiertas** y las **Cerradas automáticamente**:
@@ -532,6 +534,11 @@ Debajo, **Requiere atención** junta lo que hay que resolver ahora. Si no hay na
 - Servicios **en curso pasada la hora de fin sin fin registrado**.
 - Personas con **ausencia avisada**, con la opción de asignar un reemplazo.
 - **Turnos sin cubrir.**
+- Personas que **avisaron una demora** (en amarillo, por ejemplo «Pérez avisó que llega 20 min tarde», con el motivo si lo escribió). Desaparece sola cuando ficha el inicio; si pasa la hora estimada sin fichar, se reemplaza por «no registró el inicio». El aviso «Estoy en camino» es solo informativo y no entra.
+
+**Cerrar un aviso.** Cada aviso tiene una **✕**. Al tocarla, el aviso deja de mostrarse **para toda la dirección y la administración** (queda registrado quién lo cerró y a qué hora). No cambia nada del turno ni de la asistencia. Al pie del bloque, **Ver cerrados (N)** muestra los avisos cerrados que siguen ocurriendo y permite **Reabrir** cualquiera. El cierre vale para esa situación: si la misma persona pasa a otro aviso (por ejemplo, de «avisó una demora» a «no registró el inicio»), el nuevo aparece.
+
+**Mi turno.** Si además de administrar tenés el rol de empleado y hoy tenés un servicio asignado, arriba del Resumen aparece la tarjeta **Mi turno** con la sede, el horario y el estado. El botón de la huella dice **Registrar inicio** y después **Registrar fin**: te lleva a la misma pantalla de fichar que usa un empleado (con el consentimiento y la ubicación) y ahí tenés **Volver al panel**.
 
 Y **Servicios de hoy**: una fila por persona con el cliente, la sede, el horario, el inicio real, el estado y la salida anticipada. Con el filtro **Todo el día** elegís una franja. Desde cada fila podés **Abrir turno** o **Registrar en nombre**.
 
@@ -645,7 +652,7 @@ Reúne cinco pantallas, con pestañas arriba: **Usuarios**, **Empresa**, **Feria
 
 ### Usuarios y roles
 
-Lista a todas las personas con acceso, con su rol y su estado (**Activo** o desactivado). Por omisión muestra solo las activas: activá **Mostrar desactivados** para ver también las demás. **Solo dueño:** la columna **Último ingreso**.
+Lista a todas las personas con acceso, con su rol y su estado (**Activo** o desactivado). Por omisión muestra solo las activas: elegí **Desactivados** o **Todos** en el selector de estado para ver también las demás. Arriba hay un buscador (nombre, apellido, legajo, DNI o email), filtros por rol y **Sin ficha laboral**, y el orden por defecto es por legajo; tocá el encabezado para ordenar por nombre o por último ingreso. **Solo dueño:** la columna **Último ingreso**.
 
 En la fila de cada persona, el botón de los tres puntos abre las acciones:
 

@@ -45,6 +45,7 @@ export type SuiteExterna =
   | '95-insumos.permissions.ts'
   | '96-client-photos.permissions.ts'
   | '97-credenciales.permissions.ts'
+  | '102-p29.permissions.ts'
 
 export const COBERTURA_EXTERNA: {
   tablas: Record<string, SuiteExterna>
@@ -53,6 +54,8 @@ export const COBERTURA_EXTERNA: {
   buckets: Record<string, SuiteExterna>
 } = {
   tablas: {
+    // Cierre de avisos de «Requiere atención» (0085, P29.1, OG-02): solo la dirección y la administración leen.
+    attention_dismissals: '102-p29.permissions.ts',
     // Credenciales visibles (0075, P26.4): sin políticas, nadie la lee ni la escribe por PostgREST
     account_credentials: '97-credenciales.permissions.ts',
     // Módulo H (0047)
@@ -94,6 +97,12 @@ export const COBERTURA_EXTERNA: {
     v_withdrawal_site_options_admin: '95-insumos.permissions.ts',
   },
   rpc: {
+    // Observaciones del 14 nov (0085, P29.1)
+    dismiss_attention: '102-p29.permissions.ts',
+    reopen_attention: '102-p29.permissions.ts',
+    map_active_sites: '102-p29.permissions.ts',
+    admin_users_directory: '102-p29.permissions.ts',
+    find_clients_by_cuit: '102-p29.permissions.ts',
     begin_shift_media: '90-evidencia.permissions.ts',
     confirm_shift_media: '90-evidencia.permissions.ts',
     remove_shift_media: '90-evidencia.permissions.ts',

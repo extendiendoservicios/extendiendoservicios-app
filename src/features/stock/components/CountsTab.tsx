@@ -1,7 +1,5 @@
 import { ClipboardCheck, ClipboardList } from 'lucide-react'
-import { Link } from 'react-router'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/EmptyState'
 import type { StockCountRecord } from '@/api/stock'
@@ -9,6 +7,7 @@ import { useAuth } from '@/features/auth/AuthProvider'
 import { UpdatedAgo } from '@/features/attendance/components/UpdatedAgo'
 import { useStockCountsQuery } from '@/features/stock/queries'
 import { formatDateTime } from '@/features/stock/labels'
+import { StockActionButton } from './StockActionButton'
 import { canManageStock } from '@/features/stock/permissions'
 import { CountLinesTable } from './CountLinesTable'
 
@@ -32,11 +31,13 @@ function CountsTab() {
             <UpdatedAgo dataUpdatedAt={countsQuery.dataUpdatedAt} />
           )}
         </div>
-        {canManage && (
-          <Button asChild icon={ClipboardCheck}>
-            <Link to="/admin/insumos/control">Cargar control</Link>
-          </Button>
-        )}
+        <StockActionButton
+          allowed={canManage}
+          to="/admin/insumos/control"
+          icon={ClipboardCheck}
+        >
+          Cargar control
+        </StockActionButton>
       </div>
 
       {countsQuery.isLoading ? (

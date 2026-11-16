@@ -29,6 +29,7 @@ export const geoKeys = {
   supervisorStatus: () => [...geoKeys.all, 'supervisorStatus'] as const,
   presence: () => [...geoKeys.all, 'presence'] as const,
   sitesDayStatus: () => [...geoKeys.all, 'sitesDayStatus'] as const,
+  activeSites: () => [...geoKeys.all, 'activeSites'] as const,
   location: (recordType: GeoRecordType, recordId: string) =>
     [...geoKeys.all, 'location', recordType, recordId] as const,
   corrections: (recordIds: string[]) =>
@@ -54,6 +55,16 @@ export function useSitesDayStatusQuery() {
     staleTime: PRESENCE_POLLING_MS,
     refetchInterval: PRESENCE_POLLING_MS,
     refetchOnWindowFocus: true,
+  })
+}
+
+/** Sedes de toda la cartera activa (P29.3, OG-01): cambia poco, se pide solo en el modo «Todos los clientes». */
+export function useActiveSitesQuery(enabled = true) {
+  return useQuery({
+    queryKey: geoKeys.activeSites(),
+    queryFn: geoApi.fetchActiveSites,
+    enabled,
+    staleTime: 5 * 60_000,
   })
 }
 

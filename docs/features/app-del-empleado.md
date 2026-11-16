@@ -200,6 +200,21 @@ montaje hasta esa fase.
   marca por siete días (decisión menor, el plan no fija un número): ni
   insiste en cada visita, ni desaparece para siempre por un solo cierre.
 
+## Mensaje de la oficina (P29.5, OG-05)
+
+La observación del turno que carga la dirección o la administración (`shift_observations.observation`, la misma que
+ve el panel) llega en `shift_notes` (`v_my_day`, `v_my_history`, `v_my_supervisions`, migraciones 0085 y 0086) y se muestra como «Mensaje de la oficina»:
+
+- `src/features/employee/components/OfficeMessage.tsx`: bloque con ícono y token informativo, distinto de «Tu observación»
+  (la propia del empleado, `assignments.notes`). Respeta saltos de línea. En la tarjeta de Hoy (`ServiceCard`) se resume a
+  2 líneas con «Ver más» (objetivo táctil de 44 px, no abre el detalle); en el detalle (EMP-04) y en el resumen (EMP-11) va completo.
+- `MyDayAssignment.shiftNotes` y `MySupervision.shiftNotes`: `null` si la observación está vacía o solo tiene espacios.
+- «Cambios desde tu última visita» (P-092): si cambia `shifts.notes`, la vista enciende `changed_since_last_seen`. Para decir
+  que lo que cambió fue el mensaje, `officeMessageSeen.ts` guarda en `localStorage` el último mensaje visto por asignación y
+  Hoy agrega «Nuevo mensaje de la oficina» al renglón. Si el almacenamiento falla o es la primera visita en el dispositivo,
+  el turno aparece igual en el bloque, sin la leyenda.
+- Los coordinadores ven el mismo mensaje en la lista de supervisiones (SUP-03) y en el detalle (SUP-04) (propuesta aprobada de OG-05).
+
 ## Decisiones menores de este paquete
 
 - **Confirmación de EMP-05 con la hora del servidor** (`05` fila EMP-05:

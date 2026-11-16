@@ -47,6 +47,7 @@ function supervision(overrides: Partial<MySupervision>): MySupervision {
     assignedAt: '2026-09-20T10:00:00Z',
     notDoneReason: null,
     cancelReason: null,
+    shiftNotes: null,
     generalNotes: null,
     criteriaSnapshot: null,
     checkInAt: '2026-09-27T11:00:00Z',

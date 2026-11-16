@@ -565,7 +565,7 @@ function DeactivateDialog({
       // desactivada desaparece de la vista al confirmar, así que el aviso
       // aclara dónde encontrarla en vez de dejar que parezca que se borró.
       toast.success(
-        `Desactivamos la cuenta de ${fullNameOf(user)}. Para volver a verla en la lista, activá "Mostrar desactivados".`,
+        `Desactivamos la cuenta de ${fullNameOf(user)}. Para volver a verla en la lista, elegí el estado "Desactivados" o "Todos".`,
       )
       onOpenChange(false)
     } catch (error) {

@@ -81,6 +81,7 @@ const MY_SUPERVISION_ROW = {
   not_done_reason: null,
   cancel_reason: null,
   general_notes: null,
+  shift_notes: null,
   criteria_snapshot: null,
   check_in_at: null,
   check_out_at: null,
@@ -102,6 +103,27 @@ const MY_SUPERVISION_ROW = {
   site_photos_not_allowed: false,
   site_restrictions_notes: null,
 }
+
+describe('shiftNotes de v_my_supervisions (P29 OG-05)', () => {
+  it('mapea shift_notes y deja null si viene vacío', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: [
+          { ...MY_SUPERVISION_ROW, shift_notes: 'Entrar por cocheras' },
+          { ...MY_SUPERVISION_ROW, shift_notes: '  ' },
+          { ...MY_SUPERVISION_ROW, shift_notes: null },
+        ],
+        error: null,
+      }),
+    )
+    const rows = await fetchMySupervisionsUpcoming()
+    expect(rows.map((r) => r.shiftNotes)).toEqual([
+      'Entrar por cocheras',
+      null,
+      null,
+    ])
+  })
+})
 
 describe('fetchMySupervisionsUpcoming', () => {
   it('arma MySupervision[] a partir de v_my_supervisions, con isToday calculado', async () => {

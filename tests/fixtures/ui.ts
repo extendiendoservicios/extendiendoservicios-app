@@ -11,6 +11,7 @@ export async function loginByForm(
   page: Page,
   email: string,
   homePattern: RegExp,
+  timeout?: number,
 ): Promise<void> {
   await page.goto('/ingresar')
   await page.getByLabel('Email').fill(email)
@@ -19,7 +20,7 @@ export async function loginByForm(
     .getByLabel('Contraseña', { exact: true })
     .fill(requireE2eEnv().seedPassword)
   await page.getByRole('button', { name: 'Ingresar' }).click()
-  await expect(page).toHaveURL(homePattern)
+  await expect(page).toHaveURL(homePattern, timeout ? { timeout } : undefined)
 }
 
 /**

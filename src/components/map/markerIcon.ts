@@ -63,8 +63,12 @@ const SITE_GLYPH_SVG: Record<'site-upcoming' | 'site-finished', string> = {
 export function createMarkerIcon(
   variant: BadgeVariant = 'primary',
   shape: MarkerShape = 'dot',
+  color?: string,
 ): L.DivIcon {
-  const bgClass = VARIANT_BG_CLASS[variant]
+  // `color` (P29.3, OG-01): tono propio del marcador, para pintar cada sede con
+  // el color de su cliente. Siempre sale de la paleta fija de `clientColors.ts`.
+  const bgClass = color ? '' : VARIANT_BG_CLASS[variant]
+  const bgStyle = color ? ` style="background-color:${color}"` : ''
   if (
     shape === 'site' ||
     shape === 'site-upcoming' ||
@@ -76,7 +80,7 @@ export function createMarkerIcon(
       shape === 'site'
         ? `<img src="${SITE_ISOTYPE_SRC}" srcset="${SITE_ISOTYPE_SRCSET}" alt="" aria-hidden="true" class="absolute left-1/2 top-4 h-[17px] w-auto -translate-x-1/2 -translate-y-1/2" />`
         : `<span class="absolute left-1/2 top-4 flex -translate-x-1/2 -translate-y-1/2" aria-hidden="true">${SITE_GLYPH_SVG[shape]}</span>`
-    const html = `<span class="relative block size-full" aria-hidden="true"><span class="absolute left-px top-0.5 block size-7 -rotate-45 rounded-[50%_50%_50%_0] border-2 border-white shadow-[0_1px_4px_rgba(19,21,30,0.35)] ${bgClass}"></span>${inner}</span>`
+    const html = `<span class="relative block size-full" aria-hidden="true"><span class="absolute left-px top-0.5 block size-7 -rotate-45 rounded-[50%_50%_50%_0] border-2 border-white shadow-[0_1px_4px_rgba(19,21,30,0.35)] ${bgClass}"${bgStyle}></span>${inner}</span>`
     return L.divIcon({
       className: 'es-map-marker',
       html,
@@ -89,8 +93,8 @@ export function createMarkerIcon(
 
   const html =
     shape === 'supervisor'
-      ? `<span class="flex size-full rotate-45 items-center justify-center rounded-[5px] border-2 border-white shadow-[0_1px_4px_rgba(19,21,30,0.35)] ${bgClass}" aria-hidden="true"><span class="size-[7px] rounded-full bg-white"></span></span>`
-      : `<span class="block size-full rounded-full border-2 border-white shadow-[0_1px_4px_rgba(19,21,30,0.35)] ${bgClass}" aria-hidden="true"></span>`
+      ? `<span class="flex size-full rotate-45 items-center justify-center rounded-[5px] border-2 border-white shadow-[0_1px_4px_rgba(19,21,30,0.35)] ${bgClass}"${bgStyle} aria-hidden="true"><span class="size-[7px] rounded-full bg-white"></span></span>`
+      : `<span class="block size-full rounded-full border-2 border-white shadow-[0_1px_4px_rgba(19,21,30,0.35)] ${bgClass}"${bgStyle} aria-hidden="true"></span>`
 
   return L.divIcon({
     className: 'es-map-marker',

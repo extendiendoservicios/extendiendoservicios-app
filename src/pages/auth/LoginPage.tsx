@@ -14,7 +14,6 @@ import { useAuth } from '@/features/auth/AuthProvider'
 import { homePathForRoles } from '@/features/auth/session'
 import { loginErrorMessage } from '@/features/auth/authErrors'
 import { useBranding, brandingLogoUrl } from '@/features/auth/useBranding'
-import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { RouteFallback } from '@/app/routes/RouteFallback'
 import { AuthScreenLayout } from './AuthScreenLayout'
 
@@ -27,7 +26,7 @@ import { AuthScreenLayout } from './AuthScreenLayout'
  * cuanto `AuthProvider` confirma la sesión (el mismo `onAuthStateChange` que
  * ya dispara `signInWithPassword`, sin que este componente tenga que
  * "esperar" la respuesta a mano), este mismo render calcula
- * `homePathForRoles(roles, isDesktop)` y redirige — cubre tanto "acabo de
+ * `homePathForRoles(roles)` y redirige — cubre tanto "acabo de
  * loguearme" como "ya tenía sesión y entré a /ingresar por las mías" con la
  * misma línea.
  */
@@ -40,11 +39,6 @@ type LoginFormValues = z.infer<typeof loginSchema>
 export default function LoginPage() {
   const auth = useAuth()
   const { branding } = useBranding()
-  // `05` sección 7: 1024 px es el quiebre real entre el `AdminShell` con
-  // sidebar/tabbar (`/admin`, cualquier ancho) y las vías mobile-first
-  // (`/app`, `/sup`) — el mismo quiebre que ya usan `AdminShell`/`DataTable`
-  // (`useMediaQuery`, no uno nuevo inventado acá).
-  const isDesktop = useMediaQuery('(min-width: 1024px)')
   const [formError, setFormError] = useState<string | null>(null)
 
   const {
@@ -59,10 +53,7 @@ export default function LoginPage() {
 
   if (auth.status === 'authenticated' && !auth.isPasswordRecovery) {
     return (
-      <Navigate
-        to={homePathForRoles(auth.roles, isDesktop) ?? '/sin-acceso'}
-        replace
-      />
+      <Navigate to={homePathForRoles(auth.roles) ?? '/sin-acceso'} replace />
     )
   }
 

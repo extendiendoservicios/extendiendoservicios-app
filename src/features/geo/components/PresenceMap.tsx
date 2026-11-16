@@ -2,24 +2,35 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { Check, Clock, MapPinOff } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
+import { SegmentedControl } from '@/components/SegmentedControl'
 import { MapView, type MapViewMarker } from '@/components/map'
 import { GeoStatusBadge } from '@/components/status'
 import { formatDistanceM } from '@/lib/geo'
 import { formatMinutes, formatTime } from '@/lib/format'
-import type { PresenceRow, SiteDayStatusRow } from '@/api/geo'
+import type { ActiveSiteRow, PresenceRow, SiteDayStatusRow } from '@/api/geo'
 import { useAuth } from '@/features/auth/AuthProvider'
 import type { SupervisorStatusRow } from '@/api/supervisorStatus'
 import { UpdatedAgo } from '@/features/attendance/components/UpdatedAgo'
 import {
+  useActiveSitesQuery,
   usePresenceTodayQuery,
   useSitesDayStatusQuery,
   useSupervisorStatusQuery,
 } from '../queries'
 import {
+  readMapMode,
   readPresenceFilters,
+  writeMapMode,
   writePresenceFilters,
+  type MapMode,
   type PresenceFilters,
 } from '../presencePreference'
+import {
+  activeSiteClientName,
+  activeSiteServiceLabel,
+  activeSitesCounterLabel,
+  buildActiveSiteMarkers,
+} from '../activeSites'
 import {
   buildPresenceMarkers,
   presenceClientName,
@@ -71,6 +82,39 @@ function SitePopup({ site }: { site: SiteDayStatusRow }) {
     </div>
   )
 }
+
+/** Popup de la sede en «Todos los clientes» (OG-01): cliente, sede, servicios activos y «Ver sede». */
+function ActiveSitePopup({ site }: { site: ActiveSiteRow }) {
+  return (
+    <div className="flex min-w-52 flex-col gap-1 text-[12px]">
+      <p className="font-semibold text-text">{activeSiteClientName(site)}</p>
+      <p className="text-text-2">
+        {site.siteName}
+        {site.siteCity ? ` · ${site.siteCity}` : ''}
+      </p>
+      {site.services.length > 0 && (
+        <ul className="text-text-3">
+          {site.services.map((service, index) => (
+            <li key={`${service.name}-${index}`}>
+              {activeSiteServiceLabel(service)}
+            </li>
+          ))}
+        </ul>
+      )}
+      <Link
+        to={`/admin/sedes/${site.siteId}`}
+        className="font-semibold text-primary-800 hover:underline"
+      >
+        Ver sede
+      </Link>
+    </div>
+  )
+}
+
+const MAP_MODE_OPTIONS: { value: MapMode; label: string }[] = [
+  { value: 'today', label: 'Hoy' },
+  { value: 'all', label: 'Todos los clientes' },
+]
 
 /** Popup del punto (B-15): quién, dónde, horario, inicio, distancia, precisión, estado y «Ver turno». */
 function PresencePopup({ row }: { row: PresenceRow }) {
@@ -181,6 +225,8 @@ function PresenceMap() {
   const query = usePresenceTodayQuery()
   const sitesQuery = useSitesDayStatusQuery()
   const coordinatorsQuery = useSupervisorStatusQuery()
+  const [mode, setMode] = useState<MapMode>(() => readMapMode(userId))
+  const activeSitesQuery = useActiveSitesQuery(mode === 'all')
   const [filters, setFilters] = useState<PresenceFilters>(() =>
     readPresenceFilters(userId),
   )
@@ -196,6 +242,17 @@ function PresenceMap() {
       return next
     })
   }
+
+  // La elección se recuerda por persona en este navegador (OG-01).
+  function changeMode(next: MapMode) {
+    setMode(next)
+    writeMapMode(userId, next)
+  }
+
+  const activeModel = useMemo(
+    () => buildActiveSiteMarkers(activeSitesQuery.data ?? []),
+    [activeSitesQuery.data],
+  )
 
   const model = useMemo(
     () =>
@@ -219,6 +276,10 @@ function PresenceMap() {
   )
 
   function renderPopup(marker: MapViewMarker) {
+    if (marker.id.startsWith('active-site-')) {
+      const site = marker.data as ActiveSiteRow | undefined
+      return site ? <ActiveSitePopup site={site} /> : null
+    }
     if (marker.id.startsWith('coordinator-')) {
       const coordinator = marker.data as SupervisorStatusRow | undefined
       return coordinator ? <CoordinatorPopup row={coordinator} /> : null
@@ -231,7 +292,10 @@ function PresenceMap() {
     return row ? <PresencePopup row={row} /> : null
   }
 
-  const loadError = query.error ?? sitesQuery.error ?? coordinatorsQuery.error
+  const loadError =
+    mode === 'all'
+      ? activeSitesQuery.error
+      : (query.error ?? sitesQuery.error ?? coordinatorsQuery.error)
 
   return (
     <section
@@ -243,56 +307,70 @@ function PresenceMap() {
           <h2 className="text-[15px] font-semibold text-text">
             Dónde está el equipo
           </h2>
-          {query.dataUpdatedAt > 0 && (
+          {mode === 'today' && query.dataUpdatedAt > 0 && (
             <UpdatedAgo dataUpdatedAt={query.dataUpdatedAt} />
           )}
+          <SegmentedControl
+            aria-label="Qué mostrar en el mapa"
+            options={MAP_MODE_OPTIONS}
+            value={mode}
+            onValueChange={changeMode}
+          />
         </div>
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          <label
-            htmlFor="presence-show-upcoming"
-            className="flex items-center gap-3 text-[13px] font-medium text-text"
-          >
-            Por comenzar
-            <Switch
-              id="presence-show-upcoming"
-              checked={showUpcoming}
-              onCheckedChange={(value) => setFilter('showUpcoming', value)}
-            />
-          </label>
-          <label
-            htmlFor="presence-show-in-progress"
-            className="flex items-center gap-3 text-[13px] font-medium text-text"
-          >
-            En curso
-            <Switch
-              id="presence-show-in-progress"
-              checked={showInProgress}
-              onCheckedChange={(value) => setFilter('showInProgress', value)}
-            />
-          </label>
-          <label
-            htmlFor="presence-show-finished"
-            className="flex items-center gap-3 text-[13px] font-medium text-text"
-          >
-            Finalizados
-            <Switch
-              id="presence-show-finished"
-              checked={showFinished}
-              onCheckedChange={(value) => setFilter('showFinished', value)}
-            />
-          </label>
-          <label
-            htmlFor="presence-show-coordinators"
-            className="flex items-center gap-3 text-[13px] font-medium text-text"
-          >
-            Coordinadores
-            <Switch
-              id="presence-show-coordinators"
-              checked={showCoordinators}
-              onCheckedChange={(value) => setFilter('showCoordinators', value)}
-            />
-          </label>
-        </div>
+        {mode === 'today' ? (
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <label
+              htmlFor="presence-show-upcoming"
+              className="flex items-center gap-3 text-[13px] font-medium text-text"
+            >
+              Por comenzar
+              <Switch
+                id="presence-show-upcoming"
+                checked={showUpcoming}
+                onCheckedChange={(value) => setFilter('showUpcoming', value)}
+              />
+            </label>
+            <label
+              htmlFor="presence-show-in-progress"
+              className="flex items-center gap-3 text-[13px] font-medium text-text"
+            >
+              En curso
+              <Switch
+                id="presence-show-in-progress"
+                checked={showInProgress}
+                onCheckedChange={(value) => setFilter('showInProgress', value)}
+              />
+            </label>
+            <label
+              htmlFor="presence-show-finished"
+              className="flex items-center gap-3 text-[13px] font-medium text-text"
+            >
+              Finalizados
+              <Switch
+                id="presence-show-finished"
+                checked={showFinished}
+                onCheckedChange={(value) => setFilter('showFinished', value)}
+              />
+            </label>
+            <label
+              htmlFor="presence-show-coordinators"
+              className="flex items-center gap-3 text-[13px] font-medium text-text"
+            >
+              Coordinadores
+              <Switch
+                id="presence-show-coordinators"
+                checked={showCoordinators}
+                onCheckedChange={(value) =>
+                  setFilter('showCoordinators', value)
+                }
+              />
+            </label>
+          </div>
+        ) : (
+          <p className="text-[13px] font-semibold text-text">
+            {activeSitesCounterLabel(activeModel)}
+          </p>
+        )}
       </div>
 
       {loadError && (
@@ -302,138 +380,159 @@ function PresenceMap() {
       )}
 
       <MapView
-        markers={model.markers}
+        markers={mode === 'all' ? activeModel.markers : model.markers}
         height={380}
         className="w-full"
         renderPopup={renderPopup}
         emptyTitle={
-          query.isLoading || sitesQuery.isLoading
-            ? 'Cargando el mapa…'
-            : 'Nada para mostrar con estos filtros'
+          mode === 'all'
+            ? activeSitesQuery.isLoading
+              ? 'Cargando el mapa…'
+              : 'No hay sedes con ubicación para mostrar'
+            : query.isLoading || sitesQuery.isLoading
+              ? 'Cargando el mapa…'
+              : 'Nada para mostrar con estos filtros'
         }
-        emptyDescription="Prendé «Por comenzar», «En curso» o «Finalizados», o esperá a que alguien fiche el inicio con ubicación."
+        emptyDescription={
+          mode === 'all'
+            ? 'Solo se ven las sedes con ubicación de clientes activos con algún servicio activo.'
+            : 'Prendé «Por comenzar», «En curso» o «Finalizados», o esperá a que alguien fiche el inicio con ubicación.'
+        }
       />
 
-      <ul
-        aria-label="Referencias del mapa"
-        className="flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-text-3"
-      >
-        <li className="flex items-center gap-1.5">
-          <span aria-hidden className="size-2.5 rounded-full bg-success" />
-          Validado
-        </li>
-        <li className="flex items-center gap-1.5">
-          <span aria-hidden className="size-2.5 rounded-full bg-danger" />
-          Fuera de zona
-        </li>
-        <li className="flex items-center gap-1.5">
-          <span aria-hidden className="size-2.5 rounded-full bg-text-3" />
-          Sin validar
-        </li>
-        {showCoordinators &&
-          SUPERVISOR_STATUS_ORDER.map((status) => (
-            <li key={status} className="flex items-center gap-1.5">
-              <span
-                aria-hidden
-                className={`size-2.5 rotate-45 rounded-[2px] ${LEGEND_BG[SUPERVISOR_STATUS_VARIANTS[status]] ?? 'bg-text-3'}`}
-              />
-              Coordinador: {SUPERVISOR_STATUS_LABELS[status].toLowerCase()}
+      {mode === 'all' ? (
+        <ul
+          aria-label="Referencias del mapa"
+          className="text-[11.5px] text-text-3"
+        >
+          <li>El color de cada pin es el del cliente en el calendario.</li>
+        </ul>
+      ) : (
+        <>
+          <ul
+            aria-label="Referencias del mapa"
+            className="flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-text-3"
+          >
+            <li className="flex items-center gap-1.5">
+              <span aria-hidden className="size-2.5 rounded-full bg-success" />
+              Validado
             </li>
-          ))}
-        <li className="flex items-center gap-1.5">
-          <img
-            src="/icons/isotipo_blanco_34px@2x.png"
-            srcSet="/icons/isotipo_blanco_34px@2x.png 2x, /icons/isotipo_blanco_34px@3x.png 3x"
-            alt=""
-            aria-hidden="true"
-            className="box-content h-2.5 w-auto rounded-full bg-primary p-1"
-          />
-          Sede en curso
-        </li>
-        <li className="flex items-center gap-1.5">
-          <Clock
-            aria-hidden="true"
-            className="box-content size-2.5 rounded-full bg-warning p-1 text-white"
-          />
-          Sede con turnos por comenzar
-        </li>
-        <li className="flex items-center gap-1.5">
-          <Check
-            aria-hidden="true"
-            className="box-content size-2.5 rounded-full bg-text-3 p-1 text-white"
-          />
-          Sede finalizada
-        </li>
-      </ul>
-
-      <div aria-live="polite" className="flex flex-col gap-1">
-        <p className="flex items-center gap-2 text-[13px] font-semibold text-text">
-          <MapPinOff aria-hidden="true" className="size-4 text-text-3" />
-          Trabajando sin ubicación: {model.withoutLocation.length}
-        </p>
-        {model.withoutLocation.length > 0 && (
-          <ul className="flex flex-col gap-1 pl-6 text-[12.5px] text-text-2">
-            {model.withoutLocation.map((row) => (
-              <li key={`${row.kind}-${row.recordId}`}>
-                <span className="font-medium text-text">
-                  {presencePersonName(row)}
-                </span>
-                {' · '}
-                {presenceClientName(row)} · {row.siteName}
-                {row.checkInAt ? ` · inicio ${formatTime(row.checkInAt)}` : ''}
-                {row.shiftId && (
-                  <>
-                    {' · '}
-                    <Link
-                      to={`/admin/turnos/${row.shiftId}`}
-                      className="font-semibold text-primary-800 hover:underline"
-                    >
-                      Ver turno
-                    </Link>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {showCoordinators && (
-        <div aria-live="polite" className="flex flex-col gap-1">
-          <p className="flex items-center gap-2 text-[13px] font-semibold text-text">
-            <MapPinOff aria-hidden="true" className="size-4 text-text-3" />
-            Coordinadores sin ubicación:{' '}
-            {model.coordinatorsWithoutLocation.length}
-          </p>
-          {model.coordinatorsWithoutLocation.length > 0 && (
-            <ul className="flex flex-col gap-1 pl-6 text-[12.5px] text-text-2">
-              {model.coordinatorsWithoutLocation.map((row) => (
-                <li key={row.supervisorId}>
-                  <span className="font-medium text-text">
-                    {coordinatorName(row)}
-                  </span>
-                  {' · '}
-                  {coordinatorStatusDetail(row)}
-                  {row.onLeave ? ' · de licencia' : ''}
-                  {row.lastEventAt
-                    ? ` · último registro ${formatTime(row.lastEventAt)}`
-                    : ''}
-                  {row.workdayId && (
-                    <>
-                      {' · '}
-                      <Link
-                        to={coordinatorWorkdayPath(row.supervisorId)}
-                        className="font-semibold text-primary-800 hover:underline"
-                      >
-                        Ver jornada
-                      </Link>
-                    </>
-                  )}
+            <li className="flex items-center gap-1.5">
+              <span aria-hidden className="size-2.5 rounded-full bg-danger" />
+              Fuera de zona
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span aria-hidden className="size-2.5 rounded-full bg-text-3" />
+              Sin validar
+            </li>
+            {showCoordinators &&
+              SUPERVISOR_STATUS_ORDER.map((status) => (
+                <li key={status} className="flex items-center gap-1.5">
+                  <span
+                    aria-hidden
+                    className={`size-2.5 rotate-45 rounded-[2px] ${LEGEND_BG[SUPERVISOR_STATUS_VARIANTS[status]] ?? 'bg-text-3'}`}
+                  />
+                  Coordinador: {SUPERVISOR_STATUS_LABELS[status].toLowerCase()}
                 </li>
               ))}
-            </ul>
+            <li className="flex items-center gap-1.5">
+              <img
+                src="/icons/isotipo_blanco_34px@2x.png"
+                srcSet="/icons/isotipo_blanco_34px@2x.png 2x, /icons/isotipo_blanco_34px@3x.png 3x"
+                alt=""
+                aria-hidden="true"
+                className="box-content h-2.5 w-auto rounded-full bg-primary p-1"
+              />
+              Sede en curso
+            </li>
+            <li className="flex items-center gap-1.5">
+              <Clock
+                aria-hidden="true"
+                className="box-content size-2.5 rounded-full bg-warning p-1 text-white"
+              />
+              Sede con turnos por comenzar
+            </li>
+            <li className="flex items-center gap-1.5">
+              <Check
+                aria-hidden="true"
+                className="box-content size-2.5 rounded-full bg-text-3 p-1 text-white"
+              />
+              Sede finalizada
+            </li>
+          </ul>
+
+          <div aria-live="polite" className="flex flex-col gap-1">
+            <p className="flex items-center gap-2 text-[13px] font-semibold text-text">
+              <MapPinOff aria-hidden="true" className="size-4 text-text-3" />
+              Trabajando sin ubicación: {model.withoutLocation.length}
+            </p>
+            {model.withoutLocation.length > 0 && (
+              <ul className="flex flex-col gap-1 pl-6 text-[12.5px] text-text-2">
+                {model.withoutLocation.map((row) => (
+                  <li key={`${row.kind}-${row.recordId}`}>
+                    <span className="font-medium text-text">
+                      {presencePersonName(row)}
+                    </span>
+                    {' · '}
+                    {presenceClientName(row)} · {row.siteName}
+                    {row.checkInAt
+                      ? ` · inicio ${formatTime(row.checkInAt)}`
+                      : ''}
+                    {row.shiftId && (
+                      <>
+                        {' · '}
+                        <Link
+                          to={`/admin/turnos/${row.shiftId}`}
+                          className="font-semibold text-primary-800 hover:underline"
+                        >
+                          Ver turno
+                        </Link>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {showCoordinators && (
+            <div aria-live="polite" className="flex flex-col gap-1">
+              <p className="flex items-center gap-2 text-[13px] font-semibold text-text">
+                <MapPinOff aria-hidden="true" className="size-4 text-text-3" />
+                Coordinadores sin ubicación:{' '}
+                {model.coordinatorsWithoutLocation.length}
+              </p>
+              {model.coordinatorsWithoutLocation.length > 0 && (
+                <ul className="flex flex-col gap-1 pl-6 text-[12.5px] text-text-2">
+                  {model.coordinatorsWithoutLocation.map((row) => (
+                    <li key={row.supervisorId}>
+                      <span className="font-medium text-text">
+                        {coordinatorName(row)}
+                      </span>
+                      {' · '}
+                      {coordinatorStatusDetail(row)}
+                      {row.onLeave ? ' · de licencia' : ''}
+                      {row.lastEventAt
+                        ? ` · último registro ${formatTime(row.lastEventAt)}`
+                        : ''}
+                      {row.workdayId && (
+                        <>
+                          {' · '}
+                          <Link
+                            to={coordinatorWorkdayPath(row.supervisorId)}
+                            className="font-semibold text-primary-800 hover:underline"
+                          >
+                            Ver jornada
+                          </Link>
+                        </>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
-        </div>
+        </>
       )}
     </section>
   )

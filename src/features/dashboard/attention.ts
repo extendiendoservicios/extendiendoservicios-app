@@ -24,6 +24,13 @@ import { shiftStartInstant } from './kpis'
  * - `late` (AJ-07): llegada tarde (pasó el inicio hace hasta 15 min, sin
  *   registro). Es una alerta amarilla y va última. `on_the_way` (AJ-02) no
  *   entra: es informativo y no negativo.
+ * - `delayNotified` (OG-03): el empleado avisó que llega tarde y todavía no
+ *   fichó el inicio. Es amarilla y se mantiene hasta la hora estimada (inicio
+ *   más los minutos avisados); pasada esa hora se reemplaza por «no registró
+ *   el inicio» (o «llegó tarde») como hoy.
+ *
+ * Cerrar un aviso (OG-02): `applyDismissals` separa los abiertos de los
+ * cerrados. El cierre vale para una situación (tipo, turno y asignación).
  */
 export type AttentionKind =
   | 'absence'
@@ -33,6 +40,7 @@ export type AttentionKind =
   | 'overdue'
   | 'outsideGeo'
   | 'late'
+  | 'delayNotified'
 
 export const ATTENTION_ORDER: AttentionKind[] = [
   'noRecord',
@@ -42,6 +50,7 @@ export const ATTENTION_ORDER: AttentionKind[] = [
   'uncovered',
   'outsideGeo',
   'late',
+  'delayNotified',
 ]
 
 export interface AttentionItem {
@@ -49,7 +58,7 @@ export interface AttentionItem {
   /** Clave estable para React. */
   key: string
   shiftId: string
-  /** Presente en `absence`, `noRecord`, `noCheckout`, `overdue` y `late`. */
+  /** Presente en todos salvo `uncovered`. */
   assignment?: AttendanceBoardRow
   /** Turno de `v_shifts_board`, si está cargado (para "Asignar reemplazo"). */
   shift?: ShiftListRow
@@ -59,6 +68,87 @@ export interface AttentionItem {
 
 function minutesBetween(from: Date, to: Date): number {
   return Math.max(0, Math.floor((to.getTime() - from.getTime()) / 60_000))
+}
+
+/**
+ * OG-03: demora avisada vigente. El estado es «Demora avisada», todavía no
+ * hay fichaje de inicio y no pasó la hora estimada (inicio de la franja más
+ * los minutos avisados). Sin minutos o sin inicio no se puede estimar: no
+ * entra y queda como hoy.
+ */
+function isDelayNoticeOpen(row: AttendanceBoardRow, now: Date): boolean {
+  if (
+    row.status !== 'delay_notified' ||
+    row.checkInAt != null ||
+    row.lastNoticeKind !== 'delay' ||
+    row.lastNoticeMinutesLate == null ||
+    row.startsAt == null
+  ) {
+    return false
+  }
+  const estimated =
+    new Date(row.startsAt).getTime() + row.lastNoticeMinutesLate * 60_000
+  return now.getTime() <= estimated
+}
+
+/** Una fila de `attention_dismissals` (OG-02), ya en camelCase. */
+export interface AttentionDismissal {
+  id: string
+  kind: string
+  shiftId: string
+  assignmentId: string | null
+  dismissedBy: string
+  dismissedAt: string
+}
+
+/** Identidad de una situación: tipo, turno y asignación (o vacío en «Turno sin cubrir»). */
+export function attentionSituationKey(
+  kind: string,
+  shiftId: string,
+  assignmentId: string | null | undefined,
+): string {
+  return `${kind}|${shiftId}|${assignmentId ?? ''}`
+}
+
+export function attentionItemSituationKey(item: AttentionItem): string {
+  return attentionSituationKey(item.kind, item.shiftId, item.assignment?.id)
+}
+
+export interface ClosedAttentionItem {
+  item: AttentionItem
+  dismissal: AttentionDismissal
+}
+
+/**
+ * OG-02: separa los avisos abiertos de los cerrados. Solo cuenta un cierre si
+ * la situación sigue ocurriendo; si la misma asignación pasa a otro tipo de
+ * aviso, ese aparece abierto porque su clave es distinta.
+ */
+export function applyDismissals(
+  items: AttentionItem[],
+  dismissals: AttentionDismissal[],
+): { open: AttentionItem[]; closed: ClosedAttentionItem[] } {
+  const bySituation = new Map(
+    dismissals.map((dismissal) => [
+      attentionSituationKey(
+        dismissal.kind,
+        dismissal.shiftId,
+        dismissal.assignmentId,
+      ),
+      dismissal,
+    ]),
+  )
+  const open: AttentionItem[] = []
+  const closed: ClosedAttentionItem[] = []
+  for (const item of items) {
+    const dismissal = bySituation.get(attentionItemSituationKey(item))
+    if (dismissal) {
+      closed.push({ item, dismissal })
+    } else {
+      open.push(item)
+    }
+  }
+  return { open, closed }
 }
 
 export function computeAttention(
@@ -81,6 +171,17 @@ export function computeAttention(
         assignment: row,
         shift: shiftById.get(row.shiftId),
         minutesSince: null,
+      })
+    } else if (isDelayNoticeOpen(row, now)) {
+      items.push({
+        kind: 'delayNotified',
+        key: `delayNotified-${row.id}`,
+        shiftId: row.shiftId,
+        assignment: row,
+        shift: shiftById.get(row.shiftId),
+        minutesSince: row.lastNoticeAt
+          ? minutesBetween(new Date(row.lastNoticeAt), now)
+          : null,
       })
     } else if (row.displayStatus === 'late') {
       items.push({
