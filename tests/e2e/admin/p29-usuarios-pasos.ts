@@ -35,7 +35,8 @@ export const contador = (page: Page) => page.getByText(/^\d+ de \d+ usuarios$/)
 
 /** Espera a que el listado termine de cargar (aparece el contador). */
 export async function esperarListado(page: Page): Promise<void> {
-  await expect(contador(page)).toBeVisible()
+  // Con la base ocupada (otras corridas sobre App_dev) la lista tarda más de los 10 s por omisión.
+  await expect(contador(page)).toBeVisible({ timeout: 30_000 })
 }
 
 export async function numeros(

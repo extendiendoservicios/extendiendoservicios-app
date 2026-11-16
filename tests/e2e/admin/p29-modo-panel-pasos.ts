@@ -6,9 +6,10 @@
 // `admin` (solo administración), `empleado1` y `supervisor1`. Los turnos de «Mi turno» son de
 // `adminOperativo` (nadie más de la suite de administración lo usa).
 
-import { expect, type Page } from '@playwright/test'
+import { expect as expectBase, type Page } from '@playwright/test'
 import { FRANJAS } from '../../fixtures/dates.ts'
 import { fichar, FRANJAS_MOVIL } from '../../fixtures/movil.ts'
+import { conCandado } from '../../fixtures/p29.ts'
 import { Scenario } from '../../fixtures/scenario.ts'
 import { emailOf } from '../../fixtures/sessions.ts'
 import {
@@ -17,12 +18,16 @@ import {
   loginByForm,
 } from '../../fixtures/ui.ts'
 
+// Con App_dev ocupada por otras corridas, las redirecciones y el Resumen tardan más de los 10 s por
+// omisión (se vieron 25 s por test): se espera hasta 30 s, sin dormir.
+const expect = expectBase.configure({ timeout: 30_000 })
+
 const menuDeUsuario = (page: Page) =>
   page.getByRole('button', { name: 'Menú de usuario' })
 
 /** Ingresa por la pantalla de ingreso con la cuenta que es administración y empleado (OG-06). */
 export async function ingresaPorPantallaYVaAlPanel(page: Page): Promise<void> {
-  await loginByForm(page, emailOf('adminOperativo'), /\/admin$/)
+  await loginByForm(page, emailOf('adminOperativo'), /\/admin$/, 30_000)
   await expect(menuDeUsuario(page)).toBeVisible()
   await expectNoHorizontalScroll(page)
 }
@@ -33,6 +38,7 @@ export async function cambiaDeModoYVuelve(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/admin$/)
   await expectNoHorizontalScroll(page)
 
+  await expect(menuDeUsuario(page)).toBeVisible()
   await menuDeUsuario(page).click()
   // Sin rol de coordinador no hay opción de coordinador.
   await expect(
@@ -59,6 +65,7 @@ export async function cambiaDeModoYVuelve(page: Page): Promise<void> {
 /** Quien administra pero no es empleado ni coordinador no ve ninguna opción de cambio de modo. */
 export async function soloAdminSinCambioDeModo(page: Page): Promise<void> {
   await page.goto('/admin')
+  await expect(menuDeUsuario(page)).toBeVisible()
   await menuDeUsuario(page).click()
   await expect(page.getByRole('menuitem', { name: 'Mi perfil' })).toBeVisible()
   await expect(
@@ -90,6 +97,12 @@ export async function coordinadorSigueEnSuApp(page: Page): Promise<void> {
 
 /** «Mi turno» en el Resumen: lleva al fichaje de la app del empleado y de ahí se vuelve al panel (OG-07). */
 export async function miTurnoLlevaAlFichaje(page: Page): Promise<void> {
+  await conCandado('adminOperativo', () =>
+    miTurnoLlevaAlFichajeSinCandado(page),
+  )
+}
+
+async function miTurnoLlevaAlFichajeSinCandado(page: Page): Promise<void> {
   const sc = new Scenario()
   try {
     const cliente = await sc.client('mi-turno')
@@ -129,6 +142,12 @@ export async function miTurnoLlevaAlFichaje(page: Page): Promise<void> {
 
 /** Con el inicio ya registrado, «Mi turno» ofrece «Registrar fin» y «Abrir mi servicio» (OG-07). */
 export async function miTurnoEnCursoRegistraFin(page: Page): Promise<void> {
+  await conCandado('adminOperativo', () =>
+    miTurnoEnCursoRegistraFinSinCandado(page),
+  )
+}
+
+async function miTurnoEnCursoRegistraFinSinCandado(page: Page): Promise<void> {
   const sc = new Scenario()
   try {
     const cliente = await sc.client('mi-turno-fin')
@@ -175,6 +194,10 @@ export async function sinTurnoNoHayTarjeta(page: Page): Promise<void> {
 
 /** Quien no es empleado nunca ve «Mi turno», aunque haya turnos de otras personas hoy (OG-07). */
 export async function soloAdminNoVeMiTurno(page: Page): Promise<void> {
+  await conCandado('empleado5', () => soloAdminNoVeMiTurnoSinCandado(page))
+}
+
+async function soloAdminNoVeMiTurnoSinCandado(page: Page): Promise<void> {
   const sc = new Scenario()
   try {
     const cliente = await sc.client('mi-turno-admin')

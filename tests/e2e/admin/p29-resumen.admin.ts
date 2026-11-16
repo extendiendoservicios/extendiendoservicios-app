@@ -78,8 +78,10 @@ test.describe('OG-02 · cerrar avisos de «Requiere atención»', () => {
 
         await test.step('el aviso aparece abierto: «no registró el inicio»', async () => {
           await page.goto('/admin')
+          // Con la base ocupada, el Resumen puede tardar más de los 10 s por omisión en cargar.
           await expect(avisoAbierto(page, sede.name)).toContainText(
             `${nombreDe('empleado5')} no registró el inicio`,
+            { timeout: 30_000 },
           )
         })
 

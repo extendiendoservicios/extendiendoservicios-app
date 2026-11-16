@@ -2,7 +2,10 @@
 //
 // Piezas compartidas por las pruebas de las observaciones de la dirección del 14 nov (P29).
 
+import { mkdirSync, rmSync, statSync } from 'node:fs'
+import path from 'node:path'
 import { sessionClient } from './scenario.ts'
+import { STATE_DIR } from './sessions.ts'
 
 /**
  * Carga o cambia la observación del turno como lo hace la app (`update_shift_details` con la
@@ -40,4 +43,46 @@ export function franjaPorComenzar(
   const hh = (n: number) =>
     `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`
   return { start: hh(inicio), end: '23:59' }
+}
+
+/**
+ * Candado entre procesos por nombre (carpeta atómica dentro del estado de la corrida): dos archivos
+ * de la suite corren en paralelo (escritorio y celular) y no pueden armar turnos de todo el día
+ * para la misma persona a la vez (`assign_employee` rechaza los horarios que se pisan). Se espera
+ * con sondeo hasta 5 minutos; un candado de más de 20 minutos se considera abandonado.
+ */
+export async function conCandado<T>(
+  nombre: string,
+  trabajo: () => Promise<T>,
+): Promise<T> {
+  const carpeta = path.join(STATE_DIR, `candado-p29-${nombre}`)
+  mkdirSync(STATE_DIR, { recursive: true })
+  const limite = Date.now() + 5 * 60_000
+  for (;;) {
+    try {
+      mkdirSync(carpeta)
+      break
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
+    }
+    try {
+      if (Date.now() - statSync(carpeta).mtimeMs > 20 * 60_000) {
+        rmSync(carpeta, { recursive: true, force: true })
+        continue
+      }
+    } catch {
+      continue
+    }
+    if (Date.now() > limite) {
+      throw new Error(
+        `No se pudo reservar «${nombre}»: lo usa otro test hace más de 5 minutos.`,
+      )
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500))
+  }
+  try {
+    return await trabajo()
+  } finally {
+    rmSync(carpeta, { recursive: true, force: true })
+  }
 }
