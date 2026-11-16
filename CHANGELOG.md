@@ -7,6 +7,30 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.30.0] - 2026-11-16
+
+Observaciones de la dirección del 14 nov (P29). Migración 0086.
+
+### Agregado
+
+- Resumen: los avisos de «Requiere atención» se cierran con la ✕ y quedan en «Ver cerrados», con quién y cuándo, para reabrirlos. El cierre es compartido entre la dirección y la administración.
+- Resumen: las demoras avisadas por el empleado aparecen como alerta, con los minutos y el motivo, hasta que ficha el inicio.
+- Resumen: el mapa tiene «Hoy / Todos los clientes» para ver todas las sedes activas, y recuerda la elección.
+- Resumen: quien también es empleado ve «Mi turno», con acceso directo a fichar, registrar el fin o abrir su servicio.
+- Las cuentas que son administración y empleado entran al panel y pasan a su app de empleado con «Ir a mi app de empleado» / «Volver al panel».
+- App del empleado y del coordinador: la observación del turno se muestra como «Mensaje de la oficina» en Hoy, el detalle, el resumen y las supervisiones. Si cambia, avisa «Nuevo mensaje de la oficina».
+- Configuración → Usuarios: buscador por nombre, DNI, email o legajo, columna de legajo, orden y filtros que se recuerdan al volver de una ficha.
+
+### Cambiado
+
+- Clientes: un CUIT repetido ya no se rechaza. Se avisa qué cliente lo tiene y se puede «Guardar igual».
+- Turnos: el campo de observación explica que sirve para mandarles un recado a los asignados.
+- Insumos: sin el permiso «Gestionar stock», los botones de ingreso, retiro, control, ajuste y anulación se ven deshabilitados con la explicación, en lugar de fallar.
+
+### Base de datos (0086)
+
+- El «Mensaje de la oficina» sale de las observaciones del turno (la 0085 leía un campo en desuso).
+
 ## [0.29.2] - 2026-11-14
 
 Arreglo de «Gestionar stock» y base de las observaciones de la dirección del 14 nov (P29.1). Migración 0085. Las pantallas de P29 salen en 0.30.0.
