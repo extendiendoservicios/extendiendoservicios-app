@@ -86,7 +86,11 @@ export function leerInventario(): InventarioMigraciones {
         eventos.push({ indice: m.index, alta, tipo, nombre: m[1] })
       }
     }
-    juntar(/^create\s+table\s+public\.(\w+)/gim, true, 'tabla')
+    juntar(
+      /^create\s+table\s+(?:if\s+not\s+exists\s+)?public\.(\w+)/gim,
+      true,
+      'tabla',
+    )
     juntar(
       /^drop\s+table\s+(?:if\s+exists\s+)?public\.(\w+)/gim,
       false,

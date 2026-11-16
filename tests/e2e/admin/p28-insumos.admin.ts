@@ -81,13 +81,13 @@ test.describe('OF-14: aviso al administrador sin «Gestionar stock»', () => {
   test.use({ storageState: storageStatePath('adminSinCapacidades') })
 
   test(
-    'el aviso dice que pida la capacidad a la dirección, en escritorio y en celular',
+    'el aviso dice qué permiso falta y que se lo pida a la dirección, en escritorio y en celular (P29.4, OG-11)',
     cubre('OF-14', 'IS-21', 'CB-17'),
     async ({ page }) => {
       await page.goto('/admin/insumos')
       const aviso = page.getByRole('note')
       await expect(aviso).toContainText(
-        'Para cargar o modificar insumos, pedile a la dirección la capacidad Gestionar stock.',
+        'Necesitás el permiso «Gestionar stock». Pedíselo a la dirección.',
       )
       await page.setViewportSize({ width: 390, height: 844 })
       await expect(aviso).toBeVisible()

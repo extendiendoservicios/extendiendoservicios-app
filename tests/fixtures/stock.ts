@@ -157,7 +157,7 @@ export async function esperarMinutoNuevo(
 }
 
 /** Marcas de las suites que crean datos de Insumos (para el barrido previo de residuos). */
-export const MARCAS_INSUMOS = ['adm', 'emp', 'sup', 'permstock'] as const
+export const MARCAS_INSUMOS = ['adm', 'emp', 'sup', 'permstock', 'p29'] as const
 
 /** `true` si quedó algo de Insumos con prefijo `e2e-` (una corrida cortada a la mitad). */
 export async function hayResiduosDeInsumos(
