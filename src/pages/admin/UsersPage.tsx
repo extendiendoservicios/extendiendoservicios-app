@@ -1,7 +1,10 @@
 import {
   createContext,
+  useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -68,6 +71,9 @@ import { formatShortDate, formatTime } from '@/lib/format'
  * título/subtítulo de la ruta (`configuracion/usuarios` en `adminRoutes.tsx`)
  * en su topbar, mismo criterio que `ProfilePage`.
  */
+
+/** Espera antes de reflejar el texto del buscador en la URL. */
+const SEARCH_URL_DEBOUNCE_MS = 300
 
 interface UserRowView extends AdminUserRow, UserListRow {}
 
@@ -158,22 +164,73 @@ export default function UsersPage() {
     () => parseUserListParams(searchParams),
     [searchParams],
   )
-  // «Último ingreso» solo lo ve la dirección: para otros, vuelve al orden por legajo.
-  const listState = useMemo<UserListState>(
-    () =>
-      !isOwnerViewer && parsedState.sortKey === 'lastSignIn'
-        ? { ...parsedState, sortKey: 'legajo', sortDirection: 'asc' }
-        : parsedState,
-    [parsedState, isOwnerViewer],
+  // El texto del buscador vive en estado local: el campo responde de inmediato
+  // y la URL se actualiza con antirrebote (DEF-P29-01).
+  const urlSearch = parsedState.search
+  const [searchText, setSearchText] = useState(urlSearch)
+  // Último valor de `q` que escribió este componente: sirve para distinguir un
+  // cambio de la URL hecho desde afuera (atrás/adelante) de nuestro propio eco.
+  const lastWrittenSearch = useRef(urlSearch)
+  useEffect(() => {
+    if (urlSearch !== lastWrittenSearch.current) {
+      lastWrittenSearch.current = urlSearch
+      setSearchText(urlSearch)
+    }
+  }, [urlSearch])
+  // Parámetros más recientes que pidió esta pantalla. React Router le pasa a
+  // `setSearchParams` los del último render: si una navegación todavía no se
+  // aplicó (el tipeo la interrumpe), el siguiente cambio la pisaría. Por eso
+  // cada cambio parte de esta referencia y no de la URL renderizada.
+  const latestParams = useRef(searchParams)
+  const pendingWrites = useRef<string[]>([])
+  useEffect(() => {
+    const current = searchParams.toString()
+    const index = pendingWrites.current.indexOf(current)
+    if (index >= 0) {
+      // Eco de un cambio propio: descartamos ese y los anteriores.
+      pendingWrites.current = pendingWrites.current.slice(index + 1)
+      return
+    }
+    // Cambio desde afuera (atrás/adelante, un enlace).
+    pendingWrites.current = []
+    latestParams.current = searchParams
+  }, [searchParams])
+
+  const writeListParams = useCallback(
+    (patch: Partial<UserListState>) => {
+      const prev = latestParams.current
+      const next = buildUserListParams(
+        { ...parseUserListParams(prev), ...patch },
+        prev,
+      )
+      latestParams.current = next
+      pendingWrites.current.push(next.toString())
+      setSearchParams(next, { replace: true })
+    },
+    [setSearchParams],
   )
 
+  useEffect(() => {
+    if (searchText === lastWrittenSearch.current) return
+    const timeoutId = setTimeout(() => {
+      lastWrittenSearch.current = searchText
+      writeListParams({ search: searchText })
+    }, SEARCH_URL_DEBOUNCE_MS)
+    return () => clearTimeout(timeoutId)
+  }, [searchText, writeListParams])
+
+  // «Último ingreso» solo lo ve la dirección: para otros, vuelve al orden por legajo.
+  const listState = useMemo<UserListState>(() => {
+    const state = { ...parsedState, search: searchText }
+    return !isOwnerViewer && state.sortKey === 'lastSignIn'
+      ? { ...state, sortKey: 'legajo', sortDirection: 'asc' }
+      : state
+  }, [parsedState, isOwnerViewer, searchText])
+
+  // Parte siempre del último cambio pedido: dos cambios seguidos no se pisan.
   function updateListState(patch: Partial<UserListState>) {
-    setSearchParams(
-      buildUserListParams({ ...listState, ...patch }, searchParams),
-      {
-        replace: true,
-      },
-    )
+    if (patch.search !== undefined) setSearchText(patch.search)
+    writeListParams(patch)
   }
 
   function handleSort(key: UserSortKey) {
@@ -365,10 +422,8 @@ export default function UsersPage() {
           />
           <Input
             type="search"
-            value={listState.search}
-            onChange={(event) =>
-              updateListState({ search: event.target.value })
-            }
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
             placeholder="Buscar por nombre, apellido, legajo, DNI o email"
             aria-label="Buscar usuarios"
             className="pl-9"
