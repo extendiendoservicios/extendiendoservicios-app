@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -176,21 +177,47 @@ export default function UsersPage() {
       setSearchText(urlSearch)
     }
   }, [urlSearch])
+  // Parámetros más recientes que pidió esta pantalla. React Router le pasa a
+  // `setSearchParams` los del último render: si una navegación todavía no se
+  // aplicó (el tipeo la interrumpe), el siguiente cambio la pisaría. Por eso
+  // cada cambio parte de esta referencia y no de la URL renderizada.
+  const latestParams = useRef(searchParams)
+  const pendingWrites = useRef<string[]>([])
+  useEffect(() => {
+    const current = searchParams.toString()
+    const index = pendingWrites.current.indexOf(current)
+    if (index >= 0) {
+      // Eco de un cambio propio: descartamos ese y los anteriores.
+      pendingWrites.current = pendingWrites.current.slice(index + 1)
+      return
+    }
+    // Cambio desde afuera (atrás/adelante, un enlace).
+    pendingWrites.current = []
+    latestParams.current = searchParams
+  }, [searchParams])
+
+  const writeListParams = useCallback(
+    (patch: Partial<UserListState>) => {
+      const prev = latestParams.current
+      const next = buildUserListParams(
+        { ...parseUserListParams(prev), ...patch },
+        prev,
+      )
+      latestParams.current = next
+      pendingWrites.current.push(next.toString())
+      setSearchParams(next, { replace: true })
+    },
+    [setSearchParams],
+  )
+
   useEffect(() => {
     if (searchText === lastWrittenSearch.current) return
     const timeoutId = setTimeout(() => {
       lastWrittenSearch.current = searchText
-      setSearchParams(
-        (prev) =>
-          buildUserListParams(
-            { ...parseUserListParams(prev), search: searchText },
-            prev,
-          ),
-        { replace: true },
-      )
+      writeListParams({ search: searchText })
     }, SEARCH_URL_DEBOUNCE_MS)
     return () => clearTimeout(timeoutId)
-  }, [searchText, setSearchParams])
+  }, [searchText, writeListParams])
 
   // «Último ingreso» solo lo ve la dirección: para otros, vuelve al orden por legajo.
   const listState = useMemo<UserListState>(() => {
@@ -200,14 +227,10 @@ export default function UsersPage() {
       : state
   }, [parsedState, isOwnerViewer, searchText])
 
-  // Parte siempre de la URL vigente: dos cambios seguidos no se pisan.
+  // Parte siempre del último cambio pedido: dos cambios seguidos no se pisan.
   function updateListState(patch: Partial<UserListState>) {
     if (patch.search !== undefined) setSearchText(patch.search)
-    setSearchParams(
-      (prev) =>
-        buildUserListParams({ ...parseUserListParams(prev), ...patch }, prev),
-      { replace: true },
-    )
+    writeListParams(patch)
   }
 
   function handleSort(key: UserSortKey) {
