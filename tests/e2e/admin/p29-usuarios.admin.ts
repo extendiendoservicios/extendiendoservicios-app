@@ -281,14 +281,8 @@ test.describe('OG-12 · Usuarios: buscador, orden y filtros', () => {
     'escribir en el buscador a velocidad normal no pierde letras ni los demás filtros de la dirección (DEF-P29-01)',
     cubre('RB-A01', 'OG-12'),
     async ({ page }) => {
-      // DEF-P29-01 (mayor, P29.4): el campo está atado a la dirección de la página y la pantalla se
-      // vuelve a pintar con retraso: con 202 usuarios en App_dev, escribir «empleado3 e2e» a 120 ms por
-      // tecla dejó «epleado3 e2e» (y a 0 ms, solo «e»); tocar «Todos» y escribir enseguida pierde
-      // `estado=todos`. Sale de «fixme» cuando el campo guarde su propio texto y lo pase a la dirección.
-      test.fixme(
-        true,
-        'DEF-P29-01: el buscador de Usuarios pierde letras al escribir rápido (ver informe de P29.6).',
-      )
+      // DEF-P29-01 (mayor, P29.4), corregido en #284: antes se perdían letras al tipear rápido y
+      // tocar «Todos» y escribir enseguida pisaba `estado=todos`.
       await page.goto(URL_USUARIOS)
       await esperarListado(page)
       const buscador = page.getByRole('searchbox', { name: 'Buscar usuarios' })
@@ -296,6 +290,19 @@ test.describe('OG-12 · Usuarios: buscador, orden y filtros', () => {
       await buscador.pressSequentially('empleado3 e2e', { delay: 120 })
       await expect(buscador).toHaveValue('empleado3 e2e')
       await expect(page).toHaveURL(/q=empleado3\+e2e/)
+
+      // «Todos» y enseguida a escribir: quedan los dos en la dirección.
+      await page.goto(URL_USUARIOS)
+      await esperarListado(page)
+      await page
+        .getByRole('radiogroup', { name: 'Estado' })
+        .getByRole('radio', { name: 'Todos' })
+        .click()
+      await buscador.click()
+      await buscador.pressSequentially('empleado3 e2e', { delay: 30 })
+      await expect(buscador).toHaveValue('empleado3 e2e')
+      await expect(page).toHaveURL(/q=empleado3\+e2e/)
+      await expect(page).toHaveURL(/estado=todos/)
     },
   )
 })
