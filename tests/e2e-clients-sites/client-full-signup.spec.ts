@@ -12,14 +12,15 @@ import { SEED_ACCOUNTS } from '../fixtures/seed-accounts.ts'
 
 // CLIENT-008 (08_Fases_y_Backlog.md F8, CLIENT-005 "e2e alta de cliente completo"): un
 // administrador da de alta un cliente con CUIT, carga dos contactos (uno principal, cambia cuál
-// es el principal), un segundo cliente con el mismo CUIT es rechazado con el mensaje exacto de
-// `06_API.md` sección 15, y cambia el estado del primero a "Suspendido".
+// es el principal), un segundo cliente con el mismo CUIT se avisa («Ya hay otro cliente con este
+// CUIT… ¿Guardar igual?», P29.4, OG-04: desde la 0085 el CUIT ya no es único) y se guarda al
+// confirmar, y cambia el estado del primero a "Suspendido".
 
 const env = readE2eClientsSitesEnv()
 test.skip(!env, MISSING_ENV_MESSAGE)
 
 test.describe('CLIENT-008: alta de cliente completo', () => {
-  test('cliente con CUIT, dos contactos (cambio de principal) y suspensión; CUIT repetido rechazado', async ({
+  test('cliente con CUIT, dos contactos (cambio de principal) y suspensión; CUIT repetido avisado y guardado igual', async ({
     page,
   }) => {
     const admin = getAdminClient()
@@ -115,18 +116,29 @@ test.describe('CLIENT-008: alta de cliente completo', () => {
         await page.keyboard.press('Escape')
       })
 
-      await test.step('CUIT repetido: rechazado con el mensaje exacto de 06 sección 15', async () => {
+      await test.step('CUIT repetido (P29.4, OG-04): se avisa con el nombre del otro cliente y se puede guardar igual', async () => {
         await page.goto('/admin/clientes/nuevo')
-        await page
-          .getByLabel('Razón social')
-          .fill(disposableName('Cliente CUIT Duplicado'))
+        const duplicateName = disposableName('Cliente CUIT Duplicado')
+        await page.getByLabel('Razón social').fill(duplicateName)
         await page.getByLabel('CUIT').fill(cuit)
         await page.getByRole('button', { name: 'Crear cliente' }).click()
-        await expect(
-          page.getByText('Ese CUIT ya está registrado.'),
-        ).toBeVisible()
-        // Nunca navegó: seguimos en el formulario de alta, no en un detalle nuevo.
+        const aviso = page.getByRole('dialog', { name: 'CUIT repetido' })
+        await expect(aviso).toContainText(
+          `Ya hay otro cliente con este CUIT: ${legalName}. ¿Guardar igual?`,
+        )
+        // Todavía no navegó ni guardó: seguimos en el formulario de alta.
         await expect(page).toHaveURL(/\/admin\/clientes\/nuevo$/)
+        await aviso.getByRole('button', { name: 'Guardar igual' }).click()
+        await expect(page).toHaveURL(/\/admin\/clientes\/[0-9a-f-]+$/)
+        const match = page.url().match(/\/admin\/clientes\/([0-9a-f-]+)$/)
+        const duplicateId = match?.[1] ?? null
+        expect(
+          duplicateId,
+          'el cliente con CUIT repetido se guardó',
+        ).toBeTruthy()
+        expect(duplicateId).not.toBe(clientId)
+        // Es un cliente de prueba propio: se borra enseguida.
+        await deleteDisposableClient(admin, duplicateId!)
       })
 
       await test.step('cambia el estado del cliente a Suspendido', async () => {

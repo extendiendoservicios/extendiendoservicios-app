@@ -19,7 +19,7 @@ humo de CI (`*.spec.ts`) no los tome.
 | `e2e/empleado/`        | Empleado en celular (25 tests) e Insumos (`insumos.empleado.ts`, 12 tests)                                                                                                                      | `pnpm test:e2e:empleado`; proyectos `mobile` y `webkit` (iPhone 14)                   |
 | `e2e/supervisor/`      | Coordinador en celular (27 tests): jornada, coordinación libre, calificar, historial, doble rol (P24.5) e Insumos (`insumos.supervisor.ts`, 5 tests)                                            | `pnpm test:e2e:supervisor`; proyectos `mobile` y `webkit`                             |
 | `e2e-ajustes-reunion/` | Ajustes de la reunión del 6 oct 2026 (AJ-01 a AJ-10): nombre, «En camino», «Llegada tarde», horas, calificación promedio, asistencia de la ficha, resumen por cliente, axe (conjunto `ajustes`) | `pnpm test:e2e:ajustes-reunion`; proyectos `desktop` y `mobile`; ver su README        |
-| `permissions/`         | Matriz de permisos por API directa (3.382 casos, 20 de ellos esperados como defecto), Vitest, ver `permissions/README.md`                                                                       | `pnpm test:permissions`                                                               |
+| `permissions/`         | Matriz de permisos por API directa (3.382 casos más los de P29, `102-p29.permissions.ts`; 20 esperados como defecto), Vitest, ver `permissions/README.md`                                       | `pnpm test:permissions`                                                               |
 | `load/`                | Carga ligera: 5 administradores y 30 empleados con polling (p50, p95, p99, errores)                                                                                                             | `pnpm test:load` (manual, no corre en el nocturno)                                    |
 | `fixtures/`            | Cuentas y conjuntos de cuentas, sesiones, `Scenario` (datos por test), `InsumosE2e` (`stock.ts`: datos de Insumos con su purga) y `stock-ui.ts`, fechas, trazabilidad (`cubre`), axe            | —                                                                                     |
 | `lighthouse/`          | Lighthouse sobre staging (PWA y accesibilidad), ver su README                                                                                                                                   | `pnpm test:lighthouse`                                                                |
@@ -51,6 +51,17 @@ Desde la migración 0063 ya no hay asignación manual de supervisiones: el coord
 - El administrador fijo ahora tiene la capacidad `manage_stock` (`ADMIN_CAPABILITIES` pasó a ocho) y hay una cuenta fija nueva, `adminOperativo` (administrador con todas las capacidades que además es empleado), para el retiro en nombre de otra persona de quien también trabaja turnos (IS-35). Está en los conjuntos `base` y `perm`.
 - «Cargar control» arma la hora del conteo con `HH:mm` (segundos en cero): los movimientos hechos dentro de ese mismo minuto cuentan como posteriores (IS-31). El test que carga el control con la hora por omisión espera a que pase el minuto (`esperarMinutoNuevo`).
 - Los tests de celular no escriben en el buscador antes de mirar la barra de abajo: con un campo en foco la barra se oculta (teclado abierto, RESP-008).
+
+### Observaciones de la dirección del 14 nov (P29.6)
+
+Pruebas de las decisiones OG-01 a OG-12 (`modulos/P29_observaciones_de_la_duena_14_nov.md`):
+
+- **Administración** (`tests/e2e/admin/`): `p29-modo-panel.admin.ts` y `.movil.admin.ts` (OG-06, OG-07, OG-08: la cuenta administración + empleado entra al panel en escritorio y en 390 px, cambia de modo y vuelve, «Mi turno»; un empleado común sigue en `/app` y un coordinador en `/sup`; comparten `p29-modo-panel-pasos.ts`), `p29-resumen.admin.ts` (OG-02 cerrar y reabrir avisos con una segunda sesión, OG-03 demoras avisadas, OG-01 mapa «Todos los clientes»), `p29-clientes-insumos.admin.ts` (OG-04 CUIT repetido, OG-11 Insumos sin «Gestionar stock») y `p29-usuarios.admin.ts` / `.movil.admin.ts` (OG-12, con `p29-usuarios-pasos.ts`).
+- **Empleado** (`tests/e2e/empleado/p29.empleado.ts`) y **coordinador** (`tests/e2e/supervisor/p29.supervisor.ts`): el «Mensaje de la oficina» (OG-05), en `mobile` y `webkit`.
+- **Permisos** (`tests/permissions/suite/102-p29.permissions.ts`): `attention_dismissals`, `dismiss_attention`, `reopen_attention`, `map_active_sites`, `admin_users_directory`, `find_clients_by_cuit` y `shift_observations` / `v_my_day` / `v_my_supervisions` por API directa.
+- **Datos**: la observación del turno se carga como la app (`ponerObservacion` en `fixtures/p29.ts`, con `update_shift_details`), nunca en `shifts.notes`. Los avisos «por comenzar» usan una franja que arranca dentro de 40 minutos (`franjaPorComenzar`) y se saltean pasadas las 22:00.
+- **Puerto**: si el 5173 está ocupado por otro servidor, levantá `pnpm exec vite preview --port 5174 --strictPort` y corré con `E2E_REUSE_SERVER=1 E2E_BASE_URL=http://localhost:5174` (la Edge Function acepta cualquier `localhost` en desarrollo).
+- Los proyectos `webkit` de las suites de celular dependen de `mobile`: para correr solo uno, `--no-deps`.
 
 ### Reglas
 
