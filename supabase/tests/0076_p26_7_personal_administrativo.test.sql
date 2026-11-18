@@ -340,8 +340,7 @@ select lives_ok(
   'el admin habilita un cliente a otro admin'
 );
 select lives_ok(
-  $$ insert into public.employee_leaves (employee_id, starts_on, ends_on, reason, created_by)
-     values ('c7600000-0000-0000-0000-000000000003', '2031-01-10', '2031-01-20', 'Vacaciones', 'c7600000-0000-0000-0000-000000000002') $$,
+  $$ select public.save_employee_leave(null, 'c7600000-0000-0000-0000-000000000003', '2031-01-10', '2031-01-20', 'Vacaciones') $$,
   'el admin carga una licencia a un dueño'
 );
 select lives_ok(

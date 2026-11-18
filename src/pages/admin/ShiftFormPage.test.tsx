@@ -1,7 +1,13 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  MemoryRouter,
+  Route,
+  Routes,
+  useLocation,
+  useParams,
+} from 'react-router'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
  * ADM-07 alta de turno con «Repetir este turno» (AJ3-08): apagado usa
@@ -12,6 +18,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const {
   createShiftMock,
   createShiftSeriesMock,
+  registerPastMock,
+  fetchShiftDetailMock,
+  authState,
   previewShiftSeriesMock,
   shiftOverlapsMock,
   datesOverlapsMock,
@@ -21,6 +30,11 @@ const {
 } = vi.hoisted(() => ({
   createShiftMock: vi.fn(),
   createShiftSeriesMock: vi.fn(),
+  registerPastMock: vi.fn(),
+  fetchShiftDetailMock: vi.fn(),
+  authState: {
+    value: { roles: ['owner'], capabilities: new Array<string>() },
+  },
   previewShiftSeriesMock: vi.fn(),
   shiftOverlapsMock: vi.fn(),
   datesOverlapsMock: vi.fn(),
@@ -37,7 +51,13 @@ vi.mock('@/api/shifts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api/shifts')>()),
   createShift: createShiftMock,
   createShiftSeries: createShiftSeriesMock,
+  registerPastShift: registerPastMock,
   previewShiftSeries: previewShiftSeriesMock,
+}))
+
+vi.mock('@/api/assignments', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/api/assignments')>()),
+  fetchShiftDetail: fetchShiftDetailMock,
 }))
 
 vi.mock('@/api/overlaps', () => ({
@@ -47,7 +67,7 @@ vi.mock('@/api/overlaps', () => ({
 }))
 
 vi.mock('@/features/auth/AuthProvider', () => ({
-  useAuth: () => ({ roles: ['owner'], capabilities: [] }),
+  useAuth: () => authState.value,
 }))
 
 vi.mock('@/features/clients/queries', () => ({
@@ -69,7 +89,15 @@ vi.mock('@/features/settings/queries', () => ({
 }))
 
 vi.mock('@/features/planning/components/EmployeeMultiPicker', () => ({
-  EmployeeMultiPicker: () => <div />,
+  EmployeeMultiPicker: ({
+    onValueChange,
+  }: {
+    onValueChange: (ids: string[]) => void
+  }) => (
+    <button type="button" onClick={() => onValueChange(['e1'])}>
+      Elegir empleado
+    </button>
+  ),
 }))
 
 // Los selectores reales son popovers: acá alcanzan cajas simples.
@@ -121,10 +149,15 @@ vi.mock('@/components/DatePicker', () => ({
 }))
 
 const { default: ShiftFormPage } = await import('./ShiftFormPage')
+const { ApiError, parseConflictDetail } = await import('@/api/errors')
 
 function Destino() {
   const location = useLocation()
   return <p>Calendario {location.search}</p>
+}
+
+function EditarTurno() {
+  return <p>Editar turno {useParams().id}</p>
 }
 
 function renderPage() {
@@ -137,6 +170,7 @@ function renderPage() {
         <Routes>
           <Route path="/admin/turnos/nuevo" element={<ShiftFormPage />} />
           <Route path="/admin/planificacion" element={<Destino />} />
+          <Route path="/admin/turnos/:id/editar" element={<EditarTurno />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -165,6 +199,31 @@ const SINGLE_RESULT = {
 }
 
 beforeEach(() => {
+  // Hoy es el 1 de octubre de 2026: las fechas de estas pruebas son futuras
+  // salvo las de «Registrar como realizado» (OH-09), que mueven el reloj.
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-10-01T12:00:00-03:00'))
+  authState.value = { roles: ['owner'], capabilities: [] }
+  registerPastMock.mockReset().mockResolvedValue({
+    shiftId: 'sh-past',
+    warnings: [],
+    warningsDetail: [],
+    assigned: [{ employeeId: 'e1', assignmentId: 'as1', warnings: [] }],
+    attendance: [],
+  })
+  fetchShiftDetailMock.mockReset().mockResolvedValue({
+    id: 'x1',
+    clientName: 'Limpia Ya',
+    siteName: 'Sede Centro',
+    shiftDate: '2026-10-13',
+    startTime: '12:30:00',
+    endTime: '14:30:00',
+    openEnded: false,
+    assignments: [
+      { employeeFirstName: 'Ana', employeeLastName: 'Gómez' },
+      { employeeFirstName: 'Luis', employeeLastName: 'Paz' },
+    ],
+  })
   createShiftMock.mockReset().mockResolvedValue(SINGLE_RESULT)
   createShiftSeriesMock.mockReset().mockResolvedValue({
     seriesId: 'ser1',
@@ -196,6 +255,10 @@ beforeEach(() => {
   toastSuccess.mockReset()
   toastWarning.mockReset()
   toastError.mockReset()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe('ShiftFormPage — repetir el turno', () => {
@@ -438,9 +501,14 @@ describe('ShiftFormPage — aviso de turno superpuesto en la sede (OF-02)', () =
 
     expect(
       await screen.findByText(
-        'Esta sede ya tiene el turno “Limpieza almuerzo” ese día de 12:30 a 14:30. ¿Crear igual?',
+        'Esta sede ya tiene el turno “Limpieza almuerzo” ese día de 12:30 a 14:30. ¿Crear igual o editar ese turno?',
       ),
     ).toBeInTheDocument()
+    // OH-10: muestra el turno que ya existe, con sus asignados.
+    const existing = await screen.findByTestId('existing-shift')
+    expect(existing).toHaveTextContent('Limpia Ya · Sede Centro')
+    expect(existing).toHaveTextContent('12:30–14:30')
+    expect(existing).toHaveTextContent('Asignados: Ana Gómez, Luis Paz')
     expect(shiftOverlapsMock).toHaveBeenCalledWith({
       siteId: 's1',
       date: '2026-10-13',
@@ -453,16 +521,29 @@ describe('ShiftFormPage — aviso de turno superpuesto en la sede (OF-02)', () =
     await waitFor(() => expect(createShiftMock).toHaveBeenCalledTimes(1))
   })
 
-  it('«Volver» deja el formulario sin crear nada', async () => {
+  it('«Cancelar» deja el formulario sin crear nada', async () => {
     shiftOverlapsMock.mockResolvedValue([OVERLAP])
     renderPage()
     fillBasics()
     fireEvent.click(screen.getByRole('button', { name: 'Crear turno' }))
-    await screen.findByText(/¿Crear igual\?/)
-    fireEvent.click(screen.getByRole('button', { name: 'Volver' }))
+    await screen.findByText(/¿Crear igual o editar ese turno\?/)
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
     await waitFor(() =>
-      expect(screen.queryByText(/¿Crear igual\?/)).not.toBeInTheDocument(),
+      expect(
+        screen.queryByText(/¿Crear igual o editar ese turno\?/),
+      ).not.toBeInTheDocument(),
     )
+    expect(createShiftMock).not.toHaveBeenCalled()
+  })
+
+  it('«Editar ese turno» abre la edición del turno existente sin crear nada (OH-10)', async () => {
+    shiftOverlapsMock.mockResolvedValue([OVERLAP])
+    renderPage()
+    fillBasics()
+    fireEvent.click(screen.getByRole('button', { name: 'Crear turno' }))
+    await screen.findByText(/¿Crear igual o editar ese turno\?/)
+    fireEvent.click(screen.getByRole('button', { name: 'Editar ese turno' }))
+    expect(await screen.findByText('Editar turno x1')).toBeInTheDocument()
     expect(createShiftMock).not.toHaveBeenCalled()
   })
 
@@ -557,5 +638,202 @@ describe('ShiftFormPage — repetir el turno avisa duplicados (OF-21)', () => {
     await repetir()
     fireEvent.click(await screen.findByRole('button', { name: 'Cancelar' }))
     expect(createShiftSeriesMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('ShiftFormPage — servicio con turno ese día (OH-10, SHIFT_DATE_TAKEN)', () => {
+  it('muestra el turno que ya existe, sin «Crear igual», y deja editarlo', async () => {
+    createShiftMock.mockRejectedValue(
+      new ApiError(
+        'Ese servicio ya tiene un turno el mar 13 oct de 08:00 a 12:00.',
+        'SHIFT_DATE_TAKEN',
+        parseConflictDetail(
+          JSON.stringify({
+            shift_id: 'sh9',
+            conflict_shift_id: 'sh9',
+            client_name: 'Limpia Ya',
+            site_name: 'Sede Centro',
+            service_name: 'Limpieza mañana',
+            shift_date: '2026-10-13',
+            start_time: '08:00:00',
+            end_time: '12:00:00',
+            open_ended: false,
+            status: 'assigned',
+            assigned: [
+              {
+                employee_id: 'e1',
+                employee_name: 'Ana Gómez',
+                start_time: '08:00:00',
+                end_time: '12:00:00',
+              },
+            ],
+          }),
+        ),
+      ),
+    )
+    renderPage()
+    fillBasics()
+    fireEvent.click(screen.getByRole('button', { name: 'Crear turno' }))
+
+    const existing = await screen.findByTestId('existing-shift')
+    expect(existing).toHaveTextContent('Limpieza mañana')
+    expect(existing).toHaveTextContent('Asignado: Ana Gómez')
+    expect(
+      screen.getByText(
+        'Ese servicio ya tiene un turno el mar 13 oct de 08:00 a 12:00.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Crear igual' })).toBeNull()
+    expect(toastError).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Editar ese turno' }))
+    expect(await screen.findByText('Editar turno sh9')).toBeInTheDocument()
+  })
+})
+
+describe('ShiftFormPage — turno pasado: «Registrar como realizado» (OH-09)', () => {
+  beforeEach(() => {
+    vi.setSystemTime(new Date('2026-11-01T12:00:00-03:00'))
+  })
+
+  it('avisa que el turno ya pasó y cambia el botón principal', () => {
+    renderPage()
+    expect(
+      screen.getByRole('button', { name: 'Crear turno' }),
+    ).toBeInTheDocument()
+    fillBasics()
+    expect(screen.getByText('Este turno ya pasó')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Registrar como realizado' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Crear turno' })).toBeNull()
+    // Sin repetición ni «A terminar» en este modo, con explicación.
+    expect(
+      screen.getByRole('switch', { name: 'Repetir este turno' }),
+    ).toBeDisabled()
+    expect(
+      screen.getByText(/Un turno ya realizado no se puede repetir/),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: /A terminar/ })).toBeDisabled()
+  })
+
+  it('con la fecha de hoy y el fin todavía sin llegar sigue siendo un alta común', () => {
+    vi.setSystemTime(new Date('2026-10-13T10:00:00-03:00'))
+    renderPage()
+    fillBasics()
+    expect(screen.queryByText('Este turno ya pasó')).toBeNull()
+    expect(
+      screen.getByRole('button', { name: 'Crear turno' }),
+    ).toBeInTheDocument()
+  })
+
+  it('exige al menos una persona', async () => {
+    renderPage()
+    fillBasics()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Registrar como realizado' }),
+    )
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith(
+        'Elegí al menos una persona: sin asistencia no hay nada que registrar.',
+      ),
+    )
+    expect(registerPastMock).not.toHaveBeenCalled()
+    expect(createShiftMock).not.toHaveBeenCalled()
+  })
+
+  it('registra con register_past_shift y vuelve al día del turno', async () => {
+    renderPage()
+    fillBasics()
+    fireEvent.click(screen.getByRole('button', { name: 'Elegir empleado' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Registrar como realizado' }),
+    )
+    await waitFor(() => expect(registerPastMock).toHaveBeenCalledTimes(1))
+    expect(registerPastMock.mock.calls[0]?.[0]).toMatchObject({
+      clientId: 'c1',
+      siteId: 's1',
+      date: '2026-10-13',
+      start: '08:00',
+      end: '12:00',
+      employeeIds: ['e1'],
+    })
+    expect(createShiftMock).not.toHaveBeenCalled()
+    expect(toastSuccess).toHaveBeenCalledWith(
+      'Registramos el turno como realizado, con la asistencia de 1 persona.',
+    )
+    expect(
+      await screen.findByText('Calendario ?vista=dia&fecha=2026-10-13'),
+    ).toBeInTheDocument()
+  })
+
+  it('muestra las advertencias (feriado, licencia) en un aviso', async () => {
+    registerPastMock.mockResolvedValue({
+      shiftId: 'sh-past',
+      warnings: ['HOLIDAY', 'ON_LEAVE'],
+      warningsDetail: [
+        {
+          code: 'ON_LEAVE',
+          employeeId: 'e1',
+          message: 'Ana Gómez tiene licencia el 13 oct.',
+        },
+      ],
+      assigned: [{ employeeId: 'e1', assignmentId: 'as1', warnings: [] }],
+      attendance: [],
+    })
+    renderPage()
+    fillBasics()
+    fireEvent.click(screen.getByRole('button', { name: 'Elegir empleado' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Registrar como realizado' }),
+    )
+    await waitFor(() => expect(toastWarning).toHaveBeenCalledTimes(1))
+    expect(toastWarning.mock.calls[0]?.[0]).toBe(
+      'Registramos el turno como realizado, con advertencias:',
+    )
+    expect(toastSuccess).not.toHaveBeenCalled()
+  })
+
+  it('si una persona falla muestra el mensaje del servidor y no navega', async () => {
+    registerPastMock.mockRejectedValue(
+      new ApiError(
+        'Gómez: ya está asignada a otro turno en ese horario.',
+        'ASSIGNMENT_OVERLAP',
+      ),
+    )
+    renderPage()
+    fillBasics()
+    fireEvent.click(screen.getByRole('button', { name: 'Elegir empleado' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Registrar como realizado' }),
+    )
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith(
+        'Gómez: ya está asignada a otro turno en ese horario.',
+        undefined,
+      ),
+    )
+    expect(screen.queryByText(/^Calendario/)).toBeNull()
+  })
+
+  it('sin «Gestionar asistencia» lo explica y no ofrece registrarlo', () => {
+    authState.value = { roles: ['admin'], capabilities: [] }
+    renderPage()
+    fillBasics()
+    expect(
+      screen.getByText(/hace falta ser de la dirección o de la administración/),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Registrar como realizado' }),
+    ).toBeDisabled()
+  })
+
+  it('un administrador con «Gestionar asistencia» puede registrarlo', () => {
+    authState.value = { roles: ['admin'], capabilities: ['manage_attendance'] }
+    renderPage()
+    fillBasics()
+    expect(
+      screen.getByRole('button', { name: 'Registrar como realizado' }),
+    ).toBeEnabled()
   })
 })

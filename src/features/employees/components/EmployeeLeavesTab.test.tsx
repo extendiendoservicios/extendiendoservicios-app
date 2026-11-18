@@ -7,15 +7,26 @@ function Ruta() {
   return <p>Ruta: {useLocation().pathname}</p>
 }
 
-const { updateMutateAsync, createMutateAsync, conflictsMutateAsync } =
-  vi.hoisted(() => ({
-    updateMutateAsync: vi.fn(),
-    createMutateAsync: vi.fn(),
-    conflictsMutateAsync: vi.fn(),
-  }))
+const { saveMutateAsync } = vi.hoisted(() => ({
+  saveMutateAsync: vi.fn(),
+}))
 
 vi.mock('@/features/auth/AuthProvider', () => ({
   useAuth: () => ({ userId: 'admin-1', roles: ['admin'], capabilities: [] }),
+}))
+
+vi.mock('@/features/planning/components/AssignEmployeeSheet', () => ({
+  AssignEmployeeSheet: (props: {
+    shiftId: string
+    onAssigned?: () => void
+  }) => (
+    <div data-testid="assign-sheet">
+      <p>Asignar en {props.shiftId}</p>
+      <button type="button" onClick={() => props.onAssigned?.()}>
+        Simular asignación
+      </button>
+    </div>
+  ),
 }))
 
 vi.mock('@/features/employees/queries', () => ({
@@ -38,16 +49,8 @@ vi.mock('@/features/employees/queries', () => ({
       },
     ],
   }),
-  useCreateEmployeeLeaveMutation: () => ({
-    mutateAsync: createMutateAsync,
-    isPending: false,
-  }),
-  useUpdateEmployeeLeaveMutation: () => ({
-    mutateAsync: updateMutateAsync,
-    isPending: false,
-  }),
-  useLeaveConflictsMutation: () => ({
-    mutateAsync: conflictsMutateAsync,
+  useSaveEmployeeLeaveMutation: () => ({
+    mutateAsync: saveMutateAsync,
     isPending: false,
   }),
   useDeactivateEmployeeLeaveMutation: () => ({
@@ -56,10 +59,57 @@ vi.mock('@/features/employees/queries', () => ({
   }),
 }))
 
+function entry(
+  id: string,
+  date: string,
+  extra: Partial<Record<string, unknown>> = {},
+) {
+  return {
+    assignmentId: `as-${id}`,
+    shiftId: `sh-${id}`,
+    shiftDate: date,
+    startTime: '08:00:00',
+    endTime: '12:00:00',
+    openEnded: false,
+    shiftStatus: 'assigned',
+    clientId: 'c1',
+    clientName: 'Limpia Ya',
+    siteId: 'si1',
+    siteName: 'Sede Centro',
+    serviceId: 'sv1',
+    serviceName: 'Limpieza mañana',
+    message: null,
+    ...extra,
+  }
+}
+
+function result(
+  released: ReturnType<typeof entry>[],
+  kept: ReturnType<typeof entry>[],
+  preview: boolean,
+) {
+  return {
+    preview,
+    leaveId: preview ? null : 'l-new',
+    released,
+    kept,
+    releasedCount: released.length,
+    keptCount: kept.length,
+  }
+}
+
+/** Responde la vista previa y el guardado con la misma lista de turnos. */
+function answerWith(
+  released: ReturnType<typeof entry>[],
+  kept: ReturnType<typeof entry>[] = [],
+) {
+  saveMutateAsync.mockImplementation(({ preview }: { preview?: boolean }) =>
+    Promise.resolve(result(released, kept, Boolean(preview))),
+  )
+}
+
 beforeEach(() => {
-  updateMutateAsync.mockReset().mockResolvedValue(undefined)
-  createMutateAsync.mockReset()
-  conflictsMutateAsync.mockReset().mockResolvedValue([])
+  saveMutateAsync.mockReset()
 })
 
 describe('EmployeeLeavesTab: editar licencia (AJ2-08)', () => {
@@ -77,7 +127,8 @@ describe('EmployeeLeavesTab: editar licencia (AJ2-08)', () => {
     ).toBeNull()
   })
 
-  it('carga el formulario con los datos y guarda con update, no con alta', async () => {
+  it('carga el formulario con los datos y guarda con save_employee_leave sobre la misma licencia', async () => {
+    answerWith([])
     render(<EmployeeLeavesTab profileId="e1" canEdit />)
     fireEvent.click(screen.getByRole('button', { name: /editar la licencia/i }))
     expect(screen.getByLabelText('Desde')).toHaveValue('2026-11-02')
@@ -89,17 +140,21 @@ describe('EmployeeLeavesTab: editar licencia (AJ2-08)', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
 
-    await waitFor(() => expect(updateMutateAsync).toHaveBeenCalledTimes(1))
-    expect(updateMutateAsync).toHaveBeenCalledWith({
-      id: 'l1',
-      input: {
-        startsOn: '2026-11-02',
-        endsOn: '2026-11-12',
-        reason: 'Vacaciones',
-      },
-      updatedBy: 'admin-1',
+    await waitFor(() => expect(saveMutateAsync).toHaveBeenCalledTimes(2))
+    const input = {
+      startsOn: '2026-11-02',
+      endsOn: '2026-11-12',
+      reason: 'Vacaciones',
+    }
+    expect(saveMutateAsync).toHaveBeenNthCalledWith(1, {
+      input,
+      leaveId: 'l1',
+      preview: true,
     })
-    expect(createMutateAsync).not.toHaveBeenCalled()
+    expect(saveMutateAsync).toHaveBeenNthCalledWith(2, {
+      input,
+      leaveId: 'l1',
+    })
   })
 
   it('cancelar la edición vuelve al formulario de alta vacío', () => {
@@ -113,31 +168,8 @@ describe('EmployeeLeavesTab: editar licencia (AJ2-08)', () => {
   })
 })
 
-describe('EmployeeLeavesTab: turnos asignados dentro de la licencia (P19.11d)', () => {
-  it('al guardar una licencia nueva con turnos asignados, los lista con enlace al turno', async () => {
-    createMutateAsync.mockResolvedValue(undefined)
-    conflictsMutateAsync.mockResolvedValue([
-      {
-        assignmentId: 'as1',
-        shiftId: 'sh1',
-        shiftDate: '2026-11-04',
-        startTime: '08:00:00',
-        endTime: '12:00:00',
-        openEnded: false,
-        clientName: 'Limpia Ya',
-        siteName: 'Sede Centro',
-        shiftStatus: 'assigned',
-        serviceId: 'sv1',
-        serviceName: 'Limpieza mañana',
-        message: 'Acosta ya está en Sede Centro.',
-      },
-    ])
-    render(
-      <MemoryRouter>
-        <EmployeeLeavesTab profileId="e1" canEdit />
-        <Ruta />
-      </MemoryRouter>,
-    )
+describe('EmployeeLeavesTab: la licencia libera los turnos (OH-08)', () => {
+  function fillAndSave() {
     fireEvent.change(screen.getByLabelText('Desde'), {
       target: { value: '2026-11-03' },
     })
@@ -145,38 +177,135 @@ describe('EmployeeLeavesTab: turnos asignados dentro de la licencia (P19.11d)', 
       target: { value: '2026-11-06' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'Agregar licencia' }))
+  }
 
-    await waitFor(() =>
-      expect(conflictsMutateAsync).toHaveBeenCalledWith({
-        startsOn: '2026-11-03',
-        endsOn: '2026-11-06',
-      }),
+  function renderTab() {
+    return render(
+      <MemoryRouter>
+        <EmployeeLeavesTab
+          profileId="e1"
+          canEdit
+          person={{
+            name: 'Ana Gómez',
+            employeeNumber: 4,
+            roleLabels: ['Empleado'],
+            signerLabel: 'x',
+          }}
+        />
+        <Ruta />
+      </MemoryRouter>,
     )
+  }
+
+  it('sin nada para liberar guarda directo, sin diálogo ni aviso', async () => {
+    answerWith([])
+    renderTab()
+    fillAndSave()
+    await waitFor(() => expect(saveMutateAsync).toHaveBeenCalledTimes(2))
+    const input = {
+      startsOn: '2026-11-03',
+      endsOn: '2026-11-06',
+      reason: null,
+    }
+    expect(saveMutateAsync).toHaveBeenNthCalledWith(1, {
+      input,
+      leaveId: null,
+      preview: true,
+    })
+    expect(saveMutateAsync).toHaveBeenNthCalledWith(2, {
+      input,
+      leaveId: null,
+    })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.queryByText(/sin cubrir/)).toBeNull()
+  })
+
+  it('con turnos para liberar pide confirmar: lista los liberados y los que tienen fichajes', async () => {
+    answerWith(
+      [entry('1', '2026-11-04'), entry('2', '2026-11-05')],
+      [entry('3', '2026-11-03', { serviceId: null, serviceName: null })],
+    )
+    renderTab()
+    fillAndSave()
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog).toHaveTextContent('Se van a liberar 2 turnos de Ana Gómez')
+    expect(dialog).toHaveTextContent('Limpia Ya · Sede Centro')
+    expect(dialog).toHaveTextContent('08:00–12:00')
+    expect(dialog).toHaveTextContent('Limpieza mañana')
+    expect(dialog).toHaveTextContent('Este turno tiene fichajes y no se toca')
+    expect(dialog).toHaveTextContent('Turno cargado a mano')
+    // Solo se hizo la vista previa: nada se guardó todavía.
+    expect(saveMutateAsync).toHaveBeenCalledTimes(1)
+    expect(saveMutateAsync.mock.calls[0]?.[0]).toMatchObject({ preview: true })
+  })
+
+  it('con varios turnos con fichajes lo dice en plural', async () => {
+    answerWith([], [entry('3', '2026-11-03'), entry('4', '2026-11-04')])
+    renderTab()
+    fillAndSave()
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog).toHaveTextContent(
+      'Estos 2 turnos tienen fichajes y no se tocan',
+    )
+  })
+
+  it('Cancelar en el diálogo no guarda la licencia', async () => {
+    answerWith([entry('1', '2026-11-04')])
+    renderTab()
+    fillAndSave()
+    await screen.findByRole('dialog')
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(saveMutateAsync).toHaveBeenCalledTimes(1)
+  })
+
+  it('Confirmar guarda sin vista previa y lista los turnos sin cubrir con «Reemplazar»', async () => {
+    answerWith([entry('1', '2026-11-04'), entry('2', '2026-11-05')])
+    renderTab()
+    fillAndSave()
+    await screen.findByRole('dialog')
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+    await waitFor(() => expect(saveMutateAsync).toHaveBeenCalledTimes(2))
+    expect(saveMutateAsync.mock.calls[1]?.[0]).not.toHaveProperty('preview')
     expect(
-      await screen.findByText(/Esta persona tiene 1 turno asignado/),
+      await screen.findByText(/Quedaron 2 turnos sin cubrir/),
     ).toBeInTheDocument()
-    expect(screen.getByText(/Limpia Ya · Sede Centro/)).toBeInTheDocument()
-    expect(screen.getByText('08:00–12:00')).toBeInTheDocument()
-    // OF-08b: el servicio y «Ver turno» por fila.
-    expect(screen.getByText('Limpieza mañana')).toBeInTheDocument()
+    const replaceButtons = screen.getAllByRole('button', {
+      name: /Reemplazar en Limpia Ya/,
+    })
+    expect(replaceButtons).toHaveLength(2)
+
+    // «Reemplazar» abre la asignación del turno; al asignar, sale de la lista.
+    fireEvent.click(replaceButtons[0] as HTMLElement)
+    expect(screen.getByTestId('assign-sheet')).toHaveTextContent(
+      'Asignar en sh-1',
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Simular asignación' }))
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('button', { name: /Reemplazar en Limpia Ya/ }),
+      ).toHaveLength(1),
+    )
+  })
+
+  it('«Ver turno» lleva al turno liberado', async () => {
+    answerWith([entry('1', '2026-11-04')])
+    renderTab()
+    fillAndSave()
+    await screen.findByRole('dialog')
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+    await screen.findByText(/Quedó 1 turno sin cubrir/)
     fireEvent.click(screen.getByRole('button', { name: 'Ver turno' }))
     expect(
-      await screen.findByText('Ruta: /admin/turnos/sh1'),
+      await screen.findByText('Ruta: /admin/turnos/sh-1'),
     ).toBeInTheDocument()
   })
 
-  it('sin turnos asignados no muestra ningún aviso', async () => {
-    createMutateAsync.mockResolvedValue(undefined)
-    render(
-      <MemoryRouter>
-        <EmployeeLeavesTab profileId="e1" canEdit />
-      </MemoryRouter>,
-    )
-    fireEvent.change(screen.getByLabelText('Desde'), {
-      target: { value: '2026-12-03' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Agregar licencia' }))
-    await waitFor(() => expect(conflictsMutateAsync).toHaveBeenCalled())
-    expect(screen.queryByText(/turno asignado/)).toBeNull()
+  it('si la vista previa falla no abre el diálogo ni guarda', async () => {
+    saveMutateAsync.mockRejectedValue(new Error('boom'))
+    renderTab()
+    fillAndSave()
+    await waitFor(() => expect(saveMutateAsync).toHaveBeenCalledTimes(1))
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 })

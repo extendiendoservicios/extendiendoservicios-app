@@ -3063,3 +3063,57 @@ Corrige el efecto lateral de la 0082: el empleado tiene que seguir viendo el tur
   `changed_since_last_seen` no cambia: `update_shift_details` siempre actualiza `shifts` (trigger `set_updated_at`).
 - Tipos: `database.types.ts` no cambia (`shift_notes` ya estaba como `string | null` y `app` no se expone).
 - Tests: `0085_p29_1_observaciones_14_nov` ahora carga la observación en `shift_observations` y prueba `app.shift_office_message`.
+
+## Migración 0087 (P30.1): observaciones de la dirección del 18 nov (OH-06 a OH-11)
+
+Una sola migración, `0087_p30_1_observaciones_18_nov.sql`. No agrega valores a `security_event_type` (nada nuevo para `securityEventLabels`): la
+liberación de licencias y la carga posterior quedan trazadas en `assignments.removed_*` y en `attendance_records` (`recorded_by`, `reason`).
+
+- **OH-08 · `save_employee_leave(p_leave_id uuid, p_employee_id uuid, p_starts_on date, p_ends_on date, p_reason text, p_preview boolean default false) returns jsonb`**
+  (`owner` y `admin`). `p_leave_id` nulo = alta; con id = cambio. En una transacción guarda la licencia y quita (`removed_at`, `removed_by`,
+  `removed_reason = 'Licencia (motivo) del 3 al 10/11'`) las asignaciones vigentes del empleado en turnos no cancelados ni finalizados, con fecha
+  > = hoy (Argentina) dentro del período y **sin fichajes**; anula sus avisos (`attendance_notices.voided_at`, `void_reason = 'LEAVE_RELEASED'`) y
+  > vuelve a `scheduled` los turnos que quedan con la dotación incompleta. Las que tienen fichaje no se tocan (`kept`). Con `p_preview = true` no
+  > escribe nada. Devuelve `{preview, leave, released: [...], kept: [...], released_count, kept_count}`; cada elemento trae `assignment_id`,
+  > `shift_id`, `shift_date`, `start_time`, `end_time`, `open_ended`, `shift_status`, `client_id`, `client_name`, `site_id`, `site_name`,
+  > `service_id`, `service_name` y `detail` (claves de `app.shift_brief` + `code` `LEAVE_RELEASED` / `LEAVE_KEPT_HAS_ATTENDANCE`, `employee_id`,
+  > `employee_name`, `message`). Errores: `FORBIDDEN`, `INVALID_DATE_RANGE`, `EMPLOYEE_NOT_FOUND`, `LEAVE_NOT_FOUND`. Las licencias se pueden
+  > superponer (OF-20): no hay validación de superposición. Borrar o acortar una licencia **no** vuelve a asignar.
+  > `authenticated` pierde `insert`, `update` y `delete` directos sobre `employee_leaves`; queda `update (deleted_at, updated_by)` para la baja
+  > lógica (la política `employee_leaves_write_admin` sigue). La baja lógica sigue siendo un `update` directo: no hace falta una RPC porque no libera
+  > nada (los turnos liberados quedan como `REMOVED` en `employee_fixed_gaps`).
+- **OH-06 · `employee_fixed_gaps(p_employee_id uuid, p_from date, p_to date)`** (`owner` y `admin`, hasta 400 días). Una fila por turno no borrado ni
+  cancelado, de un servicio activo donde la persona es fija (`service_fixed_employees`) y no tiene asignación vigente. Columnas: `shift_id`,
+  `shift_date`, `start_time`, `end_time`, `open_ended`, `client_id`, `client_name`, `site_id`, `site_name`, `service_id`, `service_name`,
+  `calendar_color` (del cliente), `reason`, `detail` (jsonb, siempre con `code`), `shift_status`. `reason` por prioridad: `ON_LEAVE`
+  (`app.leave_conflict`), `OVERLAP` (`app.overlap_conflict`, trae el turno que choca), `SHIFT_FULL`, `REMOVED` (baja lógica de ese turno: `removed_at`,
+  `removed_by`, `removed_reason`), `ADDED_AFTER` (el fijo se agregó después de crearse el turno) y `NOT_ASSIGNED`.
+- **OH-07 · `employee_fixed_pattern(p_employee_id uuid)`** (`owner` y `admin`): servicios activos, no borrados y con `valid_to` nulo o >= hoy donde
+  es fijo: `service_id`, `service_name`, `client_id`, `client_name`, `site_id`, `site_name`, `calendar_color`, `weekdays` (0 = domingo a 6 = sábado),
+  `weeks_of_month`, `start_time`, `end_time`, `open_ended`, `valid_from`, `valid_to`.
+- **OH-07 · `employee_week_boards`** (`employee_id` PK -> `employees(profile_id)` con `on delete cascade`, `blocks jsonb`, `updated_by`, `updated_at`).
+  RLS: `select` para `owner` y `admin`; sin escritura directa. `save_employee_week_board(p_employee_id, p_blocks jsonb) returns jsonb` valida y
+  normaliza (arreglo de hasta 60 bloques `{id, weekday, start, end, label, color_index, service_id}`) y devuelve `{employee_id, blocks, updated_by,
+updated_by_name, updated_at}`; `get_employee_week_board(p_employee_id)` devuelve lo mismo o `null` si no hay. Errores: `FORBIDDEN`,
+  `EMPLOYEE_NOT_FOUND`, `INVALID_BOARD` (el `message` dice qué bloque y qué campo). **`weekday` usa 0 = domingo a 6 = sábado**, el mismo criterio que
+  `services.weekdays` y `employee_availability.weekday`; el orden lunes a domingo de la tabla lo pone la pantalla. No toca turnos ni asignaciones.
+- **OH-09 · `register_past_shift(p_client_id, p_site_id, p_date, p_start, p_end, p_required_staff default null, p_service_id default null, p_notes default null, p_show_in_print default true, p_employee_ids default null, p_requires_photos default null) returns jsonb`**
+  (`owner`, o `admin` con `manage_attendance`). Exige que el turno ya haya terminado (`SHIFT_NOT_PAST`) y al menos una persona (`EMPLOYEES_REQUIRED`).
+  Crea el turno (`app.create_shift_core`), asigna a cada persona (`app.assign_employee_core` con el nuevo `p_allow_leave`: la licencia en un día pasado
+  no bloquea, queda `ON_LEAVE` en `warnings`) y carga con `admin_record_attendance` el inicio y el fin con el horario del turno (origen `admin`, motivo
+  «Carga posterior», `recorded_by = auth.uid()`): asignaciones `finished`, turno `completed`. Si alguna persona falla, no queda nada guardado y el
+  error trae su código (`EMPLOYEE_NOT_ACTIVE`, `ASSIGNMENT_OVERLAP`, `SHIFT_FULL`, ...). No admite «a terminar». Devuelve `{shift, warnings,
+warnings_detail, assigned, attendance, rejected: []}`.
+  `app.assign_employee_core` pasa a 6 parámetros (`p_allow_leave boolean default false`): se reemplazó la función (los llamadores con 5 siguen
+  funcionando).
+- **OH-10 · `create_shift`.** Con `p_service_id` de un servicio que ya tiene turno ese día ya no cae en `23505`: devuelve `SHIFT_DATE_TAKEN` con `detail`
+  (texto JSON) = turno existente (`shift_id`, `client_name`, `site_name`, `service_name`, `shift_date`, `start_time`, `end_time`, `status`, `assigned`
+  `[{assignment_id, employee_id, employee_name, start_time, end_time}]`, `message`). `app.raise_shift_date_taken` es interna. Sin servicio no aplica
+  (los turnos de `move_assignment_to_new_shift` y de las series ya nacen sin servicio).
+- **OH-11 · `app.service_changes_run`** (misma firma que en `0084`; `apply_service_changes` y `preview_service_changes` no cambian). Gana el último
+  cambio: horario, dotación y fotos se actualizan en todos los turnos que siguen aunque estuvieran cambiados a mano (ya no hay notas `MANUAL_TIME`,
+  `MANUAL_STAFF` ni `MANUAL_PHOTOS`). Los que `p_previous` marca como cambiados a mano se cuentan en `overridden_count` y se listan en `overridden`
+  `[{shift_id, shift_date, fields: [time | required_staff | requires_photos], changes}]` (y `overridden_fields` en cada `updated[]`). En los
+  turnos que cambian de horario se borran los horarios por persona. Siguen afuera los cancelados, creados a mano, empezados y los que tienen fichajes
+  o avisos. Se conserva la dotación si la nueva es menor que los asignados (`STAFF_BELOW_ASSIGNED`).
+- Tests: `0087_p30_1_observaciones_18_nov`; ajustes en `0041` (firma de `assign_employee_core`) y en los que insertaban licencias como `authenticated`.

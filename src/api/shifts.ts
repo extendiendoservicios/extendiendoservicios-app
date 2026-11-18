@@ -344,6 +344,119 @@ export async function createShift(
 }
 
 // -------------------------------------------------------------------------
+// 2b. register_past_shift (ADM-07, «Registrar como realizado», OH-09)
+// -------------------------------------------------------------------------
+
+export interface RegisterPastShiftInput {
+  clientId: string
+  siteId: string
+  date: string
+  start: string
+  /** Obligatoria: sin «A terminar» en un turno que ya pasó. */
+  end: string
+  /** Opcional: por omisión, la cantidad de personas elegidas. */
+  requiredStaff?: number
+  serviceId?: string
+  notes?: string | null
+  showInPrint?: boolean
+  requiresPhotos?: boolean | null
+  /** Obligatorio: al menos una persona (sin asistencia no hay nada que registrar). */
+  employeeIds: string[]
+}
+
+/** Una advertencia con detalle (por ahora, la licencia en un día pasado: avisa y no bloquea). */
+export interface RegisterPastShiftWarning {
+  code: string
+  employeeId: string | null
+  message: string | null
+}
+
+export interface RegisterPastShiftResult {
+  shiftId: string
+  /** `HOLIDAY` y `ON_LEAVE`. */
+  warnings: string[]
+  warningsDetail: RegisterPastShiftWarning[]
+  assigned: CreateShiftAssigned[]
+  attendance: {
+    assignmentId: string
+    employeeId: string
+    checkInAt: string
+    checkOutAt: string
+  }[]
+}
+
+/**
+ * «Registrar como realizado» (0087, OH-09; dueño y administración con
+ * «Gestionar asistencia»): crea el turno que ya pasó, asigna a cada persona y
+ * les carga la asistencia con el inicio y el fin del turno, todo en una sola
+ * transacción: si una persona falla, no se guarda nada y el error (con su
+ * `message` y `hint`: `SHIFT_NOT_PAST`, `EMPLOYEES_REQUIRED`,
+ * `ASSIGNMENT_OVERLAP`, `SHIFT_DATE_TAKEN`...) dice quién y por qué.
+ */
+export async function registerPastShift(
+  input: RegisterPastShiftInput,
+): Promise<RegisterPastShiftResult> {
+  const { data, error } = await supabase.rpc('register_past_shift', {
+    p_client_id: input.clientId,
+    p_site_id: input.siteId,
+    p_date: input.date,
+    p_start: input.start,
+    p_end: input.end,
+    p_required_staff: input.requiredStaff,
+    p_service_id: input.serviceId,
+    p_notes: input.notes ?? undefined,
+    p_show_in_print: input.showInPrint ?? true,
+    p_requires_photos: input.requiresPhotos ?? undefined,
+    p_employee_ids: input.employeeIds,
+  })
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+
+  const payload = data as {
+    shift: { id: string }
+    warnings?: string[]
+    warnings_detail?: Array<{
+      code?: string
+      employee_id?: string | null
+      message?: string | null
+    }>
+    assigned?: Array<{
+      employee_id: string
+      assignment_id: string
+      warnings?: string[]
+    }>
+    attendance?: Array<{
+      assignment_id: string
+      employee_id: string
+      check_in_at: string
+      check_out_at: string
+    }>
+  }
+  return {
+    shiftId: payload.shift.id,
+    warnings: payload.warnings ?? [],
+    warningsDetail: (payload.warnings_detail ?? []).map((item) => ({
+      code: item.code ?? '',
+      employeeId: item.employee_id ?? null,
+      message: item.message ?? null,
+    })),
+    assigned: (payload.assigned ?? []).map((item) => ({
+      employeeId: item.employee_id,
+      assignmentId: item.assignment_id,
+      warnings: item.warnings ?? [],
+    })),
+    attendance: (payload.attendance ?? []).map((item) => ({
+      assignmentId: item.assignment_id,
+      employeeId: item.employee_id,
+      checkInAt: item.check_in_at,
+      checkOutAt: item.check_out_at,
+    })),
+  }
+}
+
+// -------------------------------------------------------------------------
 // 2.b. preview_shift_series y create_shift_series (ADM-07, repetir un turno — AJ3-08)
 // -------------------------------------------------------------------------
 

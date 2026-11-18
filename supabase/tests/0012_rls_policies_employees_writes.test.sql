@@ -270,26 +270,28 @@ select throws_ok(
 set local role postgres;
 select tests_0012e.as_user('test-emp013-admin@example.com');
 
+-- Desde 0087 (OH-08) las licencias se guardan con save_employee_leave: el insert y el update
+-- directos ya no están permitidos para authenticated.
 select lives_ok(
-  $$insert into public.employee_leaves (id, employee_id, starts_on, ends_on, reason)
-    values ('c2302000-0000-0000-0000-000000000030', 'c2302000-0000-0000-0000-000000000084', current_date, current_date + 5, 'estudio')$$,
-  'employee_leaves: el admin puede registrar una licencia'
+  $$select public.save_employee_leave(null, 'c2302000-0000-0000-0000-000000000084', current_date, current_date + 5, 'estudio')$$,
+  'employee_leaves: el admin puede registrar una licencia (save_employee_leave)'
 );
 
 select lives_ok(
-  $$update public.employee_leaves set reason = 'estudio (corregido)'
-    where id = 'c2302000-0000-0000-0000-000000000030'$$,
-  'employee_leaves: el admin puede editar una licencia'
+  $$select public.save_employee_leave(
+      (select id from public.employee_leaves where employee_id = 'c2302000-0000-0000-0000-000000000084' and reason = 'estudio'),
+      'c2302000-0000-0000-0000-000000000084', current_date, current_date + 5, 'estudio (corregido)')$$,
+  'employee_leaves: el admin puede editar una licencia (save_employee_leave)'
 );
 
 select lives_ok(
-  $$insert into public.employee_leaves (employee_id, starts_on, ends_on)
-    values ('c2302000-0000-0000-0000-000000000084', current_date + 2, current_date + 8)$$,
+  $$select public.save_employee_leave(null, 'c2302000-0000-0000-0000-000000000084', current_date + 2, current_date + 8, null)$$,
   'employee_leaves: el admin puede registrar una licencia que se superpone con otra vigente del mismo empleado (0082, OF-20: se quitó la exclusión de 0006)'
 );
 
 select lives_ok(
-  $$update public.employee_leaves set deleted_at = now() where id = 'c2302000-0000-0000-0000-000000000030'$$,
+  $$update public.employee_leaves set deleted_at = now(), updated_by = auth.uid()
+    where employee_id = 'c2302000-0000-0000-0000-000000000084' and reason = 'estudio (corregido)'$$,
   'employee_leaves: la baja lógica (deleted_at) de una licencia es un update permitido para el admin'
 );
 

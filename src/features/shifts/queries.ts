@@ -7,6 +7,7 @@ import { groupShiftPeople } from '@/features/shifts/shiftPeople'
 import type {
   CreateShiftInput,
   CreateShiftSeriesInput,
+  RegisterPastShiftInput,
   ShiftSeriesRule,
 } from '@/api/shifts'
 
@@ -104,6 +105,25 @@ export function useCreateShiftMutation() {
       // AJ2-17: el turno puede traer asignaciones (planificación y personas del día).
       void queryClient.invalidateQueries({ queryKey: shiftsKeys.all })
       void queryClient.invalidateQueries({ queryKey: PLANNING_KEY_ROOT })
+    },
+  })
+}
+
+/**
+ * «Registrar como realizado» (OH-09): crea el turno que ya pasó con sus
+ * asignaciones y la asistencia. Además de lo del alta, invalida la asistencia
+ * y los avisos/atención (las horas y los pendientes cambian).
+ */
+export function useRegisterPastShiftMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: RegisterPastShiftInput) =>
+      shiftsApi.registerPastShift(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: shiftsKeys.all })
+      void queryClient.invalidateQueries({ queryKey: PLANNING_KEY_ROOT })
+      void queryClient.invalidateQueries({ queryKey: ATTENDANCE_KEY_ROOT })
+      void queryClient.invalidateQueries({ queryKey: ['attention'] })
     },
   })
 }

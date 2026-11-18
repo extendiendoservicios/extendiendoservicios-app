@@ -496,3 +496,59 @@ describe('aplicar los fijos a los turnos (OD-11)', () => {
     ).rejects.toMatchObject({ hint: 'SERVICE_NOT_FOUND' })
   })
 })
+
+describe('cambios del servicio: gana el último cambio (OH-11)', () => {
+  it('lee overridden_count, overridden y overridden_fields', async () => {
+    const { parseServiceChangesResult } = await import('./services')
+    const result = parseServiceChangesResult({
+      from_date: '2026-11-18',
+      deleted_count: 0,
+      updated_count: 12,
+      overridden_count: 3,
+      created_count: 0,
+      unchanged_count: 0,
+      skipped_count: 0,
+      assignments_removed: 0,
+      assignments_added: 0,
+      updated: [
+        {
+          shift_id: 'sh1',
+          shift_date: '2026-11-20',
+          changes: { required_staff: { from: 1, to: 2 } },
+          overridden_fields: ['required_staff'],
+        },
+      ],
+      overridden: [
+        {
+          shift_id: 'sh1',
+          shift_date: '2026-11-20',
+          fields: ['required_staff'],
+        },
+      ],
+    })
+    expect(result.updatedCount).toBe(12)
+    expect(result.overriddenCount).toBe(3)
+    expect(result.overridden).toEqual([
+      { shiftId: 'sh1', shiftDate: '2026-11-20', fields: ['required_staff'] },
+    ])
+    expect(result.updated[0]?.overriddenFields).toEqual(['required_staff'])
+  })
+
+  it('sin los campos nuevos (respuesta vieja) quedan en cero y vacíos', async () => {
+    const { parseServiceChangesResult } = await import('./services')
+    const result = parseServiceChangesResult({
+      from_date: '2026-11-18',
+      deleted_count: 0,
+      updated_count: 1,
+      created_count: 0,
+      unchanged_count: 0,
+      skipped_count: 0,
+      assignments_removed: 0,
+      assignments_added: 0,
+      updated: [{ shift_id: 'sh1', shift_date: '2026-11-20' }],
+    })
+    expect(result.overriddenCount).toBe(0)
+    expect(result.overridden).toEqual([])
+    expect(result.updated[0]?.overriddenFields).toEqual([])
+  })
+})

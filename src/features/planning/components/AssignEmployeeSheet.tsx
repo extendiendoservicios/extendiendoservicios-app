@@ -58,6 +58,8 @@ interface AssignEmployeeSheetProps {
   excludeEmployeeIds: string[]
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Se llama cuando la asignación se creó (con o sin advertencias). */
+  onAssigned?: () => void
 }
 
 function AssignEmployeeSheet({
@@ -70,6 +72,7 @@ function AssignEmployeeSheet({
   excludeEmployeeIds,
   open,
   onOpenChange,
+  onAssigned,
 }: AssignEmployeeSheetProps) {
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -156,6 +159,7 @@ function AssignEmployeeSheet({
         start: values.startTime || undefined,
         end: values.endTime || undefined,
       })
+      onAssigned?.()
       if (result.warnings.length > 0) {
         // No bloquean (P-034, P-035, P-033): la asignación ya se creó, se
         // deja el panel abierto para que las advertencias se vean antes de
