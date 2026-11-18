@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { useLocalStorageFlag } from '@/features/employees/useLocalStorageFlag'
 import { GripVertical } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,6 +19,8 @@ import { filterUncoveredShifts } from '@/features/employees/cronogramaWeek'
 const DRAG_THRESHOLD_PX = 4
 /** Valor del filtro de día que no filtra. */
 const ALL_DAYS = 'todos'
+/** Clave del navegador donde se recuerda que el panel está oculto (pantallas anchas). */
+const HIDDEN_KEY = 'es.sinCubrir.oculto'
 
 export interface UncoveredDragState {
   shift: ShiftListRow
@@ -57,7 +60,10 @@ function UncoveredPanel({
 }) {
   const [text, setText] = useState('')
   const [date, setDate] = useState<string>(ALL_DAYS)
+  // Por debajo de 1280 px el panel va debajo del calendario y plegado; desde
+  // 1280 px va al costado y se puede ocultar (se recuerda en el navegador).
   const [open, setOpen] = useState(false)
+  const [hidden, setHidden] = useLocalStorageFlag(HIDDEN_KEY)
   const filtered = useMemo(
     () =>
       filterUncoveredShifts(uncovered, {
@@ -70,7 +76,9 @@ function UncoveredPanel({
 
   return (
     <aside
-      className="w-full shrink-0 rounded-md border border-border bg-white p-3 lg:w-64"
+      className={`w-full shrink-0 rounded-md border border-border bg-white p-3 ${
+        hidden ? 'xl:w-auto' : 'xl:w-56'
+      }`}
       aria-label="Turnos sin cubrir del mes"
     >
       <div className="flex items-center justify-between gap-2">
@@ -80,17 +88,29 @@ function UncoveredPanel({
         <Button
           size="sm"
           variant="ghost"
-          className="lg:hidden"
+          className="xl:hidden"
           aria-expanded={open}
           aria-controls="panel-sin-cubrir"
           onClick={() => setOpen((value) => !value)}
         >
           {open ? 'Ocultar' : 'Mostrar'}
         </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="max-xl:hidden"
+          aria-expanded={!hidden}
+          aria-controls="panel-sin-cubrir"
+          onClick={() => setHidden(!hidden)}
+        >
+          {hidden ? 'Mostrar' : 'Ocultar'}
+        </Button>
       </div>
       <div
         id="panel-sin-cubrir"
-        className={open ? 'mt-2 block' : 'mt-2 hidden lg:block'}
+        className={`mt-2 ${open ? 'block' : 'hidden'} ${
+          hidden ? 'xl:hidden' : 'xl:block'
+        }`}
       >
         <p className="mb-2 text-[11px] text-text-2">
           Arrastrá uno al calendario para asignar a {personName}, o usá
@@ -134,7 +154,7 @@ function UncoveredPanel({
                 {filtered.length} de {uncovered.length}
               </p>
             )}
-            <ul className="flex max-h-80 flex-col gap-1.5 overflow-y-auto pr-1 lg:max-h-[32rem]">
+            <ul className="flex max-h-80 flex-col gap-1.5 overflow-y-auto pr-1 xl:max-h-[32rem]">
               {filtered.map((shift) => (
                 <UncoveredItem
                   key={shift.id}

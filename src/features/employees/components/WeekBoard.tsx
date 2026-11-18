@@ -87,7 +87,7 @@ function LabelCell({
   }
 
   const className =
-    'min-w-0 flex-1 px-0.5 text-center text-[10px] leading-[14px] font-bold [overflow-wrap:anywhere]'
+    'min-w-0 flex-1 px-0.5 text-center text-[10px] leading-[14px] font-bold line-clamp-2 [overflow-wrap:anywhere]'
   if (editing) {
     return (
       <Input
@@ -119,6 +119,7 @@ function LabelCell({
     <button
       type="button"
       aria-label={`Editar el nombre: ${shown}`}
+      title={shown}
       className={`${className} cursor-text hover:underline`}
       onClick={() => {
         if (suppressClick()) {
@@ -538,7 +539,7 @@ function WeekBoardPanel({
       </p>
 
       <div className="overflow-x-auto rounded-md border border-border bg-white p-1.5">
-        <table className="w-full min-w-[560px] table-fixed border-collapse font-mono text-black">
+        <table className="w-full min-w-[560px] table-fixed lg:min-w-0 border-collapse font-mono text-black">
           <thead>
             <tr>
               {SCREEN_WEEKDAYS.map((weekday) => (
