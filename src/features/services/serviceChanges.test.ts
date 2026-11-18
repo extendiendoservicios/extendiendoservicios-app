@@ -289,3 +289,19 @@ describe('serviceChangesCanAddShifts (OF-05b)', () => {
     ).toBe(false)
   })
 })
+
+describe('OH-12: borrar la fecha de fin', () => {
+  it('pasar de una fecha «hasta» a null cuenta como cambio que puede agregar días', () => {
+    const before: ServiceDetail = { ...BEFORE, validTo: '2026-12-31' }
+    const after: ServiceFormInput = { ...SAME, validTo: null }
+    expect(serviceChangesAffectShifts(before, after)).toBe(true)
+    expect(serviceChangesCanAddShifts(before, after)).toBe(true)
+  })
+
+  it('«sin fin» antes y después no es un cambio', () => {
+    const before: ServiceDetail = { ...BEFORE, validTo: null }
+    expect(serviceChangesCanAddShifts(before, { ...SAME, validTo: null })).toBe(
+      false,
+    )
+  })
+})

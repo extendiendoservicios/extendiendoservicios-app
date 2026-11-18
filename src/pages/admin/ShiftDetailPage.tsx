@@ -1,4 +1,5 @@
-import { useLocation, useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
+import { useBackTo } from '@/app/shells/backNavigation'
 import {
   Sheet,
   SheetContent,
@@ -29,22 +30,14 @@ const DESKTOP_QUERY = '(min-width: 1024px)'
 export default function ShiftDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const location = useLocation()
   const isDesktop = useMediaQuery(DESKTOP_QUERY)
+  // OH-03: volver a la vista desde la que se abrió (mes, semana o día, con su
+  // mes y sus filtros en la dirección). Si se entró por un enlace directo no
+  // hay a dónde volver: va al calendario.
+  const handleClose = useBackTo('/admin/planificacion')
 
   if (!id) {
     return null
-  }
-
-  // Volver a la vista desde la que se abrió (mes, semana o día). Si se
-  // entró por un enlace directo no hay a dónde volver (`key` 'default'): va
-  // al calendario.
-  function handleClose() {
-    if (location.key === 'default') {
-      void navigate('/admin/planificacion')
-    } else {
-      void navigate(-1)
-    }
   }
 
   // OD-22: después de borrar el turno no hay a dónde volver en el historial.

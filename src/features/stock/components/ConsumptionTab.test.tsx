@@ -5,6 +5,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ConsumptionRow } from '@/api/stock'
 import { mockViewport } from '@/features/stock/testSupport'
@@ -85,7 +86,7 @@ afterEach(() => {
 
 describe('ConsumptionTab: consumo por cliente (IS-24)', () => {
   it('por defecto pide el mes en curso, sin cliente ni sede', () => {
-    render(<ConsumptionTab />)
+    render(<ConsumptionTab />, { wrapper: MemoryRouter })
     expect(queryArgs.calls.at(-1)).toEqual({
       dateFrom: '2026-10-01',
       dateTo: '2026-10-26',
@@ -95,7 +96,7 @@ describe('ConsumptionTab: consumo por cliente (IS-24)', () => {
   })
 
   it('«Mes anterior» cambia el período al mes completo', () => {
-    render(<ConsumptionTab />)
+    render(<ConsumptionTab />, { wrapper: MemoryRouter })
     fireEvent.click(screen.getByRole('button', { name: 'Mes anterior' }))
     expect(queryArgs.calls.at(-1)).toMatchObject({
       dateFrom: '2026-09-01',
@@ -121,7 +122,7 @@ describe('ConsumptionTab: consumo por cliente (IS-24)', () => {
         saleTotal: 800,
       }),
     ]
-    render(<ConsumptionTab />)
+    render(<ConsumptionTab />, { wrapper: MemoryRouter })
 
     const total = within(screen.getByTestId('consumption-total'))
     expect(total.getByText('$ 800,00')).toBeInTheDocument()
@@ -150,7 +151,7 @@ describe('ConsumptionTab: consumo por cliente (IS-24)', () => {
 
   it('cada sede muestra un chevron y avisa con aria-expanded si está abierta', async () => {
     consumptionState.data = [row()]
-    render(<ConsumptionTab />)
+    render(<ConsumptionTab />, { wrapper: MemoryRouter })
 
     const summary = screen.getByText('Casa Central').closest('summary')!
     expect(within(summary).getByTestId('site-chevron')).toBeInTheDocument()
@@ -166,7 +167,7 @@ describe('ConsumptionTab: consumo por cliente (IS-24)', () => {
   })
 
   it('sin retiros en el período muestra un mensaje en español', () => {
-    render(<ConsumptionTab />)
+    render(<ConsumptionTab />, { wrapper: MemoryRouter })
     expect(
       screen.getByText('No hubo retiros en ese período'),
     ).toBeInTheDocument()
@@ -174,7 +175,7 @@ describe('ConsumptionTab: consumo por cliente (IS-24)', () => {
 
   it('«Exportar a Excel» baja las filas del período filtrado', async () => {
     consumptionState.data = [row(), row({ day: '2026-10-06' })]
-    render(<ConsumptionTab />)
+    render(<ConsumptionTab />, { wrapper: MemoryRouter })
     fireEvent.click(screen.getByRole('button', { name: 'Exportar a Excel' }))
     await waitFor(() => expect(downloadMock).toHaveBeenCalledTimes(1))
     const [fileName, spec] = downloadMock.mock.calls[0] as [
@@ -183,5 +184,28 @@ describe('ConsumptionTab: consumo por cliente (IS-24)', () => {
     ]
     expect(fileName).toBe('consumo-por-cliente-2026-10-01_a_2026-10-26')
     expect(spec.rows).toBe(consumptionState.data)
+  })
+})
+
+describe('ConsumptionTab: período en la dirección (OH-03)', () => {
+  it('toma el período de la dirección y «Mes anterior» lo escribe ahí', () => {
+    render(
+      <MemoryRouter
+        initialEntries={[
+          '/admin/insumos?pestana=consumo&consumo_desde=2026-08-01&consumo_hasta=2026-08-31',
+        ]}
+      >
+        <ConsumptionTab />
+      </MemoryRouter>,
+    )
+    expect(queryArgs.calls.at(-1)).toMatchObject({
+      dateFrom: '2026-08-01',
+      dateTo: '2026-08-31',
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Mes anterior' }))
+    expect(queryArgs.calls.at(-1)).toMatchObject({
+      dateFrom: '2026-09-01',
+      dateTo: '2026-09-30',
+    })
   })
 })

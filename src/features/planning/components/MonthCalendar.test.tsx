@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router'
+import { MemoryRouter, useLocation } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MonthCalendar } from './MonthCalendar'
 
@@ -44,13 +44,53 @@ vi.mock('@/features/planning/queries', () => ({
   useShiftsBoardRangeQuery: boardMock,
 }))
 
+function LocationProbe() {
+  const location = useLocation()
+  return <p data-testid="url">{location.search}</p>
+}
+
 function renderMonth(url = '/admin/planificacion') {
   return render(
     <MemoryRouter initialEntries={[url]}>
       <MonthCalendar onOpenDay={() => undefined} />
+      <LocationProbe />
     </MemoryRouter>,
   )
 }
+
+describe('MonthCalendar: el mes vive en la dirección (OH-03)', () => {
+  it('muestra el mes de ?mes= (al volver de un turno no salta al mes actual)', () => {
+    renderMonth('/admin/planificacion?mes=2026-12')
+    expect(boardMock).toHaveBeenCalledWith(
+      '2026-12-01',
+      '2026-12-31',
+      expect.anything(),
+    )
+  })
+
+  it('«Mes siguiente» lo escribe en la dirección y conserva los filtros', () => {
+    renderMonth('/admin/planificacion?cliente=c1')
+    fireEvent.click(screen.getByRole('button', { name: 'Mes siguiente' }))
+    expect(screen.getByTestId('url').textContent).toBe(
+      '?cliente=c1&mes=2026-11',
+    )
+  })
+
+  it('volver al mes actual quita el parámetro', () => {
+    renderMonth('/admin/planificacion?mes=2026-11')
+    fireEvent.click(screen.getByRole('button', { name: 'Mes anterior' }))
+    expect(screen.getByTestId('url').textContent).toBe('')
+  })
+
+  it('un mes inválido en la dirección cae en el actual', () => {
+    renderMonth('/admin/planificacion?mes=2026-13')
+    expect(boardMock).toHaveBeenCalledWith(
+      '2026-10-01',
+      '2026-10-31',
+      expect.anything(),
+    )
+  })
+})
 
 beforeEach(() => {
   window.localStorage.clear()

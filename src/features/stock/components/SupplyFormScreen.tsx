@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link, useNavigate, useParams } from 'react-router'
+import { useParams } from 'react-router'
+import { BackLink } from '@/components/BackLink'
+import { useLeaveForm } from '@/app/shells/backNavigation'
 import { toast } from 'sonner'
 import { PackageX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -70,7 +72,7 @@ function SupplyFormScreen() {
         description="Pedile a la dirección el permiso «Gestionar stock»."
         action={
           <Button asChild variant="ghost">
-            <Link to="/admin/insumos">Volver a Insumos</Link>
+            <BackLink fallback="/admin/insumos">Volver a Insumos</BackLink>
           </Button>
         }
       />
@@ -96,7 +98,7 @@ function SupplyFormScreen() {
         description="Puede que se haya movido o que el enlace esté roto."
         action={
           <Button asChild variant="ghost">
-            <Link to="/admin/insumos">Volver a Insumos</Link>
+            <BackLink fallback="/admin/insumos">Volver a Insumos</BackLink>
           </Button>
         }
       />
@@ -108,7 +110,7 @@ function SupplyFormScreen() {
 
 function SupplyForm({ item }: { item: StockItem | null }) {
   const isEdit = item != null
-  const navigate = useNavigate()
+  const leaveForm = useLeaveForm()
   const categoriesQuery = useSupplyCategoriesQuery()
   const save = useSaveSupplyMutation()
   const [image, setImage] = useState<SupplyImageDraft>({ action: 'keep' })
@@ -152,7 +154,8 @@ function SupplyForm({ item }: { item: StockItem | null }) {
           ? 'Guardamos los cambios del artículo.'
           : 'Cargamos el artículo.',
       )
-      void navigate(`/admin/insumos/${saved.id}`)
+      // OH-03: al editar vuelve a donde se estaba; al crear reemplaza el formulario.
+      leaveForm(`/admin/insumos/${saved.id}`, isEdit ? 'edit' : 'create')
     } catch (error) {
       if (isApiError(error) && error.hint === 'CODE_ALREADY_EXISTS') {
         setError('code', { message: error.message })
@@ -324,9 +327,11 @@ function SupplyForm({ item }: { item: StockItem | null }) {
 
       <div className="flex flex-wrap justify-end gap-2">
         <Button asChild variant="ghost">
-          <Link to={item ? `/admin/insumos/${item.id}` : '/admin/insumos'}>
+          <BackLink
+            fallback={item ? `/admin/insumos/${item.id}` : '/admin/insumos'}
+          >
             Cancelar
-          </Link>
+          </BackLink>
         </Button>
         <Button type="submit" loading={save.isPending}>
           {isEdit ? 'Guardar cambios' : 'Cargar artículo'}

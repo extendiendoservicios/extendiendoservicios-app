@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useSearchParamsPatch } from '@/hooks/useSearchParamsPatch'
 import { toast } from 'sonner'
 import { ChevronRight, Download, PackageSearch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -45,9 +46,23 @@ import { isoDateToDate } from './MovementFilters'
  */
 function ConsumptionTab() {
   const today = todayInBuenosAires()
-  const [period, setPeriod] = useState(() => monthPeriod(today, 0))
-  const [clientId, setClientId] = useState('all')
-  const [siteId, setSiteId] = useState('all')
+  // OH-03: período, cliente y sede viven en la dirección (`consumo_*`).
+  const defaultPeriod = monthPeriod(today, 0)
+  const [params, updateParams] = useSearchParamsPatch({
+    consumo_desde: defaultPeriod.dateFrom,
+    consumo_hasta: defaultPeriod.dateTo,
+    consumo_cliente: 'all',
+    consumo_sede: 'all',
+  })
+  const period = {
+    dateFrom: params.consumo_desde,
+    dateTo: params.consumo_hasta,
+  }
+  const clientId = params.consumo_cliente
+  const siteId = params.consumo_sede
+  const setPeriod = (next: { dateFrom: string; dateTo: string }) =>
+    updateParams({ consumo_desde: next.dateFrom, consumo_hasta: next.dateTo })
+  const setSiteId = (value: string) => updateParams({ consumo_sede: value })
 
   const filters = useMemo(
     () => ({
@@ -56,7 +71,7 @@ function ConsumptionTab() {
       clientId: clientId === 'all' ? undefined : clientId,
       siteId: siteId === 'all' ? undefined : siteId,
     }),
-    [period, clientId, siteId],
+    [period.dateFrom, period.dateTo, clientId, siteId],
   )
   const consumptionQuery = useSupplyConsumptionQuery(filters)
   const clientsQuery = useStockClientOptionsQuery()
@@ -141,8 +156,7 @@ function ConsumptionTab() {
           <Select
             value={clientId}
             onValueChange={(value) => {
-              setClientId(value)
-              setSiteId('all')
+              updateParams({ consumo_cliente: value, consumo_sede: 'all' })
             }}
           >
             <SelectTrigger aria-label="Filtrar por cliente">

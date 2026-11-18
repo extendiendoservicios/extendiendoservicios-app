@@ -1,4 +1,5 @@
-import { useLocation, useNavigate, useParams } from 'react-router'
+import { useParams } from 'react-router'
+import { useBackTo } from '@/app/shells/backNavigation'
 import {
   Sheet,
   SheetContent,
@@ -18,22 +19,13 @@ const DESKTOP_QUERY = '(min-width: 1024px)'
  */
 export default function SupervisionDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
-  const location = useLocation()
   const isDesktop = useMediaQuery(DESKTOP_QUERY)
+  // OH-03: vuelve a la vista desde la que se abrió (ADM-13 o ADM-06) tal como
+  // estaba. Si se entró por un enlace directo, va al listado.
+  const handleClose = useBackTo('/admin/supervisiones')
 
   if (!id) {
     return null
-  }
-
-  // Vuelve a la vista desde la que se abrió (ADM-13 o ADM-06). Si se entró
-  // por un enlace directo no hay a dónde volver: va al listado.
-  function handleClose() {
-    if (location.key === 'default') {
-      void navigate('/admin/supervisiones')
-    } else {
-      void navigate(-1)
-    }
   }
 
   if (isDesktop) {

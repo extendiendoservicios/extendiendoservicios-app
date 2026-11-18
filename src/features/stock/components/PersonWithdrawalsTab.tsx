@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useSearchParamsPatch } from '@/hooks/useSearchParamsPatch'
 import { PackageOpen } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -33,7 +34,18 @@ function PersonWithdrawalsTab({
   name: string
 }) {
   const today = todayInBuenosAires()
-  const [period, setPeriod] = useState(() => monthPeriod(today, 0))
+  // OH-03: el período vive en la dirección (`retiros_desde`, `retiros_hasta`).
+  const defaultPeriod = monthPeriod(today, 0)
+  const [params, updateParams] = useSearchParamsPatch({
+    retiros_desde: defaultPeriod.dateFrom,
+    retiros_hasta: defaultPeriod.dateTo,
+  })
+  const period = {
+    dateFrom: params.retiros_desde,
+    dateTo: params.retiros_hasta,
+  }
+  const setPeriod = (next: { dateFrom: string; dateTo: string }) =>
+    updateParams({ retiros_desde: next.dateFrom, retiros_hasta: next.dateTo })
   const withdrawalsQuery = usePersonWithdrawalsQuery(
     profileId,
     period.dateFrom,
