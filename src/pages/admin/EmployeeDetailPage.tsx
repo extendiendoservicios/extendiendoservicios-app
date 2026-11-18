@@ -27,7 +27,7 @@ import {
   TerminateEmployeeDialog,
 } from '@/features/employees/components/EmployeeAccountDialogs'
 import { EmployeeAvailabilityTab } from '@/features/employees/components/EmployeeAvailabilityTab'
-import { EmployeeCronogramaTab } from '@/features/employees/components/EmployeeCronogramaTab'
+import { EmployeeCalendarioTab } from '@/features/employees/components/EmployeeCalendarioTab'
 import { EmployeeClientPermissionsTab } from '@/features/employees/components/EmployeeClientPermissionsTab'
 import {
   personSignerLabel,
@@ -42,6 +42,7 @@ import {
   useEmployeeDetailQuery,
   useEmployeeRatingsSummaryQuery,
 } from '@/features/employees/queries'
+import { WeekBoardPanel } from '@/features/employees/components/WeekBoard'
 import { RatingSummary } from '@/features/employees/components/RatingSummary'
 import { SupervisorPrioritiesTab } from '@/features/supervisions/components/SupervisorPrioritiesTab'
 import { canManageSupervisions } from '@/features/supervisions/permissions'
@@ -51,7 +52,7 @@ import { SupervisorWorkdaysTab } from '@/features/workdays/components/Supervisor
 
 const TABS = [
   'datos',
-  'cronograma',
+  'calendario',
   'habilitaciones',
   'disponibilidad',
   'licencias',
@@ -64,13 +65,18 @@ const TABS = [
 ] as const
 type EmployeeDetailTab = (typeof TABS)[number]
 
+/** OH-04: «cronograma» era el nombre de la pestaña; los enlaces guardados siguen andando. */
+function normalizeTab(value: string | null): string | null {
+  return value === 'cronograma' ? 'calendario' : value
+}
+
 function isEmployeeDetailTab(value: string | null): value is EmployeeDetailTab {
   return TABS.includes(value as EmployeeDetailTab)
 }
 
 /**
  * ADM-17 "Empleado · ficha" (`05` línea 66): cabecera (foto, nombre,
- * legajo, roles, estado efectivo) y las siete pestañas, más «Cronograma» (P27.4, OD-01) después de «Datos» (más dos para quien
+ * legajo, roles, estado efectivo) y las siete pestañas, más «Calendario» (P27.4, OD-01, OH-04) después de «Datos» (más dos para quien
  * tiene el rol coordinador, P24.3: «Clientes y sedes preferenciales» y
  * «Jornadas», y «Retiros» de insumos para dueño y administradores, P25.3). Datos, Habilitaciones
  * (EMP-006), Disponibilidad (EMP-007) y Licencias (EMP-008) están completas;
@@ -94,17 +100,26 @@ export default function EmployeeDetailPage() {
     'reset-password' | 'sign-out' | 'terminate' | 'roles' | 'delete' | null
   >(null)
 
-  const activeTab = isEmployeeDetailTab(searchParams.get('pestana'))
-    ? (searchParams.get('pestana') as EmployeeDetailTab)
-    : 'datos'
+  const requestedTab = normalizeTab(searchParams.get('pestana'))
+  const activeTab = isEmployeeDetailTab(requestedTab) ? requestedTab : 'datos'
 
   function handleTabChange(value: string) {
     const next = new URLSearchParams(searchParams)
+    // El mes del calendario solo vale para esa pestaña.
+    next.delete('mes')
     if (value === 'datos') {
       next.delete('pestana')
     } else {
       next.set('pestana', value)
     }
+    setSearchParams(next, { replace: true })
+  }
+
+  // OH-03: el mes del calendario vive en la dirección; `replace` para no llenar el historial.
+  function handleMonthChange(monthParam: string) {
+    const next = new URLSearchParams(searchParams)
+    next.set('pestana', 'calendario')
+    next.set('mes', monthParam)
     setSearchParams(next, { replace: true })
   }
 
@@ -137,6 +152,9 @@ export default function EmployeeDetailPage() {
 
   const isTerminated = employee.effectiveStatus === 'terminated'
   const canEdit = canEditEmployee(actor)
+  // Calendario editable y cronograma semanal (OH-05, OH-07): quien administra turnos y horarios.
+  const canEditCalendar =
+    canManageAssignments(actor) && canManageShiftTime(actor)
   // CR-19: baja, cambio de roles, contraseña y cierre de sesiones sobre un
   // dueño o administrador solo los hace el dueño (`canActOnUser` ya lo cubre).
   const canManageAccount = canActOnUser(actor, employee.roles)
@@ -155,36 +173,46 @@ export default function EmployeeDetailPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 rounded-lg border border-border bg-surface p-5">
-        <div className="flex min-w-0 items-center gap-4">
-          <Avatar
-            id={employee.profileId}
-            name={`${employee.firstName} ${employee.lastName}`}
-            src={employee.avatarPath ? avatarUrl(employee.avatarPath) : null}
-            size="lg"
-          />
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-[16px] font-semibold text-text">
-                {employee.firstName} {employee.lastName}
-              </h2>
-              <StatusBadge
-                domain="employee"
-                status={employee.effectiveStatus}
-              />
-            </div>
-            <p className="text-[12px] text-text-3">
-              Legajo {employee.employeeNumber}
-              {employee.roles.length > 0
-                ? ` · ${employee.roles.map((role) => ROLE_LABELS[role]).join(', ')}`
-                : ''}
-            </p>
-            {/* AJ-05: promedio de calificaciones en una tercera línea. */}
-            <div className="mt-1">
-              <RatingSummary
-                summary={ratingsQuery.data?.get(employee.profileId)}
-              />
+        {/* OH-07: el cronograma semanal va debajo de las estrellas; en celular, a todo el ancho. */}
+        <div
+          className={`flex min-w-0 flex-col gap-3 ${
+            canEditCalendar ? 'w-full lg:w-auto lg:flex-1' : ''
+          }`}
+        >
+          <div className="flex min-w-0 items-center gap-4">
+            <Avatar
+              id={employee.profileId}
+              name={`${employee.firstName} ${employee.lastName}`}
+              src={employee.avatarPath ? avatarUrl(employee.avatarPath) : null}
+              size="lg"
+            />
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-[16px] font-semibold text-text">
+                  {employee.firstName} {employee.lastName}
+                </h2>
+                <StatusBadge
+                  domain="employee"
+                  status={employee.effectiveStatus}
+                />
+              </div>
+              <p className="text-[12px] text-text-3">
+                Legajo {employee.employeeNumber}
+                {employee.roles.length > 0
+                  ? ` · ${employee.roles.map((role) => ROLE_LABELS[role]).join(', ')}`
+                  : ''}
+              </p>
+              {/* AJ-05: promedio de calificaciones en una tercera línea. */}
+              <div className="mt-1">
+                <RatingSummary
+                  summary={ratingsQuery.data?.get(employee.profileId)}
+                />
+              </div>
             </div>
           </div>
+          {canEditCalendar && (
+            <WeekBoardPanel profileId={employee.profileId} canEdit />
+          )}
         </div>
         {/* P26.2b: a todo el ancho en celular y tablet; en escritorio, en la columna de la derecha. */}
         <div className="flex w-full min-w-0 flex-col gap-3 lg:w-[30rem]">
@@ -250,7 +278,7 @@ export default function EmployeeDetailPage() {
       <Tabs value={visibleTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="datos">Datos</TabsTrigger>
-          <TabsTrigger value="cronograma">Cronograma</TabsTrigger>
+          <TabsTrigger value="calendario">Calendario</TabsTrigger>
           <TabsTrigger value="habilitaciones">Habilitaciones</TabsTrigger>
           <TabsTrigger value="disponibilidad">Disponibilidad</TabsTrigger>
           <TabsTrigger value="licencias">Licencias</TabsTrigger>
@@ -278,10 +306,12 @@ export default function EmployeeDetailPage() {
           />
         </TabsContent>
 
-        <TabsContent value="cronograma" className="pt-3">
-          <EmployeeCronogramaTab
+        <TabsContent value="calendario" className="pt-3">
+          <EmployeeCalendarioTab
             profileId={employee.profileId}
-            canEdit={canManageAssignments(actor) && canManageShiftTime(actor)}
+            monthParam={searchParams.get('mes')}
+            onMonthChange={handleMonthChange}
+            canEdit={canEditCalendar}
             person={{
               employeeNumber: employee.employeeNumber,
               name: `${employee.firstName} ${employee.lastName}`,
