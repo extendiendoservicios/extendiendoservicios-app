@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { TimeInput } from '@/components/TimeInput'
+import { normalizeTypedTime } from '@/features/employees/typedTime'
 import { clientChipColors } from '@/features/planning/clientColors'
 
 /**
@@ -29,8 +29,11 @@ export function gapBlockColors(colorIndex: number | null) {
 }
 
 /**
- * Casilla de hora: se toca y se edita ahí mismo con `TimeInput`. Enter o salir
- * de la casilla confirman; Escape cancela y deja la hora como estaba.
+ * Casilla de hora: se toca y se edita ahí mismo. DEF-P30-05: es un campo de
+ * texto (no `input type="time"`): el control nativo de hora, controlado y en una
+ * casilla de ~47 px, descartaba lo escrito porque `onChange` llega con vacío
+ * mientras la hora está incompleta. Se escribe «0830» o «8:30»; Enter o salir de
+ * la casilla confirman; Escape cancela y deja la hora como estaba.
  */
 export function TimeCell({
   value,
@@ -59,20 +62,32 @@ export function TimeCell({
     }
     finished.current = true
     setEditing(false)
-    if (confirm && draft !== value) {
-      onCommit(draft)
+    const typed = normalizeTypedTime(draft)
+    if (confirm && typed !== value) {
+      onCommit(typed)
     }
   }
 
   const className =
-    'border border-neutral-500 px-0.5 text-center text-[11px] leading-4 tabular-nums'
+    'min-w-0 border border-neutral-500 px-0 text-center text-[11px] leading-4 tabular-nums lg:text-[10px] xl:text-[11px]'
   if (editing) {
     return (
-      <TimeInput
-        ref={(element) => element?.focus()}
+      <input
+        ref={(element) => {
+          if (element && !element.dataset.focused) {
+            element.dataset.focused = '1'
+            element.focus()
+            element.select()
+          }
+        }}
+        type="text"
+        inputMode="numeric"
+        autoComplete="off"
+        maxLength={5}
+        placeholder="HH:MM"
         aria-label={label}
         value={draft}
-        className="h-5 rounded-none px-0.5 py-0 text-[11px]"
+        className="relative z-10 h-5 w-full min-w-[3.25rem] rounded-none border border-primary bg-surface px-0.5 text-center text-[11px] text-text tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring"
         onChange={(event) => setDraft(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === 'Enter') {

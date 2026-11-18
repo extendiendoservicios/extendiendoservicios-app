@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router'
 
 /**
@@ -41,6 +42,14 @@ export function useSearchParamState<T>(
   codec?: SearchParamCodec<T>,
 ): [T, SetSearchParamState<T>] {
   const [searchParams, setSearchParams] = useSearchParams()
+  // DEF-P30-01: react-router le pasa al setter funcional la dirección del
+  // último render. Con dos cambios seguidos antes de que se vuelva a dibujar,
+  // el segundo partía de la dirección vieja. Se guarda la última dirección
+  // escrita hasta que el render la refleje.
+  const written = useRef<URLSearchParams | null>(null)
+  useEffect(() => {
+    written.current = null
+  }, [searchParams])
 
   const read = (raw: string | null): T => {
     if (raw === null) {
@@ -56,7 +65,7 @@ export function useSearchParamState<T>(
   const setValue: SetSearchParamState<T> = (next, options) => {
     setSearchParams(
       (previous) => {
-        const params = new URLSearchParams(previous)
+        const params = new URLSearchParams(written.current ?? previous)
         const nextValue =
           typeof next === 'function'
             ? (next as (current: T) => T)(read(params.get(key)))
@@ -67,6 +76,7 @@ export function useSearchParamState<T>(
         } else {
           params.set(key, nextRaw)
         }
+        written.current = new URLSearchParams(params)
         return params
       },
       { replace: options?.replace ?? true },

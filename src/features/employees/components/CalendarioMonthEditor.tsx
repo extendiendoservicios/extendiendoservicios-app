@@ -207,7 +207,8 @@ function MonthBlock({
             type="button"
             data-testid="sede"
             aria-label={`Abrir el turno de ${siteLabel}`}
-            className="min-w-0 flex-1 px-0.5 text-center text-[10px] leading-[14px] font-bold [overflow-wrap:anywhere] hover:underline"
+            title={siteLabel}
+            className="line-clamp-2 min-w-0 flex-1 px-0.5 text-center text-[10px] leading-[14px] font-bold [overflow-wrap:anywhere] hover:underline"
             onClick={() => {
               if (!suppressClick()) {
                 onOpenShift(block)
@@ -219,7 +220,8 @@ function MonthBlock({
         ) : (
           <span
             data-testid="sede"
-            className="min-w-0 flex-1 px-0.5 text-center text-[10px] leading-[14px] font-bold [overflow-wrap:anywhere]"
+            title={siteLabel}
+            className="line-clamp-2 min-w-0 flex-1 px-0.5 text-center text-[10px] leading-[14px] font-bold [overflow-wrap:anywhere]"
           >
             {siteLabel}
           </span>
@@ -596,7 +598,7 @@ function CalendarioMonthEditor({
         }`}
       >
         <div className="flex h-full min-h-[21mm]">
-          <span className="w-5 shrink-0 border-r border-neutral-500 pt-0.5 text-center text-[11px] font-bold tabular-nums">
+          <span className="w-4 shrink-0 border-r border-neutral-500 pt-0.5 text-center text-[10px] font-bold tabular-nums xl:w-5 xl:text-[11px]">
             {day.inMonth ? day.day : ''}
           </span>
           {fullCell ? (
@@ -667,7 +669,7 @@ function CalendarioMonthEditor({
           validaciones del servidor.
         </p>
       )}
-      <div className="flex flex-col gap-3 lg:flex-row">
+      <div className="flex flex-col gap-3 xl:flex-row">
         <div
           ref={gridRef}
           className={`min-w-0 flex-1 overflow-x-auto rounded-md border bg-white p-3 ${
@@ -676,7 +678,7 @@ function CalendarioMonthEditor({
               : 'border-border'
           }`}
         >
-          <div className="min-w-[860px] font-mono text-black">
+          <div className="min-w-[700px] font-mono text-black lg:min-w-0 print:min-w-[860px]">
             <h2 className="mb-1.5 text-[16px] font-bold">{month.title}</h2>
             <table className="w-full table-fixed border-collapse">
               <thead>

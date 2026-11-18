@@ -75,4 +75,15 @@ describe('useSearchParamState (OH-03)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
     expect(screen.getByTestId('url')).toHaveTextContent('/lista?pagina=3')
   })
+
+  it('DEF-P30-01: dos cambios funcionales seguidos, sin esperar el render, suman los dos', () => {
+    renderAt('/lista')
+    const next = screen.getByRole('button', { name: 'Siguiente' })
+    act(() => {
+      fireEvent.click(next)
+      fireEvent.click(next)
+    })
+    expect(screen.getByTestId('url')).toHaveTextContent('/lista?pagina=3')
+    expect(screen.getByTestId('estado')).toHaveTextContent('2026-11|3')
+  })
 })

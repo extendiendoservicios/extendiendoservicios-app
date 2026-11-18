@@ -169,7 +169,6 @@ export default function EmployeeDetailPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 rounded-lg border border-border bg-surface p-5">
-        {/* OH-07: el cronograma semanal va debajo de las estrellas; en celular, a todo el ancho. */}
         <div
           className={`flex min-w-0 flex-col gap-3 ${
             canEditCalendar ? 'w-full lg:w-auto lg:flex-1' : ''
@@ -206,9 +205,6 @@ export default function EmployeeDetailPage() {
               </div>
             </div>
           </div>
-          {canEditCalendar && (
-            <WeekBoardPanel profileId={employee.profileId} canEdit />
-          )}
         </div>
         {/* P26.2b: a todo el ancho en celular y tablet; en escritorio, en la columna de la derecha. */}
         <div className="flex w-full min-w-0 flex-col gap-3 lg:w-[30rem]">
@@ -269,6 +265,12 @@ export default function EmployeeDetailPage() {
             />
           )}
         </div>
+        {/* OH-07 / DEF-P30-02: el cronograma semanal ocupa todo el ancho de la cabecera, debajo de los datos y los botones, para que entren los 7 días desde 1024 px. */}
+        {canEditCalendar && (
+          <div className="w-full min-w-0 basis-full">
+            <WeekBoardPanel profileId={employee.profileId} canEdit />
+          </div>
+        )}
       </div>
 
       <Tabs value={visibleTab} onValueChange={handleTabChange}>

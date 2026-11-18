@@ -168,6 +168,18 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
     setMonthKey(`${nextYear}-${String(nextMonth).padStart(2, '0')}`)
   }
 
+  // DEF-P30-01: se calcula sobre el mes más reciente, no sobre el del render.
+  function stepMonth(step: 1 | -1) {
+    setMonthKey((current) => {
+      const target = addMonthsToYearMonth(
+        Number(current.slice(0, 4)),
+        Number(current.slice(5, 7)),
+        step,
+      )
+      return `${target.year}-${String(target.month).padStart(2, '0')}`
+    })
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -175,10 +187,7 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
           <IconButton
             icon={ChevronLeft}
             aria-label="Mes anterior"
-            onClick={() => {
-              const prev = addMonthsToYearMonth(year, month, -1)
-              goToMonth(prev.year, prev.month)
-            }}
+            onClick={() => stepMonth(-1)}
           />
           <MonthPicker
             aria-label="Elegir mes"
@@ -191,10 +200,7 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
           <IconButton
             icon={ChevronRight}
             aria-label="Mes siguiente"
-            onClick={() => {
-              const next = addMonthsToYearMonth(year, month, 1)
-              goToMonth(next.year, next.month)
-            }}
+            onClick={() => stepMonth(1)}
           />
         </div>
       </div>

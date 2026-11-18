@@ -564,6 +564,23 @@ describe('CalendarioMonthEditor: avisos', () => {
     })
   })
 
+  it('acepta la hora escrita con el teclado («0930») y la confirma (DEF-P30-05)', async () => {
+    renderEditor({ assignments, shifts })
+    fireEvent.click(screen.getByRole('button', { name: /Hora de inicio/ }))
+    const input = screen.getByRole('textbox', { name: /Hora de inicio/ })
+    let acc = ''
+    for (const char of '0930') {
+      acc += char
+      fireEvent.change(input, { target: { value: acc } })
+    }
+    fireEvent.keyDown(input, { key: 'Enter' })
+    await waitFor(() => expect(run).toHaveBeenCalled())
+    expect(run.mock.calls[0]?.[0]).toMatchObject({
+      kind: 'shift_time',
+      start: '09:30',
+    })
+  })
+
   it('muestra el mensaje del servidor con «Ver turno» cuando hay choque', async () => {
     run.mockRejectedValue(
       new ApiError('Acosta ya está en otra sede.', 'ASSIGNMENT_OVERLAP', {

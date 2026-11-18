@@ -335,7 +335,7 @@ describe('Cronograma semanal (OH-07)', () => {
     const name = /Hora de inicio de SEDE CENTRAL/
     const [startCell] = await screen.findAllByRole('button', { name })
     fireEvent.click(startCell as HTMLElement)
-    const input = document.querySelector('input[type="time"]') as HTMLElement
+    const input = screen.getByRole('textbox', { name })
     fireEvent.change(input, { target: { value: '09:15' } })
     fireEvent.keyDown(input, { key: 'Enter' })
 

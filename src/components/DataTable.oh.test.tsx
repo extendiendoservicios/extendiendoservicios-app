@@ -82,6 +82,29 @@ describe('DataTable — OH-01 (alto acotado)', () => {
     expect(headers[1]).toHaveClass('sticky', 'top-0')
   })
 
+  it('DEF-P30-06: el encabezado fijo es opaco y queda por encima de las celdas y de las filas resaltadas', () => {
+    mockCardViewport(false)
+    render(
+      <DataTable
+        columns={COLUMNS}
+        data={DATA}
+        caption="Demo"
+        maxVisibleRows={10}
+        rowVariant={() => 'crit'}
+      />,
+    )
+    const headers = screen.getAllByRole('columnheader')
+    for (const header of headers) {
+      expect(header).toHaveClass('bg-[var(--table-header-bg)]')
+    }
+    // Encabezado (z 4) por encima de las celdas (z 1); la esquina (z 5), por encima de ambos.
+    expect(headers[1]).toHaveClass('z-[4]')
+    expect(headers[0]).toHaveClass('z-[5]')
+    const firstBodyCell = screen.getAllByRole('cell')[0] as HTMLElement
+    expect(firstBodyCell).toHaveClass('z-[1]')
+    expect(firstBodyCell).not.toHaveClass('z-[4]', 'z-[5]')
+  })
+
   it('maxHeight tiene prioridad sobre maxVisibleRows', () => {
     mockCardViewport(false)
     const { container } = render(
