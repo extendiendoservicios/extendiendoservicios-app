@@ -42,6 +42,7 @@ const BASE: ServiceChangesResult = {
   fromDate: '2026-11-12',
   deletedCount: 0,
   updatedCount: 0,
+  overriddenCount: 0,
   createdCount: 0,
   unchangedCount: 0,
   skippedCount: 0,
@@ -49,6 +50,7 @@ const BASE: ServiceChangesResult = {
   assignmentsAdded: 0,
   deleted: [],
   updated: [],
+  overridden: [],
   created: [],
   skipped: [],
   unassigned: [],
@@ -59,6 +61,7 @@ const WITH_CHANGES: ServiceChangesResult = {
   ...BASE,
   deletedCount: 2,
   updatedCount: 1,
+  overriddenCount: 1,
   createdCount: 3,
   skippedCount: 1,
   deleted: [
@@ -82,8 +85,10 @@ const WITH_CHANGES: ServiceChangesResult = {
       requiresPhotos: null,
       removed: [],
       kept: [],
+      overriddenFields: ['time'],
     },
   ],
+  overridden: [{ shiftId: 'u1', shiftDate: '2026-11-17', fields: ['time'] }],
   skipped: [
     {
       scope: 'shift',
@@ -146,7 +151,7 @@ describe('ApplyServiceChangesDialog (OF-05)', () => {
     ).toBeInTheDocument()
     expect(
       await screen.findByText(
-        'Se borran 2 turnos; se actualiza 1 turno; se crean 3 turnos; se saltea 1 turno.',
+        'Se borran 2 turnos; se actualiza 1 turno, que tenía cambios a mano que se reemplazan; se crean 3 turnos; se saltea 1 turno.',
       ),
     ).toBeInTheDocument()
     expect(previewMock).toHaveBeenCalledWith(
@@ -163,6 +168,11 @@ describe('ApplyServiceChangesDialog (OF-05)', () => {
       screen.getByText('Horario: 12:00 a 14:00 → 12:30 a 14:30'),
     ).toBeInTheDocument()
     expect(screen.getByText('Dotación: 1 → 3')).toBeInTheDocument()
+    // OH-11: gana el último cambio; los cambios a mano se reemplazan.
+    expect(
+      screen.getByText('Tenía cambios a mano en el horario: se reemplazan.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/se conserva/i)).toBeNull()
     expect(
       screen.getByText(/El turno se creó a mano, no desde el servicio\./),
     ).toBeInTheDocument()
@@ -182,7 +192,7 @@ describe('ApplyServiceChangesDialog (OF-05)', () => {
     )
     expect(
       await screen.findByText(
-        'Borramos 2 turnos; actualizamos 1 turno; creamos 3 turnos; salteamos 1 turno.',
+        'Borramos 2 turnos; actualizamos 1 turno, que tenía cambios a mano que se reemplazaron; creamos 3 turnos; salteamos 1 turno.',
       ),
     ).toBeInTheDocument()
     expect(applyFixedMock).not.toHaveBeenCalled()

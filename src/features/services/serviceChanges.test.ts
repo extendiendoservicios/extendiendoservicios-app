@@ -3,8 +3,10 @@ import type { ServiceDetail, ServiceFormInput } from '@/api/services'
 import {
   buildServicePrevious,
   describeServiceOverlap,
+  describeUpdatedShift,
   describeShiftOverlap,
   isServiceChangesEmpty,
+  overriddenFieldsText,
   pluralWeekdays,
   serviceChangesAffectShifts,
   serviceChangesCanAddShifts,
@@ -206,6 +208,7 @@ const EMPTY_RESULT = {
   fromDate: '2026-11-12',
   deletedCount: 0,
   updatedCount: 0,
+  overriddenCount: 0,
   createdCount: 0,
   unchangedCount: 5,
   skippedCount: 0,
@@ -213,6 +216,7 @@ const EMPTY_RESULT = {
   assignmentsAdded: 0,
   deleted: [],
   updated: [],
+  overridden: [],
   created: [],
   skipped: [],
   unassigned: [],
@@ -234,6 +238,55 @@ describe('summarizeServiceChanges', () => {
     expect(summarizeServiceChanges(result, true)).toBe(
       'Borramos 2 turnos; actualizamos 1 turno; creamos 4 turnos; salteamos 1 turno.',
     )
+  })
+
+  it('OH-11: dice cuántos turnos tenían cambios a mano que se reemplazan', () => {
+    const result = { ...EMPTY_RESULT, updatedCount: 12, overriddenCount: 3 }
+    expect(summarizeServiceChanges(result, false)).toBe(
+      'Se actualizan 12 turnos, 3 de ellos tenían cambios a mano que se reemplazan.',
+    )
+    expect(summarizeServiceChanges(result, true)).toBe(
+      'Actualizamos 12 turnos, 3 de ellos tenían cambios a mano que se reemplazaron.',
+    )
+    const one = { ...EMPTY_RESULT, updatedCount: 1, overriddenCount: 1 }
+    expect(summarizeServiceChanges(one, false)).toBe(
+      'Se actualiza 1 turno, que tenía cambios a mano que se reemplazan.',
+    )
+    expect(
+      summarizeServiceChanges({ ...result, overriddenCount: 1 }, true),
+    ).toBe(
+      'Actualizamos 12 turnos, 1 de ellos tenía cambios a mano que se reemplazaron.',
+    )
+    // Sin cambios a mano no se agrega nada, y ya no se habla de turnos «conservados».
+    expect(
+      summarizeServiceChanges({ ...result, overriddenCount: 0 }, false),
+    ).toBe('Se actualizan 12 turnos.')
+  })
+
+  it('OH-11: describe los campos con cambios a mano de cada turno actualizado', () => {
+    expect(overriddenFieldsText([])).toBeNull()
+    expect(overriddenFieldsText(['time'])).toBe(
+      'Tenía cambios a mano en el horario: se reemplazan.',
+    )
+    expect(
+      overriddenFieldsText(['time', 'required_staff', 'requires_photos']),
+    ).toBe(
+      'Tenía cambios a mano en el horario, la dotación y las fotos: se reemplazan.',
+    )
+    const lines = describeUpdatedShift({
+      shiftId: 'u1',
+      shiftDate: '2026-11-17',
+      time: null,
+      requiredStaff: { from: 1, to: 2 },
+      requiresPhotos: null,
+      removed: [],
+      kept: [],
+      overriddenFields: ['required_staff'],
+    })
+    expect(lines).toEqual([
+      'Dotación: 1 → 2',
+      'Tenía cambios a mano en la dotación: se reemplazan.',
+    ])
   })
 
   it('sin cambios lo dice', () => {
