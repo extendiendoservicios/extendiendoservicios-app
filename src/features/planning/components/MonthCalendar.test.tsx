@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MonthCalendar } from './MonthCalendar'
@@ -73,6 +73,18 @@ describe('MonthCalendar: el mes vive en la dirección (OH-03)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mes siguiente' }))
     expect(screen.getByTestId('url').textContent).toBe(
       '?cliente=c1&mes=2026-11',
+    )
+  })
+
+  it('DEF-P30-01: dos clics seguidos en «Mes siguiente» avanzan dos meses', () => {
+    renderMonth('/admin/planificacion?cliente=c1')
+    const next = screen.getByRole('button', { name: 'Mes siguiente' })
+    act(() => {
+      fireEvent.click(next)
+      fireEvent.click(next)
+    })
+    expect(screen.getByTestId('url').textContent).toBe(
+      '?cliente=c1&mes=2026-12',
     )
   })
 

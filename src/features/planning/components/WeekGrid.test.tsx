@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { WeekGrid } from './WeekGrid'
@@ -87,6 +87,18 @@ function renderGrid(url = '/admin/planificacion?vista=semana') {
 }
 
 describe('WeekGrid: la semana vive en la dirección (OH-03)', () => {
+  it('DEF-P30-01: dos clics seguidos en «Semana siguiente» avanzan dos semanas', () => {
+    renderGrid('/admin/planificacion?vista=semana&cliente=c1')
+    const next = screen.getByRole('button', { name: 'Semana siguiente' })
+    act(() => {
+      fireEvent.click(next)
+      fireEvent.click(next)
+    })
+    expect(screen.getByTestId('url').textContent).toBe(
+      '?vista=semana&cliente=c1&semana=2026-11-02',
+    )
+  })
+
   it('muestra la semana de ?semana= (volver desde un turno no la reinicia)', () => {
     renderGrid('/admin/planificacion?vista=semana&semana=2026-11-02')
     expect(screen.getByText(/^lun 2 nov – /i)).toBeInTheDocument()
