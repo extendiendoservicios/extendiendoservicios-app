@@ -66,8 +66,7 @@ const {
   createEmployeeAvailability,
   deleteEmployeeAvailability,
   fetchEmployeeLeaves,
-  createEmployeeLeave,
-  updateEmployeeLeave,
+  saveEmployeeLeave,
   deactivateEmployeeLeave,
   fetchEmployeeDnisByIds,
 } = await import('./employees')
@@ -617,68 +616,11 @@ describe('fetchEmployeeLeaves', () => {
   })
 })
 
-describe('createEmployeeLeave', () => {
-  it('acepta una licencia que se superpone con otra (OF-20)', async () => {
-    fromMock.mockReturnValue(makeChainable({ data: null, error: null }))
-    await expect(
-      createEmployeeLeave(
-        'e1',
-        { startsOn: '2026-01-10', endsOn: '2026-01-20', reason: 'Enfermedad' },
-        'admin-1',
-      ),
-    ).resolves.toBeUndefined()
-  })
-
-  it('traduce el check de ends_on >= starts_on a un mensaje claro', async () => {
-    fromMock.mockReturnValue(
-      makeChainable({
-        data: null,
-        error: {
-          message:
-            'new row for relation "employee_leaves" violates check constraint "employee_leaves_ends_on_check"',
-          code: '23514',
-        },
-      }),
-    )
-    await expect(
-      createEmployeeLeave(
-        'e1',
-        { startsOn: '2026-01-10', endsOn: '2026-01-01', reason: null },
-        'admin-1',
-      ),
-    ).rejects.toMatchObject({ hint: 'VALIDATION_ERROR' })
-  })
-})
-
 describe('deactivateEmployeeLeave', () => {
   it('marca deleted_at en vez de borrar la fila (baja lógica)', async () => {
     fromMock.mockReturnValue(makeChainable({ data: [], error: null }))
     await deactivateEmployeeLeave('l1', 'admin-1')
     expect(fromMock).toHaveBeenCalledWith('employee_leaves')
-  })
-})
-
-describe('updateEmployeeLeave (AJ2-08)', () => {
-  it('actualiza fechas y motivo de la misma fila', async () => {
-    const chain = makeChainable({ data: null, error: null })
-    const updateSpy = vi.fn(() => chain)
-    const eqSpy = vi.fn(() => chain)
-    chain.update = updateSpy
-    chain.eq = eqSpy
-    fromMock.mockReturnValue(chain)
-    await updateEmployeeLeave(
-      'l1',
-      { startsOn: '2026-01-10', endsOn: '2026-01-20', reason: 'Viaje' },
-      'admin-1',
-    )
-    expect(fromMock).toHaveBeenCalledWith('employee_leaves')
-    expect(updateSpy).toHaveBeenCalledWith({
-      starts_on: '2026-01-10',
-      ends_on: '2026-01-20',
-      reason: 'Viaje',
-      updated_by: 'admin-1',
-    })
-    expect(eqSpy).toHaveBeenCalledWith('id', 'l1')
   })
 })
 
@@ -702,57 +644,132 @@ describe('fetchEmployeeDnisByIds (AJ2-16)', () => {
   })
 })
 
-describe('fetchLeaveConflicts (OF-08b)', () => {
-  it('mapea el servicio y el mensaje del detail', async () => {
-    const { fetchLeaveConflicts } = await import('./employees')
+describe('saveEmployeeLeave (OH-08)', () => {
+  const input = {
+    startsOn: '2026-11-03',
+    endsOn: '2026-11-06',
+    reason: 'Vacaciones',
+  }
+
+  const rawEntry = {
+    assignment_id: 'as1',
+    shift_id: 'sh1',
+    shift_date: '2026-11-04',
+    start_time: '15:00:00',
+    end_time: '17:00:00',
+    open_ended: false,
+    shift_status: 'assigned',
+    client_id: 'c1',
+    client_name: 'YPF',
+    site_id: 'si1',
+    site_name: 'Ruta',
+    service_id: 'sv1',
+    service_name: 'Turno tarde',
+    detail: { code: 'LEAVE_RELEASED', message: 'Se libera a Ana de Ruta.' },
+  }
+
+  it('alta: llama a save_employee_leave con p_leave_id nulo y mapea lo liberado y lo conservado', async () => {
     rpcMock.mockResolvedValue({
-      data: [
-        {
-          assignment_id: 'as1',
-          shift_id: 'sh1',
-          shift_date: '2026-11-09',
-          start_time: '15:00:00',
-          end_time: '17:00:00',
-          open_ended: false,
-          client_id: 'c1',
-          client_name: 'YPF',
-          site_id: 'si1',
-          site_name: 'Ruta',
-          shift_status: 'assigned',
-          service_id: 'sv1',
-          service_name: 'Turno tarde',
-          detail: { shift_id: 'sh1', message: 'Acosta ya está en Ruta.' },
-        },
-        {
-          assignment_id: 'as2',
-          shift_id: 'sh2',
-          shift_date: '2026-11-10',
-          start_time: '08:00:00',
-          end_time: '12:00:00',
-          open_ended: false,
-          client_id: 'c1',
-          client_name: 'YPF',
-          site_id: 'si1',
-          site_name: 'Ruta',
-          shift_status: 'assigned',
-          service_id: null,
-          service_name: null,
-          detail: null,
-        },
-      ],
+      data: {
+        preview: false,
+        leave: { id: 'l9' },
+        released: [rawEntry],
+        kept: [
+          {
+            ...rawEntry,
+            assignment_id: 'as2',
+            shift_id: 'sh2',
+            service_id: null,
+            service_name: null,
+            detail: null,
+          },
+        ],
+        released_count: 1,
+        kept_count: 1,
+      },
       error: null,
     })
-    const rows = await fetchLeaveConflicts('e1', '2026-11-09', null)
-    expect(rows[0]).toMatchObject({
-      shiftId: 'sh1',
-      serviceId: 'sv1',
-      serviceName: 'Turno tarde',
-      message: 'Acosta ya está en Ruta.',
+    const result = await saveEmployeeLeave('e1', input)
+    expect(rpcMock).toHaveBeenCalledWith('save_employee_leave', {
+      p_leave_id: null,
+      p_employee_id: 'e1',
+      p_starts_on: '2026-11-03',
+      p_ends_on: '2026-11-06',
+      p_reason: 'Vacaciones',
+      p_preview: false,
     })
-    expect(rows[1]).toMatchObject({
+    expect(result).toMatchObject({
+      preview: false,
+      leaveId: 'l9',
+      releasedCount: 1,
+      keptCount: 1,
+    })
+    expect(result.released[0]).toMatchObject({
+      assignmentId: 'as1',
+      shiftId: 'sh1',
+      clientName: 'YPF',
+      siteName: 'Ruta',
+      serviceName: 'Turno tarde',
+      message: 'Se libera a Ana de Ruta.',
+    })
+    expect(result.kept[0]).toMatchObject({
       serviceId: null,
       serviceName: null,
       message: null,
     })
+  })
+
+  it('cambio con vista previa: manda el id de la licencia y p_preview', async () => {
+    rpcMock.mockResolvedValue({
+      data: {
+        preview: true,
+        leave: { id: 'l1' },
+        released: [],
+        kept: [],
+        released_count: 0,
+        kept_count: 0,
+      },
+      error: null,
+    })
+    const result = await saveEmployeeLeave(
+      'e1',
+      { startsOn: '2026-11-03', endsOn: null, reason: null },
+      { leaveId: 'l1', preview: true },
+    )
+    expect(rpcMock).toHaveBeenCalledWith('save_employee_leave', {
+      p_leave_id: 'l1',
+      p_employee_id: 'e1',
+      p_starts_on: '2026-11-03',
+      p_ends_on: null,
+      p_reason: null,
+      p_preview: true,
+    })
+    expect(result.preview).toBe(true)
+    expect(result.released).toEqual([])
+  })
+
+  it('traduce el hint del error a un ApiError con el mensaje del servidor', async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: {
+        message: 'La fecha "hasta" no puede ser anterior a la fecha "desde".',
+        hint: 'INVALID_DATE_RANGE',
+      },
+    })
+    const error = await saveEmployeeLeave('e1', input).catch((e: unknown) => e)
+    expect(isApiError(error)).toBe(true)
+    expect(error).toMatchObject({
+      hint: 'INVALID_DATE_RANGE',
+      message: 'La fecha "hasta" no puede ser anterior a la fecha "desde".',
+    })
+  })
+
+  it('ya no escribe en employee_leaves directamente', async () => {
+    rpcMock.mockResolvedValue({
+      data: { released: [], kept: [] },
+      error: null,
+    })
+    await saveEmployeeLeave('e1', input)
+    expect(fromMock).not.toHaveBeenCalled()
   })
 })

@@ -10,6 +10,10 @@ import type {
   EmployeeUpdateInput,
 } from '@/api/employees'
 import { setUserRoles, signOutUser, type Role } from '@/api/users'
+import { planningKeys } from '@/features/planning/queries'
+import { shiftsKeys } from '@/features/shifts/queries'
+import { attendanceKeys } from '@/features/attendance/queries'
+import { attentionKeys } from '@/features/dashboard/queries'
 import { useInvalidateAccessStatus, usersKeys } from '@/features/users/queries'
 
 /**
@@ -372,46 +376,37 @@ export function useEmployeeLeavesQuery(profileId: string) {
   })
 }
 
-/** P19.11d: turnos ya asignados dentro del período de una licencia recién guardada (se llama después de guardar). */
-export function useLeaveConflictsMutation(profileId: string) {
-  return useMutation({
-    mutationFn: ({
-      startsOn,
-      endsOn,
-    }: {
-      startsOn: string
-      endsOn: string | null
-    }) => employeesApi.fetchLeaveConflicts(profileId, startsOn, endsOn),
-  })
-}
-
-export function useCreateEmployeeLeaveMutation(profileId: string) {
+/**
+ * OH-08: alta o cambio de una licencia con `save_employee_leave`. Con
+ * `preview` solo informa qué turnos se liberarían (no invalida nada); al
+ * guardar de verdad invalida lo que toca la liberación: la propia licencia, la
+ * ficha y el listado, la planificación y los turnos del día, el calendario del
+ * empleado, la asistencia y los avisos/atención.
+ */
+export function useSaveEmployeeLeaveMutation(profileId: string) {
   const invalidate = useInvalidateEmployeeLeaves(profileId)
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({
       input,
-      createdBy,
+      leaveId,
+      preview,
     }: {
       input: EmployeeLeaveInput
-      createdBy: string
-    }) => employeesApi.createEmployeeLeave(profileId, input, createdBy),
-    onSuccess: invalidate,
-  })
-}
-
-export function useUpdateEmployeeLeaveMutation(profileId: string) {
-  const invalidate = useInvalidateEmployeeLeaves(profileId)
-  return useMutation({
-    mutationFn: ({
-      id,
-      input,
-      updatedBy,
-    }: {
-      id: string
-      input: EmployeeLeaveInput
-      updatedBy: string
-    }) => employeesApi.updateEmployeeLeave(id, input, updatedBy),
-    onSuccess: invalidate,
+      leaveId?: string | null
+      preview?: boolean
+    }) =>
+      employeesApi.saveEmployeeLeave(profileId, input, { leaveId, preview }),
+    onSuccess: (result) => {
+      if (result.preview) {
+        return
+      }
+      invalidate()
+      void queryClient.invalidateQueries({ queryKey: planningKeys.all })
+      void queryClient.invalidateQueries({ queryKey: shiftsKeys.all })
+      void queryClient.invalidateQueries({ queryKey: attendanceKeys.all })
+      void queryClient.invalidateQueries({ queryKey: attentionKeys.all })
+    },
   })
 }
 
