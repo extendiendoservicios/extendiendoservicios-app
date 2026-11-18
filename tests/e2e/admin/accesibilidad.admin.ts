@@ -101,6 +101,15 @@ test.describe('axe: administrador', () => {
             'ADM-17 Ficha del empleado',
             `/admin/empleados/${readId('empleado5')}`,
           ],
+          // P30 (OH-04, OH-05, OH-07, OH-08): calendario mensual editable, licencias y cronograma semanal.
+          [
+            'ADM-17 Ficha del empleado: calendario',
+            `/admin/empleados/${readId('empleado5')}?pestana=calendario`,
+          ],
+          [
+            'ADM-17 Ficha del empleado: licencias',
+            `/admin/empleados/${readId('empleado5')}?pestana=licencias`,
+          ],
           ['ADM-19 Clientes', '/admin/clientes'],
           ['ADM-21 Detalle del cliente', `/admin/clientes/${cliente.id}`],
           ['ADM-22 Detalle de la sede', `/admin/sedes/${sede.id}`],

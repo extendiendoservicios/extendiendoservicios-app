@@ -1095,6 +1095,57 @@ export const CASOS_RPC: CasoRpc[] = [
     { cubre: ['RB-X02', 'B-36'] },
   ),
 
+  // --- P30 (0087): licencias que liberan turnos, fijos sin asignar, pizarra semanal y turnos pasados.
+  // Los argumentos no escriben nada: la persona no existe (dueño y administradores pasan la puerta y
+  // reciben el error propio) o es una vista previa. Los casos con datos están en `103-p30.permissions.ts`.
+  caso(
+    'save_employee_leave',
+    () => ({
+      p_leave_id: null,
+      p_employee_id: U,
+      p_starts_on: '2099-01-01',
+      p_ends_on: null,
+      p_reason: 'e2e-perm',
+      p_preview: true,
+    }),
+    admins('EMPLOYEE_NOT_FOUND'),
+    { cubre: ['RB-A03', 'RB-X02', 'CB-17', 'OH-08'] },
+  ),
+  caso(
+    'employee_fixed_gaps',
+    () => ({ p_employee_id: U, p_from: '2099-01-01', p_to: '2099-01-31' }),
+    admins('OK'),
+    { cubre: ['RB-A04', 'RB-X02', 'CB-17', 'OH-06'] },
+  ),
+  caso('employee_fixed_pattern', () => ({ p_employee_id: U }), admins('OK'), {
+    cubre: ['RB-A05', 'RB-X02', 'CB-17', 'OH-07'],
+  }),
+  caso('get_employee_week_board', () => ({ p_employee_id: U }), admins('OK'), {
+    cubre: ['RB-A05', 'RB-X02', 'CB-17', 'OH-07'],
+  }),
+  caso(
+    'save_employee_week_board',
+    () => ({ p_employee_id: U, p_blocks: [] }),
+    admins('EMPLOYEE_NOT_FOUND'),
+    { cubre: ['RB-A05', 'RB-X02', 'CB-17', 'OH-07'] },
+  ),
+  // Solo la dirección y la administración con «Gestionar asistencia»: el administrador sin
+  // capacidades recibe FORBIDDEN. Con la hora de fin anterior al inicio pasan la puerta y reciben
+  // INVALID_TIME_RANGE sin escribir nada.
+  caso(
+    'register_past_shift',
+    () => ({
+      p_client_id: U,
+      p_site_id: U,
+      p_date: '2020-01-01',
+      p_start: '10:00',
+      p_end: '08:00',
+      p_employee_ids: [],
+    }),
+    conCapacidad('INVALID_TIME_RANGE'),
+    { cubre: ['RB-A04', 'RB-A08', 'RB-X02', 'CB-17', 'OH-09'] },
+  ),
+
   // --- Uso exclusivo de `service_role` (nadie con sesión las puede llamar) ----------------------
   // `admin_create_user_records` y `admin_find_orphan_account` las cierra `revoke all` (0035/0036);
   // la 0049 agrega el `revoke execute` explícito que el inventario estático busca.
