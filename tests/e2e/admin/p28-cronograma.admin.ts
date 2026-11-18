@@ -445,7 +445,8 @@ test.describe('calendario mensual editable (OF-10, OH-05)', () => {
           start: '10:00',
           end: '12:00',
         })
-        await page.setViewportSize({ width: 1440, height: 1000 })
+        // Ventana alta: el panel y el día de destino se ven sin desplazarse y el mouse llega a los dos.
+        await page.setViewportSize({ width: 1440, height: 1700 })
         await abrirCalendario(page, 'empleado3', dia(2))
         const panel = page.getByRole('complementary', {
           name: 'Turnos sin cubrir del mes',

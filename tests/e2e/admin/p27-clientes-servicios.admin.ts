@@ -85,11 +85,12 @@ test.describe('categorías de clientes (OD-20, OD-21)', () => {
           await expect(
             sin.getByRole('row').filter({ hasText: sinCategoria.name }),
           ).toBeVisible()
-          // «Sin categoría» es el último grupo.
+          // «Sin categoría» es el último grupo. P30 (OH-14): el título es un botón con la flecha, el
+          // nombre y, al lado, el número de clientes (ya no «(15)»).
           const titulos = await page
             .locator('section[aria-label] > h2')
             .allTextContents()
-          expect(titulos.at(-1)).toMatch(/^Sin categoría \(\d+\)$/)
+          expect(titulos.at(-1)).toMatch(/^Sin categoría\s*\d+$/)
           expect(
             titulos.findIndex((t) => t.startsWith(nombreCategoria)),
           ).toBeLessThan(titulos.length - 1)
@@ -120,16 +121,24 @@ test.describe('categorías de clientes (OD-20, OD-21)', () => {
         })
 
         await test.step('OD-21: el total de clientes activos, arriba, en el listado y en el mapa', async () => {
-          const { count } = await sc.db
-            .from('clients')
-            .select('id', { count: 'exact', head: true })
-            .eq('status', 'active')
-            .is('deleted_at', null)
-          const texto = `${count} ${count === 1 ? 'cliente activo' : 'clientes activos'}`
-          await page.goto('/admin/clientes')
-          await expect(page.getByText(texto, { exact: true })).toBeVisible()
-          await page.goto('/admin/clientes?pestana=mapa')
-          await expect(page.getByText(texto, { exact: true })).toBeVisible()
+          // Otras pruebas en paralelo crean y borran clientes activos: el total se lee de la base y
+          // de la pantalla en el mismo intento y se reintenta si cambió entre una lectura y otra.
+          await expect(async () => {
+            const { count } = await sc.db
+              .from('clients')
+              .select('id', { count: 'exact', head: true })
+              .eq('status', 'active')
+              .is('deleted_at', null)
+            const texto = `${count} ${count === 1 ? 'cliente activo' : 'clientes activos'}`
+            await page.goto('/admin/clientes')
+            await expect(page.getByText(texto, { exact: true })).toBeVisible({
+              timeout: 4_000,
+            })
+            await page.goto('/admin/clientes?pestana=mapa')
+            await expect(page.getByText(texto, { exact: true })).toBeVisible({
+              timeout: 4_000,
+            })
+          }).toPass({ timeout: 40_000 })
         })
       } finally {
         // La categoría de la prueba se da de baja del todo con la clave de servicio (no se puede

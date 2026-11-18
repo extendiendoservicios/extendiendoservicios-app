@@ -122,7 +122,7 @@ test(
           .getByRole('combobox', { name: 'Elegir cliente preferencial' })
           .click()
         await page.getByRole('option', { name: cliente.name }).click()
-        await page.getByRole('button', { name: 'Agregar' }).click()
+        await page.getByRole('button', { name: 'Agregar', exact: true }).click()
         await expect(
           page.getByText('Agregamos el cliente como preferencial.'),
         ).toBeVisible()

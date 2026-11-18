@@ -78,6 +78,26 @@ test.describe('volver conserva el mes, la pestaña y los filtros (OH-03)', () =>
   )
 
   test(
+    'formularios: «Cancelar» en «Nuevo turno» vuelve a Planificación en el mismo mes',
+    cubre('RB-A04', 'OH-03'),
+    async ({ page }) => {
+      await page.goto(`/admin/planificacion?vista=mes&mes=${MES}`)
+      await expect(
+        page.getByRole('button', { name: 'Elegir mes' }),
+      ).toContainText(`julio ${ANIO}`)
+      await page.getByRole('link', { name: 'Nuevo turno' }).click()
+      await expect(page).toHaveURL(/\/admin\/turnos\/nuevo/)
+      await page.getByRole('button', { name: 'Cancelar' }).click()
+      await expect(page).toHaveURL(
+        new RegExp(`/admin/planificacion\\?.*mes=${MES}`),
+      )
+      await expect(
+        page.getByRole('button', { name: 'Elegir mes' }),
+      ).toContainText(`julio ${ANIO}`)
+    },
+  )
+
+  test(
     'ficha del empleado: la pestaña «Calendario» y el mes están en la dirección; abrir un turno y cerrarlo vuelve al mismo mes',
     cubre('RB-A05', 'OH-03', 'OH-04'),
     async ({ page }) => {

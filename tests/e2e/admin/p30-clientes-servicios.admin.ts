@@ -242,9 +242,15 @@ test.describe('servicios: «vigencia hasta» borrable y editar gana el último c
           })
           const toast = page.getByText('Guardamos los cambios del servicio.')
           await expect(toast).toBeVisible()
+          // El diálogo puede cerrarse solo cuando no hay ningún turno para cambiar («Los turnos ya
+          // estaban al día»): se lo cierra si sigue ahí y se espera a que no quede.
           if (await aplicar.isVisible()) {
-            await aplicar.getByRole('button', { name: 'No aplicar' }).click()
+            await aplicar
+              .getByRole('button', { name: 'No aplicar' })
+              .click({ timeout: 3_000 })
+              .catch(() => undefined)
           }
+          await expect(aplicar).toBeHidden()
         }
 
         await page.goto(`/admin/servicios/${servicio.id}/editar`)
