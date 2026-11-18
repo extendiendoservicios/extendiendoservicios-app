@@ -93,6 +93,18 @@ suman funciones nuevas a este módulo, solo un hook propio en
 `features/employees/queries.ts` (`useSetEmployeeRolesMutation`) que invalida
 las consultas de este dominio en vez de las de `users`.
 
+### `employeeFixed` (`src/api/employeeFixed.ts`, P30.4b — OH-06, OH-07)
+
+Fijos sin asignar y pizarra semanal de la ficha del empleado (migración `0087`).
+Solo dueño y administradores. Detalle en `docs/features/p30-4b-fijos-y-pizarra.md`.
+
+| Función                                        | RPC                        | Notas                                                                                                                                                                                                    |
+| ---------------------------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fetchEmployeeFixedGaps(employeeId, from, to)` | `employee_fixed_gaps`      | Turnos de servicios donde es fijo y no está asignado. `reason`: `ON_LEAVE`, `OVERLAP`, `SHIFT_FULL`, `REMOVED`, `ADDED_AFTER`, `NOT_ASSIGNED`; `detail` se parsea como `ConflictDetail`. Hasta 400 días. |
+| `fetchEmployeeFixedPattern(employeeId)`        | `employee_fixed_pattern`   | Servicios activos y vigentes donde es fijo; `weekdays` con 0 = domingo; `weeksOfMonth` `null` = todas las semanas.                                                                                       |
+| `fetchEmployeeWeekBoard(employeeId)`           | `get_employee_week_board`  | `WeekBoard` con `updatedByName`, o `null` si todavía no se guardó ninguna.                                                                                                                               |
+| `saveEmployeeWeekBoard(employeeId, blocks)`    | `save_employee_week_board` | Reemplaza todos los bloques (máx. 60). `INVALID_BOARD` trae el motivo en el `message`.                                                                                                                   |
+
 ### `settings` (`src/api/settings.ts`, P07.3 — USERS-012 a USERS-016)
 
 Las cuatro pantallas de "Configuración" que siguen a ADM-27: empresa

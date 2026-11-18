@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { MoreVertical } from 'lucide-react'
 import { toast } from 'sonner'
-import { TimeInput } from '@/components/TimeInput'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,10 +10,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { isApiError } from '@/api/errors'
+import type { FixedGap } from '@/api/employeeFixed'
 import { useAuth } from '@/features/auth/AuthProvider'
 import type { ShiftListRow } from '@/api/shifts'
-import { clientChipColors } from '@/features/planning/clientColors'
-import { planningKeys } from '@/features/planning/queries'
+import {
+  planningKeys,
+  useAssignEmployeeMutation,
+} from '@/features/planning/queries'
+import { groupGapsByDate } from '@/features/employees/fixedGaps'
 import { shiftsKeys } from '@/features/shifts/queries'
 import { WARNING_MESSAGES } from '@/features/planning/components/AssignEmployeeSheet'
 import { RemoveAssignmentDialog } from '@/features/planning/components/RemoveAssignmentDialog'
@@ -54,6 +57,8 @@ import {
   ScopeDialog,
   type PendingChange,
 } from './CalendarioDialogs'
+import { blockColors, TimeCell } from './blockParts'
+import { FixedGapBlock, GapReplaceSheet } from './FixedGapBlock'
 import {
   DRAG_THRESHOLD_PX,
   UncoveredPanel,
@@ -74,100 +79,6 @@ function describeWarnings(warnings: string[]): string {
         warning,
     )
     .join(' ')
-}
-
-function blockColors(colorIndex: number | null) {
-  const colors = clientChipColors(colorIndex)
-  return colors
-    ? {
-        backgroundColor: colors.background,
-        color: colors.color,
-        borderColor: colors.dot,
-      }
-    : { backgroundColor: '#e5e7eb', color: '#111827', borderColor: '#6b7280' }
-}
-
-// ---------------------------------------------------------------------------
-// Casilla de hora que se edita en el lugar
-// ---------------------------------------------------------------------------
-
-/**
- * Casilla de hora: se toca y se edita ahí mismo con `TimeInput`. Enter o salir
- * de la casilla confirman; Escape cancela y deja la hora como estaba.
- */
-function TimeCell({
-  value,
-  label,
-  editable,
-  suppressClick,
-  onCommit,
-}: {
-  value: string
-  label: string
-  editable: boolean
-  /** Verdadero justo después de un arrastre: el clic que sigue no abre la edición. */
-  suppressClick: () => boolean
-  onCommit: (value: string) => void
-}) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(value)
-  const finished = useRef(false)
-
-  function finish(confirm: boolean) {
-    if (finished.current) {
-      return
-    }
-    finished.current = true
-    setEditing(false)
-    if (confirm && draft !== value) {
-      onCommit(draft)
-    }
-  }
-
-  const className =
-    'border border-neutral-500 px-0.5 text-center text-[11px] leading-4 tabular-nums'
-  if (editing) {
-    return (
-      <TimeInput
-        ref={(element) => element?.focus()}
-        aria-label={label}
-        value={draft}
-        className="h-5 rounded-none px-0.5 py-0 text-[11px]"
-        onChange={(event) => setDraft(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault()
-            finish(true)
-          } else if (event.key === 'Escape') {
-            event.preventDefault()
-            event.stopPropagation()
-            finish(false)
-          }
-        }}
-        onBlur={() => finish(true)}
-      />
-    )
-  }
-  if (!editable) {
-    return <span className={className}>{value}</span>
-  }
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      className={`${className} cursor-text hover:bg-black/10`}
-      onClick={() => {
-        if (suppressClick()) {
-          return
-        }
-        finished.current = false
-        setDraft(value)
-        setEditing(true)
-      }}
-    >
-      {value}
-    </button>
-  )
 }
 
 // ---------------------------------------------------------------------------
@@ -365,6 +276,7 @@ function CalendarioMonthEditor({
   blocks,
   allShifts,
   canEdit,
+  gaps = [],
 }: {
   profileId: string
   personName: string
@@ -372,6 +284,8 @@ function CalendarioMonthEditor({
   blocks: WeekBlock[]
   allShifts: ShiftListRow[]
   canEdit: boolean
+  /** Fijos sin asignar del mes (OH-06); se dibujan con borde punteado. */
+  gaps?: FixedGap[]
 }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -396,6 +310,10 @@ function CalendarioMonthEditor({
     const [year, monthNumber] = month.from.split('-').map(Number)
     return monthDates(year ?? 0, monthNumber ?? 1)
   }, [month.from])
+
+  const gapsByDate = useMemo(() => groupGapsByDate(gaps), [gaps])
+  const assignEmployee = useAssignEmployeeMutation()
+  const [replaceGap, setReplaceGap] = useState<FixedGap | null>(null)
 
   const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState<PendingChange | null>(null)
@@ -607,7 +525,46 @@ function CalendarioMonthEditor({
     )
   }
 
+  /** OH-06: «Asignar» a esta persona; los errores de la base se muestran tal cual. */
+  async function assignGap(gap: FixedGap) {
+    setBusy(true)
+    try {
+      const result = await assignEmployee.mutateAsync({
+        shiftId: gap.shiftId,
+        employeeId: profileId,
+      })
+      refresh()
+      const warning = describeWarnings(result.warnings)
+      const message = `Asignamos a ${personName} al turno de ${gap.siteName}.`
+      if (warning) {
+        toast.warning(`${message} Con advertencias: ${warning}`)
+      } else {
+        toast.success(message)
+      }
+    } catch (error) {
+      toast.error(
+        isApiError(error) ? error.message : 'No pudimos asignar el turno.',
+        conflictToastOptions(error, openPath),
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const draggedBlock = drag ? blockById.get(drag.blockId) : undefined
+
+  function renderGaps(dayGaps: FixedGap[]) {
+    return dayGaps.map((gap) => (
+      <FixedGapBlock
+        key={`${gap.shiftId}`}
+        gap={gap}
+        personName={personName}
+        busy={busy}
+        onReplace={setReplaceGap}
+        onAssign={(target) => void assignGap(target)}
+      />
+    ))
+  }
 
   function renderDay(day: CronogramaDay) {
     const fullCell = day.kind === 'leave' || day.kind === 'holiday'
@@ -620,6 +577,7 @@ function CalendarioMonthEditor({
             ? 'bg-white text-black'
             : 'bg-neutral-100 text-neutral-400'
     const isTarget = drag?.targetDate === day.date
+    const dayGaps = day.inMonth ? (gapsByDate.get(day.date) ?? []) : []
     return (
       <td
         key={day.date}
@@ -642,9 +600,21 @@ function CalendarioMonthEditor({
             {day.inMonth ? day.day : ''}
           </span>
           {fullCell ? (
-            <span className="flex flex-1 items-center justify-center px-1 text-center text-[12px] font-bold [overflow-wrap:anywhere]">
-              {day.label}
-            </span>
+            // OH-06: con licencia o feriado, los fijos sin asignar van debajo del rótulo.
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+              <span
+                className={`flex items-center justify-center px-1 text-center text-[12px] font-bold [overflow-wrap:anywhere] ${
+                  dayGaps.length > 0 ? 'pt-1' : 'flex-1'
+                }`}
+              >
+                {day.label}
+              </span>
+              {dayGaps.length > 0 && (
+                <div className="flex min-w-0 flex-col gap-1.5 p-0.5 text-black">
+                  {renderGaps(dayGaps)}
+                </div>
+              )}
+            </div>
           ) : (
             <div className="flex min-w-0 flex-1 flex-col gap-1.5 p-0.5">
               {day.holiday && (
@@ -679,6 +649,7 @@ function CalendarioMonthEditor({
                   />
                 )
               })}
+              {renderGaps(dayGaps)}
             </div>
           )}
         </div>
@@ -795,6 +766,17 @@ function CalendarioMonthEditor({
             const block = moveDialog
             setMoveDialog(null)
             requestChange(block, next, false)
+          }}
+        />
+      )}
+
+      {replaceGap && (
+        <GapReplaceSheet
+          gap={replaceGap}
+          profileId={profileId}
+          onClose={() => {
+            setReplaceGap(null)
+            refresh()
           }}
         />
       )}

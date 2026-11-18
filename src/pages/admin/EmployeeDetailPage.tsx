@@ -42,6 +42,7 @@ import {
   useEmployeeDetailQuery,
   useEmployeeRatingsSummaryQuery,
 } from '@/features/employees/queries'
+import { WeekBoardPanel } from '@/features/employees/components/WeekBoard'
 import { RatingSummary } from '@/features/employees/components/RatingSummary'
 import { SupervisorPrioritiesTab } from '@/features/supervisions/components/SupervisorPrioritiesTab'
 import { canManageSupervisions } from '@/features/supervisions/permissions'
@@ -151,6 +152,9 @@ export default function EmployeeDetailPage() {
 
   const isTerminated = employee.effectiveStatus === 'terminated'
   const canEdit = canEditEmployee(actor)
+  // Calendario editable y cronograma semanal (OH-05, OH-07): quien administra turnos y horarios.
+  const canEditCalendar =
+    canManageAssignments(actor) && canManageShiftTime(actor)
   // CR-19: baja, cambio de roles, contraseña y cierre de sesiones sobre un
   // dueño o administrador solo los hace el dueño (`canActOnUser` ya lo cubre).
   const canManageAccount = canActOnUser(actor, employee.roles)
@@ -169,36 +173,46 @@ export default function EmployeeDetailPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 rounded-lg border border-border bg-surface p-5">
-        <div className="flex min-w-0 items-center gap-4">
-          <Avatar
-            id={employee.profileId}
-            name={`${employee.firstName} ${employee.lastName}`}
-            src={employee.avatarPath ? avatarUrl(employee.avatarPath) : null}
-            size="lg"
-          />
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-[16px] font-semibold text-text">
-                {employee.firstName} {employee.lastName}
-              </h2>
-              <StatusBadge
-                domain="employee"
-                status={employee.effectiveStatus}
-              />
-            </div>
-            <p className="text-[12px] text-text-3">
-              Legajo {employee.employeeNumber}
-              {employee.roles.length > 0
-                ? ` · ${employee.roles.map((role) => ROLE_LABELS[role]).join(', ')}`
-                : ''}
-            </p>
-            {/* AJ-05: promedio de calificaciones en una tercera línea. */}
-            <div className="mt-1">
-              <RatingSummary
-                summary={ratingsQuery.data?.get(employee.profileId)}
-              />
+        {/* OH-07: el cronograma semanal va debajo de las estrellas; en celular, a todo el ancho. */}
+        <div
+          className={`flex min-w-0 flex-col gap-3 ${
+            canEditCalendar ? 'w-full lg:w-auto lg:flex-1' : ''
+          }`}
+        >
+          <div className="flex min-w-0 items-center gap-4">
+            <Avatar
+              id={employee.profileId}
+              name={`${employee.firstName} ${employee.lastName}`}
+              src={employee.avatarPath ? avatarUrl(employee.avatarPath) : null}
+              size="lg"
+            />
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-[16px] font-semibold text-text">
+                  {employee.firstName} {employee.lastName}
+                </h2>
+                <StatusBadge
+                  domain="employee"
+                  status={employee.effectiveStatus}
+                />
+              </div>
+              <p className="text-[12px] text-text-3">
+                Legajo {employee.employeeNumber}
+                {employee.roles.length > 0
+                  ? ` · ${employee.roles.map((role) => ROLE_LABELS[role]).join(', ')}`
+                  : ''}
+              </p>
+              {/* AJ-05: promedio de calificaciones en una tercera línea. */}
+              <div className="mt-1">
+                <RatingSummary
+                  summary={ratingsQuery.data?.get(employee.profileId)}
+                />
+              </div>
             </div>
           </div>
+          {canEditCalendar && (
+            <WeekBoardPanel profileId={employee.profileId} canEdit />
+          )}
         </div>
         {/* P26.2b: a todo el ancho en celular y tablet; en escritorio, en la columna de la derecha. */}
         <div className="flex w-full min-w-0 flex-col gap-3 lg:w-[30rem]">
@@ -297,7 +311,7 @@ export default function EmployeeDetailPage() {
             profileId={employee.profileId}
             monthParam={searchParams.get('mes')}
             onMonthChange={handleMonthChange}
-            canEdit={canManageAssignments(actor) && canManageShiftTime(actor)}
+            canEdit={canEditCalendar}
             person={{
               employeeNumber: employee.employeeNumber,
               name: `${employee.firstName} ${employee.lastName}`,

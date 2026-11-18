@@ -20,6 +20,7 @@ import {
   formatMonthParam,
   resolveMonth,
 } from '@/features/employees/calendarioMonth'
+import { useEmployeeFixedGapsQuery } from '@/features/employees/fixedQueries'
 import { buildWeekBlocks } from '@/features/employees/cronogramaWeek'
 
 /**
@@ -96,6 +97,8 @@ function EmployeeCalendarioTab({
       holidaysQuery.data,
     ],
   )
+  // OH-06: fijos sin asignar del mes. Si falla, el calendario se ve igual, sin los bloques punteados.
+  const gapsQuery = useEmployeeFixedGapsQuery(profileId, first, last, canEdit)
   const allShifts = useMemo(() => shiftsQuery.data ?? [], [shiftsQuery.data])
   const blocks = useMemo(
     () => buildWeekBlocks(assignmentsQuery.data ?? [], allShifts),
@@ -145,6 +148,7 @@ function EmployeeCalendarioTab({
           blocks={blocks}
           allShifts={allShifts}
           canEdit={canEdit}
+          gaps={canEdit ? gapsQuery.data : undefined}
         />
       )}
 
