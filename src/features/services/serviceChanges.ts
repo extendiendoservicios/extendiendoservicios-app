@@ -184,9 +184,9 @@ export function describeShiftOverlap(overlap: ShiftOverlap): string {
 
 export function shiftOverlapsMessage(overlaps: ShiftOverlap[]): string {
   if (overlaps.length === 1) {
-    return `${describeShiftOverlap(overlaps[0] as ShiftOverlap)} ¿Crear igual?`
+    return `${describeShiftOverlap(overlaps[0] as ShiftOverlap)} ¿Crear igual o editar ese turno?`
   }
-  return 'Esta sede ya tiene turnos ese día que se superponen en horario. ¿Crear igual?'
+  return 'Esta sede ya tiene turnos ese día que se superponen en horario. ¿Crear igual o editar ese turno?'
 }
 
 /**

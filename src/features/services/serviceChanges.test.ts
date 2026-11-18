@@ -195,7 +195,7 @@ describe('textos del aviso de duplicados', () => {
       openEnded: false,
     }
     expect(shiftOverlapsMessage([{ ...base, serviceName: 'Foster' }])).toBe(
-      'Esta sede ya tiene el turno “Foster” ese día de 12:30 a 14:30. ¿Crear igual?',
+      'Esta sede ya tiene el turno “Foster” ese día de 12:30 a 14:30. ¿Crear igual o editar ese turno?',
     )
     expect(describeShiftOverlap({ ...base, serviceName: null })).toBe(
       'Esta sede ya tiene un turno cargado a mano ese día de 12:30 a 14:30.',

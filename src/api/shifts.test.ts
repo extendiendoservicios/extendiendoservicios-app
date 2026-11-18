@@ -809,3 +809,131 @@ describe('getShiftDateWarnings', () => {
     })
   })
 })
+
+describe('registerPastShift (OH-09)', () => {
+  const input = {
+    clientId: 'c1',
+    siteId: 's1',
+    date: '2026-10-13',
+    start: '08:00',
+    end: '12:00',
+    requiredStaff: 2,
+    employeeIds: ['e1', 'e2'],
+  }
+
+  it('llama a register_past_shift y mapea asignados, asistencia y advertencias', async () => {
+    rpcMock.mockResolvedValue({
+      data: {
+        shift: { id: 'sh1' },
+        warnings: ['ON_LEAVE'],
+        warnings_detail: [
+          {
+            code: 'ON_LEAVE',
+            employee_id: 'e2',
+            message: 'Luis tiene licencia.',
+          },
+        ],
+        assigned: [
+          { employee_id: 'e1', assignment_id: 'as1', warnings: [] },
+          { employee_id: 'e2', assignment_id: 'as2', warnings: ['ON_LEAVE'] },
+        ],
+        attendance: [
+          {
+            assignment_id: 'as1',
+            employee_id: 'e1',
+            check_in_at: '2026-10-13T11:00:00Z',
+            check_out_at: '2026-10-13T15:00:00Z',
+          },
+        ],
+        rejected: [],
+      },
+      error: null,
+    })
+    const { registerPastShift } = await import('./shifts')
+    const result = await registerPastShift(input)
+    expect(rpcMock).toHaveBeenCalledWith(
+      'register_past_shift',
+      expect.objectContaining({
+        p_client_id: 'c1',
+        p_site_id: 's1',
+        p_date: '2026-10-13',
+        p_start: '08:00',
+        p_end: '12:00',
+        p_required_staff: 2,
+        p_employee_ids: ['e1', 'e2'],
+      }),
+    )
+    expect(result.shiftId).toBe('sh1')
+    expect(result.warnings).toEqual(['ON_LEAVE'])
+    expect(result.warningsDetail).toEqual([
+      { code: 'ON_LEAVE', employeeId: 'e2', message: 'Luis tiene licencia.' },
+    ])
+    expect(result.assigned).toHaveLength(2)
+    expect(result.attendance[0]).toMatchObject({
+      assignmentId: 'as1',
+      checkOutAt: '2026-10-13T15:00:00Z',
+    })
+  })
+
+  it('traduce el error del servidor con su mensaje y código', async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: {
+        message: 'Este turno todavía no terminó: crealo como un turno común.',
+        hint: 'SHIFT_NOT_PAST',
+      },
+    })
+    const { registerPastShift } = await import('./shifts')
+    await expect(registerPastShift(input)).rejects.toMatchObject({
+      hint: 'SHIFT_NOT_PAST',
+      message: 'Este turno todavía no terminó: crealo como un turno común.',
+    })
+  })
+
+  it('create_shift con SHIFT_DATE_TAKEN trae el turno existente y sus asignados (OH-10)', async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: {
+        message:
+          'Ese servicio ya tiene un turno el mar 13 oct de 08:00 a 12:00.',
+        hint: 'SHIFT_DATE_TAKEN',
+        details: JSON.stringify({
+          shift_id: 'sh9',
+          conflict_shift_id: 'sh9',
+          client_name: 'Limpia Ya',
+          site_name: 'Sede Centro',
+          shift_date: '2026-10-13',
+          start_time: '08:00:00',
+          end_time: '12:00:00',
+          open_ended: false,
+          status: 'assigned',
+          assigned: [{ employee_id: 'e1', employee_name: 'Ana Gómez' }],
+        }),
+      },
+    })
+    const { createShift } = await import('./shifts')
+    const error = await createShift({
+      clientId: 'c1',
+      siteId: 's1',
+      date: '2026-10-13',
+      start: '08:00',
+      end: '12:00',
+      requiredStaff: 1,
+      serviceId: 'sv1',
+    }).catch((e: unknown) => e)
+    expect(error).toMatchObject({ hint: 'SHIFT_DATE_TAKEN' })
+    expect((error as { detail: unknown }).detail).toMatchObject({
+      conflictShiftId: 'sh9',
+      clientName: 'Limpia Ya',
+      status: 'assigned',
+      assigned: [
+        {
+          employeeId: 'e1',
+          employeeName: 'Ana Gómez',
+          startTime: null,
+          endTime: null,
+        },
+      ],
+    })
+  })
+})

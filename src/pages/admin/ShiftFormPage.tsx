@@ -62,6 +62,21 @@ import {
 } from '@/features/shifts/dateChange'
 import { employeesOnLeaveIn } from '@/features/shifts/leaveBlocking'
 import { shiftOverlapsMessage } from '@/features/services/serviceChanges'
+import { ExistingShiftDialog } from '@/features/shifts/components/ExistingShiftDialog'
+import {
+  editShiftPath,
+  existingShiftFromConflict,
+  type ExistingShiftInfo,
+} from '@/features/shifts/existingShift'
+import {
+  canRegisterPastShift,
+  isShiftPast,
+  PAST_SHIFT_NO_OPEN_ENDED,
+  PAST_SHIFT_NO_PERMISSION,
+  PAST_SHIFT_NO_REPEAT,
+  PAST_SHIFT_NOTICE,
+  PAST_SHIFT_TITLE,
+} from '@/features/shifts/pastShift'
 import { SimpleConfirmDialog } from '@/features/settings/components/SimpleConfirmDialog'
 import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
 import { useHolidaysQuery } from '@/features/settings/queries'
@@ -73,6 +88,7 @@ import { canManageShiftTime } from '@/features/shifts/permissions'
 import {
   useCreateShiftMutation,
   useCreateShiftSeriesMutation,
+  useRegisterPastShiftMutation,
   useShiftForEditQuery,
   useShiftSeriesPreviewQuery,
   useShiftDateWarningsMutation,
@@ -172,11 +188,25 @@ function CreateShiftForm({
   const leaveForm = useLeaveForm()
   const createShift = useCreateShiftMutation()
   const createShiftSeries = useCreateShiftSeriesMutation()
-  // OF-02: aviso de turno superpuesto en la misma sede (no bloquea).
+  // OH-09: turno que ya pasó -> «Registrar como realizado».
+  const registerPastShift = useRegisterPastShiftMutation()
+  const auth = useAuth()
+  const canRegisterPast = canRegisterPastShift({
+    roles: auth.roles,
+    capabilities: auth.capabilities,
+  })
+  // OF-02 / OH-10: aviso de turno superpuesto en la misma sede, con el turno que
+  // ya existe: «Editar ese turno», «Crear igual» o «Cancelar».
   const checkShiftOverlaps = useShiftOverlapsInSiteMutation()
   const [overlapPrompt, setOverlapPrompt] = useState<{
     values: ShiftFormValues
     message: string
+    shiftId: string
+  } | null>(null)
+  // OH-10: el servicio ya tiene turno ese día (`SHIFT_DATE_TAKEN`): sin «Crear igual».
+  const [takenPrompt, setTakenPrompt] = useState<{
+    message: string
+    info: ExistingShiftInfo
   } | null>(null)
   // OF-21: aviso de fechas repetidas que ya tienen turno (no bloquea).
   const checkSeriesDuplicates = useSeriesDuplicatesMutation()
@@ -226,8 +256,17 @@ function CreateShiftForm({
   const watchedClientId = watch('clientId')
   const watchedDate = watch('date')
   const watchedOpenEnded = watch('openEnded') ?? false
+  const watchedEndTime = watch('endTime') ?? ''
   const watchedRequiredStaff = watch('requiredStaff')
-  const watchedRepeat = watch('repeat') ?? false
+  // OH-09: con fecha y hora de fin ya pasadas (hora de Argentina) el alta es
+  // «Registrar como realizado»: sin repetición ni «A terminar».
+  const pastMode = !watchedOpenEnded && isShiftPast(watchedDate, watchedEndTime)
+  const pastNeedsPeople = pastMode && pickedEmployeeIds.length === 0
+  const watchedRepeat = (watch('repeat') ?? false) && !pastMode
+  const openEndedInPast =
+    watchedOpenEnded &&
+    /^\d{4}-\d{2}-\d{2}$/.test(watchedDate) &&
+    watchedDate < todayInBuenosAires()
   const watchedWeekdays = watch('weekdays') ?? []
   const watchedWeeksMode = watch('weeksMode') ?? 'all'
   const watchedWeeksOfMonth = watch('weeksOfMonth') ?? []
@@ -283,11 +322,13 @@ function CreateShiftForm({
     watchedDate || undefined,
     leaveRangeEnd || undefined,
   )
-  const blockedEmployeeIds = employeesOnLeaveIn(
+  const onLeaveThatDay = employeesOnLeaveIn(
     leavesQuery.data ?? [],
     watchedDate,
     watchedDate,
   )
+  // OH-09: en un turno que ya pasó la licencia no bloquea: se marca y se avisa al guardar.
+  const blockedEmployeeIds = pastMode ? new Set<string>() : onLeaveThatDay
   const partialLeaveEmployeeIds = new Set(
     [
       ...employeesOnLeaveIn(leavesQuery.data ?? [], watchedDate, leaveRangeEnd),
@@ -453,7 +494,18 @@ function CreateShiftForm({
    * Si la consulta falla no se bloquea. La repetición (serie) no se revisa.
    */
   async function onSubmit(values: ShiftFormValues) {
-    if (values.repeat) {
+    const past = isPastValues(values)
+    if (past && !canRegisterPast) {
+      toast.error(PAST_SHIFT_NO_PERMISSION)
+      return
+    }
+    if (past && pickedEmployeeIds.length === 0) {
+      toast.error(
+        'Elegí al menos una persona: sin asistencia no hay nada que registrar.',
+      )
+      return
+    }
+    if (values.repeat && !past) {
       await checkAndSubmitSeries(values)
       return
     }
@@ -465,13 +517,106 @@ function CreateShiftForm({
         end: values.openEnded ? null : values.endTime,
       })
       if (overlaps.length > 0) {
-        setOverlapPrompt({ values, message: shiftOverlapsMessage(overlaps) })
+        setOverlapPrompt({
+          values,
+          message: shiftOverlapsMessage(overlaps),
+          shiftId: (overlaps[0] as { shiftId: string }).shiftId,
+        })
         return
       }
     } catch {
       // Sin el aviso se crea igual; el servidor valida lo que corresponde.
     }
+    await submitSingle(values)
+  }
+
+  /** OH-09: la fecha y la hora de fin ya pasaron (misma regla que el servidor). */
+  function isPastValues(values: ShiftFormValues): boolean {
+    return !values.openEnded && isShiftPast(values.date, values.endTime)
+  }
+
+  /** Un turno que ya pasó se registra como realizado; si no, se crea como siempre. */
+  async function submitSingle(values: ShiftFormValues) {
+    if (isPastValues(values)) {
+      await registerPast(values)
+      return
+    }
     await createSingleShift(values)
+  }
+
+  /**
+   * OH-10: si el servidor devuelve `SHIFT_DATE_TAKEN` con el turno que ya
+   * existe, se muestra «Ya hay un turno» (sin «Crear igual»: el servicio no
+   * admite dos turnos el mismo día). Devuelve `true` si lo manejó.
+   */
+  function handleDateTaken(error: unknown): boolean {
+    if (!isApiError(error) || error.hint !== 'SHIFT_DATE_TAKEN') {
+      return false
+    }
+    const info = existingShiftFromConflict(error.detail)
+    if (!info) {
+      return false
+    }
+    setTakenPrompt({ message: error.message, info })
+    return true
+  }
+
+  /** OH-09: «Registrar como realizado» (`register_past_shift`, todo o nada). */
+  async function registerPast(values: ShiftFormValues) {
+    const base = shiftFormValuesToCreateInput(values)
+    try {
+      const result = await registerPastShift.mutateAsync({
+        clientId: base.clientId,
+        siteId: base.siteId,
+        date: base.date,
+        start: base.start,
+        end: values.endTime,
+        requiredStaff: base.requiredStaff,
+        notes: base.notes,
+        showInPrint: base.showInPrint,
+        requiresPhotos: base.requiresPhotos,
+        employeeIds,
+      })
+      const lines: string[] = result.warningsDetail
+        .map((item) => item.message)
+        .filter((message): message is string => Boolean(message))
+      if (result.warnings.includes('HOLIDAY')) {
+        lines.push('La fecha elegida es feriado.')
+      }
+      if (lines.length > 0) {
+        toast.warning(
+          'Registramos el turno como realizado, con advertencias:',
+          {
+            duration: 20_000,
+            description: (
+              <ul className="list-disc pl-4">
+                {lines.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            ),
+          },
+        )
+      } else {
+        toast.success(
+          result.assigned.length === 1
+            ? 'Registramos el turno como realizado, con la asistencia de 1 persona.'
+            : `Registramos el turno como realizado, con la asistencia de ${result.assigned.length} personas.`,
+        )
+      }
+      leaveForm(`/admin/planificacion?vista=dia&fecha=${base.date}`, 'create')
+    } catch (error) {
+      if (handleDateTaken(error)) {
+        return
+      }
+      // Todo o nada: si una persona falla no se guardó nada, y el mensaje dice quién.
+      toast.error(
+        isApiError(error)
+          ? error.message
+          : 'No pudimos registrar el turno como realizado.',
+        conflictToastOptions(error, (path) => void navigate(path)),
+      )
+    }
   }
 
   async function createSingleShift(values: ShiftFormValues) {
@@ -532,6 +677,9 @@ function CreateShiftForm({
       }
       leaveForm(`/admin/planificacion?vista=dia&fecha=${input.date}`, 'create')
     } catch (error) {
+      if (handleDateTaken(error)) {
+        return
+      }
       toast.error(
         isApiError(error) ? error.message : 'No pudimos crear el turno.',
       )
@@ -638,9 +786,13 @@ function CreateShiftForm({
             <Switch
               id="shift-repeat"
               checked={watchedRepeat}
+              disabled={pastMode}
               onCheckedChange={handleRepeatChange}
             />
           </label>
+          {pastMode && (
+            <p className="text-[12px] text-text-3">{PAST_SHIFT_NO_REPEAT}</p>
+          )}
           {watchedRepeat && (
             <div className="flex flex-col gap-4 rounded-md border border-border p-4">
               <RepeatFields
@@ -797,10 +949,34 @@ function CreateShiftForm({
                   id="shift-open-ended"
                   checked={field.value ?? false}
                   onCheckedChange={field.onChange}
+                  disabled={pastMode}
+                  hint={pastMode ? PAST_SHIFT_NO_OPEN_ENDED : undefined}
                 />
               )}
             />
           </div>
+          {pastMode && (
+            <Alert variant="warn" className="col-span-2">
+              <TriangleAlert />
+              <AlertDescription>
+                <p className="font-semibold">{PAST_SHIFT_TITLE}</p>
+                <p>
+                  {canRegisterPast
+                    ? PAST_SHIFT_NOTICE
+                    : PAST_SHIFT_NO_PERMISSION}
+                </p>
+              </AlertDescription>
+            </Alert>
+          )}
+          {openEndedInPast && (
+            <Alert variant="warn" className="col-span-2">
+              <TriangleAlert />
+              <AlertDescription>
+                Esa fecha ya pasó. Para registrar el turno como realizado
+                desmarcá «A terminar» y poné la hora de fin.
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
 
         <Field data-invalid={Boolean(errors.requiredStaff) || undefined}>
@@ -820,7 +996,9 @@ function CreateShiftForm({
         </Field>
 
         <Field className="sm:col-span-2">
-          <FieldLabel>Empleados (opcional)</FieldLabel>
+          <FieldLabel>
+            {pastMode ? 'Empleados' : 'Empleados (opcional)'}
+          </FieldLabel>
           <EmployeeMultiPicker
             aria-label="Empleados del turno"
             options={employeeOptionsQuery.data ?? []}
@@ -846,11 +1024,24 @@ function CreateShiftForm({
               </AlertDescription>
             </Alert>
           )}
+          {pastMode && (
+            <p className="text-[11px] text-text-3">
+              {pastNeedsPeople
+                ? 'Elegí al menos una persona: sin asistencia no hay nada que registrar. '
+                : ''}
+              Si alguien tiene licencia ese día, se carga igual y te avisamos.
+              Si una persona no se puede asignar, no se guarda nada.
+            </p>
+          )}
           <p className="text-[11px] text-text-3">
-            Quien está de licencia ese día no se puede elegir.{' '}
-            {watchedRepeat
-              ? 'Quedan asignados en cada turno de la repetición, hasta completar la dotación. Si alguno no se puede asignar en una fecha, el turno se crea igual y te avisamos.'
-              : 'Quedan asignados al crear el turno, hasta completar la dotación. Si alguno no se puede asignar, el turno se crea igual y te avisamos.'}
+            {pastMode
+              ? 'Quedan asignados al turno, con la asistencia cargada.'
+              : 'Quien está de licencia ese día no se puede elegir.'}{' '}
+            {pastMode
+              ? ''
+              : watchedRepeat
+                ? 'Quedan asignados en cada turno de la repetición, hasta completar la dotación. Si alguno no se puede asignar en una fecha, el turno se crea igual y te avisamos.'
+                : 'Quedan asignados al crear el turno, hasta completar la dotación. Si alguno no se puede asignar, el turno se crea igual y te avisamos.'}
           </p>
         </Field>
 
@@ -885,16 +1076,28 @@ function CreateShiftForm({
       <div className="flex gap-2">
         <Button
           type="submit"
-          loading={createShift.isPending || createShiftSeries.isPending}
-          disabled={noDatesMatch}
+          loading={
+            createShift.isPending ||
+            createShiftSeries.isPending ||
+            registerPastShift.isPending
+          }
+          disabled={noDatesMatch || (pastMode && !canRegisterPast)}
         >
-          {watchedRepeat ? 'Crear turnos' : 'Crear turno'}
+          {pastMode
+            ? 'Registrar como realizado'
+            : watchedRepeat
+              ? 'Crear turnos'
+              : 'Crear turno'}
         </Button>
         <Button
           type="button"
           variant="ghost"
           onClick={() => void navigate(-1)}
-          disabled={createShift.isPending || createShiftSeries.isPending}
+          disabled={
+            createShift.isPending ||
+            createShiftSeries.isPending ||
+            registerPastShift.isPending
+          }
         >
           Cancelar
         </Button>
@@ -957,21 +1160,35 @@ function CreateShiftForm({
       )}
 
       {overlapPrompt && (
-        <SimpleConfirmDialog
-          open
-          onOpenChange={(open) => {
-            if (!open) {
-              setOverlapPrompt(null)
-            }
+        <ExistingShiftDialog
+          shiftId={overlapPrompt.shiftId}
+          mode="overlap"
+          message={overlapPrompt.message}
+          onCancel={() => setOverlapPrompt(null)}
+          onEdit={() => {
+            const shiftId = overlapPrompt.shiftId
+            setOverlapPrompt(null)
+            void navigate(editShiftPath(shiftId), { replace: true })
           }}
-          title="Posible turno duplicado"
-          description={overlapPrompt.message}
-          confirmLabel="Crear igual"
-          cancelLabel="Volver"
-          onConfirm={() => {
+          onCreateAnyway={() => {
             const pending = overlapPrompt.values
             setOverlapPrompt(null)
-            void createSingleShift(pending)
+            void submitSingle(pending)
+          }}
+        />
+      )}
+
+      {takenPrompt && (
+        <ExistingShiftDialog
+          shiftId={takenPrompt.info.shiftId}
+          mode="taken"
+          message={takenPrompt.message}
+          info={takenPrompt.info}
+          onCancel={() => setTakenPrompt(null)}
+          onEdit={() => {
+            const shiftId = takenPrompt.info.shiftId
+            setTakenPrompt(null)
+            void navigate(editShiftPath(shiftId), { replace: true })
           }}
         />
       )}
