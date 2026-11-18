@@ -554,8 +554,11 @@ describe('CalendarioMonthEditor: avisos', () => {
     await waitFor(() => expect(toastApi.success).toHaveBeenCalled())
     const options = toastApi.success.mock.calls[0]?.[1] as {
       action: { label: string; onClick: () => void }
+      duration: number
     }
     expect(options.action.label).toBe('Deshacer')
+    // DEF-P30-08: da tiempo a deshacer.
+    expect(options.duration).toBe(10_000)
     options.action.onClick()
     await waitFor(() => expect(run).toHaveBeenCalledTimes(2))
     expect(run.mock.calls[1]?.[0]).toEqual({

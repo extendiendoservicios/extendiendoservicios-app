@@ -66,6 +66,9 @@ import {
 } from './UncoveredPanel'
 
 /** Advertencias de la creación de un turno (OF-23). */
+/** Duración de los avisos con «Deshacer» (DEF-P30-08). */
+export const UNDO_TOAST_DURATION_MS = 10_000
+
 const SHIFT_WARNING_MESSAGES: Record<string, string> = {
   HOLIDAY: 'La fecha del turno nuevo es feriado.',
 }
@@ -352,6 +355,8 @@ function CalendarioMonthEditor({
       ])
       const options = result.undo
         ? {
+            // DEF-P30-08: con «Deshacer» el aviso dura 10 s, no los ~4 s por defecto.
+            duration: UNDO_TOAST_DURATION_MS,
             action: {
               label: 'Deshacer',
               onClick: () => void undo(result.undo as UndoAction),
