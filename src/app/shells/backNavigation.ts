@@ -95,17 +95,29 @@ export function isAdminRootPath(pathname: string): boolean {
  * el de la primera entrada), o ir al padre lógico si se entró directo.
  */
 export function useGoBack(rootPath: string): () => void {
+  const { pathname } = useLocation()
+  return useBackTo(getParentPath(pathname, rootPath))
+}
+
+/**
+ * OH-03: «Volver» con ruta de respaldo para botones y enlaces de pantalla
+ * («Volver a Insumos», «Volver al cliente»). Si la persona llegó navegando
+ * dentro de la app, `navigate(-1)` la devuelve a la página anterior tal cual
+ * estaba (mes, vista y filtros viven en la dirección, ver
+ * `useSearchParamState`); si entró directo por URL no hay historial propio y
+ * va a `fallback`, reemplazando la entrada actual.
+ */
+export function useBackTo(fallback: string): () => void {
   const navigate = useNavigate()
-  const location = useLocation()
-  const { pathname, key } = location
+  const { key } = useLocation()
 
   return useCallback(() => {
     if (key !== 'default') {
       void navigate(-1)
       return
     }
-    void navigate(getParentPath(pathname, rootPath), { replace: true })
-  }, [key, navigate, pathname, rootPath])
+    void navigate(fallback, { replace: true })
+  }, [fallback, key, navigate])
 }
 
 /**

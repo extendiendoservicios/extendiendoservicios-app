@@ -387,6 +387,7 @@ function SupervisionsAdminScreen({
                 Desde
               </span>
               <DatePicker
+                clearable
                 aria-label="Desde"
                 value={
                   filters.dateFrom ? isoDateToDate(filters.dateFrom) : undefined
@@ -405,6 +406,7 @@ function SupervisionsAdminScreen({
                 Hasta
               </span>
               <DatePicker
+                clearable
                 aria-label="Hasta"
                 value={
                   filters.dateTo ? isoDateToDate(filters.dateTo) : undefined

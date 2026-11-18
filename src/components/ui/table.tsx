@@ -15,11 +15,24 @@ import { cn } from 'cn'
  * celular táctil). Las ancho mínimo de columnas y el `min-w-max` los pone
  * `DataTable`.
  */
-function Table({ className, ...props }: React.ComponentProps<'table'>) {
+function Table({
+  className,
+  containerClassName,
+  containerStyle,
+  ...props
+}: React.ComponentProps<'table'> & {
+  /** Clases extra del contenedor con desplazamiento (alto acotado, OH-01). */
+  containerClassName?: string
+  containerStyle?: React.CSSProperties
+}) {
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto [scrollbar-width:auto]"
+      className={cn(
+        'relative w-full overflow-x-auto [scrollbar-width:auto]',
+        containerClassName,
+      )}
+      style={containerStyle}
     >
       <table
         data-slot="table"

@@ -744,6 +744,8 @@ export default function ServiceFormPage() {
             render={({ field }) => (
               <DatePicker
                 aria-label="Vigente hasta"
+                clearable
+                clearLabel="Sin fecha de fin"
                 value={isoDateToDate(field.value)}
                 onValueChange={(date) =>
                   field.onChange(date ? localDateToIsoDate(date) : '')

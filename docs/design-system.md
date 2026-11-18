@@ -316,6 +316,29 @@ number[]` y `onValueChange`, con `0` = domingo (igual que
   `MonthPicker.tsx`): `value`, `onValueChange`, `placeholder`,
   `aria-label`. Español, semana desde el lunes. `MonthPicker` arma su
   propia grilla de 12 meses (`react-day-picker` trabaja por día).
+  `DatePicker` tiene `clearable` (OH-12, solo para campos opcionales): una ✕
+  en la casilla y un botón dentro del desplegable (`clearLabel`, por defecto
+  «Borrar fecha»; en «Vigente hasta» es «Sin fecha de fin») que llaman
+  `onValueChange(undefined)`. Con `clearable`, `className` (ancho) lo toma el
+  contenedor y no el botón. Quien lo usa tiene que aceptar `undefined` en su
+  `onValueChange` (no `next && set…`).
+
+### Volver al lugar donde estaba (OH-03, P30.2)
+
+- **`useSearchParamState(clave, porDefecto, { parse, serialize })`**
+  (`src/hooks/useSearchParamState.ts`): estado de pantalla (mes, vista,
+  pestaña, filtros) guardado en la dirección. Escribe con `replace` (no suma
+  entradas al historial por cada mes que se prueba), conserva los demás
+  parámetros y quita el parámetro cuando vuelve al valor por defecto. Un valor
+  inválido en la dirección cae al valor por defecto. El setter acepta un valor
+  o una función. No es estable entre renders: no va en dependencias de efectos.
+- **`useBackTo(respaldo)`** (`src/app/shells/backNavigation.ts`, el mismo
+  criterio de `useGoBack`) y **`BackLink`** (`src/components/BackLink.tsx`):
+  `navigate(-1)` si la persona llegó navegando dentro de la app
+  (`location.key !== 'default'`), y si entró directo, va a la ruta de respaldo
+  reemplazando la entrada. `BackLink` es un `Link` con `href` al respaldo, usable
+  con `Button asChild`. No usar para salir de un formulario después de guardar:
+  eso sigue siendo `useLeaveForm`.
 
 ### Presentación (DS-006 y DS-007)
 
@@ -467,6 +490,23 @@ class="sr-only">` — **obligatorio**), `getRowId?`, `compact?`
     cualquier otro componente que necesite reaccionar a un breakpoint).
   - `DataTableColumnDef<TData>`/`DataTableColumnMeta` se exportan del
     mismo archivo para tipar `columns` en otras vías.
+  - Alto acotado (OH-01, P30.2): `maxVisibleRows` (aprox. 3 rem por fila,
+    2,75 rem en `compact`, más el encabezado) o `maxHeight` (CSS, tiene
+    prioridad). El bloque se desplaza en vertical, el encabezado queda fijo
+    (`sticky top-0`) y convive con el desplazamiento horizontal y la primera
+    columna fija. Sin el prop, la tabla crece como siempre.
+  - Ancho de columnas (OH-02): `resizableColumns` agrega una asa invisible
+    (`role="separator"`, cursor `col-resize`, sin líneas) en el borde derecho de
+    cada encabezado. Se arrastra con el puntero, o con el foco: flechas
+    izquierda/derecha (16 px; con Mayús, 48 px) e Inicio para restaurar. Doble
+    clic en el borde vuelve al ancho original (el de contenido o `meta.width`).
+    Mínimo 80 px, máximo 800 px. El estado vive en `columnSizing` de TanStack.
+  - Orden: el ciclo del encabezado es ascendente, descendente, sin orden
+    (`sortDescFirst: false`, también para números); `enableSorting: false` en la
+    columna lo desactiva.
+  - `persistKey`: guarda anchos y orden (si el orden es interno) en
+    `localStorage` bajo `datatable:<clave>`, dentro de try/catch.
+  - En tarjetas (celular) nada de esto aplica.
 
 ### `Avatar` y `PersonCell` (DS-009)
 
