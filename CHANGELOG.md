@@ -12,6 +12,7 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 - Tablas: alto acotado con encabezado fijo, ancho de columnas que se arrastra (con teclado también), orden ascendente, descendente y sin orden, y memoria de anchos y orden en el navegador (OH-01, OH-02; opcional en `DataTable`).
 - Selector de fecha: ✕ y «Borrar fecha» en los campos opcionales; activado en «Vigente hasta» del servicio y en los filtros «Desde» y «Hasta» (OH-12).
 - Base de «volver al lugar donde estaba»: `useSearchParamState` (estado de pantalla en la dirección) y `BackLink` / `useBackTo` (OH-03).
+
 ### Cambiado
 
 - Ficha del empleado: la pestaña «Cronograma» pasa a llamarse «Calendario». La vista mensual es editable (hora de inicio y fin en el lugar, nombre del cliente que abre el turno, arrastrar un turno a otro día, turnos sin cubrir del mes, quitar y deshacer) y desaparece «Semana (editar)». El mes elegido queda en la dirección. La hoja impresa no cambia.

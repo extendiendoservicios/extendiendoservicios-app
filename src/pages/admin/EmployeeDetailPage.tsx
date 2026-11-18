@@ -2,6 +2,7 @@ import { formatTaxId } from '@/lib/taxId'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { KeyRound, LogOut, Pencil, Trash2, User, UserX } from 'lucide-react'
+import { useSearchParamState } from '@/hooks/useSearchParamState'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -115,13 +116,8 @@ export default function EmployeeDetailPage() {
     setSearchParams(next, { replace: true })
   }
 
-  // OH-03: el mes del calendario vive en la dirección; `replace` para no llenar el historial.
-  function handleMonthChange(monthParam: string) {
-    const next = new URLSearchParams(searchParams)
-    next.set('pestana', 'calendario')
-    next.set('mes', monthParam)
-    setSearchParams(next, { replace: true })
-  }
+  // OH-03: el mes del calendario vive en la dirección (`?mes=`); sin valor, el mes actual.
+  const [monthParam, setMonthParam] = useSearchParamState('mes', '')
 
   const employeeQuery = useEmployeeDetailQuery(id)
   const ratingsQuery = useEmployeeRatingsSummaryQuery()
@@ -309,8 +305,8 @@ export default function EmployeeDetailPage() {
         <TabsContent value="calendario" className="pt-3">
           <EmployeeCalendarioTab
             profileId={employee.profileId}
-            monthParam={searchParams.get('mes')}
-            onMonthChange={handleMonthChange}
+            monthParam={monthParam || null}
+            onMonthChange={(value) => setMonthParam(value)}
             canEdit={canEditCalendar}
             person={{
               employeeNumber: employee.employeeNumber,
