@@ -308,13 +308,15 @@ function ClientsListTab() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         {/* DEF-P30-07: buscador y filtros de estado y categoría en la misma línea (en celular bajan). */}
         <div className="flex flex-wrap items-center gap-3">
-          <Input
-            icon={Search}
-            placeholder="Buscar por nombre o CUIT…"
-            value={textFilter}
-            onChange={(event) => setTextFilter(event.target.value)}
-            className="w-64"
-          />
+          {/* El Input se envuelve en su propio div.w-full: el ancho se fija acá. */}
+          <div className="w-full sm:w-80">
+            <Input
+              icon={Search}
+              placeholder="Buscar por nombre o CUIT…"
+              value={textFilter}
+              onChange={(event) => setTextFilter(event.target.value)}
+            />
+          </div>
           <Select
             value={statusFilter}
             onValueChange={(value) =>
