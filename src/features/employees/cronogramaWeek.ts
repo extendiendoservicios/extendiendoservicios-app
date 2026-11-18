@@ -3,8 +3,8 @@ import type { ShiftListRow } from '@/api/shifts'
 import { addDaysToIsoDate } from '@/features/settings/dateOnly'
 
 /**
- * OF-10 (P28.6): lógica sin React de la vista semana editable del cronograma.
- * Calcula el horario según la posición del puntero, decide si un cambio es del
+ * OF-10 (P28.6, P30.4a): lógica sin React de la edición del calendario del empleado.
+ * Decide si un cambio de horario o de día es del
  * turno entero o de una sola persona, arma lo que hace falta para «Deshacer» y
  * filtra los turnos sin cubrir.
  */
@@ -30,64 +30,13 @@ export function minutesToTime(minutes: number): string {
   return `${String(hours).padStart(2, '0')}:${String(rest).padStart(2, '0')}`
 }
 
-export function snapMinutes(minutes: number, step = SNAP_MINUTES): number {
-  return Math.round(minutes / step) * step
-}
-
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
-}
-
-/** Minutos que equivalen a un desplazamiento vertical de `deltaPx` píxeles. */
-export function pxToMinutes(deltaPx: number, pxPerHour: number): number {
-  return (deltaPx / pxPerHour) * 60
 }
 
 export interface BlockTimes {
   startMin: number
   endMin: number
-}
-
-export interface BlockPosition extends BlockTimes {
-  /** Corrimiento en días respecto del día de origen. */
-  dayOffset: number
-}
-
-/** Mueve el bloque conservando su duración; no se sale del día. */
-export function moveBlock(
-  block: BlockTimes,
-  deltaMinutes: number,
-  dayOffset: number,
-): BlockPosition {
-  const duration = block.endMin - block.startMin
-  const start = clamp(
-    snapMinutes(block.startMin + deltaMinutes),
-    0,
-    Math.max(0, DAY_MINUTES - duration),
-  )
-  return { dayOffset, startMin: start, endMin: start + duration }
-}
-
-/** Estira un borde; el bloque nunca baja de 15 minutos ni se sale del día. */
-export function resizeBlock(
-  block: BlockTimes,
-  edge: 'start' | 'end',
-  deltaMinutes: number,
-): BlockTimes {
-  if (edge === 'start') {
-    const start = clamp(
-      snapMinutes(block.startMin + deltaMinutes),
-      0,
-      block.endMin - MIN_BLOCK_MINUTES,
-    )
-    return { startMin: start, endMin: block.endMin }
-  }
-  const end = clamp(
-    snapMinutes(block.endMin + deltaMinutes),
-    block.startMin + MIN_BLOCK_MINUTES,
-    DAY_MINUTES,
-  )
-  return { startMin: block.startMin, endMin: end }
 }
 
 /** Texto del horario durante el arrastre: `08:30–12:30`. */
@@ -152,20 +101,6 @@ export function buildWeekBlocks(
       }
     })
     .sort((a, b) => a.date.localeCompare(b.date) || a.startMin - b.startMin)
-}
-
-/** Rango de horas a dibujar: de 06:00 a 22:00 como mínimo, más si hay turnos fuera. */
-export function visibleHourRange(blocks: BlockTimes[]): {
-  startHour: number
-  endHour: number
-} {
-  let startHour = 6
-  let endHour = 22
-  for (const block of blocks) {
-    startHour = Math.min(startHour, Math.floor(block.startMin / 60))
-    endHour = Math.max(endHour, Math.ceil(block.endMin / 60))
-  }
-  return { startHour, endHour: Math.min(24, endHour) }
 }
 
 // ---------------------------------------------------------------------------

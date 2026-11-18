@@ -1,5 +1,7 @@
 # P28.6 · Cronograma arrastrable (OF-10)
 
+> **P30.4a:** la vista «Semana (editar)» se retiró. Todo lo de este documento pasó a la vista mensual editable de la pestaña «Calendario»; ver `p30-4a-calendario-editable.md`. Lo que sigue describe el diseño original (P28.6).
+
 Pestaña «Cronograma» de la ficha del empleado (ADM-17), vista **Semana (editar)**. Solo la ven el dueño y los administradores (`canManageAssignments` y `canManageShiftTime`); los coordinadores y la vista mensual (la que se imprime) no cambian.
 
 ## Qué se puede hacer

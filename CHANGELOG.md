@@ -7,6 +7,10 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+### Cambiado
+
+- Ficha del empleado: la pestaña «Cronograma» pasa a llamarse «Calendario». La vista mensual es editable (hora de inicio y fin en el lugar, nombre del cliente que abre el turno, arrastrar un turno a otro día, turnos sin cubrir del mes, quitar y deshacer) y desaparece «Semana (editar)». El mes elegido queda en la dirección. La hoja impresa no cambia.
+
 ## [0.30.0] - 2026-11-16
 
 Observaciones de la dirección del 14 nov (P29). Migración 0086.

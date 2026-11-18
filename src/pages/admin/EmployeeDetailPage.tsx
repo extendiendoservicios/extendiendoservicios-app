@@ -27,7 +27,7 @@ import {
   TerminateEmployeeDialog,
 } from '@/features/employees/components/EmployeeAccountDialogs'
 import { EmployeeAvailabilityTab } from '@/features/employees/components/EmployeeAvailabilityTab'
-import { EmployeeCronogramaTab } from '@/features/employees/components/EmployeeCronogramaTab'
+import { EmployeeCalendarioTab } from '@/features/employees/components/EmployeeCalendarioTab'
 import { EmployeeClientPermissionsTab } from '@/features/employees/components/EmployeeClientPermissionsTab'
 import {
   personSignerLabel,
@@ -51,7 +51,7 @@ import { SupervisorWorkdaysTab } from '@/features/workdays/components/Supervisor
 
 const TABS = [
   'datos',
-  'cronograma',
+  'calendario',
   'habilitaciones',
   'disponibilidad',
   'licencias',
@@ -64,13 +64,18 @@ const TABS = [
 ] as const
 type EmployeeDetailTab = (typeof TABS)[number]
 
+/** OH-04: «cronograma» era el nombre de la pestaña; los enlaces guardados siguen andando. */
+function normalizeTab(value: string | null): string | null {
+  return value === 'cronograma' ? 'calendario' : value
+}
+
 function isEmployeeDetailTab(value: string | null): value is EmployeeDetailTab {
   return TABS.includes(value as EmployeeDetailTab)
 }
 
 /**
  * ADM-17 "Empleado · ficha" (`05` línea 66): cabecera (foto, nombre,
- * legajo, roles, estado efectivo) y las siete pestañas, más «Cronograma» (P27.4, OD-01) después de «Datos» (más dos para quien
+ * legajo, roles, estado efectivo) y las siete pestañas, más «Calendario» (P27.4, OD-01, OH-04) después de «Datos» (más dos para quien
  * tiene el rol coordinador, P24.3: «Clientes y sedes preferenciales» y
  * «Jornadas», y «Retiros» de insumos para dueño y administradores, P25.3). Datos, Habilitaciones
  * (EMP-006), Disponibilidad (EMP-007) y Licencias (EMP-008) están completas;
@@ -94,17 +99,26 @@ export default function EmployeeDetailPage() {
     'reset-password' | 'sign-out' | 'terminate' | 'roles' | 'delete' | null
   >(null)
 
-  const activeTab = isEmployeeDetailTab(searchParams.get('pestana'))
-    ? (searchParams.get('pestana') as EmployeeDetailTab)
-    : 'datos'
+  const requestedTab = normalizeTab(searchParams.get('pestana'))
+  const activeTab = isEmployeeDetailTab(requestedTab) ? requestedTab : 'datos'
 
   function handleTabChange(value: string) {
     const next = new URLSearchParams(searchParams)
+    // El mes del calendario solo vale para esa pestaña.
+    next.delete('mes')
     if (value === 'datos') {
       next.delete('pestana')
     } else {
       next.set('pestana', value)
     }
+    setSearchParams(next, { replace: true })
+  }
+
+  // OH-03: el mes del calendario vive en la dirección; `replace` para no llenar el historial.
+  function handleMonthChange(monthParam: string) {
+    const next = new URLSearchParams(searchParams)
+    next.set('pestana', 'calendario')
+    next.set('mes', monthParam)
     setSearchParams(next, { replace: true })
   }
 
@@ -250,7 +264,7 @@ export default function EmployeeDetailPage() {
       <Tabs value={visibleTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="datos">Datos</TabsTrigger>
-          <TabsTrigger value="cronograma">Cronograma</TabsTrigger>
+          <TabsTrigger value="calendario">Calendario</TabsTrigger>
           <TabsTrigger value="habilitaciones">Habilitaciones</TabsTrigger>
           <TabsTrigger value="disponibilidad">Disponibilidad</TabsTrigger>
           <TabsTrigger value="licencias">Licencias</TabsTrigger>
@@ -278,9 +292,11 @@ export default function EmployeeDetailPage() {
           />
         </TabsContent>
 
-        <TabsContent value="cronograma" className="pt-3">
-          <EmployeeCronogramaTab
+        <TabsContent value="calendario" className="pt-3">
+          <EmployeeCalendarioTab
             profileId={employee.profileId}
+            monthParam={searchParams.get('mes')}
+            onMonthChange={handleMonthChange}
             canEdit={canManageAssignments(actor) && canManageShiftTime(actor)}
             person={{
               employeeNumber: employee.employeeNumber,
