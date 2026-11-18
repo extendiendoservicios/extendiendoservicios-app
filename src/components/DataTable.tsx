@@ -438,10 +438,15 @@ function DataTable<TData>({
                         resizedWidth == null &&
                         MIN_COLUMN_WIDTH,
                       resizableColumns && 'relative',
-                      // OH-01: con alto acotado el encabezado queda fijo arriba.
-                      bounded && 'sticky top-0 z-[2]',
+                      // OH-01 / DEF-P30-06: con alto acotado el encabezado queda
+                      // fijo arriba, con fondo opaco y por encima de las celdas
+                      // (z 1) y de las filas resaltadas; la esquina fija, por
+                      // encima de todo. El borde inferior va como sombra
+                      // interna porque el borde colapsado se desplaza con las filas.
+                      bounded &&
+                        'sticky top-0 z-[4] bg-[var(--table-header-bg)] shadow-[inset_0_-1px_0_var(--color-border)]',
                       header.index === 0 && STICKY_HEAD,
-                      header.index === 0 && bounded && 'z-[3]',
+                      header.index === 0 && bounded && 'z-[5]',
                     )}
                   >
                     {header.isPlaceholder ? null : canSort ? (
