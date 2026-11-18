@@ -180,6 +180,8 @@ describe('fijos sin asignar en el calendario (OH-06)', () => {
           endTime: '11:00:00',
           openEnded: false,
           leaves: [],
+          status: null,
+          assigned: [],
         },
       }),
     ])

@@ -57,6 +57,8 @@ describe('describeGap', () => {
           endTime: '13:00:00',
           openEnded: false,
           leaves: [],
+          status: null,
+          assigned: [],
         },
       }),
     )
