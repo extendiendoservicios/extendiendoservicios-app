@@ -222,4 +222,21 @@ describe('ClientsPage: filtros en la dirección (OH-03)', () => {
         .value,
     ).toBe('banco')
   })
+
+  it('DEF-P30-07: el buscador y los filtros de estado y categoría comparten línea', () => {
+    renderPage()
+    const search = screen.getByPlaceholderText('Buscar por nombre o CUIT…')
+    const line = search.closest('div.flex-wrap') as HTMLElement
+    expect(line).not.toBeNull()
+    expect(
+      line.contains(
+        screen.getByRole('combobox', { name: 'Filtrar por estado' }),
+      ),
+    ).toBe(true)
+    expect(
+      line.contains(
+        screen.getByRole('combobox', { name: 'Filtrar por categoría' }),
+      ),
+    ).toBe(true)
+  })
 })

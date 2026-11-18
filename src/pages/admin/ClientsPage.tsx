@@ -306,10 +306,8 @@ function ClientsListTab() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* DEF-P30-07: buscador y filtros de estado y categoría en la misma línea (en celular bajan). */}
         <div className="flex flex-wrap items-center gap-3">
-          {clientsQuery.dataUpdatedAt > 0 && (
-            <UpdatedAgo dataUpdatedAt={clientsQuery.dataUpdatedAt} />
-          )}
           <Input
             icon={Search}
             placeholder="Buscar por nombre o CUIT…"
@@ -350,9 +348,14 @@ function ClientsListTab() {
             </SelectContent>
           </Select>
         </div>
-        <Button asChild icon={Plus}>
-          <Link to="/admin/clientes/nuevo">Nuevo cliente</Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          {clientsQuery.dataUpdatedAt > 0 && (
+            <UpdatedAgo dataUpdatedAt={clientsQuery.dataUpdatedAt} />
+          )}
+          <Button asChild icon={Plus}>
+            <Link to="/admin/clientes/nuevo">Nuevo cliente</Link>
+          </Button>
+        </div>
       </div>
 
       {groups.length === 0 ? (
@@ -382,7 +385,7 @@ function ClientsListTab() {
       ) : (
         <>
           {/* OH-14: contraer o desplegar todas las categorías de una vez. */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="mt-1 flex flex-wrap items-center gap-2 border-t border-border pt-3">
             <Button
               type="button"
               variant="ghost"
