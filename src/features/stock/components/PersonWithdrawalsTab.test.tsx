@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { StockMovementLine } from '@/api/stock'
 import { testMovementLine } from '@/features/stock/movementFixtures'
@@ -48,7 +49,9 @@ afterEach(() => {
 
 describe('PersonWithdrawalsTab: pestaña «Retiros» de la ficha (IS-18)', () => {
   it('pide los retiros de la persona del mes en curso', () => {
-    render(<PersonWithdrawalsTab profileId="p1" name="Lucía Pérez" />)
+    render(<PersonWithdrawalsTab profileId="p1" name="Lucía Pérez" />, {
+      wrapper: MemoryRouter,
+    })
     expect(queryArgs.calls.at(-1)).toEqual(['p1', '2026-10-01', '2026-10-26'])
   })
 
@@ -85,7 +88,9 @@ describe('PersonWithdrawalsTab: pestaña «Retiros» de la ficha (IS-18)', () =>
         qtyDelta: -1,
       }),
     ]
-    render(<PersonWithdrawalsTab profileId="p1" name="Lucía Pérez" />)
+    render(<PersonWithdrawalsTab profileId="p1" name="Lucía Pérez" />, {
+      wrapper: MemoryRouter,
+    })
 
     const [first, second] = screen.getAllByTestId('person-withdrawal')
     expect(
@@ -127,7 +132,9 @@ describe('PersonWithdrawalsTab: pestaña «Retiros» de la ficha (IS-18)', () =>
         voidReason: 'Lo cargaron dos veces',
       }),
     ]
-    render(<PersonWithdrawalsTab profileId="p1" name="Lucía Pérez" />)
+    render(<PersonWithdrawalsTab profileId="p1" name="Lucía Pérez" />, {
+      wrapper: MemoryRouter,
+    })
 
     expect(screen.getByText('Anulado')).toBeInTheDocument()
     expect(
@@ -145,12 +152,16 @@ describe('PersonWithdrawalsTab: pestaña «Retiros» de la ficha (IS-18)', () =>
 
   it('avisa quién cargó el retiro cuando fue la oficina en nombre de la persona', () => {
     withdrawalsState.data = [withdrawal({ recordedByName: 'Ana Gómez' })]
-    render(<PersonWithdrawalsTab profileId="p1" name="Lucía Pérez" />)
+    render(<PersonWithdrawalsTab profileId="p1" name="Lucía Pérez" />, {
+      wrapper: MemoryRouter,
+    })
     expect(screen.getByText('Lo cargó Ana Gómez')).toBeInTheDocument()
   })
 
   it('sin retiros en el período muestra un mensaje en español', () => {
-    render(<PersonWithdrawalsTab profileId="p1" name="Lucía Pérez" />)
+    render(<PersonWithdrawalsTab profileId="p1" name="Lucía Pérez" />, {
+      wrapper: MemoryRouter,
+    })
     expect(
       screen.getByText('Lucía Pérez no retiró insumos en ese período'),
     ).toBeInTheDocument()

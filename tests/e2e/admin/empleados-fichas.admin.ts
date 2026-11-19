@@ -111,7 +111,7 @@ test(
         await page.getByRole('option', { name: dia, exact: true }).click()
         await page.getByLabel('Desde').fill('08:00')
         await page.getByLabel('Hasta').fill('12:00')
-        await page.getByRole('button', { name: 'Agregar' }).click()
+        await page.getByRole('button', { name: 'Agregar', exact: true }).click()
         await expect(
           page.getByRole('button', {
             name: `Quitar franja de ${dia}, 08:00 a 12:00`,

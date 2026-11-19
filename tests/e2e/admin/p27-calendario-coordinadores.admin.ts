@@ -12,7 +12,7 @@ import { readId, storageStatePath } from '../../fixtures/sessions.ts'
 import { cubre } from '../../fixtures/trace.ts'
 
 // P27.8: calendario con filtro por empleado y licencias (OD-12, OD-14), ficha del empleado con la
-// pestaña «Cronograma» (OD-01, OD-02), «Llegada tarde» (OD-17) y la jornada del coordinador desde
+// pestaña «Calendario» (OD-01, OD-02; en P30 antes «Cronograma», OH-04), «Llegada tarde» (OD-17) y la jornada del coordinador desde
 // la administración (OD-04 a OD-06), a 1280 px y con el administrador con todas las capacidades.
 // Empleados de este archivo: empleado2 y empleado3. Coordinador: supervisor2 (los demás archivos
 // de coordinadores usan supervisor1).
@@ -113,10 +113,10 @@ test.describe('calendario (OD-12, OD-14)', () => {
   )
 })
 
-test.describe('ficha del empleado: Cronograma (OD-01, OD-02)', () => {
+test.describe('ficha del empleado: Calendario (OD-01, OD-02, OH-04)', () => {
   test(
-    'la pestaña «Cronograma» va después de «Datos» y muestra el turno con su sede y la licencia con el motivo',
-    cubre('RB-A05', 'OD-01', 'OD-02', 'OD-03'),
+    'la pestaña «Calendario» va después de «Datos» y muestra el turno con su sede y la licencia con el motivo; «Imprimir» abre la hoja con firma y aclaración',
+    cubre('RB-A05', 'OD-01', 'OD-02', 'OD-03', 'OH-04'),
     async ({ page }) => {
       test.setTimeout(180_000)
       const sc = new Scenario()
@@ -152,15 +152,13 @@ test.describe('ficha del empleado: Cronograma (OD-01, OD-02)', () => {
         await page.goto(`/admin/empleados/${readId('empleado2')}`)
         const pestanas = page.getByRole('tab')
         await expect(pestanas.first()).toHaveText('Datos')
-        await expect(pestanas.nth(1)).toHaveText('Cronograma')
+        await expect(pestanas.nth(1)).toHaveText('Calendario')
         await pestanas.nth(1).click()
-        await expect(page).toHaveURL(/pestana=cronograma/)
+        await expect(page).toHaveURL(/pestana=calendario/)
 
-        const hoja = page.getByTestId('cronograma')
-        await expect(hoja).toContainText('FIRMA DE EMPLEADO')
-        await expect(hoja).toContainText('ACLARACIÓN')
-        await expect(hoja).toContainText('DNI')
-        await expect(hoja).toContainText(nombreDe('empleado2').toUpperCase())
+        // La hoja de firma, aclaración y DNI es la impresa (OH-04: «Imprimir» conserva su formato).
+        const hoja = page.getByTestId('calendario-mes')
+        await expect(hoja).toBeVisible()
         await expect(
           page.getByRole('button', { name: 'Imprimir' }),
         ).toBeVisible()
@@ -177,6 +175,17 @@ test.describe('ficha del empleado: Cronograma (OD-01, OD-02)', () => {
         const celdaLicencia = hoja.getByTestId(`dia-${otroDia}`)
         await expect(celdaLicencia).toHaveAttribute('data-kind', 'leave')
         await expect(celdaLicencia).toContainText(MOTIVO.toUpperCase())
+
+        await test.step('«Imprimir» abre la hoja con el formato en papel', async () => {
+          await page.getByRole('button', { name: 'Imprimir' }).click()
+          const impresa = page.getByTestId('cronograma')
+          await expect(impresa).toContainText('FIRMA DE EMPLEADO')
+          await expect(impresa).toContainText('ACLARACIÓN')
+          await expect(impresa).toContainText('DNI')
+          await expect(impresa).toContainText(
+            nombreDe('empleado2').toUpperCase(),
+          )
+        })
       } finally {
         expect(await sc.cleanup(), 'limpieza').toEqual([])
       }

@@ -3,8 +3,23 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router'
-import { CalendarOff, Pencil, Plus, Save, TriangleAlert } from 'lucide-react'
+import {
+  CalendarOff,
+  Pencil,
+  Plus,
+  Save,
+  TriangleAlert,
+  UserPlus,
+} from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,7 +31,13 @@ import type { LeavesAbsencesPerson } from '@/features/employees/leavesAbsencesSh
 import { SimpleConfirmDialog } from '@/features/settings/components/SimpleConfirmDialog'
 import { isApiError, type ConflictDetail } from '@/api/errors'
 import { ConflictShiftLink } from '@/features/shifts/conflictLink'
-import type { EmployeeLeave, LeaveConflict } from '@/api/employees'
+import type {
+  EmployeeLeave,
+  EmployeeLeaveInput,
+  LeaveShiftEntry,
+  SaveEmployeeLeaveResult,
+} from '@/api/employees'
+import { AssignEmployeeSheet } from '@/features/planning/components/AssignEmployeeSheet'
 import { formatCalendarDate } from '@/lib/format'
 import { formatDateOnly } from '@/features/settings/dateOnly'
 import { formatShiftRange } from '@/features/shifts/openEnded'
@@ -32,11 +53,9 @@ import {
   type EmployeeLeaveFormValues,
 } from '@/features/employees/schemas'
 import {
-  useCreateEmployeeLeaveMutation,
   useDeactivateEmployeeLeaveMutation,
   useEmployeeLeavesQuery,
-  useLeaveConflictsMutation,
-  useUpdateEmployeeLeaveMutation,
+  useSaveEmployeeLeaveMutation,
 } from '@/features/employees/queries'
 
 const LEAVE_STATUS_VARIANT: Record<
@@ -68,15 +87,22 @@ function EmployeeLeavesTab({
 }) {
   const auth = useAuth()
   const leavesQuery = useEmployeeLeavesQuery(profileId)
-  const createLeave = useCreateEmployeeLeaveMutation(profileId)
-  const updateLeave = useUpdateEmployeeLeaveMutation(profileId)
+  const saveLeave = useSaveEmployeeLeaveMutation(profileId)
   const deactivateLeave = useDeactivateEmployeeLeaveMutation(profileId)
-  const leaveConflicts = useLeaveConflictsMutation(profileId)
-  // P19.11d: turnos ya asignados dentro de la licencia recién guardada.
-  const [conflicts, setConflicts] = useState<LeaveConflict[]>([])
+  // OH-08: vista previa pendiente de confirmar (turnos que se liberan o se conservan).
+  const [pendingSave, setPendingSave] = useState<{
+    input: EmployeeLeaveInput
+    preview: SaveEmployeeLeaveResult
+  } | null>(null)
+  // OH-08: turnos que quedaron sin cubrir después de guardar, con «Reemplazar».
+  const [uncovered, setUncovered] = useState<LeaveShiftEntry[]>([])
+  const [replaceTarget, setReplaceTarget] = useState<LeaveShiftEntry | null>(
+    null,
+  )
   // AJ2-08: licencia que se está editando con el mismo formulario del alta.
   const [editingLeave, setEditingLeave] = useState<EmployeeLeave | null>(null)
   const [leaveToEnd, setLeaveToEnd] = useState<EmployeeLeave | null>(null)
+  const personName = person?.name ?? 'esta persona'
 
   const {
     register,
@@ -93,30 +119,6 @@ function EmployeeLeavesTab({
   // cuentan para "de licencia" ni para bloquear un rango de fechas.
   const leaves = leavesQuery.data ?? []
 
-  /**
-   * La licencia ya está guardada (escritura directa): se consulta qué turnos
-   * quedaron asignados en el período para avisar y dejar reasignarlos. No se
-   * desasigna nada.
-   */
-  async function checkConflicts(input: {
-    startsOn: string
-    endsOn: string | null
-  }) {
-    try {
-      setConflicts(
-        await leaveConflicts.mutateAsync({
-          startsOn: input.startsOn,
-          endsOn: input.endsOn,
-        }),
-      )
-    } catch {
-      setConflicts([])
-      toast.warning(
-        'Guardamos la licencia, pero no pudimos revisar si tiene turnos asignados en esas fechas.',
-      )
-    }
-  }
-
   function startEditing(leave: EmployeeLeave) {
     setEditingLeave(leave)
     reset({
@@ -131,38 +133,62 @@ function EmployeeLeavesTab({
     reset({ startsOn: '', endsOn: '', reason: '' })
   }
 
+  /**
+   * OH-08: al tocar Guardar se pide primero la vista previa
+   * (`save_employee_leave` con `p_preview`). Si la licencia libera o toca
+   * turnos, se muestra el diálogo de confirmación; si no hay nada, se guarda
+   * directo. Si la vista previa falla, se muestra el error y no se guarda.
+   */
   async function onSubmit(values: EmployeeLeaveFormValues) {
     const input = employeeLeaveFormValuesToInput(values)
-    if (editingLeave) {
-      try {
-        await updateLeave.mutateAsync({
-          id: editingLeave.id,
-          input,
-          updatedBy: auth.userId as string,
-        })
-        cancelEditing()
-        toast.success('Guardamos los cambios de la licencia.')
-        await checkConflicts(input)
-      } catch (error) {
-        toast.error(
-          isApiError(error)
-            ? error.message
-            : 'No pudimos guardar los cambios de la licencia.',
-        )
-      }
-      return
-    }
     try {
-      await createLeave.mutateAsync({
+      const preview = await saveLeave.mutateAsync({
         input,
-        createdBy: auth.userId as string,
+        leaveId: editingLeave?.id ?? null,
+        preview: true,
       })
-      reset({ startsOn: '', endsOn: '', reason: '' })
-      toast.success('Agregamos la licencia.')
-      await checkConflicts(input)
+      if (preview.released.length > 0 || preview.kept.length > 0) {
+        setPendingSave({ input, preview })
+        return
+      }
     } catch (error) {
       toast.error(
-        isApiError(error) ? error.message : 'No pudimos agregar la licencia.',
+        isApiError(error)
+          ? error.message
+          : 'No pudimos revisar qué turnos toca la licencia.',
+      )
+      return
+    }
+    await confirmSave(input)
+  }
+
+  async function confirmSave(input: EmployeeLeaveInput) {
+    const wasEditing = editingLeave != null
+    try {
+      const result = await saveLeave.mutateAsync({
+        input,
+        leaveId: editingLeave?.id ?? null,
+      })
+      setPendingSave(null)
+      if (wasEditing) {
+        cancelEditing()
+      } else {
+        reset({ startsOn: '', endsOn: '', reason: '' })
+      }
+      toast.success(
+        wasEditing
+          ? 'Guardamos los cambios de la licencia.'
+          : 'Agregamos la licencia.',
+      )
+      setUncovered(result.released)
+    } catch (error) {
+      setPendingSave(null)
+      toast.error(
+        isApiError(error)
+          ? error.message
+          : wasEditing
+            ? 'No pudimos guardar los cambios de la licencia.'
+            : 'No pudimos agregar la licencia.',
       )
     }
   }
@@ -233,7 +259,7 @@ function EmployeeLeavesTab({
               type="submit"
               size="sm"
               icon={editingLeave ? Save : Plus}
-              loading={createLeave.isPending || updateLeave.isPending}
+              loading={saveLeave.isPending && pendingSave == null}
             >
               {editingLeave ? 'Guardar cambios' : 'Agregar licencia'}
             </Button>
@@ -251,37 +277,33 @@ function EmployeeLeavesTab({
         </form>
       )}
 
-      {conflicts.length > 0 && (
+      {uncovered.length > 0 && (
         <Alert variant="warn">
           <TriangleAlert />
           <AlertDescription>
             <p className="font-semibold">
-              {conflicts.length === 1
-                ? 'Esta persona tiene 1 turno asignado en las fechas de la licencia.'
-                : `Esta persona tiene ${conflicts.length} turnos asignados en las fechas de la licencia.`}{' '}
-              No se desasignó nada: abrí cada turno para reasignarlo.
+              {uncovered.length === 1
+                ? `Quedó 1 turno sin cubrir por la licencia de ${personName}.`
+                : `Quedaron ${uncovered.length} turnos sin cubrir por la licencia de ${personName}.`}
             </p>
             <ul className="mt-2 flex flex-col gap-1">
-              {conflicts.map((conflict) => (
+              {uncovered.map((entry) => (
                 <li
-                  key={conflict.assignmentId}
-                  className="flex flex-wrap items-center gap-x-2"
+                  key={entry.assignmentId}
+                  className="flex flex-wrap items-center gap-x-2 gap-y-1"
                 >
-                  <span className="capitalize">
-                    {formatDateOnly(conflict.shiftDate)}
-                  </span>
-                  <span>
-                    {formatShiftRange(
-                      conflict.startTime,
-                      conflict.endTime,
-                      conflict.openEnded,
-                    )}
-                  </span>
-                  <span>
-                    {conflict.clientName} · {conflict.siteName}
-                  </span>
-                  <span>{conflict.serviceName ?? 'Turno cargado a mano'}</span>
-                  <SeeShiftLink shiftId={conflict.shiftId} />
+                  <LeaveShiftLine entry={entry} />
+                  <Button
+                    type="button"
+                    variant="dark"
+                    size="sm"
+                    icon={UserPlus}
+                    aria-label={`Reemplazar en ${entry.clientName}, ${formatDateOnly(entry.shiftDate)}`}
+                    onClick={() => setReplaceTarget(entry)}
+                  >
+                    Reemplazar
+                  </Button>
+                  <SeeShiftLink shiftId={entry.shiftId} />
                 </li>
               ))}
             </ul>
@@ -290,7 +312,7 @@ function EmployeeLeavesTab({
               variant="ghost"
               size="sm"
               className="mt-2"
-              onClick={() => setConflicts([])}
+              onClick={() => setUncovered([])}
             >
               Cerrar aviso
             </Button>
@@ -370,6 +392,98 @@ function EmployeeLeavesTab({
         </ul>
       )}
 
+      {pendingSave && (
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open && !saveLeave.isPending) {
+              setPendingSave(null)
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {pendingSave.preview.released.length > 0
+                  ? releaseTitle(
+                      pendingSave.preview.released.length,
+                      personName,
+                    )
+                  : 'Revisá los turnos de esta licencia'}
+              </DialogTitle>
+              <DialogDescription>
+                {pendingSave.preview.released.length > 0
+                  ? 'Al confirmar se guarda la licencia y se quita a la persona de estos turnos. Quedan sin cubrir hasta que asignes a alguien.'
+                  : 'No hay turnos para liberar, pero hay turnos que no se tocan.'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex max-h-72 flex-col gap-3 overflow-y-auto text-[12.5px]">
+              {pendingSave.preview.released.length > 0 && (
+                <ul className="flex flex-col gap-1">
+                  {pendingSave.preview.released.map((entry) => (
+                    <li key={entry.assignmentId}>
+                      <LeaveShiftLine entry={entry} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {pendingSave.preview.kept.length > 0 && (
+                <div>
+                  <p className="font-semibold text-text">
+                    {keptTitle(pendingSave.preview.kept.length)}
+                  </p>
+                  <ul className="mt-1 flex flex-col gap-1">
+                    {pendingSave.preview.kept.map((entry) => (
+                      <li key={entry.assignmentId}>
+                        <LeaveShiftLine entry={entry} />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={saveLeave.isPending}
+                onClick={() => setPendingSave(null)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                loading={saveLeave.isPending}
+                onClick={() => void confirmSave(pendingSave.input)}
+              >
+                Confirmar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {replaceTarget && (
+        <AssignEmployeeSheet
+          shiftId={replaceTarget.shiftId}
+          clientId={replaceTarget.clientId}
+          shiftDate={replaceTarget.shiftDate}
+          shiftStartTime={replaceTarget.startTime}
+          shiftEndTime={replaceTarget.endTime}
+          shiftOpenEnded={replaceTarget.openEnded}
+          excludeEmployeeIds={[profileId]}
+          open
+          onOpenChange={(open) => !open && setReplaceTarget(null)}
+          onAssigned={() =>
+            setUncovered((current) =>
+              current.filter(
+                (entry) => entry.assignmentId !== replaceTarget.assignmentId,
+              ),
+            )
+          }
+        />
+      )}
+
       <SimpleConfirmDialog
         open={leaveToEnd != null}
         onOpenChange={(open) => !open && setLeaveToEnd(null)}
@@ -384,6 +498,36 @@ function EmployeeLeavesTab({
         onConfirm={() => void handleEndLeave()}
       />
     </div>
+  )
+}
+
+/** «Se van a liberar 3 turnos de Ana Gómez». */
+function releaseTitle(count: number, name: string): string {
+  return count === 1
+    ? `Se va a liberar 1 turno de ${name}`
+    : `Se van a liberar ${count} turnos de ${name}`
+}
+
+/** «Este turno tiene fichajes y no se toca» / «Estos 2 turnos tienen fichajes y no se tocan». */
+function keptTitle(count: number): string {
+  return count === 1
+    ? 'Este turno tiene fichajes y no se toca'
+    : `Estos ${count} turnos tienen fichajes y no se tocan`
+}
+
+/** Una línea de turno: fecha, horario, cliente y sede, servicio. */
+function LeaveShiftLine({ entry }: { entry: LeaveShiftEntry }) {
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-2">
+      <span className="capitalize">{formatDateOnly(entry.shiftDate)}</span>
+      <span>
+        {formatShiftRange(entry.startTime, entry.endTime, entry.openEnded)}
+      </span>
+      <span>
+        {entry.clientName} · {entry.siteName}
+      </span>
+      <span>{entry.serviceName ?? 'Turno cargado a mano'}</span>
+    </span>
   )
 }
 

@@ -389,26 +389,45 @@ export default function ClientFormPage() {
           <Controller
             control={control}
             name="categoryId"
-            render={({ field }) => (
-              <Select
-                value={field.value ?? NO_CATEGORY_VALUE}
-                onValueChange={field.onChange}
-              >
-                <SelectTrigger id="client-category" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_CATEGORY_VALUE}>
-                    Sin categoría
-                  </SelectItem>
-                  {(categoriesQuery.data ?? []).map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
+            render={({ field }) => {
+              const selectedCategoryId = field.value ?? NO_CATEGORY_VALUE
+              // OH-13: el texto se arma acá y no con los ítems del desplegable:
+              // si el valor se carga (o las categorías llegan) con el
+              // desplegable cerrado, Radix no lo mostraba.
+              const selectedCategoryName =
+                selectedCategoryId === NO_CATEGORY_VALUE
+                  ? 'Sin categoría'
+                  : (categoriesQuery.data ?? []).find(
+                      (category) => category.id === selectedCategoryId,
+                    )?.name
+              return (
+                <Select
+                  value={selectedCategoryId}
+                  onValueChange={(value) => {
+                    // Radix avisa un valor vacío cuando el valor cargado todavía
+                    // no tiene su ítem (las categorías llegan después): se ignora
+                    // para no pisar la categoría guardada.
+                    if (value !== '') {
+                      field.onChange(value)
+                    }
+                  }}
+                >
+                  <SelectTrigger id="client-category" className="w-full">
+                    <SelectValue>{selectedCategoryName}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_CATEGORY_VALUE}>
+                      Sin categoría
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+                    {(categoriesQuery.data ?? []).map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )
+            }}
           />
         </Field>
 

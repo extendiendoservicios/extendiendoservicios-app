@@ -1,4 +1,5 @@
 import type {
+  ServiceChangesOverriddenField,
   ServiceChangesResult,
   ServiceChangesUpdated,
   ServiceDetail,
@@ -183,9 +184,57 @@ export function describeShiftOverlap(overlap: ShiftOverlap): string {
 
 export function shiftOverlapsMessage(overlaps: ShiftOverlap[]): string {
   if (overlaps.length === 1) {
-    return `${describeShiftOverlap(overlaps[0] as ShiftOverlap)} ¿Crear igual?`
+    return `${describeShiftOverlap(overlaps[0] as ShiftOverlap)} ¿Crear igual o editar ese turno?`
   }
-  return 'Esta sede ya tiene turnos ese día que se superponen en horario. ¿Crear igual?'
+  return 'Esta sede ya tiene turnos ese día que se superponen en horario. ¿Crear igual o editar ese turno?'
+}
+
+/**
+ * OH-11: gana el último cambio. De los turnos que se actualizan, los que
+ * tenían cambios a mano (horario, dotación o fotos) se dicen aparte:
+ * «, 3 de ellos tenían cambios a mano que se reemplazan».
+ */
+export function overriddenText(
+  result: Pick<ServiceChangesResult, 'updatedCount' | 'overriddenCount'>,
+  done: boolean,
+): string {
+  const count = Math.min(result.overriddenCount, result.updatedCount)
+  if (count <= 0) {
+    return ''
+  }
+  if (count === 1) {
+    return done
+      ? result.updatedCount === 1
+        ? ', que tenía cambios a mano que se reemplazaron'
+        : ', 1 de ellos tenía cambios a mano que se reemplazaron'
+      : result.updatedCount === 1
+        ? ', que tenía cambios a mano que se reemplazan'
+        : ', 1 de ellos tenía cambios a mano que se reemplazan'
+  }
+  return done
+    ? `, ${count} de ellos tenían cambios a mano que se reemplazaron`
+    : `, ${count} de ellos tenían cambios a mano que se reemplazan`
+}
+
+const OVERRIDDEN_FIELD_LABELS: Record<ServiceChangesOverriddenField, string> = {
+  time: 'el horario',
+  required_staff: 'la dotación',
+  requires_photos: 'las fotos',
+}
+
+/** «Tenía cambios a mano en el horario y la dotación: se reemplazan.» */
+export function overriddenFieldsText(
+  fields: ServiceChangesOverriddenField[],
+): string | null {
+  if (fields.length === 0) {
+    return null
+  }
+  const names = fields.map((field) => OVERRIDDEN_FIELD_LABELS[field])
+  const list =
+    names.length === 1
+      ? (names[0] as string)
+      : `${names.slice(0, -1).join(', ')} y ${names.at(-1)}`
+  return `Tenía cambios a mano en ${list}: se reemplazan.`
 }
 
 function countText(count: number, singular: string, plural: string): string {
@@ -210,9 +259,10 @@ export function summarizeServiceChanges(
   }
   if (result.updatedCount > 0) {
     parts.push(
-      done
+      (done
         ? `actualizamos ${countText(result.updatedCount, 'turno', 'turnos')}`
-        : `se ${result.updatedCount === 1 ? 'actualiza' : 'actualizan'} ${countText(result.updatedCount, 'turno', 'turnos')}`,
+        : `se ${result.updatedCount === 1 ? 'actualiza' : 'actualizan'} ${countText(result.updatedCount, 'turno', 'turnos')}`) +
+        overriddenText(result, done),
     )
   }
   if (result.createdCount > 0) {
@@ -278,6 +328,10 @@ export function describeUpdatedShift(item: ServiceChangesUpdated): string[] {
     lines.push(
       item.requiresPhotos.to ? 'Pasa a pedir fotos' : 'Deja de pedir fotos',
     )
+  }
+  const overridden = overriddenFieldsText(item.overriddenFields)
+  if (overridden) {
+    lines.push(overridden)
   }
   for (const removed of item.removed) {
     lines.push(`Se quita a la persona asignada: ${removed.message}`)

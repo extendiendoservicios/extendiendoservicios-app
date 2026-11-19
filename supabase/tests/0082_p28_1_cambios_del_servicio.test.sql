@@ -226,7 +226,7 @@ select is((select current_setting('tests_0082c.a')::jsonb ->> 'deleted_count'), 
 select is((select current_setting('tests_0082c.a')::jsonb ->> 'updated_count'), '3', 'actualizados: 3');
 select is((select current_setting('tests_0082c.a')::jsonb ->> 'created_count'), '3', 'creados: 3 (los viernes 12, 19 y 26 de julio)');
 select is((select current_setting('tests_0082c.a')::jsonb ->> 'skipped_count'), '3', 'salteados: 3');
-select is((select current_setting('tests_0082c.a')::jsonb ->> 'partial_count'), '2', 'parciales: el del asignado quitado y el del horario conservado');
+select is((select current_setting('tests_0082c.a')::jsonb ->> 'partial_count'), '1', 'parciales: solo el del asignado quitado (desde 0087 el del horario cambiado a mano ya no se conserva)');
 select is((select current_setting('tests_0082c.a')::jsonb ->> 'assignments_removed'), '2', 'asignaciones quitadas: Acosta por superposición y Boutter del turno borrado');
 select is((select current_setting('tests_0082c.a')::jsonb ->> 'assignments_added'), '3', 'asignaciones nuevas: la fija en los tres viernes');
 select is(
@@ -253,10 +253,10 @@ select is(
   'con el mensaje de OF-08 (dónde choca)'
 );
 select is(
-  (select e -> 'kept' -> 0 ->> 'code'
-   from jsonb_array_elements(current_setting('tests_0082c.a')::jsonb -> 'updated') e
+  (select e -> 'fields' ->> 0
+   from jsonb_array_elements(current_setting('tests_0082c.a')::jsonb -> 'overridden') e
    where e ->> 'shift_date' = '2199-07-22'),
-  'MANUAL_TIME', 'el turno con horario cambiado a mano lo conserva y lo dice'
+  'time', 'el turno con horario cambiado a mano se actualiza igual y se lista en overridden (0087, OH-11)'
 );
 select is((select jsonb_array_length(current_setting('tests_0082c.a')::jsonb -> 'months')), 2, 'meses con turnos generados: julio y agosto');
 
@@ -281,7 +281,7 @@ select is(
 select is(
   (select start_time::text || ' / ' || required_staff || ' / ' || requires_photos
    from public.shifts where id = 'f82c0000-0000-0000-0000-000000000305'),
-  '10:00:00 / 3 / true', 'el turno con horario a mano conserva su hora y recibe dotación y fotos'
+  '09:00:00 / 3 / true', 'el turno con horario a mano recibe el horario, la dotación y las fotos del servicio (0087, OH-11)'
 );
 select is(
   (select start_time::text from public.shifts where id = 'f82c0000-0000-0000-0000-000000000300'),

@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
-import { MemoryRouter } from 'react-router'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { MemoryRouter, useLocation } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { WeekGrid } from './WeekGrid'
 
@@ -72,13 +72,57 @@ vi.mock('@/features/employees/employeeLeaveStatus', () => ({
   todayInBuenosAires: () => '2026-10-20',
 }))
 
+function LocationProbe() {
+  const location = useLocation()
+  return <p data-testid="url">{location.search}</p>
+}
+
 function renderGrid(url = '/admin/planificacion?vista=semana') {
   return render(
     <MemoryRouter initialEntries={[url]}>
       <WeekGrid />
+      <LocationProbe />
     </MemoryRouter>,
   )
 }
+
+describe('WeekGrid: la semana vive en la dirección (OH-03)', () => {
+  it('DEF-P30-01: dos clics seguidos en «Semana siguiente» avanzan dos semanas', () => {
+    renderGrid('/admin/planificacion?vista=semana&cliente=c1')
+    const next = screen.getByRole('button', { name: 'Semana siguiente' })
+    act(() => {
+      fireEvent.click(next)
+      fireEvent.click(next)
+    })
+    expect(screen.getByTestId('url').textContent).toBe(
+      '?vista=semana&cliente=c1&semana=2026-11-02',
+    )
+  })
+
+  it('muestra la semana de ?semana= (volver desde un turno no la reinicia)', () => {
+    renderGrid('/admin/planificacion?vista=semana&semana=2026-11-02')
+    expect(screen.getByText(/^lun 2 nov – /i)).toBeInTheDocument()
+  })
+
+  it('cambiar de semana la escribe en la dirección conservando los filtros', () => {
+    renderGrid('/admin/planificacion?vista=semana&cliente=c1')
+    fireEvent.click(screen.getByRole('button', { name: 'Semana siguiente' }))
+    expect(screen.getByTestId('url').textContent).toBe(
+      '?vista=semana&cliente=c1&semana=2026-10-26',
+    )
+  })
+
+  it('«Esta semana» quita el parámetro', () => {
+    renderGrid('/admin/planificacion?vista=semana&semana=2026-11-02')
+    fireEvent.click(screen.getByRole('button', { name: 'Esta semana' }))
+    expect(screen.getByTestId('url').textContent).toBe('?vista=semana')
+  })
+
+  it('una semana inválida en la dirección cae en la actual', () => {
+    renderGrid('/admin/planificacion?vista=semana&semana=cualquiera')
+    expect(screen.getByText(/^lun 19 oct – /i)).toBeInTheDocument()
+  })
+})
 
 describe('WeekGrid (escritorio)', () => {
   it('el contenedor desplaza en horizontal y la tabla tiene un ancho mínimo', () => {

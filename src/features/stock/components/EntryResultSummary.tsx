@@ -1,4 +1,4 @@
-import { Link } from 'react-router'
+import { BackLink } from '@/components/BackLink'
 import { CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { StockPostResult } from '@/api/stock'
@@ -80,7 +80,7 @@ function EntryResultSummary({
           Cargar otro
         </Button>
         <Button asChild>
-          <Link to="/admin/insumos">Volver a Stock</Link>
+          <BackLink fallback="/admin/insumos">Volver a Stock</BackLink>
         </Button>
       </div>
     </div>

@@ -137,6 +137,7 @@ function SupplyMovementsSection({ supplyId }: { supplyId: string }) {
           )}
           <div className="w-40">
             <DatePicker
+              clearable
               aria-label="Movimientos desde"
               placeholder="Desde"
               value={dateFrom ? isoDateToDate(dateFrom) : undefined}
@@ -148,6 +149,7 @@ function SupplyMovementsSection({ supplyId }: { supplyId: string }) {
           </div>
           <div className="w-40">
             <DatePicker
+              clearable
               aria-label="Movimientos hasta"
               placeholder="Hasta"
               value={dateTo ? isoDateToDate(dateTo) : undefined}

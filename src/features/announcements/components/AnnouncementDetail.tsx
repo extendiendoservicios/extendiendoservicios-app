@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { useNavigate } from 'react-router'
+import { BackLink } from '@/components/BackLink'
+import { useBackTo } from '@/app/shells/backNavigation'
 import { toast } from 'sonner'
 import { Archive, Megaphone, Pencil } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -40,6 +42,7 @@ export function AnnouncementDetail({
   announcementId: string
 }) {
   const navigate = useNavigate()
+  const goBackToList = useBackTo('/admin/anuncios')
   const announcementQuery = useAnnouncementQuery(announcementId)
   const recipientsQuery = useAnnouncementRecipientsQuery(announcementId)
   const archiveMutation = useArchiveAnnouncementMutation()
@@ -90,7 +93,7 @@ export function AnnouncementDetail({
       await archiveMutation.mutateAsync(announcementId)
       toast.success('Archivamos el anuncio.')
       setConfirmingArchive(false)
-      void navigate('/admin/anuncios')
+      goBackToList()
     } catch (error) {
       toast.error(
         isApiError(error) ? error.message : 'No pudimos archivar el anuncio.',
@@ -117,7 +120,9 @@ export function AnnouncementDetail({
         description="Puede que se haya movido o que el enlace esté roto."
         action={
           <Button asChild variant="ghost">
-            <Link to="/admin/anuncios">Volver a los anuncios</Link>
+            <BackLink fallback="/admin/anuncios">
+              Volver a los anuncios
+            </BackLink>
           </Button>
         }
       />

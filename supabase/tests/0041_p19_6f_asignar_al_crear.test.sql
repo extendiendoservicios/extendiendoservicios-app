@@ -60,7 +60,7 @@ select has_function('public', 'assign_employee', array['uuid', 'uuid', 'time', '
 select ok(
   not has_function_privilege('anon', 'public.set_service_fixed_employees(uuid, uuid[])', 'execute')
     and has_function_privilege('authenticated', 'public.set_service_fixed_employees(uuid, uuid[])', 'execute')
-    and not has_function_privilege('authenticated', 'app.assign_employee_core(uuid, uuid, time, time, boolean)', 'execute'),
+    and not has_function_privilege('authenticated', 'app.assign_employee_core(uuid, uuid, time, time, boolean, boolean)', 'execute'),
   'grants: set_service_fixed_employees para authenticated; assign_employee_core no es llamable desde afuera'
 );
 select ok(

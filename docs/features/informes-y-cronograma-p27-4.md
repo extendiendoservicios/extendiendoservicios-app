@@ -19,6 +19,8 @@ En el detalle de asistencia, cada licencia o vacación ocupa una fila por cada d
 
 ## Pestaña «Cronograma» (OD-01 a OD-03)
 
+> **P30.4a:** la pestaña pasó a llamarse «Calendario» (`?pestana=calendario`; `cronograma` sigue valiendo como alias) y el mes es editable. Ver `p30-4a-calendario-editable.md`. La hoja impresa no cambió.
+
 Está en la ficha del empleado (ADM-17), después de «Datos» (`?pestana=cronograma`). Lógica en `src/features/employees/cronograma.ts` y pantalla en `src/features/employees/components/EmployeeCronogramaTab.tsx`.
 
 - Selector de mes y botón «Imprimir» (vista previa en A4 horizontal con la misma grilla que se ve en la pestaña).

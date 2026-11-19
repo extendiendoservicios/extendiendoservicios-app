@@ -1,13 +1,12 @@
 import { expect, test, type Page } from '@playwright/test'
 import { nombreDe } from '../../fixtures/accounts.ts'
 import {
-  daysFromToday,
   isTooCloseToMidnight,
-  mondayOf,
   addDays,
   NEAR_MIDNIGHT_MESSAGE,
 } from '../../fixtures/dates.ts'
 import { MISSING_ENV_MESSAGE, readE2eEnv } from '../../fixtures/env.ts'
+import { abrirCalendario, bloqueDe, fechaDeMes } from '../../fixtures/p30.ts'
 import { Scenario } from '../../fixtures/scenario.ts'
 import { readId, storageStatePath } from '../../fixtures/sessions.ts'
 import { cubre } from '../../fixtures/trace.ts'
@@ -26,7 +25,7 @@ import {
 // 390 px está en p28-9-ajustes.movil.admin.ts.
 //   - OF-21: «Repetir este turno» avisa los duplicados («Sacar esas fechas» / «Repetir igual»).
 //   - OF-22: «*» y nota al pie en las hojas imprimibles con un cierre automático.
-//   - OF-23: «Solo a…» → «Crear un turno nuevo…» en el cronograma, con «Deshacer» solo para la dirección.
+//   - OF-23: «Solo a…» → «Crear un turno nuevo…» en el calendario del empleado, con «Deshacer» solo para la dirección.
 //   - OF-05b: editar solo la dotación del servicio no crea turnos.
 //   - OF-08b: licencia sobre días con turnos → servicio y «Ver turno».
 // Empleados: empleado1 y empleado2 (los otros p28-* usan empleado3 y empleado4).
@@ -99,16 +98,13 @@ test.describe('OF-22 · cierre automático en las hojas imprimibles', () => {
 })
 
 // ---------------------------------------------------------------------------------------------
-// OF-23 · cronograma semanal: «Solo a…» → «Crear un turno nuevo…»
+// OF-23 · calendario del empleado: «Solo a…» → «Crear un turno nuevo…» (P30: el mes es editable, OH-05)
 // ---------------------------------------------------------------------------------------------
-const LUNES = mondayOf(daysFromToday(7))
-const dia = (n: number) => addDays(LUNES, n)
+const BASE = fechaDeMes(8)
+const dia = (n: number) => addDays(BASE, n)
 
 async function abrirSemana(page: Page, quien: 'empleado1' | 'empleado2') {
-  await page.goto(`/admin/empleados/${readId(quien)}?pestana=cronograma`)
-  await page.getByRole('radio', { name: 'Semana (editar)' }).click()
-  await expect(page.getByTestId('cronograma-semana')).toBeVisible()
-  await page.getByRole('button', { name: 'Semana siguiente' }).click()
+  await abrirCalendario(page, quien, dia(1))
 }
 
 /** Turno de dos personas (08:00–10:00, empleado1 y empleado2), del que se pasa a empleado1. */
@@ -140,13 +136,15 @@ async function pasarSoloAUnTurnoNuevo(
   sedeNombre: string,
   quien: 'empleado1',
 ) {
-  const bloque = page
-    .getByTestId('bloque')
-    .filter({ has: page.getByText(sedeNombre, { exact: true }) })
+  const bloque = bloqueDe(page, sedeNombre)
   await expect(bloque).toBeVisible()
-  await bloque.focus()
-  for (let i = 0; i < 8; i++) await page.keyboard.press('ArrowDown')
-  await page.keyboard.press('Enter')
+  // Dos horas más tarde (10:00 a 12:00) por el menú del bloque, sin arrastre.
+  await bloque.getByRole('button', { name: /^Opciones del turno de/ }).click()
+  await page.getByRole('menuitem', { name: 'Mover o cambiar horario…' }).click()
+  const mover = page.getByRole('dialog', { name: 'Mover o cambiar horario' })
+  await mover.getByLabel('Hasta').fill('12:00')
+  await mover.getByLabel('Desde').fill('10:00')
+  await mover.getByRole('button', { name: 'Mover' }).click()
   const dialogo = page.getByRole('dialog')
   await expect(
     dialogo.getByRole('heading', {
@@ -263,12 +261,19 @@ test.describe('OF-23 · «Solo a…» crea el turno destino (cronograma)', () =>
         try {
           const { sede, turno } = await turnoDeDos(sc, false)
           await abrirSemana(page, 'empleado1')
-          const bloque = page
-            .getByTestId('bloque')
-            .filter({ has: page.getByText(sede.name, { exact: true }) })
-          await bloque.focus()
-          for (let i = 0; i < 8; i++) await page.keyboard.press('ArrowDown')
-          await page.keyboard.press('Enter')
+          const bloque = bloqueDe(page, sede.name)
+          await bloque
+            .getByRole('button', { name: /^Opciones del turno de/ })
+            .click()
+          await page
+            .getByRole('menuitem', { name: 'Mover o cambiar horario…' })
+            .click()
+          const mover = page.getByRole('dialog', {
+            name: 'Mover o cambiar horario',
+          })
+          await mover.getByLabel('Hasta').fill('12:00')
+          await mover.getByLabel('Desde').fill('10:00')
+          await mover.getByRole('button', { name: 'Mover' }).click()
           const dialogo = page.getByRole('dialog')
           await dialogo.getByRole('combobox').click()
           await page

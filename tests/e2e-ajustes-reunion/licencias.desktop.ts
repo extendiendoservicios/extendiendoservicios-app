@@ -39,8 +39,8 @@ test.use({ storageState: storageStatePath('admin') })
 
 test.describe('licencias que bloquean (ADM-17, ADM-07, ADM-08, SUP-02)', () => {
   test(
-    'al guardar una licencia sobre un turno asignado aparece el aviso con «Ver turno» y no se desasigna a nadie',
-    cubre('RB-A04', 'RB-A03', 'CB-25', 'P-033'),
+    'al guardar una licencia sobre un turno asignado se muestra qué se libera, al confirmar queda sin cubrir con «Ver turno» y «Reemplazar» (OH-08)',
+    cubre('RB-A04', 'RB-A03', 'CB-25', 'P-033', 'OH-08'),
     async ({ page }) => {
       const sc = new Scenario()
       try {
@@ -66,17 +66,34 @@ test.describe('licencias que bloquean (ADM-17, ADM-07, ADM-08, SUP-02)', () => {
           ).toHaveCount(0)
         })
 
-        await test.step('una licencia sobre el turno asignado avisa y deja ver el turno', async () => {
+        await test.step('una licencia sobre el turno asignado muestra qué se libera y, al confirmar, lo deja sin cubrir y deja ver el turno (OH-08)', async () => {
           await page.getByLabel('Desde').fill(daysFromToday(5))
           await page.getByLabel('Hasta (opcional)').fill(daysFromToday(7))
           await page
             .getByLabel('Motivo (opcional)')
             .fill(`${PREFIJO} con turno`)
           await page.getByRole('button', { name: 'Agregar licencia' }).click()
+          const dialogo = page.getByRole('dialog')
           await expect(
-            page.getByText(
-              'Esta persona tiene 1 turno asignado en las fechas de la licencia.',
-            ),
+            dialogo.getByRole('heading', {
+              name: /^Se va a liberar 1 turno de /,
+            }),
+          ).toBeVisible()
+          await expect(dialogo).toContainText(cliente.name)
+          await expect(dialogo).toContainText('08:00')
+          // La vista previa no desasigna: todavía no se confirmó.
+          {
+            const { data } = await sc.db
+              .from('assignments')
+              .select('id')
+              .eq('shift_id', turno)
+              .is('removed_at', null)
+            expect(data).toHaveLength(1)
+          }
+          await dialogo.getByRole('button', { name: 'Confirmar' }).click()
+          await expect(page.getByText('Agregamos la licencia.')).toBeVisible()
+          await expect(
+            page.getByText(/^Quedó 1 turno sin cubrir por la licencia de /),
           ).toBeVisible()
           await expect(
             page.getByText(cliente.name, { exact: false }),
@@ -86,14 +103,17 @@ test.describe('licencias que bloquean (ADM-17, ADM-07, ADM-08, SUP-02)', () => {
           const abrir = page.getByRole('button', { name: 'Ver turno' })
           await expect(abrir).toHaveCount(1)
           await expect(page.getByText('Turno cargado a mano')).toBeVisible()
+          await expect(
+            page.getByRole('button', { name: /^Reemplazar en / }),
+          ).toBeVisible()
 
-          // No se desasignó nada.
+          // OH-08: la licencia liberó la asignación (queda sin cubrir).
           const { data } = await sc.db
             .from('assignments')
             .select('id')
             .eq('shift_id', turno)
             .is('removed_at', null)
-          expect(data).toHaveLength(1)
+          expect(data).toHaveLength(0)
 
           await abrir.click()
           await expect(

@@ -76,6 +76,10 @@ vi.mock('@/features/employees/components/RatingSummary', () => ({
   RatingSummary: () => null,
 }))
 
+vi.mock('@/features/employees/components/WeekBoard', () => ({
+  WeekBoardPanel: () => <div data-testid="cronograma-semanal" />,
+}))
+
 function renderPage() {
   return render(
     <MemoryRouter initialEntries={['/admin/empleados/p1']}>
@@ -114,6 +118,33 @@ describe('EmployeeDetailPage · acceso en el bloque principal', () => {
     expect(
       screen.getByRole('heading', { name: 'Lucía Torres' }),
     ).toBeInTheDocument()
+  })
+})
+
+describe('EmployeeDetailPage · cronograma semanal en la cabecera (OH-07)', () => {
+  it('lo ve el dueño', () => {
+    renderPage()
+    expect(screen.getByTestId('cronograma-semanal')).toBeInTheDocument()
+  })
+
+  it('lo ve un administrador que administra turnos y horarios', () => {
+    authState.current = {
+      roles: ['admin'],
+      capabilities: [],
+      userId: 'u-admin',
+    }
+    renderPage()
+    expect(screen.getByTestId('cronograma-semanal')).toBeInTheDocument()
+  })
+
+  it('no lo ve quien no puede administrar turnos', () => {
+    authState.current = {
+      roles: ['supervisor'],
+      capabilities: [],
+      userId: 'u-sup',
+    }
+    renderPage()
+    expect(screen.queryByTestId('cronograma-semanal')).not.toBeInTheDocument()
   })
 })
 

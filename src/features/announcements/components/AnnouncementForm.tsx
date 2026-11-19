@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { Megaphone } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -34,7 +33,7 @@ import {
   type AnnouncementFormValues,
 } from '@/features/announcements/schemas'
 import { RecipientPicker, type RecipientCandidate } from './RecipientPicker'
-import { useLeaveForm } from '@/app/shells/backNavigation'
+import { useBackTo, useLeaveForm } from '@/app/shells/backNavigation'
 
 function isoDateToDate(isoDate: string): Date | undefined {
   return isoDate ? new Date(`${isoDate}T00:00:00`) : undefined
@@ -50,8 +49,12 @@ export function AnnouncementForm({
   announcementId?: string
 }) {
   const isEditMode = announcementId != null
-  const navigate = useNavigate()
   const leaveForm = useLeaveForm()
+  // OH-03: cancelar vuelve a donde se estaba (el listado o el anuncio).
+  const goBackFromForm = useBackTo(
+    isEditMode ? `/admin/anuncios/${announcementId}` : '/admin/anuncios',
+  )
+  const goBackToAnnouncement = useBackTo(`/admin/anuncios/${announcementId}`)
 
   const announcementQuery = useAnnouncementQuery(announcementId)
   const announcement = announcementQuery.data
@@ -183,20 +186,13 @@ export function AnnouncementForm({
         title="Este anuncio está archivado"
         description="Un anuncio archivado ya no se puede editar."
         action={
-          <Button
-            variant="ghost"
-            onClick={() => void navigate(`/admin/anuncios/${announcementId}`)}
-          >
+          <Button variant="ghost" onClick={goBackToAnnouncement}>
             Volver al anuncio
           </Button>
         }
       />
     )
   }
-
-  const cancelTo = isEditMode
-    ? `/admin/anuncios/${announcementId}`
-    : '/admin/anuncios'
 
   return (
     <form
@@ -326,7 +322,7 @@ export function AnnouncementForm({
           type="button"
           variant="ghost"
           disabled={isSaving}
-          onClick={() => void navigate(cancelTo)}
+          onClick={goBackFromForm}
         >
           Cancelar
         </Button>

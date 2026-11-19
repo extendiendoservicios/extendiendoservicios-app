@@ -668,6 +668,19 @@ export interface ServiceChangesUpdated {
   requiresPhotos: { from: boolean; to: boolean } | null
   removed: ServiceChangesRemoved[]
   kept: { code: string; message: string }[]
+  /** OH-11: campos que tenían un cambio a mano y que el servicio reemplaza. */
+  overriddenFields: ServiceChangesOverriddenField[]
+}
+
+/** OH-11: campo de un turno que se había cambiado a mano (`time`, `required_staff` o `requires_photos`). */
+export type ServiceChangesOverriddenField =
+  'time' | 'required_staff' | 'requires_photos'
+
+/** OH-11: turno actualizado que tenía cambios a mano que se reemplazan. */
+export interface ServiceChangesOverridden {
+  shiftId: string
+  shiftDate: string
+  fields: ServiceChangesOverriddenField[]
 }
 
 export interface ServiceChangesSkipped {
@@ -693,14 +706,17 @@ export interface ServiceChangesResult {
   fromDate: string
   deletedCount: number
   updatedCount: number
+  /** OH-11: de los actualizados, cuántos tenían cambios a mano que se reemplazan (gana el último cambio). */
+  overriddenCount: number
   createdCount: number
   unchangedCount: number
-  /** Turnos que no se tocaron (cancelados, a mano, empezados, con historia...). */
+  /** Turnos que no se tocaron (cancelados, cargados a mano sin servicio, empezados, con historia...). */
   skippedCount: number
   assignmentsRemoved: number
   assignmentsAdded: number
   deleted: ServiceChangesDeleted[]
   updated: ServiceChangesUpdated[]
+  overridden: ServiceChangesOverridden[]
   created: { shiftId: string; shiftDate: string }[]
   skipped: ServiceChangesSkipped[]
   unassigned: ServiceChangesUnassigned[]
@@ -718,6 +734,8 @@ interface RawServiceChangesResult {
   from_date: string
   deleted_count: number
   updated_count: number
+  /** Desde 0087 (OH-11); puede faltar en respuestas viejas. */
+  overridden_count?: number
   created_count: number
   unchanged_count: number
   skipped_count: number
@@ -729,6 +747,11 @@ interface RawServiceChangesResult {
     reason: string
     message: string
     assignments?: number
+  }[]
+  overridden?: {
+    shift_id: string
+    shift_date: string
+    fields?: ServiceChangesOverriddenField[]
   }[]
   updated?: {
     shift_id: string
@@ -746,6 +769,7 @@ interface RawServiceChangesResult {
       message: string
     }[]
     kept?: { code: string; message: string }[]
+    overridden_fields?: ServiceChangesOverriddenField[]
   }[]
   created?: { shift_id: string; shift_date: string }[]
   skipped?: {
@@ -784,11 +808,17 @@ export function parseServiceChangesResult(
     fromDate: raw.from_date,
     deletedCount: raw.deleted_count,
     updatedCount: raw.updated_count,
+    overriddenCount: raw.overridden_count ?? raw.overridden?.length ?? 0,
     createdCount: raw.created_count,
     unchangedCount: raw.unchanged_count,
     skippedCount: raw.skipped_count,
     assignmentsRemoved: raw.assignments_removed,
     assignmentsAdded: raw.assignments_added,
+    overridden: (raw.overridden ?? []).map((item) => ({
+      shiftId: item.shift_id,
+      shiftDate: item.shift_date,
+      fields: item.fields ?? [],
+    })),
     deleted: (raw.deleted ?? []).map((item) => ({
       shiftId: item.shift_id,
       shiftDate: item.shift_date,
@@ -815,6 +845,7 @@ export function parseServiceChangesResult(
         message: removed.message,
       })),
       kept: item.kept ?? [],
+      overriddenFields: item.overridden_fields ?? [],
     })),
     created: (raw.created ?? []).map((item) => ({
       shiftId: item.shift_id,

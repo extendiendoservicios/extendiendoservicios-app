@@ -75,6 +75,15 @@ Pruebas de las decisiones OG-01 a OG-12 (`modulos/P29_observaciones_de_la_duena_
 - Sin `sleep` fijos: aserciones que esperan solas. Las que dependen de la hora del día se saltean con
   un motivo (`isTooCloseToMidnight`) o afirman solo lo que vale a cualquier hora (`franjaYaEmpezo`, `franjaSigueProgramada`: "Programado" pasa a "Próximo" 2 horas antes del inicio).
 
+### Observaciones de la dirección del 18 nov (P30.5)
+
+Pruebas de las decisiones OH-01 a OH-14 (`modulos/P30_observaciones_de_la_duena_18_nov.md`):
+
+- **Administración** (`tests/e2e/admin/`): `p30-resumen` (OH-01 y OH-02: «Servicios de hoy» con alto acotado, encabezado fijo, columnas que se redimensionan y se ordenan), `p30-navegacion` (OH-03), `p28-cronograma` (calendario mensual editable, OH-04 y OH-05), `p30-huecos` (OH-06), `p30-pizarra` (OH-07), `p30-licencias` (OH-08), `p30-turnos` (OH-09 y OH-10), `p30-clientes-servicios` (OH-11 a OH-14) y `p30-calendario.movil` (390 px). Ayudas en `tests/fixtures/p30.ts`.
+- **Permisos** (`tests/permissions/suite/103-p30.permissions.ts`): `save_employee_leave`, `employee_leaves` sin escritura directa, `employee_fixed_gaps`, `employee_fixed_pattern`, `employee_week_boards` y sus RPC, `register_past_shift`, `SHIFT_DATE_TAKEN` y el último cambio que gana en `apply_service_changes`.
+- Cada archivo declara qué cuenta fija usa (la pizarra y los fijos van con personas distintas) y usa fechas propias para poder correr `chromium` y `mobile` a la vez.
+- Las pruebas de regresión `DEF-P30-10`, `DEF-P30-11` y `DEF-P30-12` fallan mientras el defecto siga abierto (informe `reportes/P30.5-qa.md`).
+
 ## Suites viejas por dominio (`e2e-*`)
 
 Siguen siendo suites independientes, con su propio `playwright.*.config.ts`, su propio arnés

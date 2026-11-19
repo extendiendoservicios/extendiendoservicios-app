@@ -7,19 +7,14 @@ import {
   filterUncoveredShifts,
   hasScheduleChanged,
   minutesToTime,
-  moveBlock,
   previewLabel,
-  pxToMinutes,
-  resizeBlock,
   shiftDate,
-  snapMinutes,
   targetShiftCandidates,
   timeToMinutes,
   uncoveredShifts,
   undoForAssign,
   undoForMove,
   undoForShiftTime,
-  visibleHourRange,
   wholeShiftChange,
 } from '@/features/employees/cronogramaWeek'
 
@@ -79,43 +74,6 @@ describe('horarios y ajuste a 15 minutos', () => {
     expect(timeToMinutes('08:30:00')).toBe(510)
     expect(minutesToTime(510)).toBe('08:30')
     expect(minutesToTime(1440)).toBe('24:00')
-  })
-
-  it('ajusta a múltiplos de 15', () => {
-    expect(snapMinutes(488)).toBe(495)
-    expect(snapMinutes(481)).toBe(480)
-  })
-
-  it('traduce píxeles a minutos', () => {
-    expect(pxToMinutes(40, 40)).toBe(60)
-    expect(pxToMinutes(10, 40)).toBe(15)
-  })
-
-  it('mueve el bloque conservando la duración y ajustando', () => {
-    const moved = moveBlock({ startMin: 480, endMin: 720 }, 70, 2)
-    expect(moved).toEqual({ dayOffset: 2, startMin: 555, endMin: 795 })
-  })
-
-  it('no deja salir el bloque del día', () => {
-    expect(moveBlock({ startMin: 480, endMin: 720 }, -9999, 0).startMin).toBe(0)
-    const late = moveBlock({ startMin: 480, endMin: 720 }, 9999, 0)
-    expect(late.endMin).toBe(1440)
-    expect(late.startMin).toBe(1200)
-  })
-
-  it('estira los bordes con mínimo de 15 minutos', () => {
-    expect(resizeBlock({ startMin: 480, endMin: 720 }, 'end', 60)).toEqual({
-      startMin: 480,
-      endMin: 780,
-    })
-    expect(resizeBlock({ startMin: 480, endMin: 720 }, 'end', -9999)).toEqual({
-      startMin: 480,
-      endMin: 495,
-    })
-    expect(resizeBlock({ startMin: 480, endMin: 720 }, 'start', 9999)).toEqual({
-      startMin: 705,
-      endMin: 720,
-    })
   })
 
   it('arma el texto del horario resultante', () => {
@@ -180,17 +138,6 @@ describe('bloques y turnos sin cubrir', () => {
     expect(blocks.map((b) => b.assignmentId)).toEqual(['a1', 'a3'])
     expect(blocks[0]?.assignedCount).toBe(3)
     expect(blocks[1]?.endMin).toBe(540)
-  })
-
-  it('amplía el rango visible si hay turnos fuera de 06 a 22', () => {
-    expect(visibleHourRange([{ startMin: 480, endMin: 720 }])).toEqual({
-      startHour: 6,
-      endHour: 22,
-    })
-    expect(visibleHourRange([{ startMin: 300, endMin: 1410 }])).toEqual({
-      startHour: 5,
-      endHour: 24,
-    })
   })
 
   it('lista los turnos con dotación incompleta donde la persona no está', () => {
