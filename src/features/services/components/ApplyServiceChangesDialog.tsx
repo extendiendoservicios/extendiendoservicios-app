@@ -195,7 +195,13 @@ function ApplyServiceChangesDialog({
 
   // Guardó un cambio que no toca ningún turno: no se interrumpe con un diálogo vacío.
   const autoClosed = useRef(false)
+  const applyStarted = useRef(false)
   useEffect(() => {
+    // DEF-P30-10: mientras se aplica o ya hay resultado, la vista previa vacía
+    // (se refresca tras aplicar) no debe cerrar el diálogo.
+    if (applying || result || applyStarted.current) {
+      return
+    }
     if (!autoClosed.current && previewData && empty && !includeFixed) {
       autoClosed.current = true
       if (previous !== null) {
@@ -203,9 +209,10 @@ function ApplyServiceChangesDialog({
         onFinish()
       }
     }
-  }, [previewData, empty, includeFixed, previous, onFinish])
+  }, [previewData, empty, includeFixed, previous, onFinish, applying, result])
 
   async function handleApply() {
+    applyStarted.current = true
     setApplying(true)
     try {
       const changes = await applyChanges.mutateAsync({
@@ -252,8 +259,8 @@ function ApplyServiceChangesDialog({
             {result
               ? summarizeServiceChanges(result, true)
               : createMissing
-                ? 'Se borran los turnos que ya no corresponden, se actualizan los que siguen (horario, dotación y fotos) y se crean los que faltan en los meses que ya tenían turnos. No se tocan los turnos cancelados, los cambiados a mano, los que ya empezaron ni los que tienen historia.'
-                : 'Se actualizan los turnos que ya existen (horario, dotación y fotos) y se borran los que ya no corresponden. No se crean turnos nuevos. No se tocan los turnos cancelados, los cambiados a mano, los que ya empezaron ni los que tienen historia.'}
+                ? 'Se borran los turnos que ya no corresponden, se actualizan los que siguen (horario, dotación y fotos) y se crean los que faltan en los meses que ya tenían turnos. No se tocan los turnos cancelados, los cargados a mano sin servicio, los que ya empezaron ni los que tienen historia. Los turnos con cambios a mano en el horario, la dotación o las fotos se actualizan igual: gana el último cambio.'
+                : 'Se actualizan los turnos que ya existen (horario, dotación y fotos) y se borran los que ya no corresponden. No se crean turnos nuevos. No se tocan los turnos cancelados, los cargados a mano sin servicio, los que ya empezaron ni los que tienen historia. Los turnos con cambios a mano en el horario, la dotación o las fotos se actualizan igual: gana el último cambio.'}
           </DialogDescription>
         </DialogHeader>
 

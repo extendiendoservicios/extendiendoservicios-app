@@ -6,7 +6,7 @@
 // del proyecto. Las capturas quedan en `tests/e2e/capturas-p28/`.
 
 import { expect, type test as baseTest } from '@playwright/test'
-import { addDays, daysFromToday, mondayOf } from './dates.ts'
+import { addDays, daysFromToday } from './dates.ts'
 import { capturar } from './capturas.ts'
 import { Scenario } from './scenario.ts'
 import { readId } from './sessions.ts'
@@ -17,7 +17,7 @@ export function definirCapturasP28(
   test: typeof baseTest,
   etiqueta: string,
 ): void {
-  test(`${etiqueta}: pantallas nuevas de P28 (insumos, servicios, feriados, cronograma, mapa y asistencia)`, async ({
+  test(`${etiqueta}: pantallas nuevas de P28 (insumos, servicios, feriados, calendario del empleado, mapa y asistencia)`, async ({
     page,
   }) => {
     test.setTimeout(300_000)
@@ -90,18 +90,16 @@ export function definirCapturasP28(
       await expectNoHorizontalScroll(page)
       await capturar(page, 'feriados')
 
+      // P30 (OH-04, OH-05): la pestaña «Calendario» con el mes editable reemplaza a «Semana (editar)».
       await page.goto(
-        `/admin/empleados/${readId('empleado3')}?pestana=cronograma`,
+        `/admin/empleados/${readId('empleado3')}?pestana=calendario&mes=${futuro.slice(0, 7)}`,
       )
-      await page.getByRole('radio', { name: 'Semana (editar)' }).click()
-      await expect(page.getByTestId('cronograma-semana')).toBeVisible()
-      const lunesFuturo = mondayOf(futuro)
-      if (lunesFuturo !== mondayOf(sc.today)) {
-        await page.getByRole('button', { name: 'Semana siguiente' }).click()
-      }
-      await expect(page.getByTestId('bloque').first()).toBeVisible()
+      await expect(page.getByTestId('calendario-mes')).toBeVisible()
+      await expect(
+        page.getByTestId(`dia-${futuro}`).getByTestId('turno'),
+      ).toBeVisible()
       await expectNoHorizontalScroll(page)
-      await capturar(page, 'cronograma-semana', { fullPage: true })
+      await capturar(page, 'calendario-mes', { fullPage: true })
       void addDays
 
       await page.goto('/admin')

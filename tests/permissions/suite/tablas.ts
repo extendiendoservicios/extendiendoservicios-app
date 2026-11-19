@@ -575,15 +575,18 @@ export const TABLAS: TablaSpec[] = [
     objetivo: (c) => ({ id: c.e.licenciaE3 }),
     ve: ven({ empleado: ['empleado1'], ...admins }),
     victima: (c) => filaLicencia(c, 'victima'),
-    insert: { permitido: TODOS_ADMIN, fila: (c) => filaLicencia(c, 'nueva') },
+    // Desde 0087 (P30.1, OH-08) la licencia se guarda con `save_employee_leave` y no se escribe
+    // directo: ni insertar, ni editar, ni borrar por PostgREST. Solo queda la baja lógica
+    // (`deleted_at` / `updated_by`), que prueba `103-p30.permissions.ts`.
+    insert: { permitido: [], fila: (c) => filaLicencia(c, 'nueva') },
     update: [
       {
         nombre: 'licencia',
-        permitido: TODOS_ADMIN,
+        permitido: [],
         parche: { reason: `${PREFIJO}editada` },
       },
     ],
-    delete: { permitido: TODOS_ADMIN },
+    delete: { permitido: [] },
   },
   {
     tabla: 'shifts',

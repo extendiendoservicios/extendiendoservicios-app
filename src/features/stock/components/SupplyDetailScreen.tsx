@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
+import { BackLink } from '@/components/BackLink'
 import { toast } from 'sonner'
 import {
   ArrowLeft,
@@ -84,7 +85,7 @@ function SupplyDetailScreen() {
         description="Puede que se haya movido o que el enlace esté roto."
         action={
           <Button asChild variant="ghost">
-            <Link to="/admin/insumos">Volver a Insumos</Link>
+            <BackLink fallback="/admin/insumos">Volver a Insumos</BackLink>
           </Button>
         }
       />
@@ -107,7 +108,7 @@ function SupplyDetailScreen() {
     <div className="flex flex-col gap-4">
       <div>
         <Button asChild variant="link" size="sm" icon={ArrowLeft}>
-          <Link to="/admin/insumos">Volver a Insumos</Link>
+          <BackLink fallback="/admin/insumos">Volver a Insumos</BackLink>
         </Button>
       </div>
 

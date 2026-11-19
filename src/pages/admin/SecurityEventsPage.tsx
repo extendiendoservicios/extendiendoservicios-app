@@ -164,6 +164,7 @@ export default function SecurityEventsPage() {
             />
 
             <DatePicker
+              clearable
               value={dateFrom}
               onValueChange={setDateFrom}
               placeholder="Desde"
@@ -171,6 +172,7 @@ export default function SecurityEventsPage() {
             />
 
             <DatePicker
+              clearable
               value={dateTo}
               onValueChange={setDateTo}
               placeholder="Hasta"

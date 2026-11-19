@@ -89,7 +89,9 @@ test.describe('preferencias del coordinador', () => {
 
         await test.step('un cliente entero: todas sus sedes pasan a «Mis sedes» del coordinador', async () => {
           await elegir(page, 'Elegir cliente preferencial', clienteA.name)
-          await page.getByRole('button', { name: 'Agregar' }).click()
+          await page
+            .getByRole('button', { name: 'Agregar', exact: true })
+            .click()
           await expect(
             page.getByText('Agregamos el cliente como preferencial.'),
           ).toBeVisible()
@@ -109,7 +111,9 @@ test.describe('preferencias del coordinador', () => {
             'Elegir sede preferencial',
             new RegExp(`${clienteB.name}.*${sedeB1.name}`),
           )
-          await page.getByRole('button', { name: 'Agregar' }).click()
+          await page
+            .getByRole('button', { name: 'Agregar', exact: true })
+            .click()
           await expect(
             page.getByText('Agregamos la sede como preferencial.'),
           ).toBeVisible()
@@ -233,9 +237,9 @@ test.describe('sin capacidades', () => {
         await expect(
           page.getByRole('combobox', { name: 'Elegir cliente preferencial' }),
         ).toHaveCount(0)
-        await expect(page.getByRole('button', { name: 'Agregar' })).toHaveCount(
-          0,
-        )
+        await expect(
+          page.getByRole('button', { name: 'Agregar', exact: true }),
+        ).toHaveCount(0)
 
         await page.getByRole('tab', { name: 'Jornadas' }).click()
         await expect(page.getByRole('article').first()).toBeVisible()

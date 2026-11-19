@@ -2107,6 +2107,70 @@ export type Database = {
           },
         ]
       }
+      employee_week_boards: {
+        Row: {
+          blocks: Json
+          employee_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          blocks?: Json
+          employee_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          blocks?: Json
+          employee_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_week_boards_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employee_week_boards_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "v_employee_ratings"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_week_boards_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "v_employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employee_week_boards_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_week_boards_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employee_week_boards_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           address: string | null
@@ -8358,6 +8422,45 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      employee_fixed_gaps: {
+        Args: { p_employee_id: string; p_from: string; p_to: string }
+        Returns: {
+          calendar_color: number
+          client_id: string
+          client_name: string
+          detail: Json
+          end_time: string
+          open_ended: boolean
+          reason: string
+          service_id: string
+          service_name: string
+          shift_date: string
+          shift_id: string
+          shift_status: Database["public"]["Enums"]["shift_status"]
+          site_id: string
+          site_name: string
+          start_time: string
+        }[]
+      }
+      employee_fixed_pattern: {
+        Args: { p_employee_id: string }
+        Returns: {
+          calendar_color: number
+          client_id: string
+          client_name: string
+          end_time: string
+          open_ended: boolean
+          service_id: string
+          service_name: string
+          site_id: string
+          site_name: string
+          start_time: string
+          valid_from: string
+          valid_to: string
+          weekdays: number[]
+          weeks_of_month: number[]
+        }[]
+      }
       end_workday: {
         Args: { p_accuracy?: number; p_lat?: number; p_lng?: number }
         Returns: Json
@@ -8407,6 +8510,10 @@ export type Database = {
       }
       get_attendance_location: {
         Args: { p_record_id: string; p_record_type: string }
+        Returns: Json
+      }
+      get_employee_week_board: {
+        Args: { p_employee_id: string }
         Returns: Json
       }
       get_leave_conflicts: {
@@ -8798,6 +8905,22 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      register_past_shift: {
+        Args: {
+          p_client_id: string
+          p_date: string
+          p_employee_ids?: string[]
+          p_end: string
+          p_notes?: string
+          p_required_staff?: number
+          p_requires_photos?: boolean
+          p_service_id?: string
+          p_show_in_print?: boolean
+          p_site_id: string
+          p_start: string
+        }
+        Returns: Json
+      }
       register_stock_count: {
         Args: {
           p_counted_at: string
@@ -9044,6 +9167,21 @@ export type Database = {
         Returns: Json
       }
       revoke_location_consent: { Args: never; Returns: undefined }
+      save_employee_leave: {
+        Args: {
+          p_employee_id: string
+          p_ends_on: string
+          p_leave_id: string
+          p_preview?: boolean
+          p_reason: string
+          p_starts_on: string
+        }
+        Returns: Json
+      }
+      save_employee_week_board: {
+        Args: { p_blocks: Json; p_employee_id: string }
+        Returns: Json
+      }
       service_delete_preview: { Args: { p_service_id: string }; Returns: Json }
       service_overlaps: {
         Args: {

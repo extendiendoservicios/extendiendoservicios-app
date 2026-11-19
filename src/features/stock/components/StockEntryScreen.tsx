@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link } from 'react-router'
+import { BackLink } from '@/components/BackLink'
 import { toast } from 'sonner'
 import { PackageX, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -128,7 +128,7 @@ function StockEntryScreen() {
         description="Pedile a la dirección el permiso «Gestionar stock»."
         action={
           <Button asChild variant="ghost">
-            <Link to="/admin/insumos">Volver a Insumos</Link>
+            <BackLink fallback="/admin/insumos">Volver a Insumos</BackLink>
           </Button>
         }
       />
@@ -323,7 +323,7 @@ function StockEntryScreen() {
 
       <div className="flex flex-wrap justify-end gap-2">
         <Button asChild variant="ghost">
-          <Link to="/admin/insumos">Cancelar</Link>
+          <BackLink fallback="/admin/insumos">Cancelar</BackLink>
         </Button>
         <Button
           type="submit"

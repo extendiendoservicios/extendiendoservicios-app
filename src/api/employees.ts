@@ -754,63 +754,6 @@ export async function fetchLeavesInRange(
   }))
 }
 
-/** P19.11d: un turno ya asignado al empleado dentro de una licencia (`get_leave_conflicts`). */
-export interface LeaveConflict {
-  assignmentId: string
-  shiftId: string
-  shiftDate: string
-  startTime: string
-  endTime: string
-  openEnded: boolean
-  clientName: string
-  siteName: string
-  shiftStatus: Database['public']['Enums']['shift_status']
-  /** OF-08b (0084): servicio del turno; `null` = turno cargado a mano. */
-  serviceId: string | null
-  serviceName: string | null
-  /** OF-08b: texto del servidor («Acosta ya está en… el lun 9/11 de 15:00 a 17:00.»); `null` si no vino. */
-  message: string | null
-}
-
-/**
- * Turnos ya asignados al empleado en el período de una licencia
- * (`get_leave_conflicts`, 0059; dueño y administrador). Las licencias se
- * guardan por escritura directa, así que la pantalla lo llama DESPUÉS de
- * guardar. No desasigna nada.
- */
-export async function fetchLeaveConflicts(
-  employeeId: string,
-  startsOn: string,
-  endsOn: string | null,
-): Promise<LeaveConflict[]> {
-  const { data, error } = await supabase.rpc('get_leave_conflicts', {
-    p_employee_id: employeeId,
-    p_starts_on: startsOn,
-    p_ends_on: endsOn ?? undefined,
-  })
-
-  if (error) {
-    throw fromPostgrestError(error)
-  }
-  return (data ?? []).map((row) => ({
-    assignmentId: row.assignment_id,
-    shiftId: row.shift_id,
-    shiftDate: row.shift_date,
-    startTime: row.start_time,
-    endTime: row.end_time,
-    openEnded: row.open_ended,
-    clientName: row.client_name,
-    siteName: row.site_name,
-    shiftStatus: row.shift_status,
-    serviceId: row.service_id ?? null,
-    serviceName: row.service_name ?? null,
-    message:
-      typeof (row.detail as { message?: unknown } | null)?.message === 'string'
-        ? (row.detail as { message: string }).message
-        : null,
-  }))
-}
-
 /** Todas las licencias de la persona, incluidas las dadas de baja lógica (para el historial, `06` sección 3). */
 export async function fetchEmployeeLeaves(
   employeeId: string,
@@ -839,44 +782,118 @@ export interface EmployeeLeaveInput {
   reason: string | null
 }
 
-/** Alta de una licencia. Desde `0082` (OF-20) las licencias de una persona pueden superponerse. */
-export async function createEmployeeLeave(
-  employeeId: string,
-  input: EmployeeLeaveInput,
-  createdBy: string,
-): Promise<void> {
-  const { error } = await supabase.from('employee_leaves').insert({
-    employee_id: employeeId,
-    starts_on: input.startsOn,
-    ends_on: input.endsOn,
-    reason: input.reason,
-    created_by: createdBy,
-  })
-  if (error) {
-    throw mapWriteError(error)
+/**
+ * OH-08 (0087): un turno de la persona dentro del período de una licencia, tal
+ * como lo devuelve `save_employee_leave` en `released` (se libera) o `kept`
+ * (tiene fichajes: no se toca).
+ */
+export interface LeaveShiftEntry {
+  assignmentId: string
+  shiftId: string
+  shiftDate: string
+  startTime: string
+  endTime: string
+  openEnded: boolean
+  shiftStatus: Database['public']['Enums']['shift_status']
+  clientId: string
+  clientName: string
+  siteId: string
+  siteName: string
+  /** `null` = turno cargado a mano, sin servicio. */
+  serviceId: string | null
+  serviceName: string | null
+  /** Texto del servidor («Se libera a … de … el …»); `null` si no vino. */
+  message: string | null
+}
+
+export interface SaveEmployeeLeaveResult {
+  preview: boolean
+  /** La licencia guardada (en vista previa, los datos pedidos con `id` nulo en el alta). */
+  leaveId: string | null
+  released: LeaveShiftEntry[]
+  kept: LeaveShiftEntry[]
+  releasedCount: number
+  keptCount: number
+}
+
+interface RawLeaveShiftEntry {
+  assignment_id: string
+  shift_id: string
+  shift_date: string
+  start_time: string
+  end_time: string
+  open_ended: boolean
+  shift_status: Database['public']['Enums']['shift_status']
+  client_id: string
+  client_name: string
+  site_id: string
+  site_name: string
+  service_id?: string | null
+  service_name?: string | null
+  detail?: { message?: unknown } | null
+}
+
+function mapLeaveShiftEntry(row: RawLeaveShiftEntry): LeaveShiftEntry {
+  return {
+    assignmentId: row.assignment_id,
+    shiftId: row.shift_id,
+    shiftDate: row.shift_date,
+    startTime: row.start_time,
+    endTime: row.end_time,
+    openEnded: row.open_ended,
+    shiftStatus: row.shift_status,
+    clientId: row.client_id,
+    clientName: row.client_name,
+    siteId: row.site_id,
+    siteName: row.site_name,
+    serviceId: row.service_id ?? null,
+    serviceName: row.service_name ?? null,
+    message:
+      typeof row.detail?.message === 'string' ? row.detail.message : null,
   }
 }
 
 /**
- * Edición de una licencia (AJ2-08): fechas y motivo, con el mismo formulario
- * del alta. Puede superponerse con otras licencias (OF-20).
+ * Alta o cambio de una licencia con `save_employee_leave` (0087, OH-08; dueño y
+ * administración). La base ya no deja insertar ni actualizar fechas y motivo
+ * directamente: la licencia y la liberación de los turnos del período (desde
+ * hoy y sin fichajes) van en una sola transacción. `leaveId` null = alta.
+ * Con `preview: true` no escribe nada y devuelve lo que liberaría. Las
+ * licencias de una persona pueden superponerse (OF-20).
  */
-export async function updateEmployeeLeave(
-  id: string,
+export async function saveEmployeeLeave(
+  employeeId: string,
   input: EmployeeLeaveInput,
-  updatedBy: string,
-): Promise<void> {
-  const { error } = await supabase
-    .from('employee_leaves')
-    .update({
-      starts_on: input.startsOn,
-      ends_on: input.endsOn,
-      reason: input.reason,
-      updated_by: updatedBy,
-    })
-    .eq('id', id)
+  options: { leaveId?: string | null; preview?: boolean } = {},
+): Promise<SaveEmployeeLeaveResult> {
+  const { data, error } = await supabase.rpc('save_employee_leave', {
+    p_leave_id: (options.leaveId ?? null) as unknown as string, // null = alta
+    p_employee_id: employeeId,
+    p_starts_on: input.startsOn,
+    p_ends_on: input.endsOn as unknown as string, // null = licencia abierta
+    p_reason: input.reason as unknown as string,
+    p_preview: options.preview ?? false,
+  })
   if (error) {
-    throw mapWriteError(error)
+    throw fromPostgrestError(error)
+  }
+  const raw = data as unknown as {
+    preview?: boolean
+    leave?: { id?: string | null } | null
+    released?: RawLeaveShiftEntry[]
+    kept?: RawLeaveShiftEntry[]
+    released_count?: number
+    kept_count?: number
+  }
+  const released = (raw.released ?? []).map(mapLeaveShiftEntry)
+  const kept = (raw.kept ?? []).map(mapLeaveShiftEntry)
+  return {
+    preview: raw.preview ?? false,
+    leaveId: raw.leave?.id ?? null,
+    released,
+    kept,
+    releasedCount: raw.released_count ?? released.length,
+    keptCount: raw.kept_count ?? kept.length,
   }
 }
 

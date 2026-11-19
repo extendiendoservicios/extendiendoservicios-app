@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link } from 'react-router'
+import { BackLink } from '@/components/BackLink'
 import { toast } from 'sonner'
 import {
   CheckCircle2,
@@ -191,7 +192,7 @@ function StockCountScreen() {
         description="Pedile a la dirección el permiso «Gestionar stock»."
         action={
           <Button asChild variant="ghost">
-            <Link to="/admin/insumos">Volver a Insumos</Link>
+            <BackLink fallback="/admin/insumos">Volver a Insumos</BackLink>
           </Button>
         }
       />
@@ -439,7 +440,9 @@ function StockCountScreen() {
               : `${countedCount} artículos contados.`}
         </p>
         <Button asChild variant="ghost">
-          <Link to="/admin/insumos?pestana=controles">Cancelar</Link>
+          <BackLink fallback="/admin/insumos?pestana=controles">
+            Cancelar
+          </BackLink>
         </Button>
         <Button
           type="submit"
@@ -538,7 +541,7 @@ function CountResultSummary({ result }: { result: StockCountResult }) {
           <Link to="/admin/insumos?pestana=controles">Ver controles</Link>
         </Button>
         <Button asChild>
-          <Link to="/admin/insumos">Volver a Stock</Link>
+          <BackLink fallback="/admin/insumos">Volver a Stock</BackLink>
         </Button>
       </div>
     </div>

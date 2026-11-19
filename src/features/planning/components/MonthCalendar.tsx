@@ -1,4 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import {
+  useSearchParamState,
+  type SearchParamCodec,
+} from '@/hooks/useSearchParamState'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Link } from 'react-router'
@@ -63,6 +67,10 @@ import { useShiftsBoardRangeQuery } from '@/features/planning/queries'
  */
 const MAX_CHIPS_PER_DAY = 3
 const DESKTOP_QUERY = '(min-width: 1024px)'
+const MONTH_KEY_CODEC: SearchParamCodec<string> = {
+  parse: (raw) => (/^\d{4}-(0[1-9]|1[0-2])$/.test(raw) ? raw : undefined),
+}
+
 const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
 interface MonthCalendarProps {
@@ -74,8 +82,15 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
   const isDesktop = useMediaQuery(DESKTOP_QUERY)
 
   const today = todayInBuenosAires()
-  const [year, setYear] = useState(() => Number(today.slice(0, 4)))
-  const [month, setMonth] = useState(() => Number(today.slice(5, 7)))
+  // OH-03: el mes vive en la dirección (`?mes=2027-01`): al abrir un turno y
+  // volver, el calendario sigue en el mes que se estaba mirando.
+  const [monthKey, setMonthKey] = useSearchParamState(
+    'mes',
+    today.slice(0, 7),
+    MONTH_KEY_CODEC,
+  )
+  const year = Number(monthKey.slice(0, 4))
+  const month = Number(monthKey.slice(5, 7))
 
   // OD-12: los filtros viven en la URL y son los mismos en mes, semana y día.
   const [filters, setFilters] = useCalendarFilters()
@@ -150,8 +165,19 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
   }, [leavesQuery.data, filters, gridDays, employeeOptions])
 
   function goToMonth(nextYear: number, nextMonth: number) {
-    setYear(nextYear)
-    setMonth(nextMonth)
+    setMonthKey(`${nextYear}-${String(nextMonth).padStart(2, '0')}`)
+  }
+
+  // DEF-P30-01: se calcula sobre el mes más reciente, no sobre el del render.
+  function stepMonth(step: 1 | -1) {
+    setMonthKey((current) => {
+      const target = addMonthsToYearMonth(
+        Number(current.slice(0, 4)),
+        Number(current.slice(5, 7)),
+        step,
+      )
+      return `${target.year}-${String(target.month).padStart(2, '0')}`
+    })
   }
 
   return (
@@ -161,10 +187,7 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
           <IconButton
             icon={ChevronLeft}
             aria-label="Mes anterior"
-            onClick={() => {
-              const prev = addMonthsToYearMonth(year, month, -1)
-              goToMonth(prev.year, prev.month)
-            }}
+            onClick={() => stepMonth(-1)}
           />
           <MonthPicker
             aria-label="Elegir mes"
@@ -177,10 +200,7 @@ function MonthCalendar({ onOpenDay }: MonthCalendarProps) {
           <IconButton
             icon={ChevronRight}
             aria-label="Mes siguiente"
-            onClick={() => {
-              const next = addMonthsToYearMonth(year, month, 1)
-              goToMonth(next.year, next.month)
-            }}
+            onClick={() => stepMonth(1)}
           />
         </div>
       </div>

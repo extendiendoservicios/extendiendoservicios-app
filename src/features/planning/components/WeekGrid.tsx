@@ -1,4 +1,8 @@
 import { useMemo, useState } from 'react'
+import {
+  useSearchParamState,
+  type SearchParamCodec,
+} from '@/hooks/useSearchParamState'
 import { Link } from 'react-router'
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -115,11 +119,29 @@ function ShiftRange({
  * con selector"): se elige un empleado con un `Combobox` y se ve su semana
  * como una lista vertical de 7 días.
  */
+const WEEK_CODEC: SearchParamCodec<string> = {
+  parse: (raw) =>
+    /^\d{4}-\d{2}-\d{2}$/.test(raw) && !Number.isNaN(Date.parse(raw))
+      ? raw
+      : undefined,
+}
+
 function WeekGrid() {
   const isDesktop = useMediaQuery(DESKTOP_QUERY)
   const today = todayInBuenosAires()
 
-  const [weekStart, setWeekStart] = useState(() => startOfWeekIso(today))
+  // OH-03: la semana vive en la dirección (`?semana=2026-11-16`, el lunes).
+  const [weekParam, setWeekParam] = useSearchParamState(
+    'semana',
+    startOfWeekIso(today),
+    WEEK_CODEC,
+  )
+  const weekStart = startOfWeekIso(weekParam)
+  const setWeekStart = (next: string | ((current: string) => string)): void => {
+    setWeekParam((current) =>
+      startOfWeekIso(typeof next === 'function' ? next(current) : next),
+    )
+  }
   // OD-12: los filtros viven en la URL y son los mismos en mes, semana y día.
   const [filters, setFilters] = useCalendarFilters()
   const { names: filterNames } = useCalendarFilterOptions(filters)

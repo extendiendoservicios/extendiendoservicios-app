@@ -1,6 +1,7 @@
 import * as React from 'react'
 import {
   type ColumnDef,
+  type ColumnSizingState,
   type OnChangeFn,
   type Row,
   type SortingState,
@@ -126,7 +127,103 @@ interface DataTableProps<TData> {
    * contenido (comportamiento de siempre).
    */
   fixedLayout?: boolean
+  /**
+   * OH-01: alto acotado a esta cantidad de filas. La tabla se desplaza en
+   * vertical dentro del bloque y el encabezado queda fijo (sticky), junto con
+   * el desplazamiento horizontal y la primera columna fija. Sin el prop, la
+   * tabla crece con todas sus filas. En tarjetas (celular) no aplica.
+   */
+  maxVisibleRows?: number
+  /** OH-01: alto máximo en CSS (`'24rem'`); tiene prioridad sobre `maxVisibleRows`. */
+  maxHeight?: string
+  /**
+   * OH-02: el borde entre dos encabezados se arrastra para cambiar el ancho
+   * (cursor `col-resize`, sin líneas visibles). Doble clic en el borde vuelve
+   * al ancho original; con el foco en el asa, flechas izquierda y derecha
+   * (con Mayús, pasos grandes) y Inicio para restaurar. En tarjetas no aplica.
+   */
+  resizableColumns?: boolean
+  /**
+   * OH-02: clave para recordar en `localStorage` los anchos de columna y el
+   * orden (si el orden es interno; con `sorting` controlado lo guarda quien lo
+   * controla). Si el almacenamiento falla, la tabla anda igual, sin recordar.
+   */
+  persistKey?: string
   className?: string
+}
+
+/** OH-02: ancho mínimo y máximo de una columna redimensionada, en px. */
+const RESIZE_MIN = 80
+const RESIZE_MAX = 800
+/** OH-02: paso de las flechas sobre el asa (con Mayús, el grande). */
+const RESIZE_STEP = 16
+const RESIZE_STEP_LARGE = 48
+
+interface PersistedTableState {
+  sizing?: ColumnSizingState
+  sorting?: SortingState
+}
+
+function storageKey(persistKey: string) {
+  return `datatable:${persistKey}`
+}
+
+/** Lee el estado recordado; cualquier falla (sin acceso, JSON roto) devuelve vacío. */
+function readPersisted(persistKey: string | undefined): PersistedTableState {
+  if (!persistKey) {
+    return {}
+  }
+  try {
+    const raw = window.localStorage.getItem(storageKey(persistKey))
+    if (!raw) {
+      return {}
+    }
+    const parsed: unknown = JSON.parse(raw)
+    if (typeof parsed !== 'object' || parsed === null) {
+      return {}
+    }
+    const { sizing, sorting } = parsed as PersistedTableState
+    const result: PersistedTableState = {}
+    if (sizing && typeof sizing === 'object') {
+      const clean: ColumnSizingState = {}
+      for (const [id, value] of Object.entries(sizing)) {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+          clean[id] = value
+        }
+      }
+      result.sizing = clean
+    }
+    if (Array.isArray(sorting)) {
+      result.sorting = sorting.filter(
+        (item) =>
+          typeof item === 'object' &&
+          item !== null &&
+          typeof item.id === 'string' &&
+          typeof item.desc === 'boolean',
+      )
+    }
+    return result
+  } catch {
+    return {}
+  }
+}
+
+function writePersisted(
+  persistKey: string | undefined,
+  state: PersistedTableState,
+) {
+  if (!persistKey) {
+    return
+  }
+  try {
+    window.localStorage.setItem(storageKey(persistKey), JSON.stringify(state))
+  } catch {
+    // Sin almacenamiento (modo privado, cuota): la tabla sigue andando.
+  }
+}
+
+function clampWidth(width: number) {
+  return Math.min(RESIZE_MAX, Math.max(RESIZE_MIN, Math.round(width)))
 }
 
 /** Ancho mínimo por columna: las celdas no se parten en letras con zoom alto. */
@@ -168,10 +265,21 @@ function DataTable<TData>({
   pageCount,
   rowCount,
   fixedLayout = false,
+  maxVisibleRows,
+  maxHeight,
+  resizableColumns = false,
+  persistKey,
   className,
 }: DataTableProps<TData>) {
   const showCards = useMediaQuery(CARD_LAYOUT_QUERY)
-  const [internalSorting, setInternalSorting] = React.useState<SortingState>([])
+  // Lo recordado se lee una sola vez, al montar.
+  const [persisted] = React.useState(() => readPersisted(persistKey))
+  const [internalSorting, setInternalSorting] = React.useState<SortingState>(
+    persisted.sorting ?? [],
+  )
+  const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>(
+    resizableColumns ? (persisted.sizing ?? {}) : {},
+  )
   const sorting = controlledSorting ?? internalSorting
   const handleSortingChange = onSortingChange ?? setInternalSorting
 
@@ -179,11 +287,39 @@ function DataTable<TData>({
     data,
     columns,
     getRowId,
-    state: { sorting },
+    state: { sorting, columnSizing },
     onSortingChange: handleSortingChange,
+    onColumnSizingChange: setColumnSizing,
+    enableColumnResizing: resizableColumns,
+    // OH-02: el ciclo es ascendente, descendente, sin orden (también en números).
+    sortDescFirst: false,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   })
+
+  React.useEffect(() => {
+    if (!persistKey) {
+      return
+    }
+    writePersisted(persistKey, {
+      sizing: resizableColumns ? columnSizing : undefined,
+      sorting: controlledSorting ? undefined : internalSorting,
+    })
+  }, [
+    persistKey,
+    resizableColumns,
+    columnSizing,
+    controlledSorting,
+    internalSorting,
+  ])
+
+  const bounded = maxHeight != null || maxVisibleRows != null
+  const boundedHeight =
+    maxHeight ??
+    (maxVisibleRows != null
+      ? // Encabezado (~2.5 rem) más las filas (~3 rem; ~2.75 rem en compacta).
+        `calc(2.5rem + ${maxVisibleRows} * ${compact ? '2.75rem' : '3rem'})`
+      : undefined)
 
   const rows = table.getRowModel().rows
 
@@ -238,6 +374,10 @@ function DataTable<TData>({
     <div className={className}>
       <Table
         className={fixedLayout ? 'table-fixed min-w-[48rem]' : 'min-w-max'}
+        containerClassName={bounded ? 'overflow-y-auto' : undefined}
+        containerStyle={
+          boundedHeight ? { maxHeight: boundedHeight } : undefined
+        }
       >
         <TableCaption>{caption}</TableCaption>
         {fixedLayout && (
@@ -245,7 +385,12 @@ function DataTable<TData>({
             {table.getVisibleLeafColumns().map((column) => (
               <col
                 key={column.id}
-                style={{ width: getColumnMeta(column.columnDef)?.width }}
+                style={{
+                  width:
+                    resizableColumns && columnSizing[column.id] != null
+                      ? `${columnSizing[column.id]}px`
+                      : getColumnMeta(column.columnDef)?.width,
+                }}
               />
             ))}
           </colgroup>
@@ -257,9 +402,25 @@ function DataTable<TData>({
                 const align = getColumnMeta(header.column.columnDef)?.align
                 const canSort = header.column.getCanSort()
                 const sortDirection = header.column.getIsSorted()
+                const resizedWidth = resizableColumns
+                  ? columnSizing[header.column.id]
+                  : undefined
+                const canResize =
+                  resizableColumns &&
+                  !header.isPlaceholder &&
+                  header.column.getCanResize()
                 return (
                   <TableHead
                     key={header.id}
+                    style={
+                      resizedWidth != null && !fixedLayout
+                        ? {
+                            width: resizedWidth,
+                            minWidth: resizedWidth,
+                            maxWidth: resizedWidth,
+                          }
+                        : undefined
+                    }
                     aria-sort={
                       !canSort
                         ? undefined
@@ -272,8 +433,20 @@ function DataTable<TData>({
                     className={cn(
                       compact && 'px-[10px] py-[8px]',
                       getAlignClassName(align),
-                      !fixedLayout && !header.isPlaceholder && MIN_COLUMN_WIDTH,
+                      !fixedLayout &&
+                        !header.isPlaceholder &&
+                        resizedWidth == null &&
+                        MIN_COLUMN_WIDTH,
+                      resizableColumns && 'relative',
+                      // OH-01 / DEF-P30-06: con alto acotado el encabezado queda
+                      // fijo arriba, con fondo opaco y por encima de las celdas
+                      // (z 1) y de las filas resaltadas; la esquina fija, por
+                      // encima de todo. El borde inferior va como sombra
+                      // interna porque el borde colapsado se desplaza con las filas.
+                      bounded &&
+                        'sticky top-0 z-[4] bg-[var(--table-header-bg)] shadow-[inset_0_-1px_0_var(--color-border)]',
                       header.index === 0 && STICKY_HEAD,
+                      header.index === 0 && bounded && 'z-[5]',
                     )}
                   >
                     {header.isPlaceholder ? null : canSort ? (
@@ -305,6 +478,29 @@ function DataTable<TData>({
                         header.column.columnDef.header,
                         header.getContext(),
                       )
+                    )}
+                    {canResize && (
+                      <ColumnResizer
+                        label={`Cambiar el ancho de la columna ${
+                          typeof header.column.columnDef.header === 'string'
+                            ? header.column.columnDef.header
+                            : header.column.id
+                        }`}
+                        width={resizedWidth}
+                        onResize={(width) =>
+                          setColumnSizing((old) => ({
+                            ...old,
+                            [header.column.id]: clampWidth(width),
+                          }))
+                        }
+                        onReset={() =>
+                          setColumnSizing((old) => {
+                            const rest = { ...old }
+                            delete rest[header.column.id]
+                            return rest
+                          })
+                        }
+                      />
                     )}
                   </TableHead>
                 )
@@ -347,6 +543,92 @@ function DataTable<TData>({
     </div>
   )
 }
+
+/**
+ * OH-02: asa invisible sobre el borde derecho del encabezado. Con el mouse se
+ * arrastra (eventos de puntero, sirve también con el dedo en tabletas); con el
+ * teclado, flechas izquierda/derecha. El ancho de partida es el que la celda
+ * tiene en pantalla en ese momento, así que no hay saltos al empezar.
+ */
+/* Un `separator` con foco es un widget interactivo según WAI-ARIA (separador
+   redimensionable); la regla de jsx-a11y no lo reconoce como tal. */
+/* eslint-disable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex */
+function ColumnResizer({
+  label,
+  width,
+  onResize,
+  onReset,
+}: {
+  label: string
+  /** Ancho ya fijado por la persona (si no hay, el de contenido). */
+  width: number | undefined
+  onResize: (width: number) => void
+  onReset: () => void
+}) {
+  const dragRef = React.useRef<{ startX: number; startWidth: number } | null>(
+    null,
+  )
+
+  const measure = (element: HTMLElement) =>
+    element.closest('th')?.getBoundingClientRect().width ?? width ?? RESIZE_MIN
+
+  return (
+    <span
+      role="separator"
+      aria-orientation="vertical"
+      aria-label={label}
+      aria-valuenow={Math.round(width ?? RESIZE_MIN)}
+      aria-valuemin={RESIZE_MIN}
+      aria-valuemax={RESIZE_MAX}
+      tabIndex={0}
+      data-slot="column-resizer"
+      className="absolute top-0 right-0 z-[1] h-full w-2 cursor-col-resize touch-none select-none focus-visible:outline-2 focus-visible:outline-ring"
+      onClick={(event) => event.stopPropagation()}
+      onDoubleClick={(event) => {
+        event.stopPropagation()
+        onReset()
+      }}
+      onPointerDown={(event) => {
+        if (event.button !== 0) {
+          return
+        }
+        event.preventDefault()
+        event.stopPropagation()
+        event.currentTarget.setPointerCapture?.(event.pointerId)
+        dragRef.current = {
+          startX: event.clientX,
+          startWidth: measure(event.currentTarget),
+        }
+      }}
+      onPointerMove={(event) => {
+        const drag = dragRef.current
+        if (drag) {
+          onResize(drag.startWidth + event.clientX - drag.startX)
+        }
+      }}
+      onPointerUp={(event) => {
+        dragRef.current = null
+        event.currentTarget.releasePointerCapture?.(event.pointerId)
+      }}
+      onPointerCancel={() => {
+        dragRef.current = null
+      }}
+      onKeyDown={(event) => {
+        const step = event.shiftKey ? RESIZE_STEP_LARGE : RESIZE_STEP
+        if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+          event.preventDefault()
+          const base = width ?? measure(event.currentTarget)
+          onResize(base + (event.key === 'ArrowRight' ? step : -step))
+        } else if (event.key === 'Home') {
+          event.preventDefault()
+          onReset()
+        }
+      }}
+    />
+  )
+}
+
+/* eslint-enable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex */
 
 function DataTableSkeleton({
   columnCount,

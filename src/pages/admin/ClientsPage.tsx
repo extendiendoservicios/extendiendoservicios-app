@@ -1,7 +1,19 @@
 import { formatTaxId } from '@/lib/taxId'
 import { useMemo, useState } from 'react'
+import {
+  useSearchParamState,
+  type SearchParamCodec,
+} from '@/hooks/useSearchParamState'
+import { useUrlSearchText } from '@/hooks/useUrlSearchText'
+import { useCollapsedGroups } from '@/features/clients/useCollapsedGroups'
 import { Link, useSearchParams } from 'react-router'
-import { Building2, Plus, Search } from 'lucide-react'
+import {
+  Building2,
+  ChevronDown,
+  ChevronRight,
+  Plus,
+  Search,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -75,6 +87,14 @@ function isClientsTab(value: string | null): value is ClientsTab {
   return TABS.includes(value as ClientsTab)
 }
 
+const STATUS_FILTER_CODEC: SearchParamCodec<ClientStatus | 'all'> = {
+  parse: (raw) =>
+    raw === 'all' ||
+    CLIENT_STATUS_OPTIONS.some((option) => option.value === raw)
+      ? (raw as ClientStatus | 'all')
+      : undefined,
+}
+
 interface ClientRowView extends ClientListRow {
   primaryContactName: string | null
 }
@@ -124,11 +144,17 @@ export default function ClientsPage() {
 }
 
 function ClientsListTab() {
-  const [statusFilter, setStatusFilter] = useState<ClientStatus | 'all'>(
-    'active',
+  // OH-03: búsqueda y filtros viven en la dirección, así al volver de la ficha
+  // de un cliente el listado queda como estaba.
+  const [statusFilter, setStatusFilter] = useSearchParamState<
+    ClientStatus | 'all'
+  >('estado', 'active', STATUS_FILTER_CODEC)
+  const [textFilter, setTextFilter] = useUrlSearchText()
+  const [categoryFilter, setCategoryFilter] = useSearchParamState(
+    'categoria',
+    'all',
   )
-  const [textFilter, setTextFilter] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const collapsedGroups = useCollapsedGroups()
   const debouncedText = useDebouncedValue(textFilter)
   const categoriesQuery = useClientCategoriesQuery()
 
@@ -158,6 +184,8 @@ function ClientsListTab() {
     () => groupClientsByCategory(rows, categoriesQuery.data ?? []),
     [rows, categoriesQuery.data],
   )
+
+  const groupKeys = groups.map((group) => group.categoryId ?? 'none')
 
   const columns: DataTableColumnDef<ClientRowView>[] = [
     {
@@ -278,17 +306,17 @@ function ClientsListTab() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* DEF-P30-07: buscador y filtros de estado y categoría en la misma línea (en celular bajan). */}
         <div className="flex flex-wrap items-center gap-3">
-          {clientsQuery.dataUpdatedAt > 0 && (
-            <UpdatedAgo dataUpdatedAt={clientsQuery.dataUpdatedAt} />
-          )}
-          <Input
-            icon={Search}
-            placeholder="Buscar por nombre o CUIT…"
-            value={textFilter}
-            onChange={(event) => setTextFilter(event.target.value)}
-            className="w-64"
-          />
+          {/* El Input se envuelve en su propio div.w-full: el ancho se fija acá. */}
+          <div className="w-full sm:w-80">
+            <Input
+              icon={Search}
+              placeholder="Buscar por nombre o CUIT…"
+              value={textFilter}
+              onChange={(event) => setTextFilter(event.target.value)}
+            />
+          </div>
           <Select
             value={statusFilter}
             onValueChange={(value) =>
@@ -322,9 +350,14 @@ function ClientsListTab() {
             </SelectContent>
           </Select>
         </div>
-        <Button asChild icon={Plus}>
-          <Link to="/admin/clientes/nuevo">Nuevo cliente</Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          {clientsQuery.dataUpdatedAt > 0 && (
+            <UpdatedAgo dataUpdatedAt={clientsQuery.dataUpdatedAt} />
+          )}
+          <Button asChild icon={Plus}>
+            <Link to="/admin/clientes/nuevo">Nuevo cliente</Link>
+          </Button>
+        </div>
       </div>
 
       {groups.length === 0 ? (
@@ -352,25 +385,67 @@ function ClientsListTab() {
           }}
         />
       ) : (
-        groups.map((group) => (
-          <section
-            key={group.categoryId ?? 'none'}
-            aria-label={group.label}
-            className="flex flex-col gap-2"
-          >
-            <h2 className="text-[13px] font-semibold text-text">
-              {`${group.label} (${group.rows.length})`}
-            </h2>
-            <DataTable
-              caption={`Clientes · ${group.label}`}
-              columns={columns}
-              data={group.rows}
-              getRowId={(row) => row.id}
-              fixedLayout
-              isLoading={false}
-            />
-          </section>
-        ))
+        <>
+          {/* OH-14: contraer o desplegar todas las categorías de una vez. */}
+          <div className="mt-1 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => collapsedGroups.collapseAll(groupKeys)}
+              disabled={groupKeys.every(collapsedGroups.isCollapsed)}
+            >
+              Contraer todo
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => collapsedGroups.expandAll(groupKeys)}
+              disabled={!groupKeys.some(collapsedGroups.isCollapsed)}
+            >
+              Desplegar todo
+            </Button>
+          </div>
+          {groups.map((group) => {
+            const key = group.categoryId ?? 'none'
+            const collapsed = collapsedGroups.isCollapsed(key)
+            const Chevron = collapsed ? ChevronRight : ChevronDown
+            return (
+              <section
+                key={key}
+                aria-label={group.label}
+                className="flex flex-col gap-2"
+              >
+                <h2 className="text-[13px] font-semibold text-text">
+                  <button
+                    type="button"
+                    aria-expanded={!collapsed}
+                    aria-controls={`clients-group-${key}`}
+                    onClick={() => collapsedGroups.toggle(key)}
+                    className="flex min-h-11 items-center gap-1.5 rounded text-left outline-none hover:text-primary-800 focus-visible:ring-3 focus-visible:ring-ring md:min-h-0"
+                  >
+                    <Chevron className="size-4 shrink-0" aria-hidden="true" />
+                    <span>{group.label}</span>
+                    <span className="rounded-full bg-surface-2 px-2 py-px text-[11.5px] font-medium text-text-2">
+                      {group.rows.length}
+                    </span>
+                  </button>
+                </h2>
+                <div id={`clients-group-${key}`} hidden={collapsed}>
+                  {!collapsed && (
+                    <DataTable
+                      caption={`Clientes · ${group.label}`}
+                      columns={columns}
+                      data={group.rows}
+                      getRowId={(row) => row.id}
+                      fixedLayout
+                      isLoading={false}
+                    />
+                  )}
+                </div>
+              </section>
+            )
+          })}
+        </>
       )}
     </div>
   )

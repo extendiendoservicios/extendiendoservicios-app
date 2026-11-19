@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router'
 import type { SortingState } from '@tanstack/react-table'
 import { Plus, Search, Users as UsersIcon } from 'lucide-react'
@@ -22,6 +22,11 @@ import { avatarUrl } from '@/lib/avatarUrl'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { ROLE_LABELS } from '@/features/auth/session'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import {
+  useSearchParamState,
+  type SearchParamCodec,
+} from '@/hooks/useSearchParamState'
+import { useUrlSearchText } from '@/hooks/useUrlSearchText'
 import type {
   EmployeeEffectiveStatus,
   EmployeeListFilters,
@@ -80,6 +85,36 @@ const EMPLOYEE_STATUS_FILTER_OPTIONS: {
   },
 ]
 
+/** OH-03: orden de la lista en la dirección (`?orden=rating` o `?orden=-rating`). */
+const SORTING_CODEC: SearchParamCodec<SortingState> = {
+  parse: (raw) => {
+    const match = /^(-?)([a-zA-Z]+)$/.exec(raw)
+    const id = match?.[2]
+    return match && id ? [{ id, desc: match[1] === '-' }] : undefined
+  },
+  serialize: (value) => {
+    const first = value[0]
+    return first ? `${first.desc ? '-' : ''}${first.id}` : ''
+  },
+}
+
+/** OH-03: número de página (desde 1) en la dirección (`?pagina=3`). */
+const PAGE_CODEC: SearchParamCodec<number> = {
+  parse: (raw) => {
+    const page = Number(raw)
+    return Number.isInteger(page) && page >= 1 ? page : undefined
+  },
+}
+
+function oneOf<T extends string>(
+  options: readonly { value: T }[],
+): SearchParamCodec<T> {
+  return {
+    parse: (raw) =>
+      options.some((option) => option.value === raw) ? (raw as T) : undefined,
+  }
+}
+
 export default function EmployeesPage() {
   const auth = useAuth()
   const actor = useMemo(
@@ -87,18 +122,25 @@ export default function EmployeesPage() {
     [auth.roles, auth.capabilities],
   )
 
-  const [textFilter, setTextFilter] = useState('')
+  // OH-03: búsqueda, filtros, orden y página viven en la dirección, así al
+  // volver de una ficha la lista queda como estaba.
+  const [textFilter, setTextFilter] = useUrlSearchText()
   const debouncedText = useDebouncedValue(textFilter)
-  const [roleFilter, setRoleFilter] =
-    useState<EmployeeListFilters['role']>('all')
-  const [statusFilter, setStatusFilter] = useState<
+  const [roleFilter, setRoleFilter] = useSearchParamState<
+    NonNullable<EmployeeListFilters['role']>
+  >('rol', 'all', oneOf(EMPLOYEE_ROLE_FILTER_OPTIONS))
+  const [statusFilter, setStatusFilter] = useSearchParamState<
     EmployeeEffectiveStatus | 'all'
-  >('all')
-  const [clientFilter, setClientFilter] = useState<string>('all')
-  const [pagination, setPagination] = useState<DataTablePagination>({
-    pageIndex: 0,
+  >('estado', 'all', oneOf(EMPLOYEE_STATUS_FILTER_OPTIONS))
+  const [clientFilter, setClientFilter] = useSearchParamState('cliente', 'all')
+  const [page, setPage] = useSearchParamState('pagina', 1, PAGE_CODEC)
+  const pagination: DataTablePagination = {
+    pageIndex: page - 1,
     pageSize: PAGE_SIZE,
-  })
+  }
+  function setPagination(next: DataTablePagination) {
+    setPage(next.pageIndex + 1)
+  }
 
   const employeesQuery = useEmployeesQuery({
     text: debouncedText,
@@ -109,7 +151,11 @@ export default function EmployeesPage() {
   // AJ-04: una sola consulta de promedios para todo el listado.
   const ratingsQuery = useEmployeeRatingsSummaryQuery()
   const ratings = ratingsQuery.data
-  const [sorting, setSorting] = useState<SortingState>([])
+  const [sorting, setSorting] = useSearchParamState<SortingState>(
+    'orden',
+    [],
+    SORTING_CODEC,
+  )
   const clientOptionsQuery = useClientFilterOptionsQuery()
 
   const filteredRows = useMemo(() => {
@@ -146,13 +192,20 @@ export default function EmployeesPage() {
   // Cualquier cambio de filtro vuelve a la primera página (evita quedar en
   // una página vacía si el filtro nuevo trae menos resultados).
   const filtersKey = `${debouncedText}|${roleFilter}|${statusFilter}|${clientFilter}`
-  const [lastFiltersKey, setLastFiltersKey] = useState(filtersKey)
-  if (filtersKey !== lastFiltersKey) {
-    setLastFiltersKey(filtersKey)
-    if (pagination.pageIndex !== 0) {
-      setPagination({ ...pagination, pageIndex: 0 })
+  // La página está en la dirección: se la reinicia en un efecto (no durante el
+  // render) y solo cuando el filtro cambia, no al abrir la pantalla.
+  const setPageRef = useRef(setPage)
+  useEffect(() => {
+    setPageRef.current = setPage
+  })
+  const lastFiltersKey = useRef(filtersKey)
+  useEffect(() => {
+    if (filtersKey === lastFiltersKey.current) {
+      return
     }
-  }
+    lastFiltersKey.current = filtersKey
+    setPageRef.current(1)
+  }, [filtersKey])
 
   const pageRows = filteredRows.slice(
     pagination.pageIndex * pagination.pageSize,
@@ -239,7 +292,7 @@ export default function EmployeesPage() {
           <Select
             value={roleFilter}
             onValueChange={(value) =>
-              setRoleFilter(value as EmployeeListFilters['role'])
+              setRoleFilter(value as NonNullable<EmployeeListFilters['role']>)
             }
           >
             <SelectTrigger aria-label="Filtrar por rol">

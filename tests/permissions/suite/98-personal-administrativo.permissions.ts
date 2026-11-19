@@ -569,16 +569,23 @@ describe('CR-19: un admin con la ficha de un dueño, de otro admin y de un emple
       expect(disp.error?.message, describir(disp)).toBeUndefined()
       expect(filas(disp)).toHaveLength(1)
 
-      const lic = await tabla(admin, 'employee_leaves')
-        .insert({
-          employee_id: id,
-          starts_on: daysFromToday(40),
-          ends_on: daysFromToday(41),
-          reason: `e2e-perm-p26-9 ${sufijo}`,
-        })
-        .select()
-      expect(lic.error?.message, describir(lic)).toBeUndefined()
-      expect(filas(lic)).toHaveLength(1)
+      // Desde 0087 (OH-08) la licencia se guarda con `save_employee_leave`; el insert directo ya no existe.
+      const directa = await tabla(admin, 'employee_leaves').insert({
+        employee_id: id,
+        starts_on: daysFromToday(40),
+        ends_on: daysFromToday(41),
+        reason: `e2e-perm-p26-9 directa ${sufijo}`,
+      })
+      expect(directa.error?.code, describir(directa)).toBe('42501')
+      const lic = await admin.rpc('save_employee_leave', {
+        p_leave_id: null as unknown as string,
+        p_employee_id: id,
+        p_starts_on: daysFromToday(40),
+        p_ends_on: daysFromToday(41),
+        p_reason: `e2e-perm-p26-9 ${sufijo}`,
+      })
+      expect(lic.error?.message, JSON.stringify(lic.error)).toBeUndefined()
+      expect((lic.data as { leave?: { id?: string } })?.leave?.id).toBeTruthy()
     } finally {
       await servicio()
         .from('employees')

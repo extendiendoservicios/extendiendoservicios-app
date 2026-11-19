@@ -91,6 +91,7 @@ function AllWorkdaysTab() {
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-semibold text-text-2">Desde</span>
             <DatePicker
+              clearable
               aria-label="Desde"
               value={dateFrom ? isoDateToDate(dateFrom) : undefined}
               onValueChange={(next) =>
@@ -102,6 +103,7 @@ function AllWorkdaysTab() {
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-semibold text-text-2">Hasta</span>
             <DatePicker
+              clearable
               aria-label="Hasta"
               value={dateTo ? isoDateToDate(dateTo) : undefined}
               onValueChange={(next) =>

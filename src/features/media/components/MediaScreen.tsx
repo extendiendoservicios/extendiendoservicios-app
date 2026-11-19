@@ -279,6 +279,7 @@ function MediaScreen() {
         <div className="col-span-2 flex flex-col gap-1 sm:col-span-1 sm:flex-row sm:items-center sm:gap-2">
           <span className="text-[11px] font-semibold text-text-2">Desde</span>
           <DatePicker
+            clearable
             aria-label="Desde"
             value={
               filters.dateFrom ? isoDateToDate(filters.dateFrom) : undefined
@@ -295,6 +296,7 @@ function MediaScreen() {
         <div className="col-span-2 flex flex-col gap-1 sm:col-span-1 sm:flex-row sm:items-center sm:gap-2">
           <span className="text-[11px] font-semibold text-text-2">Hasta</span>
           <DatePicker
+            clearable
             aria-label="Hasta"
             value={filters.dateTo ? isoDateToDate(filters.dateTo) : undefined}
             onValueChange={(next) =>

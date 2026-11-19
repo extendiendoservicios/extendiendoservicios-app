@@ -1,4 +1,8 @@
 import { useMemo, useState } from 'react'
+import {
+  useSearchParamState,
+  type SearchParamCodec,
+} from '@/hooks/useSearchParamState'
 import { CalendarClock, FilePlus } from 'lucide-react'
 import { endOfMonth, startOfMonth } from 'date-fns'
 import { Button } from '@/components/ui/button'
@@ -12,6 +16,10 @@ import { canCorrectWorkdays } from '../permissions'
 import { useSupervisorWorkdaysQuery } from '../queries'
 import { RecordWorkdayDialog } from './RecordWorkdayDialog'
 import { WorkdayCard } from './WorkdayCard'
+
+const MONTH_CODEC: SearchParamCodec<string> = {
+  parse: (raw) => (/^\d{4}-(0[1-9]|1[0-2])$/.test(raw) ? raw : undefined),
+}
 
 interface SupervisorWorkdaysTabProps {
   /** `profile_id` del coordinador. */
@@ -35,7 +43,23 @@ function SupervisorWorkdaysTab({
     roles: auth.roles,
     capabilities: auth.capabilities,
   })
-  const [month, setMonth] = useState(() => startOfMonth(new Date()))
+  // OH-03: el mes vive en la dirección (`jornadas_mes=2026-11`).
+  const [monthKey, setMonthKey] = useSearchParamState(
+    'jornadas_mes',
+    localDateToIsoDate(startOfMonth(new Date())).slice(0, 7),
+    MONTH_CODEC,
+  )
+  const month = useMemo(
+    () =>
+      new Date(
+        Number(monthKey.slice(0, 4)),
+        Number(monthKey.slice(5, 7)) - 1,
+        1,
+      ),
+    [monthKey],
+  )
+  const setMonth = (next: Date) =>
+    setMonthKey(localDateToIsoDate(startOfMonth(next)).slice(0, 7))
   const [isRecordOpen, setRecordOpen] = useState(false)
 
   const filters = useMemo(

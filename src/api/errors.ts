@@ -61,6 +61,18 @@ export interface ConflictDetail {
   endTime: string | null
   openEnded: boolean
   leaves: ConflictLeave[]
+  /** OH-10: con `SHIFT_DATE_TAKEN`, estado del turno que ya existe; `null` si no vino. */
+  status: string | null
+  /** OH-10: con `SHIFT_DATE_TAKEN`, las personas asignadas al turno que ya existe. */
+  assigned: ConflictAssigned[]
+}
+
+/** OH-10: una persona asignada al turno que ya existe (`SHIFT_DATE_TAKEN`). */
+export interface ConflictAssigned {
+  employeeId: string | null
+  employeeName: string
+  startTime: string | null
+  endTime: string | null
 }
 
 function textOrNull(value: unknown): string | null {
@@ -85,6 +97,7 @@ export function parseConflictDetail(raw: unknown): ConflictDetail | null {
   }
   const source = value as Record<string, unknown>
   const leaves = Array.isArray(source.leaves) ? source.leaves : []
+  const assigned = Array.isArray(source.assigned) ? source.assigned : []
   return {
     conflictShiftId: textOrNull(source.conflict_shift_id),
     conflictAssignmentId: textOrNull(source.conflict_assignment_id),
@@ -105,6 +118,21 @@ export function parseConflictDetail(raw: unknown): ConflictDetail | null {
         startsOn: textOrNull(item.starts_on),
         endsOn: textOrNull(item.ends_on),
       }
+    }),
+    status: textOrNull(source.status),
+    assigned: assigned.flatMap((person) => {
+      const item = (person ?? {}) as Record<string, unknown>
+      const name = textOrNull(item.employee_name)
+      return name
+        ? [
+            {
+              employeeId: textOrNull(item.employee_id),
+              employeeName: name,
+              startTime: textOrNull(item.start_time),
+              endTime: textOrNull(item.end_time),
+            },
+          ]
+        : []
     }),
   }
 }

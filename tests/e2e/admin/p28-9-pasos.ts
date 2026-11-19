@@ -447,8 +447,22 @@ export async function of08bLicenciaConTurnos(page: Page): Promise<void> {
     await page.getByLabel('Hasta (opcional)').fill(daysFromToday(32))
     await page.getByLabel('Motivo (opcional)').fill('E2E-P1911 of08b')
     await page.getByRole('button', { name: 'Agregar licencia' }).click()
+    // OH-08: antes de confirmar se muestra qué turnos se liberan; todavía no se tocó nada.
+    const dialogo = page.getByRole('dialog')
+    await expect(
+      dialogo.getByRole('heading', { name: /^Se van a liberar 2 turnos de / }),
+    ).toBeVisible()
+    {
+      const { data: antes } = await sc.db
+        .from('assignments')
+        .select('id')
+        .in('shift_id', [conServicio, manual])
+        .is('removed_at', null)
+      expect(antes, 'la vista previa no desasigna').toHaveLength(2)
+    }
+    await dialogo.getByRole('button', { name: 'Confirmar' }).click()
     const aviso = page.getByText(
-      'Esta persona tiene 2 turnos asignados en las fechas de la licencia.',
+      /^Quedaron 2 turnos sin cubrir por la licencia de /,
     )
     await expect(aviso).toBeVisible()
     const lista = page.getByRole('listitem').filter({ hasText: cliente.name })
@@ -460,6 +474,9 @@ export async function of08bLicenciaConTurnos(page: Page): Promise<void> {
     await expect(
       filaServicio.getByRole('button', { name: 'Ver turno' }),
     ).toBeVisible()
+    await expect(
+      filaServicio.getByRole('button', { name: /^Reemplazar en / }),
+    ).toBeVisible()
     await expect(page.getByRole('link', { name: 'Abrir turno' })).toHaveCount(0)
     await expectNoHorizontalScroll(page)
     // «Ver turno» navega al detalle del turno que corresponde a cada fila.
@@ -467,13 +484,13 @@ export async function of08bLicenciaConTurnos(page: Page): Promise<void> {
     await expect(page).toHaveURL(new RegExp(`/admin/turnos/${manual}$`))
     // En escritorio el detalle es una hoja y en celular una pantalla: en las dos dice «Detalle del turno».
     await expect(page.getByText('Detalle del turno').first()).toBeVisible()
-    // Nada se desasignó.
+    // OH-08: la licencia liberó las dos asignaciones (los turnos quedan sin cubrir).
     const { data } = await sc.db
       .from('assignments')
       .select('id')
       .in('shift_id', [conServicio, manual])
       .is('removed_at', null)
-    expect(data).toHaveLength(2)
+    expect(data).toHaveLength(0)
   } finally {
     expect(await darDeBajaLicencias('empleado1'), 'bajas').toEqual([])
     expect(await sc.cleanup(), 'limpieza').toEqual([])

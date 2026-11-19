@@ -239,7 +239,7 @@ from (
     (12, 8, 'Inmaculada Concepción de María', false),
     (12, 25, 'Navidad', false)
 ) as f (mes, dia, nombre, trasladable)
-on conflict (holiday_date) do nothing;
+on conflict (holiday_date) where deleted_at is null do nothing;
 
 -- =================================================================================================
 -- 3. Roles y capacidades (04 sección 2.1, 0013_rpc_users.sql las escribe por RPC en producción;

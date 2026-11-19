@@ -7,6 +7,39 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.31.0] - 2026-11-19
+
+Observaciones de la dirección del 18 nov (P30). Migración 0087.
+
+### Agregado
+
+- Tablas: alto acotado con encabezado fijo, ancho de columnas que se arrastra (con teclado también), orden ascendente, descendente y sin orden, y memoria de anchos y orden en el navegador. En el Resumen, «Servicios de hoy» muestra unas 10 filas con desplazamiento propio.
+- Volver al lugar donde estaba: el calendario, la ficha del empleado, Clientes y Planificación conservan el mes, la pestaña y los filtros al volver.
+- Ficha del empleado: cronograma semanal editable debajo de las estrellas (arrastrar, duplicar, cambiar color, mover a otro día). Es una pizarra del patrón fijo y no modifica los turnos.
+- Calendario del empleado: los fijos que no quedaron asignados en el mes aparecen con el motivo y con «Asignar» o «Reemplazar».
+- Licencias: al cargarlas se ve qué turnos se liberan, se suspende el aviso de ausencia y se ofrece reemplazo.
+- Turnos: con fecha pasada se puede «Registrar como realizado» (cuenta como horas trabajadas). Si ya hay un turno ese día, el aviso muestra cuál es y permite editarlo, crear igual o cancelar.
+- Clientes: los grupos por categoría se contraen y despliegan, con «Contraer todo / Desplegar todo».
+
+### Cambiado
+
+- Ficha del empleado: la pestaña «Cronograma» pasa a llamarse «Calendario». La vista mensual es editable (hora de inicio y fin escrita en el lugar, cliente que abre el turno, arrastrar un turno a otro día, turnos sin cubrir del mes, quitar y deshacer) y desaparece «Semana (editar)». Los bloques de cada turno se sombrean con el color del cliente. La hoja impresa no cambia.
+- Clientes: el buscador, el estado y la categoría van en la misma línea.
+- Servicios: «Vigente hasta» se puede borrar. Al editar un servicio, el último cambio gana sobre los cambios a mano de los turnos, y se avisa cuántos se reemplazan.
+
+### Corregido
+
+- Editar un cliente muestra su categoría (antes quedaba en blanco).
+- Un turno pasado que fallaba al guardar ya no deja un duplicado sin aviso.
+
+### Base de datos (0087)
+
+- `save_employee_leave` con vista previa: libera las asignaciones futuras sin fichaje. La carga directa de licencias queda cerrada.
+- `employee_fixed_gaps` y `employee_fixed_pattern`: fijos sin asignar con su motivo y patrón semanal.
+- Tabla `employee_week_boards` con `get_employee_week_board` y `save_employee_week_board`.
+- `register_past_shift`: turno pasado con asistencia «Carga posterior».
+- `create_shift` avisa `SHIFT_DATE_TAKEN` con el turno existente; el cambio de servicio informa los campos reemplazados.
+
 ## [0.30.0] - 2026-11-16
 
 Observaciones de la dirección del 14 nov (P29). Migración 0086.

@@ -46,6 +46,7 @@ export type SuiteExterna =
   | '96-client-photos.permissions.ts'
   | '97-credenciales.permissions.ts'
   | '102-p29.permissions.ts'
+  | '103-p30.permissions.ts'
 
 export const COBERTURA_EXTERNA: {
   tablas: Record<string, SuiteExterna>
@@ -54,6 +55,8 @@ export const COBERTURA_EXTERNA: {
   buckets: Record<string, SuiteExterna>
 } = {
   tablas: {
+    // Pizarra semanal de la ficha (0087, P30.1, OH-07): solo la dirección y la administración leen; se escribe con `save_employee_week_board`.
+    employee_week_boards: '103-p30.permissions.ts',
     // Cierre de avisos de «Requiere atención» (0085, P29.1, OG-02): solo la dirección y la administración leen.
     attention_dismissals: '102-p29.permissions.ts',
     // Credenciales visibles (0075, P26.4): sin políticas, nadie la lee ni la escribe por PostgREST

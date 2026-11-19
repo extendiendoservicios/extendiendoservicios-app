@@ -283,8 +283,8 @@ test.describe('cambios del servicio en los turnos (OF-05)', () => {
   )
 
   test(
-    'cambiar el horario actualiza los turnos con el horario viejo, saltea el cambiado a mano y quita los días que el servicio ya no tiene',
-    cubre('RB-A04', 'OF-05'),
+    'cambiar el horario actualiza todos los turnos, también el cambiado a mano (gana el último cambio), y quita los días que el servicio ya no tiene',
+    cubre('RB-A04', 'OF-05', 'OH-11'),
     async ({ page }) => {
       test.setTimeout(240_000)
       const sc = new Scenario()
@@ -327,17 +327,26 @@ test.describe('cambios del servicio en los turnos (OF-05)', () => {
             name: /¿Aplicar los cambios a los turnos desde el/,
           }),
         ).toBeVisible()
-        await expect(dialogo).toContainText(/Se actualiza 1 turno/)
-        // El de horario cambiado a mano se conserva y se explica por qué.
-        await expect(dialogo).toContainText('No se tocan (1)')
-        await expect(dialogo).toContainText('se lo cambió a mano y se conserva')
+        // OH-11: el cambiado a mano YA NO se conserva: se actualiza igual y la vista previa lo dice.
+        await expect(dialogo).toContainText(
+          /Se actualizan 2 turnos, 1 de ellos tenía cambios a mano que se reemplazan/,
+        )
+        await expect(dialogo).not.toContainText(
+          'se lo cambió a mano y se conserva',
+        )
         await dialogo
           .getByRole('button', { name: 'Aplicar', exact: true })
           .click()
-        await expect(
-          dialogo.getByRole('heading', { name: 'Resultado' }),
-        ).toBeVisible()
-        await dialogo.getByRole('button', { name: 'Listo' }).click()
+        // Se espera el efecto en los turnos y no el diálogo de resultado (ver DEF-P30-10: se cierra solo).
+        await expect
+          .poll(async () => {
+            const { data: filas } = await sc.db
+              .from('shifts')
+              .select('start_time')
+              .in('id', [normal, aMano])
+            return filas?.map((t) => t.start_time.slice(0, 5)).sort()
+          })
+          .toEqual(['10:00', '10:00'])
 
         const { data } = await sc.db
           .from('shifts')
@@ -346,8 +355,9 @@ test.describe('cambios del servicio en los turnos (OF-05)', () => {
         const por = Object.fromEntries((data ?? []).map((t) => [t.id, t]))
         expect(por[normal]?.start_time.slice(0, 5)).toBe('10:00')
         expect(por[normal]?.end_time.slice(0, 5)).toBe('14:00')
-        // El cambiado a mano conserva su horario.
-        expect(por[aMano]?.start_time.slice(0, 5)).toBe('09:00')
+        // El cambiado a mano toma el horario nuevo (gana el último cambio, OH-11).
+        expect(por[aMano]?.start_time.slice(0, 5)).toBe('10:00')
+        expect(por[aMano]?.end_time.slice(0, 5)).toBe('14:00')
       } finally {
         expect(await sc.cleanup(), 'limpieza').toEqual([])
       }
@@ -359,8 +369,8 @@ test.describe('avisos de duplicado (OF-02)', () => {
   test.use({ storageState: storageStatePath('owner') })
 
   test(
-    'crear un servicio que coincide con otro de la misma sede avisa y deja «Guardar igual»; un turno suelto en horario ocupado avisa «¿Crear igual?»',
-    cubre('RB-A04', 'OF-02'),
+    'crear un servicio que coincide con otro de la misma sede avisa y deja «Guardar igual»; un turno suelto en horario ocupado avisa «Ya hay un turno» (OH-10)',
+    cubre('RB-A04', 'OF-02', 'OH-10'),
     async ({ page }) => {
       test.setTimeout(240_000)
       const sc = new Scenario()
@@ -460,11 +470,19 @@ test.describe('avisos de duplicado (OF-02)', () => {
           await page
             .getByRole('button', { name: /Crear turno|Guardar/ })
             .click()
-          const aviso = page.getByRole('dialog').filter({
-            hasText: '¿Crear igual?',
-          })
+          // P30 (OH-10): el aviso pasó a «Ya hay un turno», con el turno existente y tres salidas.
+          const aviso = page.getByRole('dialog', { name: 'Ya hay un turno' })
           await expect(aviso).toBeVisible()
-          await expect(aviso).toContainText('12:30 a 14:30')
+          await expect(aviso.getByTestId('existing-shift')).toContainText(
+            '12:30',
+          )
+          await expect(aviso).toContainText('14:30')
+          await expect(
+            aviso.getByRole('button', { name: 'Editar ese turno' }),
+          ).toBeVisible()
+          await expect(
+            aviso.getByRole('button', { name: 'Crear igual' }),
+          ).toBeVisible()
         })
       } finally {
         expect(await sc.cleanup(), 'limpieza').toEqual([])

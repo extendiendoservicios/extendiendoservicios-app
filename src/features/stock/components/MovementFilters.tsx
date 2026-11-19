@@ -70,6 +70,7 @@ function MovementFilters({
     <div className="flex flex-wrap items-center gap-2">
       <div className="w-full sm:w-60">
         <DatePicker
+          clearable
           aria-label="Movimientos desde"
           placeholder="Desde"
           value={value.dateFrom ? isoDateToDate(value.dateFrom) : undefined}
@@ -84,6 +85,7 @@ function MovementFilters({
       </div>
       <div className="w-full sm:w-60">
         <DatePicker
+          clearable
           aria-label="Movimientos hasta"
           placeholder="Hasta"
           value={value.dateTo ? isoDateToDate(value.dateTo) : undefined}

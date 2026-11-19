@@ -28,8 +28,15 @@ import {
   filterByFranja,
   franjaOf,
   listFranjas,
+  scheduleSortKey,
+  statusSortKey,
 } from '../servicesToday'
 import { RowActions } from './RowActions'
+
+/** OH-01: filas visibles de la tabla antes de desplazarse (con avatar ~3,5 rem). */
+const VISIBLE_ROWS = 10
+const HEADER_REM = 2.5
+const ROW_REM = 3.5
 
 interface ServicesTodayTableProps {
   rows: AttendanceBoardRow[]
@@ -69,6 +76,8 @@ function ServicesTodayTable({
     {
       id: 'employee',
       header: 'Empleado',
+      accessorFn: (row) =>
+        `${row.employeeLastName} ${row.employeeFirstName}`.toLowerCase(),
       meta: { card: 'title' },
       cell: ({ row }) => (
         <PersonCell
@@ -85,6 +94,7 @@ function ServicesTodayTable({
     {
       id: 'client',
       header: 'Cliente · sede',
+      accessorFn: (row) => `${row.clientName} ${row.siteName}`.toLowerCase(),
       meta: { card: 'subtitle' },
       cell: ({ row }) => (
         <span>
@@ -95,12 +105,15 @@ function ServicesTodayTable({
     {
       id: 'schedule',
       header: 'Horario',
+      accessorFn: (row) => scheduleSortKey(row),
       meta: { card: 'meta', cardLabel: 'Horario' },
       cell: ({ row }) => franjaOf(row.original),
     },
     {
       id: 'checkIn',
       header: 'Inicio real',
+      accessorFn: (row) => row.checkInAt ?? undefined,
+      sortUndefined: 'last',
       meta: { card: 'meta', cardLabel: 'Inicio real' },
       cell: ({ row }) => <CheckInCell row={row.original} />,
     },
@@ -118,6 +131,7 @@ function ServicesTodayTable({
     {
       id: 'status',
       header: 'Estado',
+      accessorFn: (row) => statusSortKey(row),
       meta: { card: 'meta', cardLabel: 'Estado' },
       cell: ({ row }) => {
         const arrival = getArrivalHint(row.original)
@@ -135,12 +149,19 @@ function ServicesTodayTable({
     {
       id: 'workedHours',
       header: 'Horas',
+      accessorFn: (row) => row.workedMinutes ?? undefined,
+      sortUndefined: 'last',
       meta: { card: 'meta', cardLabel: 'Horas' },
       cell: ({ row }) => <WorkedHoursCell {...row.original} />,
     },
     {
       id: 'earlyLeave',
       header: 'Salida anticipada',
+      accessorFn: (row) =>
+        row.minutesEarlyLeave != null && row.minutesEarlyLeave > 0
+          ? row.minutesEarlyLeave
+          : undefined,
+      sortUndefined: 'last',
       meta: { card: 'meta', cardLabel: 'Salida anticipada' },
       cell: ({ row }) =>
         row.original.minutesEarlyLeave != null &&
@@ -213,6 +234,10 @@ function ServicesTodayTable({
         getRowId={(row) => row.id}
         isLoading={isLoading}
         rowVariant={getAttendanceRowVariant}
+        // OH-01: unas 10 filas con avatar (~3,5 rem cada una) y encabezado fijo.
+        maxHeight={`calc(${HEADER_REM}rem + ${VISIBLE_ROWS} * ${ROW_REM}rem)`}
+        resizableColumns
+        persistKey="resumen-servicios-hoy"
         emptyState={{
           icon: Users,
           title: 'No hay servicios para hoy',
