@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { MISSING_ENV_MESSAGE, readE2eEnv } from '../../fixtures/env.ts'
-import { limpiarPersona } from '../../fixtures/p30.ts'
+import { fechaDeMes, limpiarPersona } from '../../fixtures/p30.ts'
 import { Scenario } from '../../fixtures/scenario.ts'
 import { readId, storageStatePath } from '../../fixtures/sessions.ts'
 import { cubre } from '../../fixtures/trace.ts'
@@ -47,7 +47,17 @@ async function armarFijos(sc: Scenario) {
     .from('service_fixed_employees')
     .insert({ service_id: servicio.id, employee_id: readId('empleado2') })
   expect(error, error?.message).toBeNull()
-  return { cliente, sede, servicio }
+  // Un turno real del servicio, con la persona asignada: la pizarra no tiene que tocarlo.
+  const turno = await sc.shift(
+    cliente.id,
+    sede.id,
+    fechaDeMes(35),
+    { start: '09:00', end: '11:00' },
+    1,
+    { serviceId: servicio.id },
+  )
+  await sc.assign(turno, 'empleado2')
+  return { cliente, sede, servicio, turno }
 }
 
 const tabla = (page: Page) => page.getByTestId('cronograma-semanal')
@@ -59,13 +69,23 @@ async function abrirFicha(page: Page) {
   await expect(tabla(page)).toBeVisible()
 }
 
+/**
+ * Turnos y asignaciones de los clientes de ESTA prueba (otras pruebas en paralelo asignan a la misma
+ * persona: contar todas sus asignaciones no sirve). La pizarra no tiene que crear ni cambiar nada.
+ */
 async function contarAsignaciones(sc: Scenario) {
+  const { data: turnos } = await sc.db
+    .from('shifts')
+    .select('id')
+    .in('client_id', sc.clientIds)
+  const ids = (turnos ?? []).map((t) => t.id)
+  if (ids.length === 0) return 0
   const { data } = await sc.db
     .from('assignments')
     .select('id')
-    .eq('employee_id', readId('empleado2'))
+    .in('shift_id', ids)
     .is('removed_at', null)
-  return data?.length ?? 0
+  return ids.length * 1000 + (data?.length ?? 0)
 }
 
 test.describe('cronograma semanal de la ficha (OH-07)', () => {

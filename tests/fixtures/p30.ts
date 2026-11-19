@@ -4,7 +4,7 @@
 // fechas seguras dentro de un mes, abrir el calendario del empleado, ubicar bloques y limpiar lo que
 // el escenario no conoce (licencias guardadas desde la interfaz y la pizarra semanal).
 
-import { expect, type Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 import { addDays, daysFromToday } from './dates.ts'
 import type { FixedAccountKey } from './accounts.ts'
 import { E2E_PREFIX, type Scenario } from './scenario.ts'
@@ -29,17 +29,37 @@ export function fechaDeMes(minDias = 8): string {
 /** `AAAA-MM` de una fecha `AAAA-MM-DD`. */
 export const mesDe = (fecha: string) => fecha.slice(0, 7)
 
-/** Abre la pestaña «Calendario» de la ficha en el mes de `fecha` y espera a que cargue el mes. */
+/**
+ * Abre la pestaña «Calendario» de la ficha en el mes de `fecha` y espera a que cargue el mes y, si la
+ * persona edita, los fijos sin asignar (`employee_fixed_gaps`) y el cronograma semanal: llegan después
+ * de la grilla y empujan todo hacia abajo, y un clic o un arrastre medido antes erraría el blanco.
+ */
 export async function abrirCalendario(
   page: Page,
   quien: FixedAccountKey,
   fecha: string,
 ): Promise<void> {
+  const fijos = page
+    .waitForResponse((r) => r.url().includes('employee_fixed_gaps'), {
+      timeout: 8_000,
+    })
+    .catch(() => null)
   await page.goto(
     `/admin/empleados/${readId(quien)}?pestana=calendario&mes=${mesDe(fecha)}`,
   )
   await expect(page.getByTestId('calendario-mes')).toBeVisible()
   await expect(page.getByTestId(`dia-${fecha}`)).toBeVisible()
+  await fijos
+  // El cronograma semanal de la cabecera (solo para quien edita) también llega tarde y empuja el
+  // calendario ~210 px hacia abajo: se espera a que esté dibujado (el coordinador no lo tiene).
+  await page
+    .getByTestId('cronograma-semanal')
+    .waitFor({ state: 'visible', timeout: 8_000 })
+    .catch(() => undefined)
+  // Un cuadro más para que React dibuje lo que acaba de llegar.
+  await page.evaluate(
+    () => new Promise((resolver) => requestAnimationFrame(resolver)),
+  )
 }
 
 /** El bloque de tres casillas del turno de la sede (el nombre se muestra en mayúsculas). */
@@ -95,4 +115,47 @@ export async function limpiarPersona(
     .eq('employee_id', id)
   if (pizarra.error) notas.push(`pizarra: ${pizarra.error.message}`)
   return notas
+}
+
+/**
+ * Arrastre con el mouse de un elemento a otro. El calendario del empleado reacomoda las filas cuando
+ * terminan de llegar las consultas (turnos, fijos sin asignar), así que las coordenadas se miden
+ * de nuevo justo antes de cada paso y se espera a que el puntero esté de verdad sobre el origen.
+ * Deja el botón apretado cuando `soltar` es falso (para mirar el estado intermedio) y devuelve
+ * una función que suelta.
+ */
+export async function arrastrar(
+  page: Page,
+  origen: Locator,
+  destino: Locator,
+  { desdeAbajo = true }: { desdeAbajo?: boolean } = {},
+): Promise<() => Promise<void>> {
+  await origen.evaluate((el) => el.scrollIntoView({ block: 'center' }))
+  const punto = async () => {
+    const caja = (await origen.boundingBox())!
+    return {
+      x: caja.x + caja.width / 2,
+      y: desdeAbajo ? caja.y + caja.height - 4 : caja.y + caja.height / 2,
+    }
+  }
+  const handle = await origen.elementHandle()
+  await expect
+    .poll(async () => {
+      const { x, y } = await punto()
+      return page.evaluate(
+        ([px, py, el]) => {
+          const bajo = document.elementFromPoint(px, py)
+          return bajo != null && (el as Element).contains(bajo)
+        },
+        [x, y, handle] as const,
+      )
+    })
+    .toBe(true)
+  const inicio = await punto()
+  await page.mouse.move(inicio.x, inicio.y)
+  await page.mouse.down()
+  await page.mouse.move(inicio.x - 15, inicio.y, { steps: 4 })
+  const fin = (await destino.boundingBox())!
+  await page.mouse.move(fin.x + fin.width / 2, fin.y + 40, { steps: 10 })
+  return () => page.mouse.up()
 }

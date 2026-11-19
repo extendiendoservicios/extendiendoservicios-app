@@ -4,6 +4,7 @@ import { addDays } from '../../fixtures/dates.ts'
 import { MISSING_ENV_MESSAGE, readE2eEnv } from '../../fixtures/env.ts'
 import {
   abrirCalendario,
+  arrastrar,
   bloqueDe,
   fechaDeMes,
   horarioDe,
@@ -152,24 +153,17 @@ test.describe('calendario mensual editable (OF-10, OH-05)', () => {
         const b = bloqueDe(page, sede.name)
         await expect(b).toBeVisible()
 
-        // El mouse solo llega a lo que se ve: el bloque al centro de la ventana.
-        await b.evaluate((el) => el.scrollIntoView({ block: 'center' }))
-        const origen = (await b.boundingBox())!
-        const destino = (await page.getByTestId(`dia-${dia(2)}`).boundingBox())!
-        const x0 = origen.x + origen.width / 2
-        const y0 = origen.y + origen.height - 4
-        await page.mouse.move(x0, y0)
-        await page.mouse.down()
-        await page.mouse.move(x0 - 15, y0, { steps: 4 })
-        await page.mouse.move(destino.x + destino.width / 2, destino.y + 40, {
-          steps: 10,
-        })
+        const soltar = await arrastrar(
+          page,
+          b,
+          page.getByTestId(`dia-${dia(2)}`),
+        )
         // Mientras se arrastra, el día de destino se marca.
         await expect(page.getByTestId(`dia-${dia(2)}`)).toHaveAttribute(
           'data-drop-target',
           'true',
         )
-        await page.mouse.up()
+        await soltar()
         await expect
           .poll(async () => (await horarioDe(sc, turno)).fecha)
           .toBe(dia(2))
