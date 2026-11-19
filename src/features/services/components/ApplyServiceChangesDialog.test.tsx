@@ -198,6 +198,20 @@ describe('ApplyServiceChangesDialog (OF-05)', () => {
     expect(applyFixedMock).not.toHaveBeenCalled()
   })
 
+  it('DEF-P30-10: si tras aplicar la vista previa se refresca vacía, no se cierra: queda el resultado hasta «Listo»', async () => {
+    const onFinish = renderDialog({})
+    await screen.findByText(/Se borran 2 turnos/)
+    previewMock.mockResolvedValue(BASE)
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
+    const listo = await screen.findByRole('button', { name: 'Listo' })
+    expect(screen.getByText('Resultado')).toBeInTheDocument()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(toastInfo).not.toHaveBeenCalled()
+    expect(onFinish).not.toHaveBeenCalled()
+    fireEvent.click(listo)
+    expect(onFinish).toHaveBeenCalledTimes(1)
+  })
+
   it('«No aplicar» cierra sin tocar los turnos', async () => {
     const onFinish = renderDialog({})
     await screen.findByText(/Se borran 2 turnos/)

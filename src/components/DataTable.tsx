@@ -577,7 +577,7 @@ function ColumnResizer({
       role="separator"
       aria-orientation="vertical"
       aria-label={label}
-      aria-valuenow={width}
+      aria-valuenow={Math.round(width ?? RESIZE_MIN)}
       aria-valuemin={RESIZE_MIN}
       aria-valuemax={RESIZE_MAX}
       tabIndex={0}
