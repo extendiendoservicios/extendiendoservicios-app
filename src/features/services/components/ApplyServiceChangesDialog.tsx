@@ -195,7 +195,13 @@ function ApplyServiceChangesDialog({
 
   // Guardó un cambio que no toca ningún turno: no se interrumpe con un diálogo vacío.
   const autoClosed = useRef(false)
+  const applyStarted = useRef(false)
   useEffect(() => {
+    // DEF-P30-10: mientras se aplica o ya hay resultado, la vista previa vacía
+    // (se refresca tras aplicar) no debe cerrar el diálogo.
+    if (applying || result || applyStarted.current) {
+      return
+    }
     if (!autoClosed.current && previewData && empty && !includeFixed) {
       autoClosed.current = true
       if (previous !== null) {
@@ -203,9 +209,10 @@ function ApplyServiceChangesDialog({
         onFinish()
       }
     }
-  }, [previewData, empty, includeFixed, previous, onFinish])
+  }, [previewData, empty, includeFixed, previous, onFinish, applying, result])
 
   async function handleApply() {
+    applyStarted.current = true
     setApplying(true)
     try {
       const changes = await applyChanges.mutateAsync({

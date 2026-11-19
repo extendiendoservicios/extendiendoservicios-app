@@ -132,6 +132,17 @@ describe('fijos sin asignar en el calendario (OH-06)', () => {
     expect(within(cell).queryByTestId('turno')).toBeNull()
   })
 
+  it('DEF-P30-12: el bloque no desborda su celda: acciones apiladas, accesibles por nombre', () => {
+    renderEditor([gap()])
+    const block = screen.getByTestId('hueco')
+    expect(block).toHaveClass('min-w-0', 'overflow-hidden')
+    const reemplazar = within(block).getByRole('button', { name: /Reemplazar/ })
+    const asignar = within(block).getByRole('button', { name: /Asignar/ })
+    expect(reemplazar.parentElement).toHaveClass('flex-col')
+    expect(reemplazar).toHaveClass('w-full', 'min-w-0')
+    expect(asignar).toHaveClass('w-full', 'min-w-0')
+  })
+
   it('sin huecos no dibuja nada', () => {
     renderEditor([])
     expect(screen.queryByTestId('hueco')).toBeNull()

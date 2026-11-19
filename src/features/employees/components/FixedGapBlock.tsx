@@ -35,7 +35,7 @@ function FixedGapBlock({
       data-testid="hueco"
       data-reason={gap.reason}
       data-shift-id={gap.shiftId}
-      className="flex flex-col rounded-sm border select-none print:hidden"
+      className="flex min-w-0 flex-col overflow-hidden rounded-sm border select-none print:hidden"
       style={gapBlockColors(gap.calendarColor)}
     >
       <div className="grid grid-cols-2 gap-px">
@@ -64,12 +64,12 @@ function FixedGapBlock({
           description.text
         )}
       </p>
-      <div className="flex border-t border-inherit">
+      <div className="flex min-w-0 flex-col border-t border-inherit">
         <button
           type="button"
           disabled={busy}
           aria-label={`Reemplazar a ${personName} en el turno de ${siteLabel} del ${formatDateOnly(gap.shiftDate)}`}
-          className="flex-1 px-0.5 text-[10px] leading-[16px] font-semibold hover:bg-black/10 disabled:opacity-50 max-md:min-h-6"
+          className="w-full min-w-0 px-0.5 text-[10px] leading-[16px] font-semibold hover:bg-black/10 disabled:opacity-50 max-md:min-h-6"
           onClick={() => onReplace(gap)}
         >
           Reemplazar
@@ -79,7 +79,7 @@ function FixedGapBlock({
             type="button"
             disabled={busy}
             aria-label={`Asignar a ${personName} al turno de ${siteLabel} del ${formatDateOnly(gap.shiftDate)}`}
-            className="flex-1 border-l border-inherit px-0.5 text-[10px] leading-[16px] font-semibold hover:bg-black/10 disabled:opacity-50 max-md:min-h-6"
+            className="w-full min-w-0 border-t border-inherit px-0.5 text-[10px] leading-[16px] font-semibold hover:bg-black/10 disabled:opacity-50 max-md:min-h-6"
             onClick={() => onAssign(gap)}
           >
             Asignar

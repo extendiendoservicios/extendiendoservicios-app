@@ -172,6 +172,23 @@ describe('DataTable — OH-02 (orden y ancho de columnas)', () => {
     expect(container.querySelector('[data-slot="column-resizer"]')).toBeNull()
   })
 
+  it('DEF-P30-11: el asa siempre lleva aria-valuenow, también sin ancho fijado', () => {
+    mockCardViewport(false)
+    render(
+      <DataTable
+        columns={COLUMNS}
+        data={DATA}
+        caption="Demo"
+        resizableColumns
+      />,
+    )
+    const handle = screen.getByRole('separator', { name: HANDLE_NAME })
+    expect(handle).toHaveAttribute('aria-valuenow')
+    expect(handle).toHaveAttribute('aria-valuemin')
+    expect(handle).toHaveAttribute('aria-valuemax')
+    expect(handle).toHaveAttribute('aria-orientation', 'vertical')
+  })
+
   it('las flechas sobre el asa cambian el ancho, con mínimo y máximo', () => {
     mockCardViewport(false)
     render(
