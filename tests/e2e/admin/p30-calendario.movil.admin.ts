@@ -16,11 +16,12 @@ import { expectNoHorizontalScroll } from '../../fixtures/ui.ts'
 // P30.5 · OH-05 (PROPUESTO: «en celular el mes se ve como hoy, sin arrastre; los cambios se hacen
 // tocando») y OH-07 en el celular (proyecto `mobile`, 390 px, táctil). La ficha del empleado con
 // «Calendario» y «Cronograma semanal»: sin desplazamiento horizontal de la página, la hora se edita
-// tocando y el menú del turno mueve sin arrastre. Cuenta: empleado3 (calendario) y empleado2 (pizarra).
+// tocando y el menú del turno mueve sin arrastre. Cuenta: empleado3 (calendario) y empleado5 (pizarra; empleado2 es de la prueba de escritorio, que puede correr al mismo tiempo).
 
 test.skip(!readE2eEnv(), MISSING_ENV_MESSAGE)
 
-const BASE = fechaDeMes(10)
+// Base propia: la prueba de escritorio (p28-cronograma) usa a empleado3 en los primeros días de otro tramo.
+const BASE = fechaDeMes(25)
 const dia = (n: number) => addDays(BASE, n)
 
 test.describe('calendario del empleado en el celular (OH-05, OH-07)', () => {
@@ -69,9 +70,8 @@ test.describe('calendario del empleado en el celular (OH-05, OH-07)', () => {
           })
           await mover.getByRole('combobox', { name: 'Día' }).tap()
           await page
-            .getByRole('option', {
-              name: new RegExp(`\b${Number(dia(2).slice(8))} `),
-            })
+            // El día se muestra como «lun 7 dic» (el nombre accesible lleva espacios alrededor del número).
+            .getByRole('option', { name: ` ${Number(dia(2).slice(8))} ` })
             .first()
             .tap()
           await mover.getByRole('button', { name: 'Mover' }).tap()
@@ -102,10 +102,10 @@ test.describe('calendario del empleado en el celular (OH-05, OH-07)', () => {
         })
         const { error } = await sc.db
           .from('service_fixed_employees')
-          .insert({ service_id: servicio.id, employee_id: readId('empleado2') })
+          .insert({ service_id: servicio.id, employee_id: readId('empleado5') })
         expect(error, error?.message).toBeNull()
 
-        await page.goto(`/admin/empleados/${readId('empleado2')}`)
+        await page.goto(`/admin/empleados/${readId('empleado5')}`)
         const tabla = page.getByTestId('cronograma-semanal')
         await expect(tabla).toBeVisible()
         await expectNoHorizontalScroll(page)
@@ -122,12 +122,14 @@ test.describe('calendario del empleado en el celular (OH-05, OH-07)', () => {
           /^Editado/,
         )
       } finally {
+        // Se cierra la página antes de limpiar: el guardado automático de la pizarra no puede reescribirla.
+        await page.close()
         await sc.db
           .from('service_fixed_employees')
           .delete()
           .in('service_id', sc.extraServiceIds)
         expect(
-          await limpiarPersona(sc, 'empleado2'),
+          await limpiarPersona(sc, 'empleado5'),
           'limpieza persona',
         ).toEqual([])
         expect(await sc.cleanup(), 'limpieza').toEqual([])

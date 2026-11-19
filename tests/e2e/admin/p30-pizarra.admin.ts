@@ -135,6 +135,8 @@ test.describe('cronograma semanal de la ficha (OH-07)', () => {
         })
         await expectNoHorizontalScroll(page)
       } finally {
+        // Se cierra la página antes de limpiar: el guardado automático de la pizarra no puede reescribirla.
+        await page.close()
         await sc.db
           .from('service_fixed_employees')
           .delete()
@@ -159,7 +161,10 @@ test.describe('cronograma semanal de la ficha (OH-07)', () => {
         const antes = await contarAsignaciones(sc)
         await abrirFicha(page)
         const lunes = () =>
-          tabla(page).getByTestId('columna-1').getByTestId('bloque')
+          tabla(page)
+            .getByTestId('columna-1')
+            .getByTestId('bloque')
+            .filter({ hasText: sede.name.toUpperCase() })
 
         await test.step('«Cambiar color» → Violeta (índice 1)', async () => {
           await lunes()
@@ -172,7 +177,10 @@ test.describe('cronograma semanal de la ficha (OH-07)', () => {
           )
           const guardada = await pizarraGuardada(sc)
           expect(
-            guardada!.find((b) => b.weekday === 1)?.color_index,
+            guardada!.find(
+              (b) =>
+                b.weekday === 1 && b.label.startsWith(sede.name.toUpperCase()),
+            )?.color_index,
             'el color elegido se guardó',
           ).toBe(1)
         })
@@ -184,11 +192,12 @@ test.describe('cronograma semanal de la ficha (OH-07)', () => {
           await page.getByRole('menuitem', { name: 'Mover a' }).click()
           await page.getByRole('menuitem', { name: 'Viernes' }).click()
           await expect(
-            tabla(page).getByTestId('columna-5').getByTestId('bloque'),
-          ).toContainText(sede.name.toUpperCase())
-          await expect(
-            tabla(page).getByTestId('columna-1').getByTestId('bloque'),
-          ).toHaveCount(0)
+            tabla(page)
+              .getByTestId('columna-5')
+              .getByTestId('bloque')
+              .filter({ hasText: sede.name.toUpperCase() }),
+          ).toHaveCount(1)
+          await expect(lunes()).toHaveCount(0)
           await expect
             .poll(async () => {
               const guardada = await pizarraGuardada(sc)
@@ -200,6 +209,8 @@ test.describe('cronograma semanal de la ficha (OH-07)', () => {
         })
         expect(await contarAsignaciones(sc)).toBe(antes)
       } finally {
+        // Se cierra la página antes de limpiar: el guardado automático de la pizarra no puede reescribirla.
+        await page.close()
         await sc.db
           .from('service_fixed_employees')
           .delete()
@@ -263,6 +274,8 @@ test.describe('cronograma semanal de la ficha (OH-07)', () => {
           })
           .toBe('11:00')
       } finally {
+        // Se cierra la página antes de limpiar: el guardado automático de la pizarra no puede reescribirla.
+        await page.close()
         await sc.db
           .from('service_fixed_employees')
           .delete()

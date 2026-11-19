@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { addDays } from '../../fixtures/dates.ts'
+import { addDays, weekdayOf } from '../../fixtures/dates.ts'
 import { MISSING_ENV_MESSAGE, readE2eEnv } from '../../fixtures/env.ts'
 import { abrirCalendario, asignadosDe, fechaDeMes } from '../../fixtures/p30.ts'
 import { Scenario } from '../../fixtures/scenario.ts'
@@ -16,8 +16,21 @@ import { expectNoHorizontalScroll } from '../../fixtures/ui.ts'
 
 test.skip(!readE2eEnv(), MISSING_ENV_MESSAGE)
 
-const BASE = fechaDeMes(14)
+// Base propia (distinta de la de p28-cronograma y p28-9-ajustes, que usan la misma persona en días parecidos).
+const BASE = fechaDeMes(30)
 const dia = (n: number) => addDays(BASE, n)
+
+/** El próximo día de la semana `wd` (0 = domingo) dentro del mismo mes de la base; si no entra, el anterior. */
+function diaDeSemana(wd: number): string {
+  const adelante = addDays(BASE, (wd - weekdayOf(BASE) + 7) % 7)
+  return adelante.slice(0, 7) === BASE.slice(0, 7)
+    ? adelante
+    : addDays(adelante, -7)
+}
+/** Domingo: la última columna del calendario (sin día al lado). */
+const DOMINGO = diaDeSemana(0)
+/** Miércoles: una columna del medio, con días a los dos lados. */
+const MIERCOLES = diaDeSemana(3)
 
 /** Servicio activo todos los días con un turno el `fecha` y empleado1 como fijo, DESPUÉS de crear el turno. */
 async function servicioConFijo(
@@ -68,13 +81,14 @@ test.describe('fijos sin asignar en el calendario del empleado (OH-06)', () => {
         const { sede, servicio, turno } = await servicioConFijo(
           sc,
           'hueco-a',
-          dia(1),
+          DOMINGO,
         )
         // El fijo se agrega DESPUÉS de crear el turno: la persona no quedó asignada.
         await agregarFijo(sc, servicio.id)
 
-        await abrirCalendario(page, 'empleado1', dia(1))
-        const celda = page.getByTestId(`dia-${dia(1)}`)
+        // Domingo: la última columna, donde los botones no tocan al día de al lado (ver DEF-P30-12).
+        await abrirCalendario(page, 'empleado1', DOMINGO)
+        const celda = page.getByTestId(`dia-${DOMINGO}`)
         const hueco = celda.getByTestId('hueco')
         await expect(hueco).toHaveCount(1)
         await expect(hueco).toHaveAttribute('data-reason', 'ADDED_AFTER')
@@ -97,6 +111,38 @@ test.describe('fijos sin asignar en el calendario del empleado (OH-06)', () => {
         await expect(celda.getByTestId('hueco')).toHaveCount(0)
         await expect(celda.getByTestId('turno')).toBeVisible()
         await expectNoHorizontalScroll(page)
+      } finally {
+        await limpiar(sc)
+      }
+    },
+  )
+
+  test(
+    'DEF-P30-12: en una columna del medio los botones «Reemplazar» y «Asignar» del bloque quedan dentro de su día (no se meten en el de al lado) a 1280 px',
+    cubre('RB-A04', 'OH-06', 'DEF-P30-12'),
+    async ({ page }) => {
+      test.setTimeout(240_000)
+      const sc = new Scenario()
+      try {
+        const { servicio } = await servicioConFijo(sc, 'hueco-g', MIERCOLES)
+        await agregarFijo(sc, servicio.id)
+        await page.setViewportSize({ width: 1280, height: 1200 })
+        await abrirCalendario(page, 'empleado1', MIERCOLES)
+        const celda = page.getByTestId(`dia-${MIERCOLES}`)
+        await expect(celda.getByTestId('hueco')).toHaveCount(1)
+        const caja = (await celda.boundingBox())!
+        for (const nombre of [/^Reemplazar a /, /^Asignar a /]) {
+          const boton = celda
+            .getByTestId('hueco')
+            .getByRole('button', { name: nombre })
+          await boton.scrollIntoViewIfNeeded()
+          const c = (await boton.boundingBox())!
+          expect(
+            c.x + c.width,
+            `el botón ${nombre} termina dentro del día (borde derecho ${caja.x + caja.width})`,
+          ).toBeLessThanOrEqual(caja.x + caja.width + 0.5)
+          expect(c.x).toBeGreaterThanOrEqual(caja.x - 0.5)
+        }
       } finally {
         await limpiar(sc)
       }
