@@ -76,6 +76,11 @@ interface DataTableColumnMeta {
   /** Etiqueta que se muestra antes del valor cuando `card` es `'meta'`. */
   cardLabel?: string
   /**
+   * Nombre de la columna para el lector de pantalla cuando el encabezado
+   * no es un texto (por ejemplo, un botón propio). Lo usa el asa de ancho.
+   */
+  headerLabel?: string
+  /**
    * Ancho de la columna (valor CSS: `'14%'`, `'9rem'`) en la tabla de
    * escritorio. Solo se usa con `fixedLayout`; sin él se ignora.
    */
@@ -528,7 +533,11 @@ function DataTable<TData>({
                         label={`Cambiar el ancho de la columna ${
                           typeof header.column.columnDef.header === 'string'
                             ? header.column.columnDef.header
-                            : header.column.id
+                            : (getColumnMeta(header.column.columnDef)
+                                ?.headerLabel ??
+                              getColumnMeta(header.column.columnDef)
+                                ?.cardLabel ??
+                              header.column.id)
                         }`}
                         width={resizedWidth}
                         onResize={(width) =>

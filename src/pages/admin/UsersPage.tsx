@@ -299,7 +299,7 @@ export default function UsersPage() {
         id: 'name',
         header: () => <SortHeader columnKey="name" label="Nombre" />,
         enableSorting: false,
-        meta: { card: 'title' },
+        meta: { card: 'title', headerLabel: 'Nombre' },
         cell: ({ row }) => {
           // AJ2-11 y AJ2-12: foto de la persona y clic que abre su ficha.
           // El vínculo vive solo en esta celda: el menú "Acciones" queda
