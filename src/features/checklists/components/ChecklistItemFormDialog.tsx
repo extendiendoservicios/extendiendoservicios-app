@@ -109,7 +109,8 @@ function ChecklistItemFormDialog({
           <DialogTitle>{item ? 'Editar ítem' : 'Nuevo ítem'}</DialogTitle>
           <DialogDescription>
             Una tarea del checklist que se copia a cada turno nuevo. Cambiarla
-            acá no modifica los turnos ya generados.
+            acá no modifica los turnos ya generados hasta que uses «Actualizar
+            turnos».
           </DialogDescription>
         </DialogHeader>
         <form

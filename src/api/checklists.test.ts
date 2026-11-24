@@ -51,6 +51,8 @@ const {
   updateTemplateItem,
   deactivateTemplateItem,
   reorderTemplateItems,
+  countOutdatedTemplateShifts,
+  reloadTemplateShiftTasks,
 } = await import('./checklists')
 
 beforeEach(() => {
@@ -251,5 +253,44 @@ describe('reorderTemplateItems', () => {
     expect(options).toEqual({ onConflict: 'id' })
     expect(rows.map((row) => row.id)).toEqual(['i2', 'i1'])
     expect(rows.map((row) => row.position)).toEqual([0, 1])
+  })
+})
+
+describe('recarga de tareas en lote (D-03)', () => {
+  it('countOutdatedTemplateShifts llama a la RPC con la sede y devuelve el número', async () => {
+    rpcMock.mockResolvedValue({ data: 3, error: null })
+    expect(await countOutdatedTemplateShifts('c1', 's1')).toBe(3)
+    expect(rpcMock).toHaveBeenCalledWith('count_outdated_template_shifts', {
+      p_client_id: 'c1',
+      p_site_id: 's1',
+    })
+  })
+
+  it('countOutdatedTemplateShifts sin sede manda p_site_id indefinido', async () => {
+    rpcMock.mockResolvedValue({ data: 0, error: null })
+    expect(await countOutdatedTemplateShifts('c1', null)).toBe(0)
+    expect(rpcMock).toHaveBeenCalledWith('count_outdated_template_shifts', {
+      p_client_id: 'c1',
+      p_site_id: undefined,
+    })
+  })
+
+  it('reloadTemplateShiftTasks devuelve cuántos turnos actualizó', async () => {
+    rpcMock.mockResolvedValue({ data: 5, error: null })
+    expect(await reloadTemplateShiftTasks('c1', null)).toBe(5)
+    expect(rpcMock).toHaveBeenCalledWith('reload_template_shift_tasks', {
+      p_client_id: 'c1',
+      p_site_id: undefined,
+    })
+  })
+
+  it('traduce el error del servidor', async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: { message: 'No encontramos la sede.', hint: 'SITE_NOT_FOUND' },
+    })
+    await expect(reloadTemplateShiftTasks('c1', 's1')).rejects.toSatisfy(
+      (error: unknown) => isApiError(error) && error.hint === 'SITE_NOT_FOUND',
+    )
   })
 })

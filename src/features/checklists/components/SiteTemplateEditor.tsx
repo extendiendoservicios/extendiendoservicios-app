@@ -11,6 +11,7 @@ import {
   useCloneChecklistTemplateMutation,
 } from '@/features/checklists/queries'
 import { ChecklistItemsEditor } from './ChecklistItemsEditor'
+import { OutdatedTemplateShiftsNotice } from './OutdatedTemplateShiftsNotice'
 
 /**
  * ADM-26, ámbito "sede" (TASK-004, TASK-005, `05` línea 85): "usa la del
@@ -87,10 +88,16 @@ function SiteTemplateEditor({
       <Alert variant="info">
         <Info />
         <AlertDescription>
-          Cambiar esta plantilla no modifica los turnos ya generados. Para
-          actualizar un turno puntual, usá «Recargar tareas» desde su detalle.
+          Los turnos ya generados conservan sus tareas hasta que uses
+          «Actualizar turnos». También podés recargar un turno suelto desde su
+          detalle.
         </AlertDescription>
       </Alert>
+      <OutdatedTemplateShiftsNotice
+        clientId={clientId}
+        siteId={siteId}
+        canEdit={canEdit}
+      />
       <ChecklistItemsEditor templateId={siteTemplate.id} canEdit={canEdit} />
     </div>
   )

@@ -161,6 +161,9 @@ function DashboardScreen() {
   }
 
   function handleDismiss(item: AttentionItem) {
+    if (item.kind === 'onTheWay') {
+      return
+    }
     setAttentionError(null)
     dismissMutation.mutate(
       {
