@@ -16,6 +16,7 @@
 // `OF-xx`: observaciones de la dirección del 11 nov 2026 (`modulos/P28_observaciones_de_la_duena_11_nov.md`).
 // `OG-xx`: observaciones de la dirección del 14 nov 2026 (`modulos/P29_observaciones_de_la_duena_14_nov.md`).
 // `OH-xx`: observaciones de la dirección del 18 nov 2026 (`modulos/P30_observaciones_de_la_duena_18_nov.md`).
+// `OI-xx` y `D-xx`: observaciones de la dirección del 23 nov 2026 y sus decisiones (`modulos/P31_observaciones_de_la_direccion_23_nov.md`).
 // `DEF-xx`: defectos de la revisión del orquestador y de QA que tienen prueba de regresión.
 // `AJ-xx`, `AJ2-xx`: ajustes de las reuniones (`Docs/Plan_Maestro/modulos/`, 6 oct y siguientes).
 type Trace =
@@ -30,6 +31,8 @@ type Trace =
   | `OF-${string}`
   | `OG-${string}`
   | `OH-${string}`
+  | `OI-${string}`
+  | `D-${string}`
   | `DEF-${string}`
   | `AJ-${string}`
   | `AJ2-${string}`
