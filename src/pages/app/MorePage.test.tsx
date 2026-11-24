@@ -62,6 +62,15 @@ describe('MorePage (EMP-13)', () => {
 
     expect(screen.getByText('Mi perfil')).toBeInTheDocument()
     expect(screen.getByText('Cerrar sesión')).toBeInTheDocument()
+    // P32 D-07: «Próximos días» es la primera fila de «Más».
+    expect(screen.getByText('Próximos días').closest('a')).toHaveAttribute(
+      'href',
+      '/app/proximos',
+    )
+    expect(screen.getAllByRole('link')[0]).toHaveAttribute(
+      'href',
+      '/app/proximos',
+    )
     const noticeLink = screen.getByText('Avisar demora o ausencia').closest('a')
     expect(noticeLink).toHaveAttribute('href', '/app/avisar')
     expect(

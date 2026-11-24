@@ -1,73 +1,63 @@
 import { fireEvent, screen, within } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { UpcomingShiftsList } from './UpcomingShiftsList'
-import * as todayModule from '@/api/supervisorToday'
 import { makeTodayShift } from '../fixtures'
 import { renderRoute } from '../testUtils'
 
-/** Lista de SUP-10 · Próximos días (D-09): por día, «Mis sedes» y «Otras sedes», solo consulta. */
-function mockUpcoming(
-  data: ReturnType<typeof makeTodayShift>[] | undefined,
-  isLoading = false,
+/** Detalle del día de SUP-10 · Próximos días (P32, D-06): «Mis sedes» y «Otras sedes», solo consulta. */
+function renderList(
+  shifts: ReturnType<typeof makeTodayShift>[] | undefined,
+  options: { date?: string; isLoading?: boolean } = {},
 ) {
-  vi.spyOn(todayModule, 'useSupervisorUpcomingQuery').mockReturnValue({
-    data,
-    isLoading,
-    isError: data === undefined && !isLoading,
-  } as never)
+  const { date = '2026-11-25', isLoading = false } = options
+  const isError = shifts === undefined && !isLoading
+  return renderRoute(
+    <UpcomingShiftsList
+      date={date}
+      shifts={shifts}
+      isLoading={isLoading}
+      isError={isError}
+    />,
+    { path: '/sup', entry: '/sup' },
+  )
 }
-
-function renderList() {
-  return renderRoute(<UpcomingShiftsList />, { path: '/sup', entry: '/sup' })
-}
-
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('UpcomingShiftsList', () => {
-  it('agrupa por día y separa «Mis sedes» de «Otras sedes» dentro de cada día', () => {
-    mockUpcoming([
+  it('muestra solo los turnos del día elegido y separa «Mis sedes» de «Otras sedes»', () => {
+    renderList([
       makeTodayShift({
         shiftId: 'a',
-        shiftDate: '2026-10-25',
+        shiftDate: '2026-11-25',
         isPriority: true,
         siteName: 'Torre Norte',
       }),
       makeTodayShift({
         shiftId: 'b',
-        shiftDate: '2026-10-24',
+        shiftDate: '2026-11-26',
         siteName: 'Local Centro',
       }),
       makeTodayShift({
         shiftId: 'c',
-        shiftDate: '2026-10-25',
+        shiftDate: '2026-11-25',
         siteName: 'Depósito',
       }),
     ])
-    renderList()
 
-    const days = screen.getAllByRole('heading', { level: 2 })
-    expect(days.map((h) => h.textContent)).toEqual([
-      '24 oct 2026',
-      '25 oct 2026',
-    ])
-    const day25 = screen.getByRole('region', { name: '25 oct 2026' })
     expect(
-      within(
-        within(day25).getByRole('region', { name: 'Mis sedes' }),
-      ).getByText('Torre Norte'),
+      within(screen.getByRole('region', { name: 'Mis sedes' })).getByText(
+        'Torre Norte',
+      ),
     ).toBeInTheDocument()
     expect(
-      within(
-        within(day25).getByRole('region', { name: 'Otras sedes' }),
-      ).getByText('Depósito'),
+      within(screen.getByRole('region', { name: 'Otras sedes' })).getByText(
+        'Depósito',
+      ),
     ).toBeInTheDocument()
+    expect(screen.queryByText('Local Centro')).not.toBeInTheDocument()
   })
 
   it('es solo de consulta: sin enlaces al turno ni botones de acción', () => {
-    mockUpcoming([makeTodayShift({ shiftDate: '2026-10-24' })])
-    renderList()
+    renderList([makeTodayShift({ shiftDate: '2026-11-25' })])
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
@@ -76,25 +66,24 @@ describe('UpcomingShiftsList', () => {
   })
 
   it('el buscador filtra «Otras sedes» y no «Mis sedes»', () => {
-    mockUpcoming([
+    renderList([
       makeTodayShift({
         shiftId: 'p',
-        shiftDate: '2026-10-24',
+        shiftDate: '2026-11-25',
         isPriority: true,
         siteName: 'Torre Norte',
       }),
       makeTodayShift({
         shiftId: 'o1',
-        shiftDate: '2026-10-24',
+        shiftDate: '2026-11-25',
         siteName: 'Depósito',
       }),
       makeTodayShift({
         shiftId: 'o2',
-        shiftDate: '2026-10-24',
+        shiftDate: '2026-11-25',
         siteName: 'Local Centro',
       }),
     ])
-    renderList()
 
     fireEvent.change(screen.getByLabelText('Buscar por cliente o sede'), {
       target: { value: 'deposito' },
@@ -104,11 +93,10 @@ describe('UpcomingShiftsList', () => {
     expect(screen.queryByText('Local Centro')).not.toBeInTheDocument()
   })
 
-  it('si la búsqueda no encuentra nada en ningún día, lo dice', () => {
-    mockUpcoming([
-      makeTodayShift({ shiftDate: '2026-10-24', siteName: 'Depósito' }),
+  it('si la búsqueda no encuentra nada, lo dice', () => {
+    renderList([
+      makeTodayShift({ shiftDate: '2026-11-25', siteName: 'Depósito' }),
     ])
-    renderList()
     fireEvent.change(screen.getByLabelText('Buscar por cliente o sede'), {
       target: { value: 'zzz' },
     })
@@ -117,23 +105,22 @@ describe('UpcomingShiftsList', () => {
     ).toBeInTheDocument()
   })
 
-  it('estado vacío amable sin turnos en los próximos días', () => {
-    mockUpcoming([])
-    renderList()
+  it('estado vacío por día, con el nombre del día', () => {
+    renderList([makeTodayShift({ shiftDate: '2026-11-26' })], {
+      date: '2026-11-25',
+    })
     expect(
-      screen.getByText('No hay turnos en los próximos días'),
+      screen.getByText('No hay turnos el miércoles 25 de noviembre'),
     ).toBeInTheDocument()
   })
 
   it('avisa si no se pudo cargar y muestra «Cargando…» mientras tanto', () => {
-    mockUpcoming(undefined)
-    const { unmount } = renderList()
+    const { unmount } = renderList(undefined)
     expect(screen.getByRole('alert')).toHaveTextContent(
       'No pudimos cargar los próximos turnos',
     )
     unmount()
-    mockUpcoming(undefined, true)
-    renderList()
+    renderList(undefined, { isLoading: true })
     expect(screen.getByText('Cargando…')).toBeInTheDocument()
   })
 })

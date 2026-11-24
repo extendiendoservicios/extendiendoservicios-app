@@ -187,12 +187,41 @@ export async function fetchSupervisorUpcoming(): Promise<TodayShift[]> {
   return (data ?? []).map(mapTodayShiftRow)
 }
 
+/**
+ * Los turnos de un rango de fechas (SUP-10, P32, D-05): `get_supervisor_shifts`.
+ * Mismas columnas que `v_supervisor_upcoming`. El servidor recorta el rango a
+ * mañana..hoy + 60 (Buenos Aires) y rechaza `from > to` con `INVALID_DATE_RANGE`.
+ */
+export async function fetchSupervisorShifts(
+  from: string,
+  to: string,
+): Promise<TodayShift[]> {
+  const { data, error } = await supabase.rpc('get_supervisor_shifts', {
+    p_from: from,
+    p_to: to,
+  })
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return ((data ?? []) as unknown as TodayRawRow[])
+    .map(mapTodayShiftRow)
+    .sort(
+      (a, b) =>
+        a.shiftDate.localeCompare(b.shiftDate) ||
+        a.startTime.localeCompare(b.startTime),
+    )
+}
+
 /** 30 s: hace falta ver pronto quién tomó un turno para no pisarse (CJ-25). */
 const SUPERVISOR_TODAY_POLLING_MS = 30_000
 
 export const supervisorTodayKeys = {
   all: ['supervisorToday'] as const,
   upcoming: ['supervisorToday', 'upcoming'] as const,
+  /** P32 D-05: los turnos de un mes (`month` = "YYYY-MM"). Cuelga de `upcoming`. */
+  month: (month: string) =>
+    ['supervisorToday', 'upcoming', 'month', month] as const,
 }
 
 /** SUP-02 y SUP-03: los turnos del día. */
@@ -209,5 +238,17 @@ export function useSupervisorUpcomingQuery() {
   return useQuery({
     queryKey: supervisorTodayKeys.upcoming,
     queryFn: fetchSupervisorUpcoming,
+  })
+}
+
+/** SUP-10 (P32, D-05): los turnos del rango visible de un mes del minicalendario; el servidor recorta lo que queda fuera de mañana..hoy + 60. */
+export function useSupervisorShiftsMonthQuery(
+  month: string,
+  from: string,
+  to: string,
+) {
+  return useQuery({
+    queryKey: supervisorTodayKeys.month(month),
+    queryFn: () => fetchSupervisorShifts(from, to),
   })
 }
