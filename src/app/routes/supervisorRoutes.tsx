@@ -69,6 +69,15 @@ export const supervisorRoutes: RouteObject[] = [
     },
   },
   {
+    path: 'proximos',
+    ...lazyPage(() => import('@/pages/sup/UpcomingPage')),
+    handle: {
+      screenId: 'SUP-10',
+      title: 'Próximos días',
+      subtitle: 'Los turnos de los próximos 7 días',
+    },
+  },
+  {
     path: 'historial',
     ...lazyPage(() => import('@/pages/sup/HistoryPage')),
     handle: {

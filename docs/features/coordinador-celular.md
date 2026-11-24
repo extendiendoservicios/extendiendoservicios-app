@@ -72,6 +72,20 @@ cada 30 s para ver rápido quién tomó un turno):
 - Cada turno muestra «Supervisando: Ana» y/o «Supervisó: Luis» (el propio coordinador figura como «Vos»).
 - Se puede tomar cualquier turno: las sedes propias solo ordenan.
 
+## Próximos días (SUP-10, P31, D-09, OI-07)
+
+`/sup/proximos`, primera opción de «Más» (la barra inferior ya tiene las cinco pestañas posibles y a 390 px no entra una
+sexta). `UpcomingPage` + `UpcomingShiftsList`, sobre `v_supervisor_upcoming` (`fetchSupervisorUpcoming` en
+`src/api/supervisorToday.ts`: de mañana a hoy + 7, mismas columnas que `v_supervisor_today`):
+
+- Agrupado por día (`groupShiftsByDay`, en `shifts.ts`); dentro de cada día, «Mis sedes» y «Otras sedes» con los mismos
+  componentes de «Hoy» (`ShiftsBlock`, en modo `consultOnly`).
+- Solo consulta: las tarjetas no llevan enlace, ni estado, ni «Supervisar». El turno se toma el día.
+- Un solo buscador por cliente o sede, arriba; filtra «Otras sedes» de todos los días.
+- Si la persona también es empleada, arriba van «Tus servicios» de los próximos días (`v_my_day` sin el de hoy,
+  `UpcomingRow`, el mismo que usa EMP-03).
+- Estado vacío: «No hay turnos en los próximos días».
+
 ## «Supervisar», «Descartar» y «Cerrar»
 
 - **Supervisar** (`take_supervision`): deshabilitado, con el motivo a la vista, si no hay jornada iniciada, si está en pausa o

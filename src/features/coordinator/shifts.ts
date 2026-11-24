@@ -96,6 +96,29 @@ export function splitTodayShifts(
   }
 }
 
+/**
+ * Los turnos de «Próximos días» agrupados por día (de la fecha más cercana a la
+ * más lejana), cada día con sus dos bloques. Con búsqueda, los días que quedan
+ * sin ningún turno se omiten.
+ */
+export function groupShiftsByDay(
+  shifts: TodayShift[],
+  search = '',
+  nowMs: number = Date.now(),
+): { date: string; mine: TodayShift[]; others: TodayShift[] }[] {
+  const dates = [...new Set(shifts.map((shift) => shift.shiftDate))].sort()
+  return dates
+    .map((date) => ({
+      date,
+      ...splitTodayShifts(
+        shifts.filter((shift) => shift.shiftDate === date),
+        search,
+        nowMs,
+      ),
+    }))
+    .filter((day) => day.mine.length > 0 || day.others.length > 0)
+}
+
 function personName(
   person: { firstName: string; lastName: string; isMe: boolean },
   full: boolean,

@@ -106,20 +106,27 @@ export function TodayShiftsList() {
   )
 }
 
-function ShiftsBlock({
+/**
+ * Un bloque de turnos («Mis sedes» u «Otras sedes»). Con `consultOnly` (SUP-10,
+ * «Próximos días») las tarjetas son solo de consulta: sin enlace al turno ni
+ * «Supervisar», porque el turno se toma el día.
+ */
+export function ShiftsBlock({
   title,
   shifts,
   nowMs,
   ratingsSummary,
   emptyText,
   search,
+  consultOnly = false,
 }: {
   title: string
   shifts: TodayShift[]
   nowMs: number
-  ratingsSummary: RatingsSummary
+  ratingsSummary?: RatingsSummary
   emptyText: string
   search?: { value: string; onChange: (value: string) => void }
+  consultOnly?: boolean
 }) {
   return (
     <section aria-label={title} className="flex flex-col gap-2">
@@ -148,6 +155,7 @@ function ShiftsBlock({
             shift={shift}
             nowMs={nowMs}
             ratingsSummary={ratingsSummary}
+            consultOnly={consultOnly}
           />
         ))
       )}
@@ -161,10 +169,12 @@ function ShiftCard({
   shift,
   nowMs,
   ratingsSummary,
+  consultOnly,
 }: {
   shift: TodayShift
   nowMs: number
-  ratingsSummary: RatingsSummary
+  ratingsSummary?: RatingsSummary
+  consultOnly: boolean
 }) {
   const state = effectiveShiftState(shift, nowMs)
   const past = myPastSupervisions(shift)
@@ -174,63 +184,65 @@ function ShiftCard({
     supervisors: shift.supervisors.filter((s) => !past.includes(s)),
   })
   const employeesCount = shift.assignedEmployees.length
-  return (
-    <Link to={`/sup/turnos/${shift.shiftId}`} className="block">
-      <Card>
-        <CardContent className="flex flex-col gap-[6px]">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="truncate text-[14px] font-semibold text-text">
-                {shift.clientName}
-              </p>
-              <p className="truncate text-[12px] text-text-3">
-                {shift.siteName}
-              </p>
-            </div>
+  const card = (
+    <Card>
+      <CardContent className="flex flex-col gap-[6px]">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="truncate text-[14px] font-semibold text-text">
+              {shift.clientName}
+            </p>
+            <p className="truncate text-[12px] text-text-3">{shift.siteName}</p>
+          </div>
+          {!consultOnly && (
             <Badge variant={STATE_VARIANTS[state]} dot>
               {SHIFT_STATE_LABELS[state]}
             </Badge>
-          </div>
-          <p className="text-[13px] font-semibold text-text-2">
-            {formatSupervisionRange({
-              startTime: shift.startTime,
-              endTime: shift.endTime,
-              shiftOpenEnded: shift.openEnded,
-            })}
-          </p>
-          {employeesCount > 0 && (
-            <p className="flex items-center gap-[6px] text-[11.5px] text-text-3">
-              <Users aria-hidden="true" className="size-[13px] shrink-0" />
-              <span className="truncate">
-                {employeesCount}{' '}
-                {employeesCount === 1 ? 'empleado' : 'empleados'}
-              </span>
-            </p>
           )}
-          {past.map((s) => (
-            <p
-              key={s.supervisionId}
-              className="text-[11.5px] font-semibold text-info-800"
-            >
-              Supervisaste{' '}
-              {pastSupervisionLabel(
-                s,
-                ratingsSummary?.find((r) => r.supervisionId === s.supervisionId)
-                  ?.ratedCount,
-                formatTime,
-              )}
-            </p>
-          ))}
-          {supervisors.map((label) => (
-            <p
-              key={label}
-              className="text-[11.5px] font-semibold text-info-800"
-            >
-              {label}
-            </p>
-          ))}
-        </CardContent>
-      </Card>
+        </div>
+        <p className="text-[13px] font-semibold text-text-2">
+          {formatSupervisionRange({
+            startTime: shift.startTime,
+            endTime: shift.endTime,
+            shiftOpenEnded: shift.openEnded,
+          })}
+        </p>
+        {employeesCount > 0 && (
+          <p className="flex items-center gap-[6px] text-[11.5px] text-text-3">
+            <Users aria-hidden="true" className="size-[13px] shrink-0" />
+            <span className="truncate">
+              {employeesCount} {employeesCount === 1 ? 'empleado' : 'empleados'}
+            </span>
+          </p>
+        )}
+        {past.map((s) => (
+          <p
+            key={s.supervisionId}
+            className="text-[11.5px] font-semibold text-info-800"
+          >
+            Supervisaste{' '}
+            {pastSupervisionLabel(
+              s,
+              ratingsSummary?.find((r) => r.supervisionId === s.supervisionId)
+                ?.ratedCount,
+              formatTime,
+            )}
+          </p>
+        ))}
+        {supervisors.map((label) => (
+          <p key={label} className="text-[11.5px] font-semibold text-info-800">
+            {label}
+          </p>
+        ))}
+      </CardContent>
+    </Card>
+  )
+  if (consultOnly) {
+    return <div data-testid="upcoming-shift">{card}</div>
+  }
+  return (
+    <Link to={`/sup/turnos/${shift.shiftId}`} className="block">
+      {card}
     </Link>
   )
 }
