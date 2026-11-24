@@ -9,7 +9,18 @@ import { DEFAULT_MAX_ACCURACY_M, EARTH_RADIUS_M } from './constants'
 export type GeoStatus = 'valid' | 'outside' | 'unvalidated'
 
 export type GeoUnvalidatedReason =
-  'no_location' | 'site_without_coords' | 'admin_record' | 'low_accuracy'
+  | 'no_location'
+  | 'site_without_coords'
+  | 'admin_record'
+  | 'low_accuracy'
+  // Motivos técnicos de la falta de ubicación (0088, D-14).
+  | 'permission_denied'
+  | 'position_unavailable'
+  | 'timeout'
+
+/** Motivos técnicos que se mandan a las RPC de fichaje como `p_geo_reason` (D-14). */
+export type GeoTechnicalReason =
+  'permission_denied' | 'position_unavailable' | 'timeout'
 
 export interface GeoPoint {
   lat: number

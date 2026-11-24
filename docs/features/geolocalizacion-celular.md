@@ -24,6 +24,13 @@ Especificación: `Docs/Plan_Maestro/modulos/B_asistencia_avanzada.md` §1 (B-03 
 - Sede sin coordenadas: no hay mapa, un aviso y el fichaje queda gris «sede sin coordenadas». Sin consentimiento o sin permiso: aviso y gris «sin ubicación».
 - **El resultado que se muestra después de fichar es el que devolvió la base** (`geo_status`, `geo_unvalidated_reason`, `site_distance_m`), con `GeoStatusBadge`, no el calculado en el celular (B-37). La hora es la de `recorded_at`.
 
+## Mejoras de ubicación (P31, D-14, OI-11)
+
+- **Respaldo de baja precisión:** si en 8 s (`LOW_ACCURACY_FALLBACK_MS`) no llegó ninguna lectura, `useLivePosition` pide además una con `enableHighAccuracy: false`; queda la mejor. No se pide si ya hubo lectura o si se negó el permiso. La base decide si valida por precisión.
+- **«Reintentar»:** con «No pudimos obtener tu ubicación…» (o sin permiso) el panel ofrece «Reintentar» (`retry()` del hook reinicia la búsqueda).
+- **Ayuda según el celular** (`detectGeoDevice`, `buildGeoHelp`): «Revisá que la ubicación del teléfono esté encendida» y los pasos para Android o iPhone; para «sin permiso», cómo darlo.
+- **Motivo técnico** (`geoReasonToSend`, `payload.geoReason`): al fichar o tomar/cerrar una supervisión sin coordenadas se manda `p_geo_reason` según `lastErrorCode` del hook: 1 `permission_denied`, 2 `position_unavailable`, 3 `timeout`; sin error todavía, `timeout`. Sin consentimiento no se manda (queda `no_location`). La jornada (`WorkdayBar`) no lo usa.
+
 ## Re-consentimiento (B-22)
 
 - El consentimiento de la persona está en `profiles.location_consent_at`. La empresa marca el último cambio del texto en `company_settings.location_consent_updated_at`, que lee cualquier usuario autenticado (`src/api/locationConsent.ts`, `fetchLocationConsentInfo`). No hizo falta nada nuevo en la base.

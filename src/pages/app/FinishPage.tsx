@@ -148,6 +148,7 @@ export default function FinishPage() {
         assignmentId: assignment!.assignmentId,
         coords: fichaje.payload.coords,
         outsideReason: fichaje.payload.outsideReason,
+        geoReason: fichaje.payload.geoReason,
       })
       if (record.geo) {
         setResult({ recordedAt: record.recordedAt, geo: record.geo })

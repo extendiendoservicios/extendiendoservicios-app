@@ -39,6 +39,7 @@ import {
 } from '../presence'
 import {
   coordinatorName,
+  coordinatorPositionNote,
   coordinatorStatusDetail,
   coordinatorWorkdayPath,
   SUPERVISOR_STATUS_LABELS,
@@ -173,6 +174,8 @@ function PresencePopup({ row }: { row: PresenceRow }) {
  * hoy y «Ver jornada».
  */
 function CoordinatorPopup({ row }: { row: SupervisorStatusRow }) {
+  // D-11: si el último evento no trajo posición, se avisa la hora de la que se muestra.
+  const positionNote = coordinatorPositionNote(row)
   return (
     <div className="flex min-w-52 flex-col gap-1 text-[12px]">
       <p className="font-semibold text-text">
@@ -185,6 +188,7 @@ function CoordinatorPopup({ row }: { row: SupervisorStatusRow }) {
           Último registro: {formatTime(row.lastEventAt)}
         </p>
       )}
+      {positionNote && <p className="text-text-3">{positionNote}</p>}
       <p className="text-text-3">
         Horas de hoy: {formatMinutes(row.workedMinutes)}
       </p>
@@ -213,7 +217,7 @@ const LEGEND_BG: Record<string, string> = {
 /**
  * Mapa de presencia de ADM-02 (B-11 a B-15, CJ-22, CJ-33): empleados que
  * están trabajando, en la posición de su fichaje de inicio, coloreados por la
- * validación (B-03); los coordinadores en la posición de su último evento,
+ * validación (B-03); los coordinadores en su última posición conocida (D-11),
  * con un color por estado y el filtro «Coordinadores»; las sedes con un turno
  * en la franja actual con su círculo; los conmutadores
  * «Por comenzar», «En curso» y «Finalizados» (OF-13); y debajo, «Trabajando sin ubicación» y «Coordinadores sin ubicación».

@@ -26,7 +26,12 @@ export interface SupervisorStatusRow {
   endedAt: string | null
   /** Hora del último evento de la jornada (inicio, pausa, supervisión…). */
   lastEventAt: string | null
-  /** Posición del último evento; nula = «Sin ubicación». */
+  /**
+   * D-11 (P31): hora de la posición. Es la del evento más reciente que trajo
+   * posición (jornada o supervisión), que puede ser anterior a `lastEventAt`.
+   */
+  positionAt: string | null
+  /** Última posición conocida del día; nula = «Sin ubicación» (no hubo ninguna). */
   latitude: number | null
   longitude: number | null
   accuracyM: number | null
@@ -47,7 +52,7 @@ export interface SupervisorStatusRow {
 }
 
 const STATUS_SELECT =
-  'supervisor_id, first_name, last_name, status, workday_id, work_date, started_at, ended_at, last_event_at, latitude, longitude, accuracy_m, worked_minutes, pause_reason, supervision_id, client_id, client_legal_name, site_id, site_name, auto_closed, corrected, on_leave'
+  'supervisor_id, first_name, last_name, status, workday_id, work_date, started_at, ended_at, last_event_at, position_at, latitude, longitude, accuracy_m, worked_minutes, pause_reason, supervision_id, client_id, client_legal_name, site_id, site_name, auto_closed, corrected, on_leave'
 
 const STATUS_KINDS: readonly string[] = [
   'in_activity',
@@ -67,6 +72,7 @@ interface SupervisorStatusRawRow {
   started_at: string | null
   ended_at: string | null
   last_event_at: string | null
+  position_at?: string | null
   latitude: number | string | null
   longitude: number | string | null
   accuracy_m: number | string | null
@@ -105,6 +111,7 @@ export function mapSupervisorStatusRow(
     startedAt: row.started_at,
     endedAt: row.ended_at,
     lastEventAt: row.last_event_at,
+    positionAt: row.position_at ?? null,
     latitude: toNumberOrNull(row.latitude),
     longitude: toNumberOrNull(row.longitude),
     accuracyM: toNumberOrNull(row.accuracy_m),

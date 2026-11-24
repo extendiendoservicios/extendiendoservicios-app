@@ -55,8 +55,11 @@ export interface WeekBlock {
   date: string
   siteId: string
   siteName: string
+  clientId: string
   clientName: string
   colorIndex: number | null
+  /** Estado del turno: un turno `completed` admite cambiar el horario pero no el día (D-07). */
+  shiftStatus: string
   startMin: number
   endMin: number
   openEnded: boolean
@@ -90,8 +93,10 @@ export function buildWeekBlocks(
         date: row.shiftDate,
         siteId: row.siteId,
         siteName: row.siteName,
+        clientId: row.clientId,
         clientName: row.clientName,
         colorIndex: row.clientCalendarColor,
+        shiftStatus: row.shiftStatus,
         startMin,
         endMin: Math.max(endMin, startMin + MIN_BLOCK_MINUTES),
         openEnded: row.openEnded,
@@ -106,6 +111,21 @@ export function buildWeekBlocks(
 // ---------------------------------------------------------------------------
 // Turno entero o solo esta persona
 // ---------------------------------------------------------------------------
+
+/** Mensaje del servidor (`SHIFT_COMPLETED`) cuando se quiere cambiar el día de un turno finalizado. */
+export const COMPLETED_DATE_MESSAGE =
+  'Este turno ya terminó: solo se puede cambiar el horario, no la fecha.'
+
+/**
+ * D-07: de un turno finalizado se puede cambiar el horario, no el día. La base
+ * lo rechaza con `SHIFT_COMPLETED`; acá se avisa antes de llamarla.
+ */
+export function completedDateChangeBlocked(
+  block: Pick<WeekBlock, 'shiftStatus' | 'date'>,
+  next: Pick<ScheduleChange, 'date'>,
+): boolean {
+  return block.shiftStatus === 'completed' && next.date !== block.date
+}
 
 /**
  * Si la persona es la única asignada se mueve el turno entero sin preguntar;

@@ -145,7 +145,7 @@ select is(
   (select array_agg(attname::text order by attnum) from pg_attribute
    where attrelid = 'public.v_assignments_board'::regclass and attnum > 0 and not attisdropped
    and attnum >= (select attnum from pg_attribute where attrelid = 'public.v_assignments_board'::regclass and attname = 'planned_minutes')),
-  array['planned_minutes', 'worked_minutes', 'effective_open_ended', 'shift_observation', 'check_in_record_id', 'check_in_geo_status', 'check_in_geo_reason', 'check_in_distance_m', 'check_in_geofence_radius_m', 'check_in_accuracy_m', 'check_in_outside_reason', 'check_in_geo_overridden', 'check_in_time_corrected', 'check_out_record_id', 'check_out_geo_status', 'check_out_geo_reason', 'check_out_distance_m', 'check_out_geofence_radius_m', 'check_out_accuracy_m', 'check_out_outside_reason', 'check_out_geo_overridden', 'check_out_time_corrected', 'has_outside_geo', 'last_notice_has_certificate', 'client_calendar_color', 'check_out_auto_closed'],
+  array['planned_minutes', 'worked_minutes', 'effective_open_ended', 'shift_observation', 'check_in_record_id', 'check_in_geo_status', 'check_in_geo_reason', 'check_in_distance_m', 'check_in_geofence_radius_m', 'check_in_accuracy_m', 'check_in_outside_reason', 'check_in_geo_overridden', 'check_in_time_corrected', 'check_out_record_id', 'check_out_geo_status', 'check_out_geo_reason', 'check_out_distance_m', 'check_out_geofence_radius_m', 'check_out_accuracy_m', 'check_out_outside_reason', 'check_out_geo_overridden', 'check_out_time_corrected', 'has_outside_geo', 'last_notice_has_certificate', 'client_calendar_color', 'check_out_auto_closed', 'supervision_state', 'supervisor_name'],
   'v_assignments_board: effective_open_ended va después de worked_minutes (0040 agrega shift_observation al final)'
 );
 select is(
@@ -544,24 +544,24 @@ select is(
   'la ventana de la asignación se recalculó hasta las 12:00'
 );
 select is(
-  tests_0037.err_hint(format('select public.update_shift_time(%L, %L, %L, false)', tests_0037.shf(8), '08:00', '13:00')),
+  tests_0037.err_hint(format('select public.update_shift_time(%L, %L, %L, false, %L)', tests_0037.shf(8), '08:00', '13:00', '2199-12-31')),
   'SHIFT_COMPLETED',
-  'update_shift_time: un turno finalizado que ya tiene hora de fin no admite cambios (SHIFT_COMPLETED)'
+  'update_shift_time: un turno finalizado que ya tiene hora de fin no admite cambiar la fecha (SHIFT_COMPLETED; desde 0088 la franja sí)'
 );
 select is(
-  tests_0037.err_hint(format('select public.update_shift_time(%L, %L, %L, false)', tests_0037.shf(6), '08:30', '12:00')),
+  tests_0037.err_hint(format('select public.update_shift_time(%L, %L, %L, false, %L)', tests_0037.shf(6), '08:30', '12:00', '2199-12-31')),
   'SHIFT_COMPLETED',
-  'update_shift_time: un turno «A terminar» finalizado no admite cambiar el inicio (SHIFT_COMPLETED)'
+  'update_shift_time: un turno «A terminar» finalizado no admite cambiar la fecha (SHIFT_COMPLETED; desde 0088 el inicio sí)'
 );
 select is(
-  tests_0037.err_hint(format('select public.update_shift_time(%L, %L, %L, true)', tests_0037.shf(6), '08:00', null)),
+  tests_0037.err_hint(format('select public.update_shift_time(%L, %L, %L, true)', tests_0037.shf(1), '08:00', null)),
   'SHIFT_COMPLETED',
   'update_shift_time: un turno finalizado no admite volver a «A terminar» (SHIFT_COMPLETED)'
 );
 select is(
-  tests_0037.err_hint(format('select public.update_shift_time(%L, %L, %L, false)', tests_0037.shf(1), '08:00', '13:00')),
+  tests_0037.err_hint(format('select public.update_shift_time(%L, %L, %L, false, %L)', tests_0037.shf(1), '08:00', '13:00', '2199-12-31')),
   'SHIFT_COMPLETED',
-  'update_shift_time: un turno común finalizado sigue dando SHIFT_COMPLETED'
+  'update_shift_time: un turno común finalizado sigue dando SHIFT_COMPLETED si se cambia la fecha'
 );
 select is(
   (select end_time::text from public.update_shift_time(tests_0037.shf(6), '08:00', '12:00', false)),

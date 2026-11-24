@@ -28,7 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DataTable, type DataTableColumnDef } from '@/components/DataTable'
 import { Avatar } from '@/components/Avatar'
 import { clientPhotoUrl } from '@/api/photos'
-import { StatusBadge } from '@/components/status'
+import { StatusBadge, getStatusMeta } from '@/components/status'
 import { MapView, type MapViewMarker } from '@/components/map'
 import type { ClientListRow, ClientStatus } from '@/api/clients'
 import { CLIENT_STATUS_OPTIONS } from '@/features/clients/schemas'
@@ -190,6 +190,7 @@ function ClientsListTab() {
   const columns: DataTableColumnDef<ClientRowView>[] = [
     {
       id: 'name',
+      accessorFn: (row) => (row.tradeName ?? row.legalName).toLowerCase(),
       header: 'Nombre',
       meta: { card: 'title', width: '24%' },
       cell: ({ row }) => {
@@ -227,6 +228,8 @@ function ClientsListTab() {
     },
     {
       id: 'cuit',
+      accessorFn: (row) => row.cuit ?? undefined,
+      sortUndefined: 'last',
       header: 'CUIT',
       meta: { card: 'meta', cardLabel: 'CUIT', width: '15%' },
       cell: ({ row }) => (
@@ -237,6 +240,7 @@ function ClientsListTab() {
     },
     {
       id: 'sites',
+      accessorFn: (row) => row.sitesCount,
       // `v_clients.sites_count` cuenta las sedes vigentes sin filtrar por
       // estado (comentario de la vista, `0011_views.sql`): la columna dice
       // "Sedes", no "Sedes activas", para no prometer un filtro que la
@@ -247,6 +251,7 @@ function ClientsListTab() {
     },
     {
       id: 'activeServices',
+      accessorFn: (row) => row.activeServicesCount,
       header: () => <span className={HEADER_WRAP}>Servicios activos</span>,
       meta: {
         card: 'meta',
@@ -258,6 +263,8 @@ function ClientsListTab() {
     },
     {
       id: 'primaryContact',
+      accessorFn: (row) => row.primaryContactName?.toLowerCase() ?? undefined,
+      sortUndefined: 'last',
       header: () => <span className={HEADER_WRAP}>Contacto principal</span>,
       meta: { card: 'meta', cardLabel: 'Contacto principal', width: '19%' },
       cell: ({ row }) => (
@@ -271,6 +278,8 @@ function ClientsListTab() {
     },
     {
       id: 'monthHours',
+      accessorFn: (row) => workedMinutesQuery.data?.get(row.id) ?? undefined,
+      sortUndefined: 'last',
       header: () => (
         <span className={HEADER_WRAP} title={`${hoursHeader} (del 1 a hoy)`}>
           Horas (mes)
@@ -295,6 +304,8 @@ function ClientsListTab() {
     },
     {
       id: 'status',
+      accessorFn: (row) =>
+        getStatusMeta({ domain: 'client', status: row.status }).label,
       header: 'Estado',
       meta: { card: 'meta', cardLabel: 'Estado', width: '14%' },
       cell: ({ row }) => (
@@ -363,6 +374,8 @@ function ClientsListTab() {
       {groups.length === 0 ? (
         <DataTable
           caption="Clientes"
+          resizableColumns
+          persistKey="tabla:clientes"
           columns={columns}
           data={rows}
           getRowId={(row) => row.id}
@@ -434,6 +447,8 @@ function ClientsListTab() {
                   {!collapsed && (
                     <DataTable
                       caption={`Clientes · ${group.label}`}
+                      resizableColumns
+                      persistKey="tabla:clientes"
                       columns={columns}
                       data={group.rows}
                       getRowId={(row) => row.id}

@@ -3,6 +3,7 @@ import {
   CRONOGRAMA_WEEKDAYS,
   type CronogramaDay,
   type CronogramaMonth,
+  type CronogramaNote,
   type CronogramaShift,
 } from '@/features/employees/cronograma'
 
@@ -43,6 +44,28 @@ function ShiftBlock({ shift }: { shift: CronogramaShift }) {
   )
 }
 
+/** D-08: una observación del día, con su color; sale en la hoja impresa. */
+function NoteBlock({ note }: { note: CronogramaNote }) {
+  const colors = clientChipColors(note.colorIndex)
+  return (
+    <p
+      data-testid="observacion"
+      className="print-keep-together border border-neutral-500 px-0.5 text-[10px] leading-[14px] whitespace-pre-wrap [overflow-wrap:anywhere]"
+      style={
+        colors
+          ? {
+              backgroundColor: colors.background,
+              color: colors.color,
+              borderColor: colors.dot,
+            }
+          : { backgroundColor: '#e5e7eb', color: '#111827' }
+      }
+    >
+      {note.body}
+    </p>
+  )
+}
+
 function DayCell({ day }: { day: CronogramaDay }) {
   const fullCell = day.kind === 'leave' || day.kind === 'holiday'
   const background =
@@ -64,9 +87,22 @@ function DayCell({ day }: { day: CronogramaDay }) {
           {day.inMonth ? day.day : ''}
         </span>
         {fullCell ? (
-          <span className="flex flex-1 items-center justify-center px-1 text-center text-[12px] font-bold [overflow-wrap:anywhere]">
-            {day.label}
-          </span>
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span
+              className={`flex items-center justify-center px-1 text-center text-[12px] font-bold [overflow-wrap:anywhere] ${
+                day.notes.length > 0 ? 'pt-1' : 'flex-1'
+              }`}
+            >
+              {day.label}
+            </span>
+            {day.notes.length > 0 && (
+              <div className="flex min-w-0 flex-col gap-0.5 p-0.5 text-black">
+                {day.notes.map((note) => (
+                  <NoteBlock key={note.id} note={note} />
+                ))}
+              </div>
+            )}
+          </div>
         ) : (
           <div className="flex min-w-0 flex-1 flex-col gap-0.5 p-0.5">
             {day.holiday && (
@@ -76,6 +112,9 @@ function DayCell({ day }: { day: CronogramaDay }) {
             )}
             {day.shifts.map((shift) => (
               <ShiftBlock key={shift.key} shift={shift} />
+            ))}
+            {day.notes.map((note) => (
+              <NoteBlock key={note.id} note={note} />
             ))}
           </div>
         )}

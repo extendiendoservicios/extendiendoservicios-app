@@ -357,3 +357,58 @@ describe('ShiftFormPage edición: empleados asignados (OD-16)', () => {
     expect(assignMock).not.toHaveBeenCalled()
   })
 })
+
+describe('ShiftFormPage edición: turno finalizado (D-07)', () => {
+  beforeEach(() => {
+    mockShiftData = baseShift({ status: 'completed', shiftDate: '2026-11-20' })
+  })
+
+  it('muestra el formulario del horario sin la fecha ni la dotación', () => {
+    renderPage()
+    expect(screen.getByLabelText('Desde')).toBeEnabled()
+    expect(screen.getByLabelText('Hasta')).toBeEnabled()
+    expect(screen.queryByLabelText('Fecha del turno')).toBeNull()
+    expect(screen.queryByLabelText('Dotación')).toBeNull()
+    expect(screen.getByText(/ya finalizó/)).toBeInTheDocument()
+    expect(screen.getByText(/la fecha no se puede cambiar/)).toBeInTheDocument()
+    expect(screen.queryByText(/ya no admite cambios/)).toBeNull()
+  })
+
+  it('guarda solo el horario: sin fecha y sin tocar dotación ni notas', async () => {
+    renderPage()
+    fireEvent.change(screen.getByLabelText('Hasta'), {
+      target: { value: '15:00' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(updateTimeMock).toHaveBeenCalledTimes(1))
+    expect(updateTimeMock).toHaveBeenCalledWith({
+      shiftId: 'sh1',
+      start: '08:00',
+      end: '15:00',
+      openEnded: false,
+      date: undefined,
+    })
+    expect(warningsMock).not.toHaveBeenCalled()
+    expect(detailsMock).not.toHaveBeenCalled()
+  })
+
+  it('no ofrece pasar un turno finalizado a «A terminar»', () => {
+    renderPage()
+    expect(screen.queryByLabelText(/A terminar/)).toBeNull()
+  })
+
+  it('muestra el mensaje del servidor si rechaza el cambio (SHIFT_COMPLETED por la fecha)', async () => {
+    updateTimeMock.mockRejectedValue(
+      new ApiError(
+        'Este turno ya terminó: solo se puede cambiar el horario, no la fecha.',
+        'SHIFT_COMPLETED',
+      ),
+    )
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(toastError).toHaveBeenCalled())
+    expect(toastError.mock.calls[0]?.[0]).toBe(
+      'Este turno ya terminó: solo se puede cambiar el horario, no la fecha.',
+    )
+  })
+})

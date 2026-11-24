@@ -90,9 +90,9 @@ select plan(110);
 
 -- Estructura -----------------------------------------------------------------------------------
 
-select has_function('public', 'take_supervision', array['uuid', 'numeric', 'numeric', 'numeric', 'text'], 'take_supervision');
+select has_function('public', 'take_supervision', array['uuid', 'numeric', 'numeric', 'numeric', 'text', 'text'], 'take_supervision');
 select has_function('public', 'discard_supervision', array['uuid'], 'discard_supervision');
-select has_function('public', 'complete_supervision', array['uuid', 'text', 'numeric', 'numeric', 'numeric', 'text'], 'complete_supervision con posición opcional');
+select has_function('public', 'complete_supervision', array['uuid', 'text', 'numeric', 'numeric', 'numeric', 'text', 'text'], 'complete_supervision con posición opcional');
 select hasnt_function('public', 'complete_supervision', array['uuid', 'text'], 'la firma vieja de complete_supervision ya no existe (sin sobrecarga ambigua)');
 select has_view('public', 'v_supervisor_today', 'existe v_supervisor_today');
 select has_column('public', 'v_supervisions_admin', 'workday_id', 'v_supervisions_admin.workday_id');
@@ -383,11 +383,11 @@ select is(
 -- Desde 0079 (OD-09) calificar es opcional: complete_supervision ya no exige las calificaciones.
 -- El cierre sin calificar se prueba en 0079_p27_1_coordinacion.test.sql.
 select ok(
-  position('RATINGS_PENDING' in pg_get_functiondef('public.complete_supervision(uuid,text,numeric,numeric,numeric,text)'::regprocedure)) = 0,
+  position('RATINGS_PENDING' in pg_get_functiondef('public.complete_supervision(uuid,text,numeric,numeric,numeric,text,text)'::regprocedure)) = 0,
   'complete_supervision ya no exige calificar a todos: no existe RATINGS_PENDING (OD-09, 0079)'
 );
 select ok(
-  position('Falta calificar' in pg_get_functiondef('public.complete_supervision(uuid,text,numeric,numeric,numeric,text)'::regprocedure)) = 0,
+  position('Falta calificar' in pg_get_functiondef('public.complete_supervision(uuid,text,numeric,numeric,numeric,text,text)'::regprocedure)) = 0,
   'complete_supervision ya no arma la lista de quienes faltan calificar (OD-09, 0079)'
 );
 select lives_ok(
@@ -443,7 +443,7 @@ select is(
   'SUPERVISION_NOT_EDITABLE', 'una supervisión cerrada no se descarta'
 );
 select ok(
-  position('ALREADY_SUPERVISED' in pg_get_functiondef('public.take_supervision(uuid,numeric,numeric,numeric,text)'::regprocedure)) = 0,
+  position('ALREADY_SUPERVISED' in pg_get_functiondef('public.take_supervision(uuid,numeric,numeric,numeric,text,text)'::regprocedure)) = 0,
   'take_supervision ya no rechaza volver al mismo turno: no existe ALREADY_SUPERVISED (OD-10, 0079; el caso real se prueba en 0079_p27_1_coordinacion.test.sql)'
 );
 
@@ -690,6 +690,16 @@ select is(
   (select status || '/' || site_name || '/' || client_legal_name from public.v_supervisor_status where supervisor_id = 'f6301000-0000-0000-0000-000000000093'),
   'supervising/Sede dos/Cliente de supervisión dos', 'v_supervisor_status: Cora, «Supervisando» con su cliente y sede'
 );
+-- Todo el archivo corre en una transacción (now() no cambia): se separa por un segundo el inicio de la
+-- supervisión de Cora (evento y fichaje) para que sea, sin empate, el más reciente (0088, D-11).
+set local role postgres;
+update public.supervisor_workday_events set recorded_at = recorded_at + interval '1 second'
+where kind = 'supervision_start' and supervision_id in (
+  select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000047' and supervisor_id = 'f6301000-0000-0000-0000-000000000093');
+update public.supervision_attendance set recorded_at = recorded_at + interval '1 second'
+where kind = 'check_in' and supervision_id in (
+  select id from public.supervisions where shift_id = 'f6301000-0000-0000-0000-000000000047' and supervisor_id = 'f6301000-0000-0000-0000-000000000093');
+select tests_0063b.as_user('test-db063b-admin@example.com');
 select ok(
   (select supervision_id is not null and latitude = -34.6 and longitude = -58.4 and last_event_kind = 'supervision_start'
    from public.v_supervisor_status where supervisor_id = 'f6301000-0000-0000-0000-000000000093'),

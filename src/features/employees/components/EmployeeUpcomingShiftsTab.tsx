@@ -38,6 +38,7 @@ function EmployeeUpcomingShiftsTab({ profileId }: { profileId: string }) {
   const columns: DataTableColumnDef<AssignmentBoardRow>[] = [
     {
       id: 'date',
+      accessorFn: (row) => `${row.shiftDate} ${row.startTime}`,
       header: 'Fecha',
       meta: { card: 'title' },
       cell: ({ row }) => (
@@ -51,6 +52,7 @@ function EmployeeUpcomingShiftsTab({ profileId }: { profileId: string }) {
     },
     {
       id: 'schedule',
+      accessorFn: (row) => `${row.startTime}-${row.endTime}`,
       header: 'Horario',
       meta: { card: 'meta', cardLabel: 'Horario' },
       cell: ({ row }) =>
@@ -62,6 +64,7 @@ function EmployeeUpcomingShiftsTab({ profileId }: { profileId: string }) {
     },
     {
       id: 'client',
+      accessorFn: (row) => `${row.clientName} ${row.siteName}`.toLowerCase(),
       header: 'Cliente · sede',
       meta: { card: 'subtitle' },
       cell: ({ row }) => (
@@ -72,6 +75,7 @@ function EmployeeUpcomingShiftsTab({ profileId }: { profileId: string }) {
     },
     {
       id: 'status',
+      accessorFn: (row) => row.shiftStatus,
       header: 'Estado',
       meta: { card: 'trailing' },
       cell: ({ row }) => (
@@ -83,6 +87,8 @@ function EmployeeUpcomingShiftsTab({ profileId }: { profileId: string }) {
   return (
     <DataTable
       caption="Próximos turnos"
+      resizableColumns
+      persistKey="tabla:empleado-proximos-turnos"
       columns={columns}
       data={rows}
       getRowId={(row) => row.id}

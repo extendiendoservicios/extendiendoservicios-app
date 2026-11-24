@@ -14,7 +14,7 @@ no quedó asignada.
 - Mismo formato de tres casillas (inicio, fin, nombre de la sede), con
   **borde punteado** y fondo atenuado del color del cliente, más una línea con
   el motivo: «De licencia», «Se superpone con <sede> <horario>» (con enlace al
-  turno del choque), «Turno completo», «Quitado a mano», «Fijo agregado
+  turno del choque), «Quitado a mano», «Fijo agregado
   después de generar» y «Sin asignar».
 - En los días de licencia (y feriado) la celda sigue pintada con el rótulo y
   los bloques punteados van debajo.

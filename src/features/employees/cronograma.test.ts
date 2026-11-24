@@ -248,3 +248,48 @@ describe('cronograma: días especiales', () => {
     })
   })
 })
+
+describe('cronograma: observaciones del día (D-08)', () => {
+  const notes = [
+    { id: 'n1', date: '2026-11-04', body: 'Sin turnos por la obra', color: 3 },
+    {
+      id: 'n2',
+      date: '2026-11-04',
+      body: 'Avisó que llega tarde',
+      color: null,
+    },
+    { id: 'n3', date: '2026-11-05', body: 'En licencia', color: null },
+  ]
+
+  it('cada día lleva sus observaciones, varias por día y en el orden dado', () => {
+    const month = buildCronogramaMonth({ ...base, notes })
+    expect(dayOf(month, '2026-11-04').notes).toEqual([
+      { id: 'n1', body: 'Sin turnos por la obra', colorIndex: 3 },
+      { id: 'n2', body: 'Avisó que llega tarde', colorIndex: null },
+    ])
+    expect(dayOf(month, '2026-11-10').notes).toEqual([])
+  })
+
+  it('una observación sale también en un día de licencia', () => {
+    const month = buildCronogramaMonth({
+      ...base,
+      leaves: [
+        {
+          id: 'l1',
+          startsOn: '2026-11-02',
+          endsOn: '2026-11-06',
+          reason: 'Vacaciones',
+          deletedAt: null,
+        },
+      ],
+      notes,
+    })
+    const day = dayOf(month, '2026-11-05')
+    expect(day.kind).toBe('leave')
+    expect(day.notes.map((note) => note.id)).toEqual(['n3'])
+  })
+
+  it('sin observaciones pedidas, los días no traen ninguna', () => {
+    expect(dayOf(buildCronogramaMonth(base), '2026-11-04').notes).toEqual([])
+  })
+})

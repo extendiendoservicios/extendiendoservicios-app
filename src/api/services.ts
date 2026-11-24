@@ -291,6 +291,27 @@ export async function fetchServiceDetail(id: string): Promise<ServiceDetail> {
   return mapServiceDetailRow(data)
 }
 
+/**
+ * P31.3 (D-03): cuántos turnos no cancelados le quedan al servicio desde una
+ * fecha (`v_shifts_board`, lo puede leer quien administra). Es lo que ve el
+ * administrador al finalizar o pausar: solo la dirección puede eliminarlos.
+ */
+export async function countServiceShiftsFrom(
+  serviceId: string,
+  fromDate: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from('v_shifts_board')
+    .select('id', { count: 'exact', head: true })
+    .eq('service_id', serviceId)
+    .gte('shift_date', fromDate)
+    .neq('status', 'cancelled')
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return count ?? 0
+}
+
 export interface ServiceFormInput {
   clientId: string
   siteId: string

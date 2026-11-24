@@ -1,3 +1,4 @@
+import { formatTime } from '@/lib/format'
 import type { BadgeVariant } from '@/components/status'
 import type { MapViewMarker } from '@/components/map'
 import type {
@@ -10,10 +11,12 @@ import type {
  * CJ-22, CJ-33): lógica pura sobre las filas de `v_supervisor_status`.
  *
  * Hay cinco estados, cada uno con su color. El punto va en la última posición
- * conocida (la del último evento de la jornada); si ese evento no trajo
- * posición, el coordinador no tiene punto y va a la lista «Sin ubicación»
- * con su estado, siempre que tenga la jornada abierta (los «Sin iniciar» y
- * «Finalizada» no se listan). La forma es siempre el rombo de los coordinadores (B-12), así
+ * conocida del día: la del evento más reciente que trajo posición, sea de la
+ * jornada o de una supervisión (D-11, P31). Si el último evento no la trajo,
+ * se usa la anterior y el popup avisa la hora («Ubicación de las 10:42»).
+ * Solo quien no tuvo ninguna posición en el día no tiene punto y va a la
+ * lista «Sin ubicación» con su estado, siempre que tenga la jornada abierta
+ * (los «Sin iniciar» y «Finalizada» no se listan). La forma es siempre el rombo de los coordinadores (B-12), así
  * el estado no depende solo del color.
  */
 
@@ -62,6 +65,29 @@ export function hasCoordinatorPosition(row: SupervisorStatusRow): boolean {
   return row.latitude != null && row.longitude != null
 }
 
+/**
+ * D-11: «Ubicación de las 10:42» cuando la posición es anterior al último
+ * evento (el último no trajo posición); `null` si es la del último evento o
+ * no hay posición.
+ */
+export function coordinatorPositionNote(
+  row: Pick<
+    SupervisorStatusRow,
+    'positionAt' | 'lastEventAt' | 'latitude' | 'longitude'
+  >,
+): string | null {
+  if (row.latitude == null || row.longitude == null || !row.positionAt) {
+    return null
+  }
+  if (
+    row.lastEventAt &&
+    new Date(row.positionAt).getTime() >= new Date(row.lastEventAt).getTime()
+  ) {
+    return null
+  }
+  return `Ubicación de las ${formatTime(row.positionAt)}`
+}
+
 /** Texto del estado: «Supervisando · Cliente · Sede», «En pausa · motivo»… */
 export function coordinatorStatusDetail(row: SupervisorStatusRow): string {
   const label = SUPERVISOR_STATUS_LABELS[row.status]
@@ -76,7 +102,7 @@ export function coordinatorStatusDetail(row: SupervisorStatusRow): string {
 
 export interface CoordinatorsModel {
   markers: MapViewMarker[]
-  /** Sin posición en su último evento (o sin evento): van a la lista «Sin ubicación». */
+  /** Sin ninguna posición en el día (o sin evento): van a la lista «Sin ubicación». */
   withoutLocation: SupervisorStatusRow[]
 }
 
@@ -109,7 +135,12 @@ export function buildCoordinatorMarkers(
         position: { lat: row.latitude as number, lng: row.longitude as number },
         variant: SUPERVISOR_STATUS_VARIANTS[row.status],
         shape: 'supervisor',
-        label: `Coordinador ${coordinatorName(row)}: ${SUPERVISOR_STATUS_LABELS[row.status]}`,
+        label: [
+          `Coordinador ${coordinatorName(row)}: ${SUPERVISOR_STATUS_LABELS[row.status]}`,
+          coordinatorPositionNote(row),
+        ]
+          .filter(Boolean)
+          .join('. '),
         data: row,
       })
     } else if (hasOpenWorkday(row)) {

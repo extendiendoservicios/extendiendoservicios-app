@@ -26,7 +26,6 @@ function gap(over: Partial<FixedGap> = {}): FixedGap {
 describe('describeGap', () => {
   const texts: Record<Exclude<FixedGapReason, 'OVERLAP'>, string> = {
     ON_LEAVE: 'De licencia',
-    SHIFT_FULL: 'Turno completo',
     REMOVED: 'Quitado a mano',
     ADDED_AFTER: 'Fijo agregado después de generar',
     NOT_ASSIGNED: 'Sin asignar',
@@ -83,7 +82,6 @@ describe('canAssignGap', () => {
     expect(canAssignGap({ reason: 'NOT_ASSIGNED' })).toBe(true)
     expect(canAssignGap({ reason: 'ON_LEAVE' })).toBe(false)
     expect(canAssignGap({ reason: 'OVERLAP' })).toBe(false)
-    expect(canAssignGap({ reason: 'SHIFT_FULL' })).toBe(false)
   })
 })
 

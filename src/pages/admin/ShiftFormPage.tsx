@@ -1395,10 +1395,9 @@ function EditShiftTimeForm({
         ? inputs.time.date
         : undefined
     try {
-      // Un turno «A terminar» finalizado solo admite ponerle la hora de fin
-      // (AJ2-10): ni la dotación ni las notas se tocan.
-      const onlyEndTime =
-        shiftQuery.data?.status === 'completed' && shiftQuery.data.openEnded
+      // Un turno finalizado solo admite cambiar el horario (D-07, AJ2-10): ni la
+      // dotación ni las notas se tocan, y la fecha tampoco.
+      const onlyEndTime = shiftQuery.data?.status === 'completed'
       await Promise.all([
         updateShiftTime.mutateAsync({
           shiftId: id,
@@ -1461,11 +1460,11 @@ function EditShiftTimeForm({
   }
 
   const shift = shiftQuery.data
-  // AJ2-10: un turno «A terminar» finalizado todavía admite la hora de fin.
-  const isCompletedOpenEnded = shift.status === 'completed' && shift.openEnded
-  const isCancelledOrCompleted =
-    shift.status === 'cancelled' ||
-    (shift.status === 'completed' && !isCompletedOpenEnded)
+  // D-07: un turno finalizado admite cambiar el horario (no la fecha); AJ2-10: en uno
+  // «A terminar», ponerle la hora de fin.
+  const isCompleted = shift.status === 'completed'
+  const isCompletedOpenEnded = isCompleted && shift.openEnded
+  const isCancelledOrCompleted = shift.status === 'cancelled'
   const isInProgress = shift.status === 'in_progress'
   // OD-16: asignar después del inicio exige además `manage_attendance` (06 sección 8).
   const shiftStarted =
@@ -1508,9 +1507,7 @@ function EditShiftTimeForm({
         <Alert variant="warn">
           <TriangleAlert />
           <AlertDescription>
-            Este turno está{' '}
-            {shift.status === 'cancelled' ? 'cancelado' : 'finalizado'}: ya no
-            admite cambios.
+            Este turno está cancelado: ya no admite cambios.
           </AlertDescription>
         </Alert>
       ) : (
@@ -1527,12 +1524,14 @@ function EditShiftTimeForm({
               </AlertDescription>
             </Alert>
           )}
-          {isCompletedOpenEnded && (
+          {isCompleted && (
             <Alert variant="info">
               <AlertDescription>
-                Este turno «A terminar» ya finalizó. Podés ponerle la hora de
-                fin: las horas de cada empleado se recalculan contando solo lo
-                que cae dentro de esa franja.
+                {isCompletedOpenEnded
+                  ? 'Este turno «A terminar» ya finalizó. Podés ponerle la hora de fin: '
+                  : 'Este turno ya finalizó. Podés cambiar la hora de inicio y de fin, no la fecha: '}
+                las horas de cada empleado se recalculan contando solo lo que
+                cae dentro de esa franja.
               </AlertDescription>
             </Alert>
           )}
@@ -1579,7 +1578,7 @@ function EditShiftTimeForm({
               <Input
                 id="shift-start-time"
                 type="time"
-                disabled={isInProgress || isCompletedOpenEnded}
+                disabled={isInProgress}
                 aria-invalid={Boolean(errors.startTime)}
                 {...register('startTime')}
               />
@@ -1608,20 +1607,23 @@ function EditShiftTimeForm({
                 )}
               </Field>
             )}
-            <div className="col-span-2">
-              <Controller
-                control={control}
-                name="openEnded"
-                render={({ field }) => (
-                  <OpenEndedToggle
-                    id="shift-open-ended"
-                    checked={field.value ?? false}
-                    onCheckedChange={field.onChange}
-                  />
-                )}
-              />
-            </div>
-            {!isCompletedOpenEnded && (
+            {(!isCompleted || isCompletedOpenEnded) && (
+              // Un turno común finalizado no puede pasar a «A terminar» (lo rechaza la base).
+              <div className="col-span-2">
+                <Controller
+                  control={control}
+                  name="openEnded"
+                  render={({ field }) => (
+                    <OpenEndedToggle
+                      id="shift-open-ended"
+                      checked={field.value ?? false}
+                      onCheckedChange={field.onChange}
+                    />
+                  )}
+                />
+              </div>
+            )}
+            {!isCompleted && (
               <>
                 <Field
                   data-invalid={Boolean(errors.requiredStaff) || undefined}

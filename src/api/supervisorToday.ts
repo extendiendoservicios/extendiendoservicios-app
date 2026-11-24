@@ -169,11 +169,30 @@ export async function fetchSupervisorToday(): Promise<TodayShift[]> {
   return (data ?? []).map(mapTodayShiftRow)
 }
 
+/**
+ * Los turnos de los próximos 7 días (de mañana a hoy + 7) de todos los clientes
+ * y sedes (SUP-10, P31, D-09). Mismas columnas que `v_supervisor_today`; solo
+ * consulta, el turno se toma el día.
+ */
+export async function fetchSupervisorUpcoming(): Promise<TodayShift[]> {
+  const { data, error } = await supabase
+    .from('v_supervisor_upcoming')
+    .select('*')
+    .order('shift_date', { ascending: true })
+    .order('start_time', { ascending: true })
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data ?? []).map(mapTodayShiftRow)
+}
+
 /** 30 s: hace falta ver pronto quién tomó un turno para no pisarse (CJ-25). */
 const SUPERVISOR_TODAY_POLLING_MS = 30_000
 
 export const supervisorTodayKeys = {
   all: ['supervisorToday'] as const,
+  upcoming: ['supervisorToday', 'upcoming'] as const,
 }
 
 /** SUP-02 y SUP-03: los turnos del día. */
@@ -182,5 +201,13 @@ export function useSupervisorTodayQuery() {
     queryKey: supervisorTodayKeys.all,
     queryFn: fetchSupervisorToday,
     refetchInterval: SUPERVISOR_TODAY_POLLING_MS,
+  })
+}
+
+/** SUP-10 · Próximos días: los turnos de los 7 días siguientes. Cuelga de la clave de «Hoy»: se refresca junto con ella. */
+export function useSupervisorUpcomingQuery() {
+  return useQuery({
+    queryKey: supervisorTodayKeys.upcoming,
+    queryFn: fetchSupervisorUpcoming,
   })
 }

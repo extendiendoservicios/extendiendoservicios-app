@@ -374,11 +374,11 @@ select throws_ok(
 );
 
 prepare update_time_completed as
-  select public.update_shift_time('e2300000-0000-0000-0000-000000000042', '13:00', '17:00');
+  select public.update_shift_time('e2300000-0000-0000-0000-000000000042', '13:00', '17:00', false, date '2199-12-31');
 
 select throws_ok(
-  'update_time_completed', 'P0001', 'Este turno ya terminó.',
-  'update_shift_time: turno finalizado -> SHIFT_COMPLETED'
+  'update_time_completed', 'P0001', 'Este turno ya terminó: solo se puede cambiar el horario, no la fecha.',
+  'update_shift_time: turno finalizado con otra fecha -> SHIFT_COMPLETED (desde 0088 la franja sí se puede cambiar)'
 );
 
 set local role postgres;

@@ -56,6 +56,7 @@ export function AnnouncementDetail({
   const columns: DataTableColumnDef<AnnouncementRecipient>[] = [
     {
       id: 'name',
+      accessorFn: (row) => `${row.lastName} ${row.firstName}`.toLowerCase(),
       header: 'Nombre',
       meta: { card: 'title' },
       cell: ({ row }) => (
@@ -68,12 +69,15 @@ export function AnnouncementDetail({
     },
     {
       id: 'role',
+      accessorFn: (row) => rolesText(row.roles),
       header: 'Rol',
       meta: { card: 'subtitle' },
       cell: ({ row }) => rolesText(row.original.roles),
     },
     {
       id: 'readAt',
+      accessorFn: (row) => row.readAt ?? undefined,
+      sortUndefined: 'last',
       header: 'Lectura',
       meta: { card: 'trailing' },
       cell: ({ row }) => (
@@ -196,6 +200,8 @@ export function AnnouncementDetail({
         <h2 className="text-[14px] font-semibold text-text">Quién lo leyó</h2>
         <DataTable
           caption="Quién leyó el anuncio"
+          resizableColumns
+          persistKey="tabla:anuncio-lecturas"
           compact
           columns={columns}
           data={sortedRecipients}

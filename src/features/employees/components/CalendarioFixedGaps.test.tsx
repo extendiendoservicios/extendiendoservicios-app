@@ -227,7 +227,7 @@ describe('fijos sin asignar en el calendario (OH-06)', () => {
   })
 
   it('«Reemplazar» abre la asignación del turno sin ofrecer a esta persona ni a los ya asignados', () => {
-    renderEditor([gap({ reason: 'SHIFT_FULL' })])
+    renderEditor([gap({ reason: 'ON_LEAVE' })])
     fireEvent.click(screen.getByRole('button', { name: /^Reemplazar/ }))
     expect(screen.getByTestId('asignar-sheet')).toHaveTextContent(
       's1 excluye p1,otra-persona',

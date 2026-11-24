@@ -141,6 +141,7 @@ describe('FinishPage · finalizar con ubicación en vivo (módulo B1)', () => {
         assignmentId: 'a1',
         coords: { lat: -34.5937, lng: -58.3816, accuracyM: 20 },
         outsideReason: 'Salí a buscar insumos',
+        geoReason: null,
       }),
     )
   })
@@ -172,6 +173,7 @@ describe('FinishPage · finalizar con ubicación en vivo (módulo B1)', () => {
         assignmentId: 'a1',
         coords: null,
         outsideReason: null,
+        geoReason: null,
       }),
     )
   })

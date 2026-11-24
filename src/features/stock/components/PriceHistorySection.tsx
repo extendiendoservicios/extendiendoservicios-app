@@ -11,8 +11,8 @@ import {
 const columns: DataTableColumnDef<SupplyPriceChange>[] = [
   {
     id: 'when',
+    accessorFn: (row) => row.changedAt,
     header: 'Cuándo',
-    enableSorting: false,
     meta: { card: 'title' },
     cell: ({ row }) => (
       <span className="font-semibold whitespace-nowrap">
@@ -22,15 +22,15 @@ const columns: DataTableColumnDef<SupplyPriceChange>[] = [
   },
   {
     id: 'who',
+    accessorFn: (row) => (row.changedByName ?? 'Sistema').toLowerCase(),
     header: 'Quién',
-    enableSorting: false,
     meta: { card: 'subtitle' },
     cell: ({ row }) => row.original.changedByName ?? 'Sistema',
   },
   {
     id: 'cost',
+    accessorFn: (row) => row.newCostPrice,
     header: 'Costo',
-    enableSorting: false,
     meta: { card: 'meta', cardLabel: 'Costo' },
     cell: ({ row }) => (
       <span className="tabular-nums">
@@ -43,8 +43,8 @@ const columns: DataTableColumnDef<SupplyPriceChange>[] = [
   },
   {
     id: 'sale',
+    accessorFn: (row) => row.newSalePrice,
     header: 'Venta',
-    enableSorting: false,
     meta: { card: 'meta', cardLabel: 'Venta' },
     cell: ({ row }) => (
       <span className="tabular-nums">
@@ -57,8 +57,8 @@ const columns: DataTableColumnDef<SupplyPriceChange>[] = [
   },
   {
     id: 'source',
+    accessorFn: (row) => priceSourceLabel(row.source),
     header: 'Origen',
-    enableSorting: false,
     meta: { card: 'meta', cardLabel: 'Origen' },
     cell: ({ row }) => priceSourceLabel(row.original.source),
   },
@@ -77,6 +77,8 @@ function PriceHistorySection({ supplyId }: { supplyId: string }) {
       </h2>
       <DataTable
         caption="Historial de precios del artículo"
+        resizableColumns
+        persistKey="tabla:insumos-historial-precios"
         columns={columns}
         data={changesQuery.data ?? []}
         getRowId={(row) => row.id}

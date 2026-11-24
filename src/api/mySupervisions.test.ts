@@ -304,6 +304,17 @@ describe('takeSupervision (CJ-26)', () => {
     expect(args.p_accuracy).toBeUndefined()
   })
 
+  it('sin coordenadas manda p_geo_reason (D-14)', async () => {
+    rpcMock.mockResolvedValue({ data: TAKE_RESPONSE, error: null })
+
+    await takeSupervision('sh1', null, null, 'timeout')
+
+    expect(rpcMock).toHaveBeenCalledWith(
+      'take_supervision',
+      expect.objectContaining({ p_geo_reason: 'timeout' }),
+    )
+  })
+
   it('propaga el error traducido (por ejemplo WORKDAY_PAUSED)', async () => {
     rpcMock.mockResolvedValue({
       data: null,
@@ -415,6 +426,17 @@ describe('completeSupervision (CJ-10)', () => {
     const args = rpcMock.mock.calls[0]?.[1] as Record<string, unknown>
     expect(args.p_lat).toBeUndefined()
     expect(args.p_general_notes).toBeUndefined()
+  })
+
+  it('sin coordenadas manda p_geo_reason (D-14)', async () => {
+    rpcMock.mockResolvedValue({ data: COMPLETED, error: null })
+
+    await completeSupervision('sv1', undefined, null, null, 'permission_denied')
+
+    expect(rpcMock).toHaveBeenCalledWith(
+      'complete_supervision',
+      expect.objectContaining({ p_geo_reason: 'permission_denied' }),
+    )
   })
 
   it('propaga RATINGS_PENDING con el mensaje del servidor (trae los nombres)', async () => {

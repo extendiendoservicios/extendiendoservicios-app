@@ -922,6 +922,24 @@ export async function deleteClientDeep(
     note('shifts', (await db.from('shifts').delete().in('id', shiftIds)).error)
   }
 
+  // Los fijos del servicio (`service_fixed_employees`) no se borran en cascada: sin esto, un servicio
+  // con fijos hacía fallar el borrado y el cliente y la sede quedaban vivos (P31.6).
+  const { data: servicios } = await db
+    .from('services')
+    .select('id')
+    .eq('client_id', clientId)
+  const servicioIds = (servicios ?? []).map((s) => s.id)
+  if (servicioIds.length > 0) {
+    note(
+      'service_fixed_employees',
+      (
+        await db
+          .from('service_fixed_employees')
+          .delete()
+          .in('service_id', servicioIds)
+      ).error,
+    )
+  }
   note(
     'services',
     (await db.from('services').delete().eq('client_id', clientId)).error,

@@ -3,7 +3,11 @@ import type { Database } from '@/lib/database.types'
 import { fromPostgrestError } from './errors'
 import type { GeolocationCoords } from '@/lib/geolocation'
 import type { AssignmentStatus } from './assignments'
-import type { GeoStatus, GeoUnvalidatedReason } from '@/lib/geo'
+import type {
+  GeoStatus,
+  GeoTechnicalReason,
+  GeoUnvalidatedReason,
+} from '@/lib/geo'
 import { mapAttendanceGeo, type AttendanceGeo } from './attendanceGeo'
 
 /**
@@ -95,6 +99,7 @@ export async function recordCheckIn(
   assignmentId: string,
   coords: GeolocationCoords | null,
   outsideReason?: string | null,
+  geoReason?: GeoTechnicalReason | null,
 ): Promise<AttendanceRecord> {
   const { data, error } = await supabase.rpc('record_check_in', {
     p_assignment_id: assignmentId,
@@ -102,6 +107,7 @@ export async function recordCheckIn(
     p_lng: coords?.lng,
     p_accuracy: coords?.accuracyM,
     p_outside_reason: outsideReason?.trim() || undefined,
+    p_geo_reason: coords ? undefined : (geoReason ?? undefined),
   })
 
   if (error) {
@@ -115,6 +121,7 @@ export async function recordCheckOut(
   assignmentId: string,
   coords: GeolocationCoords | null,
   outsideReason?: string | null,
+  geoReason?: GeoTechnicalReason | null,
 ): Promise<AttendanceRecord> {
   const { data, error } = await supabase.rpc('record_check_out', {
     p_assignment_id: assignmentId,
@@ -122,6 +129,7 @@ export async function recordCheckOut(
     p_lng: coords?.lng,
     p_accuracy: coords?.accuracyM,
     p_outside_reason: outsideReason?.trim() || undefined,
+    p_geo_reason: coords ? undefined : (geoReason ?? undefined),
   })
 
   if (error) {
@@ -313,7 +321,16 @@ export interface AttendanceBoardRow {
   hasOutsideGeo?: boolean
   /** OF-11: el fin lo registró el cierre automático (el empleado no fichó el fin). La marca queda aunque se corrija la hora. */
   checkOutAutoClosed?: boolean
+  /** D-10 (P31): supervisión del turno. Solo la ven dueño y administradores; para el resto llega `null`. */
+  supervisionState?: SupervisionState | null
+  /** D-10: coordinador que supervisa (en curso) o supervisó (hecha) el turno. */
+  supervisorName?: string | null
 }
+
+/** D-10: `none` sin supervisión, `in_progress` supervisando ahora, `done` ya supervisado. */
+export type SupervisionState = 'none' | 'in_progress' | 'done'
+
+const SUPERVISION_STATES: readonly string[] = ['none', 'in_progress', 'done']
 
 /** Todas las columnas de `v_assignments_board` que usa esta pantalla (`06` sección 10, P14.1). */
 const ATTENDANCE_BOARD_SELECT = `
@@ -330,7 +347,7 @@ const ATTENDANCE_BOARD_SELECT = `
   check_in_accuracy_m, check_in_outside_reason, check_in_geo_overridden, check_in_time_corrected,
   check_out_record_id, check_out_geo_status, check_out_geo_reason, check_out_distance_m, check_out_geofence_radius_m,
   check_out_accuracy_m, check_out_outside_reason, check_out_geo_overridden, check_out_time_corrected,
-  has_outside_geo, check_out_auto_closed
+  has_outside_geo, check_out_auto_closed, supervision_state, supervisor_name
 `
 
 interface AttendanceBoardRawRow {
@@ -394,6 +411,8 @@ interface AttendanceBoardRawRow {
   check_out_geo_overridden: boolean | null
   check_out_time_corrected: boolean | null
   check_out_auto_closed?: boolean | null
+  supervision_state?: string | null
+  supervisor_name?: string | null
   has_outside_geo: boolean | null
 }
 
@@ -499,6 +518,12 @@ function mapAttendanceBoardRow(row: AttendanceBoardRawRow): AttendanceBoardRow {
     ),
     hasOutsideGeo: row.has_outside_geo ?? false,
     checkOutAutoClosed: row.check_out_auto_closed ?? false,
+    supervisionState:
+      row.supervision_state != null &&
+      SUPERVISION_STATES.includes(row.supervision_state)
+        ? (row.supervision_state as SupervisionState)
+        : null,
+    supervisorName: row.supervisor_name ?? null,
   }
 }
 

@@ -68,6 +68,32 @@ export function GeoFichajePanel({
         </Alert>
       )}
 
+      {view.help && (
+        <div
+          className="flex flex-col gap-1 text-[12.5px] text-text-2"
+          data-testid="geo-help"
+        >
+          <p>{view.help.intro}</p>
+          {view.help.steps.length > 0 && (
+            <ul className="list-disc pl-5">
+              {view.help.steps.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      {view.showRetry && (
+        <Button
+          size="mobile"
+          variant="ghost"
+          onClick={live.retry}
+          disabled={busy}
+        >
+          Reintentar
+        </Button>
+      )}
+
       {view.canOfferWait && (
         <div className="flex flex-col gap-2">
           <p className="text-[12px] text-text-3">

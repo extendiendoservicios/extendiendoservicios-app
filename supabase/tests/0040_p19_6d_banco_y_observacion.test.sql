@@ -95,8 +95,8 @@ select is(
 );
 select is(
   (select attname::text from pg_attribute
-   where attrelid = 'public.v_assignments_board'::regclass and attnum > 0 and not attisdropped order by attnum desc limit 1 offset 2),
-  'last_notice_has_certificate', 'v_assignments_board: shift_observation va antes de la validación de 0052 (después vienen el color de 0066 y check_out_auto_closed de 0082)'
+   where attrelid = 'public.v_assignments_board'::regclass and attnum > 0 and not attisdropped order by attnum desc limit 1 offset 4),
+  'last_notice_has_certificate', 'v_assignments_board: shift_observation va antes de la validación de 0052 (después vienen el color de 0066, check_out_auto_closed de 0082 y supervision_state y supervisor_name de 0088)'
 );
 select is(
   (select count(*)::int from information_schema.columns

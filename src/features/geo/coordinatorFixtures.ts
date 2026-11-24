@@ -15,6 +15,7 @@ export function makeStatusRow(
     startedAt: '2026-10-23T11:00:00Z',
     endedAt: null,
     lastEventAt: '2026-10-23T12:30:00Z',
+    positionAt: '2026-10-23T12:30:00Z',
     latitude: -34.6037,
     longitude: -58.3816,
     accuracyM: 15,

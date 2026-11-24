@@ -156,5 +156,7 @@ describe('Cronograma semanal: submenús del bloque (DEF-P30-09)', () => {
     ).toBe(2)
     // Que no quede ningún menú abierto para las pruebas que siguen.
     await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
-  })
+    // Hace dos pasadas por los menús (con esperas de hasta 3 s cada una): con la
+    // suite completa en paralelo los 5 s de siempre no alcanzan.
+  }, 20_000)
 })

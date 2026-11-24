@@ -48,7 +48,7 @@ import { SupplyImage } from './SupplyImage'
 /**
  * Pestaña «Stock» de Insumos (IS-05, IS-24, IS-25): tabla con imagen chica,
  * código, artículo y presentación, categoría, stock, mínimo, costo, venta y
- * valor a costo; filas en amarillo («Bajo mínimo») o rojo («Sin stock») y el
+ * valor del stock; filas en amarillo («Bajo mínimo») o rojo («Sin stock») y el
  * total del valor del stock. Por fila: «Ajustar» y la ficha. En el celular
  * la tabla pasa a tarjetas (`DataTable` con `RowCard`).
  *
@@ -90,6 +90,7 @@ function StockTab() {
   const columns: DataTableColumnDef<StockItem>[] = [
     {
       id: 'image',
+      enableResizing: false,
       header: 'Imagen',
       enableSorting: false,
       meta: { card: 'hidden', width: '3.5rem' },
@@ -199,9 +200,11 @@ function StockTab() {
     },
     {
       id: 'value',
-      header: 'Valor a costo',
+      header: () => (
+        <span title="Cantidad en stock × precio de costo">Valor del stock</span>
+      ),
       accessorFn: (item) => item.stockValue,
-      meta: { card: 'meta', cardLabel: 'Valor a costo', align: 'end' },
+      meta: { card: 'meta', cardLabel: 'Valor del stock', align: 'end' },
       cell: ({ row }) => (
         <span className="tabular-nums whitespace-nowrap">
           {formatMoney(row.original.stockValue)}
@@ -210,6 +213,7 @@ function StockTab() {
     },
     {
       id: 'actions',
+      enableResizing: false,
       header: () => <span className="sr-only">Acciones</span>,
       enableSorting: false,
       meta: { card: 'actions', align: 'end' },
@@ -349,6 +353,8 @@ function StockTab() {
 
       <DataTable
         caption="Stock de insumos"
+        resizableColumns
+        persistKey="tabla:insumos-stock"
         columns={columns}
         data={rows}
         getRowId={(row) => row.id}
@@ -373,7 +379,7 @@ function StockTab() {
             {hasFilters ? ' con los filtros elegidos' : ''}
           </p>
           <p className="text-[13px] font-semibold text-text">
-            Valor del stock a costo:{' '}
+            Valor total del stock (a precio de costo):{' '}
             <span className="tabular-nums" data-testid="stock-total">
               {formatMoney(total)}
             </span>

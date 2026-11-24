@@ -2,6 +2,7 @@ import { type ComponentType } from 'react'
 import { Link } from 'react-router'
 import {
   Briefcase,
+  CalendarDays,
   ChevronRight,
   Download,
   LogOut,
@@ -30,6 +31,7 @@ export default function SupervisorMorePage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="overflow-hidden rounded-xl border border-border bg-surface">
+        <MoreRow to="/sup/proximos" icon={CalendarDays} label="Próximos días" />
         <MoreRow to="/perfil" icon={User} label="Mi perfil" />
         <MoreRow to="/sup/anuncios" icon={Megaphone} label="Anuncios" />
         {isEmployee && (

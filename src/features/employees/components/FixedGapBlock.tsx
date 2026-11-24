@@ -20,12 +20,17 @@ function FixedGapBlock({
   busy,
   onReplace,
   onAssign,
+  canDelete = false,
+  onDelete,
 }: {
   gap: FixedGap
   personName: string
   busy: boolean
   onReplace: (gap: FixedGap) => void
   onAssign: (gap: FixedGap) => void
+  /** D-06: «Eliminar turno» (solo la dirección, OD-22). */
+  canDelete?: boolean
+  onDelete?: (gap: FixedGap) => void
 }) {
   const description = describeGap(gap)
   const siteLabel = gap.siteName.toUpperCase()
@@ -83,6 +88,17 @@ function FixedGapBlock({
             onClick={() => onAssign(gap)}
           >
             Asignar
+          </button>
+        )}
+        {canDelete && onDelete && (
+          <button
+            type="button"
+            disabled={busy}
+            aria-label={`Eliminar el turno de ${siteLabel} del ${formatDateOnly(gap.shiftDate)}`}
+            className="w-full min-w-0 border-t border-inherit px-0.5 text-[10px] leading-[16px] font-semibold text-danger hover:bg-black/10 disabled:opacity-50 max-md:min-h-6"
+            onClick={() => onDelete(gap)}
+          >
+            Eliminar turno
           </button>
         )}
       </div>
