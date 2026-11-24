@@ -64,6 +64,7 @@ import {
 } from './CalendarioDialogs'
 import { blockColors, TimeCell } from './blockParts'
 import { FixedGapBlock, GapReplaceSheet } from './FixedGapBlock'
+import { RemoveFixedDialog } from './RemoveFixedDialog'
 import {
   CalendarNoteCell,
   CalendarNoteDialog,
@@ -367,6 +368,8 @@ function CalendarioMonthEditor({
   const gapsByDate = useMemo(() => groupGapsByDate(gaps), [gaps])
   const assignEmployee = useAssignEmployeeMutation()
   const [replaceGap, setReplaceGap] = useState<FixedGap | null>(null)
+  // P31.7: fijo a quitar del servicio desde la tarjeta punteada.
+  const [removeFixedGap, setRemoveFixedGap] = useState<FixedGap | null>(null)
   // D-05: color del cliente a confirmar. D-06: turno a eliminar (solo la dirección).
   const [colorRequest, setColorRequest] = useState<ClientColorRequest | null>(
     null,
@@ -638,6 +641,7 @@ function CalendarioMonthEditor({
         onAssign={(target) => void assignGap(target)}
         canDelete={canDeleteShifts}
         onDelete={(target) => setDeleteShiftId(target.shiftId)}
+        onRemoveFixed={setRemoveFixedGap}
       />
     ))
   }
@@ -910,6 +914,13 @@ function CalendarioMonthEditor({
           onClose={() => setDeletingNote(null)}
         />
       )}
+
+      <RemoveFixedDialog
+        gap={removeFixedGap}
+        profileId={profileId}
+        personName={personName}
+        onClose={() => setRemoveFixedGap(null)}
+      />
 
       <ClientColorConfirmDialog
         request={colorRequest}

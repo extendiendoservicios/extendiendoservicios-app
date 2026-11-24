@@ -217,6 +217,17 @@ export function useServiceFixedEmployeesQuery(id: string | undefined) {
   })
 }
 
+/** P31.7: servicios donde las personas elegidas ya son fijas (aviso de superposición). */
+export function useFixedServicesOfEmployeesQuery(employeeIds: string[]) {
+  const ids = [...employeeIds].sort()
+  return useQuery({
+    queryKey: [...servicesKeys.all, 'fixedOfEmployees', ids] as const,
+    queryFn: () => servicesApi.fetchFixedServicesOfEmployees(ids),
+    enabled: ids.length > 0,
+    staleTime: 60_000,
+  })
+}
+
 export function useSetServiceFixedEmployeesMutation() {
   const queryClient = useQueryClient()
   return useMutation({
