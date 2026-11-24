@@ -56,7 +56,18 @@ export interface LivePositionResult {
   waitRemainingMs: number
   /** Arranca la espera. Si ya está corriendo o venció no la reinicia. */
   startWait: () => void
+  /**
+   * Código (`GeolocationPositionError.code`: 1, 2 o 3) del último error de la
+   * API mientras no haya lectura; `null` si no hubo error o ya llegó una
+   * posición. Sirve para el motivo técnico de `p_geo_reason` (D-14).
+   */
+  lastErrorCode: 1 | 2 | 3 | null
+  /** Reinicia la búsqueda desde cero (botón «Reintentar», D-14). */
+  retry: () => void
 }
+
+/** Si en este tiempo no llegó ninguna lectura de alta precisión, se pide también una de baja (D-14). */
+export const LOW_ACCURACY_FALLBACK_MS = 8_000
 
 const TICK_MS = 1000
 
@@ -74,6 +85,8 @@ export function useLivePosition(
   const [failure, setFailure] = React.useState<'denied' | 'unavailable' | null>(
     null,
   )
+  const [errorCode, setErrorCode] = React.useState<1 | 2 | 3 | null>(null)
+  const [attempt, setAttempt] = React.useState(0)
   const [elapsedMs, setElapsedMs] = React.useState(0)
   const [now, setNow] = React.useState(0)
   const [waitStartedAt, setWaitStartedAt] = React.useState<number | null>(null)
@@ -88,31 +101,60 @@ export function useLivePosition(
     const geolocation = navigator.geolocation
     const start = Date.now()
     let watchId: number | null = null
-    try {
-      watchId = geolocation.watchPosition(
-        (pos) => {
-          const reading: LivePosition = {
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            accuracyM: pos.coords.accuracy,
-            timestamp: pos.timestamp,
-          }
-          setFailure(null)
-          setLatest(reading)
-          setBest((prev) =>
-            !prev || reading.accuracyM <= prev.accuracyM ? reading : prev,
-          )
-        },
-        (error) => {
-          // 1 = PERMISSION_DENIED; 2 = POSITION_UNAVAILABLE; 3 = TIMEOUT.
-          setFailure(error.code === 1 ? 'denied' : 'unavailable')
-        },
-        { enableHighAccuracy: true, maximumAge: 0, timeout: 20_000 },
+    let gotReading = false
+    let denied = false
+    const onReading = (pos: GeolocationPosition) => {
+      gotReading = true
+      const reading: LivePosition = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracyM: pos.coords.accuracy,
+        timestamp: pos.timestamp,
+      }
+      setFailure(null)
+      setErrorCode(null)
+      setLatest(reading)
+      setBest((prev) =>
+        !prev || reading.accuracyM <= prev.accuracyM ? reading : prev,
       )
+    }
+    const onError = (error: GeolocationPositionError) => {
+      // 1 = PERMISSION_DENIED; 2 = POSITION_UNAVAILABLE; 3 = TIMEOUT.
+      const code: 1 | 2 | 3 =
+        error.code === 1 || error.code === 3 ? error.code : 2
+      if (code === 1) denied = true
+      // Un «sin permiso» no lo pisa un error posterior del respaldo.
+      setErrorCode(denied ? 1 : code)
+      setFailure(denied ? 'denied' : 'unavailable')
+    }
+    try {
+      watchId = geolocation.watchPosition(onReading, onError, {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 20_000,
+      })
     } catch {
       watchId = null
-      queueMicrotask(() => setFailure('unavailable'))
+      queueMicrotask(() => {
+        setFailure('unavailable')
+        setErrorCode(2)
+      })
     }
+    // Respaldo de baja precisión (D-14): si en ~8 s no llegó nada, se pide
+    // además una lectura con `enableHighAccuracy: false` (Wi-Fi o antenas).
+    const fallback = setTimeout(() => {
+      if (gotReading || denied) return
+      if (typeof geolocation.getCurrentPosition !== 'function') return
+      try {
+        geolocation.getCurrentPosition(onReading, onError, {
+          enableHighAccuracy: false,
+          maximumAge: 60_000,
+          timeout: 20_000,
+        })
+      } catch {
+        // Sin respaldo: sigue la búsqueda de alta precisión.
+      }
+    }, LOW_ACCURACY_FALLBACK_MS)
     // Reloj de `elapsedMs` y de la cuenta regresiva de la espera.
     const tick = setInterval(() => {
       const t = Date.now()
@@ -122,15 +164,17 @@ export function useLivePosition(
 
     return () => {
       clearInterval(tick)
+      clearTimeout(fallback)
       if (watchId !== null) geolocation.clearWatch(watchId)
       setBest(null)
       setLatest(null)
       setFailure(null)
+      setErrorCode(null)
       setElapsedMs(0)
       setWaitStartedAt(null)
       setWaitExpired(false)
     }
-  }, [enabled, supported])
+  }, [enabled, supported, attempt])
 
   // Vencimiento exacto de «Esperar mejor señal».
   React.useEffect(() => {
@@ -147,6 +191,8 @@ export function useLivePosition(
     setNow(t)
     setWaitStartedAt((prev) => prev ?? t)
   }, [])
+
+  const retry = React.useCallback(() => setAttempt((n) => n + 1), [])
 
   let state: LivePositionState
   if (!enabled) state = 'idle'
@@ -174,5 +220,7 @@ export function useLivePosition(
     wait,
     waitRemainingMs,
     startWait,
+    lastErrorCode: enabled && !best ? errorCode : null,
+    retry,
   }
 }

@@ -137,6 +137,7 @@ export default function CloseSupervisionPage() {
         generalNotes: generalNotes || undefined,
         coords: fichaje.payload.coords,
         outsideReason: fichaje.payload.outsideReason,
+        geoReason: fichaje.payload.geoReason,
       })
       void navigate('/sup', { replace: true })
     } catch (mutationError) {

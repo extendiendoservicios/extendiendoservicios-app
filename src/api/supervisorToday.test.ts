@@ -23,7 +23,8 @@ const { fromMock } = vi.hoisted(() => ({ fromMock: vi.fn() }))
 
 vi.mock('@/lib/supabase', () => ({ supabase: { from: fromMock } }))
 
-const { fetchSupervisorToday } = await import('./supervisorToday')
+const { fetchSupervisorToday, fetchSupervisorUpcoming } =
+  await import('./supervisorToday')
 
 beforeEach(() => fromMock.mockReset())
 
@@ -174,5 +175,32 @@ describe('fetchSupervisorToday', () => {
     await expect(fetchSupervisorToday()).rejects.toMatchObject({
       hint: 'FORBIDDEN',
     })
+  })
+})
+
+describe('fetchSupervisorUpcoming (D-09)', () => {
+  it('lee v_supervisor_upcoming y mapea igual que «Hoy», con la fecha del turno', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({
+        data: [{ ...ROW, shift_date: '2026-10-25' }],
+        error: null,
+      }),
+    )
+
+    const shifts = await fetchSupervisorUpcoming()
+
+    expect(fromMock).toHaveBeenCalledWith('v_supervisor_upcoming')
+    expect(shifts[0]).toMatchObject({
+      shiftId: 'sh1',
+      shiftDate: '2026-10-25',
+      isPriority: true,
+    })
+  })
+
+  it('propaga el error', async () => {
+    fromMock.mockReturnValue(
+      makeChainable({ data: null, error: { message: 'boom' } }),
+    )
+    await expect(fetchSupervisorUpcoming()).rejects.toBeDefined()
   })
 })

@@ -6,6 +6,7 @@ import type { AssignmentStatus } from './assignments'
 import { fetchShiftTasksReadOnly } from './tasks'
 import { mapAttendanceGeo, type AttendanceGeo } from './attendanceGeo'
 import type { GeolocationCoords } from '@/lib/geolocation'
+import type { GeoTechnicalReason } from '@/lib/geo'
 import { supervisorTodayKeys } from './supervisorToday'
 import { workdayKeys } from './myWorkdays'
 import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
@@ -406,6 +407,7 @@ export async function takeSupervision(
   shiftId: string,
   coords: GeolocationCoords | null,
   outsideReason?: string | null,
+  geoReason?: GeoTechnicalReason | null,
 ): Promise<TakeSupervisionResult> {
   const { data, error } = await supabase.rpc('take_supervision', {
     p_shift_id: shiftId,
@@ -413,6 +415,7 @@ export async function takeSupervision(
     p_lng: coords?.lng,
     p_accuracy: coords?.accuracyM,
     p_outside_reason: outsideReason?.trim() || undefined,
+    p_geo_reason: coords ? undefined : (geoReason ?? undefined),
   })
 
   if (error) {
@@ -504,6 +507,7 @@ export async function completeSupervision(
   generalNotes: string | undefined,
   coords: GeolocationCoords | null,
   outsideReason?: string | null,
+  geoReason?: GeoTechnicalReason | null,
 ): Promise<MySupervisionStatusResult | null> {
   const { data, error } = await supabase.rpc('complete_supervision', {
     p_supervision_id: supervisionId,
@@ -512,6 +516,7 @@ export async function completeSupervision(
     p_lng: coords?.lng,
     p_accuracy: coords?.accuracyM,
     p_outside_reason: outsideReason?.trim() || undefined,
+    p_geo_reason: coords ? undefined : (geoReason ?? undefined),
   })
 
   if (error) {
@@ -843,11 +848,13 @@ export function useTakeSupervisionMutation() {
       shiftId,
       coords,
       outsideReason,
+      geoReason,
     }: {
       shiftId: string
       coords: GeolocationCoords | null
       outsideReason?: string | null
-    }) => takeSupervision(shiftId, coords, outsideReason),
+      geoReason?: GeoTechnicalReason | null
+    }) => takeSupervision(shiftId, coords, outsideReason, geoReason),
     onSuccess: () => invalidateSupervisionCaches(queryClient),
   })
 }
@@ -891,13 +898,21 @@ export function useCompleteSupervisionMutation() {
       generalNotes,
       coords,
       outsideReason,
+      geoReason,
     }: {
       supervisionId: string
       generalNotes?: string
       coords: GeolocationCoords | null
       outsideReason?: string | null
+      geoReason?: GeoTechnicalReason | null
     }) =>
-      completeSupervision(supervisionId, generalNotes, coords, outsideReason),
+      completeSupervision(
+        supervisionId,
+        generalNotes,
+        coords,
+        outsideReason,
+        geoReason,
+      ),
     onSuccess: (_, { supervisionId }) =>
       invalidateSupervisionCaches(queryClient, supervisionId),
   })

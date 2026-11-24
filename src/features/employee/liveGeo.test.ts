@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildLiveGeoView,
+  buildGeoHelp,
+  detectGeoDevice,
+  geoReasonToSend,
   outsideReasonToSend,
   secondsLeft,
   OUTSIDE_REASON_MAX_LENGTH,
@@ -204,5 +207,88 @@ describe('secondsLeft', () => {
     expect(secondsLeft(900)).toBe(1)
     expect(secondsLeft(0)).toBe(0)
     expect(secondsLeft(-5)).toBe(0)
+  })
+})
+
+describe('detectGeoDevice', () => {
+  it('reconoce Android, iPhone y otros', () => {
+    expect(
+      detectGeoDevice('Mozilla/5.0 (Linux; Android 13; SM-A135M) Chrome/120'),
+    ).toBe('android')
+    expect(
+      detectGeoDevice('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) Safari/604'),
+    ).toBe('ios')
+    expect(detectGeoDevice('Mozilla/5.0 (Windows NT 10.0) Chrome/120')).toBe(
+      'other',
+    )
+  })
+})
+
+describe('ayuda de ubicación (D-14)', () => {
+  it('sin señal en Android: barra de accesos rápidos', () => {
+    const help = buildGeoHelp('unavailable', 'android')
+    expect(help?.intro).toBe(
+      'Revisá que la ubicación del teléfono esté encendida.',
+    )
+    expect(help?.steps[0]).toMatch(/barra de accesos rápidos/)
+  })
+
+  it('sin señal en iPhone: Ajustes, Safari y Ubicación exacta', () => {
+    const text = buildGeoHelp('unavailable', 'ios')?.steps.join(' ')
+    expect(text).toMatch(/Ajustes › Privacidad › Localización/)
+    expect(text).toMatch(/Sitios web de Safari/)
+    expect(text).toMatch(/Ubicación exacta/)
+  })
+
+  it('sin permiso: cómo darlo, según el celular', () => {
+    expect(buildGeoHelp('denied', 'android')?.steps[0]).toMatch(/Permisos/)
+    expect(buildGeoHelp('denied', 'ios')?.steps[0]).toMatch(/Al usar la app/)
+  })
+
+  it('sin falla no hay ayuda; la vista ofrece Reintentar solo si falló', () => {
+    expect(buildGeoHelp('ready', 'android')).toBeNull()
+    const failed = buildLiveGeoView(
+      input({ state: 'unavailable', position: null, device: 'android' }),
+    )
+    expect(failed.showRetry).toBe(true)
+    expect(failed.help).not.toBeNull()
+    const ok = buildLiveGeoView(input())
+    expect(ok.showRetry).toBe(false)
+    expect(ok.help).toBeNull()
+    const noConsent = buildLiveGeoView(
+      input({ enabled: false, state: 'idle', position: null }),
+    )
+    expect(noConsent.showRetry).toBe(false)
+  })
+})
+
+describe('geoReasonToSend (D-14)', () => {
+  const coords = { lat: -34.6, lng: -58.4, accuracyM: 20 }
+
+  it('mapea el último error: 1, 2 y 3', () => {
+    expect(
+      geoReasonToSend({ enabled: true, coords: null, lastErrorCode: 1 }),
+    ).toBe('permission_denied')
+    expect(
+      geoReasonToSend({ enabled: true, coords: null, lastErrorCode: 2 }),
+    ).toBe('position_unavailable')
+    expect(
+      geoReasonToSend({ enabled: true, coords: null, lastErrorCode: 3 }),
+    ).toBe('timeout')
+  })
+
+  it('sin error todavía (se fichó buscando): timeout', () => {
+    expect(
+      geoReasonToSend({ enabled: true, coords: null, lastErrorCode: null }),
+    ).toBe('timeout')
+  })
+
+  it('con coordenadas o sin consentimiento no manda motivo', () => {
+    expect(
+      geoReasonToSend({ enabled: true, coords, lastErrorCode: 2 }),
+    ).toBeNull()
+    expect(
+      geoReasonToSend({ enabled: false, coords: null, lastErrorCode: 1 }),
+    ).toBeNull()
   })
 })

@@ -114,6 +114,7 @@ describe('CloseSupervisionPage (SUP-06)', () => {
         generalNotes: 'Todo en orden',
         coords: null,
         outsideReason: null,
+        geoReason: null,
       }),
     )
     expect(await screen.findByText('otra pantalla')).toBeInTheDocument()
