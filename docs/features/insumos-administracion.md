@@ -38,7 +38,7 @@ La capacidad se otorga en ADM-27 (solo el dueño), donde ya figura como «Gestio
 
 ## Stock (IS-05, IS-24, IS-25)
 
-- **Columnas:** imagen chica, código, artículo y presentación, categoría, stock, mínimo, costo, venta y valor a costo. Al pie, la cantidad de artículos y el **valor del stock a costo** de lo que se ve (con los filtros puestos suma solo lo filtrado).
+- **Columnas:** imagen chica, código, artículo y presentación, categoría, stock, mínimo, costo, venta y valor del stock (cantidad × precio de costo). Al pie, la cantidad de artículos y el **valor total del stock (a precio de costo)** de lo que se ve (con los filtros puestos suma solo lo filtrado).
 - **Colores de fila:** amarillo (`bg-warning-bg`) si hay mínimo y el stock es igual o menor; rojo (`bg-danger-bg`) si el stock es cero, aunque no tenga mínimo. Siempre con una etiqueta de texto («Bajo mínimo», «Sin stock»), para no depender del color. La fuente es `status` de `v_stock_admin` (`ok`, `low`, `empty`).
 - **Un artículo inactivo no marca aviso:** solo se desactiva con stock cero y ese cero no es un faltante (el Resumen tampoco lo cuenta). Se ve con la etiqueta «Inactivo» y sin color.
 - **Filtros:** texto (código, nombre o presentación, sin distinguir mayúsculas ni tildes), categoría, «Solo con aviso» (amarillos y rojos) e «Incluir inactivos». Se aplican en pantalla sobre la lista completa que trae `fetchStockItems`.

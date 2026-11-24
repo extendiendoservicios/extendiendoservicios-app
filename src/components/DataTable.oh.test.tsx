@@ -355,3 +355,51 @@ describe('DataTable — OH-02 (orden y ancho de columnas)', () => {
     expect(window.localStorage.length).toBe(0)
   })
 })
+
+describe('DataTable — P31.2 (orden manual y anchos compartidos)', () => {
+  it('con manualSorting el encabezado avisa el orden pero no reordena las filas', () => {
+    mockCardViewport(false)
+    const onSortingChange = vi.fn()
+    render(
+      <DataTable
+        columns={COLUMNS}
+        data={DATA}
+        caption="Demo"
+        manualSorting
+        sorting={[]}
+        onSortingChange={onSortingChange}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /Nombre/ }))
+    expect(onSortingChange).toHaveBeenCalled()
+    expect(firstCells()).toEqual(['Bravo', 'Alfa'])
+  })
+
+  it('dos tablas con la misma persistKey comparten el ancho de la columna', () => {
+    mockCardViewport(false)
+    render(
+      <>
+        <DataTable
+          columns={COLUMNS}
+          data={DATA}
+          caption="Una"
+          resizableColumns
+          persistKey="tabla:prueba"
+        />
+        <DataTable
+          columns={COLUMNS}
+          data={DATA}
+          caption="Otra"
+          resizableColumns
+          persistKey="tabla:prueba"
+        />
+      </>,
+    )
+    const [first] = screen.getAllByRole('separator', { name: HANDLE_NAME })
+    fireEvent.keyDown(first!, { key: 'ArrowRight' })
+    const headers = screen.getAllByRole('columnheader', { name: /Nombre/ })
+    expect(headers).toHaveLength(2)
+    expect(headers[1]!.style.width).toBe(headers[0]!.style.width)
+    expect(headers[0]!.style.width).not.toBe('')
+  })
+})

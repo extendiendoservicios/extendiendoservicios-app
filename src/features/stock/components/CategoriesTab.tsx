@@ -189,6 +189,8 @@ function CategoriesTab() {
 
       <DataTable
         caption="Categorías de insumos"
+        resizableColumns
+        persistKey="tabla:insumos-categorias"
         columns={columns}
         data={categories}
         getRowId={(row) => row.id}

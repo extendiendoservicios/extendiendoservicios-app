@@ -86,6 +86,7 @@ export default function HolidaysPage() {
   const columns: DataTableColumnDef<Holiday>[] = [
     {
       id: 'date',
+      accessorFn: (row) => row.holidayDate,
       header: 'Fecha',
       meta: { card: 'title' },
       cell: ({ row }) => (
@@ -96,12 +97,16 @@ export default function HolidaysPage() {
     },
     {
       id: 'name',
+      accessorFn: (row) => row.name?.toLowerCase() ?? undefined,
+      sortUndefined: 'last',
       header: 'Nombre',
       meta: { card: 'subtitle' },
       cell: ({ row }) => row.original.name ?? '—',
     },
     {
       id: 'actions',
+      enableSorting: false,
+      enableResizing: false,
       header: '',
       meta: { card: 'trailing', align: 'end' },
       cell: ({ row }) => (
@@ -150,6 +155,8 @@ export default function HolidaysPage() {
 
           <DataTable
             caption={`Feriados de ${year}`}
+            resizableColumns
+            persistKey="tabla:feriados"
             columns={columns}
             data={activeHolidays}
             getRowId={(row) => row.id}

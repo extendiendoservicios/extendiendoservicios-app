@@ -48,6 +48,7 @@ export function AnnouncementsList() {
   const columns: DataTableColumnDef<AnnouncementRow>[] = [
     {
       id: 'title',
+      accessorFn: (row) => row.title.toLowerCase(),
       header: 'Título',
       meta: { card: 'title' },
       cell: ({ row }) => (
@@ -61,6 +62,8 @@ export function AnnouncementsList() {
     },
     {
       id: 'audience',
+      accessorFn: (row) =>
+        audienceText(row.audience, row.recipientCount).toLowerCase(),
       header: 'Destinatarios',
       meta: { card: 'subtitle' },
       cell: ({ row }) =>
@@ -68,12 +71,15 @@ export function AnnouncementsList() {
     },
     {
       id: 'validity',
+      accessorFn: (row) => row.visibleUntil ?? undefined,
+      sortUndefined: 'last',
       header: 'Vigencia',
       meta: { card: 'meta', cardLabel: 'Vigencia' },
       cell: ({ row }) => validityText(row.original.visibleUntil),
     },
     {
       id: 'status',
+      accessorFn: (row) => ANNOUNCEMENT_STATUS_LABELS[row.status],
       header: 'Estado',
       meta: { card: 'trailing' },
       cell: ({ row }) => (
@@ -84,6 +90,7 @@ export function AnnouncementsList() {
     },
     {
       id: 'reads',
+      accessorFn: (row) => row.readCount,
       header: 'Lecturas',
       meta: { card: 'meta', cardLabel: 'Lecturas' },
       cell: ({ row }) =>
@@ -122,6 +129,8 @@ export function AnnouncementsList() {
 
       <DataTable
         caption="Anuncios"
+        resizableColumns
+        persistKey="tabla:anuncios"
         columns={columns}
         data={query.data ?? []}
         getRowId={(row) => row.id}

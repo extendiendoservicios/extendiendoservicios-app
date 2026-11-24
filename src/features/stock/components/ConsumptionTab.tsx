@@ -223,13 +223,13 @@ function ConsumptionTab() {
             </p>
             <p className="flex flex-wrap gap-x-5 text-[13px] font-semibold text-text">
               <span>
-                A costo{' '}
+                A precio de costo{' '}
                 <span className="tabular-nums">
                   {formatMoney(report.total.cost)}
                 </span>
               </span>
               <span>
-                A venta{' '}
+                A precio de venta{' '}
                 <span className="tabular-nums">
                   {formatMoney(report.total.sale)}
                 </span>
