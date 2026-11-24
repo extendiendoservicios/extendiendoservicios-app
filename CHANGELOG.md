@@ -7,6 +7,42 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.32.0] - 2026-11-24
+
+Observaciones de la dirección del 23 nov (P31). Migración 0088.
+
+### Agregado
+
+- Calendario del empleado: «Eliminar turno» en el ⋮, en la tarjeta punteada y en Calendario › Día (solo la dirección).
+- Calendario del empleado: observaciones por día con «+», color, edición y eliminación; salen en la impresión del mes.
+- Turnos finalizados: la dirección y la administración pueden corregir el horario (Desde y Hasta) y las horas se recalculan dentro de esa franja.
+- Servicios: al finalizar o pausar un servicio, la dirección puede eliminar sus turnos futuros en el mismo paso (casilla marcada). La administración ve cuántos quedan.
+- Servicios: aviso al elegir como fija a una persona que ya es fija de otro servicio que se superpone.
+- Calendario del empleado: «Quitar de fijos» en la tarjeta punteada.
+- Coordinadores (celular): «Próximos días» en Más, los 7 días siguientes con «Mis sedes» y «Otras sedes».
+- Resumen y Asistencia: segunda línea en el estado con «Supervisado», «Supervisando» o «Sin supervisión».
+- Mapa: «Ubicación de las HH:MM» cuando la posición del coordinador es anterior a su último registro.
+- Tablas: ancho ajustable y orden por clic en todas las tablas de listado (Clientes, Empleados, Supervisiones, Insumos, Avisos, Asistencia y otras).
+
+### Cambiado
+
+- El color de los turnos sale solo del cliente, en la pizarra semanal y en los calendarios. «Cambiar color del cliente» está en el ⋮ con confirmación.
+- Insumos: «Valor del stock» (cantidad × precio de costo) y totales «A precio de costo» y «A precio de venta».
+- Celular: al fichar, si la ubicación tarda, se intenta con baja precisión a los 8 s; hay «Reintentar» y ayuda según Android o iPhone.
+
+### Corregido
+
+- Las tarjetas punteadas ya no muestran turnos pasados, finalizados ni cubiertos por otra persona.
+- La posición del coordinador se actualiza con cada evento de la jornada (inicio, supervisiones, pausas, cierre).
+
+### Base de datos (0088)
+
+- `employee_fixed_gaps` filtra los turnos pasados, finalizados y con la dotación completa.
+- `update_shift_time` admite cambiar la franja de un turno finalizado (misma fecha).
+- Tabla `employee_calendar_notes` con `save_employee_calendar_note`, `delete_employee_calendar_note` y `list_employee_calendar_notes`.
+- Vista `v_supervisor_upcoming`; `v_assignments_board` suma `supervision_state` y `supervisor_name`; `v_supervisor_status` suma `position_at`.
+- `p_geo_reason` en fichajes y supervisiones, con los motivos `permission_denied`, `position_unavailable` y `timeout`.
+
 ## [0.31.0] - 2026-11-19
 
 Observaciones de la dirección del 18 nov (P30). Migración 0087.
