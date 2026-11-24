@@ -3141,3 +3141,11 @@ Una sola migración, `0089_p32_1_observaciones_24_nov.sql`. Sin tablas ni column
 - **OJ-03 empleado.** Vista interna `app.my_services_base` (`security_invoker`): la consulta de `v_my_day` sin filtro de fechas (solo asignaciones vigentes propias). `v_my_day` queda como `select * from app.my_services_base` de hoy a hoy + 7 (mismas columnas y filas que en 0086; `create or replace`). RPC `get_my_services(p_from date, p_to date) returns setof v_my_day` (`security invoker`, la RLS sigue valiendo), mismo recorte (mañana .. hoy + 60) y mismo error de rango; orden por fecha, hora efectiva de inicio y asignación.
 - Efecto en los tipos: como `v_my_day` ahora lee de otra vista, `gen types` ya no genera las `Relationships` de `v_my_day` hacia otras tablas (y el resto de las tablas dejan de listar `v_my_day` en las suyas).
 - Tests: `0089_p32_1_observaciones_24_nov`.
+
+## Migración 0090 (P32.1b): cerrar el aviso «En camino» (D-09, OG-02)
+
+Una sola migración, `0090_p32_1b_cerrar_en_camino.sql`. Sin tablas ni columnas nuevas.
+
+- `attention_dismissals_kind_check` admite `onTheWay` además de los ocho tipos de 0085 (drop + add). La regla de `attention_dismissals_assignment_check` no cambia: `onTheWay` exige asignación, como `late` y `delayNotified` (solo `uncovered` va sin ella).
+- `dismiss_attention(p_kind, p_shift_id, p_assignment_id)` se redefine con la lista nueva de tipos; el resto (permisos owner/admin, errores, idempotencia) queda igual. Ninguna otra función ni vista lista los tipos.
+- Tests: `0090_p32_1b_cerrar_en_camino`.

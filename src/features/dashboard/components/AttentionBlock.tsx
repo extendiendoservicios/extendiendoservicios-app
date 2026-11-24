@@ -51,11 +51,6 @@ function itemSeverity(item: AttentionItem): 'crit' | 'warn' | 'ok' {
   return KIND_META[item.kind].severity
 }
 
-/** El cierre (OG-02) todavía no admite «En camino»: `attention_dismissals_kind_check` (0085) no lo incluye. */
-function isDismissible(item: AttentionItem): boolean {
-  return item.kind !== 'onTheWay'
-}
-
 /**
  * En celular (< 1024 px) se muestran las primeras alertas, que ya vienen
  * ordenadas por urgencia, para no enterrar "Servicios de hoy" (decisión de
@@ -236,7 +231,7 @@ function AttentionBlock({
                       <p className="text-[13px] font-semibold">{title}</p>
                       <p className="text-[12px] text-text-2">{detail}</p>
                     </div>
-                    {onDismiss && isDismissible(item) && (
+                    {onDismiss && (
                       <button
                         type="button"
                         aria-label={`Cerrar aviso: ${title}`}

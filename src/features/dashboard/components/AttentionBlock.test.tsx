@@ -211,12 +211,14 @@ describe('AttentionBlock', () => {
         ...overrides,
       })
 
-    it('verde: muestra «En camino», sin hora, no suma al contador y no tiene ✕', () => {
+    it('verde: muestra «En camino», sin hora, no suma al contador y se puede cerrar con ✕ (0090)', () => {
       const wayItems = computeAttention(shifts, [way()], before)
       renderBlock({ items: wayItems, onDismiss: vi.fn() })
       expect(screen.getByText(/Ana Gómez · En camino$/)).toBeInTheDocument()
       expect(screen.queryByText('1')).toBeNull()
-      expect(screen.queryByRole('button', { name: /Cerrar aviso/ })).toBeNull()
+      expect(
+        screen.getByRole('button', { name: /Cerrar aviso/ }),
+      ).toBeInTheDocument()
     })
 
     it('amarilla: muestra la hora estimada de Buenos Aires y suma al contador', () => {
