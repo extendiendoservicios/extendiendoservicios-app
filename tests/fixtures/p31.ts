@@ -8,9 +8,11 @@
 
 import { expect } from '@playwright/test'
 import type { FixedAccountKey } from './accounts.ts'
-import { daysFromToday } from './dates.ts'
+import { daysFromToday, FRANJAS, franjaYaEmpezo } from './dates.ts'
+import { FRANJAS_MOVIL } from './movil.ts'
 import { E2E_PREFIX, Scenario, sessionClient } from './scenario.ts'
 import { readId } from './sessions.ts'
+import { cargarJornada } from '../e2e-ajustes-reunion/helpers/historial.ts'
 
 /**
  * Una fecha pasada con día entre el 3 y el 25 del mes: así el día, el anterior y el siguiente caen
@@ -99,4 +101,66 @@ export async function minutosTrabajados(assignmentId: string): Promise<number> {
     .single()
   expect(error, error?.message).toBeNull()
   return Number(data?.worked_minutes ?? -1)
+}
+
+/** El turno de hoy, de todo el día, con la persona ya fichada (empezó) y sin salida. */
+async function turnoEmpezado(
+  sc: Scenario,
+  slug: string,
+  quien: 'empleado1' | 'empleado2' | 'empleado3' | 'empleado4',
+) {
+  const cliente = await sc.client(slug)
+  const sede = await sc.site(cliente.id, slug)
+  const { shiftId } = await cargarJornada(sc, {
+    cliente,
+    sede,
+    fecha: sc.today,
+    franja: FRANJAS_MOVIL.diaCompleto,
+    quien,
+    entrada: '00:00',
+  })
+  return { cliente, sede, shiftId }
+}
+
+export interface EscenarioSupervision {
+  supervisado: string
+  supervisando: string
+  sinSupervision: string
+  sinCerrar: string
+  sinEmpezar: string | null
+}
+
+/** Cuatro turnos empezados (uno por estado de supervisión) y, si todavía se puede, uno sin empezar. */
+export async function armarSupervision(
+  sc: Scenario,
+): Promise<EscenarioSupervision> {
+  const a = await turnoEmpezado(sc, 'd10-ok', 'empleado1')
+  await sc.supervisionDirecta(a.shiftId, 'supervisor1', {
+    estado: 'completada',
+  })
+  const b = await turnoEmpezado(sc, 'd10-en', 'empleado2')
+  await sc.supervisionDirecta(b.shiftId, 'supervisor1', { estado: 'en_curso' })
+  const c = await turnoEmpezado(sc, 'd10-no', 'empleado3')
+  // «Sin cerrar»: la supervisión sigue `in_progress` pero ya tiene el fin registrado.
+  const d = await turnoEmpezado(sc, 'd10-sc', 'empleado4')
+  await sc.supervisionDirecta(d.shiftId, 'supervisor1', {
+    estado: 'en_curso',
+    fin: new Date(Date.now() - 60_000).toISOString(),
+  })
+  let sinEmpezar: string | null = null
+  // Una franja de la noche que todavía no empezó: solo si hoy aún no pasaron las 20:00.
+  if (!franjaYaEmpezo(FRANJAS.noche)) {
+    const cliente = await sc.client('d10-pend')
+    const sede = await sc.site(cliente.id, 'd10-pend')
+    const turno = await sc.shift(cliente.id, sede.id, sc.today, FRANJAS.noche)
+    await sc.assign(turno, 'dual')
+    sinEmpezar = sede.name
+  }
+  return {
+    supervisado: a.sede.name,
+    supervisando: b.sede.name,
+    sinSupervision: c.sede.name,
+    sinCerrar: d.sede.name,
+    sinEmpezar,
+  }
 }
