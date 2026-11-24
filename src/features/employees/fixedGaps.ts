@@ -49,8 +49,6 @@ export function describeGap(
         conflictShiftId: detail?.conflictShiftId ?? null,
       }
     }
-    case 'SHIFT_FULL':
-      return { text: 'Turno completo', conflictShiftId: null }
     case 'REMOVED':
       return { text: 'Quitado a mano', conflictShiftId: null }
     case 'ADDED_AFTER':

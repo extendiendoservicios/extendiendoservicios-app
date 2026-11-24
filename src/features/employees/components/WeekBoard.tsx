@@ -38,7 +38,11 @@ import {
 } from '@/features/employees/fixedQueries'
 import {
   addBlock,
+  type BoardBlockClient,
   blocksFromPattern,
+  boardBlockColor,
+  clientsByService,
+  withoutClientColors,
   blocksOfWeekday,
   BOARD_WEEKDAY_LABELS,
   canAddBlock,
@@ -53,6 +57,11 @@ import {
   updateBlock,
   weekdayAtPoint,
 } from '@/features/employees/weekBoard'
+import {
+  ClientColorConfirmDialog,
+  ClientColorSubmenu,
+  type ClientColorRequest,
+} from '@/features/planning/components/ClientColorChange'
 import { blockColors, TimeCell } from './blockParts'
 import { DRAG_THRESHOLD_PX } from './UncoveredPanel'
 
@@ -137,6 +146,11 @@ function LabelCell({
 
 interface BoardBlockViewProps {
   block: WeekBoardBlock
+  /** D-05: cliente del bloque (por su servicio); `null` = texto libre o servicio que ya no es fijo. */
+  client: BoardBlockClient | null
+  /** Color con el que se pinta: el del cliente, o el propio si no tiene. */
+  colorIndex: number | null
+  onColorRequest: (request: ClientColorRequest) => void
   editable: boolean
   dragging: boolean
   canDuplicate: boolean
@@ -158,6 +172,9 @@ interface BoardBlockViewProps {
 /** Un bloque de la pizarra: tres casillas (inicio, fin, nombre) con el color del cliente. */
 function BoardBlockView({
   block,
+  client,
+  colorIndex,
+  onColorRequest,
   editable,
   dragging,
   canDuplicate,
@@ -182,7 +199,7 @@ function BoardBlockView({
       className={`flex flex-col rounded-sm border select-none ${
         editable ? 'cursor-grab' : ''
       } ${dragging ? 'opacity-50' : ''}`}
-      style={blockColors(block.colorIndex)}
+      style={blockColors(colorIndex)}
       onPointerDown={(event) => {
         // Sin arrastre táctil: en el celular se usa «Mover a» del menú.
         if (
@@ -276,24 +293,35 @@ function BoardBlockView({
                 >
                   Duplicar
                 </DropdownMenuItem>
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>Cambiar color</DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    {CLIENT_COLORS.map((color) => (
-                      <DropdownMenuItem
-                        key={color.index}
-                        onSelect={() => onColor(block, color.index)}
-                      >
-                        <span
-                          aria-hidden
-                          className="inline-block size-3 rounded-full"
-                          style={{ backgroundColor: color.hex }}
-                        />
-                        {color.name}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
+                {client ? (
+                  <ClientColorSubmenu
+                    clientId={client.clientId}
+                    clientName={client.clientName}
+                    currentIndex={client.calendarColor}
+                    onRequest={onColorRequest}
+                  />
+                ) : (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      Cambiar color
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      {CLIENT_COLORS.map((color) => (
+                        <DropdownMenuItem
+                          key={color.index}
+                          onSelect={() => onColor(block, color.index)}
+                        >
+                          <span
+                            aria-hidden
+                            className="inline-block size-3 rounded-full"
+                            style={{ backgroundColor: color.hex }}
+                          />
+                          {color.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )}
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>Mover a</DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
@@ -343,14 +371,22 @@ function WeekBoardPanel({
   const queryClient = useQueryClient()
   const boardQuery = useEmployeeWeekBoardQuery(profileId, canEdit)
   const saved = boardQuery.data
-  // Sin pizarra guardada (`null`) se arma desde el patrón fijo.
+  // El patrón fijo arma la pizarra la primera vez (sin pizarra guardada) y,
+  // siempre, dice a qué cliente pertenece cada bloque con servicio (D-05).
   const patternQuery = useEmployeeFixedPatternQuery(
     profileId,
-    canEdit && boardQuery.isSuccess && saved === null,
+    canEdit && boardQuery.isSuccess,
   )
   const patternBlocks = useMemo(
     () => (patternQuery.data ? blocksFromPattern(patternQuery.data) : []),
     [patternQuery.data],
+  )
+  const clients = useMemo(
+    () => clientsByService(patternQuery.data ?? []),
+    [patternQuery.data],
+  )
+  const [colorRequest, setColorRequest] = useState<ClientColorRequest | null>(
+    null,
   )
 
   /** Cambios todavía no reflejados por el servidor; `null` = se ve lo guardado (o el patrón). */
@@ -378,7 +414,10 @@ function WeekBoardPanel({
   async function persist(blocks: WeekBoardBlock[], savedVersion: number) {
     setError(null)
     try {
-      const board: WeekBoard = await saveMutation.mutateAsync(blocks)
+      // D-05: los bloques con cliente se guardan sin color propio.
+      const board: WeekBoard = await saveMutation.mutateAsync(
+        withoutClientColors(blocks, clients),
+      )
       queryClient.setQueryData(employeeFixedKeys.board(profileId), board)
       // Si no hubo cambios nuevos mientras guardaba, se muestra lo del servidor.
       if (savedVersion === version.current) {
@@ -580,6 +619,13 @@ function WeekBoardPanel({
                         <BoardBlockView
                           key={block.id}
                           block={block}
+                          client={
+                            block.serviceId
+                              ? (clients.get(block.serviceId) ?? null)
+                              : null
+                          }
+                          colorIndex={boardBlockColor(block, clients)}
+                          onColorRequest={setColorRequest}
                           editable={canEdit}
                           dragging={drag?.blockId === block.id}
                           canDuplicate={addable}
@@ -668,6 +714,11 @@ function WeekBoardPanel({
           {drag.target != null ? ` → ${BOARD_WEEKDAY_LABELS[drag.target]}` : ''}
         </div>
       )}
+
+      <ClientColorConfirmDialog
+        request={colorRequest}
+        onClose={() => setColorRequest(null)}
+      />
 
       <Dialog open={confirmReload} onOpenChange={setConfirmReload}>
         <DialogContent>

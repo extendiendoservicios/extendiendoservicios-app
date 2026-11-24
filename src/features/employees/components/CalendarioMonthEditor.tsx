@@ -1,16 +1,18 @@
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
-import { MoreVertical } from 'lucide-react'
+import { MoreVertical, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { isApiError } from '@/api/errors'
 import type { FixedGap } from '@/api/employeeFixed'
+import type { CalendarNote } from '@/api/employeeCalendarNotes'
 import { useAuth } from '@/features/auth/AuthProvider'
 import type { ShiftListRow } from '@/api/shifts'
 import {
@@ -18,6 +20,7 @@ import {
   useAssignEmployeeMutation,
 } from '@/features/planning/queries'
 import { groupGapsByDate } from '@/features/employees/fixedGaps'
+import { groupNotesByDate } from '@/features/employees/calendarNotes'
 import { shiftsKeys } from '@/features/shifts/queries'
 import { WARNING_MESSAGES } from '@/features/planning/components/AssignEmployeeSheet'
 import { RemoveAssignmentDialog } from '@/features/planning/components/RemoveAssignmentDialog'
@@ -36,6 +39,8 @@ import {
   type CronogramaCommand,
 } from '@/features/employees/cronogramaCommands'
 import {
+  COMPLETED_DATE_MESSAGE,
+  completedDateChangeBlocked,
   decideScope,
   hasScheduleChanged,
   minutesToTime,
@@ -59,6 +64,18 @@ import {
 } from './CalendarioDialogs'
 import { blockColors, TimeCell } from './blockParts'
 import { FixedGapBlock, GapReplaceSheet } from './FixedGapBlock'
+import {
+  CalendarNoteCell,
+  CalendarNoteDialog,
+  DeleteCalendarNoteDialog,
+} from './CalendarNoteParts'
+import {
+  ClientColorConfirmDialog,
+  ClientColorSubmenu,
+  type ClientColorRequest,
+} from '@/features/planning/components/ClientColorChange'
+import { OwnerDeleteDialog } from '@/features/ownerDelete/components/OwnerDeleteDialog'
+import { canOwnerDelete } from '@/features/ownerDelete/matching'
 import {
   DRAG_THRESHOLD_PX,
   UncoveredPanel,
@@ -103,6 +120,11 @@ interface MonthBlockProps {
   onOpenShift: (block: WeekBlock) => void
   onMove: (block: WeekBlock) => void
   onRemove: (block: WeekBlock) => void
+  /** D-05: pide cambiar el color del cliente (abre la confirmación). */
+  onColorRequest: (request: ClientColorRequest) => void
+  /** D-06: «Eliminar turno», solo la dirección (OD-22). */
+  canDelete: boolean
+  onDelete: (block: WeekBlock) => void
 }
 
 function MonthBlock({
@@ -120,6 +142,9 @@ function MonthBlock({
   onOpenShift,
   onMove,
   onRemove,
+  onColorRequest,
+  canDelete,
+  onDelete,
 }: MonthBlockProps) {
   const origin = useRef<{ x: number; y: number; active: boolean } | null>(null)
   const justDragged = useRef(false)
@@ -252,6 +277,23 @@ function MonthBlock({
                 <DropdownMenuItem onSelect={() => onRemove(block)}>
                   Quitar de este turno
                 </DropdownMenuItem>
+                <ClientColorSubmenu
+                  clientId={block.clientId}
+                  clientName={block.clientName}
+                  currentIndex={block.colorIndex}
+                  onRequest={onColorRequest}
+                />
+                {canDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onSelect={() => onDelete(block)}
+                    >
+                      Eliminar turno
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </span>
@@ -282,6 +324,7 @@ function CalendarioMonthEditor({
   allShifts,
   canEdit,
   gaps = [],
+  notes,
 }: {
   profileId: string
   personName: string
@@ -291,11 +334,16 @@ function CalendarioMonthEditor({
   canEdit: boolean
   /** Fijos sin asignar del mes (OH-06); se dibujan con borde punteado. */
   gaps?: FixedGap[]
+  /**
+   * D-08: observaciones del mes. Si viene (aunque sea vacío) se muestran con el
+   * botón «+» en cada día; quien no las puede ver no la pasa.
+   */
+  notes?: CalendarNote[]
 }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   // Borrar turnos es solo de la dirección (P27): sin eso, «Solo a» con turno nuevo no se puede deshacer.
-  const canDeleteShifts = useAuth().roles.includes('owner')
+  const canDeleteShifts = canOwnerDelete(useAuth())
   const openPath = (path: string) => void navigate(path)
 
   const blockById = useMemo(
@@ -319,6 +367,18 @@ function CalendarioMonthEditor({
   const gapsByDate = useMemo(() => groupGapsByDate(gaps), [gaps])
   const assignEmployee = useAssignEmployeeMutation()
   const [replaceGap, setReplaceGap] = useState<FixedGap | null>(null)
+  // D-05: color del cliente a confirmar. D-06: turno a eliminar (solo la dirección).
+  const [colorRequest, setColorRequest] = useState<ClientColorRequest | null>(
+    null,
+  )
+  const [deleteShiftId, setDeleteShiftId] = useState<string | null>(null)
+  // D-08: alta (`note` nula) o edición de una observación; eliminación a confirmar.
+  const [noteDialog, setNoteDialog] = useState<{
+    date: string
+    note: CalendarNote | null
+  } | null>(null)
+  const [deletingNote, setDeletingNote] = useState<CalendarNote | null>(null)
+  const notesByDate = useMemo(() => groupNotesByDate(notes ?? []), [notes])
 
   const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState<PendingChange | null>(null)
@@ -338,6 +398,9 @@ function CalendarioMonthEditor({
   function refresh() {
     void queryClient.invalidateQueries({ queryKey: planningKeys.all })
     void queryClient.invalidateQueries({ queryKey: shiftsKeys.all })
+    // D-07: cambiar el horario de un turno finalizado recalcula horas y asistencia.
+    void queryClient.invalidateQueries({ queryKey: ['attendance'] })
+    void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
   }
 
   async function execute(
@@ -399,6 +462,10 @@ function CalendarioMonthEditor({
     resizeOnly: boolean,
   ) {
     if (!hasScheduleChanged(block, next)) {
+      return
+    }
+    if (completedDateChangeBlocked(block, next)) {
+      toast.error(COMPLETED_DATE_MESSAGE)
       return
     }
     if (decideScope(block.assignedCount) === 'whole') {
@@ -569,8 +636,38 @@ function CalendarioMonthEditor({
         busy={busy}
         onReplace={setReplaceGap}
         onAssign={(target) => void assignGap(target)}
+        canDelete={canDeleteShifts}
+        onDelete={(target) => setDeleteShiftId(target.shiftId)}
       />
     ))
+  }
+
+  /** D-08: las observaciones del día y el «+» para agregar otra. */
+  function renderNotes(date: string) {
+    if (!notes) {
+      return null
+    }
+    return (
+      <>
+        {(notesByDate.get(date) ?? []).map((note) => (
+          <CalendarNoteCell
+            key={note.id}
+            profileId={profileId}
+            note={note}
+            onEdit={(target) => setNoteDialog({ date, note: target })}
+            onDelete={setDeletingNote}
+          />
+        ))}
+        <button
+          type="button"
+          aria-label={`Agregar una observación el ${formatDateOnly(date)}`}
+          className="flex items-center justify-center rounded-sm border border-dashed border-neutral-400 py-0.5 text-neutral-500 hover:bg-neutral-100 max-md:min-h-6 print:hidden"
+          onClick={() => setNoteDialog({ date, note: null })}
+        >
+          <Plus className="size-3" />
+        </button>
+      </>
+    )
   }
 
   function renderDay(day: CronogramaDay) {
@@ -621,6 +718,11 @@ function CalendarioMonthEditor({
                   {renderGaps(dayGaps)}
                 </div>
               )}
+              {day.inMonth && notes && (
+                <div className="flex min-w-0 flex-col gap-1.5 p-0.5 text-black">
+                  {renderNotes(day.date)}
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex min-w-0 flex-1 flex-col gap-1.5 p-0.5">
@@ -653,10 +755,14 @@ function CalendarioMonthEditor({
                     }
                     onMove={setMoveDialog}
                     onRemove={setRemoving}
+                    onColorRequest={setColorRequest}
+                    canDelete={canDeleteShifts}
+                    onDelete={(target) => setDeleteShiftId(target.shiftId)}
                   />
                 )
               })}
               {renderGaps(dayGaps)}
+              {day.inMonth && renderNotes(day.date)}
             </div>
           )}
         </div>
@@ -783,6 +889,45 @@ function CalendarioMonthEditor({
           profileId={profileId}
           onClose={() => {
             setReplaceGap(null)
+            refresh()
+          }}
+        />
+      )}
+
+      {noteDialog && (
+        <CalendarNoteDialog
+          profileId={profileId}
+          date={noteDialog.date}
+          note={noteDialog.note}
+          onClose={() => setNoteDialog(null)}
+        />
+      )}
+
+      {deletingNote && (
+        <DeleteCalendarNoteDialog
+          profileId={profileId}
+          note={deletingNote}
+          onClose={() => setDeletingNote(null)}
+        />
+      )}
+
+      <ClientColorConfirmDialog
+        request={colorRequest}
+        onClose={() => setColorRequest(null)}
+      />
+
+      {deleteShiftId && (
+        <OwnerDeleteDialog
+          kind="shift"
+          id={deleteShiftId}
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setDeleteShiftId(null)
+            }
+          }}
+          onDeleted={() => {
+            setDeleteShiftId(null)
             refresh()
           }}
         />

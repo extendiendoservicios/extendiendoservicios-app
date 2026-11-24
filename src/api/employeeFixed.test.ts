@@ -58,6 +58,33 @@ describe('employeeFixed', () => {
     expect(gaps[0]?.detail?.conflictShiftId).toBe('sx')
   })
 
+  it('un motivo que la base ya no devuelve (SHIFT_FULL, D-01) cae en «sin asignar»', async () => {
+    rpcMock.mockResolvedValue({
+      data: [
+        {
+          shift_id: 's1',
+          shift_date: '2026-11-10',
+          start_time: '08:00:00',
+          end_time: '12:00:00',
+          open_ended: false,
+          client_id: 'c1',
+          client_name: 'Cliente',
+          site_id: 'si1',
+          site_name: 'Sede',
+          service_id: 'sv1',
+          service_name: 'Limpieza',
+          calendar_color: 4,
+          reason: 'SHIFT_FULL',
+          detail: null,
+          shift_status: 'scheduled',
+        },
+      ],
+      error: null,
+    })
+    const gaps = await fetchEmployeeFixedGaps('p1', '2026-11-01', '2026-11-30')
+    expect(gaps[0]?.reason).toBe('NOT_ASSIGNED')
+  })
+
   it('el patrón deja weeks_of_month vacío como null (todas las semanas)', async () => {
     rpcMock.mockResolvedValue({
       data: [

@@ -376,6 +376,25 @@ export async function setClientStatus(
   return mapClientRow(data)
 }
 
+/**
+ * P31.3 (D-05): el color del cliente es la única fuente del color en todos los
+ * calendarios. Solo toca `calendar_color` (0–11); el servidor deja cambiarlo a
+ * dueño y administradores (RLS de `clients`).
+ */
+export async function setClientCalendarColor(
+  id: string,
+  calendarColor: number,
+  updatedBy: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('clients')
+    .update({ calendar_color: calendarColor, updated_by: updatedBy })
+    .eq('id', id)
+  if (error) {
+    throw mapWriteError(error)
+  }
+}
+
 // -------------------------------------------------------------------------
 // 3. Contactos (CLIENT-005)
 // -------------------------------------------------------------------------

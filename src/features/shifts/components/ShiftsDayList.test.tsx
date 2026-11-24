@@ -9,13 +9,17 @@ import { ShiftsDayList } from './ShiftsDayList'
  * respaldo con alto máximo. jsdom no calcula el layout: se verifican las
  * clases y la estructura que lo producen.
  */
-const { desktop } = vi.hoisted(() => ({ desktop: { value: true } }))
+const { desktop, auth, shiftState } = vi.hoisted(() => ({
+  desktop: { value: true },
+  auth: { roles: ['owner'] as string[] },
+  shiftState: { status: 'scheduled' },
+}))
 
 vi.mock('@/hooks/useMediaQuery', () => ({
   useMediaQuery: () => desktop.value,
 }))
 vi.mock('@/features/auth/AuthProvider', () => ({
-  useAuth: () => ({ roles: ['owner'], capabilities: [] }),
+  useAuth: () => ({ roles: auth.roles, capabilities: [] }),
 }))
 vi.mock('@/features/employees/employeeLeaveStatus', () => ({
   todayInBuenosAires: () => '2026-10-20',
@@ -60,8 +64,8 @@ vi.mock('@/features/shifts/queries', () => ({
         startTime: '08:00:00',
         endTime: '12:00:00',
         requiredStaff: 2,
-        status: 'scheduled',
-        displayStatus: 'scheduled',
+        status: shiftState.status,
+        displayStatus: shiftState.status,
         openEnded: false,
         assignedCount: 1,
         noCheckoutCount: 0,
@@ -70,6 +74,12 @@ vi.mock('@/features/shifts/queries', () => ({
   }),
   useShiftPeopleByDateQuery: () => ({ data: undefined }),
   useCancelShiftMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}))
+
+vi.mock('@/features/ownerDelete/components/OwnerDeleteDialog', () => ({
+  OwnerDeleteDialog: ({ id, kind }: { id: string; kind: string }) => (
+    <div data-testid="owner-delete" data-id={id} data-kind={kind} />
+  ),
 }))
 
 function renderList(url = '/admin/planificacion?vista=dia') {
@@ -187,5 +197,57 @@ describe('ShiftsDayList: filtros, color por estado y licencias (P27.5)', () => {
     expect(
       screen.getByRole('button', { name: 'Imprimir calendario' }),
     ).toBeInTheDocument()
+  })
+})
+
+describe('ShiftsDayList: eliminar y editar un turno finalizado (D-06, D-07)', () => {
+  beforeEach(() => {
+    desktop.value = true
+    auth.roles = ['owner']
+    shiftState.status = 'scheduled'
+    window.localStorage.clear()
+  })
+
+  it('D-06: la dirección ve «Eliminar» en la fila y abre el diálogo del turno', () => {
+    renderList()
+    fireEvent.click(screen.getByRole('button', { name: 'Eliminar' }))
+    const dialog = screen.getByTestId('owner-delete')
+    expect(dialog).toHaveAttribute('data-kind', 'shift')
+    expect(dialog).toHaveAttribute('data-id', 's1')
+  })
+
+  it('D-06: un administrador no ve «Eliminar» (OD-22: solo la dirección)', () => {
+    auth.roles = ['admin']
+    renderList()
+    expect(screen.queryByRole('button', { name: 'Eliminar' })).toBeNull()
+  })
+
+  it('D-06: en celular «Eliminar» es un botón con texto', () => {
+    desktop.value = false
+    renderList()
+    expect(screen.getByRole('button', { name: 'Eliminar' })).toHaveTextContent(
+      'Eliminar',
+    )
+  })
+
+  it('D-07: un turno finalizado ofrece «Editar» (el horario) a la dirección y a la administración', () => {
+    shiftState.status = 'completed'
+    for (const roles of [['owner'], ['admin']]) {
+      auth.roles = roles
+      const { unmount } = renderList()
+      expect(screen.getByRole('link', { name: 'Editar' })).toHaveAttribute(
+        'href',
+        '/admin/turnos/s1/editar',
+      )
+      // Un turno finalizado no se cancela.
+      expect(screen.queryByRole('button', { name: 'Cancelar' })).toBeNull()
+      unmount()
+    }
+  })
+
+  it('un turno cancelado no ofrece «Editar»', () => {
+    shiftState.status = 'cancelled'
+    renderList()
+    expect(screen.queryByRole('link', { name: 'Editar' })).toBeNull()
   })
 })
