@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { UpcomingRow } from '@/features/employee/components/UpcomingRow'
 import { ServiceCard } from '@/features/employee/components/ServiceCard'
 import { formatCalendarDate } from '@/lib/format'
+import { upcomingBounds } from '@/features/upcomingDays/dates'
 import { isRelevantChange, type MyDayAssignment } from '@/api/myDay'
 import { isNotifiable } from '@/features/employee/notifyCandidates'
 import {
@@ -76,7 +77,9 @@ export default function TodayPage() {
   }
 
   const today = data.filter((a) => a.isToday)
-  const upcoming = data.filter((a) => !a.isToday)
+  // P32 D-08: el atajo muestra solo los servicios de mañana; el resto, en «Próximos días».
+  const tomorrow = upcomingBounds().min
+  const upcoming = data.filter((a) => !a.isToday && a.shiftDate === tomorrow)
   const changes = data.filter(isRelevantChange)
   const featured = pickFeatured(today)
   const others = today.filter((a) => a.assignmentId !== featured?.assignmentId)
@@ -126,19 +129,27 @@ export default function TodayPage() {
         </>
       )}
 
-      {upcoming.length > 0 && (
-        <div className="mt-2 flex flex-col gap-2">
-          <p className="text-[11px] font-semibold tracking-[0.4px] text-text-3 uppercase">
-            Próximos días
-          </p>
-          {upcoming.map((assignment) => (
-            <UpcomingRow
-              key={assignment.assignmentId}
-              assignment={assignment}
-            />
-          ))}
-        </div>
-      )}
+      <div className="mt-2 flex flex-col gap-2">
+        {upcoming.length > 0 && (
+          <>
+            <p className="text-[11px] font-semibold tracking-[0.4px] text-text-3 uppercase">
+              Mañana
+            </p>
+            {upcoming.map((assignment) => (
+              <UpcomingRow
+                key={assignment.assignmentId}
+                assignment={assignment}
+              />
+            ))}
+          </>
+        )}
+        <Link
+          to="/app/proximos"
+          className="flex min-h-11 items-center justify-center rounded-lg border border-border bg-surface px-3 text-[12.5px] font-semibold text-primary-800"
+        >
+          Ver próximos días
+        </Link>
+      </div>
     </div>
   )
 }

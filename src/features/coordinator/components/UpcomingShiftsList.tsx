@@ -1,24 +1,33 @@
 import { useState } from 'react'
 import { CalendarX } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/EmptyState'
-import { useSupervisorUpcomingQuery } from '@/api/supervisorToday'
-import { formatCalendarDate } from '@/lib/format'
-import { groupShiftsByDay } from '../shifts'
+import type { TodayShift } from '@/api/supervisorToday'
+import { dayLabel } from '@/features/upcomingDays/dates'
+import { splitTodayShifts } from '../shifts'
 import { ShiftsBlock } from './TodayShiftsList'
 
 /**
- * Lista de SUP-10 · Próximos días (P31, D-09, OI-07): los turnos de los 7 días
- * siguientes, agrupados por día y, dentro de cada día, en «Mis sedes» y «Otras
- * sedes» igual que «Hoy». Es solo de consulta: sin «Supervisar» ni acciones,
- * el turno se toma el día. El buscador por cliente o sede (uno solo, arriba)
- * filtra «Otras sedes» de todos los días, como en «Hoy».
+ * Detalle del día elegido en SUP-10 · Próximos días (P32, D-06): los turnos de
+ * ese día en «Mis sedes» y «Otras sedes», con el mismo armado de «Hoy» y el
+ * buscador por cliente o sede en «Otras sedes». Es solo de consulta: sin
+ * «Supervisar» ni acciones, el turno se toma el día. Recibe los turnos ya
+ * cargados (los del mes) y se queda con los del día `date`.
  */
-export function UpcomingShiftsList() {
-  const { data, isLoading, isError } = useSupervisorUpcomingQuery()
+export function UpcomingShiftsList({
+  date,
+  shifts,
+  isLoading,
+  isError,
+}: {
+  /** Día elegido, `"YYYY-MM-DD"`. */
+  date: string
+  shifts: TodayShift[] | undefined
+  isLoading: boolean
+  isError: boolean
+}) {
   const [search, setSearch] = useState('')
-  // Solo para rotular y ordenar: ninguna regla depende de la hora del dispositivo.
+  // Solo para ordenar: ninguna regla depende de la hora del dispositivo.
   const [nowMs] = useState(() => Date.now())
 
   if (isLoading) {
@@ -26,7 +35,7 @@ export function UpcomingShiftsList() {
       <p className="p-4 text-center text-[12.5px] text-text-3">Cargando…</p>
     )
   }
-  if (isError || !data) {
+  if (isError || !shifts) {
     return (
       <Alert variant="crit">
         <AlertDescription>
@@ -35,64 +44,43 @@ export function UpcomingShiftsList() {
       </Alert>
     )
   }
-  if (data.length === 0) {
+
+  const ofDay = shifts.filter((shift) => shift.shiftDate === date)
+  if (ofDay.length === 0) {
     return (
       <EmptyState
         icon={CalendarX}
-        title="No hay turnos en los próximos días"
-        description="Cuando haya turnos en los próximos 7 días, los vas a ver acá."
+        title={`No hay turnos el ${dayLabel(date)}`}
+        description="Elegí otro día del calendario para ver sus turnos."
         className="mt-2"
       />
     )
   }
 
-  const days = groupShiftsByDay(data, search, nowMs)
+  const { mine, others } = splitTodayShifts(ofDay, search, nowMs)
   const searching = search.trim() !== ''
 
   return (
     <div className="flex flex-col gap-5">
-      <Input
-        mobile
-        type="search"
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
-        placeholder="Buscar por cliente o sede…"
-        aria-label="Buscar por cliente o sede"
+      <ShiftsBlock
+        title="Mis sedes"
+        shifts={mine}
+        nowMs={nowMs}
+        emptyText="No hay turnos en tus sedes preferenciales."
+        consultOnly
       />
-      {days.length === 0 && (
-        <p className="py-2 text-center text-[12.5px] text-text-3">
-          No encontramos turnos con esa búsqueda.
-        </p>
-      )}
-      {days.map((day) => (
-        <section
-          key={day.date}
-          aria-label={formatCalendarDate(day.date)}
-          className="flex flex-col gap-3"
-        >
-          <h2 className="text-[14px] font-bold text-text">
-            {formatCalendarDate(day.date)}
-          </h2>
-          <ShiftsBlock
-            title="Mis sedes"
-            shifts={day.mine}
-            nowMs={nowMs}
-            emptyText="No hay turnos en tus sedes preferenciales."
-            consultOnly
-          />
-          <ShiftsBlock
-            title="Otras sedes"
-            shifts={day.others}
-            nowMs={nowMs}
-            emptyText={
-              searching
-                ? 'No encontramos turnos con esa búsqueda.'
-                : 'No hay turnos en otras sedes.'
-            }
-            consultOnly
-          />
-        </section>
-      ))}
+      <ShiftsBlock
+        title="Otras sedes"
+        shifts={others}
+        nowMs={nowMs}
+        emptyText={
+          searching
+            ? 'No encontramos turnos con esa búsqueda.'
+            : 'No hay turnos en otras sedes.'
+        }
+        search={{ value: search, onChange: setSearch }}
+        consultOnly
+      />
     </div>
   )
 }

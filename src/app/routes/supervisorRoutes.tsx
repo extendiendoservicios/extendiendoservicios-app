@@ -74,7 +74,9 @@ export const supervisorRoutes: RouteObject[] = [
     handle: {
       screenId: 'SUP-10',
       title: 'Próximos días',
-      subtitle: 'Los turnos de los próximos 7 días',
+      subtitle: 'Los turnos de los próximos días',
+      keepTabbar: true,
+      activeTab: '/sup/mas',
     },
   },
   {

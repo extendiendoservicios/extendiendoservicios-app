@@ -272,6 +272,33 @@ export async function fetchMyDay(): Promise<MyDayAssignment[]> {
   return (data as unknown as MyDayRawRow[]).map(mapMyDayRow)
 }
 
+/**
+ * P32 D-07 · Mis servicios de un rango de fechas (`get_my_services`): mismas
+ * filas y columnas que `v_my_day`, así que el mapeo es el mismo. El servidor
+ * recorta el rango a mañana..hoy + 60 (Buenos Aires) y rechaza `from > to` con
+ * `INVALID_DATE_RANGE`.
+ */
+export async function fetchMyServices(
+  from: string,
+  to: string,
+): Promise<MyDayAssignment[]> {
+  const { data, error } = await supabase.rpc('get_my_services', {
+    p_from: from,
+    p_to: to,
+  })
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data as unknown as MyDayRawRow[])
+    .map(mapMyDayRow)
+    .sort(
+      (a, b) =>
+        a.shiftDate.localeCompare(b.shiftDate) ||
+        a.startTime.localeCompare(b.startTime),
+    )
+}
+
 /** Tamaño de página del historial del empleado (AJ4-06: de a 20). */
 export const MY_HISTORY_PAGE_SIZE = 20
 

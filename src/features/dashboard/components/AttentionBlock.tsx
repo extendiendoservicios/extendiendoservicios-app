@@ -8,6 +8,7 @@ import { formatDistanceM } from '@/lib/geo'
 import type { AttendanceBoardRow } from '@/api/attendance'
 import { formatShiftRange } from '@/features/shifts/openEnded'
 import { shiftFranjaLabel } from '../labels'
+import { isNegativeAttention } from '../attention'
 import type {
   AttentionItem,
   AttentionKind,
@@ -18,7 +19,7 @@ import { RowActions } from './RowActions'
 /** Título de cada categoría (`05` línea 36) y gravedad visual (`07` sección 3). */
 const KIND_META: Record<
   AttentionKind,
-  { title: string; severity: 'crit' | 'warn' }
+  { title: string; severity: 'crit' | 'warn' | 'ok' }
 > = {
   noRecord: { title: 'no registró el inicio', severity: 'crit' },
   noCheckout: {
@@ -38,6 +39,16 @@ const KIND_META: Record<
   },
   // OG-03: el texto lleva los minutos avisados, se arma en `describeItem`.
   delayNotified: { title: 'avisó una demora', severity: 'warn' },
+  // D-09/D-10: el texto y el tono (verde o amarillo) se arman en `describeItem` / `itemSeverity`.
+  onTheWay: { title: 'En camino', severity: 'ok' },
+}
+
+/** `onTheWay` es verde (informativo) o amarillo según `item.tone`; el resto, fijo por categoría. */
+function itemSeverity(item: AttentionItem): 'crit' | 'warn' | 'ok' {
+  if (item.kind === 'onTheWay') {
+    return item.tone === 'warn' ? 'warn' : 'ok'
+  }
+  return KIND_META[item.kind].severity
 }
 
 /**
@@ -73,6 +84,16 @@ function describeItem(item: AttentionItem): { title: string; detail: string } {
       item.kind === 'delayNotified' && row.lastNoticeReasonText
         ? ` · «${row.lastNoticeReasonText}»`
         : ''
+    if (item.kind === 'onTheWay') {
+      // D-09/D-10: «En camino · llega 08:05» (hora de Buenos Aires) o «En camino».
+      const arrival = item.estimatedArrivalAt
+        ? ` · llega ${formatTime(item.estimatedArrivalAt)}`
+        : ''
+      return {
+        title: `${name} · En camino${arrival}`,
+        detail: `${row.clientName} · ${row.siteName} · ${formatShiftRange(row.startTime, row.endTime, row.openEnded)}`,
+      }
+    }
     return {
       title: `${name} ${item.kind === 'delayNotified' ? delayTitle : meta.title}`,
       detail: `${row.clientName} · ${row.siteName} · ${formatShiftRange(row.startTime, row.endTime, row.openEnded)}${since}${outside}${reason}`,
@@ -129,6 +150,7 @@ function AttentionBlock({
   const [isExpanded, setIsExpanded] = useState(false)
   const [showClosed, setShowClosed] = useState(false)
   const isCollapsible = !isDesktop && items.length > MOBILE_VISIBLE_ITEMS
+  const negativeCount = items.filter(isNegativeAttention).length
   const visibleItems =
     isCollapsible && !isExpanded ? items.slice(0, MOBILE_VISIBLE_ITEMS) : items
 
@@ -146,9 +168,9 @@ function AttentionBlock({
         <h2 className="text-[15px] font-semibold text-text">
           Requiere atención
         </h2>
-        {items.length > 0 && (
+        {negativeCount > 0 && (
           <span className="rounded-full bg-danger-bg px-2 py-px text-[11.5px] font-semibold text-danger-800">
-            {items.length}
+            {negativeCount}
           </span>
         )}
       </div>
@@ -165,7 +187,7 @@ function AttentionBlock({
           <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {visibleItems.map((item) => {
               const { title, detail } = describeItem(item)
-              const severity = KIND_META[item.kind].severity
+              const severity = itemSeverity(item)
               const phone = item.assignment
                 ? phones?.get(item.assignment.employeeId)
                 : undefined
@@ -180,23 +202,31 @@ function AttentionBlock({
                   key={item.key}
                   className={cn(
                     'flex flex-col gap-2 rounded-lg border p-3',
-                    severity === 'crit'
-                      ? 'border-danger-border bg-danger-bg'
-                      : 'border-warning-border bg-warning-bg',
+                    severity === 'crit' && 'border-danger-border bg-danger-bg',
+                    severity === 'warn' &&
+                      'border-warning-border bg-warning-bg',
+                    severity === 'ok' && 'border-success/40 bg-success-bg',
                   )}
                 >
                   <div
                     className={cn(
                       'flex items-start gap-2',
-                      severity === 'crit'
-                        ? 'text-danger-800'
-                        : 'text-warning-800',
+                      severity === 'crit' && 'text-danger-800',
+                      severity === 'warn' && 'text-warning-800',
+                      severity === 'ok' && 'text-success-800',
                     )}
                   >
-                    <AlertTriangle
-                      aria-hidden="true"
-                      className="mt-[2px] size-4 shrink-0"
-                    />
+                    {severity === 'ok' ? (
+                      <CheckCircle2
+                        aria-hidden="true"
+                        className="mt-[2px] size-4 shrink-0"
+                      />
+                    ) : (
+                      <AlertTriangle
+                        aria-hidden="true"
+                        className="mt-[2px] size-4 shrink-0"
+                      />
+                    )}
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-semibold">{title}</p>
                       <p className="text-[12px] text-text-2">{detail}</p>

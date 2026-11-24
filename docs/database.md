@@ -3131,3 +3131,21 @@ Una sola migración, `0088_p31_1_observaciones_23_nov.sql`. Agrega tres valores 
 - **D-14 motivos de ubicación**: `geo_unvalidated_reason` suma `permission_denied` (sin permiso), `position_unavailable` (sin señal o posición no disponible) y `timeout` (tiempo agotado). Cambian de firma (drop + create) `record_check_in`, `record_check_out`, `take_supervision` y `complete_supervision`: reciben `p_geo_reason text default null` al final. Solo se usa si no hay coordenadas (con coordenadas se ignora); `null` o vacío = `no_location` como antes; otro texto, `INVALID_GEO_REASON`. Las firmas viejas ya no existen.
 - **D-05 color**: sin DDL. `employee_week_boards.blocks[].color_index` queda sin uso (se sigue aceptando por compatibilidad). Dueño y administradores ya actualizan `clients.calendar_color` (política `clients_write_admin`): no hace falta una RPC.
 - Tests: `0088_p31_1_huecos_y_franja`, `0088_p31_1_notas_y_proximos`, `0088_p31_1_supervision_y_posicion`, `0088_p31_1_motivos_de_ubicacion`; ajustes en `0026`, `0029`, `0052`, `0063` (jornada y supervisión libre: firmas nuevas) y `0087` (D-01).
+
+## Migración 0089 (P32.1): observaciones de la dirección del 24 nov (OJ-01, OJ-03; D-01, D-02, D-05 a D-07)
+
+Una sola migración, `0089_p32_1_observaciones_24_nov.sql`. Sin tablas ni columnas nuevas.
+
+- **OJ-01 recarga de tareas en lote.** `app.outdated_template_shifts(p_client_id, p_site_id)` (interna, `setof uuid`): turnos del cliente `scheduled`/`assigned`, no dados de baja y con `starts_at > now()`. Con sede: los de esa sede (`SITE_NOT_FOUND` si no es del cliente; `CLIENT_NOT_FOUND` si el cliente no existe). Sin sede: los de las sedes cuya plantilla vigente (`app.checklist_template_for`) es la del cliente. «Desactualizado» = `checklist_template_id` distinto de la vigente, o tareas que no coinciden con los ítems no borrados (cantidad, orden por `position`, título, descripción, obligatoriedad); se saltea el turno con alguna tarea distinta de `pending`. Dos RPC públicas, `security definer`, `edit_checklists`: `count_outdated_template_shifts(p_client_id uuid, p_site_id uuid default null) returns integer` y `reload_template_shift_tasks(p_client_id uuid, p_site_id uuid default null) returns integer` (aplica `app.copy_checklist_to_shift` a cada turno y devuelve cuántos actualizó).
+- **OJ-03 coordinador.** `app.supervisor_shifts_between(p_from, p_to)` (mismas columnas y reglas que `app.supervisor_upcoming` de 0088, sin recorte); `app.supervisor_upcoming()` pasa a llamarla con mañana a hoy + 7 (misma firma y columnas; `v_supervisor_upcoming` no cambia). RPC `get_supervisor_shifts(p_from date, p_to date)`: solo rol supervisor (`FORBIDDEN`), `INVALID_DATE_RANGE` si hay fecha nula o `p_from > p_to`, y **recorta en silencio** a mañana .. hoy + 60 (Argentina); sin intersección devuelve cero filas.
+- **OJ-03 empleado.** Vista interna `app.my_services_base` (`security_invoker`): la consulta de `v_my_day` sin filtro de fechas (solo asignaciones vigentes propias). `v_my_day` queda como `select * from app.my_services_base` de hoy a hoy + 7 (mismas columnas y filas que en 0086; `create or replace`). RPC `get_my_services(p_from date, p_to date) returns setof v_my_day` (`security invoker`, la RLS sigue valiendo), mismo recorte (mañana .. hoy + 60) y mismo error de rango; orden por fecha, hora efectiva de inicio y asignación.
+- Efecto en los tipos: como `v_my_day` ahora lee de otra vista, `gen types` ya no genera las `Relationships` de `v_my_day` hacia otras tablas (y el resto de las tablas dejan de listar `v_my_day` en las suyas).
+- Tests: `0089_p32_1_observaciones_24_nov`.
+
+## Migración 0090 (P32.1b): cerrar el aviso «En camino» (D-09, OG-02)
+
+Una sola migración, `0090_p32_1b_cerrar_en_camino.sql`. Sin tablas ni columnas nuevas.
+
+- `attention_dismissals_kind_check` admite `onTheWay` además de los ocho tipos de 0085 (drop + add). La regla de `attention_dismissals_assignment_check` no cambia: `onTheWay` exige asignación, como `late` y `delayNotified` (solo `uncovered` va sin ella).
+- `dismiss_attention(p_kind, p_shift_id, p_assignment_id)` se redefine con la lista nueva de tipos; el resto (permisos owner/admin, errores, idempotencia) queda igual. Ninguna otra función ni vista lista los tipos.
+- Tests: `0090_p32_1b_cerrar_en_camino`.

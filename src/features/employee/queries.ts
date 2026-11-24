@@ -32,6 +32,9 @@ const MY_DAY_POLLING_MS = 30_000
 export const employeeKeys = {
   all: ['employee'] as const,
   myDay: () => [...employeeKeys.all, 'myDay'] as const,
+  /** P32 D-07: mis servicios de un mes (`month` = "YYYY-MM"). */
+  services: (month: string) =>
+    [...employeeKeys.all, 'services', month] as const,
   history: () => [...employeeKeys.all, 'history'] as const,
   historyItem: (assignmentId: string) =>
     [...employeeKeys.all, 'historyItem', assignmentId] as const,
@@ -47,6 +50,20 @@ export function useMyDayQuery() {
     queryKey: employeeKeys.myDay(),
     queryFn: myDayApi.fetchMyDay,
     refetchInterval: MY_DAY_POLLING_MS,
+  })
+}
+
+/** P32 D-07: mis servicios del rango visible de un mes del minicalendario (el servidor recorta a mañana..hoy + 60). */
+export function useMyServicesMonthQuery(
+  month: string,
+  from: string,
+  to: string,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: employeeKeys.services(month),
+    queryFn: () => myDayApi.fetchMyServices(from, to),
+    enabled,
   })
 }
 

@@ -7,6 +7,28 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.33.0] - 2026-11-24
+
+Observaciones de la dirección del 24 nov (P32). Migraciones 0089 y 0090.
+
+### Agregado
+
+- Plantillas de tareas: si hay turnos próximos con tareas distintas a las de la plantilla, aparece un aviso con la cantidad y el botón «Actualizar turnos», que los pone al día de una sola vez. Solo toca turnos que todavía no empezaron y saltea los que ya tienen tareas marcadas.
+- Celular: «Próximos días» ahora tiene un minicalendario para elegir cualquier día, desde mañana hasta dentro de 60 días, y ver su detalle. Vale para coordinadores y para empleados.
+- Empleados (celular): pantalla nueva «Próximos días» en Más, con sus servicios del día elegido.
+- Resumen: los avisos «En camino» aparecen en «Requiere atención», en verde si la persona llega a horario (o no indicó minutos) y en amarillo si llega tarde. Se pueden cerrar con la ✕.
+
+### Cambiado
+
+- Plantillas de tareas: el selector «Ámbito» pasa a llamarse «Sede», y la plantilla del cliente se elige como «Todas las sedes (plantilla del cliente)».
+- Empleados (celular): en «Hoy», la sección de próximos días muestra solo «Mañana» y un enlace «Ver próximos días».
+- Celular: la barra inferior se sigue viendo en «Próximos días», con «Más» resaltado.
+
+### Base de datos (0089, 0090)
+
+- 0089: `count_outdated_template_shifts` y `reload_template_shift_tasks` para actualizar turnos en lote; `get_supervisor_shifts` y `get_my_services` (con `app.my_services_base`) para consultar un día cualquiera hasta 60 días. `v_my_day` y `v_supervisor_upcoming` no cambian de resultado.
+- 0090: `attention_dismissals` y `dismiss_attention` admiten la categoría `onTheWay`.
+
 ## [0.32.0] - 2026-11-24
 
 Observaciones de la dirección del 23 nov (P31). Migración 0088.

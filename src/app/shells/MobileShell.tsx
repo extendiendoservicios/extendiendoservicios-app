@@ -45,7 +45,9 @@ export type MobileShellVariant = 'employee' | 'supervisor'
  * - Cualquier otra ruta es una subpágina: navbar con "volver" (M04/M09/M16)
  *   y sin tabbar — para sus acciones existe `ActionBar`
  *   (`src/app/shells/ActionBar.tsx`), que las pantallas reales agregan por
- *   su cuenta.
+ *   su cuenta. Excepción: una subpágina de consulta sin `ActionBar` puede
+ *   marcar `keepTabbar` en su `handle` (con `activeTab` para resaltar un
+ *   ítem): conserva la flecha de volver y suma la tabbar.
  *
  * Por debajo de 768 px ocupa todo el ancho (P17.8: en un Xiaomi de ~500 px
  * la columna de 480 px dejaba franjas a los costados). Desde 768 px se
@@ -71,6 +73,7 @@ export function MobileShell({ variant }: { variant: MobileShellVariant }) {
   const tabItems =
     variant === 'employee' ? EMPLOYEE_TABBAR_ITEMS : SUPERVISOR_TABBAR_ITEMS
   const isRootTab = tabItems.some((item) => location.pathname === item.path)
+  const showTabbar = isRootTab || handle?.keepTabbar === true
   const isGreeting = location.pathname === rootPath
 
   return (
@@ -99,7 +102,7 @@ export function MobileShell({ variant }: { variant: MobileShellVariant }) {
           <Outlet />
         </main>
 
-        {isRootTab && (
+        {showTabbar && (
           <>
             {/* Solo en las pestañas raíz, nunca en una subpágina: ahí es
                 donde puede estar `ActionBar` (`src/app/shells/ActionBar.tsx`)
@@ -120,6 +123,7 @@ export function MobileShell({ variant }: { variant: MobileShellVariant }) {
                 variant={variant}
                 items={tabItems}
                 pathname={location.pathname}
+                activeTab={handle?.activeTab}
                 rootPath={rootPath}
               />
             )}
@@ -227,11 +231,14 @@ function MobileTabbar({
   items,
   pathname,
   rootPath,
+  activeTab,
 }: {
   variant: MobileShellVariant
   items: MobileNavItem[]
   pathname: string
   rootPath: '/app' | '/sup'
+  /** Ruta del ítem a resaltar en una subpágina con `keepTabbar`. */
+  activeTab?: string
 }) {
   const navigate = useNavigate()
   // El `Fab` "Fichar" del empleado va antes del último ítem ("Más"): "Hoy ·
@@ -255,7 +262,11 @@ function MobileTabbar({
           )}
           <TabLink
             item={item}
-            active={isMobileNavItemActive(pathname, item, rootPath)}
+            active={
+              activeTab
+                ? item.path === activeTab
+                : isMobileNavItemActive(pathname, item, rootPath)
+            }
           />
         </Fragment>
       ))}

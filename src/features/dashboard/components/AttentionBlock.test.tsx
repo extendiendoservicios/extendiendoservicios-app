@@ -201,4 +201,37 @@ describe('AttentionBlock', () => {
     renderBlock({ items: [] })
     expect(screen.getByText(/está en orden/)).toBeInTheDocument()
   })
+
+  describe('«En camino» (D-09, D-10)', () => {
+    const before = new Date('2026-09-30T07:45:00-03:00')
+    const way = (overrides = {}) =>
+      makeAssignment({
+        displayStatus: 'on_the_way',
+        lastNoticeKind: 'on_the_way',
+        ...overrides,
+      })
+
+    it('verde: muestra «En camino», sin hora, no suma al contador y se puede cerrar con ✕ (0090)', () => {
+      const wayItems = computeAttention(shifts, [way()], before)
+      renderBlock({ items: wayItems, onDismiss: vi.fn() })
+      expect(screen.getByText(/Ana Gómez · En camino$/)).toBeInTheDocument()
+      expect(screen.queryByText('1')).toBeNull()
+      expect(
+        screen.getByRole('button', { name: /Cerrar aviso/ }),
+      ).toBeInTheDocument()
+    })
+
+    it('amarilla: muestra la hora estimada de Buenos Aires y suma al contador', () => {
+      const wayItems = computeAttention(
+        shifts,
+        [way({ lastNoticeEstimatedArrivalAt: '2026-09-30T08:05:00-03:00' })],
+        before,
+      )
+      renderBlock({ items: wayItems })
+      expect(
+        screen.getByText('Ana Gómez · En camino · llega 08:05'),
+      ).toBeInTheDocument()
+      expect(screen.getByText('1')).toBeInTheDocument()
+    })
+  })
 })

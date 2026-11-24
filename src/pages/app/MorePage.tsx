@@ -2,6 +2,7 @@ import { type ComponentType } from 'react'
 import { Link } from 'react-router'
 import {
   AlertTriangle,
+  CalendarDays,
   Megaphone,
   ChevronRight,
   Download,
@@ -33,6 +34,7 @@ export default function MorePage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="overflow-hidden rounded-xl border border-border bg-surface">
+        <MoreRow to="/app/proximos" icon={CalendarDays} label="Próximos días" />
         <MoreRow to="/perfil" icon={User} label="Mi perfil" />
         <MoreRow
           to="/app/avisar"

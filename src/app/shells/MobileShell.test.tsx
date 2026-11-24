@@ -61,6 +61,16 @@ function renderShell(
             handle: { screenId: 'EMP-X', title: 'Más' },
           },
           {
+            path: '/app/proximos',
+            element: <p>Pantalla Próximos</p>,
+            handle: {
+              screenId: 'EMP-PRO',
+              title: 'Próximos días',
+              keepTabbar: true,
+              activeTab: '/app/mas',
+            },
+          },
+          {
             path: '/app/fichar',
             element: <p>Pantalla Fichar</p>,
             handle: { screenId: 'EMP-04', title: 'Fichar' },
@@ -123,6 +133,28 @@ describe('MobileShell (P17.8)', () => {
       'aria-current',
       'page',
     )
+  })
+
+  it('una subpágina con keepTabbar muestra la tabbar, el Fichar, la flecha y resalta «Más»', () => {
+    renderShell(['/app/mas', '/app/proximos'])
+    const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
+    expect(within(nav).getByRole('button', { name: 'Fichar' })).toBeVisible()
+    expect(within(nav).getByRole('link', { name: 'Más' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(within(nav).getByRole('link', { name: 'Hoy' })).not.toHaveAttribute(
+      'aria-current',
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Volver' }))
+    expect(screen.getByText('Pantalla Más')).toBeInTheDocument()
+  })
+
+  it('una subpágina sin keepTabbar sigue sin tabbar', () => {
+    renderShell(['/app/fichar/consentimiento'])
+    expect(
+      screen.queryByRole('navigation', { name: 'Navegación principal' }),
+    ).not.toBeInTheDocument()
   })
 
   it('barra del coordinador (IS-33): Hoy, Supervisiones, Insumos, Historial y Más, sin Fichar', () => {

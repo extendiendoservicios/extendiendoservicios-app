@@ -234,7 +234,7 @@ test.describe('TASK-008: jerarquía de plantillas (cliente/sede) y copia a los t
         await page.goto(`/admin/tareas?cliente=${client.id}`)
         await expect(
           page.getByText(
-            'Cambiar esta plantilla no modifica los turnos ya generados.',
+            'Los turnos ya generados conservan sus tareas hasta que uses «Actualizar turnos».',
           ),
         ).toBeVisible()
         await addChecklistItem(page, 'Lustrar pisos', { optional: false })

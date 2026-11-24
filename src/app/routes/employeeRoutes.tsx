@@ -96,6 +96,17 @@ export const employeeRoutes: RouteObject[] = [
     },
   },
   {
+    path: 'proximos',
+    ...lazyPage(() => import('@/pages/app/UpcomingDaysPage')),
+    handle: {
+      screenId: 'EMP-PRO',
+      title: 'Próximos días',
+      subtitle: 'Tus servicios de los próximos días',
+      keepTabbar: true,
+      activeTab: '/app/mas',
+    },
+  },
+  {
     path: 'historial',
     ...lazyPage(() => import('@/pages/app/HistoryPage')),
     handle: {

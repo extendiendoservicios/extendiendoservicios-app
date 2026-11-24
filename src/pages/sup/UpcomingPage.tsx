@@ -1,52 +1,62 @@
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useAuth } from '@/features/auth/AuthProvider'
-import { useMyDayQuery } from '@/features/employee/queries'
-import { UpcomingRow } from '@/features/employee/components/UpcomingRow'
+import { useMyServicesMonthQuery } from '@/features/employee/queries'
+import { useSupervisorShiftsMonthQuery } from '@/api/supervisorToday'
 import { UpcomingShiftsList } from '@/features/coordinator/components/UpcomingShiftsList'
+import { UpcomingCalendar } from '@/features/upcomingDays/UpcomingCalendar'
+import { MyServicesOfDay } from '@/features/upcomingDays/MyServicesOfDay'
+import { useUpcomingDay } from '@/features/upcomingDays/useUpcomingDay'
 
 /**
- * SUP-10 · Próximos días (P31, D-09, OI-07): los turnos de mañana a hoy + 7,
- * separados de «Hoy». Quien además es empleado ve arriba sus propios servicios
- * de esos días (los de «Próximos días» de EMP-03). Todo es de consulta.
+ * SUP-10 · Próximos días (P32, D-05 y D-06): minicalendario arriba (abre en
+ * mañana, hasta hoy + 60) y, debajo, los turnos del día elegido. Quien además
+ * es empleado ve primero sus propios servicios de ese día. Todo es de consulta.
  */
 export default function SupervisorUpcomingPage() {
   const auth = useAuth()
   const isEmployee = auth.roles.includes('employee')
+  const day = useUpcomingDay()
+  const shifts = useSupervisorShiftsMonthQuery(day.month, day.from, day.to)
+  const services = useMyServicesMonthQuery(
+    day.month,
+    day.from,
+    day.to,
+    isEmployee,
+  )
+
+  const marked = new Set<string>([
+    ...(shifts.data ?? []).map((shift) => shift.shiftDate),
+    ...(isEmployee ? (services.data ?? []) : []).map(
+      (service) => service.shiftDate,
+    ),
+  ])
 
   return (
     <div className="flex flex-col gap-4">
-      {isEmployee && <MyUpcomingServices />}
-      <UpcomingShiftsList />
+      <UpcomingCalendar
+        month={day.month}
+        onMonthChange={day.setMonth}
+        selected={day.selected}
+        onSelect={day.setSelected}
+        markedDates={marked}
+        min={day.min}
+        max={day.max}
+        loading={shifts.isLoading}
+      />
+      {isEmployee && (
+        <MyServicesOfDay
+          date={day.selected}
+          services={services.data}
+          isLoading={services.isLoading}
+          isError={services.isError}
+          title="Tus servicios"
+        />
+      )}
+      <UpcomingShiftsList
+        date={day.selected}
+        shifts={shifts.data}
+        isLoading={shifts.isLoading}
+        isError={shifts.isError}
+      />
     </div>
-  )
-}
-
-function MyUpcomingServices() {
-  const { data, isError } = useMyDayQuery()
-  if (isError) {
-    return (
-      <Alert variant="crit">
-        <AlertDescription>
-          No pudimos cargar tus servicios. Probá de nuevo en un momento.
-        </AlertDescription>
-      </Alert>
-    )
-  }
-  const upcoming = (data ?? []).filter((assignment) => !assignment.isToday)
-  if (upcoming.length === 0) {
-    return null
-  }
-  return (
-    <section
-      aria-label="Tus servicios de los próximos días"
-      className="flex flex-col gap-2"
-    >
-      <p className="text-[11px] font-semibold tracking-[0.4px] text-text-3 uppercase">
-        Tus servicios
-      </p>
-      {upcoming.map((assignment) => (
-        <UpcomingRow key={assignment.assignmentId} assignment={assignment} />
-      ))}
-    </section>
   )
 }

@@ -736,6 +736,12 @@ móviles funcionan también en escritorio, centradas a 480 px").
   Supervisiones · Historial · Más". Ítem activo en `--primary`. Visible solo
   en la raíz y en los otros ítems del propio tabbar — las subpáginas no
   llevan tabbar (M04/M09/M16 del mockup tampoco lo muestran).
+  **Excepción (P32.3b):** una subpágina de consulta, sin `ActionBar`, puede
+  declarar en su `handle` `keepTabbar: true` y `activeTab: '<ruta del ítem>'`
+  (`RouteHandle`, `src/app/routes/placeholder.tsx`): `MobileShell` muestra
+  la tabbar (y el aviso de actualización) igual que en una pestaña, conserva
+  la flecha de volver y resalta el ítem de `activeTab`. Hoy solo `proximos`
+  de `/app` y `/sup` (resaltan «Más»).
 - **`ActionBar`** (`src/app/shells/ActionBar.tsx`): franja de botones
   apilados para subpáginas (`.m-actions` de `ds.css`, ej. M16 "Volver al
   servicio" / "Registrar salida"). `MobileShell` no la monta: la pantalla

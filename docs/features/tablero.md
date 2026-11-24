@@ -174,3 +174,7 @@ Usa la migración `0085` (P29.1): tabla `attention_dismissals` y RPC `dismiss_at
 - Queda pendiente el «Mi jornada» y «Mis supervisiones» del rol coordinador (la spec lo menciona en OG-07; no estaba en el encargo de P29.3).
 
 Tests: `attention.test.ts` (demoras, cierres), `components/AttentionBlock.test.tsx` (✕, cerrados, reabrir, demora), `myShift.test.ts`.
+
+## P32 (D-09, D-10): «En camino» en «Requiere atención»
+
+Categoría `onTheWay` a partir del último aviso `on_the_way` mientras no haya fichaje de inicio y el turno esté vivo. Verde (informativo) si la hora estimada es anterior o igual al inicio del turno o no hay hora estimada; deja de mostrarse pasada la hora de inicio. Amarilla si la estimada es posterior al inicio; sigue hasta esa hora, igual que «demora avisada». Texto: «En camino · llega 08:05» o «En camino». Las amarillas se ordenan junto a las demás alertas amarillas y las verdes van al final; las verdes no suman al contador del bloque. Pendiente de backend: el cierre (✕) de estos avisos no está habilitado porque `attention_dismissals_kind_check` (0085) no admite `onTheWay`.

@@ -11,6 +11,7 @@ import {
   useCreateClientTemplateMutation,
 } from '@/features/checklists/queries'
 import { ChecklistItemsEditor } from './ChecklistItemsEditor'
+import { OutdatedTemplateShiftsNotice } from './OutdatedTemplateShiftsNotice'
 
 /**
  * ADM-26, ámbito "Plantilla del cliente" (TASK-004, TASK-005, `05` línea
@@ -74,10 +75,16 @@ function ClientTemplateEditor({
       <Alert variant="info">
         <Info />
         <AlertDescription>
-          Cambiar esta plantilla no modifica los turnos ya generados. Para
-          actualizar un turno puntual, usá «Recargar tareas» desde su detalle.
+          Los turnos ya generados conservan sus tareas hasta que uses
+          «Actualizar turnos». También podés recargar un turno suelto desde su
+          detalle.
         </AlertDescription>
       </Alert>
+      <OutdatedTemplateShiftsNotice
+        clientId={clientId}
+        siteId={null}
+        canEdit={canEdit}
+      />
       <ChecklistItemsEditor templateId={template.id} canEdit={canEdit} />
     </div>
   )

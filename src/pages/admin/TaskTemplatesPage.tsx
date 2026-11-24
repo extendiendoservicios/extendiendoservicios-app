@@ -67,7 +67,10 @@ export default function TaskTemplatesPage() {
   }))
 
   const scopeOptions = [
-    { value: CLIENT_TEMPLATE_VALUE, label: 'Plantilla del cliente' },
+    {
+      value: CLIENT_TEMPLATE_VALUE,
+      label: 'Todas las sedes (plantilla del cliente)',
+    },
     ...(sitesQuery.data ?? []).map((site) => ({
       value: site.id,
       label: site.name + (site.status !== 'active' ? ' (inactiva)' : ''),
@@ -91,13 +94,13 @@ export default function TaskTemplatesPage() {
 
         {clientId && (
           <Field>
-            <FieldLabel>Ámbito</FieldLabel>
+            <FieldLabel>Sede</FieldLabel>
             <Combobox
-              aria-label="Ámbito de la plantilla"
+              aria-label="Sede de la plantilla"
               options={scopeOptions}
               value={siteId ?? CLIENT_TEMPLATE_VALUE}
               onValueChange={handleScopeChange}
-              placeholder="Elegí un ámbito"
+              placeholder="Elegí una sede"
               searchPlaceholder="Buscar sede…"
             />
           </Field>

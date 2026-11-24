@@ -38,6 +38,7 @@ vi.mock('@/lib/supabase', () => ({
 
 const {
   fetchMyDay,
+  fetchMyServices,
   fetchMyHistoryPage,
   fetchMyHistoryAssignment,
   isRelevantChange,
@@ -467,5 +468,47 @@ describe('historial del empleado (AJ4-06)', () => {
 
     fromMock.mockReturnValue(makeChainable({ data: null, error: null }))
     expect(await fetchMyHistoryAssignment('zz')).toBeNull()
+  })
+})
+
+describe('fetchMyServices (P32, D-07)', () => {
+  it('llama a get_my_services con el rango, mapea igual que v_my_day y ordena por fecha y hora', async () => {
+    rpcMock.mockResolvedValue({
+      data: [
+        { ...MY_DAY_ROW, assignment_id: 'z', shift_date: '2026-11-26' },
+        {
+          ...MY_DAY_ROW,
+          assignment_id: 'b',
+          shift_date: '2026-11-25',
+          effective_start_time: '14:00:00',
+        },
+        {
+          ...MY_DAY_ROW,
+          assignment_id: 'a',
+          shift_date: '2026-11-25',
+          effective_start_time: '08:00:00',
+        },
+      ],
+      error: null,
+    })
+
+    const items = await fetchMyServices('2026-11-01', '2026-11-30')
+
+    expect(rpcMock).toHaveBeenCalledWith('get_my_services', {
+      p_from: '2026-11-01',
+      p_to: '2026-11-30',
+    })
+    expect(items.map((i) => i.assignmentId)).toEqual(['a', 'b', 'z'])
+    expect(items[0]?.siteName).toBe(MY_DAY_ROW.site_name)
+  })
+
+  it('propaga el error INVALID_DATE_RANGE', async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: { message: 'rango inválido', hint: 'INVALID_DATE_RANGE' },
+    })
+    await expect(fetchMyServices('2026-11-30', '2026-11-01')).rejects.toThrow(
+      'rango inválido',
+    )
   })
 })

@@ -19,14 +19,22 @@ function makeChainable<T>(result: PostgrestResult<T>) {
   return chain
 }
 
-const { fromMock } = vi.hoisted(() => ({ fromMock: vi.fn() }))
+const { fromMock, rpcMock } = vi.hoisted(() => ({
+  fromMock: vi.fn(),
+  rpcMock: vi.fn(),
+}))
 
-vi.mock('@/lib/supabase', () => ({ supabase: { from: fromMock } }))
+vi.mock('@/lib/supabase', () => ({
+  supabase: { from: fromMock, rpc: rpcMock },
+}))
 
-const { fetchSupervisorToday, fetchSupervisorUpcoming } =
+const { fetchSupervisorToday, fetchSupervisorUpcoming, fetchSupervisorShifts } =
   await import('./supervisorToday')
 
-beforeEach(() => fromMock.mockReset())
+beforeEach(() => {
+  fromMock.mockReset()
+  rpcMock.mockReset()
+})
 
 const ROW = {
   shift_id: 'sh1',
@@ -202,5 +210,55 @@ describe('fetchSupervisorUpcoming (D-09)', () => {
       makeChainable({ data: null, error: { message: 'boom' } }),
     )
     await expect(fetchSupervisorUpcoming()).rejects.toBeDefined()
+  })
+})
+
+describe('fetchSupervisorShifts (P32, D-05)', () => {
+  it('llama a get_supervisor_shifts con el rango, mapea igual que «Hoy» y ordena por fecha y hora', async () => {
+    rpcMock.mockResolvedValue({
+      data: [
+        { ...ROW, shift_id: 'tarde', shift_date: '2026-11-26' },
+        {
+          ...ROW,
+          shift_id: 'b',
+          shift_date: '2026-11-25',
+          start_time: '14:00:00',
+        },
+        {
+          ...ROW,
+          shift_id: 'a',
+          shift_date: '2026-11-25',
+          start_time: '08:00:00',
+        },
+      ],
+      error: null,
+    })
+
+    const shifts = await fetchSupervisorShifts('2026-11-01', '2026-11-30')
+
+    expect(rpcMock).toHaveBeenCalledWith('get_supervisor_shifts', {
+      p_from: '2026-11-01',
+      p_to: '2026-11-30',
+    })
+    expect(shifts.map((s) => s.shiftId)).toEqual(['a', 'b', 'tarde'])
+    expect(shifts[0]).toMatchObject({
+      isPriority: true,
+      clientName: 'Limpiadora SRL',
+    })
+  })
+
+  it('sin filas devuelve una lista vacía', async () => {
+    rpcMock.mockResolvedValue({ data: null, error: null })
+    expect(await fetchSupervisorShifts('2026-11-01', '2026-11-30')).toEqual([])
+  })
+
+  it('propaga el error INVALID_DATE_RANGE', async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: { message: 'rango inválido', hint: 'INVALID_DATE_RANGE' },
+    })
+    await expect(
+      fetchSupervisorShifts('2026-11-30', '2026-11-01'),
+    ).rejects.toMatchObject({ hint: 'INVALID_DATE_RANGE' })
   })
 })

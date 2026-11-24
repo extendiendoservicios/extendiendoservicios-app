@@ -10,7 +10,7 @@ import type { AttentionDismissal } from '@/features/dashboard/attention'
  * a dueños y administradores.
  */
 
-/** Tipos de aviso que acepta `dismiss_attention` (`0085`). */
+/** Tipos de aviso que acepta `dismiss_attention` (`0085`, `onTheWay` desde `0090`). */
 export type AttentionDismissKind =
   | 'absence'
   | 'uncovered'
@@ -20,6 +20,7 @@ export type AttentionDismissKind =
   | 'outsideGeo'
   | 'late'
   | 'delayNotified'
+  | 'onTheWay'
 
 interface DismissalRaw {
   id: string

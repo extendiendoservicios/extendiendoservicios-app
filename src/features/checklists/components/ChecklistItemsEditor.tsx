@@ -207,7 +207,7 @@ function ChecklistItemsEditor({
             title="Dar de baja este ítem"
             description={
               itemToDeactivate
-                ? `"${itemToDeactivate.title}" deja de copiarse a los turnos nuevos. Los turnos ya generados no cambian.`
+                ? `"${itemToDeactivate.title}" deja de copiarse a los turnos nuevos. Los turnos ya generados lo conservan hasta que uses «Actualizar turnos».`
                 : undefined
             }
             confirmLabel="Dar de baja"

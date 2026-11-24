@@ -361,12 +361,12 @@ select is(
   'lectura: el dueño ve sus propias asignaciones (RLS de administración y de empleado)'
 );
 select ok(
-  pg_get_viewdef('public.v_my_day'::regclass) ~ 'employee_id\) = auth\.uid\(\)|employee_id = auth\.uid\(\)',
-  'lectura: v_my_day filtra por employee_id = auth.uid() sin condicionar por rol (un dueño con employee ve su día como empleado)'
+  pg_get_viewdef('app.my_services_base'::regclass) ~ 'employee_id\) = auth\.uid\(\)|employee_id = auth\.uid\(\)',
+  'lectura: app.my_services_base (de la que lee v_my_day) filtra por employee_id = auth.uid() sin condicionar por rol (un dueño con employee ve su día como empleado)'
 );
 select ok(
-  pg_get_viewdef('public.v_my_day'::regclass) !~ 'is_admin',
-  'lectura: v_my_day no menciona app.is_admin()'
+  pg_get_viewdef('app.my_services_base'::regclass) !~ 'is_admin',
+  'lectura: app.my_services_base no menciona app.is_admin()'
 );
 
 select tests_0077.as_user('test-0077-empleado@example.com');

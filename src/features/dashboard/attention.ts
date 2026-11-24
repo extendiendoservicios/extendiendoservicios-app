@@ -22,8 +22,14 @@ import { shiftStartInstant } from './kpis'
  *   puede tener este aviso y además otro (por ejemplo, sigue en curso pasada
  *   su hora de fin).
  * - `late` (AJ-07): llegada tarde (pasó el inicio hace hasta 15 min, sin
- *   registro). Es una alerta amarilla y va última. `on_the_way` (AJ-02) no
- *   entra: es informativo y no negativo.
+ *   registro). Es una alerta amarilla.
+ * - `onTheWay` (P32, D-09/D-10): el empleado avisó «En camino» y todavía no
+ *   fichó el inicio. Con `tone: 'ok'` (verde, informativo) si la hora estimada
+ *   es anterior o igual al inicio del turno, o si no avisó hora; deja de
+ *   mostrarse pasada la hora de inicio y siguen las alertas de siempre. Con
+ *   `tone: 'warn'` (amarilla) si la hora estimada es posterior al inicio:
+ *   sigue hasta esa hora, igual que `delayNotified`. Las verdes van al final
+ *   y no cuentan como alerta negativa (`isNegativeAttention`).
  * - `delayNotified` (OG-03): el empleado avisó que llega tarde y todavía no
  *   fichó el inicio. Es amarilla y se mantiene hasta la hora estimada (inicio
  *   más los minutos avisados); pasada esa hora se reemplaza por «no registró
@@ -41,6 +47,7 @@ export type AttentionKind =
   | 'outsideGeo'
   | 'late'
   | 'delayNotified'
+  | 'onTheWay'
 
 export const ATTENTION_ORDER: AttentionKind[] = [
   'noRecord',
@@ -51,6 +58,7 @@ export const ATTENTION_ORDER: AttentionKind[] = [
   'outsideGeo',
   'late',
   'delayNotified',
+  'onTheWay',
 ]
 
 export interface AttentionItem {
@@ -62,6 +70,10 @@ export interface AttentionItem {
   assignment?: AttendanceBoardRow
   /** Turno de `v_shifts_board`, si está cargado (para "Asignar reemplazo"). */
   shift?: ShiftListRow
+  /** Solo `onTheWay`: `ok` (verde, informativo) o `warn` (amarilla, llega después del inicio). */
+  tone?: 'ok' | 'warn'
+  /** Solo `onTheWay`: hora estimada de llegada avisada (ISO), si la hay. */
+  estimatedArrivalAt?: string | null
   /** Minutos desde la hora de referencia (inicio o fin); `null` si no aplica. */
   minutesSince: number | null
 }
@@ -89,6 +101,39 @@ function isDelayNoticeOpen(row: AttendanceBoardRow, now: Date): boolean {
   const estimated =
     new Date(row.startsAt).getTime() + row.lastNoticeMinutesLate * 60_000
   return now.getTime() <= estimated
+}
+
+/**
+ * D-09/D-10: «En camino» vigente, sin fichaje de inicio. `warn` (amarilla) si
+ * la hora estimada es posterior al inicio y todavía no pasó; `ok` (verde) si
+ * es anterior o igual al inicio, o no hay hora estimada, y todavía no pasó el
+ * inicio; `null` si no corresponde mostrarlo.
+ */
+function onTheWayTone(
+  row: AttendanceBoardRow,
+  now: Date,
+): 'ok' | 'warn' | null {
+  if (
+    row.lastNoticeKind !== 'on_the_way' ||
+    row.checkInAt != null ||
+    row.startsAt == null
+  ) {
+    return null
+  }
+  const start = new Date(row.startsAt).getTime()
+  const estimated =
+    row.lastNoticeEstimatedArrivalAt != null
+      ? new Date(row.lastNoticeEstimatedArrivalAt).getTime()
+      : null
+  if (estimated != null && estimated > start) {
+    return now.getTime() <= estimated ? 'warn' : null
+  }
+  return now.getTime() <= start ? 'ok' : null
+}
+
+/** Las alertas verdes de «En camino» son informativas: no suman a contadores de alertas. */
+export function isNegativeAttention(item: AttentionItem): boolean {
+  return !(item.kind === 'onTheWay' && item.tone === 'ok')
 }
 
 /** Una fila de `attention_dismissals` (OG-02), ya en camelCase. */
@@ -183,6 +228,17 @@ export function computeAttention(
           ? minutesBetween(new Date(row.lastNoticeAt), now)
           : null,
       })
+    } else if (onTheWayTone(row, now) === 'warn') {
+      items.push({
+        kind: 'onTheWay',
+        key: `onTheWay-${row.id}`,
+        shiftId: row.shiftId,
+        assignment: row,
+        shift: shiftById.get(row.shiftId),
+        tone: 'warn',
+        estimatedArrivalAt: row.lastNoticeEstimatedArrivalAt,
+        minutesSince: null,
+      })
     } else if (row.displayStatus === 'late') {
       items.push({
         kind: 'late',
@@ -230,6 +286,17 @@ export function computeAttention(
         shift: shiftById.get(row.shiftId),
         minutesSince: minutesBetween(new Date(row.endsAt), now),
       })
+    } else if (onTheWayTone(row, now) === 'ok') {
+      items.push({
+        kind: 'onTheWay',
+        key: `onTheWay-${row.id}`,
+        shiftId: row.shiftId,
+        assignment: row,
+        shift: shiftById.get(row.shiftId),
+        tone: 'ok',
+        estimatedArrivalAt: row.lastNoticeEstimatedArrivalAt,
+        minutesSince: null,
+      })
     }
   }
 
@@ -269,9 +336,14 @@ export function computeAttention(
     }
   }
 
+  // Las amarillas de «En camino» van junto a `late`/`delayNotified`; las verdes, al final.
+  const rank = (item: AttentionItem) =>
+    item.kind === 'onTheWay' && item.tone === 'warn'
+      ? ATTENTION_ORDER.indexOf('delayNotified') + 0.5
+      : ATTENTION_ORDER.indexOf(item.kind)
+
   return items.sort((a, b) => {
-    const byKind =
-      ATTENTION_ORDER.indexOf(a.kind) - ATTENTION_ORDER.indexOf(b.kind)
+    const byKind = rank(a) - rank(b)
     if (byKind !== 0) {
       return byKind
     }
