@@ -215,6 +215,17 @@ ve el panel) llega en `shift_notes` (`v_my_day`, `v_my_history`, `v_my_supervisi
   el turno aparece igual en el bloque, sin la leyenda.
 - Los coordinadores ven el mismo mensaje en la lista de supervisiones (SUP-03) y en el detalle (SUP-04) (propuesta aprobada de OG-05).
 
+## Próximos días (P32, D-07 y D-08)
+
+- Pantalla `/app/proximos` (`UpcomingDaysPage`), primera fila de «Más». Minicalendario (`UpcomingCalendar`,
+  `src/features/upcomingDays/`) que abre en **mañana**, deja elegir de mañana a hoy + 60 (fecha de Buenos Aires) y marca
+  con un punto los días con servicios. Debajo, los servicios propios del día elegido (`UpcomingRow`); sin servicios:
+  «No tenés servicios el miércoles 25 de noviembre».
+- Datos: `get_my_services` (`fetchMyServices` en `src/api/myDay.ts`), el rango del mes visible; el servidor recorta.
+  Clave de consulta por mes (`employeeKeys.services`).
+- Atajo en Hoy: la sección bajo las tarjetas pasó a «Mañana» (solo los servicios de mañana) y siempre trae el enlace
+  «Ver próximos días» a `/app/proximos`, aunque mañana no tenga servicios.
+
 ## Decisiones menores de este paquete
 
 - **Confirmación de EMP-05 con la hora del servidor** (`05` fila EMP-05:

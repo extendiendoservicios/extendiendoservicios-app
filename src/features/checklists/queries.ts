@@ -23,6 +23,9 @@ export const checklistsKeys = {
     [...checklistsKeys.all, 'template', clientId, siteId] as const,
   items: (templateId: string) =>
     [...checklistsKeys.all, 'items', templateId] as const,
+  /** D-03: turnos próximos con tareas distintas a la plantilla. */
+  outdated: (clientId: string, siteId: string | null) =>
+    [...checklistsKeys.all, 'outdated', clientId, siteId] as const,
 }
 
 /** La plantilla vigente de un cliente (`siteId` `null`) o de una sede. */
@@ -35,6 +38,46 @@ export function useChecklistTemplateQuery(
     queryFn: () =>
       checklistsApi.fetchChecklistTemplate(clientId as string, siteId),
     enabled: clientId != null,
+  })
+}
+
+/**
+ * D-03: cuántos turnos próximos tienen tareas distintas a la plantilla.
+ * Solo se consulta si quien mira puede editar (la RPC exige `edit_checklists`).
+ */
+export function useOutdatedTemplateShiftsCountQuery(
+  clientId: string | undefined,
+  siteId: string | null,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: checklistsKeys.outdated(clientId ?? '', siteId),
+    queryFn: () =>
+      checklistsApi.countOutdatedTemplateShifts(clientId as string, siteId),
+    enabled: enabled && clientId != null,
+  })
+}
+
+/**
+ * D-03: recarga las tareas de los turnos próximos desactualizados. Además de
+ * los checklists, refresca todo lo que muestra tareas de un turno. Las raíces
+ * van como literales para no importar en círculo.
+ */
+export function useReloadTemplateShiftTasksMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      clientId,
+      siteId,
+    }: {
+      clientId: string
+      siteId: string | null
+    }) => checklistsApi.reloadTemplateShiftTasks(clientId, siteId),
+    onSuccess: () => {
+      for (const root of ['checklists', 'planning', 'shifts', 'employee']) {
+        void queryClient.invalidateQueries({ queryKey: [root] })
+      }
+    },
   })
 }
 

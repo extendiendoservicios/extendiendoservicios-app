@@ -72,19 +72,23 @@ cada 30 s para ver rápido quién tomó un turno):
 - Cada turno muestra «Supervisando: Ana» y/o «Supervisó: Luis» (el propio coordinador figura como «Vos»).
 - Se puede tomar cualquier turno: las sedes propias solo ordenan.
 
-## Próximos días (SUP-10, P31, D-09, OI-07)
+## Próximos días (SUP-10, P31 y P32, D-05, D-06)
 
 `/sup/proximos`, primera opción de «Más» (la barra inferior ya tiene las cinco pestañas posibles y a 390 px no entra una
-sexta). `UpcomingPage` + `UpcomingShiftsList`, sobre `v_supervisor_upcoming` (`fetchSupervisorUpcoming` en
-`src/api/supervisorToday.ts`: de mañana a hoy + 7, mismas columnas que `v_supervisor_today`):
+sexta). `UpcomingPage` arma un minicalendario (`UpcomingCalendar`, en `src/features/upcomingDays/`) y debajo el detalle
+del día elegido (`UpcomingShiftsList`):
 
-- Agrupado por día (`groupShiftsByDay`, en `shifts.ts`); dentro de cada día, «Mis sedes» y «Otras sedes» con los mismos
-  componentes de «Hoy» (`ShiftsBlock`, en modo `consultOnly`).
+- El calendario abre en **mañana** (fecha de Buenos Aires, `todayInBuenosAires`) y deja elegir de mañana a hoy + 60; los
+  demás días y los meses sin días habilitados quedan deshabilitados. Un punto marca los días con turnos. Cada botón lleva
+  `aria-label` con la fecha completa, `aria-pressed` y `aria-current` en el elegido.
+- Se pide al servidor el rango del mes visible (`get_supervisor_shifts`, `fetchSupervisorShifts` en
+  `src/api/supervisorToday.ts`; el servidor recorta a mañana..hoy + 60). Clave de consulta por mes.
+- Detalle del día: «Mis sedes» y «Otras sedes» con los mismos componentes de «Hoy» (`ShiftsBlock`, en modo `consultOnly`)
+  y el buscador por cliente o sede en «Otras sedes».
 - Solo consulta: las tarjetas no llevan enlace, ni estado, ni «Supervisar». El turno se toma el día.
-- Un solo buscador por cliente o sede, arriba; filtra «Otras sedes» de todos los días.
-- Si la persona también es empleada, arriba van «Tus servicios» de los próximos días (`v_my_day` sin el de hoy,
-  `UpcomingRow`, el mismo que usa EMP-03).
-- Estado vacío: «No hay turnos en los próximos días».
+- Si la persona también es empleada, arriba van «Tus servicios» de ese día (`get_my_services`, `fetchMyServices` en
+  `src/api/myDay.ts`, `UpcomingRow`).
+- Estado vacío por día: «No hay turnos el miércoles 25 de noviembre».
 
 ## «Supervisar», «Descartar» y «Cerrar»
 

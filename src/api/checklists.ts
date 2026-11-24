@@ -284,3 +284,46 @@ export async function reorderTemplateItems(
     throw mapWriteError(error)
   }
 }
+
+// -------------------------------------------------------------------------
+// 3. Recarga de tareas en lote (P32, D-03)
+// -------------------------------------------------------------------------
+
+/**
+ * Cuántos turnos próximos tienen tareas distintas a la plantilla
+ * (`count_outdated_template_shifts`, capacidad `edit_checklists`).
+ * `siteId` `null` = plantilla del cliente (turnos de las sedes sin
+ * plantilla propia). Errores: `CLIENT_NOT_FOUND`, `SITE_NOT_FOUND`.
+ */
+export async function countOutdatedTemplateShifts(
+  clientId: string,
+  siteId: string | null,
+): Promise<number> {
+  const { data, error } = await supabase.rpc('count_outdated_template_shifts', {
+    p_client_id: clientId,
+    p_site_id: siteId ?? undefined,
+  })
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return data ?? 0
+}
+
+/**
+ * Recarga las tareas de los turnos próximos desactualizados
+ * (`reload_template_shift_tasks`). Solo toca turnos `scheduled`/`assigned`
+ * que no empezaron y sin tarea marcada. Devuelve cuántos actualizó.
+ */
+export async function reloadTemplateShiftTasks(
+  clientId: string,
+  siteId: string | null,
+): Promise<number> {
+  const { data, error } = await supabase.rpc('reload_template_shift_tasks', {
+    p_client_id: clientId,
+    p_site_id: siteId ?? undefined,
+  })
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return data ?? 0
+}

@@ -105,6 +105,17 @@ Solo dueño y administradores. Detalle en `docs/features/p30-4b-fijos-y-pizarra.
 | `fetchEmployeeWeekBoard(employeeId)`           | `get_employee_week_board`  | `WeekBoard` con `updatedByName`, o `null` si todavía no se guardó ninguna.                                                                                                                                                                                                   |
 | `saveEmployeeWeekBoard(employeeId, blocks)`    | `save_employee_week_board` | Reemplaza todos los bloques (máx. 60). `INVALID_BOARD` trae el motivo en el `message`.                                                                                                                                                                                       |
 
+### Migración 0089 (P32.1): recarga en lote y consultas por rango
+
+RPC nuevas, todavía sin función en `src/api/` (las escribe P32.2 y P32.3):
+
+| RPC                                                             | Quién y parámetros                                                                                                                        | Retorno                                                                                                       |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `count_outdated_template_shifts(p_client_id, p_site_id = null)` | Capacidad `edit_checklists`. `p_site_id` = plantilla de la sede; null = plantilla del cliente (turnos de las sedes sin plantilla propia). | `integer`: turnos próximos con tareas distintas a la plantilla. Errores `CLIENT_NOT_FOUND`, `SITE_NOT_FOUND`. |
+| `reload_template_shift_tasks(p_client_id, p_site_id = null)`    | Igual que la anterior. Solo turnos `scheduled`/`assigned` que no empezaron, sin tarea marcada.                                            | `integer`: cuántos turnos actualizó.                                                                          |
+| `get_supervisor_shifts(p_from date, p_to date)`                 | Solo coordinador. Rango recortado a mañana .. hoy + 60.                                                                                   | Mismas columnas que `v_supervisor_upcoming`. `INVALID_DATE_RANGE` si hay fecha nula o desde > hasta.          |
+| `get_my_services(p_from date, p_to date)`                       | Cualquier sesión; solo trae las asignaciones propias. Rango recortado a mañana .. hoy + 60.                                               | Mismas columnas que `v_my_day`. `INVALID_DATE_RANGE` como arriba.                                             |
+
 ### `employeeCalendarNotes` (`src/api/employeeCalendarNotes.ts`, P31.3 — D-08)
 
 Observaciones del calendario del mes de un empleado (migración `0088`). Solo

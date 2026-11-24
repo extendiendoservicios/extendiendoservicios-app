@@ -179,3 +179,9 @@ paquete).
   en vez de duplicarlo en `features/checklists`: ya lo hace
   `ClientContactsPanel` (`features/clients`) desde P08.4, así que este
   paquete no es el primero en cruzar ese límite de dominio.
+
+## P32 (D-03, D-04): actualizar turnos en lote y selector «Sede»
+
+- ADM-26: en la plantilla del cliente y en la de cada sede, si quien mira puede editar y hay turnos próximos con tareas distintas (`count_outdated_template_shifts`), aparece el aviso «Hay N turnos próximos con tareas distintas a esta plantilla.» con el botón «Actualizar turnos». Confirma con la cantidad y aclara que los turnos en curso, finalizados o cancelados, y los que ya tienen tareas marcadas, no cambian. Al terminar, aviso con cuántos se actualizaron (`reload_template_shift_tasks`).
+- El conteo se invalida con cada alta, edición, baja o reordenamiento de ítems y después de recargar; la recarga también invalida las consultas de turnos y planificación.
+- El selector «Ámbito» pasa a «Sede»; la opción del cliente es «Todas las sedes (plantilla del cliente)».

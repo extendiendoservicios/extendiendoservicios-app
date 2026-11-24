@@ -11,6 +11,13 @@ export interface RouteHandle {
   screenId: string
   title: string
   subtitle?: string
+  /**
+   * Pantalla de consulta sin `ActionBar`: `MobileShell` mantiene la tabbar
+   * (y la flecha de volver) aunque no sea una pestaña raíz.
+   */
+  keepTabbar?: true
+  /** Ruta del ítem de la tabbar a resaltar cuando `keepTabbar` está activo. */
+  activeTab?: string
 }
 
 export function PlaceholderScreen({ screenId, title, subtitle }: RouteHandle) {

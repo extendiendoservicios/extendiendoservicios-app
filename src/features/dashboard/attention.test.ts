@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { applyDismissals, computeAttention } from './attention'
+import {
+  applyDismissals,
+  computeAttention,
+  isNegativeAttention,
+} from './attention'
 import { NOW, at, makeAssignment, makeShift } from './fixtures'
 import { ALL_DAY_FILTER, filterByFranja, listFranjas } from './servicesToday'
 
 describe('computeAttention (AJ-02, AJ-07)', () => {
-  it('"Llegada tarde" es una alerta y va después de las críticas; "En camino" no aparece', () => {
+  it('"Llegada tarde" es una alerta y va después de las críticas; "En camino" pasada la hora de inicio no aparece', () => {
     const shifts = [makeShift({ id: 's1' })]
     const assignments = [
       makeAssignment({ id: 'a-late', displayStatus: 'late' }),
@@ -420,19 +424,146 @@ describe('demoras avisadas (OG-03)', () => {
     )
     expect(items.map((item) => item.kind)).not.toContain('delayNotified')
   })
+})
 
-  it('En camino sigue siendo informativo', () => {
+describe('«En camino» (P32, D-09, D-10)', () => {
+  const shifts = [makeShift({ id: 's1' })]
+  // Turno de 08:00 a 12:00.
+  const onTheWay = (overrides = {}) =>
+    makeAssignment({
+      id: 'a-way',
+      displayStatus: 'on_the_way',
+      lastNoticeKind: 'on_the_way',
+      lastNoticeAt: at('07:40'),
+      ...overrides,
+    })
+
+  it('verde sin hora estimada, antes del inicio', () => {
+    const items = computeAttention(shifts, [onTheWay()], new Date(at('07:45')))
+    expect(items.map((item) => [item.kind, item.tone])).toEqual([
+      ['onTheWay', 'ok'],
+    ])
+  })
+
+  it('verde si la hora estimada es anterior o igual al inicio', () => {
+    const early = computeAttention(
+      shifts,
+      [onTheWay({ lastNoticeEstimatedArrivalAt: at('07:55') })],
+      new Date(at('07:45')),
+    )
+    expect(early[0]?.tone).toBe('ok')
+    const exact = computeAttention(
+      shifts,
+      [onTheWay({ lastNoticeEstimatedArrivalAt: at('08:00') })],
+      new Date(at('07:45')),
+    )
+    expect(exact[0]?.tone).toBe('ok')
+  })
+
+  it('amarilla si la hora estimada es posterior al inicio', () => {
+    const items = computeAttention(
+      shifts,
+      [onTheWay({ lastNoticeEstimatedArrivalAt: at('08:05') })],
+      new Date(at('07:45')),
+    )
+    expect(items.map((item) => [item.kind, item.tone])).toEqual([
+      ['onTheWay', 'warn'],
+    ])
+    expect(items[0]?.estimatedArrivalAt).toBe(at('08:05'))
+  })
+
+  it('la amarilla sigue pasado el inicio hasta la hora estimada y después desaparece', () => {
+    const row = onTheWay({
+      status: 'expected',
+      displayStatus: 'no_record',
+      lastNoticeEstimatedArrivalAt: at('08:05'),
+    })
+    const during = computeAttention(shifts, [row], new Date(at('08:03')))
+    expect(during.map((item) => item.kind)).toEqual(['onTheWay'])
+    const after = computeAttention(shifts, [row], new Date(at('08:06')))
+    expect(after.map((item) => item.kind)).toEqual(['noRecord'])
+  })
+
+  it('pasada la hora de inicio sin fichar, la verde deja de mostrarse y siguen las alertas de siempre', () => {
+    const row = onTheWay({ displayStatus: 'no_record' })
+    const items = computeAttention(shifts, [row], new Date(at('08:10')))
+    expect(items.map((item) => item.kind)).toEqual(['noRecord'])
+  })
+
+  it('con el inicio fichado desaparece', () => {
     const items = computeAttention(
       shifts,
       [
-        makeAssignment({
-          displayStatus: 'on_the_way',
-          lastNoticeKind: 'on_the_way',
+        onTheWay({
+          status: 'present',
+          displayStatus: 'present',
+          checkInAt: at('07:58'),
+          lastNoticeEstimatedArrivalAt: at('08:05'),
         }),
       ],
-      new Date(at('08:10')),
+      new Date(at('07:59')),
+    )
+    expect(items.map((item) => item.kind)).not.toContain('onTheWay')
+  })
+
+  it('un turno cancelado no lo muestra', () => {
+    const items = computeAttention(
+      shifts,
+      [onTheWay({ shiftStatus: 'cancelled' })],
+      new Date(at('07:45')),
     )
     expect(items).toEqual([])
+  })
+
+  it('orden: la amarilla junto a las alertas amarillas, la verde al final; la verde no es alerta negativa', () => {
+    const items = computeAttention(
+      [makeShift({ id: 's1' })],
+      [
+        onTheWay({ id: 'a-green', employeeId: 'e1' }),
+        onTheWay({
+          id: 'a-yellow',
+          employeeId: 'e2',
+          lastNoticeEstimatedArrivalAt: at('08:20'),
+        }),
+        makeAssignment({
+          id: 'a-delay',
+          employeeId: 'e3',
+          status: 'delay_notified',
+          displayStatus: 'no_record',
+          lastNoticeKind: 'delay',
+          lastNoticeMinutesLate: 30,
+        }),
+        makeAssignment({
+          id: 'a-abs',
+          employeeId: 'e4',
+          status: 'absence_notified',
+        }),
+      ],
+      new Date(at('07:50')),
+    )
+    expect(items.map((item) => item.key)).toEqual([
+      'absence-a-abs',
+      'delayNotified-a-delay',
+      'onTheWay-a-yellow',
+      'onTheWay-a-green',
+    ])
+    expect(items.filter(isNegativeAttention)).toHaveLength(3)
+  })
+
+  it('se puede cerrar como las demás', () => {
+    const items = computeAttention(shifts, [onTheWay()], new Date(at('07:45')))
+    const { open, closed } = applyDismissals(items, [
+      {
+        id: 'd1',
+        kind: 'onTheWay',
+        shiftId: 's1',
+        assignmentId: 'a-way',
+        dismissedBy: 'u1',
+        dismissedAt: at('07:46'),
+      },
+    ])
+    expect(open).toHaveLength(0)
+    expect(closed).toHaveLength(1)
   })
 })
 
