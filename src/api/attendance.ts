@@ -3,7 +3,11 @@ import type { Database } from '@/lib/database.types'
 import { fromPostgrestError } from './errors'
 import type { GeolocationCoords } from '@/lib/geolocation'
 import type { AssignmentStatus } from './assignments'
-import type { GeoStatus, GeoUnvalidatedReason } from '@/lib/geo'
+import type {
+  GeoStatus,
+  GeoTechnicalReason,
+  GeoUnvalidatedReason,
+} from '@/lib/geo'
 import { mapAttendanceGeo, type AttendanceGeo } from './attendanceGeo'
 
 /**
@@ -95,6 +99,7 @@ export async function recordCheckIn(
   assignmentId: string,
   coords: GeolocationCoords | null,
   outsideReason?: string | null,
+  geoReason?: GeoTechnicalReason | null,
 ): Promise<AttendanceRecord> {
   const { data, error } = await supabase.rpc('record_check_in', {
     p_assignment_id: assignmentId,
@@ -102,6 +107,7 @@ export async function recordCheckIn(
     p_lng: coords?.lng,
     p_accuracy: coords?.accuracyM,
     p_outside_reason: outsideReason?.trim() || undefined,
+    p_geo_reason: coords ? undefined : (geoReason ?? undefined),
   })
 
   if (error) {
@@ -115,6 +121,7 @@ export async function recordCheckOut(
   assignmentId: string,
   coords: GeolocationCoords | null,
   outsideReason?: string | null,
+  geoReason?: GeoTechnicalReason | null,
 ): Promise<AttendanceRecord> {
   const { data, error } = await supabase.rpc('record_check_out', {
     p_assignment_id: assignmentId,
@@ -122,6 +129,7 @@ export async function recordCheckOut(
     p_lng: coords?.lng,
     p_accuracy: coords?.accuracyM,
     p_outside_reason: outsideReason?.trim() || undefined,
+    p_geo_reason: coords ? undefined : (geoReason ?? undefined),
   })
 
   if (error) {

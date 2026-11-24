@@ -7,6 +7,7 @@ export {
   type GeoFix,
   type GeoPoint,
   type GeoStatus,
+  type GeoTechnicalReason,
   type GeoUnvalidatedReason,
 } from './geoEvaluate'
 export {

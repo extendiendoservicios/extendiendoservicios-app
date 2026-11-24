@@ -291,6 +291,7 @@ function RegisterStart({
         assignmentId: assignment.assignmentId,
         coords: fichaje.payload.coords,
         outsideReason: fichaje.payload.outsideReason,
+        geoReason: fichaje.payload.geoReason,
       })
       onRegistered(record)
     } catch (mutationError) {

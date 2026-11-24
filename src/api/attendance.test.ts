@@ -139,6 +139,39 @@ describe('recordCheckIn', () => {
     expect(JSON.stringify(result)).not.toMatch(/-34\.6|-58\.4|accuracy/)
   })
 
+  it('sin coordenadas manda el motivo técnico p_geo_reason (D-14); con coordenadas lo omite', async () => {
+    rpcMock.mockResolvedValue({ data: ATTENDANCE_ROW, error: null })
+
+    await recordCheckIn('a1', null, null, 'permission_denied')
+    expect(rpcMock.mock.calls[0]?.[1]).toMatchObject({
+      p_geo_reason: 'permission_denied',
+    })
+
+    await recordCheckIn(
+      'a1',
+      { lat: -34.6, lng: -58.4, accuracyM: 15 },
+      null,
+      'timeout',
+    )
+    expect(rpcMock.mock.calls[1]?.[1]).toMatchObject({
+      p_geo_reason: undefined,
+    })
+  })
+
+  it('el fin también manda p_geo_reason sin coordenadas (D-14)', async () => {
+    rpcMock.mockResolvedValue({
+      data: { ...ATTENDANCE_ROW, kind: 'check_out' },
+      error: null,
+    })
+
+    await recordCheckOut('a1', null, null, 'position_unavailable')
+
+    expect(rpcMock).toHaveBeenCalledWith(
+      'record_check_out',
+      expect.objectContaining({ p_geo_reason: 'position_unavailable' }),
+    )
+  })
+
   it('un motivo en blanco no se manda', async () => {
     rpcMock.mockResolvedValue({ data: ATTENDANCE_ROW, error: null })
 

@@ -18,6 +18,10 @@ export type GeoUnvalidatedReason =
   | 'position_unavailable'
   | 'timeout'
 
+/** Motivos técnicos que se mandan a las RPC de fichaje como `p_geo_reason` (D-14). */
+export type GeoTechnicalReason =
+  'permission_denied' | 'position_unavailable' | 'timeout'
+
 export interface GeoPoint {
   lat: number
   lng: number

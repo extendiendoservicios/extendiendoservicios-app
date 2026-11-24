@@ -5,6 +5,7 @@ import {
   type GeoEvaluation,
   type GeoFix,
   type GeoPoint,
+  type GeoTechnicalReason,
   type GeoStatus,
   type LivePositionState,
   type SignalWaitState,
@@ -37,6 +38,17 @@ export interface LiveGeoInput {
   /** Tope de precisión (B-23); `null` usa 150 m. */
   maxAccuracyM: number | null | undefined
   wait: SignalWaitState
+  /** Celular de la persona, para la ayuda de ubicación (D-14). Por omisión, `other`. */
+  device?: GeoDevice
+}
+
+/** Tipo de celular según el user agent (D-14). */
+export type GeoDevice = 'android' | 'ios' | 'other'
+
+/** Ayuda corta debajo del aviso de ubicación (D-14). */
+export interface GeoHelp {
+  intro: string
+  steps: string[]
 }
 
 export type LiveGeoTone = 'info' | 'warn'
@@ -66,6 +78,10 @@ export interface LiveGeoView {
   showOutsideReason: boolean
   /** Hay lectura pero es más imprecisa que el radio: el botón principal dice «Fichar igual». */
   poorSignal: boolean
+  /** Se ofrece «Reintentar»: la búsqueda falló (sin señal o sin permiso). */
+  showRetry: boolean
+  /** Ayuda según el celular; `null` si no hay falla que explicar. */
+  help: GeoHelp | null
   /** Lo que se manda a la RPC como posición (`null` = fichar sin coordenadas). */
   coords: GeolocationCoords | null
 }
@@ -91,6 +107,12 @@ export function buildLiveGeoView(input: LiveGeoInput): LiveGeoView {
   // Sin sede con coordenadas no hay nada que afinar ni que esperar.
   const poorSignal = input.enabled && hasSite && tooImprecise
 
+  // Solo cuando el aviso es «No tenemos permiso…» o «No pudimos obtener…».
+  const failed =
+    input.enabled &&
+    !position &&
+    (input.state === 'denied' || (input.state === 'unavailable' && hasSite))
+
   return {
     enabled: input.enabled,
     radiusM,
@@ -104,6 +126,8 @@ export function buildLiveGeoView(input: LiveGeoInput): LiveGeoView {
     waitExpired: input.enabled && tooImprecise && input.wait === 'expired',
     showOutsideReason: evaluation?.status === 'outside',
     poorSignal,
+    showRetry: failed,
+    help: failed ? buildGeoHelp(input.state, input.device) : null,
     coords: position
       ? { lat: position.lat, lng: position.lng, accuracyM: position.accuracyM }
       : null,
@@ -173,4 +197,90 @@ export function outsideReasonToSend(
   if (!view.showOutsideReason) return null
   const trimmed = text.trim()
   return trimmed ? trimmed.slice(0, OUTSIDE_REASON_MAX_LENGTH) : null
+}
+
+/** Detecta Android o iPhone por user agent (D-14). */
+export function detectGeoDevice(userAgent: string): GeoDevice {
+  if (/android/i.test(userAgent)) return 'android'
+  if (/iphone|ipad|ipod/i.test(userAgent)) return 'ios'
+  return 'other'
+}
+
+/** Ayuda para encender la ubicación (sin señal) o darle permiso (negada), según el celular (D-14). */
+export function buildGeoHelp(
+  state: LivePositionState,
+  device: GeoDevice = 'other',
+): GeoHelp | null {
+  if (state === 'unavailable') {
+    const intro = 'Revisá que la ubicación del teléfono esté encendida.'
+    if (device === 'android') {
+      return {
+        intro,
+        steps: ['Bajá la barra de accesos rápidos y tocá Ubicación.'],
+      }
+    }
+    if (device === 'ios') {
+      return {
+        intro,
+        steps: [
+          'Ajustes › Privacidad › Localización: que esté activada.',
+          'En Sitios web de Safari, elegí Al usar la app y dejá encendida Ubicación exacta.',
+        ],
+      }
+    }
+    return { intro, steps: [] }
+  }
+  if (state === 'denied') {
+    const intro = 'Para validar el registro, permití la ubicación a este sitio.'
+    if (device === 'android') {
+      return {
+        intro,
+        steps: [
+          'Tocá el candado junto a la dirección, entrá a Permisos y permití Ubicación.',
+        ],
+      }
+    }
+    if (device === 'ios') {
+      return {
+        intro,
+        steps: [
+          'Ajustes › Privacidad › Localización › Sitios web de Safari › Al usar la app.',
+          'Dejá encendida Ubicación exacta.',
+        ],
+      }
+    }
+    return {
+      intro,
+      steps: [
+        'Habilitá la ubicación para este sitio en la configuración del navegador.',
+      ],
+    }
+  }
+  return null
+}
+
+/** Motivo técnico de la falta de ubicación para `p_geo_reason` (D-14). */
+export type GeoReasonToSend = GeoTechnicalReason
+
+/**
+ * Qué motivo mandar a la RPC cuando se ficha sin coordenadas (D-14): según el
+ * último error de la API (1 sin permiso, 2 sin señal, 3 tiempo agotado); sin
+ * error todavía, `timeout` (se fichó mientras se buscaba). Con coordenadas o
+ * sin consentimiento (la persona eligió no compartir) no se manda nada: la
+ * base deja `no_location`.
+ */
+export function geoReasonToSend(input: {
+  enabled: boolean
+  coords: GeolocationCoords | null
+  lastErrorCode: 1 | 2 | 3 | null
+}): GeoReasonToSend | null {
+  if (!input.enabled || input.coords) return null
+  switch (input.lastErrorCode) {
+    case 1:
+      return 'permission_denied'
+    case 2:
+      return 'position_unavailable'
+    default:
+      return 'timeout'
+  }
 }

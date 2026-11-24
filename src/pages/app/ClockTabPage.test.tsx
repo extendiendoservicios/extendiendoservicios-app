@@ -60,12 +60,17 @@ function consentState(
 
 function mockWatchPosition(
   reading: { latitude: number; longitude: number; accuracy: number } | null,
+  errorCode: number | null = null,
 ) {
   Object.defineProperty(navigator, 'geolocation', {
     configurable: true,
     value: {
-      watchPosition: (success: (position: unknown) => void) => {
+      watchPosition: (
+        success: (position: unknown) => void,
+        error?: (e: { code: number }) => void,
+      ) => {
         if (reading) success({ coords: reading, timestamp: Date.now() })
+        else if (errorCode != null) error?.({ code: errorCode })
         return 1
       },
       clearWatch: vi.fn(),
@@ -82,6 +87,7 @@ function setup({
     accuracy: number
   } | null,
   item = assignment(),
+  errorCode = null as number | null,
 } = {}) {
   vi.spyOn(consentHookModule, 'useLocationConsent').mockReturnValue(consent)
   vi.spyOn(onlineModule, 'useOnlineStatus').mockReturnValue(true)
@@ -94,7 +100,7 @@ function setup({
     mutateAsync,
     isPending: false,
   } as never)
-  mockWatchPosition(reading)
+  mockWatchPosition(reading, errorCode)
   render(
     <MemoryRouter initialEntries={['/app/fichar']}>
       <Routes>
@@ -135,6 +141,7 @@ describe('ClockTabPage · fichar el inicio con ubicación (módulo B1)', () => {
         assignmentId: 'a1',
         coords: { lat: -34.6037, lng: -58.3816, accuracyM: 35 },
         outsideReason: null,
+        geoReason: null,
       }),
     )
   })
@@ -174,7 +181,7 @@ describe('ClockTabPage · fichar el inicio con ubicación (módulo B1)', () => {
     expect(screen.getByRole('button', { name: 'Fichar igual' })).toBeEnabled()
   })
 
-  it('sin permiso de ubicación: avisa y se puede fichar igual, sin coordenadas', async () => {
+  it('sin respuesta de ubicación: se puede fichar igual, sin coordenadas y con motivo «timeout» (D-14)', async () => {
     const { mutateAsync } = setup({})
     // `reading: null` equivale a un permiso que nunca responde: no hay posición.
     fireEvent.click(screen.getByRole('button', { name: 'Registrar inicio' }))
@@ -184,9 +191,34 @@ describe('ClockTabPage · fichar el inicio con ubicación (módulo B1)', () => {
         assignmentId: 'a1',
         coords: null,
         outsideReason: null,
+        geoReason: 'timeout',
       }),
     )
   })
+
+  it.each([
+    [1, 'permission_denied', 'No tenemos permiso para ver tu ubicación'],
+    [2, 'position_unavailable', 'No pudimos obtener tu ubicación'],
+    [3, 'timeout', 'No pudimos obtener tu ubicación'],
+  ])(
+    'error %i de la API: ficha sin coordenadas con motivo «%s» y muestra «Reintentar»',
+    async (code, reason, text) => {
+      const { mutateAsync } = setup({ errorCode: code })
+
+      expect(screen.getByTestId('geo-message')).toHaveTextContent(text)
+      expect(screen.getByRole('button', { name: 'Reintentar' })).toBeEnabled()
+      fireEvent.click(screen.getByRole('button', { name: 'Registrar inicio' }))
+
+      await vi.waitFor(() =>
+        expect(mutateAsync).toHaveBeenCalledWith({
+          assignmentId: 'a1',
+          coords: null,
+          outsideReason: null,
+          geoReason: reason,
+        }),
+      )
+    },
+  )
 
   it('sin consentimiento (negativa recordada): no hay mapa y registra sin ubicación', async () => {
     const { mutateAsync } = setup({
@@ -202,6 +234,7 @@ describe('ClockTabPage · fichar el inicio con ubicación (módulo B1)', () => {
         assignmentId: 'a1',
         coords: null,
         outsideReason: null,
+        geoReason: null,
       }),
     )
   })

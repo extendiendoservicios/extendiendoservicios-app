@@ -168,6 +168,7 @@ export default function SupervisorShiftPage() {
         shiftId: shift.shiftId,
         coords: fichaje.payload.coords,
         outsideReason: fichaje.payload.outsideReason,
+        geoReason: fichaje.payload.geoReason,
       })
       if (taken.checkIn.geo) {
         setResult({
