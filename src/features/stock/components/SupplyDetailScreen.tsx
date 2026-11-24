@@ -35,14 +35,20 @@ import { SupplyPricesDialog } from './SupplyPricesDialog'
 
 function Datum({
   label,
+  hint,
   children,
 }: {
   label: string
+  /** Ayuda corta, visible al pasar el mouse sobre la etiqueta. */
+  hint?: string
   children: React.ReactNode
 }) {
   return (
     <div className="min-w-0">
-      <dt className="text-[10px] font-semibold tracking-wide text-text-3 uppercase">
+      <dt
+        title={hint}
+        className="text-[10px] font-semibold tracking-wide text-text-3 uppercase"
+      >
         {label}
       </dt>
       <dd className="text-[13px] text-text">{children}</dd>
@@ -157,7 +163,10 @@ function SupplyDetailScreen() {
                   {formatMoney(item.salePrice)}
                 </span>
               </Datum>
-              <Datum label="Valor a costo">
+              <Datum
+                label="Valor del stock"
+                hint="Cantidad en stock × precio de costo"
+              >
                 <span className="tabular-nums">
                   {formatMoney(item.stockValue)}
                 </span>

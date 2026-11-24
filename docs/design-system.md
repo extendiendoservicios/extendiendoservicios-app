@@ -506,6 +506,15 @@ class="sr-only">` — **obligatorio**), `getRowId?`, `compact?`
     columna lo desactiva.
   - `persistKey`: guarda anchos y orden (si el orden es interno) en
     `localStorage` bajo `datatable:<clave>`, dentro de try/catch.
+  - `manualSorting` (P31.2): la tabla muestra el orden en los encabezados y
+    avisa con `onSortingChange`, pero no reordena `data` (listas paginadas en
+    el cliente o con orden propio, como Empleados y el historial de asistencia;
+    el orden se resuelve con `sortRowsBy` de `dataTableSort.ts`, antes de paginar).
+  - Varias tablas con la misma `persistKey` en pantalla (franjas del
+    Calendario › Día, grupos de Clientes) comparten los anchos de columna.
+  - Las tablas de administración llevan `resizableColumns` y una `persistKey`
+    `tabla:<nombre>` (P31.2, D-12). Con orden manual (categorías de insumos,
+    criterios de calificación) no hay orden por clic; Usuarios tiene su propio orden.
   - En tarjetas (celular) nada de esto aplica.
 
 ### `Avatar` y `PersonCell` (DS-009)

@@ -41,8 +41,8 @@ function SupplyMovementsSection({ supplyId }: { supplyId: string }) {
   const columns: DataTableColumnDef<StockMovementLine>[] = [
     {
       id: 'when',
+      accessorFn: (row) => row.recordedAt,
       header: 'Fecha y hora',
-      enableSorting: false,
       meta: { card: 'title' },
       cell: ({ row }) => (
         <span className="font-semibold whitespace-nowrap">
@@ -52,8 +52,8 @@ function SupplyMovementsSection({ supplyId }: { supplyId: string }) {
     },
     {
       id: 'kind',
+      accessorFn: (row) => MOVEMENT_KIND_LABELS[row.kind],
       header: 'Tipo',
-      enableSorting: false,
       meta: { card: 'subtitle' },
       cell: ({ row }) => (
         <span className="inline-flex flex-wrap items-center gap-[6px]">
@@ -66,8 +66,8 @@ function SupplyMovementsSection({ supplyId }: { supplyId: string }) {
     },
     {
       id: 'qty',
+      accessorFn: (row) => row.qtyDelta,
       header: 'Cantidad',
-      enableSorting: false,
       meta: { card: 'trailing', align: 'end' },
       cell: ({ row }) => (
         <span
@@ -83,8 +83,8 @@ function SupplyMovementsSection({ supplyId }: { supplyId: string }) {
     },
     {
       id: 'after',
+      accessorFn: (row) => row.stockAfter,
       header: 'Stock resultante',
-      enableSorting: false,
       meta: { card: 'meta', cardLabel: 'Stock resultante', align: 'end' },
       cell: ({ row }) => (
         <span className="tabular-nums">{row.original.stockAfter}</span>
@@ -92,22 +92,25 @@ function SupplyMovementsSection({ supplyId }: { supplyId: string }) {
     },
     {
       id: 'person',
+      accessorFn: (row) => describeMovementPerson(row)?.toLowerCase(),
+      sortUndefined: 'last',
       header: 'Persona',
-      enableSorting: false,
       meta: { card: 'meta', cardLabel: 'Persona' },
       cell: ({ row }) => describeMovementPerson(row.original) ?? '—',
     },
     {
       id: 'place',
+      accessorFn: (row) => describeMovementPlace(row)?.toLowerCase(),
+      sortUndefined: 'last',
       header: 'Turno o sede',
-      enableSorting: false,
       meta: { card: 'meta', cardLabel: 'Turno o sede' },
       cell: ({ row }) => describeMovementPlace(row.original) ?? '—',
     },
     {
       id: 'note',
+      accessorFn: (row) => describeMovementNote(row)?.toLowerCase(),
+      sortUndefined: 'last',
       header: 'Observación',
-      enableSorting: false,
       meta: { card: 'meta', cardLabel: 'Observación' },
       cell: ({ row }) => {
         const line = row.original
@@ -177,6 +180,8 @@ function SupplyMovementsSection({ supplyId }: { supplyId: string }) {
 
       <DataTable
         caption="Movimientos del artículo"
+        resizableColumns
+        persistKey="tabla:insumos-movimientos"
         columns={columns}
         data={rows}
         getRowId={(row) => row.lineId}

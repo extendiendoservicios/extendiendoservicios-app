@@ -125,6 +125,8 @@ describe('ConsumptionTab: consumo por cliente (IS-24)', () => {
     render(<ConsumptionTab />, { wrapper: MemoryRouter })
 
     const total = within(screen.getByTestId('consumption-total'))
+    expect(total.getByText(/A precio de costo/)).toBeInTheDocument()
+    expect(total.getByText(/A precio de venta/)).toBeInTheDocument()
     expect(total.getByText('$ 800,00')).toBeInTheDocument()
     expect(total.getByText('$ 1.250,00')).toBeInTheDocument()
     expect(total.getByText(/13 unidades/)).toBeInTheDocument()

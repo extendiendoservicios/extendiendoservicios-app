@@ -19,6 +19,7 @@ function EmployeeRatingsTab({ profileId }: { profileId: string }) {
   const columns: DataTableColumnDef<RatingListRow>[] = [
     {
       id: 'date',
+      accessorFn: (row) => row.shiftDate,
       header: 'Fecha',
       meta: { card: 'title' },
       cell: ({ row }) => (
@@ -32,12 +33,15 @@ function EmployeeRatingsTab({ profileId }: { profileId: string }) {
     },
     {
       id: 'site',
+      accessorFn: (row) => row.siteName.toLowerCase(),
       header: 'Sede',
       meta: { card: 'subtitle' },
       cell: ({ row }) => row.original.siteName,
     },
     {
       id: 'supervisor',
+      accessorFn: (row) =>
+        `${row.supervisorLastName} ${row.supervisorFirstName}`.toLowerCase(),
       header: 'Coordinador',
       meta: { card: 'meta', cardLabel: 'Coordinador' },
       cell: ({ row }) => (
@@ -49,6 +53,7 @@ function EmployeeRatingsTab({ profileId }: { profileId: string }) {
     },
     {
       id: 'score',
+      accessorFn: (row) => row.score,
       header: 'Puntaje',
       meta: { card: 'meta', cardLabel: 'Puntaje' },
       cell: ({ row }) => (
@@ -57,6 +62,8 @@ function EmployeeRatingsTab({ profileId }: { profileId: string }) {
     },
     {
       id: 'comment',
+      accessorFn: (row) => row.comment?.toLowerCase() ?? undefined,
+      sortUndefined: 'last',
       header: 'Comentario',
       meta: { card: 'meta', cardLabel: 'Comentario' },
       cell: ({ row }) => row.original.comment ?? '—',
@@ -66,6 +73,8 @@ function EmployeeRatingsTab({ profileId }: { profileId: string }) {
   return (
     <DataTable
       caption="Calificaciones recibidas"
+      resizableColumns
+      persistKey="tabla:empleado-calificaciones"
       columns={columns}
       data={rows}
       getRowId={(row) => row.id}

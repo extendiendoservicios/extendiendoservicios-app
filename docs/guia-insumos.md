@@ -113,7 +113,7 @@ Para **editar** un artículo (código, nombre, presentación, mínimo, notas o i
 
 ## La lista de Stock: colores y filtros
 
-En la pestaña **Stock** ves, por artículo: imagen chica, código, nombre y presentación, categoría, **stock**, **mínimo**, **costo**, **venta** y **valor a costo** (stock por costo). Abajo está el total: cantidad de artículos y **valor del stock a costo** de lo que estás viendo.
+En la pestaña **Stock** ves, por artículo: imagen chica, código, nombre y presentación, categoría, **stock**, **mínimo**, **costo**, **venta** y **valor del stock** (cantidad en stock × precio de costo). Abajo está el total: cantidad de artículos y **valor total del stock (a precio de costo)** de lo que estás viendo.
 
 ![La lista de Stock, con los artículos en rojo, en amarillo y sin color](guias/img/adm-insumos-stock.png)
 

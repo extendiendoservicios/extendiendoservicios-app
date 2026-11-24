@@ -84,6 +84,7 @@ export default function SecurityEventsPage() {
   const columns: DataTableColumnDef<SecurityEvent>[] = [
     {
       id: 'when',
+      accessorFn: (row) => row.createdAt,
       header: 'Fecha y hora',
       meta: { card: 'title' },
       cell: ({ row }) => (
@@ -95,24 +96,31 @@ export default function SecurityEventsPage() {
     },
     {
       id: 'type',
+      accessorFn: (row) => SECURITY_EVENT_TYPE_LABELS[row.eventType],
       header: 'Evento',
       meta: { card: 'meta', cardLabel: 'Evento' },
       cell: ({ row }) => SECURITY_EVENT_TYPE_LABELS[row.original.eventType],
     },
     {
       id: 'actor',
+      accessorFn: (row) => row.actorName?.toLowerCase() ?? undefined,
+      sortUndefined: 'last',
       header: 'Quién',
       meta: { card: 'meta', cardLabel: 'Quién' },
       cell: ({ row }) => row.original.actorName ?? '—',
     },
     {
       id: 'target',
+      accessorFn: (row) => row.targetName?.toLowerCase() ?? undefined,
+      sortUndefined: 'last',
       header: 'Sobre quién',
       meta: { card: 'meta', cardLabel: 'Sobre quién' },
       cell: ({ row }) => row.original.targetName ?? '—',
     },
     {
       id: 'detail',
+      accessorFn: (row) => describeSecurityEventDetail(row)?.toLowerCase(),
+      sortUndefined: 'last',
       header: 'Detalle',
       meta: { card: 'meta', cardLabel: 'Detalle' },
       cell: ({ row }) => describeSecurityEventDetail(row.original) ?? '—',
@@ -194,6 +202,8 @@ export default function SecurityEventsPage() {
 
           <DataTable
             caption="Eventos de seguridad"
+            resizableColumns
+            persistKey="tabla:eventos-seguridad"
             columns={columns}
             data={securityEventsQuery.data ?? []}
             getRowId={(row) => row.id}

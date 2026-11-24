@@ -209,6 +209,8 @@ export default function RatingCriteriaPage() {
 
           <DataTable
             caption="Criterios de calificación"
+            resizableColumns
+            persistKey="tabla:criterios-calificacion"
             columns={columns}
             data={criteria}
             getRowId={(row) => row.id}

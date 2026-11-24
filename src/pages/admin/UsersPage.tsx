@@ -509,6 +509,8 @@ export default function UsersPage() {
       >
         <DataTable
           caption="Usuarios y roles"
+          resizableColumns
+          persistKey="tabla:usuarios"
           columns={columns}
           data={rows}
           getRowId={(row) => row.profileId}

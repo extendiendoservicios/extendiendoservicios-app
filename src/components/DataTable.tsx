@@ -149,6 +149,12 @@ interface DataTableProps<TData> {
    * controla). Si el almacenamiento falla, la tabla anda igual, sin recordar.
    */
   persistKey?: string
+  /**
+   * El orden lo resuelve quien usa la tabla (lista paginada en el cliente o
+   * en el servidor): `DataTable` solo muestra el estado del orden en los
+   * encabezados y avisa con `onSortingChange`, pero no reordena `data`.
+   */
+  manualSorting?: boolean
   className?: string
 }
 
@@ -222,6 +228,22 @@ function writePersisted(
   }
 }
 
+/**
+ * Varias tablas con la misma `persistKey` en pantalla (por ejemplo, una por
+ * franja o por grupo) comparten los anchos: cuando una cambia, avisa a las
+ * demás para que las columnas sigan alineadas entre sí.
+ */
+type SizingListener = (key: string, sizing: ColumnSizingState) => void
+const sizingListeners = new Set<SizingListener>()
+
+function sameSizing(a: ColumnSizingState, b: ColumnSizingState) {
+  const keysA = Object.keys(a)
+  return (
+    keysA.length === Object.keys(b).length &&
+    keysA.every((key) => a[key] === b[key])
+  )
+}
+
 function clampWidth(width: number) {
   return Math.min(RESIZE_MAX, Math.max(RESIZE_MIN, Math.round(width)))
 }
@@ -269,6 +291,7 @@ function DataTable<TData>({
   maxHeight,
   resizableColumns = false,
   persistKey,
+  manualSorting = false,
   className,
 }: DataTableProps<TData>) {
   const showCards = useMediaQuery(CARD_LAYOUT_QUERY)
@@ -291,6 +314,7 @@ function DataTable<TData>({
     onSortingChange: handleSortingChange,
     onColumnSizingChange: setColumnSizing,
     enableColumnResizing: resizableColumns,
+    manualSorting,
     // OH-02: el ciclo es ascendente, descendente, sin orden (también en números).
     sortDescFirst: false,
     getCoreRowModel: getCoreRowModel(),
@@ -305,6 +329,11 @@ function DataTable<TData>({
       sizing: resizableColumns ? columnSizing : undefined,
       sorting: controlledSorting ? undefined : internalSorting,
     })
+    if (resizableColumns) {
+      for (const listener of sizingListeners) {
+        listener(persistKey, columnSizing)
+      }
+    }
   }, [
     persistKey,
     resizableColumns,
@@ -312,6 +341,21 @@ function DataTable<TData>({
     controlledSorting,
     internalSorting,
   ])
+
+  React.useEffect(() => {
+    if (!persistKey || !resizableColumns) {
+      return
+    }
+    const listener: SizingListener = (key, sizing) => {
+      if (key === persistKey) {
+        setColumnSizing((old) => (sameSizing(old, sizing) ? old : sizing))
+      }
+    }
+    sizingListeners.add(listener)
+    return () => {
+      sizingListeners.delete(listener)
+    }
+  }, [persistKey, resizableColumns])
 
   const bounded = maxHeight != null || maxVisibleRows != null
   const boundedHeight =
