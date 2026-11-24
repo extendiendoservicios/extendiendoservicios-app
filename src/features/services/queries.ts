@@ -187,6 +187,20 @@ export function useSetServiceStatusMutation() {
   })
 }
 
+/** D-03: turnos que le quedan al servicio desde una fecha (aviso del administrador). */
+export function useServiceShiftsFromCountQuery(
+  serviceId: string,
+  fromDate: string,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: [...servicesKeys.all, 'shiftsFrom', serviceId, fromDate] as const,
+    queryFn: () => servicesApi.countServiceShiftsFrom(serviceId, fromDate),
+    enabled,
+    staleTime: 0,
+  })
+}
+
 // -------------------------------------------------------------------------
 // Empleados fijos (AJ2-17)
 // -------------------------------------------------------------------------
