@@ -760,13 +760,6 @@ export type Database = {
             foreignKeyName: "attendance_notices_assignment_id_fkey"
             columns: ["assignment_id"]
             isOneToOne: false
-            referencedRelation: "v_my_day"
-            referencedColumns: ["assignment_id"]
-          },
-          {
-            foreignKeyName: "attendance_notices_assignment_id_fkey"
-            columns: ["assignment_id"]
-            isOneToOne: false
             referencedRelation: "v_my_history"
             referencedColumns: ["assignment_id"]
           },
@@ -930,13 +923,6 @@ export type Database = {
             foreignKeyName: "attendance_records_assignment_id_fkey"
             columns: ["assignment_id"]
             isOneToOne: false
-            referencedRelation: "v_my_day"
-            referencedColumns: ["assignment_id"]
-          },
-          {
-            foreignKeyName: "attendance_records_assignment_id_fkey"
-            columns: ["assignment_id"]
-            isOneToOne: false
             referencedRelation: "v_my_history"
             referencedColumns: ["assignment_id"]
           },
@@ -1023,13 +1009,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_assignments_board"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attention_dismissals_assignment_id_fkey"
-            columns: ["assignment_id"]
-            isOneToOne: false
-            referencedRelation: "v_my_day"
-            referencedColumns: ["assignment_id"]
           },
           {
             foreignKeyName: "attention_dismissals_assignment_id_fkey"
@@ -2709,13 +2688,6 @@ export type Database = {
             foreignKeyName: "ratings_assignment_id_fkey"
             columns: ["assignment_id"]
             isOneToOne: false
-            referencedRelation: "v_my_day"
-            referencedColumns: ["assignment_id"]
-          },
-          {
-            foreignKeyName: "ratings_assignment_id_fkey"
-            columns: ["assignment_id"]
-            isOneToOne: false
             referencedRelation: "v_my_history"
             referencedColumns: ["assignment_id"]
           },
@@ -3190,13 +3162,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_assignments_board"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "shift_media_assignment_id_fkey"
-            columns: ["assignment_id"]
-            isOneToOne: false
-            referencedRelation: "v_my_day"
-            referencedColumns: ["assignment_id"]
           },
           {
             foreignKeyName: "shift_media_assignment_id_fkey"
@@ -6150,120 +6115,7 @@ export type Database = {
           tasks_done: number | null
           tasks_total: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "assignments_shift_id_fkey"
-            columns: ["shift_id"]
-            isOneToOne: false
-            referencedRelation: "shifts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "assignments_shift_id_fkey"
-            columns: ["shift_id"]
-            isOneToOne: false
-            referencedRelation: "v_shifts_board"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attendance_notices_reported_by_fkey"
-            columns: ["last_notice_reported_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attendance_notices_reported_by_fkey"
-            columns: ["last_notice_reported_by"]
-            isOneToOne: false
-            referencedRelation: "v_announcement_recipients"
-            referencedColumns: ["profile_id"]
-          },
-          {
-            foreignKeyName: "attendance_notices_reported_by_fkey"
-            columns: ["last_notice_reported_by"]
-            isOneToOne: false
-            referencedRelation: "v_supervisor_status"
-            referencedColumns: ["supervisor_id"]
-          },
-          {
-            foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_in_recorded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_out_recorded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_in_recorded_by"]
-            isOneToOne: false
-            referencedRelation: "v_announcement_recipients"
-            referencedColumns: ["profile_id"]
-          },
-          {
-            foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_out_recorded_by"]
-            isOneToOne: false
-            referencedRelation: "v_announcement_recipients"
-            referencedColumns: ["profile_id"]
-          },
-          {
-            foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_in_recorded_by"]
-            isOneToOne: false
-            referencedRelation: "v_supervisor_status"
-            referencedColumns: ["supervisor_id"]
-          },
-          {
-            foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_out_recorded_by"]
-            isOneToOne: false
-            referencedRelation: "v_supervisor_status"
-            referencedColumns: ["supervisor_id"]
-          },
-          {
-            foreignKeyName: "shifts_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "shifts_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "v_clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "shifts_site_id_client_id_fkey"
-            columns: ["site_id", "client_id"]
-            isOneToOne: false
-            referencedRelation: "sites"
-            referencedColumns: ["id", "client_id"]
-          },
-          {
-            foreignKeyName: "shifts_site_id_client_id_fkey"
-            columns: ["site_id", "client_id"]
-            isOneToOne: false
-            referencedRelation: "v_site_contacts"
-            referencedColumns: ["site_id", "client_id"]
-          },
-          {
-            foreignKeyName: "shifts_site_id_client_id_fkey"
-            columns: ["site_id", "client_id"]
-            isOneToOne: false
-            referencedRelation: "v_sites_day_status"
-            referencedColumns: ["site_id", "client_id"]
-          },
-        ]
+        Relationships: []
       }
       v_my_history: {
         Row: {
@@ -6382,13 +6234,6 @@ export type Database = {
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_out_recorded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -6398,8 +6243,8 @@ export type Database = {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_out_recorded_by"]
             isOneToOne: false
-            referencedRelation: "v_announcement_recipients"
-            referencedColumns: ["profile_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
@@ -6411,13 +6256,20 @@ export type Database = {
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_out_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "v_supervisor_status"
             referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_in_recorded_by"]
+            columns: ["check_out_recorded_by"]
             isOneToOne: false
             referencedRelation: "v_supervisor_status"
             referencedColumns: ["supervisor_id"]
@@ -6778,13 +6630,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_assignments_board"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "shift_media_assignment_id_fkey"
-            columns: ["assignment_id"]
-            isOneToOne: false
-            referencedRelation: "v_my_day"
-            referencedColumns: ["assignment_id"]
           },
           {
             foreignKeyName: "shift_media_assignment_id_fkey"
@@ -8456,6 +8301,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      count_outdated_template_shifts: {
+        Args: { p_client_id: string; p_site_id?: string }
+        Returns: number
+      }
       create_announcement: {
         Args: {
           p_audience: Database["public"]["Enums"]["announcement_audience"]
@@ -8702,6 +8551,93 @@ export type Database = {
           start_time: string
         }[]
       }
+      get_my_services: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          access_instructions: string | null
+          assignment_id: string | null
+          building_hours: string | null
+          changed_since_last_seen: boolean | null
+          check_in_at: string | null
+          check_in_distance_m: number | null
+          check_in_geo_overridden: boolean | null
+          check_in_geo_reason:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          check_in_geo_status: Database["public"]["Enums"]["geo_status"] | null
+          check_in_geofence_radius_m: number | null
+          check_in_recorded_by: string | null
+          check_in_source:
+            | Database["public"]["Enums"]["attendance_source"]
+            | null
+          check_in_time_corrected: boolean | null
+          check_out_at: string | null
+          check_out_distance_m: number | null
+          check_out_geo_overridden: boolean | null
+          check_out_geo_reason:
+            | Database["public"]["Enums"]["geo_unvalidated_reason"]
+            | null
+          check_out_geo_status: Database["public"]["Enums"]["geo_status"] | null
+          check_out_geofence_radius_m: number | null
+          check_out_recorded_by: string | null
+          check_out_source:
+            | Database["public"]["Enums"]["attendance_source"]
+            | null
+          check_out_time_corrected: boolean | null
+          client_id: string | null
+          client_legal_name: string | null
+          client_trade_name: string | null
+          effective_end_time: string | null
+          effective_ends_at: string | null
+          effective_open_ended: boolean | null
+          effective_start_time: string | null
+          effective_starts_at: string | null
+          geofence_max_accuracy_m: number | null
+          is_today: boolean | null
+          last_notice_at: string | null
+          last_notice_estimated_arrival_at: string | null
+          last_notice_has_certificate: boolean | null
+          last_notice_kind: Database["public"]["Enums"]["notice_kind"] | null
+          last_notice_minutes_late: number | null
+          last_notice_reason_code:
+            | Database["public"]["Enums"]["absence_reason"]
+            | null
+          last_notice_reason_text: string | null
+          last_notice_reported_by: string | null
+          last_notice_source:
+            | Database["public"]["Enums"]["attendance_source"]
+            | null
+          my_photos_count: number | null
+          my_videos_count: number | null
+          no_checkout: boolean | null
+          notes: string | null
+          on_the_way_expires_at: string | null
+          phone_restricted: boolean | null
+          photos_not_allowed: boolean | null
+          requires_photos: boolean | null
+          restrictions_notes: string | null
+          shift_date: string | null
+          shift_id: string | null
+          shift_notes: string | null
+          shift_status: Database["public"]["Enums"]["shift_status"] | null
+          site_address: string | null
+          site_city: string | null
+          site_geofence_radius_m: number | null
+          site_id: string | null
+          site_latitude: number | null
+          site_longitude: number | null
+          site_name: string | null
+          status: Database["public"]["Enums"]["assignment_status"] | null
+          tasks_done: number | null
+          tasks_total: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "v_my_day"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_shift_date_warnings: {
         Args: {
           p_date: string
@@ -8712,6 +8648,43 @@ export type Database = {
         Returns: Json
       }
       get_stock_summary: { Args: never; Returns: Json }
+      get_supervisor_shifts: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          access_instructions: string
+          assigned_employees: Json
+          building_hours: string
+          client_id: string
+          client_legal_name: string
+          client_trade_name: string
+          display_state: string
+          end_time: string
+          ends_at: string
+          is_priority: boolean
+          max_accuracy_m: number
+          my_supervision_id: string
+          my_supervision_status: Database["public"]["Enums"]["supervision_status"]
+          open_ended: boolean
+          phone_restricted: boolean
+          photos_not_allowed: boolean
+          priority_kind: string
+          required_staff: number
+          restrictions_notes: string
+          shift_date: string
+          shift_id: string
+          shift_status: Database["public"]["Enums"]["shift_status"]
+          site_address: string
+          site_city: string
+          site_id: string
+          site_latitude: number
+          site_longitude: number
+          site_name: string
+          site_radius_m: number
+          start_time: string
+          starts_at: string
+          supervisors: Json
+        }[]
+      }
       holiday_shift_conflicts: { Args: { p_date: string }; Returns: Json }
       list_employee_calendar_notes: {
         Args: { p_employee_id: string; p_from: string; p_to: string }
@@ -9160,6 +9133,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      reload_template_shift_tasks: {
+        Args: { p_client_id: string; p_site_id?: string }
+        Returns: number
       }
       remove_assignment: {
         Args: { p_assignment_id: string; p_reason: string }
