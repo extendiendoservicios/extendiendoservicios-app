@@ -6,6 +6,9 @@ export const GEO_REASON_LABEL: Record<GeoUnvalidatedReason, string> = {
   site_without_coords: 'sede sin coordenadas',
   admin_record: 'registrado por la administración',
   low_accuracy: 'precisión insuficiente',
+  permission_denied: 'sin permiso de ubicación',
+  position_unavailable: 'sin señal de ubicación',
+  timeout: 'tiempo de espera agotado',
 }
 
 export interface GeoStatusTextInput {
