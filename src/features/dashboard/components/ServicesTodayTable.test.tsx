@@ -195,3 +195,29 @@ describe('ServicesTodayTable: alto acotado, orden y anchos (OH-01, OH-02)', () =
     expect(screen.getAllByRole('separator').length).toBeGreaterThan(0)
   })
 })
+
+describe('ServicesTodayTable: supervisión en la columna Estado (D-10)', () => {
+  it('muestra la segunda línea solo en los servicios que ya empezaron', () => {
+    renderTable([
+      makeRow({
+        id: 'a1',
+        checkInAt: '2026-11-18T09:05:00Z',
+        displayStatus: 'present',
+        status: 'present',
+        supervisionState: 'done',
+        supervisorName: 'Sofía Ruiz',
+      }),
+      makeRow({ id: 'a2', supervisionState: 'none' }),
+      makeRow({
+        id: 'a3',
+        displayStatus: 'no_record',
+        supervisionState: 'none',
+      }),
+    ])
+    expect(screen.getByText('Supervisado')).toHaveAttribute(
+      'title',
+      'Sofía Ruiz',
+    )
+    expect(screen.getAllByText('Sin supervisión')).toHaveLength(1)
+  })
+})

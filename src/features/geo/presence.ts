@@ -29,7 +29,7 @@ export interface PresenceMapModel {
   markers: MapViewMarker[]
   /** Empleados en curso y sin ubicación (B-13). */
   withoutLocation: PresenceRow[]
-  /** Coordinadores sin posición en su último evento (CJ-33), con su estado. */
+  /** Coordinadores sin ninguna posición en el día (CJ-33, D-11), con su estado. */
   coordinatorsWithoutLocation: SupervisorStatusRow[]
   /** Cuántos puntos de empleados se dibujan. */
   peopleOnMap: number

@@ -54,6 +54,7 @@ import {
   statusSortKey,
 } from '@/features/dashboard/servicesToday'
 import { AutoClosedBadge } from './AutoClosedBadge'
+import { SupervisionLine } from './SupervisionLine'
 import { AttendanceTimeButton } from './AttendanceTimeButton'
 import { RecordAttendanceSheet } from './RecordAttendanceSheet'
 import { CoordinatorsDaySection } from './CoordinatorsDaySection'
@@ -340,6 +341,7 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
               {certificate && (
                 <span className="text-[12px] text-text-2">{certificate}</span>
               )}
+              <SupervisionLine row={row.original} />
             </div>
           )
         },
