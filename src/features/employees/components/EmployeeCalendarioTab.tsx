@@ -21,6 +21,7 @@ import {
   resolveMonth,
 } from '@/features/employees/calendarioMonth'
 import { useEmployeeFixedGapsQuery } from '@/features/employees/fixedQueries'
+import { useCalendarNotesQuery } from '@/features/employees/notesQueries'
 import { buildWeekBlocks } from '@/features/employees/cronogramaWeek'
 
 /**
@@ -80,6 +81,10 @@ function EmployeeCalendarioTab({
   // Los turnos del mes (todos) hacen falta para editar: dotación, turnos sin cubrir y destinos.
   const shiftsQuery = useShiftsBoardRangeQuery(first, last, {}, canEdit)
 
+  // D-08: observaciones del mes, solo para quien administra. Si fallan, el calendario se ve igual, sin ellas.
+  const notesQuery = useCalendarNotesQuery(profileId, first, last, canEdit)
+  const notes = canEdit && !notesQuery.isError ? notesQuery.data : undefined
+
   const month = useMemo(
     () =>
       buildCronogramaMonth({
@@ -88,6 +93,7 @@ function EmployeeCalendarioTab({
         assignments: assignmentsQuery.data ?? [],
         leaves: leavesQuery.data ?? [],
         holidays: holidaysQuery.data ?? [],
+        notes,
       }),
     [
       year,
@@ -95,6 +101,7 @@ function EmployeeCalendarioTab({
       assignmentsQuery.data,
       leavesQuery.data,
       holidaysQuery.data,
+      notes,
     ],
   )
   // OH-06: fijos sin asignar del mes. Si falla, el calendario se ve igual, sin los bloques punteados.
@@ -149,6 +156,9 @@ function EmployeeCalendarioTab({
           allShifts={allShifts}
           canEdit={canEdit}
           gaps={canEdit ? gapsQuery.data : undefined}
+          notes={
+            canEdit && !notesQuery.isError ? (notesQuery.data ?? []) : undefined
+          }
         />
       )}
 
