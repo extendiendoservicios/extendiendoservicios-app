@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import type { FixedPatternRow, WeekBoardBlock } from '@/api/employeeFixed'
 import {
   addBlock,
+  boardBlockColor,
+  clientsByService,
+  withoutClientColors,
   blocksFromPattern,
   blocksOfWeekday,
   duplicateBlock,
@@ -67,7 +70,7 @@ describe('conversión de weekday (0 = domingo en la base, lunes primero en panta
 })
 
 describe('blocksFromPattern', () => {
-  it('arma un bloque por servicio y por día, con el color del cliente', () => {
+  it('arma un bloque por servicio y por día, sin color propio (D-05: el color es el del cliente)', () => {
     const blocks = blocksFromPattern([pattern()])
     expect(blocks).toHaveLength(2)
     expect(blocks[0]).toMatchObject({
@@ -75,7 +78,7 @@ describe('blocksFromPattern', () => {
       start: '08:00',
       end: '12:30',
       label: 'SEDE CENTRAL',
-      colorIndex: 3,
+      colorIndex: null,
       serviceId: 'sv1',
     })
     expect(blocks.map((b) => b.weekday)).toEqual([1, 3])
@@ -189,5 +192,55 @@ describe('weekdayAtPoint', () => {
     expect(weekdayAtPoint(rects, 50, 50)).toBe(1)
     expect(weekdayAtPoint(rects, 150, 50)).toBe(0)
     expect(weekdayAtPoint(rects, 500, 50)).toBeNull()
+  })
+})
+
+describe('color único del cliente en la pizarra (D-05)', () => {
+  const clients = clientsByService([
+    pattern(),
+    pattern({
+      serviceId: 'sv2',
+      clientId: 'c2',
+      clientName: 'RAESA',
+      calendarColor: 7,
+    }),
+  ])
+
+  it('resuelve el cliente de cada servicio del patrón', () => {
+    expect(clients.get('sv2')).toEqual({
+      clientId: 'c2',
+      clientName: 'RAESA',
+      calendarColor: 7,
+    })
+  })
+
+  it('un bloque con cliente se pinta con el color del cliente, aunque guarde otro', () => {
+    expect(
+      boardBlockColor(block({ serviceId: 'sv2', colorIndex: 1 }), clients),
+    ).toBe(7)
+  })
+
+  it('un bloque sin cliente (texto libre o servicio que ya no es fijo) conserva su color propio', () => {
+    expect(
+      boardBlockColor(block({ serviceId: null, colorIndex: 5 }), clients),
+    ).toBe(5)
+    expect(
+      boardBlockColor(block({ serviceId: 'viejo', colorIndex: 4 }), clients),
+    ).toBe(4)
+    expect(
+      boardBlockColor(block({ serviceId: null, colorIndex: null }), clients),
+    ).toBeNull()
+  })
+
+  it('al guardar manda null en los bloques con cliente y respeta los libres', () => {
+    const saved = withoutClientColors(
+      [
+        block({ id: 'a', serviceId: 'sv2', colorIndex: 1 }),
+        block({ id: 'b', serviceId: null, colorIndex: 5 }),
+        block({ id: 'c', serviceId: 'viejo', colorIndex: 4 }),
+      ],
+      clients,
+    )
+    expect(saved.map((item) => item.colorIndex)).toEqual([null, 5, 4])
   })
 })

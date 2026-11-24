@@ -1,6 +1,7 @@
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { AssignmentBoardRow } from '@/api/assignments'
+import type { CalendarNote } from '@/api/employeeCalendarNotes'
 import type { EmployeeLeave } from '@/api/employees'
 import type { Holiday } from '@/api/settings'
 import {
@@ -41,6 +42,14 @@ export interface CronogramaShift {
   colorIndex: number | null
 }
 
+/** Observación del día (D-08): texto libre con color opcional. */
+export interface CronogramaNote {
+  id: string
+  body: string
+  /** Índice 0–11 del color; `null` si no tiene. */
+  colorIndex: number | null
+}
+
 export type CronogramaDayKind = 'empty' | 'holiday' | 'leave' | 'shifts'
 
 export interface CronogramaDay {
@@ -56,6 +65,8 @@ export interface CronogramaDay {
   /** Un feriado que además tiene turnos los muestra, con la marca de feriado. */
   holiday?: boolean
   shifts: CronogramaShift[]
+  /** Observaciones cargadas por la administración (D-08); vacío si no hay o no se pidieron. */
+  notes: CronogramaNote[]
 }
 
 export interface CronogramaMonth {
@@ -115,6 +126,8 @@ export function buildCronogramaMonth(input: {
   assignments: AssignmentBoardRow[]
   leaves: EmployeeLeave[]
   holidays: Pick<Holiday, 'holidayDate' | 'deletedAt'>[]
+  /** D-08: observaciones del mes; salen en la celda de su día, con cualquier tipo de día. */
+  notes?: Pick<CalendarNote, 'id' | 'date' | 'body' | 'color'>[]
 }): CronogramaMonth {
   const { from, to } = monthRange(input.year, input.month)
 
@@ -137,6 +150,13 @@ export function buildCronogramaMonth(input: {
       colorIndex: row.clientCalendarColor,
     })
     shiftsByDate.set(row.shiftDate, list)
+  }
+
+  const notesByDate = new Map<string, CronogramaNote[]>()
+  for (const note of input.notes ?? []) {
+    const list = notesByDate.get(note.date) ?? []
+    list.push({ id: note.id, body: note.body, colorIndex: note.color })
+    notesByDate.set(note.date, list)
   }
 
   const holidayDates = new Set(
@@ -166,6 +186,7 @@ export function buildCronogramaMonth(input: {
         inMonth,
         kind: 'empty',
         shifts: [],
+        notes: inMonth ? (notesByDate.get(date) ?? []) : [],
       }
       if (inMonth) {
         const dayLeaves = leavesOn(date)

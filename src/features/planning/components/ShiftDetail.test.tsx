@@ -237,3 +237,35 @@ describe('ShiftDetail: Cancelar supervisión (P19.10)', () => {
     ).toBeVisible()
   })
 })
+
+describe('ShiftDetail: horario de un turno finalizado (D-07)', () => {
+  it('la dirección y la administración ven «Editar horario» en un turno finalizado', () => {
+    for (const roles of [['owner'], ['admin']]) {
+      auth.roles = roles
+      shiftState.data = makeShift([], 'completed')
+      const { unmount } = renderDetail()
+      expect(
+        screen.getByRole('link', { name: 'Editar horario' }),
+      ).toHaveAttribute('href', '/admin/turnos/shift-1/editar')
+      unmount()
+    }
+  })
+
+  it('un turno finalizado «A terminar» sigue ofreciendo «Poner hora de fin»', () => {
+    shiftState.data = {
+      ...makeShift([], 'completed'),
+      openEnded: true,
+    }
+    renderDetail()
+    expect(
+      screen.getByRole('link', { name: 'Poner hora de fin' }),
+    ).toBeVisible()
+    expect(screen.queryByRole('link', { name: 'Editar horario' })).toBeNull()
+  })
+
+  it('un turno cancelado no ofrece editar el horario', () => {
+    shiftState.data = makeShift([], 'cancelled')
+    renderDetail()
+    expect(screen.queryByRole('link', { name: 'Editar horario' })).toBeNull()
+  })
+})

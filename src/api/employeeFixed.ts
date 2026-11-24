@@ -23,12 +23,7 @@ import {
 
 /** Motivos por los que un fijo no quedó asignado (`employee_fixed_gaps`). */
 export type FixedGapReason =
-  | 'ON_LEAVE'
-  | 'OVERLAP'
-  | 'SHIFT_FULL'
-  | 'REMOVED'
-  | 'ADDED_AFTER'
-  | 'NOT_ASSIGNED'
+  'ON_LEAVE' | 'OVERLAP' | 'REMOVED' | 'ADDED_AFTER' | 'NOT_ASSIGNED'
 
 export interface FixedGap {
   shiftId: string
@@ -54,7 +49,6 @@ export interface FixedGap {
 const GAP_REASONS: readonly string[] = [
   'ON_LEAVE',
   'OVERLAP',
-  'SHIFT_FULL',
   'REMOVED',
   'ADDED_AFTER',
   'NOT_ASSIGNED',

@@ -19,6 +19,8 @@ function block(over: Partial<WeekBlock> = {}): WeekBlock {
     siteName: 'Sede Central',
     clientName: 'Cliente',
     colorIndex: 0,
+    clientId: 'c1',
+    shiftStatus: 'assigned',
     startMin: 8 * 60 + 5,
     endMin: 12 * 60,
     openEnded: false,

@@ -92,12 +92,65 @@ export function blocksFromPattern(rows: FixedPatternRow[]): WeekBoardBlock[] {
         start: hhmm(row.startTime),
         end: row.openEnded ? null : hhmm(row.endTime),
         label: clampLabel(`${row.siteName.toUpperCase()}${suffix}`),
-        colorIndex: row.calendarColor,
+        // D-05: el color sale del cliente; la pizarra ya no guarda uno por tarjeta.
+        colorIndex: null,
         serviceId: row.serviceId,
       })
     }
   }
   return blocks.slice(0, MAX_BOARD_BLOCKS)
+}
+
+/** Cliente de un bloque de la pizarra, resuelto por su servicio (D-05). */
+export interface BoardBlockClient {
+  clientId: string
+  clientName: string
+  /** Índice 0–11 del color del cliente. */
+  calendarColor: number | null
+}
+
+/** Cliente de cada servicio del patrón fijo (los bloques con `serviceId` salen de ahí). */
+export function clientsByService(
+  rows: Pick<
+    FixedPatternRow,
+    'serviceId' | 'clientId' | 'clientName' | 'calendarColor'
+  >[],
+): Map<string, BoardBlockClient> {
+  return new Map(
+    rows.map((row) => [
+      row.serviceId,
+      {
+        clientId: row.clientId,
+        clientName: row.clientName,
+        calendarColor: row.calendarColor,
+      },
+    ]),
+  )
+}
+
+/**
+ * D-05: el color de un bloque con cliente es el del cliente. Los bloques sin
+ * cliente (texto libre o de un servicio que ya no es fijo) conservan el color
+ * propio que tengan.
+ */
+export function boardBlockColor(
+  block: Pick<WeekBoardBlock, 'serviceId' | 'colorIndex'>,
+  clients: Map<string, BoardBlockClient>,
+): number | null {
+  const client = block.serviceId ? clients.get(block.serviceId) : undefined
+  return client ? client.calendarColor : block.colorIndex
+}
+
+/** D-05: al guardar, los bloques con cliente van sin `color_index`; el resto conserva el suyo. */
+export function withoutClientColors(
+  blocks: WeekBoardBlock[],
+  clients: Map<string, BoardBlockClient>,
+): WeekBoardBlock[] {
+  return blocks.map((block) =>
+    block.serviceId && clients.has(block.serviceId) && block.colorIndex != null
+      ? { ...block, colorIndex: null }
+      : block,
+  )
 }
 
 /** Bloques de un día ordenados por hora de inicio (los empates conservan el orden). */

@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Eye,
   Pencil,
+  Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/IconButton'
@@ -18,6 +19,8 @@ import { StatusBadge, getStatusMeta } from '@/components/status'
 import type { ShiftStatus as BadgeShiftStatus } from '@/components/status'
 import type { ShiftListRow } from '@/api/shifts'
 import { useAuth } from '@/features/auth/AuthProvider'
+import { OwnerDeleteDialog } from '@/features/ownerDelete/components/OwnerDeleteDialog'
+import { canOwnerDelete } from '@/features/ownerDelete/matching'
 import {
   addDaysToIsoDate,
   formatDateOnly,
@@ -112,6 +115,9 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
   // "Cancelar" exige además `cancel_shifts` (06 sección 7), igual que el servidor.
   const canCancel = canCancelShift(actor)
   const [cancelTarget, setCancelTarget] = useState<ShiftListRow | null>(null)
+  // D-06: eliminar un turno es solo de la dirección (OD-22); el diálogo explica si tiene historia.
+  const canDelete = canOwnerDelete(auth)
+  const [deleteTarget, setDeleteTarget] = useState<ShiftListRow | null>(null)
   const [colorBy, setColorBy] = useColorBy()
   const [filters, setFilters] = useCalendarFilters()
   const { employeeOptions, names: filterNames } =
@@ -347,11 +353,14 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
       enableSorting: false,
       enableResizing: false,
       header: 'Acciones',
-      meta: { card: 'trailing', width: '7.5rem' },
+      meta: { card: 'trailing', width: canDelete ? '9.5rem' : '7.5rem' },
       cell: ({ row }) => {
         const shift = row.original
+        // D-07: un turno finalizado también se edita (solo el horario, no la fecha).
         const isEditable =
-          shift.status === 'scheduled' || shift.status === 'assigned'
+          shift.status === 'scheduled' ||
+          shift.status === 'assigned' ||
+          shift.status === 'completed'
         const isCancellable = isShiftCancellable(shift.status)
         if (isDesktop) {
           // Solo ícono (con nombre accesible y título): ocupa 3 × 34 px.
@@ -385,6 +394,15 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
                   onClick={() => setCancelTarget(shift)}
                 />
               )}
+              {canDelete && (
+                <IconButton
+                  icon={Trash2}
+                  aria-label="Eliminar"
+                  title="Eliminar turno"
+                  className="text-danger"
+                  onClick={() => setDeleteTarget(shift)}
+                />
+              )}
             </div>
           )
         }
@@ -405,6 +423,16 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
                 onClick={() => setCancelTarget(shift)}
               >
                 Cancelar
+              </Button>
+            )}
+            {canDelete && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-danger"
+                onClick={() => setDeleteTarget(shift)}
+              >
+                Eliminar
               </Button>
             )}
           </div>
@@ -549,6 +577,20 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
       )}
 
       {colorBy === 'client' && <StatusDotLegend />}
+
+      {deleteTarget && (
+        <OwnerDeleteDialog
+          kind="shift"
+          id={deleteTarget.id}
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setDeleteTarget(null)
+            }
+          }}
+          onDeleted={() => setDeleteTarget(null)}
+        />
+      )}
 
       {cancelTarget && (
         <CancelShiftDialog

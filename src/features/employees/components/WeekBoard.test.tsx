@@ -174,7 +174,8 @@ describe('Cronograma semanal (OH-07)', () => {
     expect(screen.getByTestId('cronograma-estado')).toHaveTextContent(
       /Editado por Laura Gómez el/,
     )
-    expect(api.fetchEmployeeFixedPattern).not.toHaveBeenCalled()
+    // El patrón se pide igual: dice a qué cliente pertenece cada tarjeta (D-05).
+    expect(api.saveEmployeeWeekBoard).not.toHaveBeenCalled()
   })
 
   it('«+» agrega un bloque en ese día', async () => {
@@ -350,6 +351,8 @@ describe('Cronograma semanal (OH-07)', () => {
     expect(employeeId).toBe('p1')
     expect(saved).toHaveLength(2)
     expect(saved.map((b) => b.start).sort()).toEqual(['08:00', '09:15'])
+    // D-05: los bloques con cliente se guardan sin color propio.
+    expect(saved.every((block) => block.colorIndex === null)).toBe(true)
     await waitFor(
       () =>
         expect(screen.getByTestId('cronograma-estado')).toHaveTextContent(
