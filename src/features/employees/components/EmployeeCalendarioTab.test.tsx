@@ -13,7 +13,29 @@ const { state } = vi.hoisted(() => ({
     assignments: [] as unknown[],
     leaves: [] as unknown[],
     holidays: [] as unknown[],
+    notes: [] as unknown[],
   },
+}))
+
+vi.mock('@/features/employees/notesQueries', () => ({
+  useCalendarNotesQuery: (
+    _profileId: string,
+    _from: string,
+    _to: string,
+    enabled: boolean,
+  ) => ({
+    data: enabled ? state.notes : undefined,
+    isLoading: false,
+    isError: false,
+  }),
+  useSaveCalendarNoteMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useDeleteCalendarNoteMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }))
 
 vi.mock('@/features/planning/queries', () => ({
@@ -192,6 +214,7 @@ describe('EmployeeCalendarioTab (OD-03, OH-04, OH-05)', () => {
     state.assignments = []
     state.leaves = []
     state.holidays = []
+    state.notes = []
   })
 
   it('«Imprimir» abre la vista previa en A4 horizontal con la hoja de siempre', () => {
@@ -239,5 +262,59 @@ describe('EmployeeCalendarioTab (OD-03, OH-04, OH-05)', () => {
     expect(screen.queryByRole('button', { name: /Abrir el turno/ })).toBeNull()
     expect(screen.queryByLabelText(/Turnos sin cubrir/)).toBeNull()
     expect(screen.getByText('08:00')).toBeInTheDocument()
+  })
+})
+
+describe('EmployeeCalendarioTab: observaciones del mes (D-08)', () => {
+  beforeEach(() => {
+    state.assignments = []
+    state.leaves = []
+    state.holidays = []
+    state.notes = [
+      {
+        id: 'n1',
+        employeeId: 'p1',
+        date: '2026-11-10',
+        body: 'Sin turnos por la obra',
+        color: 3,
+        createdAt: '2026-11-09T10:00:00Z',
+        createdByName: 'Laura Gómez',
+        updatedAt: '2026-11-09T10:00:00Z',
+        updatedByName: 'Laura Gómez',
+      },
+    ]
+  })
+
+  it('quien administra las ve en el día, con el «+» para agregar otra', () => {
+    renderTab({ monthParam: '2026-11', onMonthChange: vi.fn(), canEdit: true })
+    const cell = screen.getByTestId('dia-2026-11-10')
+    expect(within(cell).getByText('Sin turnos por la obra')).toBeInTheDocument()
+    expect(
+      within(cell).getByRole('button', { name: /Agregar una observación/ }),
+    ).toBeInTheDocument()
+  })
+
+  it('salen en la hoja impresa del mes, en su día y con su color', () => {
+    renderTab({ monthParam: '2026-11', onMonthChange: vi.fn(), canEdit: true })
+    fireEvent.click(screen.getByRole('button', { name: 'Imprimir' }))
+    const sheet = within(screen.getByRole('dialog'))
+    const printed = within(sheet.getByTestId('dia-2026-11-10')).getByTestId(
+      'observacion',
+    )
+    expect(printed).toHaveTextContent('Sin turnos por la obra')
+    const colors = clientChipColors(3)
+    expect(printed.style.borderColor).not.toBe('')
+    expect(colors).not.toBeNull()
+    // Sin el «+» ni el menú: es la hoja de papel.
+    expect(
+      sheet.queryByRole('button', { name: /Agregar una observación/ }),
+    ).toBeNull()
+  })
+
+  it('sin permiso de edición no se ven ni se imprimen', () => {
+    renderTab({ monthParam: '2026-11', onMonthChange: vi.fn(), canEdit: false })
+    expect(screen.queryByText('Sin turnos por la obra')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Imprimir' }))
+    expect(screen.queryByText('Sin turnos por la obra')).toBeNull()
   })
 })

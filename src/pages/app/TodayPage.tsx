@@ -3,7 +3,7 @@ import { Link } from 'react-router'
 import { AlertTriangle, Bell, CalendarX } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { EmptyState } from '@/components/EmptyState'
-import { AssignmentStatusBadge } from '@/features/employee/components/AssignmentStatusBadge'
+import { UpcomingRow } from '@/features/employee/components/UpcomingRow'
 import { ServiceCard } from '@/features/employee/components/ServiceCard'
 import { formatCalendarDate } from '@/lib/format'
 import { isRelevantChange, type MyDayAssignment } from '@/api/myDay'
@@ -15,7 +15,6 @@ import {
 import { OnTheWayAction } from '@/features/employee/components/OnTheWayAction'
 import { InstallBanner } from '@/components/InstallBanner'
 import { AnnouncementsBanner } from '@/features/announcements/mobile/AnnouncementsBanner'
-import { formatAssignmentRange } from '@/features/employee/shiftRange'
 import {
   isNewOfficeMessage,
   rememberOfficeMessages,
@@ -193,29 +192,5 @@ function ChangesBlock({
         </AlertDescription>
       </div>
     </Alert>
-  )
-}
-
-/** Un turno cancelado se muestra como "Cancelado" (CB-03) y uno sin salida como "Sin salida" (AJ2-09). */
-function AssignmentBadge({ assignment }: { assignment: MyDayAssignment }) {
-  return <AssignmentStatusBadge assignment={assignment} />
-}
-
-function UpcomingRow({ assignment }: { assignment: MyDayAssignment }) {
-  return (
-    <Link
-      to={`/app/servicio/${assignment.assignmentId}`}
-      className="flex min-h-11 items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-[9px]"
-    >
-      <div className="min-w-0">
-        <p className="truncate text-[13px] font-semibold text-text">
-          {formatCalendarDate(assignment.shiftDate)} · {assignment.siteName}
-        </p>
-        <p className="truncate text-[11px] text-text-3">
-          {formatAssignmentRange(assignment)}
-        </p>
-      </div>
-      <AssignmentBadge assignment={assignment} />
-    </Link>
   )
 }

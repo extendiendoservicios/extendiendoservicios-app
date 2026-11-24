@@ -48,11 +48,13 @@ function fichaje(
       wait: 'idle',
       waitRemainingMs: 0,
       startWait: vi.fn(),
+      lastErrorCode: null,
+      retry: vi.fn(),
     },
     view,
     reasonText: '',
     setReasonText: vi.fn(),
-    payload: { coords: view.coords, outsideReason: null },
+    payload: { coords: view.coords, outsideReason: null, geoReason: null },
     ...overrides,
   }
 }
@@ -166,5 +168,36 @@ describe('GeoFichajePanel', () => {
       />,
     )
     expect(container.textContent).not.toMatch(/34\.60|58\.38/)
+  })
+
+  it('sin señal: avisa, ofrece «Reintentar» y la ayuda del celular', () => {
+    const f = fichaje({ state: 'unavailable', device: 'android' })
+    f.live.state = 'unavailable'
+    render(<GeoFichajePanel fichaje={f} site={SITE} />)
+
+    expect(screen.getByTestId('geo-message')).toHaveTextContent(
+      'No pudimos obtener tu ubicación',
+    )
+    expect(screen.getByTestId('geo-help')).toHaveTextContent(
+      'Revisá que la ubicación del teléfono esté encendida.',
+    )
+    expect(screen.getByTestId('geo-help')).toHaveTextContent('tocá Ubicación')
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }))
+    expect(f.live.retry).toHaveBeenCalled()
+  })
+
+  it('con posición no hay «Reintentar» ni ayuda', () => {
+    render(
+      <GeoFichajePanel
+        fichaje={fichaje({
+          position: { lat: SITE.lat, lng: SITE.lng, accuracyM: 35 },
+        })}
+        site={SITE}
+      />,
+    )
+    expect(
+      screen.queryByRole('button', { name: 'Reintentar' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByTestId('geo-help')).not.toBeInTheDocument()
   })
 })

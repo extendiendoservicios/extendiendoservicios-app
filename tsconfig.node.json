@@ -40,6 +40,7 @@
     "tests/e2e-responsive/**/*.ts",
     "tests/e2e-ajustes-reunion/**/*.ts",
     "tests/e2e-geo/**/*.ts",
+    "tests/e2e-p31/**/*.ts",
     "tests/lighthouse/**/*.ts",
     "tests/permissions/**/*.ts",
     "scripts/**/*.ts",

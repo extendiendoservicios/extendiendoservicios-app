@@ -105,7 +105,7 @@ describe('EmployeeAttendanceHistoryTab (AJ-06)', () => {
       screen.getByLabelText('Total de horas del período'),
     ).toHaveTextContent('7 h 30 min')
     expect(
-      screen.getByRole('columnheader', { name: 'Horas trabajadas' }),
+      screen.getByRole('columnheader', { name: /^Horas trabajadas/ }),
     ).toBeInTheDocument()
     // Desde: 30 días antes de hoy.
     expect(historyMock).toHaveBeenCalledWith('e1', '2026-09-07', '2026-10-07')

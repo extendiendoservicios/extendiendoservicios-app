@@ -233,6 +233,7 @@ describe('FinishPage (EMP-10) · servicio que pide fotos', () => {
         assignmentId: 'a1',
         coords: null,
         outsideReason: null,
+        geoReason: null,
       }),
     )
   })

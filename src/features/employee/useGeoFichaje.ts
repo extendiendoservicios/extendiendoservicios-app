@@ -7,7 +7,10 @@ import {
 } from '@/lib/geo'
 import {
   buildLiveGeoView,
+  detectGeoDevice,
+  geoReasonToSend,
   outsideReasonToSend,
+  type GeoReasonToSend,
   type LiveGeoView,
 } from './liveGeo'
 
@@ -32,6 +35,8 @@ export interface GeoFichaje {
   payload: {
     coords: LiveGeoView['coords']
     outsideReason: string | null
+    /** Motivo técnico sin coordenadas (`p_geo_reason`, D-14); `null` con coordenadas o sin consentimiento. */
+    geoReason: GeoReasonToSend | null
   }
 }
 
@@ -54,6 +59,13 @@ export function useGeoFichaje({
     waitMs: DEFAULT_WAIT_FOR_SIGNAL_MS,
   })
   const [reasonText, setReasonText] = useState('')
+  const device = useMemo(
+    () =>
+      detectGeoDevice(
+        typeof navigator !== 'undefined' ? (navigator.userAgent ?? '') : '',
+      ),
+    [],
+  )
 
   const view = useMemo(
     () =>
@@ -68,8 +80,10 @@ export function useGeoFichaje({
         radiusM,
         maxAccuracyM,
         wait: live.wait,
+        device,
       }),
     [
+      device,
       enabled,
       live.state,
       live.position,
@@ -89,6 +103,11 @@ export function useGeoFichaje({
     payload: {
       coords: view.coords,
       outsideReason: outsideReasonToSend(view, reasonText),
+      geoReason: geoReasonToSend({
+        enabled,
+        coords: view.coords,
+        lastErrorCode: live.lastErrorCode,
+      }),
     },
   }
 }

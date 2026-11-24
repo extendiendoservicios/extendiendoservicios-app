@@ -373,7 +373,7 @@ create temp table t_gaps on commit drop as
 select * from public.employee_fixed_gaps('f87a0000-0000-0000-0000-0000000000a2', '2199-08-01', '2199-09-30');
 grant select on t_gaps to authenticated;
 
-select is((select count(*)::int from t_gaps), 6, 'gaps: seis huecos (no cuenta el cancelado ni el asignado)');
+select is((select count(*)::int from t_gaps), 5, 'gaps: cinco huecos (no cuenta el cancelado, el asignado ni el que ya cubre otra persona, 0088 D-01)');
 select is((select reason from t_gaps where shift_id = 'f87a0000-0000-0000-0000-000000000041'), 'ON_LEAVE', 'gaps: licencia = ON_LEAVE');
 select is((select detail ->> 'code' from t_gaps where shift_id = 'f87a0000-0000-0000-0000-000000000041'), 'ON_LEAVE', 'gaps: ON_LEAVE trae el detalle de la licencia');
 select is((select reason from t_gaps where shift_id = 'f87a0000-0000-0000-0000-000000000042'), 'OVERLAP', 'gaps: otra asignación en el horario = OVERLAP');
@@ -381,7 +381,7 @@ select is(
   (select detail ->> 'conflict_shift_id' from t_gaps where shift_id = 'f87a0000-0000-0000-0000-000000000042'),
   'f87a0000-0000-0000-0000-000000000049', 'gaps: OVERLAP trae el turno que choca'
 );
-select is((select reason from t_gaps where shift_id = 'f87a0000-0000-0000-0000-000000000043'), 'SHIFT_FULL', 'gaps: dotación completa con otra persona = SHIFT_FULL');
+select is((select count(*)::int from t_gaps where shift_id = 'f87a0000-0000-0000-0000-000000000043'), 0, 'gaps: dotación completa con otra persona = no se lista (0088, D-01)');
 select is((select reason from t_gaps where shift_id = 'f87a0000-0000-0000-0000-000000000044'), 'REMOVED', 'gaps: baja lógica = REMOVED');
 select is((select detail ->> 'removed_reason' from t_gaps where shift_id = 'f87a0000-0000-0000-0000-000000000044'), 'Lo sacaron a mano', 'gaps: REMOVED trae el motivo de la baja');
 select is((select reason from t_gaps where shift_id = 'f87a0000-0000-0000-0000-000000000045'), 'ADDED_AFTER', 'gaps: fijo agregado después de crear el turno = ADDED_AFTER');

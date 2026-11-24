@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Eye,
   Pencil,
+  Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/IconButton'
@@ -18,6 +19,8 @@ import { StatusBadge, getStatusMeta } from '@/components/status'
 import type { ShiftStatus as BadgeShiftStatus } from '@/components/status'
 import type { ShiftListRow } from '@/api/shifts'
 import { useAuth } from '@/features/auth/AuthProvider'
+import { OwnerDeleteDialog } from '@/features/ownerDelete/components/OwnerDeleteDialog'
+import { canOwnerDelete } from '@/features/ownerDelete/matching'
 import {
   addDaysToIsoDate,
   formatDateOnly,
@@ -112,6 +115,9 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
   // "Cancelar" exige además `cancel_shifts` (06 sección 7), igual que el servidor.
   const canCancel = canCancelShift(actor)
   const [cancelTarget, setCancelTarget] = useState<ShiftListRow | null>(null)
+  // D-06: eliminar un turno es solo de la dirección (OD-22); el diálogo explica si tiene historia.
+  const canDelete = canOwnerDelete(auth)
+  const [deleteTarget, setDeleteTarget] = useState<ShiftListRow | null>(null)
   const [colorBy, setColorBy] = useColorBy()
   const [filters, setFilters] = useCalendarFilters()
   const { employeeOptions, names: filterNames } =
@@ -171,6 +177,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
   const columns: DataTableColumnDef<ShiftListRow>[] = [
     {
       id: 'time',
+      accessorFn: (row) => `${row.startTime}-${row.endTime}`,
       header: 'Horario',
       meta: { card: 'title', width: '6.25rem' },
       cell: ({ row }) => (
@@ -186,6 +193,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
     },
     {
       id: 'client',
+      accessorFn: (row) => `${row.clientName} ${row.siteName}`.toLowerCase(),
       header: 'Cliente · sede',
       meta: { card: 'subtitle', width: '19%' },
       cell: ({ row }) => {
@@ -242,6 +250,7 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
     },
     {
       id: 'staffing',
+      accessorFn: (row) => row.assignedCount,
       header: 'Dotación',
       meta: {
         card: 'meta',
@@ -270,6 +279,11 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
     },
     {
       id: 'employees',
+      accessorFn: (row) =>
+        summarizeNames(
+          peopleOfShift(people, row.id).employees,
+        ).full.toLowerCase() || undefined,
+      sortUndefined: 'last',
       header: 'Asignados',
       meta: { card: 'meta', cardLabel: 'Asignados', width: '13%' },
       cell: ({ row }) => {
@@ -287,6 +301,11 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
     },
     {
       id: 'supervisor',
+      accessorFn: (row) =>
+        summarizeNames(
+          peopleOfShift(people, row.id).supervisors,
+        ).full.toLowerCase() || undefined,
+      sortUndefined: 'last',
       // P19.11f: «Coordinador» no entra en 12 % de la tabla a 1024 px con el
       // menú abierto y se pegaba con «Estado»: se abrevia con el nombre completo
       // accesible. En tarjeta se sigue viendo «Coordinador» (`cardLabel`).
@@ -315,6 +334,11 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
     },
     {
       id: 'status',
+      accessorFn: (row) =>
+        getStatusMeta({
+          domain: 'shift',
+          status: row.displayStatus as BadgeShiftStatus,
+        }).label,
       header: 'Estado',
       meta: { card: 'meta', cardLabel: 'Estado', width: '6.75rem' },
       cell: ({ row }) => (
@@ -326,12 +350,17 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
     },
     {
       id: 'actions',
+      enableSorting: false,
+      enableResizing: false,
       header: 'Acciones',
-      meta: { card: 'trailing', width: '7.5rem' },
+      meta: { card: 'trailing', width: canDelete ? '9.5rem' : '7.5rem' },
       cell: ({ row }) => {
         const shift = row.original
+        // D-07: un turno finalizado también se edita (solo el horario, no la fecha).
         const isEditable =
-          shift.status === 'scheduled' || shift.status === 'assigned'
+          shift.status === 'scheduled' ||
+          shift.status === 'assigned' ||
+          shift.status === 'completed'
         const isCancellable = isShiftCancellable(shift.status)
         if (isDesktop) {
           // Solo ícono (con nombre accesible y título): ocupa 3 × 34 px.
@@ -365,6 +394,15 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
                   onClick={() => setCancelTarget(shift)}
                 />
               )}
+              {canDelete && (
+                <IconButton
+                  icon={Trash2}
+                  aria-label="Eliminar"
+                  title="Eliminar turno"
+                  className="text-danger"
+                  onClick={() => setDeleteTarget(shift)}
+                />
+              )}
             </div>
           )
         }
@@ -385,6 +423,16 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
                 onClick={() => setCancelTarget(shift)}
               >
                 Cancelar
+              </Button>
+            )}
+            {canDelete && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-danger"
+                onClick={() => setDeleteTarget(shift)}
+              >
+                Eliminar
               </Button>
             )}
           </div>
@@ -463,6 +511,8 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
       {shiftsQuery.isLoading || franjaGroups.length === 0 ? (
         <DataTable
           caption={`Turnos del ${formatDateOnly(date)}`}
+          resizableColumns
+          persistKey="tabla:calendario-dia"
           columns={columns}
           data={[]}
           getRowId={(row) => row.id}
@@ -498,6 +548,8 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
                 </h3>
                 <DataTable
                   caption={`Turnos de la franja ${group.franja} del ${formatDateOnly(date)}`}
+                  resizableColumns
+                  persistKey="tabla:calendario-dia"
                   columns={columns}
                   data={group.shifts}
                   getRowId={(row) => row.id}
@@ -525,6 +577,20 @@ function ShiftsDayList({ date, onDateChange }: ShiftsDayListProps) {
       )}
 
       {colorBy === 'client' && <StatusDotLegend />}
+
+      {deleteTarget && (
+        <OwnerDeleteDialog
+          kind="shift"
+          id={deleteTarget.id}
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setDeleteTarget(null)
+            }
+          }}
+          onDeleted={() => setDeleteTarget(null)}
+        />
+      )}
 
       {cancelTarget && (
         <CancelShiftDialog

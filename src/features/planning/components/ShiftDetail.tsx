@@ -200,12 +200,13 @@ function ShiftDetail({ shiftId }: ShiftDetailProps) {
             </Button>
           </div>
         )}
-        {shift.status === 'completed' && shift.openEnded && canManage && (
-          // AJ2-10: a un turno «A terminar» finalizado todavía se le puede poner la hora de fin.
+        {shift.status === 'completed' && canManage && (
+          // D-07 (P31.3): de un turno finalizado se puede cambiar el horario (no la fecha);
+          // las horas trabajadas se recalculan con la franja nueva. AJ2-10: en uno «A terminar» es poner la hora de fin.
           <div className="flex flex-wrap gap-2 pt-1">
             <Button asChild variant="ghost" size="sm" icon={Pencil}>
               <Link to={`/admin/turnos/${shift.id}/editar`}>
-                Poner hora de fin
+                {shift.openEnded ? 'Poner hora de fin' : 'Editar horario'}
               </Link>
             </Button>
           </div>

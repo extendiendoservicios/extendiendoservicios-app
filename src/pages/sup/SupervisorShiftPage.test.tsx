@@ -184,6 +184,7 @@ describe('SupervisorShiftPage (SUP-03)', () => {
         shiftId: 'sh1',
         coords: null,
         outsideReason: null,
+        geoReason: null,
       }),
     )
     expect(await screen.findByText('Supervisión iniciada')).toBeInTheDocument()

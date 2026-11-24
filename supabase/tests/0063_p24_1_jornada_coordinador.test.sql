@@ -191,7 +191,7 @@ select ok(
 select ok(
   not has_function_privilege('anon', 'public.start_workday(numeric, numeric, numeric)', 'execute')
   and has_function_privilege('authenticated', 'public.start_workday(numeric, numeric, numeric)', 'execute')
-  and has_function_privilege('authenticated', 'public.take_supervision(uuid, numeric, numeric, numeric, text)', 'execute')
+  and has_function_privilege('authenticated', 'public.take_supervision(uuid, numeric, numeric, numeric, text, text)', 'execute')
   and has_function_privilege('authenticated', 'public.admin_record_workday(uuid, date, timestamptz, text, timestamptz)', 'execute'),
   'grants de las RPC nuevas: anon no, authenticated sí'
 );

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { AssignmentBoardRow } from '@/api/assignments'
 import type { ShiftListRow } from '@/api/shifts'
 import {
+  COMPLETED_DATE_MESSAGE,
+  completedDateChangeBlocked,
   buildWeekBlocks,
   decideScope,
   filterUncoveredShifts,
@@ -385,5 +387,37 @@ describe('filtro del panel «Turnos sin cubrir»', () => {
         date: '2026-11-17',
       }).map((s) => s.id),
     ).toEqual(['c'])
+  })
+})
+
+describe('turno finalizado: solo el horario, no el día (D-07)', () => {
+  it('bloquea cambiar el día de un turno finalizado y deja cambiar el horario', () => {
+    expect(
+      completedDateChangeBlocked(
+        { shiftStatus: 'completed', date: '2026-11-20' },
+        { date: '2026-11-21' },
+      ),
+    ).toBe(true)
+    expect(
+      completedDateChangeBlocked(
+        { shiftStatus: 'completed', date: '2026-11-20' },
+        { date: '2026-11-20' },
+      ),
+    ).toBe(false)
+  })
+
+  it('en un turno que no terminó el día se puede cambiar', () => {
+    expect(
+      completedDateChangeBlocked(
+        { shiftStatus: 'assigned', date: '2026-11-20' },
+        { date: '2026-11-21' },
+      ),
+    ).toBe(false)
+  })
+
+  it('el mensaje es el mismo que devuelve el servidor', () => {
+    expect(COMPLETED_DATE_MESSAGE).toBe(
+      'Este turno ya terminó: solo se puede cambiar el horario, no la fecha.',
+    )
   })
 })

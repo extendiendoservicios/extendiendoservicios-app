@@ -111,11 +111,12 @@ describe('StockTab: tabla (IS-05, IS-24)', () => {
       'Mínimo',
       'Costo',
       'Venta',
-      'Valor a costo',
+      'Valor del stock',
     ]) {
       expect(
         screen.getByRole('columnheader', {
-          name: new RegExp(`^${header}$`, 'i'),
+          // El asa para ajustar el ancho también entra en el nombre del encabezado.
+          name: new RegExp(`^${header}( Cambiar el ancho.*)?$`, 'i'),
         }),
       ).toBeInTheDocument()
     }
@@ -269,7 +270,7 @@ describe('StockTab: celular', () => {
     ) as HTMLElement
     expect(warnCard.className).toContain('bg-warning-bg')
     expect(within(warnCard).getByText('Bajo mínimo')).toBeInTheDocument()
-    expect(within(warnCard).getByText('Valor a costo')).toBeInTheDocument()
+    expect(within(warnCard).getByText('Valor del stock')).toBeInTheDocument()
     const critCard = Array.from(cards).find((card) =>
       card.textContent?.includes('Bolsa de residuos'),
     ) as HTMLElement

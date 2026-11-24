@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { sortRowsBy } from '@/components/dataTableSort'
 import {
   DataTable,
   type DataTableColumnDef,
@@ -115,6 +116,20 @@ function oneOf<T extends string>(
   }
 }
 
+/** Valores por los que se ordenan las columnas de texto (la calificación tiene el suyo). */
+const EMPLOYEE_SORT_ACCESSORS = {
+  name: (row: EmployeeListRow) =>
+    `${row.lastName} ${row.firstName}`.toLowerCase(),
+  roles: (row: EmployeeListRow) =>
+    row.roles
+      .map((role) => ROLE_LABELS[role])
+      .join(', ')
+      .toLowerCase(),
+  status: (row: EmployeeListRow) =>
+    getStatusMeta({ domain: 'employee', status: row.effectiveStatus }).label,
+  phone: (row: EmployeeListRow) => row.phone ?? undefined,
+}
+
 export default function EmployeesPage() {
   const auth = useAuth()
   const actor = useMemo(
@@ -179,7 +194,7 @@ export default function EmployeesPage() {
           (row) => ratings?.get(row.profileId),
           ratingSort.desc ? 'desc' : 'asc',
         )
-      : byStatus
+      : sortRowsBy(byStatus, sorting, EMPLOYEE_SORT_ACCESSORS)
   }, [
     employeesQuery.data,
     clientFilter,
@@ -215,6 +230,7 @@ export default function EmployeesPage() {
   const columns: DataTableColumnDef<EmployeeListRow>[] = [
     {
       id: 'name',
+      accessorFn: (row) => EMPLOYEE_SORT_ACCESSORS.name(row),
       header: 'Nombre',
       meta: { card: 'title' },
       cell: ({ row }) => (
@@ -237,6 +253,7 @@ export default function EmployeesPage() {
     },
     {
       id: 'roles',
+      accessorFn: (row) => EMPLOYEE_SORT_ACCESSORS.roles(row),
       header: 'Roles',
       meta: { card: 'meta', cardLabel: 'Roles' },
       cell: ({ row }) =>
@@ -244,6 +261,7 @@ export default function EmployeesPage() {
     },
     {
       id: 'status',
+      accessorFn: (row) => EMPLOYEE_SORT_ACCESSORS.status(row),
       header: 'Estado',
       meta: { card: 'meta', cardLabel: 'Estado' },
       cell: ({ row }) => (
@@ -263,6 +281,8 @@ export default function EmployeesPage() {
     },
     {
       id: 'phone',
+      accessorFn: (row) => EMPLOYEE_SORT_ACCESSORS.phone(row),
+      sortUndefined: 'last',
       header: 'Teléfono',
       meta: { card: 'meta', cardLabel: 'Teléfono' },
       cell: ({ row }) => row.original.phone ?? '',
@@ -349,6 +369,9 @@ export default function EmployeesPage() {
 
       <DataTable
         caption="Empleados y coordinadores"
+        resizableColumns
+        persistKey="tabla:empleados"
+        manualSorting
         columns={columns}
         data={pageRows}
         sorting={sorting}

@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
+import type { SortingState } from '@tanstack/react-table'
 import { Link } from 'react-router'
 import { CalendarClock, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/DatePicker'
+import { sortRowsBy } from '@/components/dataTableSort'
 import {
   DataTable,
   type DataTableColumnDef,
@@ -15,6 +17,10 @@ import type { AttendanceBoardRow } from '@/api/attendance'
 import type { Role } from '@/api/users'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { getAttendanceRowBadge } from '@/features/attendance/derive'
+import {
+  scheduleSortKey,
+  statusSortKey,
+} from '@/features/dashboard/servicesToday'
 import {
   buildAttendanceEntries,
   entryCheckIn,
@@ -79,6 +85,23 @@ function noticeLabel(row: AttendanceBoardRow): string {
   return kindLabel
 }
 
+/** Valores por los que se ordena cada columna de la tabla (ver `sortRowsBy`). */
+const SORT_ACCESSORS = {
+  date: (entry: AttendanceDetailEntry) => entry.date,
+  client: (entry: AttendanceDetailEntry) =>
+    `${entry.row.clientName} ${entry.row.siteName}`.toLowerCase(),
+  schedule: (entry: AttendanceDetailEntry) => scheduleSortKey(entry.row),
+  checkIn: (entry: AttendanceDetailEntry) => entryCheckIn(entry) ?? undefined,
+  checkOut: (entry: AttendanceDetailEntry) => entryCheckOut(entry) ?? undefined,
+  workedHours: (entry: AttendanceDetailEntry) =>
+    entry.row.workedMinutes ?? undefined,
+  status: (entry: AttendanceDetailEntry) => statusSortKey(entry.row),
+  notice: (entry: AttendanceDetailEntry) =>
+    noticeLabel(entry.row).toLowerCase(),
+  notes: (entry: AttendanceDetailEntry) =>
+    entry.row.notes?.toLowerCase() ?? undefined,
+}
+
 interface EmployeeAttendanceHistoryTabProps {
   profileId: string
   /** Datos de la persona para la hoja imprimible y para saber si es supervisor. */
@@ -126,6 +149,7 @@ function EmployeeAttendanceHistoryTab({
     pageIndex: 0,
     pageSize: PAGE_SIZE,
   })
+  const [sorting, setSorting] = useState<SortingState>([])
   const [isSheetOpen, setSheetOpen] = useState(false)
 
   const historyQuery = useEmployeeAttendanceHistoryQuery(profileId, from, to)
@@ -155,7 +179,12 @@ function EmployeeAttendanceHistoryTab({
     (canDownload && leavesQuery.isLoading) ||
     (isSupervisor && canDownload && workdaysQuery.isLoading)
 
-  const pageRows = entries.slice(
+  // El orden se aplica a todo el período, antes de paginar.
+  const sortedEntries = useMemo(
+    () => sortRowsBy(entries, sorting, SORT_ACCESSORS),
+    [entries, sorting],
+  )
+  const pageRows = sortedEntries.slice(
     pagination.pageIndex * pagination.pageSize,
     pagination.pageIndex * pagination.pageSize + pagination.pageSize,
   )
@@ -174,6 +203,7 @@ function EmployeeAttendanceHistoryTab({
   const columns: DataTableColumnDef<AttendanceDetailEntry>[] = [
     {
       id: 'date',
+      accessorFn: (row) => SORT_ACCESSORS.date(row),
       header: 'Fecha',
       meta: { card: 'title' },
       cell: ({ row }) => (
@@ -187,6 +217,7 @@ function EmployeeAttendanceHistoryTab({
     },
     {
       id: 'client',
+      accessorFn: (row) => SORT_ACCESSORS.client(row),
       header: 'Cliente · sede',
       meta: { card: 'subtitle' },
       cell: ({ row }) => (
@@ -197,12 +228,15 @@ function EmployeeAttendanceHistoryTab({
     },
     {
       id: 'schedule',
+      accessorFn: (row) => SORT_ACCESSORS.schedule(row),
       header: 'Franja',
       meta: { card: 'meta', cardLabel: 'Franja' },
       cell: ({ row }) => entryFranja(row.original),
     },
     {
       id: 'checkIn',
+      accessorFn: (row) => SORT_ACCESSORS.checkIn(row),
+      sortUndefined: 'last',
       header: 'Inicio',
       meta: { card: 'meta', cardLabel: 'Inicio' },
       cell: ({ row }) => {
@@ -214,6 +248,8 @@ function EmployeeAttendanceHistoryTab({
     },
     {
       id: 'checkOut',
+      accessorFn: (row) => SORT_ACCESSORS.checkOut(row),
+      sortUndefined: 'last',
       header: 'Fin',
       meta: { card: 'meta', cardLabel: 'Fin' },
       cell: ({ row }) => {
@@ -230,6 +266,7 @@ function EmployeeAttendanceHistoryTab({
     },
     {
       id: 'geo',
+      enableSorting: false,
       header: 'Validación',
       meta: { card: 'meta', cardLabel: 'Validación' },
       cell: ({ row }) => (
@@ -241,6 +278,8 @@ function EmployeeAttendanceHistoryTab({
     },
     {
       id: 'workedHours',
+      accessorFn: (row) => SORT_ACCESSORS.workedHours(row),
+      sortUndefined: 'last',
       header: 'Horas trabajadas',
       meta: { card: 'meta', cardLabel: 'Horas trabajadas' },
       cell: ({ row }) => (
@@ -256,6 +295,7 @@ function EmployeeAttendanceHistoryTab({
     },
     {
       id: 'status',
+      accessorFn: (row) => SORT_ACCESSORS.status(row),
       header: 'Estado',
       meta: { card: 'meta', cardLabel: 'Estado' },
       cell: ({ row }) => (
@@ -264,12 +304,15 @@ function EmployeeAttendanceHistoryTab({
     },
     {
       id: 'notice',
+      accessorFn: (row) => SORT_ACCESSORS.notice(row),
       header: 'Aviso',
       meta: { card: 'meta', cardLabel: 'Aviso' },
       cell: ({ row }) => noticeLabel(row.original.row),
     },
     {
       id: 'notes',
+      accessorFn: (row) => SORT_ACCESSORS.notes(row),
+      sortUndefined: 'last',
       header: 'Observación',
       meta: { card: 'meta', cardLabel: 'Observación' },
       cell: ({ row }) => row.original.row.notes ?? '—',
@@ -331,6 +374,14 @@ function EmployeeAttendanceHistoryTab({
 
       <DataTable
         caption="Historial de asistencia"
+        resizableColumns
+        persistKey="tabla:empleado-historial-asistencia"
+        manualSorting
+        sorting={sorting}
+        onSortingChange={(next) => {
+          setSorting(next)
+          setPagination((old) => ({ ...old, pageIndex: 0 }))
+        }}
         columns={columns}
         data={pageRows}
         getRowId={(row) => row.key}

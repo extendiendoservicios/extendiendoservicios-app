@@ -50,6 +50,10 @@ describe('SupervisorMorePage (SUP-09)', () => {
 
     renderMorePage()
 
+    expect(screen.getByText('Próximos días').closest('a')).toHaveAttribute(
+      'href',
+      '/sup/proximos',
+    )
     expect(screen.getByText('Mi perfil')).toBeInTheDocument()
     expect(screen.getByText('Cerrar sesión')).toBeInTheDocument()
     expect(screen.queryByText('Mis servicios')).not.toBeInTheDocument()

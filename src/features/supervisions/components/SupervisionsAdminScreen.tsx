@@ -155,6 +155,7 @@ function SupervisionsAdminScreen({
   const supervisionColumns: DataTableColumnDef<SupervisionListRow>[] = [
     {
       id: 'date',
+      accessorFn: (row) => row.shiftDate,
       header: 'Fecha',
       meta: { card: 'title' },
       cell: ({ row }) => (
@@ -168,6 +169,8 @@ function SupervisionsAdminScreen({
     },
     {
       id: 'shift',
+      accessorFn: (row) =>
+        `${row.clientName} ${row.siteName} ${row.startTime}`.toLowerCase(),
       header: 'Turno',
       meta: { card: 'subtitle' },
       cell: ({ row }) => (
@@ -183,6 +186,8 @@ function SupervisionsAdminScreen({
     },
     {
       id: 'supervisor',
+      accessorFn: (row) =>
+        `${row.supervisorLastName} ${row.supervisorFirstName}`.toLowerCase(),
       header: 'Coordinador',
       meta: { card: 'meta', cardLabel: 'Coordinador' },
       cell: ({ row }) => (
@@ -194,6 +199,7 @@ function SupervisionsAdminScreen({
     },
     {
       id: 'status',
+      accessorFn: (row) => `${row.status}${row.unclosed ? '-sin-cierre' : ''}`,
       header: 'Estado',
       meta: { card: 'meta', cardLabel: 'Estado' },
       cell: ({ row }) => (
@@ -205,6 +211,8 @@ function SupervisionsAdminScreen({
     },
     {
       id: 'checkIn',
+      accessorFn: (row) => row.checkInAt ?? undefined,
+      sortUndefined: 'last',
       header: 'Inicio',
       meta: { card: 'meta', cardLabel: 'Inicio' },
       cell: ({ row }) =>
@@ -212,6 +220,8 @@ function SupervisionsAdminScreen({
     },
     {
       id: 'checkOut',
+      accessorFn: (row) => row.checkOutAt ?? undefined,
+      sortUndefined: 'last',
       header: 'Fin',
       meta: { card: 'meta', cardLabel: 'Fin' },
       cell: ({ row }) =>
@@ -219,6 +229,8 @@ function SupervisionsAdminScreen({
     },
     {
       id: 'duration',
+      accessorFn: (row) => row.durationMinutes ?? undefined,
+      sortUndefined: 'last',
       header: 'Duración',
       meta: { card: 'meta', cardLabel: 'Duración' },
       cell: ({ row }) =>
@@ -228,6 +240,7 @@ function SupervisionsAdminScreen({
     },
     {
       id: 'ratings',
+      accessorFn: (row) => row.ratingsCount,
       header: 'Calificaciones cargadas',
       meta: { card: 'meta', cardLabel: 'Calificaciones cargadas' },
       cell: ({ row }) =>
@@ -238,6 +251,7 @@ function SupervisionsAdminScreen({
   const ratingColumns: DataTableColumnDef<RatingListRow>[] = [
     {
       id: 'date',
+      accessorFn: (row) => row.shiftDate,
       header: 'Fecha',
       meta: { card: 'title' },
       cell: ({ row }) => (
@@ -251,6 +265,8 @@ function SupervisionsAdminScreen({
     },
     {
       id: 'employee',
+      accessorFn: (row) =>
+        `${row.employeeLastName} ${row.employeeFirstName}`.toLowerCase(),
       header: 'Empleado',
       meta: { card: 'subtitle' },
       cell: ({ row }) => (
@@ -262,12 +278,15 @@ function SupervisionsAdminScreen({
     },
     {
       id: 'site',
+      accessorFn: (row) => row.siteName.toLowerCase(),
       header: 'Sede',
       meta: { card: 'meta', cardLabel: 'Sede' },
       cell: ({ row }) => row.original.siteName,
     },
     {
       id: 'supervisor',
+      accessorFn: (row) =>
+        `${row.supervisorLastName} ${row.supervisorFirstName}`.toLowerCase(),
       header: 'Coordinador',
       meta: { card: 'meta', cardLabel: 'Coordinador' },
       cell: ({ row }) => (
@@ -279,6 +298,7 @@ function SupervisionsAdminScreen({
     },
     {
       id: 'score',
+      accessorFn: (row) => row.score,
       header: 'Puntaje',
       meta: { card: 'meta', cardLabel: 'Puntaje' },
       cell: ({ row }) => (
@@ -287,6 +307,8 @@ function SupervisionsAdminScreen({
     },
     {
       id: 'comment',
+      accessorFn: (row) => row.comment?.toLowerCase() ?? undefined,
+      sortUndefined: 'last',
       header: 'Comentario',
       meta: { card: 'meta', cardLabel: 'Comentario' },
       cell: ({ row }) => row.original.comment ?? '—',
@@ -437,6 +459,8 @@ function SupervisionsAdminScreen({
         <TabsContent value="supervisiones" className="pt-3">
           <DataTable
             caption="Supervisiones"
+            resizableColumns
+            persistKey="tabla:supervisiones"
             columns={supervisionColumns}
             data={supervisionRows}
             getRowId={(row) => row.id}
@@ -451,6 +475,8 @@ function SupervisionsAdminScreen({
         <TabsContent value="calificaciones" className="pt-3">
           <DataTable
             caption="Calificaciones"
+            resizableColumns
+            persistKey="tabla:supervisiones-calificaciones"
             columns={ratingColumns}
             data={ratingRows}
             getRowId={(row) => row.id}

@@ -49,7 +49,12 @@ import {
 import { UpdatedAgo } from './UpdatedAgo'
 import { WorkedHoursCell } from './WorkedHoursCell'
 import { CheckInCell } from './CheckInCell'
+import {
+  scheduleSortKey,
+  statusSortKey,
+} from '@/features/dashboard/servicesToday'
 import { AutoClosedBadge } from './AutoClosedBadge'
+import { SupervisionLine } from './SupervisionLine'
 import { AttendanceTimeButton } from './AttendanceTimeButton'
 import { RecordAttendanceSheet } from './RecordAttendanceSheet'
 import { CoordinatorsDaySection } from './CoordinatorsDaySection'
@@ -229,6 +234,8 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
     () => [
       {
         id: 'employee',
+        accessorFn: (row) =>
+          `${row.employeeLastName} ${row.employeeFirstName}`.toLowerCase(),
         header: 'Empleado',
         meta: { card: 'title' },
         cell: ({ row }) => (
@@ -245,6 +252,7 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
       },
       {
         id: 'client',
+        accessorFn: (row) => `${row.clientName} ${row.siteName}`.toLowerCase(),
         header: 'Cliente · sede',
         meta: { card: 'subtitle' },
         cell: ({ row }) => (
@@ -255,6 +263,7 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
       },
       {
         id: 'schedule',
+        accessorFn: (row) => scheduleSortKey(row),
         header: 'Franja',
         meta: { card: 'meta', cardLabel: 'Franja' },
         cell: ({ row }) =>
@@ -266,6 +275,8 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
       },
       {
         id: 'checkIn',
+        accessorFn: (row) => row.checkInAt ?? undefined,
+        sortUndefined: 'last',
         header: 'Inicio real',
         meta: { card: 'meta', cardLabel: 'Inicio real' },
         cell: ({ row }) => (
@@ -281,6 +292,8 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
       },
       {
         id: 'checkOut',
+        accessorFn: (row) => row.checkOutAt ?? undefined,
+        sortUndefined: 'last',
         header: 'Fin real',
         meta: { card: 'meta', cardLabel: 'Fin real' },
         cell: ({ row }) => (
@@ -301,6 +314,7 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
       },
       {
         id: 'geo',
+        enableSorting: false,
         header: 'Validación',
         meta: { card: 'meta', cardLabel: 'Validación' },
         cell: ({ row }) => (
@@ -312,6 +326,7 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
       },
       {
         id: 'status',
+        accessorFn: (row) => statusSortKey(row),
         header: 'Estado',
         meta: { card: 'meta', cardLabel: 'Estado' },
         cell: ({ row }) => {
@@ -326,18 +341,26 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
               {certificate && (
                 <span className="text-[12px] text-text-2">{certificate}</span>
               )}
+              <SupervisionLine row={row.original} />
             </div>
           )
         },
       },
       {
         id: 'workedHours',
+        accessorFn: (row) => row.workedMinutes ?? undefined,
+        sortUndefined: 'last',
         header: 'Horas',
         meta: { card: 'meta', cardLabel: 'Horas' },
         cell: ({ row }) => <WorkedHoursCell {...row.original} />,
       },
       {
         id: 'earlyLeave',
+        accessorFn: (row) =>
+          row.minutesEarlyLeave != null && row.minutesEarlyLeave > 0
+            ? row.minutesEarlyLeave
+            : undefined,
+        sortUndefined: 'last',
         header: 'Salida anticipada',
         meta: { card: 'meta', cardLabel: 'Salida anticipada' },
         cell: ({ row }) =>
@@ -348,6 +371,8 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
       },
       {
         id: 'actions',
+        enableSorting: false,
+        enableResizing: false,
         header: 'Acciones',
         meta: { card: 'actions' },
         cell: ({ row }) => (
@@ -475,6 +500,8 @@ function AttendanceTodayList({ date, onDateChange }: AttendanceTodayListProps) {
       <PhonesContext.Provider value={phonesQuery.data}>
         <DataTable
           caption={`Asistencia del ${formatDateOnly(date)}`}
+          resizableColumns
+          persistKey="tabla:asistencia-hoy"
           columns={columns}
           data={filteredRows}
           getRowId={(row) => row.id}

@@ -13,6 +13,7 @@ import {
   type TaskStatus,
 } from '@/api/tasks'
 import type { GeolocationCoords } from '@/lib/geolocation'
+import type { GeoTechnicalReason } from '@/lib/geo'
 import type { AbsenceReason } from '@/lib/absenceReasons'
 
 /**
@@ -156,11 +157,19 @@ export function useRecordCheckInMutation() {
       assignmentId,
       coords,
       outsideReason,
+      geoReason,
     }: {
       assignmentId: string
       coords: GeolocationCoords | null
       outsideReason?: string | null
-    }) => attendanceApi.recordCheckIn(assignmentId, coords, outsideReason),
+      geoReason?: GeoTechnicalReason | null
+    }) =>
+      attendanceApi.recordCheckIn(
+        assignmentId,
+        coords,
+        outsideReason,
+        geoReason,
+      ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: employeeKeys.myDay() })
     },
@@ -175,11 +184,19 @@ export function useRecordCheckOutMutation() {
       assignmentId,
       coords,
       outsideReason,
+      geoReason,
     }: {
       assignmentId: string
       coords: GeolocationCoords | null
       outsideReason?: string | null
-    }) => attendanceApi.recordCheckOut(assignmentId, coords, outsideReason),
+      geoReason?: GeoTechnicalReason | null
+    }) =>
+      attendanceApi.recordCheckOut(
+        assignmentId,
+        coords,
+        outsideReason,
+        geoReason,
+      ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: employeeKeys.myDay() })
     },

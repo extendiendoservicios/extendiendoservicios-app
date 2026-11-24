@@ -95,6 +95,7 @@ function ClientServiceSummaryTab({
   const columns: DataTableColumnDef<ClientSummaryShift>[] = [
     {
       id: 'date',
+      accessorFn: (row) => row.shiftDate,
       header: 'Fecha',
       meta: { card: 'title' },
       cell: ({ row }) => (
@@ -105,12 +106,14 @@ function ClientServiceSummaryTab({
     },
     {
       id: 'site',
+      accessorFn: (row) => row.siteName.toLowerCase(),
       header: 'Sede',
       meta: { card: 'subtitle' },
       cell: ({ row }) => row.original.siteName,
     },
     {
       id: 'franja',
+      accessorFn: (row) => `${row.startTime}-${row.endTime}`,
       header: 'Franja',
       meta: { card: 'meta', cardLabel: 'Franja' },
       cell: ({ row }) =>
@@ -122,12 +125,14 @@ function ClientServiceSummaryTab({
     },
     {
       id: 'employees',
+      accessorFn: (row) => shiftEmployeeNames(row).join('; ').toLowerCase(),
       header: 'Empleados',
       meta: { card: 'meta', cardLabel: 'Empleados' },
       cell: ({ row }) => shiftEmployeeNames(row.original).join('; ') || '—',
     },
     {
       id: 'hours',
+      accessorFn: (row) => row.workedMinutes,
       header: 'Horas',
       meta: { card: 'meta', cardLabel: 'Horas', align: 'end' },
       cell: ({ row }) => {
@@ -235,6 +240,8 @@ function ClientServiceSummaryTab({
           )}
           <DataTable
             caption="Turnos realizados del período"
+            resizableColumns
+            persistKey="tabla:cliente-resumen-servicio"
             columns={columns}
             data={summary.shifts}
             getRowId={(row) => row.shiftId}

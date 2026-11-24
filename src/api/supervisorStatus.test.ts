@@ -11,6 +11,7 @@ const raw = {
   started_at: '2026-10-23T11:00:00Z',
   ended_at: null,
   last_event_at: '2026-10-23T12:30:00Z',
+  position_at: '2026-10-23T12:10:00Z',
   latitude: '-34.6037',
   longitude: -58.3816,
   accuracy_m: 14.5,
@@ -37,6 +38,16 @@ describe('mapSupervisorStatusRow (v_supervisor_status)', () => {
       clientName: 'Logística Central',
       corrected: false,
     })
+  })
+
+  it('trae la hora de la posición, que puede ser anterior al último evento (D-11)', () => {
+    expect(mapSupervisorStatusRow(raw)).toMatchObject({
+      lastEventAt: '2026-10-23T12:30:00Z',
+      positionAt: '2026-10-23T12:10:00Z',
+    })
+    expect(
+      mapSupervisorStatusRow({ ...raw, position_at: undefined }),
+    ).toMatchObject({ positionAt: null })
   })
 
   it('sin posición queda en null, para la lista «Sin ubicación»', () => {

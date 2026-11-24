@@ -47,6 +47,7 @@ export type SuiteExterna =
   | '97-credenciales.permissions.ts'
   | '102-p29.permissions.ts'
   | '103-p30.permissions.ts'
+  | '104-p31.permissions.ts'
 
 export const COBERTURA_EXTERNA: {
   tablas: Record<string, SuiteExterna>
@@ -55,6 +56,8 @@ export const COBERTURA_EXTERNA: {
   buckets: Record<string, SuiteExterna>
 } = {
   tablas: {
+    // Observaciones del calendario del empleado (0088, P31.1, D-08): solo dueño y administradores; se escribe con las RPC `save_` y `delete_employee_calendar_note`.
+    employee_calendar_notes: '104-p31.permissions.ts',
     // Pizarra semanal de la ficha (0087, P30.1, OH-07): solo la dirección y la administración leen; se escribe con `save_employee_week_board`.
     employee_week_boards: '103-p30.permissions.ts',
     // Cierre de avisos de «Requiere atención» (0085, P29.1, OG-02): solo la dirección y la administración leen.
@@ -82,6 +85,8 @@ export const COBERTURA_EXTERNA: {
     supply_shortage_reports: '95-insumos.permissions.ts',
   },
   vistas: {
+    // Próximos 7 días del coordinador (0088, P31.1, D-09): solo el rol coordinador.
+    v_supervisor_upcoming: '104-p31.permissions.ts',
     v_shift_media: '90-evidencia.permissions.ts',
     v_announcements_admin: '91-modulos-p19.permissions.ts',
     v_announcement_recipients: '91-modulos-p19.permissions.ts',
@@ -100,6 +105,10 @@ export const COBERTURA_EXTERNA: {
     v_withdrawal_site_options_admin: '95-insumos.permissions.ts',
   },
   rpc: {
+    // Observaciones del 23 nov (0088, P31.1): observaciones del calendario del empleado
+    save_employee_calendar_note: '104-p31.permissions.ts',
+    delete_employee_calendar_note: '104-p31.permissions.ts',
+    list_employee_calendar_notes: '104-p31.permissions.ts',
     // Observaciones del 14 nov (0085, P29.1)
     dismiss_attention: '102-p29.permissions.ts',
     reopen_attention: '102-p29.permissions.ts',

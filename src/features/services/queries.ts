@@ -187,6 +187,20 @@ export function useSetServiceStatusMutation() {
   })
 }
 
+/** D-03: turnos que le quedan al servicio desde una fecha (aviso del administrador). */
+export function useServiceShiftsFromCountQuery(
+  serviceId: string,
+  fromDate: string,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: [...servicesKeys.all, 'shiftsFrom', serviceId, fromDate] as const,
+    queryFn: () => servicesApi.countServiceShiftsFrom(serviceId, fromDate),
+    enabled,
+    staleTime: 0,
+  })
+}
+
 // -------------------------------------------------------------------------
 // Empleados fijos (AJ2-17)
 // -------------------------------------------------------------------------
@@ -200,6 +214,17 @@ export function useServiceFixedEmployeesQuery(id: string | undefined) {
     // El formulario carga la lista una vez y la edita en memoria.
     staleTime: 0,
     gcTime: 0,
+  })
+}
+
+/** P31.7: servicios donde las personas elegidas ya son fijas (aviso de superposición). */
+export function useFixedServicesOfEmployeesQuery(employeeIds: string[]) {
+  const ids = [...employeeIds].sort()
+  return useQuery({
+    queryKey: [...servicesKeys.all, 'fixedOfEmployees', ids] as const,
+    queryFn: () => servicesApi.fetchFixedServicesOfEmployees(ids),
+    enabled: ids.length > 0,
+    staleTime: 60_000,
   })
 }
 

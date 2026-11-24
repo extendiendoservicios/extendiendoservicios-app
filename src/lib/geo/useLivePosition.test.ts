@@ -15,10 +15,28 @@ function mockGeolocation() {
     },
   )
   const clearWatch = vi.fn()
-  vi.stubGlobal('navigator', { geolocation: { watchPosition, clearWatch } })
+  let onFallback: PositionCallback = () => {}
+  let onFallbackError: PositionErrorCallback = () => {}
+  const getCurrentPosition = vi.fn(
+    (success: PositionCallback, error?: PositionErrorCallback | null) => {
+      onFallback = success
+      onFallbackError = error ?? (() => {})
+    },
+  )
+  vi.stubGlobal('navigator', {
+    geolocation: { watchPosition, clearWatch, getCurrentPosition },
+  })
   return {
     watchPosition,
     clearWatch,
+    getCurrentPosition,
+    emitFallback: (accuracy: number) =>
+      onFallback({
+        coords: { latitude: -34.6, longitude: -58.4, accuracy },
+        timestamp: Date.now(),
+      } as GeolocationPosition),
+    failFallback: (code: number) =>
+      onFallbackError({ code, message: '' } as GeolocationPositionError),
     emit: (accuracy: number, lat = -34.6, lng = -58.4) =>
       onSuccess({
         coords: { latitude: lat, longitude: lng, accuracy },
@@ -156,5 +174,81 @@ describe('useLivePosition', () => {
     rerender({ enabled: true })
     unmount()
     expect(geo.clearWatch).toHaveBeenCalledTimes(2)
+  })
+
+  it('respaldo: a los 8 s sin lecturas pide una de baja precisión y la usa', () => {
+    const geo = mockGeolocation()
+    const { result } = renderHook(() => useLivePosition())
+    act(() => {
+      vi.advanceTimersByTime(7_900)
+    })
+    expect(geo.getCurrentPosition).not.toHaveBeenCalled()
+    act(() => {
+      vi.advanceTimersByTime(200)
+    })
+    expect(geo.getCurrentPosition).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.any(Function),
+      expect.objectContaining({ enableHighAccuracy: false }),
+    )
+    act(() => geo.emitFallback(800))
+    expect(result.current.position?.accuracyM).toBe(800)
+    expect(result.current.state).toBe('improving')
+    // Si después llega una de alta precisión, queda la mejor.
+    act(() => geo.emit(40))
+    expect(result.current.position?.accuracyM).toBe(40)
+  })
+
+  it('respaldo: no se pide si ya llegó una lectura de alta precisión', () => {
+    const geo = mockGeolocation()
+    renderHook(() => useLivePosition())
+    act(() => geo.emit(300))
+    act(() => {
+      vi.advanceTimersByTime(9_000)
+    })
+    expect(geo.getCurrentPosition).not.toHaveBeenCalled()
+  })
+
+  it('respaldo: no se pide si ya se negó el permiso', () => {
+    const geo = mockGeolocation()
+    renderHook(() => useLivePosition())
+    act(() => geo.fail(1))
+    act(() => {
+      vi.advanceTimersByTime(9_000)
+    })
+    expect(geo.getCurrentPosition).not.toHaveBeenCalled()
+  })
+
+  it('lastErrorCode guarda el último error y se borra con una lectura', () => {
+    const geo = mockGeolocation()
+    const { result } = renderHook(() => useLivePosition())
+    expect(result.current.lastErrorCode).toBeNull()
+    act(() => geo.fail(3))
+    expect(result.current.lastErrorCode).toBe(3)
+    act(() => geo.fail(2))
+    expect(result.current.lastErrorCode).toBe(2)
+    act(() => geo.fail(1))
+    expect(result.current.lastErrorCode).toBe(1)
+    // Un error del respaldo no pisa el «sin permiso».
+    act(() => geo.failFallback(3))
+    expect(result.current.lastErrorCode).toBe(1)
+    act(() => geo.emit(30))
+    expect(result.current.lastErrorCode).toBeNull()
+  })
+
+  it('retry reinicia la búsqueda desde cero', () => {
+    const geo = mockGeolocation()
+    const { result } = renderHook(() => useLivePosition())
+    act(() => geo.fail(2))
+    expect(result.current.state).toBe('unavailable')
+    expect(geo.watchPosition).toHaveBeenCalledTimes(1)
+
+    act(() => result.current.retry())
+    expect(geo.clearWatch).toHaveBeenCalledWith(7)
+    expect(geo.watchPosition).toHaveBeenCalledTimes(2)
+    expect(result.current.state).toBe('waiting')
+    expect(result.current.lastErrorCode).toBeNull()
+    act(() => geo.emit(25))
+    expect(result.current.state).toBe('ready')
   })
 })

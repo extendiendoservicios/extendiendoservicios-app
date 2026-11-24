@@ -42,6 +42,7 @@ import { localDateToIsoDate } from '@/features/settings/dateOnly'
 import {
   useCreateServiceMutation,
   useServiceDetailQuery,
+  useFixedServicesOfEmployeesQuery,
   useServiceFixedEmployeesQuery,
   useSetServiceFixedEmployeesMutation,
   useServiceOverlapsMutation,
@@ -55,6 +56,7 @@ import {
   type ServiceFormValues,
 } from '@/features/services/schemas'
 import { RepeatFields } from '@/features/services/components/RepeatFields'
+import { findFixedOverlaps } from '@/features/services/fixedOverlap'
 import { ApplyFixedEmployeesDialog } from '@/features/services/components/ApplyFixedEmployeesDialog'
 import { ApplyServiceChangesDialog } from '@/features/services/components/ApplyServiceChangesDialog'
 import {
@@ -239,6 +241,33 @@ export default function ServiceFormPage() {
       ? watchedRequiredStaff
       : 10
   const fixedError = fixedEmployeesError(fixedIds.length, fixedLimit)
+
+  // P31.7: aviso si alguien elegido ya es fijo de otro servicio que se superpone.
+  const fixedServicesQuery = useFixedServicesOfEmployeesQuery(fixedIds)
+  const watchedWeeksMode = watch('weeksMode')
+  const fixedOverlaps = findFixedOverlaps(
+    {
+      serviceId: id,
+      weekdays: (watch('weekdays') ?? []).map(Number),
+      weeksOfMonth:
+        watchedWeeksMode === 'some'
+          ? (watch('weeksOfMonth') ?? []).map(Number)
+          : null,
+      startTime: watch('startTime') ?? '',
+      endTime: watchedOpenEnded ? null : watch('endTime') || null,
+      openEnded: watchedOpenEnded,
+      validFrom: watch('validFrom') || null,
+      validTo: watch('validTo') || null,
+    },
+    fixedIds,
+    fixedServicesQuery.data ?? [],
+  )
+  const employeeNameById = new Map(
+    (employeeOptionsQuery.data ?? []).map((option) => [
+      option.profileId,
+      option.name,
+    ]),
+  )
   const clientsQuery = useClientsQuery({})
   const sitesQuery = useClientSitesQuery(watchedClientId || undefined)
 
@@ -594,6 +623,22 @@ export default function ServiceFormPage() {
           </p>
         )}
         {fixedError && <p className="text-[11px] text-danger">{fixedError}</p>}
+        {fixedOverlaps.length > 0 && (
+          <ul
+            data-testid="aviso-fijos-superpuestos"
+            className="flex flex-col gap-1 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[12px] text-warning-800"
+          >
+            {fixedOverlaps.map((overlap) => (
+              <li key={`${overlap.employeeId}-${overlap.serviceName}`}>
+                {employeeNameById.get(overlap.employeeId) ?? 'Esta persona'} ya
+                está entre los fijos de «{overlap.serviceName}» ({overlap.days},{' '}
+                {overlap.range}): se superpone con este horario. En los turnos
+                que chocan no se puede asignar en los dos servicios: uno queda
+                sin cubrir.
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-5">

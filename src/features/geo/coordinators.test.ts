@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildCoordinatorMarkers,
+  coordinatorPositionNote,
   coordinatorStatusDetail,
   coordinatorWorkdayPath,
   countByStatus,
@@ -126,5 +127,36 @@ describe('estados de los coordinadores en el mapa (CJ-33)', () => {
     expect(coordinatorWorkdayPath('sv1')).toBe(
       '/admin/empleados/sv1?pestana=jornadas',
     )
+  })
+})
+
+describe('última posición conocida del coordinador (D-11)', () => {
+  it('no avisa hora si la posición es la del último evento', () => {
+    expect(coordinatorPositionNote(makeStatusRow())).toBeNull()
+  })
+
+  it('avisa la hora de la posición si es anterior al último evento', () => {
+    const row = makeStatusRow({
+      lastEventAt: '2026-10-23T13:30:00Z',
+      positionAt: '2026-10-23T12:42:00Z',
+    })
+    // 12:42 UTC = 09:42 en Buenos Aires.
+    expect(coordinatorPositionNote(row)).toBe('Ubicación de las 09:42')
+    const model = buildCoordinatorMarkers([row], true)
+    expect(model.markers).toHaveLength(1)
+    expect(model.markers[0]?.label).toContain('Ubicación de las 09:42')
+    expect(model.withoutLocation).toHaveLength(0)
+  })
+
+  it('«Sin ubicación» solo si no tuvo ninguna posición en el día', () => {
+    const row = makeStatusRow({
+      latitude: null,
+      longitude: null,
+      positionAt: null,
+    })
+    expect(coordinatorPositionNote(row)).toBeNull()
+    const model = buildCoordinatorMarkers([row], true)
+    expect(model.markers).toHaveLength(0)
+    expect(model.withoutLocation).toHaveLength(1)
   })
 })

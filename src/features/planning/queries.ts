@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as assignmentsApi from '@/api/assignments'
 import * as tasksApi from '@/api/tasks'
+import * as clientsApi from '@/api/clients'
 import type {
   AssignCandidatesParams,
   AssignEmployeeInput,
@@ -243,5 +244,36 @@ export function useAssignCandidatesQuery(
       assignmentsApi.fetchAssignCandidates(params as AssignCandidatesParams),
     enabled: params != null,
     staleTime: LIST_STALE_TIME_MS,
+  })
+}
+
+/**
+ * D-05 (P31.3): cambia el color del cliente. Lo leen el calendario del mes, el
+ * cronograma semanal, el Calendario general y el calendario del empleado:
+ * se refrescan todos. Las raíces van como literales para no importar en círculo.
+ */
+export function useSetClientCalendarColorMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      clientId,
+      calendarColor,
+      updatedBy,
+    }: {
+      clientId: string
+      calendarColor: number
+      updatedBy: string
+    }) => clientsApi.setClientCalendarColor(clientId, calendarColor, updatedBy),
+    onSuccess: () => {
+      for (const root of [
+        'planning',
+        'shifts',
+        'clients',
+        'employees',
+        'employee',
+      ]) {
+        void queryClient.invalidateQueries({ queryKey: [root] })
+      }
+    },
   })
 }

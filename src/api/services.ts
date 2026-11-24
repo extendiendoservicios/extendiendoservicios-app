@@ -291,6 +291,27 @@ export async function fetchServiceDetail(id: string): Promise<ServiceDetail> {
   return mapServiceDetailRow(data)
 }
 
+/**
+ * P31.3 (D-03): cuántos turnos no cancelados le quedan al servicio desde una
+ * fecha (`v_shifts_board`, lo puede leer quien administra). Es lo que ve el
+ * administrador al finalizar o pausar: solo la dirección puede eliminarlos.
+ */
+export async function countServiceShiftsFrom(
+  serviceId: string,
+  fromDate: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from('v_shifts_board')
+    .select('id', { count: 'exact', head: true })
+    .eq('service_id', serviceId)
+    .gte('shift_date', fromDate)
+    .neq('status', 'cancelled')
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return count ?? 0
+}
+
 export interface ServiceFormInput {
   clientId: string
   siteId: string
@@ -459,6 +480,57 @@ export async function setServiceFixedEmployees(
   }
   const payload = data as { service_id: string; employee_ids: string[] }
   return payload.employee_ids ?? []
+}
+
+export interface FixedServiceSchedule {
+  employeeId: string
+  serviceId: string
+  serviceName: string
+  weekdays: number[]
+  weeksOfMonth: number[] | null
+  startTime: string
+  endTime: string | null
+  openEnded: boolean
+  validFrom: string | null
+  validTo: string | null
+}
+
+/**
+ * P31.7: servicios activos donde cada persona ya es fija, con días, franja y
+ * vigencia, para avisar si el servicio del formulario se superpone.
+ */
+export async function fetchFixedServicesOfEmployees(
+  employeeIds: string[],
+): Promise<FixedServiceSchedule[]> {
+  if (employeeIds.length === 0) return []
+  const { data, error } = await supabase
+    .from('service_fixed_employees')
+    .select(
+      'employee_id, services!inner(id, name, weekdays, weeks_of_month, start_time, end_time, open_ended, valid_from, valid_to, status, deleted_at)',
+    )
+    .in('employee_id', employeeIds)
+
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data ?? []).flatMap((row) => {
+    const sv = row.services
+    if (!sv || sv.deleted_at != null || sv.status !== 'active') return []
+    return [
+      {
+        employeeId: row.employee_id,
+        serviceId: sv.id,
+        serviceName: sv.name,
+        weekdays: sv.weekdays,
+        weeksOfMonth: sv.weeks_of_month,
+        startTime: sv.start_time,
+        endTime: sv.end_time,
+        openEnded: sv.open_ended,
+        validFrom: sv.valid_from,
+        validTo: sv.valid_to,
+      },
+    ]
+  })
 }
 
 /** Nombre de servicio, cliente y sede por id: rotula la lista de «sin asignar» de la generación. */
