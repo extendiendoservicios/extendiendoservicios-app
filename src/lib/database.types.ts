@@ -1926,6 +1926,109 @@ export type Database = {
           },
         ]
       }
+      employee_calendar_notes: {
+        Row: {
+          body: string
+          color: number | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          employee_id: string
+          id: string
+          note_date: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body: string
+          color?: number | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          employee_id: string
+          id?: string
+          note_date: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body?: string
+          color?: number | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          employee_id?: string
+          id?: string
+          note_date?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_calendar_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_calendar_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employee_calendar_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "employee_calendar_notes_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employee_calendar_notes_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "v_employee_ratings"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_calendar_notes_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "v_employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employee_calendar_notes_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_calendar_notes_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employee_calendar_notes_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+        ]
+      }
       employee_client_permissions: {
         Row: {
           client_id: string
@@ -5541,6 +5644,8 @@ export type Database = {
           site_id: string | null
           site_name: string | null
           status: Database["public"]["Enums"]["assignment_status"] | null
+          supervision_state: string | null
+          supervisor_name: string | null
           updated_at: string | null
           updated_by: string | null
           worked_minutes: number | null
@@ -5667,13 +5772,6 @@ export type Database = {
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_out_recorded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -5683,8 +5781,8 @@ export type Database = {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_out_recorded_by"]
             isOneToOne: false
-            referencedRelation: "v_announcement_recipients"
-            referencedColumns: ["profile_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
@@ -5696,13 +5794,20 @@ export type Database = {
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
             columns: ["check_out_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "attendance_records_recorded_by_fkey"
+            columns: ["check_in_recorded_by"]
             isOneToOne: false
             referencedRelation: "v_supervisor_status"
             referencedColumns: ["supervisor_id"]
           },
           {
             foreignKeyName: "attendance_records_recorded_by_fkey"
-            columns: ["check_in_recorded_by"]
+            columns: ["check_out_recorded_by"]
             isOneToOne: false
             referencedRelation: "v_supervisor_status"
             referencedColumns: ["supervisor_id"]
@@ -7563,6 +7668,7 @@ export type Database = {
           longitude: number | null
           on_leave: boolean | null
           pause_reason: string | null
+          position_at: string | null
           site_id: string | null
           site_name: string | null
           started_at: string | null
@@ -7612,6 +7718,45 @@ export type Database = {
         ]
       }
       v_supervisor_today: {
+        Row: {
+          access_instructions: string | null
+          assigned_employees: Json | null
+          building_hours: string | null
+          client_id: string | null
+          client_legal_name: string | null
+          client_trade_name: string | null
+          display_state: string | null
+          end_time: string | null
+          ends_at: string | null
+          is_priority: boolean | null
+          max_accuracy_m: number | null
+          my_supervision_id: string | null
+          my_supervision_status:
+            | Database["public"]["Enums"]["supervision_status"]
+            | null
+          open_ended: boolean | null
+          phone_restricted: boolean | null
+          photos_not_allowed: boolean | null
+          priority_kind: string | null
+          required_staff: number | null
+          restrictions_notes: string | null
+          shift_date: string | null
+          shift_id: string | null
+          shift_status: Database["public"]["Enums"]["shift_status"] | null
+          site_address: string | null
+          site_city: string | null
+          site_id: string | null
+          site_latitude: number | null
+          site_longitude: number | null
+          site_name: string | null
+          site_radius_m: number | null
+          start_time: string | null
+          starts_at: string | null
+          supervisors: Json | null
+        }
+        Relationships: []
+      }
+      v_supervisor_upcoming: {
         Row: {
           access_instructions: string | null
           assigned_employees: Json | null
@@ -8210,6 +8355,7 @@ export type Database = {
         Args: {
           p_accuracy?: number
           p_general_notes?: string
+          p_geo_reason?: string
           p_lat?: number
           p_lng?: number
           p_outside_reason?: string
@@ -8376,6 +8522,27 @@ export type Database = {
           p_works_on_holidays?: boolean
         }
         Returns: Json
+      }
+      delete_employee_calendar_note: {
+        Args: { p_note_id: string }
+        Returns: {
+          body: string
+          color: number | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          employee_id: string
+          id: string
+          note_date: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "employee_calendar_notes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       delete_service: { Args: { p_service_id: string }; Returns: Json }
       delete_shift_media: { Args: { p_ids: string[] }; Returns: Json }
@@ -8546,6 +8713,22 @@ export type Database = {
       }
       get_stock_summary: { Args: never; Returns: Json }
       holiday_shift_conflicts: { Args: { p_date: string }; Returns: Json }
+      list_employee_calendar_notes: {
+        Args: { p_employee_id: string; p_from: string; p_to: string }
+        Returns: {
+          body: string
+          color: number
+          created_at: string
+          created_by: string
+          created_by_name: string
+          employee_id: string
+          id: string
+          note_date: string
+          updated_at: string
+          updated_by: string
+          updated_by_name: string
+        }[]
+      }
       map_active_sites: {
         Args: never
         Returns: {
@@ -8829,6 +9012,7 @@ export type Database = {
         Args: {
           p_accuracy?: number
           p_assignment_id: string
+          p_geo_reason?: string
           p_lat?: number
           p_lng?: number
           p_outside_reason?: string
@@ -8869,6 +9053,7 @@ export type Database = {
         Args: {
           p_accuracy?: number
           p_assignment_id: string
+          p_geo_reason?: string
           p_lat?: number
           p_lng?: number
           p_outside_reason?: string
@@ -9167,6 +9352,33 @@ export type Database = {
         Returns: Json
       }
       revoke_location_consent: { Args: never; Returns: undefined }
+      save_employee_calendar_note: {
+        Args: {
+          p_body: string
+          p_color?: number
+          p_date: string
+          p_employee_id: string
+          p_note_id: string
+        }
+        Returns: {
+          body: string
+          color: number | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          employee_id: string
+          id: string
+          note_date: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "employee_calendar_notes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       save_employee_leave: {
         Args: {
           p_employee_id: string
@@ -9613,6 +9825,7 @@ export type Database = {
       take_supervision: {
         Args: {
           p_accuracy?: number
+          p_geo_reason?: string
           p_lat?: number
           p_lng?: number
           p_outside_reason?: string
@@ -9954,6 +10167,9 @@ export type Database = {
         | "site_without_coords"
         | "admin_record"
         | "low_accuracy"
+        | "permission_denied"
+        | "position_unavailable"
+        | "timeout"
       media_kind: "photo" | "video"
       notice_kind: "delay" | "absence" | "on_the_way"
       security_event_type:
@@ -10192,6 +10408,9 @@ export const Constants = {
         "site_without_coords",
         "admin_record",
         "low_accuracy",
+        "permission_denied",
+        "position_unavailable",
+        "timeout",
       ],
       media_kind: ["photo", "video"],
       notice_kind: ["delay", "absence", "on_the_way"],

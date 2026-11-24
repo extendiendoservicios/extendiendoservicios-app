@@ -67,7 +67,7 @@ select has_function('public', 'assign_supervision', array['uuid', 'uuid'], 'exis
 select has_function('public', 'cancel_supervision', array['uuid', 'text'], 'existe public.cancel_supervision(uuid, text)');
 select has_function('public', 'supervision_check_in', array['uuid', 'numeric', 'numeric', 'numeric', 'text'], 'existe public.supervision_check_in(...) (revocada en 0063)');
 select has_function('public', 'supervision_check_out', array['uuid', 'numeric', 'numeric', 'numeric', 'text'], 'existe public.supervision_check_out(...) (revocada en 0063)');
-select has_function('public', 'complete_supervision', array['uuid', 'text', 'numeric', 'numeric', 'numeric', 'text'], 'existe public.complete_supervision(uuid, text, numeric, numeric, numeric, text)');
+select has_function('public', 'complete_supervision', array['uuid', 'text', 'numeric', 'numeric', 'numeric', 'text', 'text'], 'existe public.complete_supervision(uuid, text, numeric, numeric, numeric, text, text)');
 select has_function('public', 'mark_supervision_not_done', array['uuid', 'text'], 'existe public.mark_supervision_not_done(uuid, text) (revocada en 0063)');
 select has_function('public', 'rate_employee', array['uuid', 'uuid', 'integer', 'text'], 'existe public.rate_employee(uuid, uuid, integer, text)');
 

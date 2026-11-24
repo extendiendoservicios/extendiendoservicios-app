@@ -60,8 +60,8 @@ select plan(69);
 select enum_has_labels('public', 'geo_status', array['valid', 'outside', 'unvalidated'], 'geo_status tiene sus tres valores');
 select enum_has_labels(
   'public', 'geo_unvalidated_reason',
-  array['no_location', 'site_without_coords', 'admin_record', 'low_accuracy'],
-  'geo_unvalidated_reason tiene sus cuatro motivos'
+  array['no_location', 'site_without_coords', 'admin_record', 'low_accuracy', 'permission_denied', 'position_unavailable', 'timeout'],
+  'geo_unvalidated_reason tiene sus cuatro motivos y los tres técnicos de 0088'
 );
 select has_column('public', 'company_settings', 'geofence_radius_m', 'company_settings.geofence_radius_m');
 select has_column('public', 'company_settings', 'geofence_max_accuracy_m', 'company_settings.geofence_max_accuracy_m');
@@ -69,8 +69,8 @@ select has_column('public', 'company_settings', 'location_consent_updated_at', '
 select has_column('public', 'sites', 'geofence_radius_m', 'sites.geofence_radius_m');
 select has_column('public', 'attendance_records', 'geo_status', 'attendance_records.geo_status');
 select has_column('public', 'supervision_attendance', 'geo_override_reason', 'supervision_attendance.geo_override_reason');
-select has_function('public', 'record_check_in', array['uuid', 'numeric', 'numeric', 'numeric', 'text'], 'record_check_in con p_outside_reason');
-select has_function('public', 'record_check_out', array['uuid', 'numeric', 'numeric', 'numeric', 'text'], 'record_check_out con p_outside_reason');
+select has_function('public', 'record_check_in', array['uuid', 'numeric', 'numeric', 'numeric', 'text', 'text'], 'record_check_in con p_outside_reason');
+select has_function('public', 'record_check_out', array['uuid', 'numeric', 'numeric', 'numeric', 'text', 'text'], 'record_check_out con p_outside_reason');
 select has_function('public', 'supervision_check_in', array['uuid', 'numeric', 'numeric', 'numeric', 'text'], 'supervision_check_in con p_outside_reason');
 select has_function('public', 'supervision_check_out', array['uuid', 'numeric', 'numeric', 'numeric', 'text'], 'supervision_check_out con p_outside_reason');
 select hasnt_function('public', 'record_check_in', array['uuid', 'numeric', 'numeric', 'numeric'], 'no queda la sobrecarga vieja de record_check_in');
@@ -518,8 +518,8 @@ select ok(
   'app.geo_for_site es interna: authenticated no puede ejecutarla'
 );
 select ok(
-  not has_function_privilege('anon', 'public.record_check_in(uuid, numeric, numeric, numeric, text)', 'execute')
-  and has_function_privilege('authenticated', 'public.record_check_in(uuid, numeric, numeric, numeric, text)', 'execute'),
+  not has_function_privilege('anon', 'public.record_check_in(uuid, numeric, numeric, numeric, text, text)', 'execute')
+  and has_function_privilege('authenticated', 'public.record_check_in(uuid, numeric, numeric, numeric, text, text)', 'execute'),
   'record_check_in: authenticated sí, anon no'
 );
 select ok(
