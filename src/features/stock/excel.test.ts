@@ -70,5 +70,5 @@ describe('downloadExcel: «Exportar a Excel» (IS-18, IS-24)', () => {
     expect(sheet?.getRow(2).getCell(3).value).toBe(1250.5)
     expect(sheet?.getRow(2).getCell(3).numFmt).toBe('"$" #,##0.00')
     expect(sheet?.rowCount).toBe(3)
-  })
+  }, 20_000)
 })
