@@ -102,6 +102,8 @@ export const employeeRoutes: RouteObject[] = [
       screenId: 'EMP-PRO',
       title: 'Próximos días',
       subtitle: 'Tus servicios de los próximos días',
+      keepTabbar: true,
+      activeTab: '/app/mas',
     },
   },
   {
