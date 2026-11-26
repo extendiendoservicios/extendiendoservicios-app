@@ -2,10 +2,12 @@ import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SupervisionListRow } from '@/api/supervisions'
+import { makeAssignment } from '@/features/dashboard/fixtures'
 import { SupervisionsAdminScreen } from './SupervisionsAdminScreen'
 
-const { state } = vi.hoisted(() => ({
-  state: { rows: [] as unknown[] },
+const { state, unsupervisedMock } = vi.hoisted(() => ({
+  state: { rows: [] as unknown[], unsupervised: [] as unknown[] },
+  unsupervisedMock: vi.fn(),
 }))
 
 vi.mock('@/features/supervisions/queries', () => ({
@@ -15,6 +17,10 @@ vi.mock('@/features/supervisions/queries', () => ({
     dataUpdatedAt: 0,
   }),
   useRatingsQuery: () => ({ isLoading: false, data: [], dataUpdatedAt: 0 }),
+  useUnsupervisedShiftsQuery: (...args: unknown[]) => {
+    unsupervisedMock(...args)
+    return { isLoading: false, data: state.unsupervised, dataUpdatedAt: 0 }
+  },
 }))
 vi.mock('@/features/employees/queries', () => ({
   useEmployeesQuery: () => ({ data: [] }),
@@ -71,10 +77,12 @@ beforeEach(() => {
   }))
 })
 
-function renderScreen() {
+function renderScreen(
+  tab: 'supervisiones' | 'sin-supervisar' = 'supervisiones',
+) {
   return render(
     <MemoryRouter>
-      <SupervisionsAdminScreen tab="supervisiones" onTabChange={() => {}} />
+      <SupervisionsAdminScreen tab={tab} onTabChange={() => {}} />
     </MemoryRouter>,
   )
 }
@@ -121,5 +129,79 @@ describe('SupervisionsAdminScreen (ADM-13, coordinación libre)', () => {
     expect(unclosed.length).toBeGreaterThan(0)
     const first = unclosed[0]!.closest('tr, li, article, div')!
     expect(within(first as HTMLElement).getAllByText('En curso').length).toBe(1)
+  })
+})
+
+describe('SupervisionsAdminScreen: pestaña «Sin supervisar» (P35.2)', () => {
+  const started = {
+    checkInAt: '2026-11-20T08:02:00-03:00',
+    displayStatus: 'present',
+    status: 'present' as const,
+    supervisionState: 'none' as const,
+  }
+
+  beforeEach(() => {
+    unsupervisedMock.mockClear()
+    state.rows = []
+    state.unsupervised = [
+      makeAssignment({ id: 'a1', shiftId: 's1', employeeId: 'e1', ...started }),
+      makeAssignment({
+        id: 'a2',
+        shiftId: 's1',
+        employeeId: 'e2',
+        employeeFirstName: 'Beto',
+        employeeLastName: 'Ruiz',
+        ...started,
+      }),
+      makeAssignment({ id: 'a3', shiftId: 's2', supervisionState: 'none' }),
+    ]
+  })
+
+  it('va entre «Calificaciones» y «Jornadas», con el contador de turnos', () => {
+    renderScreen('sin-supervisar')
+    const tabs = screen.getAllByRole('tab').map((t) => t.textContent)
+    expect(tabs).toEqual([
+      'Supervisiones',
+      'Calificaciones',
+      'Sin supervisar (1)',
+      'Jornadas',
+    ])
+  })
+
+  it('una fila por turno con la píldora roja, el enlace al turno y la leyenda de 7 días', () => {
+    renderScreen('sin-supervisar')
+    expect(
+      screen.getByText('Últimos 7 días. Elegí fechas para ver otro período.'),
+    ).toBeInTheDocument()
+    expect(screen.getAllByText('Sin supervisar')).toHaveLength(1)
+    expect(screen.getByText('Sin supervisar')).toHaveClass('bg-danger-bg')
+    const links = screen
+      .getAllByRole('link')
+      .filter((l) => l.getAttribute('href') === '/admin/turnos/s1')
+    expect(links.length).toBeGreaterThan(0)
+    expect(screen.getByText(/Ana Gómez, Beto Ruiz/)).toBeInTheDocument()
+  })
+
+  it('el filtro de coordinador queda deshabilitado', () => {
+    renderScreen('sin-supervisar')
+    expect(screen.getByLabelText('Filtrar por coordinador')).toBeDisabled()
+    expect(screen.getByLabelText('Filtrar por empleado')).toBeEnabled()
+  })
+
+  it('sin turnos muestra el estado vacío', () => {
+    state.unsupervised = []
+    renderScreen('sin-supervisar')
+    expect(
+      screen.getByText('No hay turnos sin supervisar con estos filtros'),
+    ).toBeInTheDocument()
+  })
+
+  it('consulta los últimos 7 días y solo pollea con la pestaña abierta', () => {
+    renderScreen('sin-supervisar')
+    const args = unsupervisedMock.mock.calls[0]!
+    expect(args[4]).toBe(true)
+    expect(args[3]).toBe(true)
+    renderScreen('supervisiones')
+    expect(unsupervisedMock.mock.calls.at(-1)![4]).toBe(false)
   })
 })
