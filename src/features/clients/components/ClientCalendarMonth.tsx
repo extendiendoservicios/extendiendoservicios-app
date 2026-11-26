@@ -161,7 +161,11 @@ function ClientCalendarMonth({
                     : undefined
                 }
                 dragging={drag?.block.shiftId === block.shiftId}
-                highlighted={highlightUncovered && block.uncovered}
+                highlighted={
+                  highlightUncovered &&
+                  block.uncovered &&
+                  block.date >= month.uncoveredFrom
+                }
                 actions={printing ? undefined : renderActions?.(block)}
                 printing={printing}
               />

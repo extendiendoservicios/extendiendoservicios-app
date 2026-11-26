@@ -15,6 +15,13 @@ const { state, shiftsMock, assignmentsMock } = vi.hoisted(() => ({
   assignmentsMock: vi.fn(),
 }))
 
+// El mes de prueba es noviembre de 2026: «hoy» al principio para que cuenten sus sin cubrir.
+vi.mock('@/features/employees/employeeLeaveStatus', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@/features/employees/employeeLeaveStatus')
+  >()),
+  todayInBuenosAires: () => '2026-11-01',
+}))
 vi.mock('@/features/auth/AuthProvider', () => ({
   useAuth: () => ({ roles: ['owner'], capabilities: [] }),
 }))
