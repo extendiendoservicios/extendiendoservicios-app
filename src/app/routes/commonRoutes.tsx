@@ -47,11 +47,11 @@ function ProfileLayout() {
   if (roles.includes('owner') || roles.includes('admin')) {
     return <LazyAdminShell />
   }
-  if (roles.includes('supervisor') && !roles.includes('employee')) {
+  // Supervisor, también si además es empleado (P34.4, mismo criterio que
+  // `homePathForRoles`): SUP-09 tiene el acceso cruzado a «Mis servicios».
+  if (roles.includes('supervisor')) {
     return <LazyMobileShell variant="supervisor" />
   }
-  // Empleado, o empleado y supervisor a la vez (acceso cruzado: `05`
-  // sección 3, EMP-13 ya incluye el enlace a supervisión en ese caso).
   return <LazyMobileShell variant="employee" />
 }
 

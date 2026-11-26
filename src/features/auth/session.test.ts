@@ -25,8 +25,8 @@ describe('homePathForRoles', () => {
     expect(homePathForRoles(['supervisor'])).toBe('/sup')
   })
 
-  it('empleado y supervisor a la vez: gana /app (el acceso a supervisión queda en Más)', () => {
-    expect(homePathForRoles(['employee', 'supervisor'])).toBe('/app')
+  it('empleado y supervisor a la vez: gana /sup (sus servicios quedan en Más, P34.4)', () => {
+    expect(homePathForRoles(['employee', 'supervisor'])).toBe('/sup')
   })
 
   it('owner o admin además de empleado: siempre /admin, también en celular (OG-06)', () => {

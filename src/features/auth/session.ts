@@ -40,13 +40,16 @@ export const ROLE_LABELS: Record<Role, string> = {
  * `/app` y `/sup` lo deja pasar porque tiene esos roles. Sin ancho como
  * parámetro: el resultado ya no depende del dispositivo.
  *
- * Con empleado y supervisor a la vez gana `/app`, igual que en
- * `ProfileLayout` (`commonRoutes.tsx`): el acceso a la supervisión está en
- * EMP-13 ("Más").
+ * Con empleado y supervisor a la vez gana `/sup` (26 nov 2026, P34.4,
+ * pedido de Mike: los coordinadores que también son empleados entraban a
+ * `/app` y en «Próximos días» veían solo sus servicios propios, no todos los
+ * turnos). Igual que en `ProfileLayout` (`commonRoutes.tsx`). Sus servicios
+ * de hoy se ven arriba en SUP-02 y el resto en SUP-09 ("Más") → «Mis
+ * servicios» (`/app`).
  */
 export function homePathForRoles(roles: Role[]): string | null {
   if (roles.includes('owner') || roles.includes('admin')) return '/admin'
-  if (roles.includes('employee')) return '/app'
   if (roles.includes('supervisor')) return '/sup'
+  if (roles.includes('employee')) return '/app'
   return null
 }
