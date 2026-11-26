@@ -65,3 +65,40 @@ describe('TimeCell: hora escrita con el teclado (DEF-P30-05)', () => {
     expect(onCommit).toHaveBeenCalledExactlyOnceWith('99')
   })
 })
+
+describe('TimeCell: esquinas exteriores de arriba (P34.2, D-15)', () => {
+  function cell(corner: 'left' | 'right' | undefined, editable: boolean) {
+    render(
+      <TimeCell
+        value="08:00"
+        label="Hora"
+        editable={editable}
+        corner={corner}
+        suppressClick={() => false}
+        onCommit={() => undefined}
+      />,
+    )
+  }
+
+  it('la casilla de inicio redondea arriba a la izquierda', () => {
+    cell('left', false)
+    expect(screen.getByText('08:00').className).toContain(
+      'rounded-tl-[calc(var(--radius-sm)-1px)]',
+    )
+  })
+
+  it('la de fin redondea arriba a la derecha, también al editarla', () => {
+    cell('right', true)
+    expect(screen.getByRole('button', { name: 'Hora' }).className).toContain(
+      'rounded-tr-[calc(var(--radius-sm)-1px)]',
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Hora' }))
+    const input = screen.getByRole('textbox', { name: 'Hora' })
+    expect(input.className).toContain('rounded-tr-[calc(var(--radius-sm)-1px)]')
+  })
+
+  it('sin `corner` no redondea nada', () => {
+    cell(undefined, false)
+    expect(screen.getByText('08:00').className).not.toContain('rounded-t')
+  })
+})

@@ -172,6 +172,8 @@ export default function ShiftFormPage() {
     <CreateShiftForm
       dateFromQuery={dateFromQuery}
       employeeFromQuery={searchParams.get('empleado')}
+      clientFromQuery={searchParams.get('cliente')}
+      siteFromQuery={searchParams.get('sede')}
       returnTo={safeReturnPath(searchParams.get('volver'))}
       navigate={navigate}
       canManage={canManage}
@@ -182,6 +184,8 @@ export default function ShiftFormPage() {
 function CreateShiftForm({
   dateFromQuery,
   employeeFromQuery,
+  clientFromQuery,
+  siteFromQuery,
   returnTo,
   navigate,
   canManage,
@@ -189,6 +193,10 @@ function CreateShiftForm({
   dateFromQuery: string | null
   /** P33.1 (D-03): empleado a precargar en «Empleados». */
   employeeFromQuery: string | null
+  /** P34.2 (D-11): cliente a precargar; se ignora si no está entre los activos. */
+  clientFromQuery: string | null
+  /** P34.2 (D-11): sede a precargar; se ignora si no es activa y de ese cliente. */
+  siteFromQuery: string | null
   /** P33.1 (D-04): dirección ya validada a la que se vuelve al guardar o cancelar. */
   returnTo: string | null
   navigate: ReturnType<typeof useNavigate>
@@ -385,6 +393,40 @@ function CreateShiftForm({
   // (la base los rechaza con CLIENT_NOT_ACTIVE / SITE_NOT_ACTIVE).
   const clientOptions = newClientPickerOptions(clientsQuery.data ?? [])
   const siteOptions = newSitePickerOptions(sitesQuery.data ?? [])
+
+  // P34.2 (D-11): cliente y sede de `?cliente=` y `?sede=`, una sola vez y solo
+  // si son válidos (cliente activo; sede activa y de ese cliente). Se asignan
+  // sin pasar por `handleClientChange`, que borraría la sede.
+  const preloadedClient = useRef(false)
+  const preloadedSite = useRef(false)
+  useEffect(() => {
+    if (preloadedClient.current || !clientFromQuery || !clientsQuery.data) {
+      return
+    }
+    preloadedClient.current = true
+    if (clientOptions.some((option) => option.value === clientFromQuery)) {
+      setValue('clientId', clientFromQuery, { shouldValidate: true })
+    } else {
+      preloadedSite.current = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientFromQuery, clientsQuery.data])
+  useEffect(() => {
+    if (
+      preloadedSite.current ||
+      !siteFromQuery ||
+      !preloadedClient.current ||
+      watchedClientId !== clientFromQuery ||
+      !sitesQuery.data
+    ) {
+      return
+    }
+    preloadedSite.current = true
+    if (siteOptions.some((option) => option.value === siteFromQuery)) {
+      setValue('siteId', siteFromQuery, { shouldValidate: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [siteFromQuery, clientFromQuery, watchedClientId, sitesQuery.data])
 
   function handleClientChange(value: string) {
     setValue('clientId', value, { shouldValidate: true, shouldDirty: true })

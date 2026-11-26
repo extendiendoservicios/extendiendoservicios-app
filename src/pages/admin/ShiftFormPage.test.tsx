@@ -117,17 +117,22 @@ vi.mock('@/features/planning/components/EmployeeMultiPicker', () => ({
 vi.mock('@/components/Combobox', () => ({
   Combobox: ({
     'aria-label': label,
+    value,
     onValueChange,
   }: {
     'aria-label': string
+    value?: string
     onValueChange: (value: string) => void
   }) => (
-    <button
-      type="button"
-      onClick={() => onValueChange(label === 'Cliente' ? 'c1' : 's1')}
-    >
-      Elegir {label}
-    </button>
+    <>
+      <span data-testid={`valor-${label}`}>{value}</span>
+      <button
+        type="button"
+        onClick={() => onValueChange(label === 'Cliente' ? 'c1' : 's1')}
+      >
+        Elegir {label}
+      </button>
+    </>
   ),
 }))
 
@@ -174,6 +179,11 @@ function Ficha() {
   return <p>Ficha {location.search}</p>
 }
 
+function FichaCliente() {
+  const location = useLocation()
+  return <p>Ficha cliente {location.search}</p>
+}
+
 function EditarTurno() {
   return <p>Editar turno {useParams().id}</p>
 }
@@ -188,6 +198,7 @@ function renderPage(entry = '/admin/turnos/nuevo') {
         <Routes>
           <Route path="/admin/turnos/nuevo" element={<ShiftFormPage />} />
           <Route path="/admin/empleados/:id" element={<Ficha />} />
+          <Route path="/admin/clientes/:id" element={<FichaCliente />} />
           <Route path="/admin/planificacion" element={<Destino />} />
           <Route path="/admin/turnos/:id/editar" element={<EditarTurno />} />
         </Routes>
@@ -921,6 +932,45 @@ describe('ShiftFormPage: alta desde la ficha del empleado (P33.1)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Crear turno' }))
     expect(
       await screen.findByText('Calendario ?vista=dia&fecha=2026-10-13'),
+    ).toBeInTheDocument()
+  })
+})
+
+describe('ShiftFormPage: alta desde la ficha del cliente (P34.2, D-11)', () => {
+  const FICHA = '/admin/clientes/c1?pestana=calendario&mes=2026-10'
+  const entry = (extra: string) =>
+    `/admin/turnos/nuevo?fecha=2026-10-13&${extra}&volver=${encodeURIComponent(FICHA)}`
+
+  it('precarga el cliente y la sede válidos de `?cliente=` y `?sede=`', async () => {
+    renderPage(entry('cliente=c1&sede=s1'))
+    await waitFor(() =>
+      expect(screen.getByTestId('valor-Sede')).toHaveTextContent('s1'),
+    )
+    expect(screen.getByTestId('valor-Cliente')).toHaveTextContent('c1')
+  })
+
+  it('ignora un cliente que no está entre los activos (y su sede)', async () => {
+    renderPage(entry('cliente=zzz&sede=s1'))
+    await waitFor(() =>
+      expect(screen.getByTestId('valor-Cliente')).toBeInTheDocument(),
+    )
+    expect(screen.getByTestId('valor-Cliente').textContent).toBe('')
+    expect(screen.getByTestId('valor-Sede').textContent).toBe('')
+  })
+
+  it('ignora una sede que no es de ese cliente y deja el cliente', async () => {
+    renderPage(entry('cliente=c1&sede=otra'))
+    await waitFor(() =>
+      expect(screen.getByTestId('valor-Cliente')).toHaveTextContent('c1'),
+    )
+    expect(screen.getByTestId('valor-Sede').textContent).toBe('')
+  })
+
+  it('«Cancelar» vuelve a la ficha del cliente', async () => {
+    renderPage(entry('cliente=c1'))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    expect(
+      await screen.findByText('Ficha cliente ?pestana=calendario&mes=2026-10'),
     ).toBeInTheDocument()
   })
 })

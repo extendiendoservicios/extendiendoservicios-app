@@ -17,6 +17,9 @@ import { getClientColor } from '@/features/planning/clientColors'
 import { BankDetailsCard } from '@/features/bank/components/BankDetailsCard'
 import { useClientBankDetailsQuery } from '@/features/bank/queries'
 import { ClientServiceSummaryTab } from '@/features/clients/components/ClientServiceSummaryTab'
+import { ClientCalendarioTab } from '@/features/clients/components/ClientCalendarioTab'
+import { canManageAssignments } from '@/features/planning/permissions'
+import { canManageShiftTime } from '@/features/shifts/permissions'
 import { ClientContactsPanel } from '@/features/clients/components/ClientContactsPanel'
 import { PreferredSupervisorsBlock } from '@/features/supervisions/components/PreferredSupervisorsBlock'
 import { OwnerDeleteDialog } from '@/features/ownerDelete/components/OwnerDeleteDialog'
@@ -29,7 +32,14 @@ import {
   ServiceList,
 } from '@/features/services/components/ServiceList'
 
-const TABS = ['sedes', 'contactos', 'servicios', 'tareas', 'resumen'] as const
+const TABS = [
+  'calendario',
+  'sedes',
+  'contactos',
+  'servicios',
+  'tareas',
+  'resumen',
+] as const
 type ClientDetailTab = (typeof TABS)[number]
 
 function isClientDetailTab(value: string | null): value is ClientDetailTab {
@@ -38,7 +48,7 @@ function isClientDetailTab(value: string | null): value is ClientDetailTab {
 
 /**
  * ADM-21 "Cliente · detalle" (CLIENT-004, `05` línea 75): cabecera con
- * estado y pestañas Sedes, Contactos, Servicios y Tareas (enlace a ADM-26),
+ * estado y pestañas Calendario (P34.1, la que se abre sin `?pestana=`), Sedes (`?pestana=sedes`), Contactos, Servicios y Tareas (enlace a ADM-26),
  * más el bloque «Coordinadores preferenciales» (P24.3, CJ-03).
  *
  * El alta y el detalle de sede (ADM-22, ADM-23) son de SITE-001 a SITE-003
@@ -56,14 +66,22 @@ export default function ClientDetailPage() {
   const [isDeleteOpen, setDeleteOpen] = useState(false)
   const navigate = useNavigate()
   const auth = useAuth()
+  const actor = { roles: auth.roles, capabilities: auth.capabilities }
+  // D-02: edita quien edita el calendario del empleado; el resto lo ve en lectura.
+  const canEditCalendar =
+    canManageAssignments(actor) && canManageShiftTime(actor)
 
   const activeTab = isClientDetailTab(searchParams.get('pestana'))
     ? (searchParams.get('pestana') as ClientDetailTab)
-    : 'sedes'
+    : 'calendario'
 
   function handleTabChange(value: string) {
     const next = new URLSearchParams(searchParams)
-    if (value === 'sedes') {
+    // El mes y los filtros del calendario solo valen para esa pestaña (D-01).
+    next.delete('mes')
+    next.delete('sede')
+    next.delete('empleado')
+    if (value === 'calendario') {
       next.delete('pestana')
     } else {
       next.set('pestana', value)
@@ -188,12 +206,21 @@ export default function ClientDetailPage() {
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
+          <TabsTrigger value="calendario">Calendario</TabsTrigger>
           <TabsTrigger value="sedes">Sedes</TabsTrigger>
           <TabsTrigger value="contactos">Contactos</TabsTrigger>
           <TabsTrigger value="servicios">Servicios</TabsTrigger>
           <TabsTrigger value="tareas">Tareas</TabsTrigger>
           <TabsTrigger value="resumen">Resumen de servicios</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="calendario" className="pt-3">
+          <ClientCalendarioTab
+            clientId={client.id}
+            clientName={client.tradeName ?? client.legalName}
+            canEdit={canEditCalendar}
+          />
+        </TabsContent>
 
         <TabsContent value="sedes" className="pt-3">
           <div className="flex flex-col gap-3">
