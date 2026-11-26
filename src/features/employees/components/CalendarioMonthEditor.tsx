@@ -93,7 +93,7 @@ const SHIFT_WARNING_MESSAGES: Record<string, string> = {
   HOLIDAY: 'La fecha del turno nuevo es feriado.',
 }
 
-function describeWarnings(warnings: string[]): string {
+export function describeWarnings(warnings: string[]): string {
   return warnings
     .map(
       (warning) =>
@@ -222,6 +222,7 @@ function MonthBlock({
           label={`Hora de inicio del turno de ${siteLabel}`}
           editable={interactive}
           suppressClick={suppressClick}
+          corner="left"
           onCommit={(value) => onTimeCommit(block, 'start', value)}
         />
         <TimeCell
@@ -229,6 +230,7 @@ function MonthBlock({
           label={`Hora de fin del turno de ${siteLabel}`}
           editable={interactive && !block.openEnded}
           suppressClick={suppressClick}
+          corner="right"
           onCommit={(value) => onTimeCommit(block, 'end', value)}
         />
       </div>

@@ -44,6 +44,7 @@ function person(
   last: string,
 ) {
   return {
+    id: `a-${shiftId}-${employeeId}`,
     shiftId,
     employeeId,
     employeeFirstName: first,

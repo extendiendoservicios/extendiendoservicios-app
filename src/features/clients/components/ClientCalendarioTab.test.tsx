@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, useLocation } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ShiftListRow } from '@/api/shifts'
@@ -14,7 +15,11 @@ const { state, shiftsMock, assignmentsMock } = vi.hoisted(() => ({
   assignmentsMock: vi.fn(),
 }))
 
-vi.mock('@/features/planning/queries', () => ({
+vi.mock('@/features/auth/AuthProvider', () => ({
+  useAuth: () => ({ roles: ['owner'], capabilities: [] }),
+}))
+vi.mock('@/features/planning/queries', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/planning/queries')>()),
   useShiftsBoardRangeQuery: (...args: unknown[]) => {
     shiftsMock(...args)
     return { data: state.shifts, isLoading: false, isError: false }
@@ -69,6 +74,7 @@ function shift(overrides: Partial<ShiftListRow> = {}): ShiftListRow {
 }
 
 const ANA = {
+  id: 'a1',
   shiftId: 's1',
   employeeId: 'e1',
   employeeFirstName: 'Ana',
@@ -81,10 +87,12 @@ function Search() {
 
 function renderTab(search = '?mes=2026-11') {
   return render(
-    <MemoryRouter initialEntries={[`/admin/clientes/c1${search}`]}>
-      <ClientCalendarioTab clientId="c1" clientName="Limpieza SA" />
-      <Search />
-    </MemoryRouter>,
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter initialEntries={[`/admin/clientes/c1${search}`]}>
+        <ClientCalendarioTab clientId="c1" clientName="Limpieza SA" />
+        <Search />
+      </MemoryRouter>
+    </QueryClientProvider>,
   )
 }
 

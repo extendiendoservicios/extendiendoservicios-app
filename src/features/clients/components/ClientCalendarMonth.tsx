@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { CRONOGRAMA_WEEKDAYS } from '@/features/employees/cronograma'
 import {
   visibleBlocks,
@@ -6,6 +6,9 @@ import {
   type ClientCalendarDay,
   type ClientCalendarMonth as ClientCalendarMonthModel,
 } from '@/features/clients/clientCalendar'
+import { canDragBlock } from '@/features/clients/clientCalendarEdit'
+import { dateAtPoint, type DayRect } from '@/features/employees/calendarioMonth'
+import { formatDateOnly } from '@/features/settings/dateOnly'
 import { ClientShiftBlock } from '@/features/clients/components/ClientShiftBlock'
 
 interface ClientCalendarMonthProps {
@@ -14,6 +17,14 @@ interface ClientCalendarMonthProps {
   highlightUncovered?: boolean
   /** P34.2 (D-02): quien edita; en P34.1 todo es lectura. */
   canEdit?: boolean
+  /** P34.2 (D-08): se confirmó una hora en el lugar. */
+  onTimeCommit?: (
+    block: ClientCalendarBlock,
+    edge: 'start' | 'end',
+    value: string,
+  ) => void
+  /** P34.2 (D-09): se soltó un turno sobre otro día del mes. */
+  onMoveBlock?: (block: ClientCalendarBlock, date: string) => void
   /** P34.2 (D-10): el ⋮ de cada turno. */
   renderActions?: (block: ClientCalendarBlock) => ReactNode
   /** P34.2 (D-11): el «+» de cada día. */
@@ -31,11 +42,49 @@ function ClientCalendarMonth({
   month,
   highlightUncovered = false,
   canEdit = false,
+  onTimeCommit,
+  onMoveBlock,
   renderActions,
   renderDayAction,
   printing = false,
 }: ClientCalendarMonthProps) {
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set())
+
+  const [drag, setDrag] = useState<{
+    block: ClientCalendarBlock
+    targetDate: string | null
+    x: number
+    y: number
+  } | null>(null)
+  const cellRefs = useRef(new Map<string, HTMLElement>())
+
+  function dayRects(): DayRect[] {
+    const rects: DayRect[] = []
+    for (const [date, element] of cellRefs.current) {
+      const rect = element.getBoundingClientRect()
+      rects.push({
+        date,
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        bottom: rect.bottom,
+      })
+    }
+    return rects
+  }
+
+  const dragHandlers = {
+    onMove: (block: ClientCalendarBlock, x: number, y: number) =>
+      setDrag({ block, targetDate: dateAtPoint(dayRects(), x, y), x, y }),
+    onEnd: (block: ClientCalendarBlock, x: number, y: number) => {
+      const target = dateAtPoint(dayRects(), x, y)
+      setDrag(null)
+      if (target && target !== block.date) {
+        onMoveBlock?.(block, target)
+      }
+    },
+    onCancel: () => setDrag(null),
+  }
 
   function toggleDay(date: string) {
     setExpandedDays((current) => {
@@ -55,12 +104,24 @@ function ClientCalendarMonth({
     return (
       <td
         key={day.date}
+        ref={(element) => {
+          if (element && day.inMonth) {
+            cellRefs.current.set(day.date, element)
+          } else {
+            cellRefs.current.delete(day.date)
+          }
+        }}
         data-testid={`dia-${day.date}`}
+        data-drop-target={drag?.targetDate === day.date ? 'true' : undefined}
         data-kind={day.inMonth ? (day.holiday ? 'holiday' : 'day') : 'fuera'}
         className={`print-exact min-h-[21mm] border border-neutral-700 p-0 align-top ${
           day.inMonth
             ? 'bg-white text-black'
             : 'bg-neutral-100 text-neutral-400'
+        } ${
+          drag?.targetDate === day.date
+            ? 'outline-2 -outline-offset-2 outline-primary'
+            : ''
         }`}
       >
         <div className="flex h-full min-h-[21mm] flex-col">
@@ -93,6 +154,13 @@ function ClientCalendarMonth({
                 key={block.shiftId}
                 block={block}
                 canEdit={canEdit}
+                onTimeCommit={onTimeCommit}
+                drag={
+                  canEdit && onMoveBlock && canDragBlock(block)
+                    ? dragHandlers
+                    : undefined
+                }
+                dragging={drag?.block.shiftId === block.shiftId}
                 highlighted={highlightUncovered && block.uncovered}
                 actions={printing ? undefined : renderActions?.(block)}
                 printing={printing}
@@ -150,6 +218,15 @@ function ClientCalendarMonth({
           ))}
         </tbody>
       </table>
+      {drag && (
+        <div
+          className="pointer-events-none fixed z-50 rounded-md bg-primary px-2 py-1 text-[11px] font-semibold text-white shadow-lg"
+          style={{ left: drag.x + 12, top: drag.y + 12 }}
+        >
+          {drag.block.siteName}
+          {drag.targetDate ? ` → ${formatDateOnly(drag.targetDate)}` : ''}
+        </div>
+      )}
     </div>
   )
 }

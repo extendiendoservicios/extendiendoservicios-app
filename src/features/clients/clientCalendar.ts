@@ -17,6 +17,8 @@ import { cronogramaTitle, monthRange } from '@/features/employees/cronograma'
 export const MAX_VISIBLE_BLOCKS = 4
 
 export interface ClientCalendarPerson {
+  /** Asignación vigente de la persona en el turno (para «Quitar a…», D-10). */
+  assignmentId: string
   employeeId: string
   /** Nombre y inicial del apellido: «Ana P.». */
   shortName: string
@@ -29,6 +31,8 @@ export interface ClientCalendarBlock {
   start: string
   /** `12:00`, o `—` en un turno «a terminar». */
   end: string
+  /** Fin guardado del turno (`23:59` si es «a terminar»), para la hoja de asignar (D-10). */
+  endTime: string
   openEnded: boolean
   siteId: string
   siteName: string
@@ -67,7 +71,7 @@ export const HOLIDAY_FALLBACK_NAME = 'Feriado'
 
 type PersonRow = Pick<
   AssignmentBoardRow,
-  'shiftId' | 'employeeId' | 'employeeFirstName' | 'employeeLastName'
+  'id' | 'shiftId' | 'employeeId' | 'employeeFirstName' | 'employeeLastName'
 >
 
 function hhmm(time: string): string {
@@ -92,6 +96,7 @@ export function groupPeopleByShift(
       continue
     }
     list.push({
+      assignmentId: row.id,
       employeeId: row.employeeId,
       shortName: shortPersonName(row.employeeFirstName, row.employeeLastName),
     })
@@ -115,6 +120,7 @@ export function buildClientBlock(
     date: shift.shiftDate,
     start: hhmm(shift.startTime),
     end: shift.openEnded ? '—' : hhmm(shift.endTime),
+    endTime: hhmm(shift.endTime),
     openEnded: shift.openEnded,
     siteId: shift.siteId,
     siteName: shift.siteName,

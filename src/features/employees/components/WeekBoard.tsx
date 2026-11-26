@@ -256,6 +256,7 @@ function BoardBlockView({
           label={`Hora de inicio de ${label}`}
           editable={editable}
           suppressClick={() => justDragged.current}
+          corner="left"
           onCommit={(value) => onTimeCommit(block, 'start', value)}
         />
         <TimeCell
@@ -264,6 +265,7 @@ function BoardBlockView({
           label={`Hora de fin de ${label}`}
           editable={editable}
           suppressClick={() => justDragged.current}
+          corner="right"
           onCommit={(value) => onTimeCommit(block, 'end', value)}
         />
       </div>
