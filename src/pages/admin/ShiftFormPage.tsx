@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
@@ -85,6 +85,7 @@ import {
   localDateToIsoDate,
 } from '@/features/settings/dateOnly'
 import { canManageShiftTime } from '@/features/shifts/permissions'
+import { safeReturnPath } from '@/features/shifts/returnPath'
 import {
   useCreateShiftMutation,
   useCreateShiftSeriesMutation,
@@ -170,6 +171,8 @@ export default function ShiftFormPage() {
   return (
     <CreateShiftForm
       dateFromQuery={dateFromQuery}
+      employeeFromQuery={searchParams.get('empleado')}
+      returnTo={safeReturnPath(searchParams.get('volver'))}
       navigate={navigate}
       canManage={canManage}
     />
@@ -178,14 +181,23 @@ export default function ShiftFormPage() {
 
 function CreateShiftForm({
   dateFromQuery,
+  employeeFromQuery,
+  returnTo,
   navigate,
   canManage,
 }: {
   dateFromQuery: string | null
+  /** P33.1 (D-03): empleado a precargar en «Empleados». */
+  employeeFromQuery: string | null
+  /** P33.1 (D-04): dirección ya validada a la que se vuelve al guardar o cancelar. */
+  returnTo: string | null
   navigate: ReturnType<typeof useNavigate>
   canManage: boolean
 }) {
-  const leaveForm = useLeaveForm()
+  const leaveFormBase = useLeaveForm()
+  // Con `volver` válido todas las salidas del alta vuelven a la ficha del empleado.
+  const leaveForm = (path: string, kind: Parameters<typeof leaveFormBase>[1]) =>
+    leaveFormBase(returnTo ?? path, kind)
   const createShift = useCreateShiftMutation()
   const createShiftSeries = useCreateShiftSeriesMutation()
   // OH-09: turno que ya pasó -> «Registrar como realizado».
@@ -220,6 +232,21 @@ function CreateShiftForm({
   const employeeOptionsQuery = useActiveEmployeeOptionsQuery()
   // AJ2-17: empleados que quedan asignados al crear el turno.
   const [pickedEmployeeIds, setPickedEmployeeIds] = useState<string[]>([])
+  // D-03: se precarga una sola vez, cuando llegan las opciones, sin pisar lo que se cambie después.
+  const preloadedEmployee = useRef(false)
+  useEffect(() => {
+    if (preloadedEmployee.current || !employeeFromQuery) {
+      return
+    }
+    const options = employeeOptionsQuery.data
+    if (!options) {
+      return
+    }
+    preloadedEmployee.current = true
+    if (options.some((option) => option.profileId === employeeFromQuery)) {
+      setPickedEmployeeIds([employeeFromQuery])
+    }
+  }, [employeeFromQuery, employeeOptionsQuery.data])
 
   const defaultValues: ShiftFormValues = {
     clientId: '',
@@ -1092,7 +1119,11 @@ function CreateShiftForm({
         <Button
           type="button"
           variant="ghost"
-          onClick={() => void navigate(-1)}
+          onClick={() =>
+            void (returnTo
+              ? navigate(returnTo, { replace: true })
+              : navigate(-1))
+          }
           disabled={
             createShift.isPending ||
             createShiftSeries.isPending ||

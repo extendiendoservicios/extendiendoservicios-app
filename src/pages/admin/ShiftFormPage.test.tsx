@@ -21,6 +21,7 @@ const {
   registerPastMock,
   fetchShiftDetailMock,
   authState,
+  employeeOptions,
   previewShiftSeriesMock,
   shiftOverlapsMock,
   datesOverlapsMock,
@@ -35,6 +36,7 @@ const {
   authState: {
     value: { roles: ['owner'], capabilities: new Array<string>() },
   },
+  employeeOptions: { value: [] as { profileId: string; name: string }[] },
   previewShiftSeriesMock: vi.fn(),
   shiftOverlapsMock: vi.fn(),
   datesOverlapsMock: vi.fn(),
@@ -80,7 +82,10 @@ vi.mock('@/features/clients/queries', () => ({
 }))
 
 vi.mock('@/features/employees/queries', () => ({
-  useActiveEmployeeOptionsQuery: () => ({ data: [], isLoading: false }),
+  useActiveEmployeeOptionsQuery: () => ({
+    data: employeeOptions.value,
+    isLoading: false,
+  }),
   useLeavesInRangeQuery: () => ({ data: [] }),
 }))
 
@@ -90,13 +95,21 @@ vi.mock('@/features/settings/queries', () => ({
 
 vi.mock('@/features/planning/components/EmployeeMultiPicker', () => ({
   EmployeeMultiPicker: ({
+    value,
     onValueChange,
   }: {
+    value: string[]
     onValueChange: (ids: string[]) => void
   }) => (
-    <button type="button" onClick={() => onValueChange(['e1'])}>
-      Elegir empleado
-    </button>
+    <>
+      <span data-testid="empleados-elegidos">{value.join(',')}</span>
+      <button type="button" onClick={() => onValueChange(['e1'])}>
+        Elegir empleado
+      </button>
+      <button type="button" onClick={() => onValueChange([])}>
+        Sacar empleados
+      </button>
+    </>
   ),
 }))
 
@@ -156,19 +169,25 @@ function Destino() {
   return <p>Calendario {location.search}</p>
 }
 
+function Ficha() {
+  const location = useLocation()
+  return <p>Ficha {location.search}</p>
+}
+
 function EditarTurno() {
   return <p>Editar turno {useParams().id}</p>
 }
 
-function renderPage() {
+function renderPage(entry = '/admin/turnos/nuevo') {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/admin/turnos/nuevo']}>
+      <MemoryRouter initialEntries={[entry]}>
         <Routes>
           <Route path="/admin/turnos/nuevo" element={<ShiftFormPage />} />
+          <Route path="/admin/empleados/:id" element={<Ficha />} />
           <Route path="/admin/planificacion" element={<Destino />} />
           <Route path="/admin/turnos/:id/editar" element={<EditarTurno />} />
         </Routes>
@@ -204,6 +223,7 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date('2026-10-01T12:00:00-03:00'))
   authState.value = { roles: ['owner'], capabilities: [] }
+  employeeOptions.value = []
   registerPastMock.mockReset().mockResolvedValue({
     shiftId: 'sh-past',
     warnings: [],
@@ -835,5 +855,72 @@ describe('ShiftFormPage — turno pasado: «Registrar como realizado» (OH-09)',
     expect(
       screen.getByRole('button', { name: 'Registrar como realizado' }),
     ).toBeEnabled()
+  })
+})
+
+describe('ShiftFormPage: alta desde la ficha del empleado (P33.1)', () => {
+  const FICHA = '/admin/empleados/e1?pestana=calendario&mes=2026-10'
+  const entry = () =>
+    `/admin/turnos/nuevo?fecha=2026-10-13&empleado=e1&volver=${encodeURIComponent(FICHA)}`
+
+  it('precarga al empleado de `?empleado=` cuando llegan las opciones', async () => {
+    employeeOptions.value = [{ profileId: 'e1', name: 'Ana Gómez' }]
+    renderPage(entry())
+    await waitFor(() =>
+      expect(screen.getByTestId('empleados-elegidos')).toHaveTextContent('e1'),
+    )
+  })
+
+  it('no lo vuelve a poner si la persona lo saca', async () => {
+    employeeOptions.value = [{ profileId: 'e1', name: 'Ana Gómez' }]
+    renderPage(entry())
+    await waitFor(() =>
+      expect(screen.getByTestId('empleados-elegidos')).toHaveTextContent('e1'),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Sacar empleados' }))
+    expect(screen.getByTestId('empleados-elegidos').textContent).toBe('')
+  })
+
+  it('ignora un empleado que no está entre los activos', () => {
+    employeeOptions.value = [{ profileId: 'otro', name: 'Luis Paz' }]
+    renderPage(entry())
+    expect(screen.getByTestId('empleados-elegidos').textContent).toBe('')
+  })
+
+  it('al guardar un turno vuelve a la ficha y lo crea con el empleado', async () => {
+    employeeOptions.value = [{ profileId: 'e1', name: 'Ana Gómez' }]
+    renderPage(entry())
+    await waitFor(() =>
+      expect(screen.getByTestId('empleados-elegidos')).toHaveTextContent('e1'),
+    )
+    fillBasics()
+    fireEvent.click(screen.getByRole('button', { name: 'Crear turno' }))
+    await waitFor(() => expect(createShiftMock).toHaveBeenCalledTimes(1))
+    expect(createShiftMock.mock.calls[0]?.[0]).toMatchObject({
+      employeeIds: ['e1'],
+    })
+    expect(
+      await screen.findByText('Ficha ?pestana=calendario&mes=2026-10'),
+    ).toBeInTheDocument()
+  })
+
+  it('«Cancelar» vuelve a la ficha', async () => {
+    renderPage(entry())
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    expect(
+      await screen.findByText('Ficha ?pestana=calendario&mes=2026-10'),
+    ).toBeInTheDocument()
+  })
+
+  it('con un `volver` inválido sale a Planificación como siempre', async () => {
+    renderPage(
+      '/admin/turnos/nuevo?fecha=2026-10-13&volver=' +
+        encodeURIComponent('//malo.com/admin/empleados/x'),
+    )
+    fillBasics()
+    fireEvent.click(screen.getByRole('button', { name: 'Crear turno' }))
+    expect(
+      await screen.findByText('Calendario ?vista=dia&fecha=2026-10-13'),
+    ).toBeInTheDocument()
   })
 })
