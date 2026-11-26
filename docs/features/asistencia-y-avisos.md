@@ -220,3 +220,21 @@ Especificación: `Docs/Plan_Maestro/modulos/P24_coordinacion_libre_y_jornada.md`
   `EmployeeAttendanceHistoryTab.test.tsx`.
 
 > **P27.6 (OD-04):** la sección «Coordinadores» de ADM-10 ahora usa tarjetas (`CoordinatorCards`) en lugar de la tabla; `coordinatorDay.ts` ya no existe. Ver `supervisiones.md`, sección P27.6.
+
+## P35.1 · Columna «Supervisión» (OM-01, D-01 a D-05)
+
+La supervisión del turno ya no va como segunda línea de la columna «Estado»:
+tiene su propia columna «Supervisión», a la derecha de «Estado», en Asistencia
+(ADM-10) y en «Servicios de hoy» del Resumen. Es ordenable y, en el celular,
+un dato más de la tarjeta con la etiqueta «Supervisión».
+
+- Píldora (`SupervisionBadge`, `src/features/attendance/components/`): «Supervisado»
+  verde como «Finalizado», «Sin supervisar» rojo como «Sin registro» y
+  «Supervisando» azul como «En curso». El coordinador va en el `title` y en el
+  texto accesible («por {nombre}»).
+- Cuándo hay píldora: la regla de `getSupervisionLine` (solo dueño y
+  administradores; no en turnos cancelados ni con ausencia avisada; solo si el
+  servicio ya empezó). Si no aplica, la celda muestra «—».
+- El fondo de la fila no cambia: la supervisión no participa.
+- `persistKey` guarda los anchos por id de columna: quien ya tenía la tabla
+  guardada ve la columna nueva con el ancho por defecto.

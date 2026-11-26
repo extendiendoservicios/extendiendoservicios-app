@@ -168,3 +168,38 @@ describe('AttendanceTodayList: cierre automático (OF-11)', () => {
     ).toBeInTheDocument()
   })
 })
+
+describe('AttendanceTodayList: columna «Supervisión» (P35)', () => {
+  it('la píldora va en su propia columna y no dentro de «Estado»', () => {
+    boardMock.mockReturnValue({
+      data: [
+        makeAssignment({
+          id: 'a9',
+          employeeId: 'e9',
+          shiftStatus: 'in_progress',
+          status: 'present',
+          displayStatus: 'present',
+          checkInAt: '2026-09-30T08:02:00-03:00',
+          supervisionState: 'done',
+          supervisorName: 'Sofía Ruiz',
+        }),
+        makeAssignment({
+          id: 'a8',
+          employeeId: 'e8',
+          shiftStatus: 'assigned',
+          status: 'expected',
+          displayStatus: 'expected',
+          supervisionState: 'none',
+        }),
+      ],
+      isLoading: false,
+    })
+    renderList()
+    const done = screen.getByText('Supervisado')
+    expect(done).toHaveAttribute('title', 'Sofía Ruiz')
+    expect(done).toHaveTextContent('por Sofía Ruiz')
+    // El turno que no empezó queda sin píldora.
+    expect(screen.queryByText('Sin supervisar')).toBeNull()
+    expect(screen.getAllByText('Supervisión').length).toBeGreaterThan(0)
+  })
+})

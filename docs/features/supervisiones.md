@@ -437,3 +437,34 @@ Backend: migración `0079` (`admin_end_workday`, `admin_close_workday_pause`,
 - Tests: `coordinatorCards.test.ts`, `components/CoordinatorCards.test.tsx`,
   `components/EndWorkdayDialog.test.tsx`, `components/AllWorkdaysTab.test.tsx`,
   `components/WorkdayCard.test.tsx`, `schemas.test.ts`, `time.test.ts`.
+
+## P35.2 · Pestaña «Sin supervisar» (OM-02, D-06 a D-10)
+
+ADM-13 suma la pestaña **«Sin supervisar»** (`?pestana=sin-supervisar`) entre
+«Calificaciones» y «Jornadas», con el contador «Sin supervisar (N)» (cantidad
+de turnos del período).
+
+- **Datos:** `fetchUnsupervisedAssignments` (`src/api/attendance.ts`) lee
+  `v_assignments_board` por rango de `shift_date` con `supervision_state =
+'none'`, sin quitadas ni turnos cancelados, de a páginas de 1000. Hook
+  `useUnsupervisedShiftsQuery` (`src/features/supervisions/queries.ts`): una sola
+  consulta acotada que se carga siempre (alimenta el contador) y pollea cada 60 s
+  solo con la pestaña abierta. Sin migración.
+- **Agrupado** (`unsupervised.ts`, `groupUnsupervisedShifts`): una fila por turno.
+  Entra si al menos una persona cumple la regla de `getSupervisionLine` (ya empezó,
+  no cancelado, sin ausencia avisada). Columnas: fecha, turno (cliente · sede ·
+  horario), empleados, asistencia y la píldora roja «Sin supervisar». El estado de
+  asistencia del turno es el de la persona más relevante: «Sin registro», «Sin
+  salida», «Demora» (`late`), presente y finalizado, en ese orden. Orden: fecha y
+  hora, del más reciente al más viejo. La fecha y el turno abren
+  `/admin/turnos/:id`.
+- **Filtros:** empleado, cliente, sede y fechas aplican (con el filtro de empleado,
+  la fila lista solo a esa persona). El de coordinador se ve deshabilitado.
+  Sin fechas: últimos 7 días hasta hoy, con la leyenda «Últimos 7 días. Elegí
+  fechas para ver otro período.». Solo «desde»: hasta hoy; solo «hasta»: los 7
+  días que terminan ese día.
+- **Período largo:** si supera 62 días no se consulta y se muestra un aviso para
+  acotar las fechas (`resolveUnsupervisedRange`).
+- `persistKey`: `tabla:supervisiones-sin-supervisar`.
+- Tests: `unsupervised.test.ts`, `SupervisionsAdminScreen.test.tsx`,
+  `src/pages/admin/SupervisionsPage.test.tsx`.

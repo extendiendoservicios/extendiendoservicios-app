@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { ShieldCheck, Star } from 'lucide-react'
+import { ShieldCheck, Star, TriangleAlert } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -13,19 +13,30 @@ import { DataTable, type DataTableColumnDef } from '@/components/DataTable'
 import { DatePicker } from '@/components/DatePicker'
 import { PersonCell } from '@/components/PersonCell'
 import { StarRating } from '@/components/StarRating'
+import { StatusBadge } from '@/components/status'
 import {
   formatDateOnly,
   localDateToIsoDate,
 } from '@/features/settings/dateOnly'
 import { formatMinutes, formatTime } from '@/lib/format'
 import { useEmployeesQuery } from '@/features/employees/queries'
+import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
 import type { SupervisionListRow } from '@/api/supervisions'
 import type { RatingListRow } from '@/api/ratings'
 import {
   useRatingsQuery,
   useSupervisionsAdminQuery,
+  useUnsupervisedShiftsQuery,
 } from '@/features/supervisions/queries'
 import { formatShiftRange } from '@/features/shifts/openEnded'
+import { SupervisionPill } from '@/features/attendance/components/SupervisionBadge'
+import {
+  groupUnsupervisedShifts,
+  MAX_UNSUPERVISED_DAYS,
+  resolveUnsupervisedRange,
+  unsupervisedStatusBadge,
+  type UnsupervisedShift,
+} from '@/features/supervisions/unsupervised'
 import { SupervisionStateBadges } from './UnclosedBadge'
 import { AllWorkdaysTab } from '@/features/workdays/components/AllWorkdaysTab'
 import { UpdatedAgo } from './UpdatedAgo'
@@ -73,10 +84,11 @@ const EMPTY_FILTERS: Filters = {
  * listado de supervisiones no trae nombres de empleado por sí solo.
  * Decisión propia, documentada en el reporte del encargo.
  */
-type SupervisionsAdminTab = 'supervisiones' | 'calificaciones' | 'jornadas'
+type SupervisionsAdminTab =
+  'supervisiones' | 'calificaciones' | 'sin-supervisar' | 'jornadas'
 
 interface SupervisionsAdminScreenProps {
-  /** `?pestana=calificaciones` o `?pestana=jornadas` (`05` sección 5; OD-05): lo controla `SupervisionsPage`. */
+  /** `?pestana=calificaciones`, `sin-supervisar` o `jornadas` (`05` sección 5; OD-05, P35): lo controla `SupervisionsPage`. */
   tab: SupervisionsAdminTab
   onTabChange: (tab: SupervisionsAdminTab) => void
 }
@@ -100,6 +112,29 @@ function SupervisionsAdminScreen({
   const supervisionsQuery = useSupervisionsAdminQuery(apiFilters)
   const ratingsQuery = useRatingsQuery(apiFilters, tab === 'calificaciones')
   const employeesQuery = useEmployeesQuery({ status: 'all' })
+
+  // P35.2 (D-08, D-10): período de la pestaña «Sin supervisar»; sin fechas,
+  // los últimos 7 días. Si supera 62 días no se consulta.
+  const range = resolveUnsupervisedRange(
+    filters.dateFrom,
+    filters.dateTo,
+    todayInBuenosAires(),
+  )
+  const unsupervisedQuery = useUnsupervisedShiftsQuery(
+    range.from,
+    range.to,
+    {
+      employeeId: apiFilters.employeeId,
+      clientId: apiFilters.clientId,
+      siteId: apiFilters.siteId,
+    },
+    !range.tooLong && range.from <= range.to,
+    tab === 'sin-supervisar',
+  )
+  const unsupervisedShifts = useMemo(
+    () => groupUnsupervisedShifts(unsupervisedQuery.data ?? []),
+    [unsupervisedQuery.data],
+  )
 
   const supervisionRows = useMemo(
     () => supervisionsQuery.data ?? [],
@@ -138,8 +173,11 @@ function SupervisionsAdminScreen({
     for (const row of supervisionRows) {
       map.set(row.clientId, row.clientName)
     }
+    for (const row of unsupervisedQuery.data ?? []) {
+      map.set(row.clientId, row.clientName)
+    }
     return Array.from(map, ([id, name]) => ({ id, name }))
-  }, [supervisionRows])
+  }, [supervisionRows, unsupervisedQuery.data])
 
   const siteOptions = useMemo(() => {
     const map = new Map<string, string>()
@@ -149,8 +187,11 @@ function SupervisionsAdminScreen({
     for (const row of ratingRows) {
       map.set(row.siteId, row.siteName)
     }
+    for (const row of unsupervisedQuery.data ?? []) {
+      map.set(row.siteId, row.siteName)
+    }
     return Array.from(map, ([id, name]) => ({ id, name }))
-  }, [supervisionRows, ratingRows])
+  }, [supervisionRows, ratingRows, unsupervisedQuery.data])
 
   const supervisionColumns: DataTableColumnDef<SupervisionListRow>[] = [
     {
@@ -315,6 +356,88 @@ function SupervisionsAdminScreen({
     },
   ]
 
+  // D-09: contador del período; sin él si el período es demasiado largo.
+  const sinSupervisarLabel =
+    range.tooLong || unsupervisedQuery.data == null
+      ? 'Sin supervisar'
+      : `Sin supervisar (${unsupervisedShifts.length})`
+
+  const unsupervisedColumns: DataTableColumnDef<UnsupervisedShift>[] = [
+    {
+      id: 'date',
+      accessorFn: (row) => `${row.shiftDate} ${row.startTime}`,
+      header: 'Fecha',
+      meta: { card: 'title' },
+      cell: ({ row }) => (
+        <Link
+          to={`/admin/turnos/${row.original.shiftId}`}
+          className="font-semibold text-text capitalize hover:text-primary-800"
+        >
+          {formatDateOnly(row.original.shiftDate)}
+        </Link>
+      ),
+    },
+    {
+      id: 'shift',
+      accessorFn: (row) =>
+        `${row.clientName} ${row.siteName} ${row.startTime}`.toLowerCase(),
+      header: 'Turno',
+      meta: { card: 'subtitle' },
+      cell: ({ row }) => (
+        <Link
+          to={`/admin/turnos/${row.original.shiftId}`}
+          className="hover:text-primary-800"
+        >
+          {row.original.clientName} · {row.original.siteName} ·{' '}
+          {formatShiftRange(
+            row.original.startTime,
+            row.original.endTime,
+            row.original.openEnded,
+          )}
+        </Link>
+      ),
+    },
+    {
+      id: 'employees',
+      accessorFn: (row) =>
+        row.employees
+          .map((employee) => employee.name)
+          .join(', ')
+          .toLowerCase(),
+      header: 'Empleados',
+      meta: { card: 'meta', cardLabel: 'Empleados' },
+      cell: ({ row }) => (
+        <span>
+          {row.original.employees.map((employee) => employee.name).join(', ')}
+        </span>
+      ),
+    },
+    {
+      id: 'attendance',
+      accessorFn: (row) => row.statusRow.displayStatus,
+      header: 'Asistencia',
+      meta: { card: 'meta', cardLabel: 'Asistencia' },
+      cell: ({ row }) => (
+        <StatusBadge {...unsupervisedStatusBadge(row.original)} />
+      ),
+    },
+    {
+      id: 'supervision',
+      enableSorting: false,
+      header: 'Supervisión',
+      meta: { card: 'meta', cardLabel: 'Supervisión' },
+      cell: () => (
+        <SupervisionPill
+          line={{
+            state: 'none',
+            label: 'Sin supervisar',
+            supervisorName: null,
+          }}
+        />
+      ),
+    },
+  ]
+
   return (
     <div className="flex flex-col gap-4">
       {tab !== 'jornadas' && (
@@ -326,6 +449,10 @@ function SupervisionsAdminScreen({
             {tab === 'calificaciones' && ratingsQuery.dataUpdatedAt > 0 && (
               <UpdatedAgo dataUpdatedAt={ratingsQuery.dataUpdatedAt} />
             )}
+            {tab === 'sin-supervisar' &&
+              unsupervisedQuery.dataUpdatedAt > 0 && (
+                <UpdatedAgo dataUpdatedAt={unsupervisedQuery.dataUpdatedAt} />
+              )}
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -356,6 +483,7 @@ function SupervisionsAdminScreen({
               <SelectTrigger
                 aria-label="Filtrar por coordinador"
                 className="w-52"
+                disabled={tab === 'sin-supervisar'}
               >
                 <SelectValue />
               </SelectTrigger>
@@ -453,6 +581,7 @@ function SupervisionsAdminScreen({
         <TabsList>
           <TabsTrigger value="supervisiones">Supervisiones</TabsTrigger>
           <TabsTrigger value="calificaciones">Calificaciones</TabsTrigger>
+          <TabsTrigger value="sin-supervisar">{sinSupervisarLabel}</TabsTrigger>
           <TabsTrigger value="jornadas">Jornadas</TabsTrigger>
         </TabsList>
 
@@ -486,6 +615,41 @@ function SupervisionsAdminScreen({
               title: 'No hay calificaciones para mostrar con estos filtros',
             }}
           />
+        </TabsContent>
+
+        <TabsContent
+          value="sin-supervisar"
+          className="flex flex-col gap-3 pt-3"
+        >
+          {range.isDefault && (
+            <p className="text-[13px] text-text-2">
+              Últimos 7 días. Elegí fechas para ver otro período.
+            </p>
+          )}
+          {range.tooLong ? (
+            <div
+              role="alert"
+              className="flex items-center gap-2 rounded-lg border border-warning-800/30 bg-warning-bg px-3 py-2 text-[13px] text-warning-800"
+            >
+              <TriangleAlert className="size-4 shrink-0" aria-hidden />
+              El período supera los {MAX_UNSUPERVISED_DAYS} días. Acotá las
+              fechas para ver los turnos sin supervisar.
+            </div>
+          ) : (
+            <DataTable
+              caption="Turnos sin supervisar"
+              resizableColumns
+              persistKey="tabla:supervisiones-sin-supervisar"
+              columns={unsupervisedColumns}
+              data={unsupervisedShifts}
+              getRowId={(row) => row.shiftId}
+              isLoading={unsupervisedQuery.isLoading}
+              emptyState={{
+                icon: ShieldCheck,
+                title: 'No hay turnos sin supervisar con estos filtros',
+              }}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="jornadas" className="pt-3">
