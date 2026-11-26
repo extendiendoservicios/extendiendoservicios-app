@@ -3,12 +3,15 @@ import { applyTimeEdit, moveToDate } from '@/features/employees/calendarioMonth'
 import type { CronogramaCommand } from '@/features/employees/cronogramaCommands'
 import {
   COMPLETED_DATE_MESSAGE,
+  DAY_MINUTES,
+  MIN_BLOCK_MINUTES,
   OPEN_ENDED_DRAW_MINUTES,
   completedDateChangeBlocked,
   hasScheduleChanged,
   minutesToTime,
   timeToMinutes,
   wholeShiftChange,
+  type OwnTimeChange,
   type ScheduleChange,
   type WeekBlock,
 } from '@/features/employees/cronogramaWeek'
@@ -18,7 +21,8 @@ import {
  * cliente. Cada bloque es un turno, así que todo cambio de horario o de día
  * es siempre sobre el TURNO ENTERO (`shift_time`), sin preguntar alcance. Se
  * reutilizan las funciones del editor del empleado armando un `WeekBlock` cuyo
- * horario es el del turno (sin franja propia).
+ * horario es el del turno; las franjas propias de cada persona acompañan al
+ * turno (D-16, `ownTimeShifts`).
  */
 
 /** El bloque del cliente visto como el `WeekBlock` que entienden las reglas del empleado. */
@@ -49,6 +53,57 @@ export function toWeekBlock(
   }
 }
 
+/**
+ * D-16: franjas propias que acompañan al turno. Una persona tiene franja propia
+ * si su horario efectivo difiere del del turno (mismo criterio que
+ * `hasOwnTime`). Cada franja se corre lo mismo que el turno (`wholeShiftChange`
+ * ya devuelve el corrimiento aplicado, con los límites del día), sin salirse
+ * del día ni bajar de 15 minutos. Devuelve también cómo estaban, para deshacer.
+ */
+export function ownTimeShifts(
+  block: ClientCalendarBlock,
+  whole: { startMin: number; endMin: number },
+): { ownTimes: OwnTimeChange[]; undoOwnTimes: OwnTimeChange[] } {
+  const ownTimes: OwnTimeChange[] = []
+  const undoOwnTimes: OwnTimeChange[] = []
+  if (block.openEnded) {
+    return { ownTimes, undoOwnTimes }
+  }
+  const shiftStart = timeToMinutes(block.start)
+  const shiftEnd = timeToMinutes(block.endTime)
+  const appliedStart = whole.startMin - shiftStart
+  const appliedEnd = whole.endMin - shiftEnd
+  for (const person of block.people) {
+    const start = timeToMinutes(person.startTime)
+    const end = timeToMinutes(person.endTime)
+    if (start === shiftStart && end === shiftEnd) {
+      continue
+    }
+    const nextStart = Math.min(
+      Math.max(start + appliedStart, 0),
+      DAY_MINUTES - MIN_BLOCK_MINUTES,
+    )
+    const nextEnd = Math.min(
+      Math.max(end + appliedEnd, nextStart + MIN_BLOCK_MINUTES),
+      DAY_MINUTES,
+    )
+    if (nextStart === start && nextEnd === end) {
+      continue
+    }
+    ownTimes.push({
+      assignmentId: person.assignmentId,
+      start: minutesToTime(nextStart),
+      end: minutesToTime(nextEnd),
+    })
+    undoOwnTimes.push({
+      assignmentId: person.assignmentId,
+      start: person.startTime,
+      end: person.endTime,
+    })
+  }
+  return { ownTimes, undoOwnTimes }
+}
+
 export type ClientChangePlan =
   | { kind: 'noop' }
   | { kind: 'blocked'; message: string }
@@ -62,6 +117,7 @@ export type ClientChangePlan =
 export function planWholeShiftChange(
   weekBlock: WeekBlock,
   next: ScheduleChange,
+  block?: ClientCalendarBlock,
 ): ClientChangePlan {
   if (!hasScheduleChanged(weekBlock, next)) {
     return { kind: 'noop' }
@@ -70,6 +126,7 @@ export function planWholeShiftChange(
     return { kind: 'blocked', message: COMPLETED_DATE_MESSAGE }
   }
   const whole = wholeShiftChange(weekBlock, next)
+  const own = block ? ownTimeShifts(block, whole) : null
   return {
     kind: 'apply',
     weekBlock,
@@ -80,6 +137,9 @@ export function planWholeShiftChange(
       start: minutesToTime(whole.startMin),
       end: minutesToTime(whole.endMin),
       openEnded: weekBlock.openEnded,
+      ...(own && own.ownTimes.length > 0
+        ? { ownTimes: own.ownTimes, undoOwnTimes: own.undoOwnTimes }
+        : {}),
     },
   }
 }
@@ -96,7 +156,7 @@ export function planTimeEdit(
   if (!result.ok) {
     return { kind: 'blocked', message: result.message }
   }
-  return planWholeShiftChange(weekBlock, result.next)
+  return planWholeShiftChange(weekBlock, result.next, block)
 }
 
 /** D-09: mover el turno entero a otro día con el mismo horario. */
@@ -106,7 +166,7 @@ export function planMoveToDate(
   date: string,
 ): ClientChangePlan {
   const weekBlock = toWeekBlock(block, client)
-  return planWholeShiftChange(weekBlock, moveToDate(weekBlock, date))
+  return planWholeShiftChange(weekBlock, moveToDate(weekBlock, date), block)
 }
 
 /** D-09: un turno finalizado o cancelado no se arrastra a otro día. */

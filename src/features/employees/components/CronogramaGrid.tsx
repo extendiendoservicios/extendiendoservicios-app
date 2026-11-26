@@ -50,7 +50,7 @@ function NoteBlock({ note }: { note: CronogramaNote }) {
   return (
     <p
       data-testid="observacion"
-      className="print-keep-together border border-neutral-500 px-0.5 text-[10px] leading-[14px] whitespace-pre-wrap [overflow-wrap:anywhere]"
+      className="print-keep-together border border-neutral-500 px-0.5 text-center text-[10px] leading-[14px] whitespace-pre-wrap [overflow-wrap:anywhere]"
       style={
         colors
           ? {

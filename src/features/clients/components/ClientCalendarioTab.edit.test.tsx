@@ -87,6 +87,8 @@ const PEOPLE = [
     employeeId: 'e1',
     employeeFirstName: 'Ana',
     employeeLastName: 'Pérez',
+    startTime: '08:00:00',
+    endTime: '12:00:00',
   },
   {
     id: 'a2',
@@ -94,6 +96,8 @@ const PEOPLE = [
     employeeId: 'e2',
     employeeFirstName: 'Luis',
     employeeLastName: 'Gómez',
+    startTime: '08:00:00',
+    endTime: '12:00:00',
   },
 ]
 
@@ -251,8 +255,10 @@ describe('ClientCalendarioTab: edición (P34.2)', () => {
     fireEvent.keyDown(screen.getByRole('menuitem', { name: 'Quitar a…' }), {
       key: 'ArrowRight',
     })
-    expect(await screen.findByRole('menuitem', { name: 'Ana P.' })).toBeTruthy()
-    expect(screen.getByRole('menuitem', { name: 'Luis G.' })).toBeTruthy()
+    expect(
+      await screen.findByRole('menuitem', { name: 'Ana Pérez' }),
+    ).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: 'Luis Gómez' })).toBeTruthy()
   })
 
   it('un administrador no ve «Eliminar turno»', async () => {

@@ -224,6 +224,10 @@ function ClientCalendarioTab({
       } else {
         toast.success(message, options)
       }
+      // D-16: las franjas que no se pudieron guardar, con el mensaje del servidor.
+      for (const message of result.ownTimeErrors ?? []) {
+        toast.error(message)
+      }
     } catch (error) {
       toast.error(
         isApiError(error) ? error.message : 'No pudimos hacer el cambio.',
@@ -236,8 +240,11 @@ function ClientCalendarioTab({
 
   async function undo(action: UndoAction) {
     try {
-      await runCronogramaCommand(action)
+      const result = await runCronogramaCommand(action)
       toast.success('Deshicimos el cambio.')
+      for (const message of result.ownTimeErrors ?? []) {
+        toast.error(message)
+      }
     } catch (error) {
       toast.error(
         isApiError(error) ? error.message : 'No pudimos deshacer el cambio.',
@@ -285,7 +292,7 @@ function ClientCalendarioTab({
         onRemove={(_target, person) =>
           setRemoving({
             assignmentId: person.assignmentId,
-            employeeName: person.shortName,
+            employeeName: person.fullName,
           })
         }
         onColorRequest={setColorRequest}

@@ -104,7 +104,7 @@ function LabelCell({
         aria-label="Nombre del bloque"
         value={draft}
         maxLength={MAX_LABEL_LENGTH}
-        className="h-5 rounded-none px-0.5 py-0 text-[10px]"
+        className="h-5 rounded-none px-0.5 py-0 text-center text-[10px]"
         onChange={(event) => setDraft(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === 'Enter') {
@@ -269,7 +269,7 @@ function BoardBlockView({
           onCommit={(value) => onTimeCommit(block, 'end', value)}
         />
       </div>
-      <div className="flex items-start border-t border-inherit">
+      <div className="flex items-center border-t border-inherit">
         <LabelCell
           value={block.label}
           editable={editable}

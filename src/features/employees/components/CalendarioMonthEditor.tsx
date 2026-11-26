@@ -234,7 +234,7 @@ function MonthBlock({
           onCommit={(value) => onTimeCommit(block, 'end', value)}
         />
       </div>
-      <div className="flex items-start border-t border-inherit">
+      <div className="flex items-center border-t border-inherit">
         {canEdit ? (
           <button
             type="button"

@@ -76,7 +76,6 @@ function ClientShiftBlock({
   const justDragged = useRef(false)
   const draggable = drag != null && !printing
   const editable = canEdit && !block.cancelled && onTimeCommit != null
-  const names = block.people.map((person) => person.shortName).join(', ')
   const siteClassName =
     'line-clamp-2 min-w-0 flex-1 px-0.5 text-center text-[10px] leading-[14px] font-bold [overflow-wrap:anywhere]'
 
@@ -160,7 +159,7 @@ function ClientShiftBlock({
           onCommit={(value) => onTimeCommit?.(block, 'end', value)}
         />
       </div>
-      <div className="flex items-start border-t border-inherit">
+      <div className="flex items-center border-t border-inherit">
         {printing ? (
           <span data-testid="sede" className={siteClassName}>
             {block.siteName}
@@ -185,13 +184,21 @@ function ClientShiftBlock({
       </div>
       <div
         data-testid="personas"
-        className="flex flex-wrap items-center gap-x-1 border-t border-inherit px-0.5 text-[10px] leading-[14px]"
+        className="flex flex-col items-center gap-y-px border-t border-inherit px-0.5 text-center text-[10px] leading-[14px]"
       >
         {block.uncovered ? (
           <span className="font-bold text-danger">Sin cubrir</span>
         ) : (
           <>
-            {names && <span className="[overflow-wrap:anywhere]">{names}</span>}
+            {block.people.map((person) => (
+              <span
+                key={person.assignmentId}
+                data-testid="persona"
+                className="[overflow-wrap:anywhere]"
+              >
+                {person.fullName}
+              </span>
+            ))}
             {block.missing > 0 && (
               <span className="font-bold text-danger">
                 Faltan {block.missing}

@@ -291,7 +291,7 @@ function CalendarNoteCell({
     >
       <p
         title={note.body}
-        className="min-w-0 flex-1 px-0.5 text-[10px] leading-[14px] whitespace-pre-wrap [overflow-wrap:anywhere]"
+        className="min-w-0 flex-1 px-0.5 text-center text-[10px] leading-[14px] whitespace-pre-wrap [overflow-wrap:anywhere]"
       >
         {note.body}
       </p>

@@ -79,6 +79,8 @@ const ANA = {
   employeeId: 'e1',
   employeeFirstName: 'Ana',
   employeeLastName: 'Pérez',
+  startTime: '08:00:00',
+  endTime: '12:00:00',
 }
 
 function Search() {
@@ -128,7 +130,7 @@ describe('ClientCalendarioTab', () => {
       name: 'Abrir el turno de Sede Norte',
     })
     expect(link.getAttribute('href')).toBe('/admin/turnos/s1')
-    expect(within(day).getByText('Ana P.')).toBeTruthy()
+    expect(within(day).getByText('Ana Pérez')).toBeTruthy()
   })
 
   it('muestra «Faltan N» cuando hay gente pero falta dotación', () => {

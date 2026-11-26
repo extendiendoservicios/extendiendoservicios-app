@@ -8,6 +8,7 @@ import { COMPLETED_DATE_MESSAGE } from '@/features/employees/cronogramaWeek'
 import {
   canDragBlock,
   planMoveToDate,
+  ownTimeShifts,
   planTimeEdit,
   toWeekBlock,
   validFilter,
@@ -45,8 +46,20 @@ function shift(overrides: Partial<ShiftListRow> = {}): ShiftListRow {
 
 function block(overrides: Partial<ShiftListRow> = {}): ClientCalendarBlock {
   return buildClientBlock(shift(overrides), [
-    { assignmentId: 'a1', employeeId: 'e1', shortName: 'Ana P.' },
-    { assignmentId: 'a2', employeeId: 'e2', shortName: 'Luis G.' },
+    {
+      assignmentId: 'a1',
+      employeeId: 'e1',
+      fullName: 'Ana Pérez',
+      startTime: '08:00',
+      endTime: '12:00',
+    },
+    {
+      assignmentId: 'a2',
+      employeeId: 'e2',
+      fullName: 'Luis Gómez',
+      startTime: '08:00',
+      endTime: '12:00',
+    },
   ])
 }
 
@@ -160,5 +173,74 @@ describe('validFilter', () => {
     expect(validFilter('x', undefined)).toBe('x')
     expect(validFilter('', ['a'])).toBeUndefined()
     expect(validFilter(undefined, ['a'])).toBeUndefined()
+  })
+})
+
+describe('franjas propias acompañan al turno (D-16)', () => {
+  /** Ana con franja propia 09:00-11:00 dentro del turno 08:00-12:00; Luis sin franja propia. */
+  function withOwn(): ClientCalendarBlock {
+    const base = block()
+    return {
+      ...base,
+      people: [
+        { ...base.people[0]!, startTime: '09:00', endTime: '11:00' },
+        base.people[1]!,
+      ],
+    }
+  }
+
+  it('al correr el inicio, la franja propia se corre lo mismo y el resto no cambia', () => {
+    const plan = planTimeEdit(withOwn(), CLIENT, 'start', '07:00')
+    expect(plan).toMatchObject({
+      kind: 'apply',
+      command: {
+        start: '07:00',
+        end: '12:00',
+        ownTimes: [{ assignmentId: 'a1', start: '08:00', end: '11:00' }],
+        undoOwnTimes: [{ assignmentId: 'a1', start: '09:00', end: '11:00' }],
+      },
+    })
+  })
+
+  it('al recortar el fin, la franja propia se recorta lo mismo', () => {
+    const plan = planTimeEdit(withOwn(), CLIENT, 'end', '11:00')
+    expect(plan).toMatchObject({
+      kind: 'apply',
+      command: {
+        end: '11:00',
+        ownTimes: [{ assignmentId: 'a1', start: '09:00', end: '10:00' }],
+      },
+    })
+  })
+
+  it('el recorte no deja la franja en menos de 15 minutos', () => {
+    const { ownTimes } = ownTimeShifts(withOwn(), {
+      startMin: 8 * 60,
+      endMin: 8 * 60 + 15,
+    })
+    expect(ownTimes).toEqual([
+      { assignmentId: 'a1', start: '09:00', end: '09:15' },
+    ])
+  })
+
+  it('al cambiar de día el horario del turno no cambia y no hay franjas que mover', () => {
+    const plan = planMoveToDate(withOwn(), CLIENT, '2026-11-12')
+    expect(plan.kind === 'apply' && 'ownTimes' in plan.command).toBe(false)
+  })
+
+  it('sin franjas propias el comando no trae ownTimes', () => {
+    const plan = planTimeEdit(block(), CLIENT, 'start', '07:00')
+    expect(plan.kind === 'apply' && 'ownTimes' in plan.command).toBe(false)
+  })
+
+  it('un turno «a terminar» no mueve franjas', () => {
+    const open = withOwn()
+    const plan = planTimeEdit(
+      { ...open, openEnded: true, end: '—' },
+      CLIENT,
+      'start',
+      '07:00',
+    )
+    expect(plan.kind === 'apply' && 'ownTimes' in plan.command).toBe(false)
   })
 })

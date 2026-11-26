@@ -20,8 +20,11 @@ export interface ClientCalendarPerson {
   /** Asignación vigente de la persona en el turno (para «Quitar a…», D-10). */
   assignmentId: string
   employeeId: string
-  /** Nombre y inicial del apellido: «Ana P.». */
-  shortName: string
+  /** D-17: nombre y apellido completos, sin abreviar: «Ana Pérez». */
+  fullName: string
+  /** Franja efectiva de la persona (`08:00`): la propia si tiene, si no la del turno (D-16). */
+  startTime: string
+  endTime: string
 }
 
 export interface ClientCalendarBlock {
@@ -71,18 +74,22 @@ export const HOLIDAY_FALLBACK_NAME = 'Feriado'
 
 type PersonRow = Pick<
   AssignmentBoardRow,
-  'id' | 'shiftId' | 'employeeId' | 'employeeFirstName' | 'employeeLastName'
+  | 'id'
+  | 'shiftId'
+  | 'employeeId'
+  | 'employeeFirstName'
+  | 'employeeLastName'
+  | 'startTime'
+  | 'endTime'
 >
 
 function hhmm(time: string): string {
   return time.slice(0, 5)
 }
 
-/** «Ana P.»: nombre de pila y la inicial del apellido. */
-export function shortPersonName(firstName: string, lastName: string): string {
-  const first = firstName.trim()
-  const initial = lastName.trim().charAt(0).toUpperCase()
-  return initial ? `${first} ${initial}.` : first
+/** D-17: «Ana Pérez», nombre y apellido completos. */
+export function fullPersonName(firstName: string, lastName: string): string {
+  return [firstName.trim(), lastName.trim()].filter(Boolean).join(' ')
 }
 
 /** Agrupa las asignaciones vigentes por turno, sin repetir personas y por nombre. */
@@ -98,12 +105,14 @@ export function groupPeopleByShift(
     list.push({
       assignmentId: row.id,
       employeeId: row.employeeId,
-      shortName: shortPersonName(row.employeeFirstName, row.employeeLastName),
+      fullName: fullPersonName(row.employeeFirstName, row.employeeLastName),
+      startTime: hhmm(row.startTime),
+      endTime: hhmm(row.endTime),
     })
     byShift.set(row.shiftId, list)
   }
   for (const list of byShift.values()) {
-    list.sort((a, b) => a.shortName.localeCompare(b.shortName, 'es'))
+    list.sort((a, b) => a.fullName.localeCompare(b.fullName, 'es'))
   }
   return byShift
 }

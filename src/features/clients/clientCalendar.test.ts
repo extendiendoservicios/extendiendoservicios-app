@@ -4,7 +4,7 @@ import {
   buildClientCalendarMonth,
   describeFilters,
   employeeOptions,
-  shortPersonName,
+  fullPersonName,
   uncoveredLabel,
   visibleBlocks,
 } from './clientCalendar'
@@ -49,6 +49,8 @@ function person(
     employeeId,
     employeeFirstName: first,
     employeeLastName: last,
+    startTime: '08:00:00',
+    endTime: '12:00:00',
   }
 }
 
@@ -86,10 +88,12 @@ function day(month: ReturnType<typeof build>, date: string) {
   return found
 }
 
-describe('shortPersonName', () => {
-  it('arma nombre e inicial del apellido', () => {
-    expect(shortPersonName('Ana', 'pérez')).toBe('Ana P.')
-    expect(shortPersonName('Ana', '')).toBe('Ana')
+describe('fullPersonName (D-17)', () => {
+  it('arma nombre y apellido completos, sin abreviar', () => {
+    expect(fullPersonName(' Ana ', 'Pérez de la Vega')).toBe(
+      'Ana Pérez de la Vega',
+    )
+    expect(fullPersonName('Ana', '')).toBe('Ana')
   })
 })
 
@@ -131,7 +135,10 @@ describe('buildClientCalendarMonth', () => {
       ],
     )
     const block = at(day(month, '2026-11-10').blocks, 0)
-    expect(block.people.map((p) => p.shortName)).toEqual(['Ana P.', 'Luis G.'])
+    expect(block.people.map((p) => p.fullName)).toEqual([
+      'Ana Pérez',
+      'Luis Gómez',
+    ])
     expect(block.missing).toBe(1)
     expect(block.uncovered).toBe(false)
   })

@@ -85,7 +85,7 @@ function ClientShiftMenu({
                   key={person.assignmentId}
                   onSelect={() => onRemove(block, person)}
                 >
-                  {person.shortName}
+                  {person.fullName}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuSubContent>
