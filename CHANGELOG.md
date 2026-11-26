@@ -7,6 +7,20 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.34.0] - 2026-11-26
+
+Calendario en la ficha del cliente (P34). Sin migraciones.
+
+### Agregado
+
+- Clientes: pestaña nueva «Calendario», la primera de la ficha y la que se abre al entrar. Muestra todos los turnos del mes del cliente en todas sus sedes, con la misma hoja que el calendario del empleado: horas, sede, quién va, «Faltan N» si falta gente y «Sin cubrir» con borde punteado rojo. Se filtra por sede y por empleado, muestra hasta cuatro turnos por día con «+N más», cuenta los turnos sin cubrir del mes y se imprime.
+- Calendario del cliente: quien administra turnos puede editar las horas en el lugar, arrastrar un turno a otro día y, desde el ⋮, moverlo o cambiarle el horario, asignar o quitar personas, cambiar el color del cliente y (la dirección) eliminarlo. Cuando el turno se mueve, el horario propio de cada persona se corre con él. El «+» de cada día abre «Nuevo turno» con el cliente, la fecha y la sede ya elegidos y vuelve a la ficha.
+
+### Cambiado
+
+- Clientes: «Sedes» pasa a ser la segunda pestaña de la ficha.
+- Calendarios: las casillas de hora tienen las esquinas de arriba redondeadas, como el bloque; los nombres van completos (sin abreviar) y centrados, y la sede queda centrada en su fila. Vale para el calendario del empleado, los fijos sin asignar, el cronograma y las impresiones.
+
 ## [0.33.1] - 2026-11-26
 
 Turno nuevo desde el calendario de la ficha del empleado (P33). Sin migraciones.
