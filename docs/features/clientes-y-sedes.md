@@ -46,8 +46,26 @@ notas.
 Ruta `/admin/clientes/:id`. Cabecera con nombre, estado (`StatusBadge`),
 CUIT, dirección administrativa y notas; botones "Editar" (ADM-20) y
 "Cambiar estado" (CLIENT-006). Pestañas, sincronizadas con `?pestana=` (por
-omisión, sin el parámetro, es "Sedes"):
+omisión, sin el parámetro, es "Calendario"; "Sedes" se abre con
+`?pestana=sedes`):
 
+- **Calendario** (P34.1, OL-01): todos los turnos del cliente en todas sus
+  sedes, mes por mes (`ClientCalendarioTab`). Misma hoja que el calendario de
+  la ficha del empleado (encabezado negro, lunes a domingo, días de otro mes
+  atenuados, feriado con su nombre en rojo), pero cada bloque es un **turno**:
+  horas, sede (abre `/admin/turnos/:id`) y quién va con nombre e inicial del
+  apellido; "Faltan N" en rojo, "Sin cubrir" con borde punteado rojo, "a
+  terminar" con fin "—", cancelado tachado, borde ámbar en curso. Hasta 4
+  bloques por día; "+N más" despliega en el lugar y "Ver menos" recoge. Arriba:
+  selector de mes, "Imprimir" (hoja apaisada "Calendario - cliente - mes" con
+  los filtros en el encabezado y todos los turnos), filtros **Sede** y
+  **Empleado**, y la línea "N turnos sin cubrir este mes" que resalta esos
+  bloques. El mes y los filtros viven en la dirección (`mes=`, `sede=`,
+  `empleado=`) y cambiar de pestaña los borra. Datos: `v_shifts_board` y
+  `v_assignments_board` (vigentes) filtrados por cliente; sin migraciones. En
+  P34.1 es solo lectura; `canEdit` (`canManageAssignments &&
+canManageShiftTime`) y los ganchos `renderActions`/`renderDayAction` quedan
+  listos para la edición de P34.2.
 - **Sedes**: lista simple de las sedes vigentes del cliente, con enlace a
   cada una (ADM-22) y a "Nueva sede" (ADM-23, con el cliente ya elegido por
   `?cliente=`).
