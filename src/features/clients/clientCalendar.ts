@@ -66,8 +66,10 @@ export interface ClientCalendarMonth {
   weeks: ClientCalendarDay[][]
   from: string
   to: string
-  /** Turnos sin cubrir del mes (D-12). */
+  /** Turnos sin cubrir del mes desde `uncoveredFrom` (D-12). */
   uncoveredCount: number
+  /** Primer día que cuenta para «sin cubrir»: hoy (o el inicio del mes). Los días anteriores ya pasaron. */
+  uncoveredFrom: string
 }
 
 export const HOLIDAY_FALLBACK_NAME = 'Feriado'
@@ -170,15 +172,18 @@ export function buildClientCalendarMonth(input: {
   shifts: ShiftListRow[]
   assignments: PersonRow[]
   holidays: Pick<Holiday, 'holidayDate' | 'name' | 'deletedAt'>[]
+  /** Hoy en Buenos Aires: los sin cubrir de días anteriores no se cuentan. */
+  today?: string
 }): ClientCalendarMonth {
   const { from, to } = monthRange(input.year, input.month)
+  const uncoveredFrom = input.today && input.today > from ? input.today : from
   const people = groupPeopleByShift(input.assignments)
 
   const blocksByDate = new Map<string, ClientCalendarBlock[]>()
   let uncoveredCount = 0
   for (const shift of input.shifts) {
     const block = buildClientBlock(shift, people.get(shift.id) ?? [])
-    if (block.uncovered) {
+    if (block.uncovered && block.date >= uncoveredFrom) {
       uncoveredCount += 1
     }
     const list = blocksByDate.get(block.date) ?? []
@@ -223,6 +228,7 @@ export function buildClientCalendarMonth(input: {
     from,
     to,
     uncoveredCount,
+    uncoveredFrom,
   }
 }
 

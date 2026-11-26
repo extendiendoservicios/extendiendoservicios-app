@@ -158,6 +158,24 @@ describe('buildClientCalendarMonth', () => {
     expect(cancelled?.uncovered).toBe(false)
   })
 
+  it('no cuenta los sin cubrir de días que ya pasaron', () => {
+    const month = buildClientCalendarMonth({
+      year: 2026,
+      month: 11,
+      shifts: [
+        shift({ id: 'a', shiftDate: '2026-11-10' }),
+        shift({ id: 'b', shiftDate: '2026-11-26' }),
+        shift({ id: 'c', shiftDate: '2026-11-28' }),
+      ],
+      assignments: [],
+      holidays: [],
+      today: '2026-11-26',
+    })
+    expect(month.uncoveredCount).toBe(2)
+    expect(month.uncoveredFrom).toBe('2026-11-26')
+    expect(at(day(month, '2026-11-10').blocks, 0).uncovered).toBe(true)
+  })
+
   it('un turno a terminar muestra el fin como guion largo', () => {
     const month = build([shift({ openEnded: true, endTime: '23:59:00' })])
     expect(at(day(month, '2026-11-10').blocks, 0).end).toBe('—')
