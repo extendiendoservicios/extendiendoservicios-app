@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { MoreVertical, Plus } from 'lucide-react'
 import { toast } from 'sonner'
@@ -22,6 +22,8 @@ import {
 import { groupGapsByDate } from '@/features/employees/fixedGaps'
 import { groupNotesByDate } from '@/features/employees/calendarNotes'
 import { shiftsKeys } from '@/features/shifts/queries'
+import { canManageShiftTime } from '@/features/shifts/permissions'
+import { newShiftFromEmployeePath } from '@/features/shifts/returnPath'
 import { WARNING_MESSAGES } from '@/features/planning/components/AssignEmployeeSheet'
 import { RemoveAssignmentDialog } from '@/features/planning/components/RemoveAssignmentDialog'
 import { conflictToastOptions } from '@/features/shifts/conflictLink'
@@ -342,7 +344,14 @@ function CalendarioMonthEditor({
   notes?: CalendarNote[]
 }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const queryClient = useQueryClient()
+  const auth = useAuth()
+  // P33.1 (D-07): «Agregar turno» solo para quien administra turnos.
+  const canAddShift = canManageShiftTime({
+    roles: auth.roles,
+    capabilities: auth.capabilities,
+  })
   // Borrar turnos es solo de la dirección (P27): sin eso, «Solo a» con turno nuevo no se puede deshacer.
   const canDeleteShifts = canOwnerDelete(useAuth())
   const openPath = (path: string) => void navigate(path)
@@ -646,7 +655,10 @@ function CalendarioMonthEditor({
     ))
   }
 
-  /** D-08: las observaciones del día y el «+» para agregar otra. */
+  const plusButtonClass =
+    'flex items-center justify-center rounded-sm border border-dashed border-neutral-400 py-0.5 text-neutral-500 hover:bg-neutral-100 max-md:min-h-6 print:hidden'
+
+  /** D-08: las observaciones del día y el «+» para agregar otra (P33.1: turno u observación). */
   function renderNotes(date: string) {
     if (!notes) {
       return null
@@ -662,14 +674,50 @@ function CalendarioMonthEditor({
             onDelete={setDeletingNote}
           />
         ))}
-        <button
-          type="button"
-          aria-label={`Agregar una observación el ${formatDateOnly(date)}`}
-          className="flex items-center justify-center rounded-sm border border-dashed border-neutral-400 py-0.5 text-neutral-500 hover:bg-neutral-100 max-md:min-h-6 print:hidden"
-          onClick={() => setNoteDialog({ date, note: null })}
-        >
-          <Plus className="size-3" />
-        </button>
+        {canAddShift ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label={`Agregar un turno o una observación el ${formatDateOnly(date)}`}
+                className={plusButtonClass}
+              >
+                <Plus className="size-3" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem
+                onSelect={() =>
+                  openPath(
+                    newShiftFromEmployeePath({
+                      date,
+                      profileId,
+                      pathname: location.pathname,
+                      search: location.search,
+                      monthKey: month.from.slice(0, 7),
+                    }),
+                  )
+                }
+              >
+                Agregar turno
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => setNoteDialog({ date, note: null })}
+              >
+                Agregar observación
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <button
+            type="button"
+            aria-label={`Agregar una observación el ${formatDateOnly(date)}`}
+            className={plusButtonClass}
+            onClick={() => setNoteDialog({ date, note: null })}
+          >
+            <Plus className="size-3" />
+          </button>
+        )}
       </>
     )
   }
