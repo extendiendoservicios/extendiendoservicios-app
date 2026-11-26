@@ -290,7 +290,9 @@ describe('EmployeeCalendarioTab: observaciones del mes (D-08)', () => {
     const cell = screen.getByTestId('dia-2026-11-10')
     expect(within(cell).getByText('Sin turnos por la obra')).toBeInTheDocument()
     expect(
-      within(cell).getByRole('button', { name: /Agregar una observación/ }),
+      within(cell).getByRole('button', {
+        name: /Agregar un turno o una observación/,
+      }),
     ).toBeInTheDocument()
   })
 
@@ -307,7 +309,9 @@ describe('EmployeeCalendarioTab: observaciones del mes (D-08)', () => {
     expect(colors).not.toBeNull()
     // Sin el «+» ni el menú: es la hoja de papel.
     expect(
-      sheet.queryByRole('button', { name: /Agregar una observación/ }),
+      sheet.queryByRole('button', {
+        name: /Agregar un turno o una observación/,
+      }),
     ).toBeNull()
   })
 

@@ -6,7 +6,7 @@ import {
   within,
 } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MemoryRouter } from 'react-router'
+import { MemoryRouter, useLocation } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AssignmentBoardRow } from '@/api/assignments'
 import type { CalendarNote } from '@/api/employeeCalendarNotes'
@@ -68,6 +68,14 @@ vi.mock('@/features/ownerDelete/components/OwnerDeleteDialog', () => ({
     <div data-testid="owner-delete" data-id={id} data-kind={kind} />
   ),
 }))
+
+/** P33.1: abre el menú del «+» del día 10 y elige «Agregar observación». */
+async function addNoteFromPlus() {
+  await openMenu(/Agregar un turno o una observación el .*10/)
+  fireEvent.click(
+    await screen.findByRole('menuitem', { name: 'Agregar observación' }),
+  )
+}
 
 const DAY = '2026-11-03'
 const OTHER_DAY = '2026-11-10'
@@ -154,8 +162,14 @@ function note(over: Partial<CalendarNote> = {}): CalendarNote {
   }
 }
 
+function LocationProbe() {
+  const location = useLocation()
+  return <span data-testid="ruta">{location.pathname + location.search}</span>
+}
+
 function renderEditor(
   options: {
+    entry?: string
     assignments?: AssignmentBoardRow[]
     shifts?: ShiftListRow[]
     gaps?: FixedGap[]
@@ -173,7 +187,8 @@ function renderEditor(
   })
   return render(
     <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[options.entry ?? '/']}>
+        <LocationProbe />
         <CalendarioMonthEditor
           profileId="p1"
           personName="Ana Prueba"
@@ -364,9 +379,7 @@ describe('D-07: horario de un turno finalizado en el calendario del empleado', (
 describe('D-08: observaciones del día', () => {
   it('sin permiso para verlas (sin `notes`) no hay botón «+»', () => {
     renderEditor()
-    expect(
-      screen.queryByRole('button', { name: /Agregar una observación/ }),
-    ).toBeNull()
+    expect(screen.queryByRole('button', { name: /Agregar un/ })).toBeNull()
   })
 
   it('cada día del mes tiene su «+» y las observaciones se ven en su día, varias por día', () => {
@@ -385,8 +398,70 @@ describe('D-08: observaciones del día', () => {
     ).toHaveLength(1)
     // 30 días de noviembre, uno «+» por día.
     expect(
-      screen.getAllByRole('button', { name: /Agregar una observación el/ }),
+      screen.getAllByRole('button', {
+        name: /Agregar un turno o una observación el/,
+      }),
     ).toHaveLength(30)
+  })
+
+  it('el «+» ofrece «Agregar turno» y «Agregar observación» (P33.1)', async () => {
+    renderEditor({ notes: [] })
+    await openMenu(/Agregar un turno o una observación el .*10/)
+    expect(
+      await screen.findByRole('menuitem', { name: 'Agregar turno' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('menuitem', { name: 'Agregar observación' }),
+    ).toBeInTheDocument()
+  })
+
+  it('«Agregar turno» va al alta con fecha, empleado y la vuelta a la ficha con el mes (P33.1)', async () => {
+    renderEditor({
+      notes: [],
+      entry: '/admin/empleados/p1?pestana=calendario&mes=2026-11',
+    })
+    await openMenu(/Agregar un turno o una observación el .*10/)
+    fireEvent.click(
+      await screen.findByRole('menuitem', { name: 'Agregar turno' }),
+    )
+    const route = await screen.findByTestId('ruta')
+    await waitFor(() =>
+      expect(route.textContent).toMatch(/^\/admin\/turnos\/nuevo\?/),
+    )
+    const params = new URLSearchParams(route.textContent.split('?')[1])
+    expect(params.get('fecha')).toBe(OTHER_DAY)
+    expect(params.get('empleado')).toBe('p1')
+    expect(params.get('volver')).toBe(
+      '/admin/empleados/p1?pestana=calendario&mes=2026-11',
+    )
+  })
+
+  it('«Agregar turno» agrega el mes mostrado si la dirección no lo trae', async () => {
+    renderEditor({ notes: [], entry: '/admin/empleados/p1?pestana=calendario' })
+    await openMenu(/Agregar un turno o una observación el .*10/)
+    fireEvent.click(
+      await screen.findByRole('menuitem', { name: 'Agregar turno' }),
+    )
+    const route = await screen.findByTestId('ruta')
+    await waitFor(() =>
+      expect(route.textContent).toMatch(/^\/admin\/turnos\/nuevo\?/),
+    )
+    const params = new URLSearchParams(route.textContent.split('?')[1])
+    expect(params.get('volver')).toBe(
+      '/admin/empleados/p1?pestana=calendario&mes=2026-11',
+    )
+  })
+
+  it('sin permiso para crear turnos el «+» abre la observación directo (P33.1, D-07)', async () => {
+    auth.roles = ['supervisor']
+    renderEditor({ notes: [] })
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /Agregar una observación el .*10/,
+      }),
+    )
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Agregar turno' })).toBeNull()
   })
 
   it('la observación con color se pinta con la paleta de los clientes', () => {
@@ -398,11 +473,7 @@ describe('D-08: observaciones del día', () => {
 
   it('el «+» abre el alta y guarda con p_note_id nulo, el día, el texto y el color', async () => {
     renderEditor({ notes: [] })
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: new RegExp(`Agregar una observación el .*10`),
-      }),
-    )
+    await addNoteFromPlus()
     const dialog = await screen.findByRole('dialog')
     fireEvent.change(within(dialog).getByLabelText('Observación'), {
       target: { value: '  Sin turnos esta semana  ' },
@@ -421,11 +492,7 @@ describe('D-08: observaciones del día', () => {
 
   it('no deja guardar una observación vacía', async () => {
     renderEditor({ notes: [] })
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: new RegExp(`Agregar una observación el .*10`),
-      }),
-    )
+    await addNoteFromPlus()
     const dialog = await screen.findByRole('dialog')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }))
     expect(
@@ -443,11 +510,7 @@ describe('D-08: observaciones del día', () => {
       ),
     )
     renderEditor({ notes: [] })
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: new RegExp(`Agregar una observación el .*10`),
-      }),
-    )
+    await addNoteFromPlus()
     const dialog = await screen.findByRole('dialog')
     fireEvent.change(within(dialog).getByLabelText('Observación'), {
       target: { value: 'Texto' },
