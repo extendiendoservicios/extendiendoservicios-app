@@ -7,6 +7,15 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.34.1] - 2026-11-26
+
+Coordinadores que también son empleados y contador de sin cubrir (P34.4). Sin migraciones.
+
+### Cambiado
+
+- Celular: quien es coordinador entra directo a la vista de coordinador, aunque también sea empleado. Ve todos los turnos en «Hoy» y en «Próximos días»; sus servicios del día siguen arriba en «Hoy» y el resto en Más → «Mis servicios». Antes entraba a la vista de empleado y en «Próximos días» veía solo sus servicios propios.
+- Clientes: en la pestaña «Calendario», «N turnos sin cubrir este mes» cuenta y resalta solo los turnos de hoy en adelante. Los de días pasados siguen marcados en la grilla.
+
 ## [0.34.0] - 2026-11-26
 
 Calendario en la ficha del cliente (P34). Sin migraciones.
