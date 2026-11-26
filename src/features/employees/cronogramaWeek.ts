@@ -385,6 +385,16 @@ export type UndoAction =
       openEnded: boolean
       /** Franja propia de la persona que se acomoda junto con el turno. */
       ownTime?: OwnTimeChange
+      /**
+       * P34.2b (D-16): franjas propias de VARIAS personas que se acomodan junto
+       * con el turno (calendario del cliente). Convive con `ownTime`.
+       */
+      ownTimes?: OwnTimeChange[]
+      /**
+       * Solo en el comando: cómo estaban esas franjas antes, para armar el
+       * «Deshacer» (el bloque del cliente no tiene una franja propia única).
+       */
+      undoOwnTimes?: OwnTimeChange[]
     }
   | {
       kind: 'assignment_time'

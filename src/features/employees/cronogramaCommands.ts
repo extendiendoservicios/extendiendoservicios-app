@@ -7,6 +7,7 @@ import {
   undoForAssignmentTime,
   undoForMove,
   undoForMoveToNewShift,
+  minutesToTime,
   undoForShiftTime,
   type UndoAction,
   type WeekBlock,
@@ -39,6 +40,11 @@ export interface CommandResult {
   shiftWarnings?: string[]
   /** `null` si el cambio no se puede deshacer (quitar). */
   undo: UndoAction | null
+  /**
+   * P34.2b (D-16): mensajes del servidor de las franjas propias que no se
+   * pudieron guardar (el resto del cambio quedó aplicado).
+   */
+  ownTimeErrors?: string[]
 }
 
 export const UNDO_REASON = 'Deshecho desde el cronograma'
@@ -53,7 +59,7 @@ export async function runCronogramaCommand(
   block?: WeekBlock,
 ): Promise<CommandResult> {
   switch (command.kind) {
-    case 'shift_time':
+    case 'shift_time': {
       await shiftsApi.updateShiftTime(
         command.shiftId,
         command.start,
@@ -70,10 +76,50 @@ export async function runCronogramaCommand(
           command.ownTime.end,
         )
       }
+      if (!command.ownTimes) {
+        return {
+          warnings: [],
+          undo: block ? undoForShiftTime(block) : null,
+        }
+      }
+      // D-16: una franja por persona; si una falla se sigue con las demás y se
+      // avisa con el mensaje del servidor tal cual.
+      const ownTimeErrors: string[] = []
+      const applied = new Set<string>()
+      for (const own of command.ownTimes) {
+        try {
+          await assignmentsApi.updateAssignmentTime(
+            own.assignmentId,
+            own.start,
+            own.end,
+          )
+          applied.add(own.assignmentId)
+        } catch (error) {
+          ownTimeErrors.push(
+            error instanceof Error
+              ? error.message
+              : 'No pudimos cambiar la franja de una persona.',
+          )
+        }
+      }
       return {
         warnings: [],
-        undo: block ? undoForShiftTime(block) : null,
+        ...(ownTimeErrors.length > 0 ? { ownTimeErrors } : {}),
+        undo: block
+          ? {
+              kind: 'shift_time',
+              shiftId: block.shiftId,
+              date: block.date,
+              start: minutesToTime(block.shiftStartMin),
+              end: minutesToTime(block.shiftEndMin),
+              openEnded: block.openEnded,
+              ownTimes: (command.undoOwnTimes ?? []).filter((own) =>
+                applied.has(own.assignmentId),
+              ),
+            }
+          : null,
       }
+    }
     case 'assignment_time':
       await assignmentsApi.updateAssignmentTime(
         command.assignmentId,

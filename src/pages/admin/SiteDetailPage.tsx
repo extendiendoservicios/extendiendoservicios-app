@@ -205,7 +205,9 @@ export default function SiteDetailPage() {
           open={isDeleteOpen}
           onOpenChange={setDeleteOpen}
           onDeleted={() =>
-            void navigate(`/admin/clientes/${site.clientId}`, { replace: true })
+            void navigate(`/admin/clientes/${site.clientId}?pestana=sedes`, {
+              replace: true,
+            })
           }
         />
       )}

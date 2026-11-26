@@ -46,8 +46,43 @@ notas.
 Ruta `/admin/clientes/:id`. Cabecera con nombre, estado (`StatusBadge`),
 CUIT, dirección administrativa y notas; botones "Editar" (ADM-20) y
 "Cambiar estado" (CLIENT-006). Pestañas, sincronizadas con `?pestana=` (por
-omisión, sin el parámetro, es "Sedes"):
+omisión, sin el parámetro, es "Calendario"; "Sedes" se abre con
+`?pestana=sedes`):
 
+- **Calendario** (P34.1, OL-01): todos los turnos del cliente en todas sus
+  sedes, mes por mes (`ClientCalendarioTab`). Misma hoja que el calendario de
+  la ficha del empleado (encabezado negro, lunes a domingo, días de otro mes
+  atenuados, feriado con su nombre en rojo), pero cada bloque es un **turno**:
+  horas, sede (abre `/admin/turnos/:id`) y quién va con nombre e inicial del
+  apellido; "Faltan N" en rojo, "Sin cubrir" con borde punteado rojo, "a
+  terminar" con fin "—", cancelado tachado, borde ámbar en curso. Hasta 4
+  bloques por día; "+N más" despliega en el lugar y "Ver menos" recoge. Arriba:
+  selector de mes, "Imprimir" (hoja apaisada "Calendario - cliente - mes" con
+  los filtros en el encabezado y todos los turnos), filtros **Sede** y
+  **Empleado**, y la línea "N turnos sin cubrir este mes" que resalta esos
+  bloques. El mes y los filtros viven en la dirección (`mes=`, `sede=`,
+  `empleado=`) y cambiar de pestaña los borra. Datos: `v_shifts_board` y
+  `v_assignments_board` (vigentes) filtrados por cliente; sin migraciones. Un
+  `sede=` o `empleado=` que no está en las listas cargadas se ignora.
+  **Edición** (P34.2, solo con `canEdit` = `canManageAssignments &&
+canManageShiftTime`; el resto lo ve en lectura y puede abrir el turno): todo
+  cambio es sobre el **turno entero**, con el comando `shift_time` de
+  `runCronogramaCommand` (el mismo del calendario del empleado) y "Deshacer".
+  Se tocan las horas en el lugar (Enter confirma, Esc cancela; finalizados sí,
+  cancelados no) o se arrastra el bloque a otro día con el mismo horario (no
+  los finalizados ni cancelados; sin arrastre en táctil). El menú ⋮ ofrece
+  "Abrir el turno", "Mover o cambiar horario…" (fecha, desde y hasta),
+  "Asignar empleado…" (`AssignEmployeeSheet`), "Quitar a…" (una persona por
+  asignación, con motivo), "Cambiar color del cliente" y, solo la dirección,
+  "Eliminar turno". Las franjas propias no se desplazan: si alguna quedara
+  fuera del horario nuevo, el servidor lo rechaza y se muestra su mensaje. El
+  "+" de cada día (`canManageShiftTime`) abre "Nuevo turno" con `fecha`,
+  `cliente`, `sede` y `empleado` (si hay filtro) y `volver` a la ficha con
+  `pestana`, `mes` y filtros; `ShiftFormPage` precarga cliente y sede solo si
+  el cliente está activo y la sede es activa y de ese cliente, y
+  `safeReturnPath` acepta `/admin/clientes/…`. Lógica pura en
+  `clientCalendarEdit.ts`. Las casillas de hora redondean su esquina exterior
+  de arriba (D-15) en todos los bloques que usan `TimeCell`.
 - **Sedes**: lista simple de las sedes vigentes del cliente, con enlace a
   cada una (ADM-22) y a "Nueva sede" (ADM-23, con el cliente ya elegido por
   `?cliente=`).
