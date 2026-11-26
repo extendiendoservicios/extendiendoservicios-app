@@ -7,6 +7,14 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.33.1] - 2026-11-26
+
+Turno nuevo desde el calendario de la ficha del empleado (P33). Sin migraciones.
+
+### Agregado
+
+- Calendario del empleado: el «+» de cada día ahora pregunta si se quiere agregar un turno o una observación. «Agregar turno» abre «Nuevo turno» con la fecha del día y el empleado ya elegidos (se pueden sumar otros hasta completar la dotación); al guardar o cancelar vuelve a la ficha, en el mismo mes, con el turno a la vista. Quien no administra turnos sigue viendo el «+» solo para observaciones.
+
 ## [0.33.0] - 2026-11-24
 
 Observaciones de la dirección del 24 nov (P32). Migraciones 0089 y 0090.
