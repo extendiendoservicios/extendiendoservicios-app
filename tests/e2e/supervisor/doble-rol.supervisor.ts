@@ -21,7 +21,7 @@ import { cubre } from '../../fixtures/trace.ts'
 import { irARedirigida } from '../../fixtures/ui.ts'
 
 // TEST-018 (P18.2): el doble rol empleado y supervisor (`e2e-fijo-dual`): el ingreso va a la vía
-// de empleado, "Más" ofrece "Supervisión" (EMP-13) y "Mis servicios" (SUP-09) con los enlaces
+// de supervisión (P34.4, antes iba a la de empleado), "Más" ofrece "Supervisión" (EMP-13) y "Mis servicios" (SUP-09) con los enlaces
 // reales, cada vía muestra lo suyo (la de supervisión, desde P19.9, suma «Tus servicios de hoy»), y CB-13 (supervisor que también trabaja como empleado
 // del turno: se ve "Vos", no puede calificarse, el servidor lo rechaza con
 // `SELF_RATING_NOT_ALLOWED` y queda fuera del requisito de calificar, CJ-28). RB-E01, RB-S01, RB-S04,
@@ -34,7 +34,7 @@ test.skip(isTooCloseToMidnight(), NEAR_MIDNIGHT_MESSAGE)
 test.use({ storageState: storageStatePath('dual') })
 
 test(
-  'el doble rol ingresa a la vía de empleado y cruza a supervisión y de vuelta con los enlaces de "Más"',
+  'el doble rol ingresa a la vía de supervisión y cruza a empleado y de vuelta con los enlaces de "Más"',
   cubre('RB-E01', 'RB-S01', 'P-122', 'P-042'),
   async ({ page }) => {
     test.setTimeout(180_000)
@@ -60,21 +60,12 @@ test(
       await sc.assign(turnoSupervisado, 'empleado1')
       await marcarCambiosVistos('dual')
 
-      await test.step('al entrar, el inicio es el de empleado (COM-01): Hoy con su servicio, sin la supervisión', async () => {
+      await test.step('al entrar, el inicio es el de supervisión (COM-01, P34.4)', async () => {
         await irARedirigida(page, '/')
-        await expect(page).toHaveURL(/\/app$/)
-        await expect(page.getByText(sedeEmpleado.name)).toBeVisible()
-        await expect(page.getByText(sedeSupervision.name)).toHaveCount(0)
+        await expect(page).toHaveURL(/\/sup$/)
       })
 
-      await test.step('EMP-13 Más ofrece "Supervisión" y lleva a SUP-02', async () => {
-        await page
-          .getByRole('navigation', { name: 'Navegación principal' })
-          .getByRole('link', { name: 'Más' })
-          .click()
-        await expect(page).toHaveURL(/\/app\/mas$/)
-        await page.getByRole('link', { name: 'Supervisión' }).click()
-        await expect(page).toHaveURL(/\/sup$/)
+      await test.step('SUP-02 muestra los turnos y, aparte, sus servicios de hoy', async () => {
         await expect(page.getByText(sedeSupervision.name)).toBeVisible()
         // P19.9: quien también es empleado ve su servicio aparte, en «Tus servicios de hoy»
         // (enlace a /app/servicio), sin mezclarlo con las supervisiones a su cargo.
@@ -102,7 +93,7 @@ test(
         )
       })
 
-      await test.step('SUP-09 Más ofrece "Mis servicios" y vuelve a EMP-03', async () => {
+      await test.step('SUP-09 Más ofrece "Mis servicios" y lleva a EMP-03', async () => {
         await page
           .getByRole('navigation', { name: 'Navegación principal' })
           .getByRole('link', { name: 'Más' })
@@ -111,6 +102,18 @@ test(
         await page.getByRole('link', { name: 'Mis servicios' }).click()
         await expect(page).toHaveURL(/\/app$/)
         await expect(page.getByText(sedeEmpleado.name)).toBeVisible()
+        await expect(page.getByText(sedeSupervision.name)).toHaveCount(0)
+      })
+
+      await test.step('EMP-13 Más ofrece "Supervisión" y vuelve a SUP-02', async () => {
+        await page
+          .getByRole('navigation', { name: 'Navegación principal' })
+          .getByRole('link', { name: 'Más' })
+          .click()
+        await expect(page).toHaveURL(/\/app\/mas$/)
+        await page.getByRole('link', { name: 'Supervisión' }).click()
+        await expect(page).toHaveURL(/\/sup$/)
+        await expect(page.getByText(sedeSupervision.name)).toBeVisible()
       })
 
       await test.step('las dos vías se pueden abrir directamente (sin redirecciones)', async () => {

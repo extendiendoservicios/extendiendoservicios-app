@@ -36,6 +36,7 @@ import {
   resolveMonth,
 } from '@/features/employees/calendarioMonth'
 import { monthRange } from '@/features/employees/cronograma'
+import { todayInBuenosAires } from '@/features/employees/employeeLeaveStatus'
 import {
   runCronogramaCommand,
   type CronogramaCommand,
@@ -164,6 +165,7 @@ function ClientCalendarioTab({
         shifts: shiftsQuery.data ?? [],
         assignments,
         holidays: holidaysQuery.data ?? [],
+        today: todayInBuenosAires(),
       }),
     [year, monthNumber, shiftsQuery.data, assignments, holidaysQuery.data],
   )
