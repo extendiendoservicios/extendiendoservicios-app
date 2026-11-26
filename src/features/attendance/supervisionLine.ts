@@ -1,8 +1,8 @@
 import type { AttendanceBoardRow } from '@/api/attendance'
 
 /**
- * D-10 (P31): segunda línea de la columna Estado con la supervisión del turno
- * («Supervisado», «Supervisando» o «Sin supervisión»), a partir de
+ * D-10 (P31) y P35: supervisión del turno para la columna «Supervisión»
+ * («Supervisado», «Supervisando» o «Sin supervisar»), a partir de
  * `supervision_state` y `supervisor_name` de `v_assignments_board`.
  */
 export interface SupervisionLine {
@@ -14,7 +14,7 @@ export interface SupervisionLine {
 }
 
 const LABELS: Record<SupervisionLine['state'], string> = {
-  none: 'Sin supervisión',
+  none: 'Sin supervisar',
   in_progress: 'Supervisando',
   done: 'Supervisado',
 }
