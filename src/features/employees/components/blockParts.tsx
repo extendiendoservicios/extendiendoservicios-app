@@ -29,6 +29,23 @@ export function gapBlockColors(colorIndex: number | null) {
 }
 
 /**
+ * D-15 (P34.2): el bloque tiene `rounded-sm` y un borde de 1 px; las casillas de
+ * hora redondean su esquina exterior de arriba con el radio interior (el del
+ * bloque menos ese borde), para que no choquen con la curva del bloque.
+ */
+export type TimeCellCorner = 'left' | 'right'
+
+export const TIME_CELL_CORNER_CLASS: Record<TimeCellCorner, string> = {
+  left: 'rounded-tl-[calc(var(--radius-sm)-1px)]',
+  right: 'rounded-tr-[calc(var(--radius-sm)-1px)]',
+}
+
+/** Esquina que corresponde a cada casilla de la fila (inicio a la izquierda, fin a la derecha). */
+export function timeCellCornerClass(corner?: TimeCellCorner): string {
+  return corner ? TIME_CELL_CORNER_CLASS[corner] : ''
+}
+
+/**
  * Casilla de hora: se toca y se edita ahí mismo. DEF-P30-05: es un campo de
  * texto (no `input type="time"`): el control nativo de hora, controlado y en una
  * casilla de ~47 px, descartaba lo escrito porque `onChange` llega con vacío
@@ -40,6 +57,7 @@ export function TimeCell({
   label,
   editable,
   placeholder,
+  corner,
   suppressClick,
   onCommit,
 }: {
@@ -48,6 +66,8 @@ export function TimeCell({
   editable: boolean
   /** Texto cuando no hay hora (por ejemplo el fin de un turno «A terminar»). */
   placeholder?: string
+  /** D-15: esquina exterior de arriba que se redondea (`left` = inicio, `right` = fin). */
+  corner?: TimeCellCorner
   /** Verdadero justo después de un arrastre: el clic que sigue no abre la edición. */
   suppressClick: () => boolean
   onCommit: (value: string) => void
@@ -68,8 +88,8 @@ export function TimeCell({
     }
   }
 
-  const className =
-    'min-w-0 border border-neutral-500 px-0 text-center text-[11px] leading-4 tabular-nums lg:text-[10px] xl:text-[11px]'
+  const cornerClass = timeCellCornerClass(corner)
+  const className = `min-w-0 border border-neutral-500 px-0 text-center text-[11px] leading-4 tabular-nums lg:text-[10px] xl:text-[11px] ${cornerClass}`
   if (editing) {
     return (
       <input
@@ -87,7 +107,7 @@ export function TimeCell({
         placeholder="HH:MM"
         aria-label={label}
         value={draft}
-        className="relative z-10 h-5 w-full min-w-[3.25rem] rounded-none border border-primary bg-surface px-0.5 text-center text-[11px] text-text tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className={`relative z-10 h-5 w-full min-w-[3.25rem] rounded-none border border-primary bg-surface px-0.5 text-center text-[11px] text-text tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring ${cornerClass}`}
         onChange={(event) => setDraft(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === 'Enter') {

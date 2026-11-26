@@ -4,7 +4,7 @@ import { AssignEmployeeSheet } from '@/features/planning/components/AssignEmploy
 import { useShiftDetailQuery } from '@/features/planning/queries'
 import { canAssignGap, describeGap } from '@/features/employees/fixedGaps'
 import { formatDateOnly } from '@/features/settings/dateOnly'
-import { gapBlockColors } from './blockParts'
+import { gapBlockColors, timeCellCornerClass } from './blockParts'
 
 /**
  * Bloque de un fijo sin asignar (OH-06, P30.4b): el mismo formato de tres
@@ -47,10 +47,14 @@ function FixedGapBlock({
       style={gapBlockColors(gap.calendarColor)}
     >
       <div className="grid grid-cols-2 gap-px">
-        <span className="border border-neutral-500 px-0.5 text-center text-[11px] leading-4 tabular-nums">
+        <span
+          className={`border border-neutral-500 px-0.5 text-center text-[11px] leading-4 tabular-nums ${timeCellCornerClass('left')}`}
+        >
           {gap.startTime.slice(0, 5)}
         </span>
-        <span className="border border-neutral-500 px-0.5 text-center text-[11px] leading-4 tabular-nums">
+        <span
+          className={`border border-neutral-500 px-0.5 text-center text-[11px] leading-4 tabular-nums ${timeCellCornerClass('right')}`}
+        >
           {end}
         </span>
       </div>
