@@ -54,6 +54,8 @@ function AttendanceDetailSheet({
   onClose,
   issuedAt,
 }: AttendanceDetailSheetProps) {
+  // La fecha de emisión se fija al abrir la hoja; también es el «ahora» de los turnos pendientes (P36).
+  const emittedAt = useMemo(() => issuedAt ?? new Date(), [issuedAt])
   const sheet = useMemo(
     () =>
       buildAttendanceSheet({
@@ -64,11 +66,10 @@ function AttendanceDetailSheet({
         leaves,
         workdays,
         includeServices,
+        now: emittedAt,
       }),
-    [person, from, to, entries, leaves, workdays, includeServices],
+    [person, from, to, entries, leaves, workdays, includeServices, emittedAt],
   )
-  // La fecha de emisión se fija al abrir la hoja.
-  const emittedAt = useMemo(() => issuedAt ?? new Date(), [issuedAt])
 
   return (
     <PrintSheet
@@ -90,6 +91,7 @@ function AttendanceDetailSheet({
             rows={section.rows}
             spans={section.spans}
             footer={section.footer}
+            footerRows={section.footerRows}
             emptyText={section.emptyText}
           />
         </div>

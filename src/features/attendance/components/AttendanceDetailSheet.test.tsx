@@ -144,4 +144,36 @@ describe('AttendanceDetailSheet (AJ-06)', () => {
     // El pie de firmas existente.
     expect(screen.getByText('Responsable (administración)')).toBeInTheDocument()
   })
+
+  it('con turnos asignados sin trabajar: pie de tres renglones y nota al pie (P36)', () => {
+    render(
+      <AttendanceDetailSheet
+        person={{
+          name: 'Carlos Medina',
+          employeeNumber: 19,
+          roleLabels: ['Empleado'],
+          signerLabel: 'Empleado',
+        }}
+        from="2026-09-01"
+        to="2026-09-30"
+        entries={buildAttendanceEntries([
+          makeAssignment({
+            id: 'p1',
+            shiftDate: '2026-09-30',
+            endsAt: '2026-09-30T12:00:00-03:00',
+          }),
+        ])}
+        issuedAt={new Date('2026-09-30T14:00:00Z')}
+        onClose={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('Horas trabajadas')).toBeInTheDocument()
+    expect(
+      screen.getByText('Asignadas sin trabajar (previstas)'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Total estimado del período')).toBeInTheDocument()
+    expect(screen.getByText('Asignado, sin trabajar')).toBeInTheDocument()
+    expect(screen.getByText(/todavía no se realizaron/)).toBeInTheDocument()
+  })
 })
