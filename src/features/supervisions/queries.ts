@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as ratingsApi from '@/api/ratings'
 import type { RatingListFilters, RateEmployeeInput } from '@/api/ratings'
+import * as attendanceApi from '@/api/attendance'
+import type { UnsupervisedFilters } from '@/api/attendance'
 import * as supervisionsApi from '@/api/supervisions'
 import type { SupervisionListFilters } from '@/api/supervisions'
 import * as prioritiesApi from '@/api/supervisorPriorities'
@@ -25,6 +27,8 @@ export const supervisionsKeys = {
   list: (filters: SupervisionListFilters) =>
     [...supervisionsKeys.all, 'list', filters] as const,
   detail: (id: string) => [...supervisionsKeys.all, 'detail', id] as const,
+  unsupervised: (from: string, to: string, filters: UnsupervisedFilters) =>
+    [...supervisionsKeys.all, 'unsupervised', from, to, filters] as const,
   supervisorCandidates: () =>
     [...supervisionsKeys.all, 'supervisorCandidates'] as const,
 }
@@ -159,5 +163,28 @@ export function useRemoveSupervisorPriorityMutation() {
     mutationFn: prioritiesApi.removeSupervisorPriority,
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: prioritiesKeys.all }),
+  })
+}
+
+/**
+ * ADM-13, pestaña «Sin supervisar» (P35.2, D-09/D-10): una sola consulta
+ * acotada por rango (máx. 62 días, lo valida la pantalla con `enabled`). Se
+ * carga siempre que el rango sea válido, para el contador de la pestaña;
+ * solo pollea con la pestaña abierta (`poll`).
+ */
+export function useUnsupervisedShiftsQuery(
+  from: string,
+  to: string,
+  filters: UnsupervisedFilters,
+  enabled: boolean,
+  poll: boolean,
+) {
+  return useQuery({
+    queryKey: supervisionsKeys.unsupervised(from, to, filters),
+    queryFn: () =>
+      attendanceApi.fetchUnsupervisedAssignments(from, to, filters),
+    staleTime: LIST_POLLING_MS,
+    refetchInterval: poll ? LIST_POLLING_MS : false,
+    enabled,
   })
 }

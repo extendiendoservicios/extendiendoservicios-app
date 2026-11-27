@@ -21,7 +21,10 @@ import {
 } from '@/features/attendance/derive'
 import { WorkedHoursCell } from '@/features/attendance/components/WorkedHoursCell'
 import { AutoClosedBadge } from '@/features/attendance/components/AutoClosedBadge'
-import { SupervisionLine } from '@/features/attendance/components/SupervisionLine'
+import {
+  SupervisionBadge,
+  supervisionSortKey,
+} from '@/features/attendance/components/SupervisionBadge'
 import { GeoValidationCell } from '@/features/geo/components/GeoValidationCell'
 import { CheckInCell } from '@/features/attendance/components/CheckInCell'
 import {
@@ -143,10 +146,17 @@ function ServicesTodayTable({
             {arrival && (
               <span className="text-[12px] text-text-2">{arrival}</span>
             )}
-            <SupervisionLine row={row.original} />
           </div>
         )
       },
+    },
+    {
+      id: 'supervision',
+      header: 'Supervisión',
+      accessorFn: (row) => supervisionSortKey(row),
+      sortUndefined: 'last',
+      meta: { card: 'meta', cardLabel: 'Supervisión' },
+      cell: ({ row }) => <SupervisionBadge row={row.original} />,
     },
     {
       id: 'workedHours',

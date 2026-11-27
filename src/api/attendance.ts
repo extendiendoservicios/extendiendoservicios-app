@@ -634,6 +634,64 @@ export async function fetchEmployeeAttendanceHistory(
   )
 }
 
+export interface UnsupervisedFilters {
+  clientId?: string
+  siteId?: string
+  employeeId?: string
+}
+
+/** `max_rows = 1000` en `supabase/config.toml`: se pide de a páginas (mismo criterio que `assignments.ts`). */
+const UNSUPERVISED_PAGE_SIZE = 1000
+
+/**
+ * P35.2 (D-10): asignaciones vigentes de turnos sin supervisar
+ * (`supervision_state = 'none'`) en un rango de `shift_date`, sin turnos
+ * cancelados. Del más reciente al más antiguo. Qué turnos entran de verdad
+ * lo decide `groupUnsupervisedShifts` (regla de `getSupervisionLine`). Solo
+ * administración recibe `supervision_state`.
+ */
+export async function fetchUnsupervisedAssignments(
+  from: string,
+  to: string,
+  filters: UnsupervisedFilters = {},
+): Promise<AttendanceBoardRow[]> {
+  const rows: AttendanceBoardRow[] = []
+  for (let offset = 0; ; offset += UNSUPERVISED_PAGE_SIZE) {
+    let query = supabase
+      .from('v_assignments_board')
+      .select(ATTENDANCE_BOARD_SELECT)
+      .eq('supervision_state', 'none')
+      .gte('shift_date', from)
+      .lte('shift_date', to)
+      .is('removed_at', null)
+      .neq('shift_status', 'cancelled')
+    if (filters.clientId) {
+      query = query.eq('client_id', filters.clientId)
+    }
+    if (filters.siteId) {
+      query = query.eq('site_id', filters.siteId)
+    }
+    if (filters.employeeId) {
+      query = query.eq('employee_id', filters.employeeId)
+    }
+    const { data, error } = await query
+      .order('shift_date', { ascending: false })
+      .order('effective_start_time', { ascending: false })
+      .order('id', { ascending: true })
+      .range(offset, offset + UNSUPERVISED_PAGE_SIZE - 1)
+    if (error) {
+      throw fromPostgrestError(error)
+    }
+    const page = data ?? []
+    rows.push(
+      ...page.map((row) => mapAttendanceBoardRow(row as AttendanceBoardRawRow)),
+    )
+    if (page.length < UNSUPERVISED_PAGE_SIZE) {
+      return rows
+    }
+  }
+}
+
 /**
  * Asistencia de las asignaciones vigentes de un turno puntual (ADM-06,
  * ATT-014/ABS-006): mismas columnas que `fetchAttendanceBoardByDate`, pero

@@ -196,7 +196,7 @@ describe('ServicesTodayTable: alto acotado, orden y anchos (OH-01, OH-02)', () =
   })
 })
 
-describe('ServicesTodayTable: supervisión en la columna Estado (D-10)', () => {
+describe('ServicesTodayTable: columna «Supervisión» (D-10, P35)', () => {
   it('muestra la segunda línea solo en los servicios que ya empezaron', () => {
     renderTable([
       makeRow({
@@ -218,6 +218,9 @@ describe('ServicesTodayTable: supervisión en la columna Estado (D-10)', () => {
       'title',
       'Sofía Ruiz',
     )
-    expect(screen.getAllByText('Sin supervisión')).toHaveLength(1)
+    expect(screen.getAllByText('Sin supervisar')).toHaveLength(1)
+    expect(
+      screen.getByRole('columnheader', { name: /Supervisión/ }),
+    ).toBeInTheDocument()
   })
 })
