@@ -7,6 +7,18 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.35.0] - 2026-11-27
+
+Supervisado y sin supervisar (P35). Sin migraciones.
+
+### Agregado
+
+- Supervisiones: pestaña nueva «Sin supervisar», entre «Calificaciones» y «Jornadas», con la cantidad de turnos. Lista los turnos que ya empezaron y que ningún coordinador tomó, uno por fila, con fecha, turno, empleados y asistencia. Se filtra por empleado, cliente, sede y fechas; sin fechas muestra los últimos 7 días.
+
+### Cambiado
+
+- Asistencia y Resumen: la supervisión del turno sale de la columna «Estado» y tiene su propia columna, «Supervisión», con píldoras: «Supervisado» en verde, «Sin supervisar» en rojo y «Supervisando» en el color de «En curso». El nombre del coordinador aparece al pasar el mouse. El color de fondo de la fila no cambia.
+
 ## [0.34.1] - 2026-11-26
 
 Coordinadores que también son empleados y contador de sin cubrir (P34.4). Sin migraciones.
