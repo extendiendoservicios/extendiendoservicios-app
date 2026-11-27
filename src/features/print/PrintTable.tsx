@@ -31,6 +31,8 @@ interface PrintTableProps {
   rows: PrintRowData[]
   /** Fila de totales al pie: la etiqueta ocupa todas las columnas menos la última, el valor va en la última. */
   footer?: { label: string; value: string }
+  /** Varios renglones de pie (P36); si viene, reemplaza a `footer`. */
+  footerRows?: { label: string; value: string }[]
   /** Filas con celda unida, por `key` de fila. */
   spans?: Record<string, PrintRowSpan>
   /** Texto cuando no hay filas. */
@@ -51,9 +53,11 @@ function PrintTable({
   columns,
   rows,
   footer,
+  footerRows,
   spans,
   emptyText,
 }: PrintTableProps) {
+  const footers = footerRows ?? (footer ? [footer] : [])
   return (
     <table className="w-full table-auto text-[11px]">
       <thead>
@@ -85,21 +89,23 @@ function PrintTable({
           ))
         )}
       </tbody>
-      {footer && (
+      {footers.length > 0 && (
         <tfoot>
-          <tr className="bg-neutral-100 font-semibold">
-            <td
-              colSpan={Math.max(1, columns.length - 1)}
-              className={`${cellClass} text-right`}
-            >
-              {footer.label}
-            </td>
-            <td
-              className={`${cellClass} ${shortCellClass} text-right tabular-nums`}
-            >
-              {footer.value}
-            </td>
-          </tr>
+          {footers.map((item) => (
+            <tr key={item.label} className="bg-neutral-100 font-semibold">
+              <td
+                colSpan={Math.max(1, columns.length - 1)}
+                className={`${cellClass} text-right`}
+              >
+                {item.label}
+              </td>
+              <td
+                className={`${cellClass} ${shortCellClass} text-right tabular-nums`}
+              >
+                {item.value}
+              </td>
+            </tr>
+          ))}
         </tfoot>
       )}
     </table>
