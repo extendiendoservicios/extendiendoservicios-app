@@ -7,6 +7,15 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.36.0] - 2026-11-27
+
+Planilla de asistencia con turnos asignados (P36). Sin migraciones.
+
+### Agregado
+
+- Ficha del empleado, «Descargar detalle»: si el período llega a hoy o a días futuros, la planilla incluye también los turnos asignados que todavía no se trabajaron. Van con «Asignado, sin trabajar», inicio y fin en blanco para completar y las horas previstas entre paréntesis. Al pie, «Horas trabajadas», «Asignadas sin trabajar (previstas)» y «Total estimado del período», para liquidar antes de fin de mes. Terminado el período, la planilla queda como siempre.
+- Coordinadores: en la sección de jornadas de la planilla, cada día desde hoy hasta el fin del período sin jornada registrada sale como fila en blanco «Sin registrar», para completar a mano.
+
 ## [0.35.0] - 2026-11-27
 
 Supervisado y sin supervisar (P35). Sin migraciones.
