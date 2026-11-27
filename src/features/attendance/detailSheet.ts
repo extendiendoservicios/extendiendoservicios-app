@@ -125,9 +125,23 @@ export interface AttendanceSheetSection {
   rows: PrintRowData[]
   /** Filas con celda unida (las licencias y las supervisiones). */
   spans: Record<string, PrintRowSpan>
+  /** Renglón final del pie (el total de la sección). */
   footer: { label: string; value: string }
+  /**
+   * P36 (D-04): todos los renglones del pie cuando hay turnos pendientes
+   * («Horas trabajadas», «Asignadas sin trabajar (previstas)» y el total
+   * estimado). Sin pendientes no viene y el pie es solo `footer`.
+   */
+  footerRows?: { label: string; value: string }[]
   emptyText: string
+  /** Minutos trabajados / registrados (sin lo previsto). */
   totalMinutes: number
+  /** P36 (D-03): minutos previstos de los turnos asignados sin trabajar. */
+  pendingMinutes: number
+  /** P36 (D-01): cantidad de turnos asignados sin trabajar. */
+  pendingCount: number
+  /** P36 (D-08): cantidad de días en blanco («Sin registrar») de las jornadas. */
+  blankDaysCount: number
 }
 
 export interface AttendanceSheetModel {
@@ -136,7 +150,10 @@ export interface AttendanceSheetModel {
   sections: AttendanceSheetSection[]
   /** Suma de las secciones, solo cuando hay más de una (CJ-34). */
   grandTotal?: { label: string; value: string }
+  /** Solo lo trabajado o registrado (como siempre). */
   totalMinutes: number
+  /** P36: lo trabajado más lo previsto de los turnos asignados sin trabajar. */
+  estimatedMinutes: number
   signers: string[]
   consentText: string
   /** Notas al pie (OF-22: cierre automático), solo las que corresponden. */
@@ -248,6 +265,56 @@ export function printableEntries(
   )
 }
 
+// -------------------------------------------------------------------------
+// Turnos asignados sin trabajar (P36, D-01 a D-05)
+// -------------------------------------------------------------------------
+
+export const PENDING_NOTE_TEXT = 'Asignado, sin trabajar'
+export const PENDING_SHEET_NOTE =
+  'Los turnos marcados “Asignado, sin trabajar” todavía no se realizaron: sus horas son las previstas en la franja.'
+export const BLANK_WORKDAY_TEXT = 'Sin registrar'
+export const BLANK_WORKDAYS_SHEET_NOTE =
+  'Los días “Sin registrar” de las jornadas todavía no tienen jornada: se completan a mano.'
+
+/**
+ * P36 (D-01): turno asignado pendiente. Turno no cancelado, asignación no
+ * quitada, sin inicio, sin aviso de ausencia y con la franja sin terminar:
+ * justo lo contrario de `isAbsence` sin inicio (mismas exclusiones).
+ */
+export function isPendingEntry(
+  entry: AttendanceDetailEntry,
+  now: Date,
+): boolean {
+  const row = entry.row
+  return (
+    row.shiftStatus !== 'cancelled' &&
+    row.removedAt == null &&
+    row.checkInAt == null &&
+    row.status !== 'absence_notified' &&
+    !isAbsence(row, now)
+  )
+}
+
+/**
+ * P36 (D-03): minutos previstos de la franja. Una franja que cruza la
+ * medianoche (fin <= inicio) suma el día siguiente. Un turno abierto no tiene
+ * duración prevista (null).
+ */
+export function plannedMinutes(entry: AttendanceDetailEntry): number | null {
+  const { startTime, endTime, openEnded } = entry.row
+  if (openEnded || !endTime) {
+    return null
+  }
+  const toMinutes = (time: string) =>
+    Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5))
+  const start = toMinutes(startTime)
+  let end = toMinutes(endTime)
+  if (end <= start) {
+    end += 24 * 60
+  }
+  return end - start
+}
+
 function formatPeriodDate(isoDate: string): string {
   return formatCalendarDate(isoDate)
 }
@@ -315,28 +382,32 @@ const WORKDAY_COLUMNS: PrintColumn[] = [
   { key: 'hours', header: 'Horas netas', align: 'right' },
 ]
 
-/** Sección de jornadas: una fila por día y, debajo, sus supervisiones. */
+/**
+ * Sección de jornadas: una fila por día y, debajo, sus supervisiones. P36
+ * (D-08): con `period`, suma una fila en blanco («Sin registrar») por cada
+ * día desde hoy (o `from`, si es posterior) hasta `to` sin jornada registrada.
+ * El total sigue siendo lo registrado.
+ */
 export function buildWorkdaysSection(
   workdays: AdminWorkday[],
   footerLabel: string,
   heading?: string,
+  period?: { from: string; to: string; now?: Date },
 ): AttendanceSheetSection {
   const spans: Record<string, PrintRowSpan> = {}
-  const rows: PrintRowData[] = []
-  for (const workday of [...workdays].sort(
-    (a, b) =>
-      a.workDate.localeCompare(b.workDate) ||
-      a.startedAt.localeCompare(b.startedAt),
-  )) {
-    rows.push({
-      key: `workday-${workday.id}`,
-      date: formatCalendarDate(workday.workDate),
-      start: formatTime(workday.startedAt),
-      end: workday.endedAt ? formatTime(workday.endedAt) : 'En curso',
-      pauses: workdayPausesText(workday),
-      notes: workdayMarks(workday),
-      hours: formatMinutes(workday.workedMinutes),
-    })
+  const groups: { date: string; sort: string; rows: PrintRowData[] }[] = []
+  for (const workday of workdays) {
+    const rows: PrintRowData[] = [
+      {
+        key: `workday-${workday.id}`,
+        date: formatCalendarDate(workday.workDate),
+        start: formatTime(workday.startedAt),
+        end: workday.endedAt ? formatTime(workday.endedAt) : 'En curso',
+        pauses: workdayPausesText(workday),
+        notes: workdayMarks(workday),
+        hours: formatMinutes(workday.workedMinutes),
+      },
+    ]
     for (const supervision of workday.supervisions) {
       const key = `supervision-${supervision.supervisionId}`
       // Cliente, sede, horario y duración van en una celda unida (Inicio → Observaciones).
@@ -351,17 +422,55 @@ export function buildWorkdaysSection(
         hours: '',
       })
     }
+    groups.push({ date: workday.workDate, sort: workday.startedAt, rows })
   }
+  let blankDaysCount = 0
+  if (period) {
+    const today = todayInBuenosAires(period.now ?? new Date())
+    const registered = new Set(workdays.map((workday) => workday.workDate))
+    const first = period.from > today ? period.from : today
+    for (
+      let date = first;
+      date <= period.to;
+      date = addDaysToIsoDate(date, 1)
+    ) {
+      if (registered.has(date)) {
+        continue
+      }
+      blankDaysCount += 1
+      groups.push({
+        date,
+        sort: '',
+        rows: [
+          {
+            key: `workday-blank-${date}`,
+            date: formatCalendarDate(date),
+            start: '',
+            end: '',
+            pauses: '',
+            notes: BLANK_WORKDAY_TEXT,
+            hours: '',
+          },
+        ],
+      })
+    }
+  }
+  groups.sort(
+    (a, b) => a.date.localeCompare(b.date) || a.sort.localeCompare(b.sort),
+  )
   const totalMinutes = sumWorkdayMinutes(workdays)
   return {
     key: 'workdays',
     heading,
     columns: WORKDAY_COLUMNS,
-    rows,
+    rows: groups.flatMap((group) => group.rows),
     spans,
     footer: { label: footerLabel, value: formatMinutes(totalMinutes) },
     emptyText: 'No hay jornadas registradas en este período.',
     totalMinutes,
+    pendingMinutes: 0,
+    pendingCount: 0,
+    blankDaysCount,
   }
 }
 
@@ -392,6 +501,7 @@ export function buildAttendanceSheet(input: {
   const hasWorkdays = input.workdays != null
   const both = includeServices && hasWorkdays
   const sections: AttendanceSheetSection[] = []
+  const now = input.now ?? new Date()
   let absencesCount = 0
   let leavesCount = 0
 
@@ -407,6 +517,7 @@ export function buildAttendanceSheet(input: {
         input.workdays,
         both ? 'Total como coordinador' : 'Total del período',
         both ? WORKDAYS_SECTION_HEADING : undefined,
+        { from: input.from, to: input.to, now },
       ),
     )
   }
@@ -415,6 +526,19 @@ export function buildAttendanceSheet(input: {
     (total, section) => total + section.totalMinutes,
     0,
   )
+  const pendingCount = sections.reduce(
+    (total, section) => total + section.pendingCount,
+    0,
+  )
+  const blankDaysCount = sections.reduce(
+    (total, section) => total + section.blankDaysCount,
+    0,
+  )
+  const pendingMinutes = sections.reduce(
+    (total, section) => total + section.pendingMinutes,
+    0,
+  )
+  const estimatedMinutes = totalMinutes + pendingMinutes
   const title = both
     ? ATTENDANCE_AND_WORKDAYS_TITLE
     : includeServices
@@ -423,7 +547,7 @@ export function buildAttendanceSheet(input: {
   // OF-22: hay al menos un fin registrado por el cierre automático en la tabla de turnos.
   const hasAutoClosed =
     includeServices &&
-    printableEntries(input.entries, input.now ?? new Date()).some(
+    printableEntries(input.entries, now).some(
       (entry) =>
         entryCheckOut(entry) != null && entry.row.checkOutAutoClosed === true,
     )
@@ -442,6 +566,14 @@ export function buildAttendanceSheet(input: {
       ...(leavesCount > 0
         ? [{ label: 'Licencias', value: String(leavesCount) }]
         : []),
+      ...(pendingCount > 0
+        ? [
+            {
+              label: 'Turnos asignados sin trabajar',
+              value: String(pendingCount),
+            },
+          ]
+        : []),
       ...(input.workdays
         ? [{ label: 'Jornadas', value: String(input.workdays.length) }]
         : []),
@@ -449,16 +581,24 @@ export function buildAttendanceSheet(input: {
     sections,
     grandTotal: both
       ? {
-          label: 'Total general (empleado y coordinador)',
-          value: formatMinutes(totalMinutes),
+          label:
+            pendingCount > 0
+              ? 'Total general estimado (empleado y coordinador)'
+              : 'Total general (empleado y coordinador)',
+          value: formatMinutes(estimatedMinutes),
         }
       : undefined,
     totalMinutes,
+    estimatedMinutes,
     signers: ['Responsable (administración)', input.person.signerLabel],
     consentText: includeServices
       ? ATTENDANCE_CONSENT_TEXT
       : WORKDAYS_CONSENT_TEXT,
-    notes: hasAutoClosed ? [AUTO_CLOSED_NOTE] : [],
+    notes: [
+      ...(hasAutoClosed ? [AUTO_CLOSED_NOTE] : []),
+      ...(pendingCount > 0 ? [PENDING_SHEET_NOTE] : []),
+      ...(blankDaysCount > 0 ? [BLANK_WORKDAYS_SHEET_NOTE] : []),
+    ],
     documentTitle: `${title} - ${input.person.name} - ${input.from} al ${input.to}`,
   }
 }
@@ -478,7 +618,12 @@ function buildServicesSection(
   leavesCount: number
 } {
   const now = input.now ?? new Date()
-  const lines = printableEntries(input.entries, now)
+  // P36 (D-01): además de lo trabajado y las inasistencias, los turnos
+  // asignados pendientes (sin inicio y con la franja sin terminar).
+  const lines = [
+    ...printableEntries(input.entries, now),
+    ...input.entries.filter((entry) => isPendingEntry(entry, now)),
+  ]
   const leaves = (input.leaves ?? []).filter(
     (leave) =>
       leave.deletedAt == null &&
@@ -516,7 +661,12 @@ function buildServicesSection(
         b.type === 'leave' ? b.leave.id : b.entry.key,
       ),
   )
+  const pending = lines.filter((entry) => isPendingEntry(entry, now))
   const totalMinutes = sumWorkedMinutes(lines)
+  const pendingMinutes = pending.reduce(
+    (total, entry) => total + (plannedMinutes(entry) ?? 0),
+    0,
+  )
   const absencesCount = lines.filter((entry) =>
     isAbsenceEntry(entry, now),
   ).length
@@ -558,6 +708,25 @@ function buildServicesSection(
     const checkOut = entryCheckOut(entry)
     const worked = entryWorkedMinutes(entry)
     const absent = isAbsenceEntry(entry, now)
+    if (isPendingEntry(entry, now)) {
+      // P36 (D-02, D-03): inicio, fin y validación en blanco para completar a mano; horas previstas entre paréntesis.
+      const planned = plannedMinutes(entry)
+      return {
+        key: entry.key,
+        date: formatPeriodDate(entry.date),
+        client: entry.row.clientName,
+        site: entry.row.siteName,
+        franja: entryFranja(entry),
+        start: '',
+        end: '',
+        geo: '',
+        novelty: joinObservations(
+          PENDING_NOTE_TEXT,
+          entry.row.shiftObservation,
+        ),
+        hours: planned != null ? `(${formatMinutes(planned)})` : '—',
+      }
+    }
     return {
       key: entry.key,
       date: formatPeriodDate(entry.date),
@@ -581,6 +750,11 @@ function buildServicesSection(
     }
   })
 
+  const hasPending = pending.length > 0
+  const workedLabel = withHeading ? 'Total como empleado' : 'Total del período'
+  const estimatedLabel = withHeading
+    ? 'Total estimado como empleado'
+    : 'Total estimado del período'
   return {
     absencesCount,
     leavesCount: leaves.length,
@@ -590,12 +764,30 @@ function buildServicesSection(
       columns,
       rows,
       spans,
-      footer: {
-        label: withHeading ? 'Total como empleado' : 'Total del período',
-        value: formatMinutes(totalMinutes),
-      },
+      footer: hasPending
+        ? {
+            label: estimatedLabel,
+            value: formatMinutes(totalMinutes + pendingMinutes),
+          }
+        : { label: workedLabel, value: formatMinutes(totalMinutes) },
+      footerRows: hasPending
+        ? [
+            { label: 'Horas trabajadas', value: formatMinutes(totalMinutes) },
+            {
+              label: 'Asignadas sin trabajar (previstas)',
+              value: formatMinutes(pendingMinutes),
+            },
+            {
+              label: estimatedLabel,
+              value: formatMinutes(totalMinutes + pendingMinutes),
+            },
+          ]
+        : undefined,
       emptyText: 'No hay horas registradas en este período.',
       totalMinutes,
+      pendingMinutes,
+      pendingCount: pending.length,
+      blankDaysCount: 0,
     },
   }
 }
