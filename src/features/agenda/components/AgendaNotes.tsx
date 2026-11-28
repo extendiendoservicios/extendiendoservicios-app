@@ -10,9 +10,9 @@ import { notesOf } from '../agendaMonth'
 import { useSaveAgendaItemMutation } from '../queries'
 import { AgendaColorPicker } from './AgendaColorPicker'
 import {
-  AgendaDeleteButton,
-  AgendaDuplicateButton,
-  AgendaResolvedCheck,
+  AgendaDeleteIconButton,
+  AgendaDuplicateIconButton,
+  AgendaResolvedIconButton,
 } from './AgendaItemActions'
 
 interface AgendaNotesProps {
@@ -85,7 +85,7 @@ function NoteRow({ item, month }: { item: AgendaItem; month: string }) {
 
   return (
     <li
-      className="flex flex-col gap-1.5 rounded-md border border-border bg-surface p-2"
+      className="flex flex-col gap-1 rounded-md border border-border bg-surface p-1.5"
       style={agendaBlockStyle(item.borderColor, item.fillColor)}
       data-testid="agenda-note"
     >
@@ -107,9 +107,10 @@ function NoteRow({ item, month }: { item: AgendaItem; month: string }) {
           className="bg-surface text-text"
         />
       </div>
-      <div className="flex flex-wrap items-center gap-2 rounded-sm bg-surface/90 px-1.5 py-1 text-text">
-        <AgendaResolvedCheck item={item} />
+      <div className="flex items-center gap-1 rounded-sm bg-surface/90 px-1 text-text">
+        <AgendaResolvedIconButton item={item} />
         <AgendaColorPicker
+          iconOnly
           value={{ border: item.borderColor, fill: item.fillColor }}
           onChange={(next) =>
             saveNote({
@@ -120,8 +121,8 @@ function NoteRow({ item, month }: { item: AgendaItem; month: string }) {
             })
           }
         />
-        <AgendaDuplicateButton item={item} />
-        <AgendaDeleteButton item={item} />
+        <AgendaDuplicateIconButton item={item} />
+        <AgendaDeleteIconButton item={item} />
       </div>
     </li>
   )

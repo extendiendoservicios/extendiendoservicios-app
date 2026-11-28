@@ -3,6 +3,13 @@ import { Check, Palette } from 'lucide-react'
 import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -12,6 +19,7 @@ import {
   RESOLVED_FILL_INDEX,
   agendaBlockStyle,
 } from '../agendaColors'
+import { AgendaIconButton } from './AgendaIconButton'
 
 export interface AgendaColorValue {
   border: number | null
@@ -24,6 +32,8 @@ interface AgendaColorPickerProps {
   /** Texto accesible del botón que abre el selector. */
   label?: string
   disabled?: boolean
+  /** Solo el ícono de la paleta, con tooltip (sin texto ni muestra). */
+  iconOnly?: boolean
 }
 
 interface SwatchGroupProps {
@@ -118,6 +128,40 @@ function SwatchGroup({ id, title, value, onChange }: SwatchGroupProps) {
   )
 }
 
+/** Los dos grupos, «Borde» y «Relleno», con el aviso de «resuelto». */
+function AgendaColorPanel({
+  value,
+  onChange,
+}: {
+  value: AgendaColorValue
+  onChange: (value: AgendaColorValue) => void
+}) {
+  const id = useId()
+  const resolved = value.fill === RESOLVED_FILL_INDEX
+  return (
+    <>
+      <SwatchGroup
+        id={`${id}-border`}
+        title="Borde"
+        value={value.border}
+        onChange={(border) => onChange({ ...value, border })}
+      />
+      <SwatchGroup
+        id={`${id}-fill`}
+        title="Relleno"
+        value={resolved ? null : value.fill}
+        onChange={(fill) => onChange({ ...value, fill })}
+      />
+      {resolved && (
+        <p className="text-[11px] text-text-3">
+          Ahora está en verde porque está resuelto. Si elegís un relleno, lo
+          reemplaza.
+        </p>
+      )}
+    </>
+  )
+}
+
 /**
  * Selector de colores de la Agenda (AG-11 y AG-16): un botón que abre un
  * popover con dos grupos, «Borde» y «Relleno», de 20 colores cada uno, más
@@ -128,51 +172,73 @@ function AgendaColorPicker({
   onChange,
   label = 'Colores',
   disabled = false,
+  iconOnly = false,
 }: AgendaColorPickerProps) {
-  const id = useId()
-  const resolved = value.fill === RESOLVED_FILL_INDEX
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={disabled}
-          aria-label={label}
-          title={label}
-        >
-          <span
-            aria-hidden="true"
-            className="size-4 rounded-sm border border-border-strong"
-            style={agendaBlockStyle(value.border, value.fill)}
+        {iconOnly ? (
+          <AgendaIconButton
+            icon={Palette}
+            aria-label={label}
+            disabled={disabled}
           />
-          <Palette aria-hidden="true" />
-          {label}
-        </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={disabled}
+            aria-label={label}
+            title={label}
+          >
+            <span
+              aria-hidden="true"
+              className="size-4 rounded-sm border border-border-strong"
+              style={agendaBlockStyle(value.border, value.fill)}
+            />
+            <Palette aria-hidden="true" />
+            {label}
+          </Button>
+        )}
       </PopoverTrigger>
       <PopoverContent align="start" className="flex w-[19rem] flex-col gap-4">
-        <SwatchGroup
-          id={`${id}-border`}
-          title="Borde"
-          value={value.border}
-          onChange={(border) => onChange({ ...value, border })}
-        />
-        <SwatchGroup
-          id={`${id}-fill`}
-          title="Relleno"
-          value={resolved ? null : value.fill}
-          onChange={(fill) => onChange({ ...value, fill })}
-        />
-        {resolved && (
-          <p className="text-[11px] text-text-3">
-            Ahora está en verde porque está resuelto. Si elegís un relleno, lo
-            reemplaza.
-          </p>
-        )}
+        <AgendaColorPanel value={value} onChange={onChange} />
       </PopoverContent>
     </Popover>
   )
 }
 
-export { AgendaColorPicker }
+/**
+ * Los mismos colores en un diálogo que se abre desde afuera (por ejemplo desde
+ * un menú ⋮, donde no hay un botón al que anclar el popover).
+ */
+function AgendaColorDialog({
+  open,
+  onOpenChange,
+  value,
+  onChange,
+  title = 'Colores',
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  value: AgendaColorValue
+  onChange: (value: AgendaColorValue) => void
+  title?: string
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex flex-col gap-4 sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>
+            Elegí el borde y el relleno. Se guardan al elegirlos.
+          </DialogDescription>
+        </DialogHeader>
+        <AgendaColorPanel value={value} onChange={onChange} />
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+export { AgendaColorPicker, AgendaColorDialog }

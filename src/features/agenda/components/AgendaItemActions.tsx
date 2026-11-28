@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { CalendarPlus, Trash2 } from 'lucide-react'
+import { CalendarPlus, CircleCheck, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -18,6 +19,7 @@ import {
   useDuplicateAgendaItemMutation,
   useSetAgendaItemResolvedMutation,
 } from '../queries'
+import { AgendaIconButton } from './AgendaIconButton'
 
 function errorText(error: unknown, fallback: string): string {
   return isApiError(error) ? error.message : fallback
@@ -73,6 +75,63 @@ function AgendaDuplicateButton({ item }: { item: AgendaItem }) {
   )
 }
 
+/** Diálogo de confirmación de «Eliminar» (AG-14), controlado desde afuera. */
+function AgendaDeleteDialog({
+  item,
+  open,
+  onOpenChange,
+  onDeleted,
+}: {
+  item: AgendaItem
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onDeleted?: () => void
+}) {
+  const remove = useDeleteAgendaItemMutation()
+
+  function confirm() {
+    remove.mutate(item.id, {
+      onSuccess: () => {
+        onOpenChange(false)
+        toast.success('Lo eliminamos.')
+        onDeleted?.()
+      },
+      onError: (error) =>
+        toast.error(errorText(error, 'No pudimos eliminarlo.')),
+    })
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>¿Eliminar de la agenda?</DialogTitle>
+          <DialogDescription>
+            Se borra de forma definitiva y no se puede deshacer.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+          >
+            Volver
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            loading={remove.isPending}
+            onClick={confirm}
+          >
+            Eliminar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 /** «Eliminar» con confirmación (AG-14): borra de forma definitiva. */
 function AgendaDeleteButton({
   item,
@@ -82,20 +141,6 @@ function AgendaDeleteButton({
   onDeleted?: () => void
 }) {
   const [open, setOpen] = useState(false)
-  const remove = useDeleteAgendaItemMutation()
-
-  function confirm() {
-    remove.mutate(item.id, {
-      onSuccess: () => {
-        setOpen(false)
-        toast.success('Lo eliminamos.')
-        onDeleted?.()
-      },
-      onError: (error) =>
-        toast.error(errorText(error, 'No pudimos eliminarlo.')),
-    })
-  }
-
   return (
     <>
       <Button
@@ -108,35 +153,88 @@ function AgendaDeleteButton({
       >
         Eliminar
       </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>¿Eliminar de la agenda?</DialogTitle>
-            <DialogDescription>
-              Se borra de forma definitiva y no se puede deshacer.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setOpen(false)}
-            >
-              Volver
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              loading={remove.isPending}
-              onClick={confirm}
-            >
-              Eliminar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AgendaDeleteDialog
+        item={item}
+        open={open}
+        onOpenChange={setOpen}
+        onDeleted={onDeleted}
+      />
     </>
   )
 }
 
-export { AgendaResolvedCheck, AgendaDuplicateButton, AgendaDeleteButton }
+/** Acciones de un ítem sin botón propio: las usa el menú ⋮ del popup del día. */
+function useAgendaItemActions(item: AgendaItem) {
+  const setResolved = useSetAgendaItemResolvedMutation()
+  const duplicate = useDuplicateAgendaItemMutation()
+  return {
+    toggleResolved: () =>
+      setResolved.mutate(
+        { id: item.id, resolved: !item.resolved },
+        {
+          onError: (error) =>
+            toast.error(errorText(error, 'No pudimos cambiar el estado.')),
+        },
+      ),
+    duplicate: () =>
+      duplicate.mutate(item.id, {
+        onSuccess: () => toast.success('Lo copiamos al mes siguiente.'),
+        onError: (error) =>
+          toast.error(errorText(error, 'No pudimos duplicarlo.')),
+      }),
+  }
+}
+
+/** Resuelto como ícono (AG-26): se ve activo, en verde, cuando está resuelto. */
+function AgendaResolvedIconButton({ item }: { item: AgendaItem }) {
+  const { toggleResolved } = useAgendaItemActions(item)
+  const label = item.resolved ? 'Quitar resuelto' : 'Marcar como resuelto'
+  return (
+    <AgendaIconButton
+      icon={CircleCheck}
+      aria-label={label}
+      aria-pressed={item.resolved}
+      onClick={toggleResolved}
+      className={cn('size-8', item.resolved && 'bg-success-bg text-success')}
+    />
+  )
+}
+
+/** Duplicar al mes siguiente como ícono (AG-26). */
+function AgendaDuplicateIconButton({ item }: { item: AgendaItem }) {
+  const { duplicate } = useAgendaItemActions(item)
+  return (
+    <AgendaIconButton
+      icon={CalendarPlus}
+      aria-label="Duplicar al mes siguiente"
+      onClick={duplicate}
+    />
+  )
+}
+
+/** Eliminar como ícono, con confirmación (AG-26). */
+function AgendaDeleteIconButton({ item }: { item: AgendaItem }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <AgendaIconButton
+        icon={Trash2}
+        aria-label="Eliminar"
+        className="size-8 text-danger"
+        onClick={() => setOpen(true)}
+      />
+      <AgendaDeleteDialog item={item} open={open} onOpenChange={setOpen} />
+    </>
+  )
+}
+
+export {
+  AgendaResolvedCheck,
+  AgendaDuplicateButton,
+  AgendaDeleteButton,
+  AgendaDeleteDialog,
+  AgendaResolvedIconButton,
+  AgendaDuplicateIconButton,
+  AgendaDeleteIconButton,
+  useAgendaItemActions,
+}
