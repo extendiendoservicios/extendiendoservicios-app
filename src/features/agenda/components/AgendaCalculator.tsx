@@ -103,7 +103,7 @@ function AgendaCalculator() {
   return (
     <section
       aria-label="Calculadora"
-      className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3"
+      className="flex flex-col gap-1.5 rounded-lg border border-border bg-surface p-2.5"
     >
       <h2 className="text-[14px] font-semibold text-text">Calculadora</h2>
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- el teclado de la calculadora (AG-18) se maneja con el foco en este grupo */}
@@ -113,19 +113,19 @@ function AgendaCalculator() {
         // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tiene que poder recibir el foco para leer el teclado
         tabIndex={0}
         onKeyDown={handleKeyDown}
-        className="flex flex-col gap-2 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring"
+        className="flex flex-col gap-1 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring"
       >
         <output
           aria-live="polite"
           aria-label="Resultado"
           className={cn(
-            'block truncate rounded-md border border-border bg-bg px-3 py-2 text-right text-[22px] font-semibold tabular-nums',
+            'block h-9 truncate rounded-md border border-border bg-bg px-2.5 text-right text-[16px] leading-[34px] font-semibold tabular-nums',
             state.error ? 'text-danger' : 'text-text',
           )}
         >
           {state.display}
         </output>
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-4 gap-1">
           {KEYS.map((key) => (
             <button
               key={key.label}
@@ -133,7 +133,7 @@ function AgendaCalculator() {
               aria-label={key.ariaLabel}
               onClick={() => dispatch(key.action)}
               className={cn(
-                'flex h-10 items-center justify-center rounded-md border border-border-strong text-[15px] font-semibold outline-none hover:bg-bg focus-visible:ring-3 focus-visible:ring-ring max-md:h-12',
+                'flex h-8 items-center justify-center rounded-md border border-border-strong text-[13px] font-semibold outline-none hover:bg-bg focus-visible:ring-3 focus-visible:ring-ring max-md:h-9',
                 key.tone === 'operator' && 'bg-bg text-primary-800',
                 key.tone === 'equals' &&
                   'border-transparent bg-primary text-white hover:bg-primary-700',
@@ -142,7 +142,7 @@ function AgendaCalculator() {
               )}
             >
               {key.label === '←' ? (
-                <Delete aria-hidden="true" className="size-4" />
+                <Delete aria-hidden="true" className="size-3.5" />
               ) : (
                 key.label
               )}
