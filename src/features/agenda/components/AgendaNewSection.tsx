@@ -85,7 +85,7 @@ function AgendaNewSection({
             role="group"
             aria-label={NEW_SLOT_NAMES[slot]}
           >
-            <h3 className="truncate px-0.5 text-[11px] font-semibold uppercase tracking-wide text-text-3">
+            <h3 className="px-2 py-1.5 text-center text-[11px] font-semibold text-text-2">
               {NEW_SLOT_NAMES[slot]}
             </h3>
             {(columns[slot] ?? []).map((item) => (
