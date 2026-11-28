@@ -6,6 +6,7 @@ import {
   Home,
   MapPin,
   Megaphone,
+  NotebookPen,
   Package,
   Settings,
   Shield,
@@ -72,6 +73,7 @@ export const ADMIN_NAV_OPERATION: AdminNavItem[] = [
   },
   { label: 'Fotos y videos', path: '/admin/fotos', icon: Camera },
   { label: 'Avisos y anuncios', path: '/admin/anuncios', icon: Megaphone },
+  { label: 'Agenda', path: '/admin/agenda', icon: NotebookPen },
 ]
 
 export const ADMIN_NAV_CONFIGURATION: AdminNavItem[] = [
@@ -124,6 +126,7 @@ export const ADMIN_MORE_ITEMS: AdminNavItem[] = [
   },
   { label: 'Fotos y videos', path: '/admin/fotos', icon: Camera },
   { label: 'Avisos y anuncios', path: '/admin/anuncios', icon: Megaphone },
+  { label: 'Agenda', path: '/admin/agenda', icon: NotebookPen },
   {
     label: 'Configuración',
     path: '/admin/configuracion/usuarios',

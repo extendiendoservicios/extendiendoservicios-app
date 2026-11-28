@@ -353,6 +353,7 @@ describe('AdminShell — menos de 1024 px', () => {
       '/admin/insumos',
       '/admin/fotos',
       '/admin/anuncios',
+      '/admin/agenda',
       '/admin/configuracion/usuarios',
     ])
   })
@@ -390,6 +391,7 @@ describe('AdminShell — menos de 1024 px', () => {
       '/admin/insumos',
       '/admin/fotos',
       '/admin/anuncios',
+      '/admin/agenda',
       '/admin/configuracion/usuarios',
     ])
   })

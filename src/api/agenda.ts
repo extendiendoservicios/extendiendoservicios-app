@@ -105,6 +105,8 @@ export interface AgendaEmployeeColor {
   employeeId: string
   borderColor: number | null
   fillColor: number | null
+  /** Renglón fijo de puesto o zona (AG-22), o `null`. */
+  fixedLine: string | null
 }
 
 /** Color de borde y relleno de cada empleado (AG-16). */
@@ -113,7 +115,7 @@ export async function fetchAgendaEmployeeColors(): Promise<
 > {
   const { data, error } = await supabase
     .from('agenda_employee_colors')
-    .select('employee_id, border_color, fill_color')
+    .select('employee_id, border_color, fill_color, fixed_line')
   if (error) {
     throw fromPostgrestError(error)
   }
@@ -121,6 +123,7 @@ export async function fetchAgendaEmployeeColors(): Promise<
     employeeId: row.employee_id,
     borderColor: row.border_color,
     fillColor: row.fill_color,
+    fixedLine: row.fixed_line,
   }))
 }
 
@@ -276,4 +279,186 @@ export async function setAgendaEmployeeColor(
   if (error) {
     throw fromPostgrestError(error)
   }
+}
+
+/** Renglón fijo de una persona; vacío o `null` lo borra (AG-22). */
+export async function setAgendaEmployeeFixedLine(
+  employeeId: string,
+  text: string | null,
+): Promise<void> {
+  const { error } = await supabase.rpc('set_agenda_employee_fixed_line', {
+    p_employee_id: employeeId,
+    p_text: orNull(text),
+  })
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+}
+
+// -------------------------------------------------------------------------
+// Lista diaria como el parte de WhatsApp (0093, AG-21 a AG-25)
+// -------------------------------------------------------------------------
+
+/** Renglón libre de una persona en un día (AG-23). */
+export interface AgendaStaffLine {
+  id: string
+  employeeId: string
+  /** `YYYY-MM-DD`. */
+  day: string
+  body: string
+  position: number
+}
+
+/** Renglones libres de un día, por posición. */
+export async function fetchAgendaStaffLines(
+  day: string,
+): Promise<AgendaStaffLine[]> {
+  const { data, error } = await supabase
+    .from('agenda_staff_lines')
+    .select('id, employee_id, day, body, position')
+    .eq('day', day)
+    .order('position', { ascending: true })
+    .order('created_at', { ascending: true })
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    employeeId: row.employee_id,
+    day: row.day,
+    body: row.body,
+    position: row.position,
+  }))
+}
+
+export interface SaveAgendaStaffLineInput {
+  /** `null` = alta. */
+  id: string | null
+  employeeId: string
+  day: string
+  body: string
+  /** `null`: al final (alta) o sin cambio (edición). */
+  position?: number | null
+}
+
+export async function saveAgendaStaffLine(
+  input: SaveAgendaStaffLineInput,
+): Promise<AgendaStaffLine> {
+  const { data, error } = await supabase.rpc('save_agenda_staff_line', {
+    p_id: orNull(input.id),
+    p_employee_id: input.employeeId,
+    p_day: input.day,
+    p_body: input.body,
+    p_position: orNull(input.position),
+  })
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return {
+    id: data.id,
+    employeeId: data.employee_id,
+    day: data.day,
+    body: data.body,
+    position: data.position,
+  }
+}
+
+export async function deleteAgendaStaffLine(id: string): Promise<void> {
+  const { error } = await supabase.rpc('delete_agenda_staff_line', {
+    p_id: id,
+  })
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+}
+
+/** Una persona del personal activo (empleados, coordinadores, administración y dirección con ficha). */
+export interface AgendaStaffMember {
+  profileId: string
+  employeeNumber: number
+  firstName: string
+  lastName: string
+  isCoordinator: boolean
+}
+
+/** Personal activo por legajo (AG-21): sin bajas y sin legajos vacantes. */
+export async function fetchAgendaStaff(): Promise<AgendaStaffMember[]> {
+  const { data, error } = await supabase
+    .from('v_employees')
+    .select(
+      'profile_id, employee_number, first_name, last_name, roles, status, profile_is_active',
+    )
+    .eq('status', 'active')
+    .eq('profile_is_active', true)
+    .is('deleted_at', null)
+    .order('employee_number', { ascending: true })
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data ?? []).flatMap((row) =>
+    row.profile_id && row.employee_number != null
+      ? [
+          {
+            profileId: row.profile_id,
+            employeeNumber: row.employee_number,
+            firstName: row.first_name ?? '',
+            lastName: row.last_name ?? '',
+            isCoordinator: (row.roles ?? []).includes('supervisor'),
+          },
+        ]
+      : [],
+  )
+}
+
+/** Una licencia vigente en el día. */
+export interface AgendaLeave {
+  employeeId: string
+  startsOn: string
+  endsOn: string | null
+  reason: string | null
+}
+
+/** Licencias que cubren el día `day` (sin las dadas de baja). */
+export async function fetchAgendaLeavesOnDay(
+  day: string,
+): Promise<AgendaLeave[]> {
+  const { data, error } = await supabase
+    .from('employee_leaves')
+    .select('employee_id, starts_on, ends_on, reason')
+    .is('deleted_at', null)
+    .lte('starts_on', day)
+    .or(`ends_on.is.null,ends_on.gte.${day}`)
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  return (data ?? []).map((row) => ({
+    employeeId: row.employee_id,
+    startsOn: row.starts_on,
+    endsOn: row.ends_on,
+    reason: row.reason,
+  }))
+}
+
+/** Observación de cada turno (por id de turno), para el renglón «… (VIDRIOS)». */
+export async function fetchShiftObservations(
+  shiftIds: string[],
+): Promise<Record<string, string>> {
+  if (shiftIds.length === 0) {
+    return {}
+  }
+  const { data, error } = await supabase
+    .from('shift_observations')
+    .select('shift_id, observation')
+    .in('shift_id', shiftIds)
+  if (error) {
+    throw fromPostgrestError(error)
+  }
+  const result: Record<string, string> = {}
+  for (const row of data ?? []) {
+    const text = row.observation?.trim()
+    if (text) {
+      result[row.shift_id] = text
+    }
+  }
+  return result
 }

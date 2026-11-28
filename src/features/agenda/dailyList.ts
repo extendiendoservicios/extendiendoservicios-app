@@ -1,82 +1,139 @@
 import type { AssignmentBoardRow } from '@/api/assignments'
 import type { AdminWorkday } from '@/api/workdaysAdmin'
-import type { AgendaEmployeeColor } from '@/api/agenda'
+import type {
+  AgendaEmployeeColor,
+  AgendaLeave,
+  AgendaStaffLine,
+  AgendaStaffMember,
+} from '@/api/agenda'
 
 /**
- * Armado de la lista diaria de la Agenda (AG-15): empleados con turno ese día
- * ordenados por legajo («001 Nombre Apellido»), con sus turnos reales debajo, y
- * los coordinadores con su jornada y sus supervisiones (solo para mirar). Todo
- * sale de los registros: nada de esto se guarda en la Agenda.
+ * Armado de la lista diaria de la Agenda como el parte de WhatsApp (AG-21 a
+ * AG-25), sin React: todo el personal activo por legajo, con el renglón fijo,
+ * los renglones automáticos (turnos y licencias, por hora) y los renglones
+ * libres del día. Los coordinadores suman su jornada y supervisiones, solo para
+ * mirar. Nada de esto se guarda en la Agenda salvo el renglón fijo, el color y
+ * los renglones libres.
  */
 
-/** Legajo con tres dígitos: 1 → «001». */
+/** Legajo con dos dígitos (con más de 99, tres): 2 → «02», 15 → «15», 105 → «105». */
 export function formatEmployeeNumber(employeeNumber: number): string {
-  return String(employeeNumber).padStart(3, '0')
-}
-
-/** Lo mínimo del empleado que hace falta para el legajo (`EmployeeOption`). */
-export interface DailyEmployeeInfo {
-  profileId: string
-  name: string
-  employeeNumber: number
-}
-
-export interface DailyShiftEntry {
-  assignmentId: string
-  shiftId: string
-  shiftDate: string
-  /** «08:00 a 12:00» o «Desde 08:00 (a terminar)». */
-  timeLabel: string
-  startTime: string
-  endTime: string
-  openEnded: boolean
-  siteName: string
-  clientName: string
-  shiftStatus: AssignmentBoardRow['shiftStatus']
-  /** Otras personas asignadas al mismo turno ese día (para el aviso de cancelar). */
-  otherPeopleCount: number
-}
-
-export interface DailyEmployeeEntry {
-  employeeId: string
-  /** Legajo con tres dígitos, o `null` si la persona ya no figura entre los activos. */
-  numberLabel: string | null
-  /** «001 Nombre Apellido». */
-  label: string
-  name: string
-  borderColor: number | null
-  fillColor: number | null
-  shifts: DailyShiftEntry[]
+  return String(employeeNumber).padStart(2, '0')
 }
 
 function timeHm(time: string): string {
   return time.slice(0, 5)
 }
 
-/** Horario efectivo de la asignación para mostrar. */
+/** Hora al estilo del grupo: «07:00» → «7», «09:15» → «9:15», «12:15» → «12:15». */
+export function formatGroupTime(time: string): string {
+  const [hours = '0', minutes = '00'] = timeHm(time).split(':')
+  const h = String(Number(hours))
+  return minutes === '00' ? h : `${h}:${minutes}`
+}
+
+/** «7 A 11», «9:15 A 12:15» o, si el turno es «a terminar», «DESDE 7». */
+export function formatGroupRange(
+  startTime: string,
+  endTime: string,
+  openEnded: boolean,
+): string {
+  if (openEnded) {
+    return `DESDE ${formatGroupTime(startTime)}`
+  }
+  return `${formatGroupTime(startTime)} A ${formatGroupTime(endTime)}`
+}
+
+/** Horario efectivo para mostrar en la lista de pantalla («08:00 a 12:00»). */
 export function formatShiftTimeLabel(
   startTime: string,
   endTime: string,
   openEnded: boolean,
 ): string {
-  const start = timeHm(startTime)
   if (openEnded) {
-    return `Desde ${start} (a terminar)`
+    return `Desde ${timeHm(startTime)} (a terminar)`
   }
-  return `${start} a ${timeHm(endTime)}`
+  return `${timeHm(startTime)} a ${timeHm(endTime)}`
 }
 
-/** Los turnos que ya no corren no figuran en la lista del día. */
+/** Renglón automático de un turno real: lleva lo que hace falta para actuar sobre él. */
+export interface ShiftLine {
+  kind: 'shift'
+  /** Texto del parte: «7 A 11 MERCED 1358 (VIDRIOS)». */
+  text: string
+  assignmentId: string
+  shiftId: string
+  shiftDate: string
+  startTime: string
+  endTime: string
+  openEnded: boolean
+  shiftStatus: AssignmentBoardRow['shiftStatus']
+  siteName: string
+  clientName: string
+  /** Otras personas asignadas al mismo turno ese día (para el aviso de cancelar). */
+  otherPeopleCount: number
+}
+
+/** Renglón automático de una licencia: «VACACIONES DIA 1». */
+export interface LeaveLine {
+  kind: 'leave'
+  text: string
+}
+
+export type AutoLine = ShiftLine | LeaveLine
+
+export interface DailyStaffEntry {
+  employeeId: string
+  /** Legajo: «02», «15», «105». */
+  numberLabel: string
+  /** «Nombre Apellido». */
+  name: string
+  /** «02 Nombre Apellido». */
+  label: string
+  isCoordinator: boolean
+  borderColor: number | null
+  fillColor: number | null
+  /** Renglón fijo de puesto o zona, o `null`. */
+  fixedLine: string | null
+  /** Licencias y turnos, ordenados por hora (las licencias, de todo el día, primero). */
+  autoLines: AutoLine[]
+  /** Renglones libres del día, por posición. */
+  freeLines: AgendaStaffLine[]
+}
+
+/** Días transcurridos de una licencia contando el primero como 1. */
+export function leaveDayNumber(startsOn: string, day: string): number {
+  const toUtc = (iso: string) =>
+    Date.UTC(
+      Number(iso.slice(0, 4)),
+      Number(iso.slice(5, 7)) - 1,
+      Number(iso.slice(8, 10)),
+    )
+  return Math.round((toUtc(day) - toUtc(startsOn)) / 86_400_000) + 1
+}
+
+/** «VACACIONES DIA 1»: el motivo tal cual en mayúsculas y el número de día. */
+export function leaveLineText(leave: AgendaLeave, day: string): string {
+  const reason = leave.reason?.trim() ? leave.reason.trim() : 'Licencia'
+  return `${reason.toUpperCase()} DIA ${leaveDayNumber(leave.startsOn, day)}`
+}
+
+/** Los turnos cancelados no figuran. */
 function isListable(row: AssignmentBoardRow): boolean {
   return row.shiftStatus !== 'cancelled'
 }
 
-export function buildDailyEmployeeList(input: {
+export function buildDailyStaffList(input: {
+  day: string
+  staff: AgendaStaffMember[]
+  /** Asignaciones vigentes (no quitadas) del día. */
   assignments: AssignmentBoardRow[]
-  employees: DailyEmployeeInfo[]
+  /** Observación del turno, por id de turno. */
+  shiftObservations: Record<string, string>
+  leaves: AgendaLeave[]
+  staffLines: AgendaStaffLine[]
   colors: AgendaEmployeeColor[]
-}): DailyEmployeeEntry[] {
-  const infoById = new Map(input.employees.map((e) => [e.profileId, e]))
+}): DailyStaffEntry[] {
   const colorById = new Map(input.colors.map((c) => [c.employeeId, c]))
   const rows = input.assignments.filter(isListable)
 
@@ -85,70 +142,95 @@ export function buildDailyEmployeeList(input: {
     peopleByShift.set(row.shiftId, (peopleByShift.get(row.shiftId) ?? 0) + 1)
   }
 
-  const byEmployee = new Map<string, DailyEmployeeEntry>()
+  const shiftsByEmployee = new Map<string, ShiftLine[]>()
   for (const row of rows) {
-    let entry = byEmployee.get(row.employeeId)
-    if (!entry) {
-      const info = infoById.get(row.employeeId)
-      const name =
-        info?.name ?? `${row.employeeFirstName} ${row.employeeLastName}`.trim()
-      const numberLabel = info
-        ? formatEmployeeNumber(info.employeeNumber)
-        : null
-      const color = colorById.get(row.employeeId)
-      entry = {
-        employeeId: row.employeeId,
-        numberLabel,
-        label: numberLabel ? `${numberLabel} ${name}` : name,
-        name,
-        borderColor: color?.borderColor ?? null,
-        fillColor: color?.fillColor ?? null,
-        shifts: [],
-      }
-      byEmployee.set(row.employeeId, entry)
-    }
-    entry.shifts.push({
+    const observation = input.shiftObservations[row.shiftId]
+    const text = [
+      formatGroupRange(row.startTime, row.endTime, row.openEnded),
+      row.siteName,
+      observation ? `(${observation})` : '',
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toUpperCase()
+    const line: ShiftLine = {
+      kind: 'shift',
+      text,
       assignmentId: row.id,
       shiftId: row.shiftId,
       shiftDate: row.shiftDate,
-      timeLabel: formatShiftTimeLabel(
-        row.startTime,
-        row.endTime,
-        row.openEnded,
-      ),
       startTime: row.startTime,
       endTime: row.endTime,
       openEnded: row.openEnded,
+      shiftStatus: row.shiftStatus,
       siteName: row.siteName,
       clientName: row.clientName,
-      shiftStatus: row.shiftStatus,
       otherPeopleCount: (peopleByShift.get(row.shiftId) ?? 1) - 1,
-    })
+    }
+    const list = shiftsByEmployee.get(row.employeeId)
+    if (list) {
+      list.push(line)
+    } else {
+      shiftsByEmployee.set(row.employeeId, [line])
+    }
   }
 
-  const entries = [...byEmployee.values()]
-  for (const entry of entries) {
-    entry.shifts.sort((a, b) => a.startTime.localeCompare(b.startTime))
+  const leavesByEmployee = new Map<string, LeaveLine[]>()
+  for (const leave of input.leaves) {
+    const line: LeaveLine = {
+      kind: 'leave',
+      text: leaveLineText(leave, input.day),
+    }
+    const list = leavesByEmployee.get(leave.employeeId)
+    if (list) {
+      list.push(line)
+    } else {
+      leavesByEmployee.set(leave.employeeId, [line])
+    }
   }
-  // Por legajo; sin legajo (ya no figura entre los activos), al final y por nombre.
-  return entries.sort((a, b) => {
-    if (a.numberLabel && b.numberLabel) {
-      return a.numberLabel.localeCompare(b.numberLabel)
+
+  const linesByEmployee = new Map<string, AgendaStaffLine[]>()
+  for (const line of input.staffLines) {
+    const list = linesByEmployee.get(line.employeeId)
+    if (list) {
+      list.push(line)
+    } else {
+      linesByEmployee.set(line.employeeId, [line])
     }
-    if (a.numberLabel) {
-      return -1
-    }
-    if (b.numberLabel) {
-      return 1
-    }
-    return a.name.localeCompare(b.name, 'es')
-  })
+  }
+
+  return [...input.staff]
+    .sort((a, b) => a.employeeNumber - b.employeeNumber)
+    .map((member) => {
+      const color = colorById.get(member.profileId)
+      const numberLabel = formatEmployeeNumber(member.employeeNumber)
+      const name = `${member.firstName} ${member.lastName}`.trim()
+      const shifts = [...(shiftsByEmployee.get(member.profileId) ?? [])].sort(
+        (a, b) => a.startTime.localeCompare(b.startTime),
+      )
+      return {
+        employeeId: member.profileId,
+        numberLabel,
+        name,
+        label: `${numberLabel} ${name}`,
+        isCoordinator: member.isCoordinator,
+        borderColor: color?.borderColor ?? null,
+        fillColor: color?.fillColor ?? null,
+        fixedLine: color?.fixedLine ?? null,
+        autoLines: [
+          ...(leavesByEmployee.get(member.profileId) ?? []),
+          ...shifts,
+        ],
+        freeLines: [...(linesByEmployee.get(member.profileId) ?? [])].sort(
+          (a, b) => a.position - b.position,
+        ),
+      }
+    })
 }
 
 export interface DailyCoordinatorEntry {
   workdayId: string
   supervisorId: string
-  label: string
   /** «Jornada 08:00 a 16:30» o «Jornada desde 08:00 (en curso)». */
   workdayLabel: string
   supervisions: Array<{
@@ -168,34 +250,38 @@ function clockLabel(iso: string): string {
   })
 }
 
-export function buildDailyCoordinatorList(input: {
-  workdays: AdminWorkday[]
-  employees: DailyEmployeeInfo[]
-}): DailyCoordinatorEntry[] {
-  const infoById = new Map(input.employees.map((e) => [e.profileId, e]))
-  const entries = input.workdays.map((workday) => {
-    const info = infoById.get(workday.supervisorId)
-    const name = info?.name ?? workday.supervisorName
-    const numberLabel = info ? formatEmployeeNumber(info.employeeNumber) : null
+/** Jornada y supervisiones de los coordinadores del día (solo lectura), por persona. */
+export function buildCoordinatorWorkdays(
+  workdays: AdminWorkday[],
+): Map<string, DailyCoordinatorEntry> {
+  const result = new Map<string, DailyCoordinatorEntry>()
+  for (const workday of workdays) {
     const start = clockLabel(workday.startedAt)
-    return {
-      sortKey: numberLabel ?? '~',
-      entry: {
-        workdayId: workday.id,
-        supervisorId: workday.supervisorId,
-        label: numberLabel ? `${numberLabel} ${name}` : name,
-        workdayLabel: workday.endedAt
-          ? `Jornada ${start} a ${clockLabel(workday.endedAt)}`
-          : `Jornada desde ${start} (en curso)`,
-        supervisions: workday.supervisions.map((supervision) => ({
-          id: supervision.supervisionId,
-          clientName: supervision.clientName,
-          siteName: supervision.siteName,
-        })),
-      } satisfies DailyCoordinatorEntry,
-    }
-  })
-  return entries
-    .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
-    .map((item) => item.entry)
+    result.set(workday.supervisorId, {
+      workdayId: workday.id,
+      supervisorId: workday.supervisorId,
+      workdayLabel: workday.endedAt
+        ? `Jornada ${start} a ${clockLabel(workday.endedAt)}`
+        : `Jornada desde ${start} (en curso)`,
+      supervisions: workday.supervisions.map((supervision) => ({
+        id: supervision.supervisionId,
+        clientName: supervision.clientName,
+        siteName: supervision.siteName,
+      })),
+    })
+  }
+  return result
+}
+
+/** Pasa dos renglones libres de lugar y devuelve el nuevo orden (para subir o bajar). */
+export function moveLine<T>(lines: T[], index: number, delta: -1 | 1): T[] {
+  const target = index + delta
+  if (target < 0 || target >= lines.length) {
+    return lines
+  }
+  const next = [...lines]
+  const moved = next[index] as T
+  next[index] = next[target] as T
+  next[target] = moved
+  return next
 }
