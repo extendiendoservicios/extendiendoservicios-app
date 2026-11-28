@@ -223,6 +223,15 @@ export const adminRoutes: RouteObject[] = [
     },
   },
   {
+    path: 'agenda',
+    ...lazyPage(() => import('@/pages/admin/AgendaPage')),
+    handle: {
+      screenId: 'ADM-40',
+      title: 'Agenda',
+      subtitle: 'Pizarra mensual de la dirección',
+    },
+  },
+  {
     path: 'tareas',
     ...lazyPage(() => import('@/pages/admin/TaskTemplatesPage')),
     handle: {

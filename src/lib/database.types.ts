@@ -179,6 +179,336 @@ export type Database = {
           },
         ]
       }
+      agenda_employee_colors: {
+        Row: {
+          border_color: number | null
+          employee_id: string
+          fill_color: number | null
+          fixed_line: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          border_color?: number | null
+          employee_id: string
+          fill_color?: number | null
+          fixed_line?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          border_color?: number | null
+          employee_id?: string
+          fill_color?: number | null
+          fixed_line?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_employee_colors_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "agenda_employee_colors_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "v_employee_ratings"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "agenda_employee_colors_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "v_employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "agenda_employee_colors_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agenda_employee_colors_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "agenda_employee_colors_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+        ]
+      }
+      agenda_items: {
+        Row: {
+          address: string | null
+          body: string | null
+          border_color: number | null
+          budget: number | null
+          client_id: string | null
+          client_name: string | null
+          client_person: string | null
+          copied_from: string | null
+          created_at: string
+          created_by: string | null
+          day: string | null
+          days_hours: string | null
+          fill_before_resolved: number | null
+          fill_color: number | null
+          id: string
+          kind: string
+          month: string
+          observation: string | null
+          people: string | null
+          place: string | null
+          place_name: string | null
+          position: number
+          resolved: boolean
+          resolved_at: string | null
+          slot: number | null
+          time_text: string | null
+          updated_at: string
+          updated_by: string | null
+          work_type: string | null
+        }
+        Insert: {
+          address?: string | null
+          body?: string | null
+          border_color?: number | null
+          budget?: number | null
+          client_id?: string | null
+          client_name?: string | null
+          client_person?: string | null
+          copied_from?: string | null
+          created_at?: string
+          created_by?: string | null
+          day?: string | null
+          days_hours?: string | null
+          fill_before_resolved?: number | null
+          fill_color?: number | null
+          id?: string
+          kind: string
+          month: string
+          observation?: string | null
+          people?: string | null
+          place?: string | null
+          place_name?: string | null
+          position?: number
+          resolved?: boolean
+          resolved_at?: string | null
+          slot?: number | null
+          time_text?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          work_type?: string | null
+        }
+        Update: {
+          address?: string | null
+          body?: string | null
+          border_color?: number | null
+          budget?: number | null
+          client_id?: string | null
+          client_name?: string | null
+          client_person?: string | null
+          copied_from?: string | null
+          created_at?: string
+          created_by?: string | null
+          day?: string | null
+          days_hours?: string | null
+          fill_before_resolved?: number | null
+          fill_color?: number | null
+          id?: string
+          kind?: string
+          month?: string
+          observation?: string | null
+          people?: string | null
+          place?: string | null
+          place_name?: string | null
+          position?: number
+          resolved?: boolean
+          resolved_at?: string | null
+          slot?: number | null
+          time_text?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          work_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_items_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agenda_items_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "v_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agenda_items_copied_from_fkey"
+            columns: ["copied_from"]
+            isOneToOne: false
+            referencedRelation: "agenda_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agenda_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agenda_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "agenda_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "agenda_items_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agenda_items_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "agenda_items_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+        ]
+      }
+      agenda_staff_lines: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          day: string
+          employee_id: string
+          id: string
+          position: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          day: string
+          employee_id: string
+          id?: string
+          position?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          day?: string
+          employee_id?: string
+          id?: string
+          position?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_staff_lines_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agenda_staff_lines_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "agenda_staff_lines_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "agenda_staff_lines_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "agenda_staff_lines_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "v_employee_ratings"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "agenda_staff_lines_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "v_employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "agenda_staff_lines_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agenda_staff_lines_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "agenda_staff_lines_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+        ]
+      }
       announcement_reads: {
         Row: {
           announcement_id: string
@@ -8372,6 +8702,66 @@ export type Database = {
         }
         Returns: Json
       }
+      delete_agenda_item: {
+        Args: { p_id: string }
+        Returns: {
+          address: string | null
+          body: string | null
+          border_color: number | null
+          budget: number | null
+          client_id: string | null
+          client_name: string | null
+          client_person: string | null
+          copied_from: string | null
+          created_at: string
+          created_by: string | null
+          day: string | null
+          days_hours: string | null
+          fill_before_resolved: number | null
+          fill_color: number | null
+          id: string
+          kind: string
+          month: string
+          observation: string | null
+          people: string | null
+          place: string | null
+          place_name: string | null
+          position: number
+          resolved: boolean
+          resolved_at: string | null
+          slot: number | null
+          time_text: string | null
+          updated_at: string
+          updated_by: string | null
+          work_type: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "agenda_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      delete_agenda_staff_line: {
+        Args: { p_id: string }
+        Returns: {
+          body: string
+          created_at: string
+          created_by: string | null
+          day: string
+          employee_id: string
+          id: string
+          position: number
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "agenda_staff_lines"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       delete_employee_calendar_note: {
         Args: { p_note_id: string }
         Returns: {
@@ -8434,6 +8824,46 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "attention_dismissals"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      duplicate_agenda_item_to_next_month: {
+        Args: { p_id: string }
+        Returns: {
+          address: string | null
+          body: string | null
+          border_color: number | null
+          budget: number | null
+          client_id: string | null
+          client_name: string | null
+          client_person: string | null
+          copied_from: string | null
+          created_at: string
+          created_by: string | null
+          day: string | null
+          days_hours: string | null
+          fill_before_resolved: number | null
+          fill_color: number | null
+          id: string
+          kind: string
+          month: string
+          observation: string | null
+          people: string | null
+          place: string | null
+          place_name: string | null
+          position: number
+          resolved: boolean
+          resolved_at: string | null
+          slot: number | null
+          time_text: string | null
+          updated_at: string
+          updated_by: string | null
+          work_type: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "agenda_items"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -8716,6 +9146,46 @@ export type Database = {
           site_longitude: number
           site_name: string
         }[]
+      }
+      mark_agenda_item_client: {
+        Args: { p_client_id: string; p_id: string }
+        Returns: {
+          address: string | null
+          body: string | null
+          border_color: number | null
+          budget: number | null
+          client_id: string | null
+          client_name: string | null
+          client_person: string | null
+          copied_from: string | null
+          created_at: string
+          created_by: string | null
+          day: string | null
+          days_hours: string | null
+          fill_before_resolved: number | null
+          fill_color: number | null
+          id: string
+          kind: string
+          month: string
+          observation: string | null
+          people: string | null
+          place: string | null
+          place_name: string | null
+          position: number
+          resolved: boolean
+          resolved_at: string | null
+          slot: number | null
+          time_text: string | null
+          updated_at: string
+          updated_by: string | null
+          work_type: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "agenda_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       mark_changes_seen: {
         Args: never
@@ -9329,6 +9799,82 @@ export type Database = {
         Returns: Json
       }
       revoke_location_consent: { Args: never; Returns: undefined }
+      save_agenda_item: {
+        Args: {
+          p_border_color: number
+          p_day: string
+          p_fields: Json
+          p_fill_color: number
+          p_id: string
+          p_kind: string
+          p_month: string
+          p_position: number
+          p_slot: number
+        }
+        Returns: {
+          address: string | null
+          body: string | null
+          border_color: number | null
+          budget: number | null
+          client_id: string | null
+          client_name: string | null
+          client_person: string | null
+          copied_from: string | null
+          created_at: string
+          created_by: string | null
+          day: string | null
+          days_hours: string | null
+          fill_before_resolved: number | null
+          fill_color: number | null
+          id: string
+          kind: string
+          month: string
+          observation: string | null
+          people: string | null
+          place: string | null
+          place_name: string | null
+          position: number
+          resolved: boolean
+          resolved_at: string | null
+          slot: number | null
+          time_text: string | null
+          updated_at: string
+          updated_by: string | null
+          work_type: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "agenda_items"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      save_agenda_staff_line: {
+        Args: {
+          p_body: string
+          p_day: string
+          p_employee_id: string
+          p_id: string
+          p_position: number
+        }
+        Returns: {
+          body: string
+          created_at: string
+          created_by: string | null
+          day: string
+          employee_id: string
+          id: string
+          position: number
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "agenda_staff_lines"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       save_employee_calendar_note: {
         Args: {
           p_body: string
@@ -9439,6 +9985,80 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "admin_capabilities"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_agenda_employee_color: {
+        Args: { p_border: number; p_employee_id: string; p_fill: number }
+        Returns: {
+          border_color: number | null
+          employee_id: string
+          fill_color: number | null
+          fixed_line: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "agenda_employee_colors"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_agenda_employee_fixed_line: {
+        Args: { p_employee_id: string; p_text: string }
+        Returns: {
+          border_color: number | null
+          employee_id: string
+          fill_color: number | null
+          fixed_line: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "agenda_employee_colors"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_agenda_item_resolved: {
+        Args: { p_id: string; p_resolved: boolean }
+        Returns: {
+          address: string | null
+          body: string | null
+          border_color: number | null
+          budget: number | null
+          client_id: string | null
+          client_name: string | null
+          client_person: string | null
+          copied_from: string | null
+          created_at: string
+          created_by: string | null
+          day: string | null
+          days_hours: string | null
+          fill_before_resolved: number | null
+          fill_color: number | null
+          id: string
+          kind: string
+          month: string
+          observation: string | null
+          people: string | null
+          place: string | null
+          place_name: string | null
+          position: number
+          resolved: boolean
+          resolved_at: string | null
+          slot: number | null
+          time_text: string | null
+          updated_at: string
+          updated_by: string | null
+          work_type: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "agenda_items"
           isOneToOne: true
           isSetofReturn: false
         }

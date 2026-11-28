@@ -63,6 +63,7 @@ export function getParentPath(pathname: string, rootPath: string): string {
       path === '/admin/clientes' ||
       path === '/admin/tareas' ||
       path === '/admin/anuncios' ||
+      path === '/admin/agenda' ||
       path.startsWith('/admin/configuracion/')
     ) {
       return '/admin'
