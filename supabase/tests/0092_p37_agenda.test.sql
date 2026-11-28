@@ -190,7 +190,7 @@ select ok((select r ->> 'resolved_at' is null and not (r ->> 'resolved')::boolea
 -- Vincular cliente.
 select is(
   tests_0092.err($e$select public.mark_agenda_item_client((select (r ->> 'id')::uuid from tests_0092.res where k = 'nota'), 'f92a0000-0000-0000-0000-000000000001')$e$) ->> 'hint',
-  'AGENDA_NOT_NUEVO', 'mark_agenda_item_client rechaza lo que no es nuevo'
+  'INVALID_AGENDA_KIND', 'mark_agenda_item_client rechaza lo que no es nuevo'
 );
 insert into tests_0092.res (k, r)
 select 'vinculado', to_jsonb(i) from public.mark_agenda_item_client((select (r ->> 'id')::uuid from tests_0092.res where k = 'nuevo'), 'f92a0000-0000-0000-0000-000000000001') i;
@@ -221,9 +221,10 @@ select is(
   tests_0092.err($e$select public.save_agenda_item(null, 'nota', '2199-10-01', null, null, null, '{"body": "x"}'::jsonb, 25::smallint, null)$e$) ->> 'hint',
   'INVALID_COLOR', 'color fuera de rango: rechazado'
 );
+-- Editar ignora p_kind: un evento sigue siendo evento (sin día, falla como evento).
 select is(
   tests_0092.err(format($e$select public.save_agenda_item(%L, 'nota', '2199-10-01', null, null, null, '{"body": "x"}'::jsonb, null, null)$e$, (select r ->> 'id' from tests_0092.res where k = 'ev31oct'))) ->> 'hint',
-  'AGENDA_KIND_MISMATCH', 'editar no cambia el tipo'
+  'INVALID_DATE', 'editar no cambia el tipo (sigue exigiendo el día del evento)'
 );
 
 -- Mover un evento a otro día del mes siguiente.

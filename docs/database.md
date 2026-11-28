@@ -3149,3 +3149,13 @@ Una sola migración, `0090_p32_1b_cerrar_en_camino.sql`. Sin tablas ni columnas 
 - `attention_dismissals_kind_check` admite `onTheWay` además de los ocho tipos de 0085 (drop + add). La regla de `attention_dismissals_assignment_check` no cambia: `onTheWay` exige asignación, como `late` y `delayNotified` (solo `uncovered` va sin ella).
 - `dismiss_attention(p_kind, p_shift_id, p_assignment_id)` se redefine con la lista nueva de tipos; el resto (permisos owner/admin, errores, idempotencia) queda igual. Ninguna otra función ni vista lista los tipos.
 - Tests: `0090_p32_1b_cerrar_en_camino`.
+
+## 0092 · Agenda (P37.1)
+
+Pizarra mensual de dueños y administradores (AG-01..AG-20). Todo se lee con RLS (`select` solo para `app.is_admin()`) y se escribe únicamente con RPC `security definer` (`app.require_role('owner','admin')`; `FORBIDDEN` si no).
+
+- **`agenda_items`**: `kind` (`evento`, `nuevo`, `nota`), `month` (primer día del mes), `day` (solo evento, dentro de `month`), `slot` (0 a 6, solo nuevo), `position`, textos de evento (`work_type`, `time_text`, `place`, `client_person`, `people`), de nuevo (`place_name`, `client_name`, `address`, `days_hours`, `budget numeric(14,2)`), `observation` (evento y nuevo), `body` (nota), `resolved`, `resolved_at`, `border_color` (0 a 19 o null), `fill_color` (0 a 19 o null; **20 = verde resuelto** de la plataforma), `fill_before_resolved`, `client_id` (→ `clients`, set null), `copied_from` (→ propia tabla, set null) y auditoría. Borrado físico. Índices `(month, kind)` y `(day)`.
+- **`agenda_employee_colors`**: `employee_id` (→ `employees.profile_id`, cascade), `border_color`, `fill_color` (0 a 19 o null), `updated_at/by`.
+- **RPC**: `save_agenda_item(p_id, p_kind, p_month, p_day, p_slot, p_position, p_fields jsonb, p_border_color, p_fill_color)`, `delete_agenda_item(p_id)`, `set_agenda_item_resolved(p_id, p_resolved)`, `duplicate_agenda_item_to_next_month(p_id)`, `mark_agenda_item_client(p_id, p_client_id)`, `set_agenda_employee_color(p_employee_id, p_border, p_fill)`. Función interna `app.agenda_apply_resolved`.
+- **Errores**: `FORBIDDEN`, `AGENDA_ITEM_NOT_FOUND`, `INVALID_AGENDA_KIND` (tipo inválido o `mark_agenda_item_client` sobre algo que no es `nuevo`), `EMPTY_AGENDA_ITEM`, `INVALID_DATE`, `INVALID_SLOT`, `INVALID_BUDGET`, `INVALID_COLOR`, `CLIENT_NOT_FOUND`, `EMPLOYEE_NOT_FOUND`.
+- **Reglas**: al resolver, `fill_before_resolved = fill_color` y `fill_color = 20`; al desmarcar, si sigue en 20 se restaura. Duplicar al mes siguiente: evento mismo día o último del mes (31 oct a 30 nov), nuevo misma columna, sin resolver, sin `client_id`, `copied_from` = original. Editar no cambia `kind`; el mes del evento se deriva de `p_day`.
