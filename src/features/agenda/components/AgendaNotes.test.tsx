@@ -25,7 +25,8 @@ describe('AgendaNotes', () => {
       'Duplicar al mes siguiente',
       'Eliminar',
     ])
-    expect(buttons.every((b) => b.textContent === '')).toBe(true)
+    expect(buttons[0]).toHaveTextContent('Resuelto')
+    expect(buttons.slice(1).every((b) => b.textContent === '')).toBe(true)
     expect(buttons[0]).toHaveAttribute('aria-pressed', 'false')
   })
 
@@ -39,5 +40,28 @@ describe('AgendaNotes', () => {
     expect(
       screen.getByRole('button', { name: 'Quitar resuelto' }),
     ).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('al resolver, la nota conserva su relleno y el verde va al botón', () => {
+    const note = makeAgendaItem({
+      kind: 'nota',
+      body: 'Listo',
+      resolved: true,
+      fillColor: 20,
+      fillBeforeResolved: null,
+    })
+    render(<AgendaNotes items={[note]} month="2026-11-01" />)
+    expect(screen.getByTestId('agenda-note').style.background).toBe('')
+    expect(screen.getByRole('button', { name: 'Quitar resuelto' })).toHaveClass(
+      'bg-success',
+    )
+  })
+
+  it('el texto de la nota es un textarea multilínea', () => {
+    const note = makeAgendaItem({ kind: 'nota', body: 'uno\ndos' })
+    render(<AgendaNotes items={[note]} month="2026-11-01" />)
+    const field = screen.getByLabelText('Texto de la nota')
+    expect(field.tagName).toBe('TEXTAREA')
+    expect(field).toHaveValue('uno\ndos')
   })
 })

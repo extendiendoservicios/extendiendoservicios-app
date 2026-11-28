@@ -19,6 +19,12 @@ import {
   useDuplicateAgendaItemMutation,
   useSetAgendaItemResolvedMutation,
 } from '../queries'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { AgendaIconButton } from './AgendaIconButton'
 
 function errorText(error: unknown, fallback: string): string {
@@ -185,18 +191,37 @@ function useAgendaItemActions(item: AgendaItem) {
   }
 }
 
-/** Resuelto como ícono (AG-26): se ve activo, en verde, cuando está resuelto. */
+/**
+ * «Resuelto» de las notas (AG-26): el único botón con texto. Activo, tiene el
+ * fondo verde de la plataforma.
+ */
 function AgendaResolvedIconButton({ item }: { item: AgendaItem }) {
   const { toggleResolved } = useAgendaItemActions(item)
   const label = item.resolved ? 'Quitar resuelto' : 'Marcar como resuelto'
   return (
-    <AgendaIconButton
-      icon={CircleCheck}
-      aria-label={label}
-      aria-pressed={item.resolved}
-      onClick={toggleResolved}
-      className={cn('size-8', item.resolved && 'bg-success-bg text-success')}
-    />
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label={label}
+            aria-pressed={item.resolved}
+            onClick={toggleResolved}
+            className={cn(
+              'h-8 gap-1 px-2.5',
+              item.resolved &&
+                'border-success bg-success text-white hover:bg-success-800',
+            )}
+          >
+            <CircleCheck aria-hidden="true" />
+            Resuelto
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
 

@@ -26,6 +26,7 @@ export function makeAgendaItem(
     resolved: false,
     borderColor: null,
     fillColor: null,
+    fillBeforeResolved: null,
     clientId: null,
     ...overrides,
   }

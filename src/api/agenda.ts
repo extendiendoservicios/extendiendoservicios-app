@@ -55,6 +55,8 @@ export interface AgendaItem {
   borderColor: number | null
   /** Relleno: 0–19, 20 (verde resuelto) o `null`. */
   fillColor: number | null
+  /** Relleno que tenía antes de marcarlo resuelto (la RPC lo guarda). */
+  fillBeforeResolved: number | null
   /** Cliente creado desde el bloque (solo nuevos). */
   clientId: string | null
 }
@@ -82,6 +84,7 @@ function mapAgendaItem(row: AgendaItemRow): AgendaItem {
     resolved: row.resolved,
     borderColor: row.border_color,
     fillColor: row.fill_color,
+    fillBeforeResolved: row.fill_before_resolved,
     clientId: row.client_id,
   }
 }

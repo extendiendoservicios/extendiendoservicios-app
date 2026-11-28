@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { AGENDA_TEXT_MAX_LENGTH, type AgendaItem } from '@/api/agenda'
 import { isApiError } from '@/api/errors'
-import { agendaBlockStyle } from '../agendaColors'
+import { agendaBlockStyle, noteVisibleFill } from '../agendaColors'
 import { notesOf } from '../agendaMonth'
 import { useSaveAgendaItemMutation } from '../queries'
 import { AgendaColorPicker } from './AgendaColorPicker'
@@ -53,6 +54,30 @@ function useSaveNote(month: string) {
   }
 }
 
+/** Textarea que crece con el contenido: sin scroll interno (AG-26). */
+function AutoTextarea({
+  value,
+  ...props
+}: React.ComponentProps<typeof Textarea> & { value: string }) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+  useLayoutEffect(() => {
+    const element = ref.current
+    if (element) {
+      element.style.height = 'auto'
+      element.style.height = `${element.scrollHeight}px`
+    }
+  }, [value])
+  return (
+    <Textarea
+      ref={ref}
+      rows={1}
+      value={value}
+      {...props}
+      className="min-h-0 resize-none overflow-hidden bg-surface px-2 py-1 text-text"
+    />
+  )
+}
+
 /** Un renglón con viñeta, check y texto editable en el mismo lugar (AG-10). */
 function NoteRow({ item, month }: { item: AgendaItem; month: string }) {
   const [text, setText] = useState(item.body ?? '')
@@ -86,32 +111,26 @@ function NoteRow({ item, month }: { item: AgendaItem; month: string }) {
   return (
     <li
       className="flex flex-col gap-1 rounded-md border border-border bg-surface p-1.5"
-      style={agendaBlockStyle(item.borderColor, item.fillColor)}
+      style={agendaBlockStyle(item.borderColor, noteVisibleFill(item))}
       data-testid="agenda-note"
     >
       <div className="flex items-start gap-2">
         <span aria-hidden="true" className="pt-1.5 text-[14px] leading-none">
           •
         </span>
-        <Input
+        <AutoTextarea
           aria-label="Texto de la nota"
           value={text}
           maxLength={AGENDA_TEXT_MAX_LENGTH}
           onChange={(event) => setText(event.target.value)}
           onBlur={commitText}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              event.currentTarget.blur()
-            }
-          }}
-          className="bg-surface text-text"
         />
       </div>
-      <div className="flex items-center gap-1 rounded-sm bg-surface/90 px-1 text-text">
+      <div className="flex items-center justify-end gap-1 rounded-sm bg-surface/90 px-1 text-text">
         <AgendaResolvedIconButton item={item} />
         <AgendaColorPicker
           iconOnly
-          value={{ border: item.borderColor, fill: item.fillColor }}
+          value={{ border: item.borderColor, fill: noteVisibleFill(item) }}
           onChange={(next) =>
             saveNote({
               id: item.id,

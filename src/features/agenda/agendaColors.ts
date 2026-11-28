@@ -167,3 +167,18 @@ export function agendaBlockStyle(
   }
   return result
 }
+
+/**
+ * Relleno visible de una nota (AG-26): al resolverla, el verde va solo al botón
+ * «Resuelto», no a la nota. Si el relleno es el verde de «resuelto», se muestra
+ * el que tenía antes; si se pintó a mano, se respeta.
+ */
+export function noteVisibleFill(item: {
+  resolved: boolean
+  fillColor: number | null
+  fillBeforeResolved: number | null
+}): number | null {
+  return item.resolved && item.fillColor === RESOLVED_FILL_INDEX
+    ? item.fillBeforeResolved
+    : item.fillColor
+}

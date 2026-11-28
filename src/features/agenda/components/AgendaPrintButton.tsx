@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import type { AgendaItem } from '@/api/agenda'
 import { PrintableLetterhead } from '@/features/print/PrintableLetterhead'
 import '@/features/planning/components/calendarPrint.css'
-import { agendaBlockStyle } from '../agendaColors'
+import { agendaBlockStyle, noteVisibleFill } from '../agendaColors'
 import {
   NEW_SLOTS,
   eventSummary,
@@ -143,7 +143,10 @@ function AgendaPrintSheet({
               <li
                 key={note.id}
                 className="rounded-sm border border-neutral-300 px-1.5 py-0.5"
-                style={agendaBlockStyle(note.borderColor, note.fillColor)}
+                style={{
+                  ...agendaBlockStyle(note.borderColor, noteVisibleFill(note)),
+                  whiteSpace: 'pre-wrap',
+                }}
               >
                 • {note.body}
                 {note.resolved ? ' (resuelto)' : ''}
