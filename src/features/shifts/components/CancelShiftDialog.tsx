@@ -18,6 +18,11 @@ interface CancelShiftDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onCancelled?: () => void
+  /**
+   * Aviso extra arriba del texto fijo (la Agenda avisa que el turno tiene otras
+   * personas asignadas y se cancela para todas).
+   */
+  warning?: string
 }
 
 function CancelShiftDialog({
@@ -26,6 +31,7 @@ function CancelShiftDialog({
   open,
   onOpenChange,
   onCancelled,
+  warning,
 }: CancelShiftDialogProps) {
   const cancelShift = useCancelShiftMutation(shiftDate)
 
@@ -47,7 +53,11 @@ function CancelShiftDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="Cancelar turno"
-      description="Las asignaciones quedan registradas para el historial; solo cambia el estado del turno."
+      description={
+        warning
+          ? `${warning} Las asignaciones quedan registradas para el historial; solo cambia el estado del turno.`
+          : 'Las asignaciones quedan registradas para el historial; solo cambia el estado del turno.'
+      }
       reasonLabel="Motivo de la cancelación"
       reasonPlaceholder="Por ejemplo: el cliente suspendió el servicio ese día"
       confirmLabel="Cancelar turno"

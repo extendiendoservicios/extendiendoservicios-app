@@ -3,7 +3,7 @@ import { formatTaxId, formatTaxIdWhileTyping } from '@/lib/taxId'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useParams } from 'react-router'
+import { useLocation, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -58,6 +58,8 @@ import {
 import { ClientColorPicker } from '@/features/clients/components/ClientColorPicker'
 import { useClientCategoriesQuery } from '@/features/clients/categoryQueries'
 import { useLeaveForm } from '@/app/shells/backNavigation'
+import { readAgendaClientPrefill } from '@/features/agenda/clientPrefill'
+import { useMarkAgendaItemClientMutation } from '@/features/agenda/queries'
 
 /**
  * ADM-20 "Cliente · formulario" (CLIENT-003, `05` línea 74): alta
@@ -74,6 +76,11 @@ export default function ClientFormPage() {
   const isEditMode = id != null
   const navigate = useNavigate()
   const leaveForm = useLeaveForm()
+  const location = useLocation()
+  // P37 (AG-09): «Crear cliente» desde un bloque de Nuevos de la Agenda.
+  const agendaPrefill =
+    id == null ? readAgendaClientPrefill(location.state) : null
+  const markAgendaClient = useMarkAgendaItemClientMutation()
   const auth = useAuth()
 
   const clientQuery = useClientDetailQuery(id)
@@ -102,13 +109,13 @@ export default function ClientFormPage() {
   } = useForm<ClientFormValues>({
     resolver: zodResolver(clientFormSchema),
     defaultValues: {
-      legalName: '',
+      legalName: agendaPrefill?.legalName ?? '',
       tradeName: '',
       cuit: '',
-      adminAddress: '',
+      adminAddress: agendaPrefill?.adminAddress ?? '',
       coordinates: null,
       status: 'active',
-      notes: '',
+      notes: agendaPrefill?.notes ?? '',
       calendarColor: null,
       categoryId: NO_CATEGORY_VALUE,
       bankName: '',
@@ -226,13 +233,32 @@ export default function ClientFormPage() {
         })
         const clientName =
           (values.tradeName ?? '').trim() || values.legalName.trim()
+        // El cliente ya existe: si no se puede vincular el bloque, se avisa y se sigue.
+        if (agendaPrefill) {
+          try {
+            await markAgendaClient.mutateAsync({
+              id: agendaPrefill.agendaItemId,
+              clientId: client.id,
+            })
+          } catch (error) {
+            toast.warning(
+              `Se creó ${clientName}, pero no pudimos marcar el bloque de la Agenda como resuelto: ${
+                isApiError(error)
+                  ? error.message
+                  : 'probá de nuevo desde la Agenda.'
+              }`,
+            )
+          }
+        }
+        const afterCreate =
+          agendaPrefill?.returnTo ?? `/admin/clientes/${client.id}`
         // El alta ya está hecha: si los datos bancarios fallan, se avisa y se sigue.
         const bankError = await saveBankDetails(client.id, values)
         if (bankError) {
           toast.warning(
             `Se creó ${clientName}, pero no se guardaron los datos bancarios: ${bankError} Cargalos de nuevo desde Editar.`,
           )
-          leaveForm(`/admin/clientes/${client.id}`, 'create')
+          leaveForm(afterCreate, 'create')
           return
         }
         if (pendingPhoto) {
@@ -249,7 +275,7 @@ export default function ClientFormPage() {
         } else {
           toast.success('Creamos el cliente.')
         }
-        leaveForm(`/admin/clientes/${client.id}`, 'create')
+        leaveForm(afterCreate, 'create')
       }
     } catch (error) {
       toast.error(

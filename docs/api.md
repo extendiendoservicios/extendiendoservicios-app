@@ -676,3 +676,7 @@ Base: migración `0087`. Detalle de las pantallas en `docs/features/p30-3b-licen
 Cada paquete de F10 en adelante agrega su sección acá (`myDay`) siguiendo
 el mismo formato: función, canal, particularidades que no se deducen de
 leer el nombre.
+
+### Agenda (P37)
+
+`src/api/agenda.ts`: pizarra mensual y lista diaria de dueños y administradores (migraciones 0092 y 0093). El detalle de funciones, errores y pantallas está en `docs/features/agenda.md`.

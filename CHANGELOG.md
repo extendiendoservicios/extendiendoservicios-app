@@ -7,6 +7,19 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/) (ADR-
 
 ## [Sin publicar]
 
+## [0.37.0] - 2026-11-28
+
+Agenda, la pizarra mensual de la dirección (P37). Migraciones 0092 y 0093.
+
+### Agregado
+
+- Nueva sección «Agenda», para dueños y administradores, que reemplaza la agenda de papel y los anotadores. Tiene un calendario del mes con eventos por día. Al tocar un día se abre el detalle; cada evento tiene Trabajo, Hora, Lugar, Cliente/Persona, Personas y Observación, y un menú para editarlo, marcarlo como resuelto, pintarlo, duplicarlo al mes siguiente o eliminarlo.
+- Colores de borde y de relleno elegidos por separado, de una paleta de 20 colores saturados y pasteles, para eventos, bloques de Nuevos, notas y personas. Al marcar algo como resuelto se pinta de verde.
+- «Nuevos»: siete columnas, de lunes a domingo, con bloques para lugares, clientes y presupuestos que todavía no se dieron de alta. «Crear cliente» abre el alta de cliente con los datos del bloque ya cargados y lo deja vinculado.
+- Notas con check de resuelto, multilínea, y calculadora simple.
+- Lista diaria del personal, ordenada por legajo, con el puesto o zona, los turnos y las licencias del día, que salen solos, y renglones libres. Desde el menú de cada persona se puede cambiar el horario o cancelar el turno real. El botón «WhatsApp» copia el parte del día con el formato del grupo.
+- Impresión de la Agenda en hoja A4 apaisada y vista adaptada al celular.
+
 ## [0.36.0] - 2026-11-27
 
 Planilla de asistencia con turnos asignados (P36). Sin migraciones.
