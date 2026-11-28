@@ -34,6 +34,8 @@ interface AgendaEventEditorProps {
   /** Se llamó después de guardar un evento nuevo (para cerrar el formulario de alta). */
   onSaved?: (item: AgendaItem) => void
   onCancelNew?: () => void
+  /** Evento existente: vuelve a la vista de lectura sin guardar. */
+  onCancelEdit?: () => void
 }
 
 /**
@@ -48,6 +50,7 @@ function AgendaEventEditor({
   suggestions,
   onSaved,
   onCancelNew,
+  onCancelEdit,
 }: AgendaEventEditorProps) {
   const save = useSaveAgendaItemMutation()
   const {
@@ -244,8 +247,12 @@ function AgendaEventEditor({
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {item && <AgendaDuplicateButton item={item} />}
           {item && <AgendaDeleteButton item={item} />}
-          {!item && onCancelNew && (
-            <Button type="button" variant="ghost" onClick={onCancelNew}>
+          {(item ? onCancelEdit : onCancelNew) && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={item ? onCancelEdit : onCancelNew}
+            >
               Cancelar
             </Button>
           )}
