@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   Ban,
+  CalendarDays,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -22,6 +23,13 @@ import { Input } from '@/components/ui/input'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { IconButton, IconButtonGroup } from '@/components/IconButton'
+import { Calendar } from '@/components/ui/calendar'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import { es as esDayPicker } from 'react-day-picker/locale'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Dialog,
@@ -62,7 +70,11 @@ import {
   canManageShiftTime,
   isShiftCancellable,
 } from '@/features/shifts/permissions'
-import { addDaysToIsoDate, formatDateOnly } from '@/features/settings/dateOnly'
+import {
+  addDaysToIsoDate,
+  formatDateOnly,
+  localDateToIsoDate,
+} from '@/features/settings/dateOnly'
 import { useWorkdaysByDateQuery } from '@/features/workdays/queries'
 import { agendaBlockStyle } from '../agendaColors'
 import {
@@ -169,6 +181,12 @@ type RowDialog =
   | { type: 'fixed' }
   | { type: 'new-line' }
   | { type: 'edit-line'; line: AgendaStaffLine }
+
+/** `YYYY-MM-DD` a `Date` local (sin pasar por UTC). */
+function dateOnlyToLocalDate(isoDate: string): Date {
+  const [year = 0, month = 1, day = 1] = isoDate.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
 
 function truncate(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max)}…` : text
@@ -515,6 +533,7 @@ function AgendaEmployeeList() {
   } | null>(null)
   const [cancelTarget, setCancelTarget] = useState<ShiftLine | null>(null)
   const [manualText, setManualText] = useState<string | null>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // Al cambiar de día, el scroll interno de la lista vuelve arriba.
@@ -553,9 +572,22 @@ function AgendaEmployeeList() {
       aria-label="Lista de empleados"
       className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-3"
     >
-      <h2 className="text-[14px] font-semibold text-text">
-        Lista de empleados
-      </h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-[14px] font-semibold text-text">
+          Lista de empleados
+        </h2>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          icon={Copy}
+          aria-label="Copiar el parte del día para WhatsApp"
+          disabled={isLoading || entries.length === 0}
+          onClick={() => void copyForWhatsApp()}
+        >
+          WhatsApp
+        </Button>
+      </div>
       <div className="flex items-center justify-between gap-2">
         <IconButtonGroup>
           <IconButton
@@ -568,6 +600,33 @@ function AgendaEmployeeList() {
             aria-label="Día siguiente"
             onClick={() => setDate((current) => addDaysToIsoDate(current, 1))}
           />
+          <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <PopoverTrigger asChild>
+                    <IconButton icon={CalendarDays} aria-label="Elegir fecha" />
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Elegir fecha</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <PopoverContent align="start" className="w-auto p-0">
+              <Calendar
+                mode="single"
+                locale={esDayPicker}
+                weekStartsOn={1}
+                selected={dateOnlyToLocalDate(date)}
+                defaultMonth={dateOnlyToLocalDate(date)}
+                onSelect={(picked) => {
+                  if (picked) {
+                    setDate(localDateToIsoDate(picked))
+                    setPickerOpen(false)
+                  }
+                }}
+              />
+            </PopoverContent>
+          </Popover>
         </IconButtonGroup>
         <p className="text-[13px] font-semibold text-text capitalize">
           {formatDateOnly(date)}
@@ -583,15 +642,6 @@ function AgendaEmployeeList() {
           </Button>
         )}
       </div>
-      <Button
-        type="button"
-        variant="ghost"
-        icon={Copy}
-        disabled={isLoading || entries.length === 0}
-        onClick={() => void copyForWhatsApp()}
-      >
-        Copiar para WhatsApp
-      </Button>
 
       <div
         ref={scrollRef}
