@@ -3,7 +3,7 @@ import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { AgendaItem } from '@/api/agenda'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
-import { NEW_SLOTS, groupNewBySlot } from '../agendaMonth'
+import { NEW_SLOTS, NEW_SLOT_NAMES, groupNewBySlot } from '../agendaMonth'
 import type { AgendaSuggestions } from '../useAgendaSuggestions'
 import { AgendaNewCard } from './AgendaNewCard'
 
@@ -83,8 +83,11 @@ function AgendaNewSection({
             key={slot}
             className="flex min-w-0 flex-col gap-2"
             role="group"
-            aria-label={`Columna ${slot + 1}`}
+            aria-label={NEW_SLOT_NAMES[slot]}
           >
+            <h3 className="truncate px-0.5 text-[11px] font-semibold uppercase tracking-wide text-text-3">
+              {NEW_SLOT_NAMES[slot]}
+            </h3>
             {(columns[slot] ?? []).map((item) => (
               <AgendaNewCard
                 key={item.id}
@@ -108,7 +111,7 @@ function AgendaNewSection({
               variant="ghost"
               size="sm"
               icon={Plus}
-              aria-label={`Agregar bloque en la columna ${slot + 1}`}
+              aria-label={`Agregar bloque en ${NEW_SLOT_NAMES[slot]}`}
               onClick={() => openDraft(slot)}
             />
           </div>

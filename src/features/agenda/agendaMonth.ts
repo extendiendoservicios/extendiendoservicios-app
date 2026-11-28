@@ -13,6 +13,17 @@ export const MAX_EVENTS_PER_CELL = 3
 /** Cantidad de columnas de «Nuevos» (slot 0 a 6). */
 export const NEW_SLOTS = 7
 
+/** Nombre de cada columna de «Nuevos» (AG-29): el slot 0 es Lunes y el 6, Domingo. */
+export const NEW_SLOT_NAMES = [
+  'Lunes',
+  'Martes',
+  'Miércoles',
+  'Jueves',
+  'Viernes',
+  'Sábado',
+  'Domingo',
+] as const
+
 /** Primer día del mes como `YYYY-MM-01`. */
 export function monthStartIso(year: number, month: number): string {
   return `${year}-${String(month).padStart(2, '0')}-01`

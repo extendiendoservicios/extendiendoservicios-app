@@ -26,7 +26,7 @@ import {
 import { isApiError } from '@/api/errors'
 import type { AgendaItem } from '@/api/agenda'
 import { agendaBlockStyle } from '../agendaColors'
-import { newItemTitle } from '../agendaMonth'
+import { NEW_SLOT_NAMES, newItemTitle } from '../agendaMonth'
 import { buildClientPrefillState } from '../clientPrefill'
 import { useSaveAgendaItemMutation } from '../queries'
 import {
@@ -285,9 +285,9 @@ function AgendaNewCard({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {Array.from({ length: 7 }, (_, index) => (
-                  <SelectItem key={index} value={String(index)}>
-                    Columna {index + 1}
+                {NEW_SLOT_NAMES.map((name, index) => (
+                  <SelectItem key={name} value={String(index)}>
+                    {name}
                   </SelectItem>
                 ))}
               </SelectContent>
