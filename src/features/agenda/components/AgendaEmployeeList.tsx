@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import {
@@ -9,12 +9,17 @@ import {
   ChevronUp,
   Clock,
   Copy,
+  MapPin,
+  MoreVertical,
+  Palette,
+  Pencil,
   Plus,
   Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Field, FieldLabel } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { IconButton, IconButtonGroup } from '@/components/IconButton'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -22,9 +27,26 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { isApiError } from '@/api/errors'
 import type { AgendaStaffLine } from '@/api/agenda'
 import { useAuth } from '@/features/auth/AuthProvider'
@@ -46,6 +68,7 @@ import { agendaBlockStyle } from '../agendaColors'
 import {
   buildCoordinatorWorkdays,
   buildDailyStaffList,
+  formatGroupRange,
   moveLine,
   type DailyCoordinatorEntry,
   type DailyStaffEntry,
@@ -63,7 +86,7 @@ import {
   useSetAgendaEmployeeFixedLineMutation,
 } from '../queries'
 import { buildWhatsAppText } from '../whatsappText'
-import { AgendaColorPicker } from './AgendaColorPicker'
+import { AgendaColorDialog } from './AgendaColorPicker'
 
 const LINE_MAX_LENGTH = 1000
 
@@ -71,193 +94,84 @@ function errorText(error: unknown, fallback: string): string {
   return isApiError(error) ? error.message : fallback
 }
 
-/** Renglón fijo (AG-22): texto de puesto o zona, sin viñeta, editable en línea. */
-function FixedLineInput({ entry }: { entry: DailyStaffEntry }) {
-  const [text, setText] = useState(entry.fixedLine ?? '')
-  const [synced, setSynced] = useState(entry.fixedLine)
-  const setFixedLine = useSetAgendaEmployeeFixedLineMutation()
-
-  if (entry.fixedLine !== synced) {
-    setSynced(entry.fixedLine)
-    setText(entry.fixedLine ?? '')
-  }
-
-  function commit() {
-    const next = text.trim()
-    if (next === (entry.fixedLine ?? '')) {
-      return
-    }
-    setFixedLine.mutate(
-      { employeeId: entry.employeeId, text: next === '' ? null : next },
-      {
-        onError: (error) => {
-          toast.error(errorText(error, 'No pudimos guardar el renglón fijo.'))
-          setText(entry.fixedLine ?? '')
-        },
-      },
-    )
-  }
-
-  return (
-    <Input
-      aria-label={`Renglón fijo de ${entry.name}`}
-      placeholder="Puesto o zona (se repite todos los días)"
-      value={text}
-      maxLength={LINE_MAX_LENGTH}
-      onChange={(event) => setText(event.target.value)}
-      onBlur={commit}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter') {
-          event.currentTarget.blur()
-        }
-      }}
-      className="h-8 bg-surface text-[12px] text-text"
-    />
-  )
-}
-
-interface FreeLineRowProps {
-  line: AgendaStaffLine
-  index: number
-  total: number
-  onMove: (index: number, delta: -1 | 1) => void
-  day: string
-}
-
-/** Renglón libre del día (AG-23): texto editable en línea, subir, bajar y borrar. */
-function FreeLineRow({ line, index, total, onMove, day }: FreeLineRowProps) {
-  const [text, setText] = useState(line.body)
-  const [synced, setSynced] = useState(line.body)
-  const save = useSaveAgendaStaffLineMutation()
-  const remove = useDeleteAgendaStaffLineMutation()
-
-  if (line.body !== synced) {
-    setSynced(line.body)
-    setText(line.body)
-  }
-
-  function commit() {
-    const next = text.trim()
-    if (next === line.body) {
-      return
-    }
-    if (next === '') {
-      toast.error('El renglón no puede quedar vacío. Para sacarlo, borralo.')
-      setText(line.body)
-      return
-    }
-    save.mutate(
-      { id: line.id, employeeId: line.employeeId, day, body: next },
-      {
-        onError: (error) => {
-          toast.error(errorText(error, 'No pudimos guardar el renglón.'))
-          setText(line.body)
-        },
-      },
-    )
-  }
-
-  return (
-    <li className="flex items-center gap-1 text-text">
-      <span aria-hidden="true">▪️</span>
-      <Input
-        aria-label="Renglón libre"
-        value={text}
-        maxLength={LINE_MAX_LENGTH}
-        onChange={(event) => setText(event.target.value)}
-        onBlur={commit}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.currentTarget.blur()
-          }
-        }}
-        className="h-8 bg-surface text-[12px]"
-      />
-      <IconButtonGroup>
-        <IconButton
-          icon={ChevronUp}
-          aria-label="Subir renglón"
-          disabled={index === 0}
-          onClick={() => onMove(index, -1)}
-          className="size-7"
-        />
-        <IconButton
-          icon={ChevronDown}
-          aria-label="Bajar renglón"
-          disabled={index === total - 1}
-          onClick={() => onMove(index, 1)}
-          className="size-7"
-        />
-        <IconButton
-          icon={Trash2}
-          aria-label="Borrar renglón"
-          disabled={remove.isPending}
-          onClick={() =>
-            remove.mutate(line.id, {
-              onError: (error) =>
-                toast.error(errorText(error, 'No pudimos borrar el renglón.')),
-            })
-          }
-          className="size-7 text-danger"
-        />
-      </IconButtonGroup>
-    </li>
-  )
-}
-
-/** «+ renglón»: Enter o salir del campo con texto lo agrega. */
-function NewFreeLine({
-  employeeId,
-  day,
-  onClose,
+/** Diálogo chico para escribir un texto (renglón fijo o renglón libre). */
+function TextLineDialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  label,
+  initial,
+  allowEmpty,
+  pending,
+  onSubmit,
 }: {
-  employeeId: string
-  day: string
-  onClose: () => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  title: string
+  description: string
+  label: string
+  initial: string
+  allowEmpty: boolean
+  pending: boolean
+  onSubmit: (text: string) => void
 }) {
-  const [text, setText] = useState('')
-  const save = useSaveAgendaStaffLineMutation()
-
-  function commit() {
-    const body = text.trim()
-    if (body === '') {
-      onClose()
-      return
-    }
-    save.mutate(
-      { id: null, employeeId, day, body },
-      {
-        onSuccess: onClose,
-        onError: (error) =>
-          toast.error(errorText(error, 'No pudimos agregar el renglón.')),
-      },
-    )
-  }
+  const [text, setText] = useState(initial)
+  const trimmed = text.trim()
+  const canSave = allowEmpty || trimmed !== ''
 
   return (
-    <li className="flex items-center gap-1 text-text">
-      <span aria-hidden="true">▪️</span>
-      <Input
-        ref={(element) => element?.focus()}
-        aria-label="Renglón nuevo"
-        placeholder="Escribí el renglón y apretá Enter"
-        value={text}
-        disabled={save.isPending}
-        maxLength={LINE_MAX_LENGTH}
-        onChange={(event) => setText(event.target.value)}
-        onBlur={commit}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.currentTarget.blur()
-          } else if (event.key === 'Escape') {
-            setText('')
-            onClose()
-          }
-        }}
-        className="h-8 bg-surface text-[12px]"
-      />
-    </li>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        <form
+          noValidate
+          className="flex flex-col gap-3"
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (canSave) {
+              onSubmit(trimmed)
+            }
+          }}
+        >
+          <Field>
+            <FieldLabel htmlFor="agenda-line-text">{label}</FieldLabel>
+            <Input
+              id="agenda-line-text"
+              value={text}
+              maxLength={LINE_MAX_LENGTH}
+              onChange={(event) => setText(event.target.value)}
+            />
+          </Field>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" loading={pending} disabled={!canSave}>
+              Guardar
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
+}
+
+type RowDialog =
+  | { type: 'color' }
+  | { type: 'fixed' }
+  | { type: 'new-line' }
+  | { type: 'edit-line'; line: AgendaStaffLine }
+
+function truncate(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max)}…` : text
 }
 
 interface StaffRowProps {
@@ -274,6 +188,10 @@ interface StaffRowProps {
   ) => void
 }
 
+/**
+ * Un bloque de persona (AG-28): solo texto. Todo lo que se puede hacer está en
+ * el menú ⋮ de la esquina superior derecha.
+ */
 function StaffRow({
   entry,
   day,
@@ -284,8 +202,10 @@ function StaffRow({
   onCancel,
   onColor,
 }: StaffRowProps) {
-  const [adding, setAdding] = useState(false)
+  const [dialog, setDialog] = useState<RowDialog | null>(null)
   const save = useSaveAgendaStaffLineMutation()
+  const remove = useDeleteAgendaStaffLineMutation()
+  const setFixedLine = useSetAgendaEmployeeFixedLineMutation()
 
   async function handleMove(index: number, delta: -1 | 1) {
     const next = moveLine(entry.freeLines, index, delta)
@@ -306,70 +226,163 @@ function StaffRow({
     }
   }
 
+  function saveFixed(text: string) {
+    setFixedLine.mutate(
+      { employeeId: entry.employeeId, text: text === '' ? null : text },
+      {
+        onSuccess: () => setDialog(null),
+        onError: (error) =>
+          toast.error(errorText(error, 'No pudimos guardar el renglón fijo.')),
+      },
+    )
+  }
+
+  function saveLine(id: string | null, text: string) {
+    save.mutate(
+      { id, employeeId: entry.employeeId, day, body: text },
+      {
+        onSuccess: () => setDialog(null),
+        onError: (error) =>
+          toast.error(errorText(error, 'No pudimos guardar el renglón.')),
+      },
+    )
+  }
+
+  function removeLine(line: AgendaStaffLine) {
+    remove.mutate(line.id, {
+      onError: (error) =>
+        toast.error(errorText(error, 'No pudimos borrar el renglón.')),
+    })
+  }
+
+  const shifts = entry.autoLines.filter(
+    (line): line is ShiftLine =>
+      line.kind === 'shift' && isShiftCancellable(line.shiftStatus),
+  )
+  const menuLabel = `Opciones de ${entry.label}`
+
   return (
     <li
-      className="flex flex-col gap-1.5 rounded-md border border-border bg-bg p-2"
+      className="relative rounded-md border border-border bg-bg py-1.5 pr-9 pl-2"
       style={agendaBlockStyle(entry.borderColor, entry.fillColor)}
       data-testid="agenda-employee"
     >
-      <div className="flex items-center justify-between gap-2">
+      <div className="absolute top-0.5 right-0.5">
+        <DropdownMenu>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <IconButton
+                    icon={MoreVertical}
+                    aria-label={menuLabel}
+                    className="size-7"
+                  />
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent>{menuLabel}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <DropdownMenuContent align="end" className="max-w-[18rem]">
+            <DropdownMenuItem onSelect={() => setDialog({ type: 'color' })}>
+              <Palette />
+              Color…
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setDialog({ type: 'fixed' })}>
+              <MapPin />
+              Puesto o zona…
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setDialog({ type: 'new-line' })}>
+              <Plus />
+              Agregar renglón…
+            </DropdownMenuItem>
+            {shifts.map((shift) => {
+              const name = `${formatGroupRange(shift.startTime, shift.endTime, shift.openEnded)} ${shift.siteName}`
+              return (
+                <Fragment key={shift.assignmentId}>
+                  <DropdownMenuSeparator />
+                  {canChangeTime && (
+                    <DropdownMenuItem
+                      onSelect={() => onChangeTime(entry, shift)}
+                    >
+                      <Clock />
+                      <span className="truncate">Cambiar horario · {name}</span>
+                    </DropdownMenuItem>
+                  )}
+                  {canCancel && (
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onSelect={() => onCancel(shift)}
+                    >
+                      <Ban />
+                      <span className="truncate">Cancelar turno · {name}</span>
+                    </DropdownMenuItem>
+                  )}
+                </Fragment>
+              )
+            })}
+            {entry.freeLines.map((line, index) => (
+              <Fragment key={line.id}>
+                <DropdownMenuSeparator />
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <span className="truncate">
+                      Renglón · {truncate(line.body, 24)}
+                    </span>
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem
+                      onSelect={() => setDialog({ type: 'edit-line', line })}
+                    >
+                      <Pencil />
+                      <span className="truncate">
+                        Editar renglón · {truncate(line.body, 24)}
+                      </span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      disabled={index === 0}
+                      onSelect={() => void handleMove(index, -1)}
+                    >
+                      <ChevronUp />
+                      Subir
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      disabled={index === entry.freeLines.length - 1}
+                      onSelect={() => void handleMove(index, 1)}
+                    >
+                      <ChevronDown />
+                      Bajar
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onSelect={() => removeLine(line)}
+                    >
+                      <Trash2 />
+                      Eliminar
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              </Fragment>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <div className="flex flex-col gap-0.5 text-[12px] leading-snug text-text">
         <Link
           to={`/admin/empleados/${entry.employeeId}`}
           className="text-[13px] font-semibold underline-offset-2 hover:underline"
         >
           {entry.label}
         </Link>
-        <AgendaColorPicker
-          label="Color"
-          value={{ border: entry.borderColor, fill: entry.fillColor }}
-          onChange={(next) => onColor(entry.employeeId, next)}
-        />
-      </div>
-      <div className="flex flex-col gap-1 rounded-sm bg-surface/90 p-1.5 text-[12px] text-text">
-        <FixedLineInput entry={entry} />
-
-        {entry.autoLines.map((line, index) =>
-          line.kind === 'leave' ? (
-            <p key={`leave-${index}`}>▪️ {line.text}</p>
-          ) : (
-            <div key={line.assignmentId} className="flex flex-col gap-1">
-              <p>
-                ▪️ {line.text}
-                <span className="block pl-5 text-[11px] text-text-3">
-                  {line.clientName}
-                </span>
-              </p>
-              <div className="flex flex-wrap gap-1.5 pl-5">
-                {canChangeTime && isShiftCancellable(line.shiftStatus) && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    icon={Clock}
-                    onClick={() => onChangeTime(entry, line)}
-                  >
-                    Cambiar horario
-                  </Button>
-                )}
-                {canCancel && isShiftCancellable(line.shiftStatus) && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    icon={Ban}
-                    className="text-danger"
-                    onClick={() => onCancel(line)}
-                  >
-                    Cancelar turno
-                  </Button>
-                )}
-              </div>
-            </div>
-          ),
-        )}
-
+        {entry.fixedLine && <p>{entry.fixedLine}</p>}
+        {entry.autoLines.map((line, index) => (
+          <p key={line.kind === 'leave' ? `leave-${index}` : line.assignmentId}>
+            ▪️ {line.text}
+          </p>
+        ))}
         {entry.isCoordinator && workday && (
-          <div className="flex flex-col gap-0.5 text-text-2">
+          <div className="flex flex-col text-text-2">
             <span>{workday.workdayLabel}</span>
             {workday.supervisions.map((supervision) => (
               <Link
@@ -382,37 +395,57 @@ function StaffRow({
             ))}
           </div>
         )}
-
-        <ul className="flex flex-col gap-1">
-          {entry.freeLines.map((line, index) => (
-            <FreeLineRow
-              key={line.id}
-              line={line}
-              index={index}
-              total={entry.freeLines.length}
-              onMove={(from, delta) => void handleMove(from, delta)}
-              day={day}
-            />
-          ))}
-          {adding && (
-            <NewFreeLine
-              employeeId={entry.employeeId}
-              day={day}
-              onClose={() => setAdding(false)}
-            />
-          )}
-        </ul>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          icon={Plus}
-          className="self-start"
-          onClick={() => setAdding(true)}
-        >
-          renglón
-        </Button>
+        {entry.freeLines.map((line) => (
+          <p key={line.id}>▪️ {line.body}</p>
+        ))}
       </div>
+
+      <AgendaColorDialog
+        open={dialog?.type === 'color'}
+        onOpenChange={(open) => !open && setDialog(null)}
+        title={`Color de ${entry.label}`}
+        value={{ border: entry.borderColor, fill: entry.fillColor }}
+        onChange={(next) => onColor(entry.employeeId, next)}
+      />
+      {dialog?.type === 'fixed' && (
+        <TextLineDialog
+          open
+          onOpenChange={(open) => !open && setDialog(null)}
+          title="Puesto o zona"
+          description="Se repite todos los días. Dejalo vacío para sacarlo."
+          label="Puesto o zona"
+          initial={entry.fixedLine ?? ''}
+          allowEmpty
+          pending={setFixedLine.isPending}
+          onSubmit={saveFixed}
+        />
+      )}
+      {dialog?.type === 'new-line' && (
+        <TextLineDialog
+          open
+          onOpenChange={(open) => !open && setDialog(null)}
+          title="Agregar renglón"
+          description="Un renglón libre solo para este día."
+          label="Renglón"
+          initial=""
+          allowEmpty={false}
+          pending={save.isPending}
+          onSubmit={(text) => saveLine(null, text)}
+        />
+      )}
+      {dialog?.type === 'edit-line' && (
+        <TextLineDialog
+          open
+          onOpenChange={(open) => !open && setDialog(null)}
+          title="Editar renglón"
+          description="Solo cambia este día."
+          label="Renglón"
+          initial={dialog.line.body}
+          allowEmpty={false}
+          pending={save.isPending}
+          onSubmit={(text) => saveLine(dialog.line.id, text)}
+        />
+      )}
     </li>
   )
 }
