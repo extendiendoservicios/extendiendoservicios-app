@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import {
@@ -482,6 +482,12 @@ function AgendaEmployeeList() {
   } | null>(null)
   const [cancelTarget, setCancelTarget] = useState<ShiftLine | null>(null)
   const [manualText, setManualText] = useState<string | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Al cambiar de día, el scroll interno de la lista vuelve arriba.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 })
+  }, [date])
 
   function changeColor(
     employeeId: string,
@@ -554,33 +560,39 @@ function AgendaEmployeeList() {
         Copiar para WhatsApp
       </Button>
 
-      {isLoading ? (
-        <Skeleton className="h-24" />
-      ) : assignmentsQuery.isError || staffQuery.isError ? (
-        <p role="alert" className="text-[12.5px] text-danger">
-          No pudimos cargar la lista del día.
-        </p>
-      ) : entries.length === 0 ? (
-        <p className="text-[12.5px] text-text-3">No hay personal activo.</p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {entries.map((entry) => (
-            <StaffRow
-              key={entry.employeeId}
-              entry={entry}
-              day={date}
-              workday={workdays.get(entry.employeeId)}
-              canChangeTime={canManageShiftTime(actor)}
-              canCancel={canCancelShift(actor)}
-              onChangeTime={(row, shift) =>
-                setTimeTarget({ entry: row, shift })
-              }
-              onCancel={setCancelTarget}
-              onColor={changeColor}
-            />
-          ))}
-        </ul>
-      )}
+      <div
+        ref={scrollRef}
+        data-testid="agenda-employee-scroll"
+        className="-mx-1 max-h-[70vh] overflow-y-auto px-1 py-0.5 lg:max-h-[26rem]"
+      >
+        {isLoading ? (
+          <Skeleton className="h-24" />
+        ) : assignmentsQuery.isError || staffQuery.isError ? (
+          <p role="alert" className="text-[12.5px] text-danger">
+            No pudimos cargar la lista del día.
+          </p>
+        ) : entries.length === 0 ? (
+          <p className="text-[12.5px] text-text-3">No hay personal activo.</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {entries.map((entry) => (
+              <StaffRow
+                key={entry.employeeId}
+                entry={entry}
+                day={date}
+                workday={workdays.get(entry.employeeId)}
+                canChangeTime={canManageShiftTime(actor)}
+                canCancel={canCancelShift(actor)}
+                onChangeTime={(row, shift) =>
+                  setTimeTarget({ entry: row, shift })
+                }
+                onCancel={setCancelTarget}
+                onColor={changeColor}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
 
       {timeTarget && (
         <AssignmentTimeDialog
