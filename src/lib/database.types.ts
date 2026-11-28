@@ -184,6 +184,7 @@ export type Database = {
           border_color: number | null
           employee_id: string
           fill_color: number | null
+          fixed_line: string | null
           updated_at: string
           updated_by: string | null
         }
@@ -191,6 +192,7 @@ export type Database = {
           border_color?: number | null
           employee_id: string
           fill_color?: number | null
+          fixed_line?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -198,6 +200,7 @@ export type Database = {
           border_color?: number | null
           employee_id?: string
           fill_color?: number | null
+          fixed_line?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -399,6 +402,106 @@ export type Database = {
           },
           {
             foreignKeyName: "agenda_items_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+        ]
+      }
+      agenda_staff_lines: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          day: string
+          employee_id: string
+          id: string
+          position: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          day: string
+          employee_id: string
+          id?: string
+          position?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          day?: string
+          employee_id?: string
+          id?: string
+          position?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_staff_lines_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agenda_staff_lines_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "agenda_staff_lines_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_supervisor_status"
+            referencedColumns: ["supervisor_id"]
+          },
+          {
+            foreignKeyName: "agenda_staff_lines_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "agenda_staff_lines_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "v_employee_ratings"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "agenda_staff_lines_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "v_employees"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "agenda_staff_lines_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agenda_staff_lines_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "v_announcement_recipients"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "agenda_staff_lines_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "v_supervisor_status"
@@ -8639,6 +8742,26 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      delete_agenda_staff_line: {
+        Args: { p_id: string }
+        Returns: {
+          body: string
+          created_at: string
+          created_by: string | null
+          day: string
+          employee_id: string
+          id: string
+          position: number
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "agenda_staff_lines"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       delete_employee_calendar_note: {
         Args: { p_note_id: string }
         Returns: {
@@ -9726,6 +9849,32 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      save_agenda_staff_line: {
+        Args: {
+          p_body: string
+          p_day: string
+          p_employee_id: string
+          p_id: string
+          p_position: number
+        }
+        Returns: {
+          body: string
+          created_at: string
+          created_by: string | null
+          day: string
+          employee_id: string
+          id: string
+          position: number
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "agenda_staff_lines"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       save_employee_calendar_note: {
         Args: {
           p_body: string
@@ -9846,6 +9995,24 @@ export type Database = {
           border_color: number | null
           employee_id: string
           fill_color: number | null
+          fixed_line: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "agenda_employee_colors"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_agenda_employee_fixed_line: {
+        Args: { p_employee_id: string; p_text: string }
+        Returns: {
+          border_color: number | null
+          employee_id: string
+          fill_color: number | null
+          fixed_line: string | null
           updated_at: string
           updated_by: string | null
         }

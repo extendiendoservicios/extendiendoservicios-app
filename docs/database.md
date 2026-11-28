@@ -3159,3 +3159,13 @@ Pizarra mensual de dueños y administradores (AG-01..AG-20). Todo se lee con RLS
 - **RPC**: `save_agenda_item(p_id, p_kind, p_month, p_day, p_slot, p_position, p_fields jsonb, p_border_color, p_fill_color)`, `delete_agenda_item(p_id)`, `set_agenda_item_resolved(p_id, p_resolved)`, `duplicate_agenda_item_to_next_month(p_id)`, `mark_agenda_item_client(p_id, p_client_id)`, `set_agenda_employee_color(p_employee_id, p_border, p_fill)`. Función interna `app.agenda_apply_resolved`.
 - **Errores**: `FORBIDDEN`, `AGENDA_ITEM_NOT_FOUND`, `INVALID_AGENDA_KIND` (tipo inválido o `mark_agenda_item_client` sobre algo que no es `nuevo`), `EMPTY_AGENDA_ITEM`, `INVALID_DATE`, `INVALID_SLOT`, `INVALID_BUDGET`, `INVALID_COLOR`, `CLIENT_NOT_FOUND`, `EMPLOYEE_NOT_FOUND`.
 - **Reglas**: al resolver, `fill_before_resolved = fill_color` y `fill_color = 20`; al desmarcar, si sigue en 20 se restaura. Duplicar al mes siguiente: evento mismo día o último del mes (31 oct a 30 nov), nuevo misma columna, sin resolver, sin `client_id`, `copied_from` = original. Editar no cambia `kind`; el mes del evento se deriva de `p_day`.
+
+## 0093 · Lista diaria de la Agenda (P37.1b)
+
+Renglones de la lista diaria como el parte de WhatsApp (AG-21..AG-25). Los renglones automáticos (turnos y licencias) no tienen tabla propia: el front los lee de `v_employees` (activos, `employee_number`, `roles`) y de `employee_leaves` (el tipo es `reason`, texto libre; «DIA N» = día - `starts_on` + 1).
+
+- **`agenda_employee_colors.fixed_line`** (`text`, 1 a 1000 caracteres o null): renglón fijo por persona (AG-22). La fila existe mientras tenga algún color o el renglón fijo.
+- **`agenda_staff_lines`**: `id`, `employee_id` (→ `employees.profile_id`, cascade), `day`, `body` (1 a 1000), `position`, auditoría. Índice `(day, employee_id, position)`. RLS: `select` solo para `app.is_admin()`; se escribe con RPC. Borrado físico.
+- **RPC** (solo owner y admin): `set_agenda_employee_fixed_line(p_employee_id, p_text)`, `save_agenda_staff_line(p_id, p_employee_id, p_day, p_body, p_position)` (alta con `p_id` null; `p_position` null = al final de la persona y el día; en edición `p_day` y `p_position` null no cambian) y `delete_agenda_staff_line(p_id)`. `set_agenda_employee_color` se redefine: ya no borra la fila si tiene `fixed_line`.
+- **Errores**: `FORBIDDEN`, `EMPLOYEE_NOT_FOUND`, `INVALID_DATE`, `EMPTY_AGENDA_ITEM`, `TEXT_TOO_LONG`, `STAFF_LINE_NOT_FOUND`.
+- Tests: `0093_p37_lista_diaria`.
